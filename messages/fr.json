@@ -11087,6 +11087,114 @@
       "cuerpo": "Veuillez trouver ci-joint la facture {numero} de {organizacion} d'un montant de {total}.",
       "despedida": "Merci, {organizacion}",
       "asunto": "{organizacion} : facture {numero}"
+    },
+    "nota": {
+      "titulo": "Avoir de la facture {numero}",
+      "paso1": "Étape 1 sur 2 · Ce qui est crédité",
+      "paso2": "Étape 2 sur 2 · Motif et effets",
+      "atras": "Retour",
+      "siguiente": "Suivant",
+      "emitir": "Émettre l'avoir",
+      "totalNota": "Total de l'avoir :",
+      "cargando": "Chargement de la facture…",
+      "modo": "Ce qui est crédité",
+      "modos": {
+        "total": "Toute la facture",
+        "lineas": "Par lignes",
+        "valor": "Par montant"
+      },
+      "facturado": "Facturé",
+      "saldo": "Solde dû",
+      "tope": "Encore créditable",
+      "concepto": "Libellé",
+      "conceptoAyuda": "Apparaît comme ligne de l'avoir (sans taxe).",
+      "valor": "Montant",
+      "motivo": "Motif",
+      "motivoAyuda": "5 caractères minimum. Enregistré sur l'avoir et dans l'historique.",
+      "conceptoDian": "Concept DIAN",
+      "conceptoDianAyuda": "La facture a été acceptée par la DIAN : l'avoir est envoyé aussi.",
+      "conceptosDian": {
+        "auto": "Automatique selon l'avoir",
+        "c1": "1 · Retour partiel des biens",
+        "c2": "2 · Annulation de la facture",
+        "c3": "3 · Rabais ou remise",
+        "c4": "4 · Ajustement de prix",
+        "c5": "5 · Autres"
+      },
+      "reingresar": "Remettre la marchandise en stock",
+      "reingresarAyuda": "Seulement ce qui est sorti par cette facture et n'est pas encore revenu.",
+      "excedente": {
+        "titulo": "Excédent sur le montant payé : {monto}",
+        "ayuda": "L'avoir dépasse ce qui était dû ; le client a déjà payé cette partie.",
+        "opcionAFavor": "Le garder en crédit client",
+        "opcionDevolucion": "Rembourser l'argent",
+        "metodo": "Moyen de remboursement",
+        "efectivo": "Espèces (caisse ouverte requise)",
+        "transferencia": "Virement",
+        "devuelto": "Un remboursement de {monto} a été enregistré.",
+        "aFavor": "Le client dispose de {monto} de crédit."
+      },
+      "alEmitir": {
+        "titulo": "Ce qui se passe à l'émission",
+        "saldo": "Le solde de la facture baisse de {monto} et les créances suivent.",
+        "asiento": "L'écriture de l'avoir est enregistrée.",
+        "inventario": "La marchandise revient en stock.",
+        "devolucion": "{monto} est remboursé au client.",
+        "aFavor": "Le client reçoit {monto} de crédit.",
+        "dian": "L'avoir est envoyé à la DIAN."
+      },
+      "bloqueos": {
+        "sinMonto": "Choisissez ce qui est crédité.",
+        "excede": "L'avoir dépasse ce qui peut encore être crédité ({tope}).",
+        "sinConcepto": "Saisissez le libellé.",
+        "sinMotivo": "Saisissez le motif (5 caractères minimum)."
+      },
+      "emitida": "Avoir {numero} émis",
+      "emitidaDetalle": "Pour {monto}.",
+      "fe": {
+        "encolada": "L'avoir a été mis en file d'attente pour la DIAN.",
+        "error": "L'avoir a été émis, mais n'a pas pu être mis en file pour la DIAN. Réessayez depuis la facturation électronique."
+      },
+      "lineas": {
+        "titulo": "Lignes de la facture",
+        "sinLineas": "La facture n'a aucune ligne à créditer.",
+        "sinDescripcion": "Sans description",
+        "facturada": "Facturé : {cantidad}",
+        "acreditada": "crédité : {cantidad}",
+        "disponible": "disponible : {cantidad}",
+        "agotada": "déjà crédité",
+        "cantidadDe": "Quantité à créditer pour {linea}"
+      },
+      "errores": {
+        "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
+        "sin_permiso": "Vous n'avez pas l'autorisation d'émettre des avoirs.",
+        "factura_no_encontrada": "Facture introuvable.",
+        "sin_acceso_sucursal": "Vous n'avez pas accès à la succursale de cette facture.",
+        "clave_idempotencia_invalida": "Émission impossible. Fermez et réessayez.",
+        "modo_invalido": "Choisissez ce qui est crédité.",
+        "motivo_obligatorio": "Saisissez le motif (5 caractères minimum).",
+        "liquidacion_invalida": "Choisissez quoi faire de l'excédent.",
+        "documento_invalido": "Un avoir ne s'émet que sur une facture.",
+        "factura_borrador": "Une facture brouillon ne prend pas d'avoir : modifiez-la ou supprimez-la.",
+        "ya_anulada": "La facture est annulée.",
+        "monto_invalido": "Le montant doit être supérieur à zéro.",
+        "concepto_obligatorio": "Saisissez le libellé.",
+        "sin_lineas": "Choisissez au moins une ligne.",
+        "linea_repetida": "Une ligne est en double.",
+        "cantidad_invalida": "Vérifiez les quantités.",
+        "cantidad_excede_disponible": "Une quantité dépasse ce qui peut encore être crédité sur cette ligne.",
+        "linea_no_pertenece_a_la_factura": "Une ligne n'appartient pas à cette facture.",
+        "nada_por_acreditar": "La facture est déjà entièrement créditée.",
+        "nota_excede_facturado": "L'avoir dépasse ce qui peut encore être crédité.",
+        "reingreso_con_seriales": "Certains produits ont des numéros de série : retournez-les depuis les Retours du POS.",
+        "saldo_a_favor_sin_cliente": "La facture n'a pas de client : l'excédent ne peut qu'être remboursé.",
+        "metodo_devolucion_obligatorio": "Choisissez le moyen de remboursement.",
+        "sin_caja_abierta": "Pour rembourser en espèces, ouvrez d'abord la caisse.",
+        "cuenta_no_encontrada": "Aucun compte de caisse ou de banque trouvé pour ce moyen.",
+        "sin_regla_contable": "La règle comptable des ventes de l'organisation manque.",
+        "datos_invalidos": "Vérifiez les données.",
+        "error_desconocido": "L'avoir n'a pas pu être émis. Réessayez."
+      }
     }
   }
 }

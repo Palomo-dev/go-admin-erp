@@ -13,9 +13,9 @@ import * as path from 'path';
 const RAIZ = path.resolve(__dirname, '..', '..', '..', '..');
 const leer = (rel: string): string => fs.readFileSync(path.join(RAIZ, rel), 'utf8');
 
-describe('L1 · un pago solo inserta en payments; los disparadores mandan (20260926100000)', () => {
-  const sql = leer('supabase/migrations/20260926100000_cartera_abonos_simetricos.sql');
-  const rollback = leer('supabase/rollbacks/20260926100000_cartera_abonos_simetricos_rollback.sql');
+describe('L1 · un pago solo inserta en payments; los disparadores mandan (20260924071946)', () => {
+  const sql = leer('supabase/migrations/20260924071946_cartera_abonos_simetricos.sql');
+  const rollback = leer('supabase/rollbacks/20260924071946_cartera_abonos_simetricos_rollback.sql');
 
   /**
    * Dry-run 2026-09-24 (factura emitida de 5.000 con su cartera, transacción deshecha):
@@ -53,8 +53,8 @@ describe('L1 · un pago solo inserta en payments; los disparadores mandan (20260
   });
 });
 
-describe('L9 · L17 · pago único fn_registrar_pago / fn_anular_pago (20260926110000)', () => {
-  const sql = leer('supabase/migrations/20260926110000_pago_unico_registrar_y_anular.sql');
+describe('L9 · L17 · pago único fn_registrar_pago / fn_anular_pago (20260924072939)', () => {
+  const sql = leer('supabase/migrations/20260924072939_pago_unico_registrar_y_anular.sql');
 
   /**
    * Dry-run 2026-09-24 (usuario administrador de una organización de pruebas,

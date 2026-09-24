@@ -533,8 +533,8 @@ instanciado en frames viejos: el código usa `RegistrarPagoDialog` (FINANZAS-DOC
 
 ## 6. Contrato del pago único (listo desde 2026-09-24 — para cajas, compras, CxP y POS)
 
-**Migraciones aplicadas:** `20260926100000_cartera_abonos_simetricos` (P1.1) y
-`20260926110000_pago_unico_registrar_y_anular` (P1.2, P1.3). Pruebas:
+**Migraciones aplicadas:** `20260924071946_cartera_abonos_simetricos` (P1.1) y
+`20260924072939_pago_unico_registrar_y_anular` (P1.2, P1.3). Pruebas:
 `src/__tests__/finanzas/ventas/{sqlCaracterizacion,rutasPagos,reglasPuras}.test.ts`.
 
 ### 6.1 RPC

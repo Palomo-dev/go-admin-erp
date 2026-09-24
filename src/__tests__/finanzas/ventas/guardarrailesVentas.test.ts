@@ -11,6 +11,7 @@ const SRC = path.resolve(__dirname, '..', '..', '..');
 const CARPETAS = [
   'components/finanzas/pagos',
   'components/finanzas/cartera',
+  'components/finanzas/notas',
   'components/finanzas/facturas-venta/detalle',
   'components/finanzas/facturas-venta/listado',
   'components/finanzas/cuentas-por-cobrar/listado',

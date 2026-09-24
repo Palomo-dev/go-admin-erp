@@ -1,4 +1,4 @@
--- Rollback de 20260926110000_pago_unico_registrar_y_anular.sql
+-- Rollback de 20260924072939_pago_unico_registrar_y_anular.sql
 --
 -- ADVERTENCIA: no revierte datos. Los pagos registrados con fn_registrar_pago
 -- siguen en payments (son pagos reales); sus recibos se pierden al borrar

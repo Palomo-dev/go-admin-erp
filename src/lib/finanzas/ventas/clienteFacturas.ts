@@ -9,6 +9,11 @@
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import type { DetalleFacturaVenta, ErrorFactura, FaltanteStock } from './contratoFacturas';
 import type { RespuestaListadoFacturas } from './listadoFacturas';
+import type { ContextoNota, ResultadoNota, SolicitudNota } from './contratoNotaCredito';
+
+/** Lo que el diálogo envía (los valores por defecto los pone el esquema del servidor). */
+export type SolicitudNotaEntrada = Omit<SolicitudNota, 'reingresar' | 'liquidacion'> &
+  Partial<Pick<SolicitudNota, 'reingresar' | 'liquidacion'>>;
 
 export class ErrorPeticionFactura extends Error {
   constructor(
@@ -60,6 +65,21 @@ export async function anularFacturaVenta(id: string, motivo: string): Promise<{ 
     body: JSON.stringify({ motivo }),
   });
   return (await leer<{ resultado: { productos_devueltos: number } }>(r)).resultado;
+}
+
+export async function pedirContextoNota(id: string): Promise<ContextoNota> {
+  const r = await fetch(`/api/facturas-venta/${encodeURIComponent(id)}/nota-credito`, { credentials: 'same-origin', cache: 'no-store', headers: cabeceras() });
+  return (await leer<{ contexto: ContextoNota }>(r)).contexto;
+}
+
+export async function emitirNotaCreditoVenta(id: string, solicitud: SolicitudNotaEntrada): Promise<ResultadoNota> {
+  const r = await fetch(`/api/facturas-venta/${encodeURIComponent(id)}/nota-credito`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: cabeceras(true),
+    body: JSON.stringify(solicitud),
+  });
+  return (await leer<{ resultado: ResultadoNota }>(r)).resultado;
 }
 
 export async function pedirListadoFacturas(query: URLSearchParams): Promise<RespuestaListadoFacturas> {

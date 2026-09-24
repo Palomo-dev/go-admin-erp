@@ -1,3 +1,7 @@
+-- Versión: 20260924075934, la que quedó registrada en supabase_migrations al aplicarla por MCP.
+-- Antes se llamaba 20260926120000_factura_venta_emitir_y_anular.sql; se renombró el 2026-09-24 porque ese prefijo
+-- lo usaban también migraciones de otras sesiones (chocaba con `supabase db push`).
+--
 -- Facturas de venta: emitir y anular en la base (P1.4 y P1.5 del plan de ventas y CxC)
 --
 -- Hasta hoy las dos cosas las hacía el navegador en varios pasos sueltos:

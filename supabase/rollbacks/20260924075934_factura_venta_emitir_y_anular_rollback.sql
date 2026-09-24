@@ -1,4 +1,4 @@
--- Rollback de 20260926120000_factura_venta_emitir_y_anular.sql
+-- Rollback de 20260924075934_factura_venta_emitir_y_anular.sql
 -- ADVERTENCIA: no revierte datos. Las 22 carteras de facturas anuladas que
 -- pasaron a 'cancelled' se quedan así (antes: 20 'paid' con saldo 0, 1 'current'
 -- y 1 'overdue' con saldo vivo de facturas anuladas).

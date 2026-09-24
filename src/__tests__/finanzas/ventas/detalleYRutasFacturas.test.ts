@@ -11,10 +11,30 @@ const FACTURA = '11111111-2222-4333-8444-555555555555';
 const guion = {
   permisos: new Set<string>(),
   errorRpc: null as null | { message: string; details?: string },
+  /** La factura existe, pero en otra organización (la sesión es la 120). */
+  facturaAjena: false,
 };
 const rpcs: { nombre: string; args: Record<string, unknown> }[] = [];
 
+/** `from('invoice_sales').select().eq('id').eq('organization_id').maybeSingle()`. */
+function consultaFalsa() {
+  const filtros: Record<string, unknown> = {};
+  const q = {
+    select: () => q,
+    eq: (col: string, v: unknown) => {
+      filtros[col] = v;
+      return q;
+    },
+    maybeSingle: async () => ({
+      data: !guion.facturaAjena && filtros.id === FACTURA && filtros.organization_id === 120 ? { id: FACTURA } : null,
+      error: null,
+    }),
+  };
+  return q;
+}
+
 const supabaseFalso = {
+  from: () => consultaFalsa(),
   rpc: async (nombre: string, args: Record<string, unknown>) => {
     rpcs.push({ nombre, args });
     if (guion.errorRpc) return { data: null, error: guion.errorRpc };
@@ -58,6 +78,7 @@ const params = { params: Promise.resolve({ id: FACTURA }) };
 beforeEach(() => {
   guion.permisos = new Set(['finance.create', 'finance.void']);
   guion.errorRpc = null;
+  guion.facturaAjena = false;
   rpcs.length = 0;
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   jest.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -144,6 +165,13 @@ describe('POST /api/facturas-venta/[id]/emitir', () => {
     const r = await emitir(peticion(`http://x/api/facturas-venta/${FACTURA}/emitir`), params);
     expect(r.status).toBe(409);
     expect(await r.json()).toMatchObject({ codigo: 'stock_insuficiente', faltantes: [{ producto: 'Café', requerido: 3, disponible: 1 }] });
+  });
+
+  test('factura de otra organización de la persona → 404 sin llamar a la RPC', async () => {
+    guion.facturaAjena = true;
+    const r = await emitir(peticion(`http://x/api/facturas-venta/${FACTURA}/emitir`), params);
+    expect(r.status).toBe(404);
+    expect(rpcs).toHaveLength(0);
   });
 
   test('id mal formado → 404', async () => {

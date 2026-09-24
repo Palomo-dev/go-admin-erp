@@ -1,3 +1,7 @@
+-- Versión: 20260924072939, la que quedó registrada en supabase_migrations al aplicarla por MCP.
+-- Antes se llamaba 20260926110000_pago_unico_registrar_y_anular.sql; se renombró el 2026-09-24 porque ese prefijo
+-- lo usaban también migraciones de otras sesiones (chocaba con `supabase db push`).
+--
 -- Pago único: registrar y anular (P1.2 y P1.3 del plan de facturas de venta y CxC)
 --
 -- Una sola RPC para cobrar (cliente → nosotros) y pagar (nosotros → proveedor)

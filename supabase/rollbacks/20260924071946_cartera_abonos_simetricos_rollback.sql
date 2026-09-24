@@ -1,4 +1,4 @@
--- Rollback de 20260926100000_cartera_abonos_simetricos.sql
+-- Rollback de 20260924071946_cartera_abonos_simetricos.sql
 -- Restaura las versiones anteriores (cuerpo leído de la base el 2026-09-24).
 -- No revierte datos: los saldos que el disparador nuevo haya recalculado se quedan.
 

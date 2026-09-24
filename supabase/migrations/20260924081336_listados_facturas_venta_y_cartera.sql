@@ -1,3 +1,7 @@
+-- Versión: 20260924081336, la que quedó registrada en supabase_migrations al aplicarla por MCP.
+-- Antes se llamaba 20260926130000_listados_facturas_venta_y_cartera.sql; se renombró el 2026-09-24 porque ese prefijo
+-- lo usaban también migraciones de otras sesiones (chocaba con `supabase db push`).
+--
 -- Listados en servidor: facturas de venta y cuentas por cobrar (P1.7 del plan de ventas y CxC)
 --
 -- Antes: el listado de facturas bajaba TODAS las facturas y TODOS los clientes de

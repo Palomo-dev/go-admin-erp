@@ -1,4 +1,4 @@
--- Rollback de 20260926150000_cartera_cuotas_y_recordatorios.sql
+-- Rollback de 20260924082450_cartera_cuotas_y_recordatorios.sql
 -- ADVERTENCIA: borra el historial de recordatorios (ar_reminders). Las cuotas
 -- creadas con fn_cxc_crear_plan_cuotas se quedan (son filas de ar_installments).
 drop function if exists public.fn_cxc_registrar_recordatorio(uuid, text, text, text, text, uuid, text, text);

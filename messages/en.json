@@ -11192,6 +11192,114 @@
       "cuerpo": "Please find attached invoice {numero} from {organizacion} for {total}.",
       "despedida": "Thank you, {organizacion}",
       "asunto": "{organizacion}: invoice {numero}"
+    },
+    "nota": {
+      "titulo": "Credit note for invoice {numero}",
+      "paso1": "Step 1 of 2 · What to credit",
+      "paso2": "Step 2 of 2 · Reason and effects",
+      "atras": "Back",
+      "siguiente": "Next",
+      "emitir": "Issue credit note",
+      "totalNota": "Note total:",
+      "cargando": "Loading the invoice…",
+      "modo": "What to credit",
+      "modos": {
+        "total": "Whole invoice",
+        "lineas": "By lines",
+        "valor": "By amount"
+      },
+      "facturado": "Invoiced",
+      "saldo": "Balance due",
+      "tope": "Still creditable",
+      "concepto": "Description",
+      "conceptoAyuda": "Shown as the note's line (no tax).",
+      "valor": "Amount",
+      "motivo": "Reason",
+      "motivoAyuda": "At least 5 characters. Saved on the note and in the history.",
+      "conceptoDian": "DIAN concept",
+      "conceptoDianAyuda": "The invoice was accepted by the DIAN: the note is sent too.",
+      "conceptosDian": {
+        "auto": "Automatic from the note",
+        "c1": "1 · Partial return of goods",
+        "c2": "2 · Invoice cancellation",
+        "c3": "3 · Rebate or discount",
+        "c4": "4 · Price adjustment",
+        "c5": "5 · Other"
+      },
+      "reingresar": "Return the goods to inventory",
+      "reingresarAyuda": "Only what left through this invoice and hasn't come back yet.",
+      "excedente": {
+        "titulo": "Excess over what was paid: {monto}",
+        "ayuda": "The note exceeds what was owed; the customer already paid that part.",
+        "opcionAFavor": "Keep it as customer credit",
+        "opcionDevolucion": "Refund the money",
+        "metodo": "Refund method",
+        "efectivo": "Cash (requires an open register)",
+        "transferencia": "Transfer",
+        "devuelto": "A refund of {monto} was recorded.",
+        "aFavor": "The customer now has {monto} in credit."
+      },
+      "alEmitir": {
+        "titulo": "What happens when issuing",
+        "saldo": "The invoice balance drops by {monto} and receivables follow.",
+        "asiento": "The credit note's journal entry is recorded.",
+        "inventario": "The goods return to inventory.",
+        "devolucion": "{monto} is refunded to the customer.",
+        "aFavor": "The customer gets {monto} in credit.",
+        "dian": "The note is sent to the DIAN."
+      },
+      "bloqueos": {
+        "sinMonto": "Choose what to credit.",
+        "excede": "The note exceeds what can still be credited ({tope}).",
+        "sinConcepto": "Enter the description.",
+        "sinMotivo": "Enter the reason (at least 5 characters)."
+      },
+      "emitida": "Credit note {numero} issued",
+      "emitidaDetalle": "For {monto}.",
+      "fe": {
+        "encolada": "The credit note was queued for the DIAN.",
+        "error": "The note was issued, but it couldn't be queued for the DIAN. Retry from electronic invoicing."
+      },
+      "lineas": {
+        "titulo": "Invoice lines",
+        "sinLineas": "The invoice has no lines to credit.",
+        "sinDescripcion": "No description",
+        "facturada": "Invoiced: {cantidad}",
+        "acreditada": "credited: {cantidad}",
+        "disponible": "available: {cantidad}",
+        "agotada": "already credited",
+        "cantidadDe": "Quantity to credit for {linea}"
+      },
+      "errores": {
+        "no_autenticado": "Your session ended. Sign in again.",
+        "sin_permiso": "You don't have permission to issue credit notes.",
+        "factura_no_encontrada": "The invoice was not found.",
+        "sin_acceso_sucursal": "You don't have access to this invoice's branch.",
+        "clave_idempotencia_invalida": "It couldn't be issued. Close and try again.",
+        "modo_invalido": "Choose what to credit.",
+        "motivo_obligatorio": "Enter the reason (at least 5 characters).",
+        "liquidacion_invalida": "Choose what to do with the excess.",
+        "documento_invalido": "Credit notes are only issued on invoices.",
+        "factura_borrador": "A draft invoice doesn't take a credit note: edit or delete it.",
+        "ya_anulada": "The invoice is voided.",
+        "monto_invalido": "The amount must be greater than zero.",
+        "concepto_obligatorio": "Enter the description.",
+        "sin_lineas": "Choose at least one line.",
+        "linea_repetida": "A line is repeated.",
+        "cantidad_invalida": "Check the quantities.",
+        "cantidad_excede_disponible": "A quantity exceeds what can still be credited on that line.",
+        "linea_no_pertenece_a_la_factura": "A line doesn't belong to this invoice.",
+        "nada_por_acreditar": "The invoice is already fully credited.",
+        "nota_excede_facturado": "The note exceeds what can still be credited.",
+        "reingreso_con_seriales": "Some products have serial numbers: return them from POS Returns.",
+        "saldo_a_favor_sin_cliente": "The invoice has no customer: the excess can only be refunded.",
+        "metodo_devolucion_obligatorio": "Choose the refund method.",
+        "sin_caja_abierta": "To refund in cash, open the register first.",
+        "cuenta_no_encontrada": "No cash or bank account was found for that method.",
+        "sin_regla_contable": "The organization's sales accounting rule is missing.",
+        "datos_invalidos": "Check the data.",
+        "error_desconocido": "The note couldn't be issued. Try again."
+      }
     }
   }
 }

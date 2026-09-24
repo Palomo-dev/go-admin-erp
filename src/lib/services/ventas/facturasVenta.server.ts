@@ -46,7 +46,23 @@ function lanzar(etiqueta: string, ctx: Ctx, error: { message: string; details?: 
   throw new ErrorFacturaServidor(codigo, detalleJson(error.details));
 }
 
+/**
+ * La factura es de la organización de la SESIÓN. Las RPC validan acceso y
+ * permiso en la organización de la factura; esto cierra el caso del usuario
+ * que pertenece a dos organizaciones y opera con la sesión en la otra.
+ */
+async function exigirFacturaDeLaSesion(ctx: Ctx, id: string): Promise<void> {
+  const { data, error } = await ctx.supabase
+    .from('invoice_sales')
+    .select('id')
+    .eq('id', id)
+    .eq('organization_id', ctx.organizationId)
+    .maybeSingle();
+  if (error || !data) throw new ErrorFacturaServidor('factura_no_encontrada');
+}
+
 export async function emitirFactura(ctx: Ctx, id: string): Promise<{ id: string; numero: string; stock_descontado: boolean }> {
+  await exigirFacturaDeLaSesion(ctx, id);
   const { data, error } = await ctx.supabase.rpc('fn_factura_venta_emitir', { p_invoice_id: id });
   if (error) lanzar('fn_factura_venta_emitir', ctx, error);
   return data as { id: string; numero: string; stock_descontado: boolean };
@@ -57,6 +73,7 @@ export function faltantesDe(err: ErrorFacturaServidor): FaltanteStock[] {
 }
 
 export async function anularFactura(ctx: Ctx, id: string, motivo: string): Promise<{ id: string; productos_devueltos: number }> {
+  await exigirFacturaDeLaSesion(ctx, id);
   const { data, error } = await ctx.supabase.rpc('fn_factura_venta_anular', { p_invoice_id: id, p_motivo: motivo });
   if (error) lanzar('fn_factura_venta_anular', ctx, error);
   return data as { id: string; productos_devueltos: number };

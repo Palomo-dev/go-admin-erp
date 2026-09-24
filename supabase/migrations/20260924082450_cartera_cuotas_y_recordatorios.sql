@@ -1,3 +1,7 @@
+-- Versión: 20260924082450, la que quedó registrada en supabase_migrations al aplicarla por MCP.
+-- Antes se llamaba 20260926150000_cartera_cuotas_y_recordatorios.sql; se renombró el 2026-09-24 porque ese prefijo
+-- lo usaban también migraciones de otras sesiones (chocaba con `supabase db push`).
+--
 -- Cartera: plan de cuotas y recordatorios en la base (P1.9 y P11 del plan de ventas y CxC)
 --
 -- Antes: el detalle de la cuenta por cobrar escribía ar_installments desde el

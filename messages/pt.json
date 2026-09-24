@@ -11087,6 +11087,114 @@
       "cuerpo": "Anexamos a fatura {numero} de {organizacion} no valor de {total}.",
       "despedida": "Obrigado, {organizacion}",
       "asunto": "{organizacion}: fatura {numero}"
+    },
+    "nota": {
+      "titulo": "Nota de crédito da fatura {numero}",
+      "paso1": "Passo 1 de 2 · O que creditar",
+      "paso2": "Passo 2 de 2 · Motivo e efeitos",
+      "atras": "Voltar",
+      "siguiente": "Avançar",
+      "emitir": "Emitir nota de crédito",
+      "totalNota": "Total da nota:",
+      "cargando": "Carregando a fatura…",
+      "modo": "O que creditar",
+      "modos": {
+        "total": "Fatura inteira",
+        "lineas": "Por linhas",
+        "valor": "Por valor"
+      },
+      "facturado": "Faturado",
+      "saldo": "Saldo pendente",
+      "tope": "Ainda pode ser creditado",
+      "concepto": "Descrição",
+      "conceptoAyuda": "Aparece como a linha da nota (sem imposto).",
+      "valor": "Valor",
+      "motivo": "Motivo",
+      "motivoAyuda": "Mínimo de 5 caracteres. Fica na nota e no histórico.",
+      "conceptoDian": "Conceito na DIAN",
+      "conceptoDianAyuda": "A fatura foi aceita pela DIAN: a nota também é enviada.",
+      "conceptosDian": {
+        "auto": "Automático pela nota",
+        "c1": "1 · Devolução parcial dos bens",
+        "c2": "2 · Anulação da fatura",
+        "c3": "3 · Abatimento ou desconto",
+        "c4": "4 · Ajuste de preço",
+        "c5": "5 · Outros"
+      },
+      "reingresar": "Devolver a mercadoria ao estoque",
+      "reingresarAyuda": "Só volta o que saiu por esta fatura e ainda não voltou.",
+      "excedente": {
+        "titulo": "Excedente sobre o que foi pago: {monto}",
+        "ayuda": "A nota supera o que era devido; o cliente já pagou essa parte.",
+        "opcionAFavor": "Deixar como saldo a favor do cliente",
+        "opcionDevolucion": "Devolver o dinheiro",
+        "metodo": "Meio da devolução",
+        "efectivo": "Dinheiro (requer caixa aberto)",
+        "transferencia": "Transferência",
+        "devuelto": "Foi registrada a devolução de {monto}.",
+        "aFavor": "O cliente fica com {monto} a favor."
+      },
+      "alEmitir": {
+        "titulo": "O que acontece ao emitir",
+        "saldo": "O saldo da fatura baixa {monto} e as contas a receber acompanham.",
+        "asiento": "O lançamento da nota de crédito é registrado.",
+        "inventario": "A mercadoria volta ao estoque.",
+        "devolucion": "{monto} é devolvido ao cliente.",
+        "aFavor": "O cliente fica com {monto} a favor.",
+        "dian": "A nota é enviada à DIAN."
+      },
+      "bloqueos": {
+        "sinMonto": "Escolha o que creditar.",
+        "excede": "A nota supera o que ainda pode ser creditado ({tope}).",
+        "sinConcepto": "Digite a descrição.",
+        "sinMotivo": "Digite o motivo (mínimo de 5 caracteres)."
+      },
+      "emitida": "Nota de crédito {numero} emitida",
+      "emitidaDetalle": "No valor de {monto}.",
+      "fe": {
+        "encolada": "A nota de crédito ficou na fila para a DIAN.",
+        "error": "A nota foi emitida, mas não pôde entrar na fila da DIAN. Tente de novo pela faturação eletrônica."
+      },
+      "lineas": {
+        "titulo": "Linhas da fatura",
+        "sinLineas": "A fatura não tem linhas para creditar.",
+        "sinDescripcion": "Sem descrição",
+        "facturada": "Faturada: {cantidad}",
+        "acreditada": "creditada: {cantidad}",
+        "disponible": "disponível: {cantidad}",
+        "agotada": "já creditada",
+        "cantidadDe": "Quantidade a creditar de {linea}"
+      },
+      "errores": {
+        "no_autenticado": "Sua sessão terminou. Entre novamente.",
+        "sin_permiso": "Você não tem permissão para emitir notas de crédito.",
+        "factura_no_encontrada": "Fatura não encontrada.",
+        "sin_acceso_sucursal": "Você não tem acesso à filial desta fatura.",
+        "clave_idempotencia_invalida": "Não foi possível emitir. Feche e tente de novo.",
+        "modo_invalido": "Escolha o que creditar.",
+        "motivo_obligatorio": "Digite o motivo (mínimo de 5 caracteres).",
+        "liquidacion_invalida": "Escolha o que fazer com o excedente.",
+        "documento_invalido": "Nota de crédito só se emite sobre uma fatura.",
+        "factura_borrador": "Uma fatura em rascunho não leva nota de crédito: edite-a ou exclua-a.",
+        "ya_anulada": "A fatura está anulada.",
+        "monto_invalido": "O valor deve ser maior que zero.",
+        "concepto_obligatorio": "Digite a descrição.",
+        "sin_lineas": "Escolha pelo menos uma linha.",
+        "linea_repetida": "Há uma linha repetida.",
+        "cantidad_invalida": "Revise as quantidades.",
+        "cantidad_excede_disponible": "Uma quantidade supera o que ainda pode ser creditado nessa linha.",
+        "linea_no_pertenece_a_la_factura": "Uma linha não pertence a esta fatura.",
+        "nada_por_acreditar": "A fatura já está totalmente creditada.",
+        "nota_excede_facturado": "A nota supera o que ainda pode ser creditado.",
+        "reingreso_con_seriales": "Há produtos com número de série: a devolução é feita em Devoluções do PDV.",
+        "saldo_a_favor_sin_cliente": "A fatura não tem cliente: o excedente só pode ser devolvido.",
+        "metodo_devolucion_obligatorio": "Escolha o meio da devolução.",
+        "sin_caja_abierta": "Para devolver em dinheiro, abra o caixa primeiro.",
+        "cuenta_no_encontrada": "Não foi encontrada conta de caixa ou banco para esse meio.",
+        "sin_regla_contable": "Falta a regra contábil de vendas da organização.",
+        "datos_invalidos": "Revise os dados.",
+        "error_desconocido": "Não foi possível emitir a nota. Tente novamente."
+      }
     }
   }
 }

@@ -1,3 +1,7 @@
+-- Versión: 20260924071946, la que quedó registrada en supabase_migrations al aplicarla por MCP.
+-- Antes se llamaba 20260926100000_cartera_abonos_simetricos.sql; se renombró el 2026-09-24 porque ese prefijo
+-- lo usaban también migraciones de otras sesiones (chocaba con `supabase db push`).
+--
 -- Cartera · abonos simétricos (P1.1 del plan de facturas de venta y CxC)
 --
 -- Problema (medido 2026-09-24): anular, corregir o borrar un abono hecho desde

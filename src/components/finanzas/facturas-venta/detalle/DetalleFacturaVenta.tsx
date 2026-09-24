@@ -57,7 +57,7 @@ import { ErrorPeticionFactura, anularFacturaVenta, emitirFacturaVenta, pedirDeta
 import { RegistrarPagoConectado } from '@/components/finanzas/pagos/RegistrarPagoConectado';
 import { AnularPagoConectado } from '@/components/finanzas/pagos/AnularPagoConectado';
 import { SendToFactusButton } from '@/components/finanzas/facturacion-electronica';
-import { NotaCreditoDialog } from '../id/NotaCreditoDialog';
+import { NotaCreditoVentaDialog } from './NotaCreditoVentaDialog';
 import { EnviarFacturaDialog } from './EnviarFacturaDialog';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
@@ -546,37 +546,13 @@ export function DetalleFacturaVenta({ id }: { id: string }) {
             numero={numero}
             correo={datos?.cliente?.email}
           />
-          {notaAbierta && (
-            <NotaCreditoDialog
-              open={notaAbierta}
-              onOpenChange={setNotaAbierta}
-              factura={{
-                id: factura.id,
-                number: factura.numero,
-                branch_id: factura.branchId,
-                customer_id: datos?.cliente?.id ?? null,
-                currency: factura.moneda,
-                balance: factura.saldo,
-                total: factura.total,
-                subtotal: factura.subtotal,
-                tax_total: factura.impuestos,
-                tax_included: factura.impuestosIncluidos,
-                payment_method: factura.metodoPago,
-                status: factura.estado,
-              }}
-              items={(datos?.lineas ?? []).map((l) => ({
-                id: l.id,
-                qty: l.cantidad,
-                unit_price: l.precioUnitario,
-                description: l.descripcion,
-                product_id: l.productId,
-                tax_code: l.codigoImpuesto,
-                tax_rate: l.tarifa,
-                discount_amount: l.descuento,
-              }))}
-              onSuccess={() => void cargar()}
-            />
-          )}
+          <NotaCreditoVentaDialog
+            abierto={notaAbierta}
+            onAbiertoChange={setNotaAbierta}
+            facturaId={factura.id}
+            numero={numero}
+            onEmitida={() => void cargar()}
+          />
         </>
       )}
     </div>

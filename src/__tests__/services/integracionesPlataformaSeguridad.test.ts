@@ -182,6 +182,24 @@ jest.mock('@/lib/services/factusTokenManager', () => ({
   getCredentials: () => ({ environment: 'sandbox' }),
   getValidToken: async () => 'token',
 }));
+// Cola de facturación electrónica y acceso a Factus por organización: los
+// introduce el rediseño de la cola (otra sesión, 2026-09-23). `virtual` para
+// que esta suite funcione con y sin esos módulos en el árbol.
+jest.mock(
+  '@/lib/services/einvoicing/accesoFactus.server',
+  () => ({ obtenerAccesoFactus: async () => ({ environment: 'sandbox', accessToken: 'token' }) }),
+  { virtual: true },
+);
+jest.mock(
+  '@/lib/services/einvoicing/colaFacturacion.server',
+  () => ({ encolarDocumento: jest.fn(), procesarAhora: jest.fn() }),
+  { virtual: true },
+);
+jest.mock(
+  '@/lib/services/einvoicing/respuestaRuta',
+  () => ({ respuestaDeEnvio: () => new Response('{}', { status: 202 }) }),
+  { virtual: true },
+);
 
 const openFinance = {
   getLinks: jest.fn(async () => [{ id: LINK, organization_id: ORG, session_key: 'SECRETO-BANCARIO', status: 'active' }]),

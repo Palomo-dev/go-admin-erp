@@ -2037,7 +2037,20 @@ describe('27b. Open Finance, PayFac y Factus: todo handler pasa por una puerta d
     for (const file of rutas()) {
       const content = stripAllComments(readFile(file));
       const todos = bloques(content);
-      const helpersConPuerta = todos.filter((b) => !b.metodo && b.nombre && PUERTA_RE.test(b.texto)).map((b) => b.nombre);
+      // Helpers locales con puerta, transitivamente (`GET → procesar → isAuthorizedCron → verifyCronSecret`).
+      const helpers = todos.filter((b) => !b.metodo && b.nombre);
+      const helpersConPuerta = helpers.filter((b) => PUERTA_RE.test(b.texto)).map((b) => b.nombre);
+      for (let cambio = true; cambio; ) {
+        cambio = false;
+        for (const b of helpers) {
+          if (helpersConPuerta.includes(b.nombre)) continue;
+          const cuerpo = b.texto.replace(/^[^=({]*/, '');
+          if (helpersConPuerta.some((n) => new RegExp(`\\b${n}\\s*\\(`).test(cuerpo))) {
+            helpersConPuerta.push(b.nombre);
+            cambio = true;
+          }
+        }
+      }
       for (const h of todos.filter((b) => b.metodo)) {
         const directo = PUERTA_RE.test(h.texto);
         const porHelper = helpersConPuerta.some((n) => new RegExp(`\\b${n}\\b`).test(h.texto.replace(/^[^=({]*/, '')));

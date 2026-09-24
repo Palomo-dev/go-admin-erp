@@ -114,3 +114,7 @@ export { Dialogo, type DialogoProps, type AccionDialogo } from './Dialogo';
 export { CodigoBarras, type CodigoBarrasProps } from './CodigoBarras';
 export { EtiquetaProducto, type EtiquetaProductoProps } from './EtiquetaProducto';
 export { HojaEtiquetas, type HojaEtiquetasProps } from './HojaEtiquetas';
+
+// Asistentes (importar productos) y diálogo que en móvil es hoja inferior (Meta y canales)
+export { Stepper, type StepperProps, type PasoStepper } from './Stepper';
+export { PanelAdaptable, type PanelAdaptableProps } from './PanelAdaptable';

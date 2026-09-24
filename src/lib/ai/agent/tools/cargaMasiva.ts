@@ -20,6 +20,7 @@
  */
 
 import type { ToolContext, ToolDefinition, ToolPreview, ToolResult } from '../types';
+import { normalizarCabecera, normalizarNombre, parseNumero } from '@/lib/inventario/importacion/texto';
 
 const BUCKET = 'ai-attachments';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -90,14 +91,6 @@ const ALIAS: Record<Campo, string[]> = {
   stock: ['stock', 'cantidad', 'existencias', 'inventario', 'qty', 'quantity', 'unidades', 'cant', 'saldo'],
 };
 
-function normalizarCabecera(h: unknown): string {
-  return String(h ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
-}
-
 /** Cabecera → campo. `null` si no se reconoce. Exportado para tests. */
 export function reconocerColumnas(cabeceras: unknown[]): Array<Campo | null> {
   const usados = new Set<Campo>();
@@ -120,36 +113,9 @@ export function reconocerColumnas(cabeceras: unknown[]): Array<Campo | null> {
   });
 }
 
-/** "1.234,50" y "1,234.50" y "$ 12.000" → 12000. Exportado para tests. */
-export function parseNumero(v: unknown): number | null {
-  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
-  if (typeof v !== 'string') return null;
-  let s = v.trim().replace(/[^\d,.-]/g, '');
-  if (!s) return null;
-  const coma = s.lastIndexOf(',');
-  const punto = s.lastIndexOf('.');
-  if (coma > -1 && punto > -1) {
-    // El último separador es el decimal; el otro, de miles.
-    s = coma > punto ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
-  } else if (coma > -1) {
-    // Solo comas: si hay exactamente 3 dígitos detrás, son miles ("12,000").
-    s = /,\d{3}$/.test(s) && s.split(',').length === 2 ? s.replace(',', '') : s.replace(',', '.');
-  } else if (punto > -1 && /\.\d{3}$/.test(s) && s.split('.').length === 2 && s.length > 5) {
-    // "12.000" en Colombia son doce mil; "12.50" no llega aquí (2 decimales).
-    s = s.replace('.', '');
-  }
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
-
-function normalizarNombre(s: string): string {
-  return s
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
+// `parseNumero`, `normalizarCabecera` y `normalizarNombre` viven en el módulo
+// compartido de importación (una sola definición para todos los importadores).
+export { parseNumero };
 
 /** Convierte una matriz (cabecera + filas) en filas de entrada. Exportado para tests. */
 export function matrizAFilas(matriz: unknown[][]): { filas: FilaEntrada[]; columnas: string[] } {

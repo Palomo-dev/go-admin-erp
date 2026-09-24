@@ -6247,5 +6247,528 @@
         "descripcion": "Check your connection and try again."
       }
     }
+  },
+  "productosImportar": {
+    "titulo": "Import products",
+    "subtituloArchivo": "From a file · {nombre}",
+    "subtituloArchivoVacio": "From a CSV or Excel file",
+    "subtituloWeb": "From a website · {host}",
+    "subtituloWebVacio": "From an online store, with AI",
+    "extra": "Source: {origen} · Destination branch: {sucursal}",
+    "migas": {
+      "inventario": "Inventory",
+      "productos": "Products",
+      "importar": "Import"
+    },
+    "pasos": {
+      "etiqueta": "Import steps",
+      "resumenMovil": "Step {n} of {total} · {paso}",
+      "origen": "Source",
+      "mapeo": "Mapping",
+      "seleccion": "Selection",
+      "validacion": "Validation",
+      "vista": "Preview",
+      "resultado": "Result"
+    },
+    "origenes": {
+      "archivo": "From a file",
+      "web": "From a website"
+    },
+    "acciones": {
+      "continuar": "Continue",
+      "revisar": "Review rows",
+      "importar": "Import {n, plural, =0 {products} one {# product} other {# products}}",
+      "plantilla": "Download template",
+      "exportar": "Export products",
+      "exportando": "Exporting…",
+      "cancelarImportacion": "Cancel import",
+      "importarOtro": "Import another",
+      "verProductos": "View products",
+      "volver": "Back",
+      "cancelar": "Cancel",
+      "reintentar": "Retry"
+    },
+    "toast": {
+      "error": "Could not complete",
+      "plantilla": "Template downloaded",
+      "sinProductos": "There are no products to export",
+      "exportado": "{n, plural, one {# product exported} other {# products exported}}",
+      "errorExportar": "Could not export: {mensaje}"
+    },
+    "origen": {
+      "elegir": "Where do the products come from?",
+      "archivoTitulo": "Product file",
+      "archivoDesc": "CSV, XLS or XLSX: the GO Admin template, a Siigo export or any other list.",
+      "leyendo": "Reading the file…",
+      "soltar": "Drag the file here or click to choose it",
+      "archivoElegido": "{filas, plural, one {# row with data} other {# rows with data}} · click to change it",
+      "formatos": "Formats: CSV, XLS, XLSX · up to 10 MB",
+      "ayudaTitulo": "Recognized columns",
+      "ayudaFormatos": "It also recognizes the “Space” format (Producto, Categoría, P. Venta, Descuento, Promoción 2x) and the sections format with “Valor compra” / “Valor venta”: SKUs are generated in both.",
+      "saldosTitulo": "Inventory balances (optional)",
+      "saldosDesc": "Siigo “Saldos de inventario” file: quantity and unit cost per code. It overrides the stock column.",
+      "saldosCargados": "{n, plural, one {# code with balance} other {# codes with balance}}",
+      "saldosElegir": "Choose the balances file",
+      "quitar": "Remove",
+      "errorFormato": "Invalid format: choose a CSV, XLS or XLSX file.",
+      "errorTamano": "The file is larger than 10 MB.",
+      "saldosNoReconocido": "The balances file has no “Código producto” column.",
+      "sinDatos": "The file has no product rows.",
+      "errorLectura": "The file could not be read. Is it damaged or password protected?"
+    },
+    "campos": {
+      "sku": {
+        "nombre": "SKU",
+        "ayuda": "unique code; generated if missing"
+      },
+      "name": {
+        "nombre": "Name",
+        "ayuda": "required"
+      },
+      "type": {
+        "nombre": "Type",
+        "ayuda": "Product or Service"
+      },
+      "description": {
+        "nombre": "Description",
+        "ayuda": "free text"
+      },
+      "category": {
+        "nombre": "Category",
+        "ayuda": "created if it does not exist"
+      },
+      "unit": {
+        "nombre": "Unit",
+        "ayuda": "UN, KG, GR, LT, ML, CAJ, PAQ…"
+      },
+      "barcode": {
+        "nombre": "Barcode",
+        "ayuda": "EAN / UPC"
+      },
+      "brand": {
+        "nombre": "Brand",
+        "ayuda": "free text"
+      },
+      "reference": {
+        "nombre": "Reference",
+        "ayuda": "supplier reference"
+      },
+      "supplier": {
+        "nombre": "Supplier",
+        "ayuda": "one or more separated by “;”; created if it does not exist"
+      },
+      "price": {
+        "nombre": "Sale price",
+        "ayuda": "with or without thousands separator"
+      },
+      "comparePrice": {
+        "nombre": "Compare-at price",
+        "ayuda": "previous price, higher than the sale price"
+      },
+      "cost": {
+        "nombre": "Cost",
+        "ayuda": "required when there is initial stock"
+      },
+      "tax": {
+        "nombre": "Tax",
+        "ayuda": "name or rate: “IVA 19%”"
+      },
+      "trackStock": {
+        "nombre": "Track inventory",
+        "ayuda": "yes / no"
+      },
+      "stock": {
+        "nombre": "Initial stock",
+        "ayuda": "enters the destination branch through the stock ledger"
+      },
+      "minLevel": {
+        "nombre": "Minimum stock",
+        "ayuda": "for the destination branch"
+      },
+      "tags": {
+        "nombre": "Tags",
+        "ayuda": "separated by “;”"
+      },
+      "notes": {
+        "nombre": "Notes",
+        "ayuda": "internal note (on create)"
+      },
+      "imageUrls": {
+        "nombre": "Image URLs",
+        "ayuda": "separated by “;”, up to 10"
+      },
+      "parentSku": {
+        "nombre": "Parent SKU",
+        "ayuda": "for variants"
+      },
+      "variantData": {
+        "nombre": "Variant data",
+        "ayuda": "JSON or “color:blue,size:M”"
+      },
+      "isParent": {
+        "nombre": "Is parent product",
+        "ayuda": "yes / no"
+      },
+      "station": {
+        "nombre": "Station",
+        "ayuda": "kitchen, cold kitchen, bar, cashier, all or none"
+      },
+      "modifiers": {
+        "nombre": "Modifiers",
+        "ayuda": "Group|mode|min|max|required|opt=price,…; Group2|…"
+      },
+      "status": {
+        "nombre": "Status",
+        "ayuda": "active / inactive"
+      }
+    },
+    "web": {
+      "titulo": "Store page",
+      "descripcion": "Paste the URL of a listing or a product and AI extracts name, price, images, brand, category and variants.",
+      "url": "Page URL",
+      "urlAyuda": "Shopify, WooCommerce and VTEX are read straight from their catalog, without AI and at no cost.",
+      "urlPlaceholder": "https://store.com/category/tvs",
+      "costoTitulo": "AI credit cost",
+      "costoAnalisis": "Analyze the page: {n} credits when AI is used (0 if the store exposes its catalog).",
+      "costoDetalle": "Complete a product sheet: {n} credits each.",
+      "costoFallo": "If the page does not respond or no products are found, nothing is charged.",
+      "saldo": "Available balance: {n, plural, one {# credit} other {# credits}}",
+      "sinSaldo": "You don't have enough AI credits. You can buy more in Settings › AI.",
+      "analizando": "Analyzing the page… large catalogs can take up to 3 minutes.",
+      "analizar": "Analyze page",
+      "yaAnalizada": "{host} was already analyzed: {n, plural, one {# product} other {# products}}. Continue or analyze another URL.",
+      "urlInvalida": "Enter a full URL starting with http:// or https://.",
+      "sinProductos": "No products were found on that page. Try a more specific category.",
+      "encontrados": "{n, plural, one {# product found} other {# products found}}",
+      "creditosCobrados": "{n, plural, =0 {No cost: AI was not used} one {# credit was charged} other {# credits were charged}}",
+      "errorProveedor": "The page could not be read: {mensaje}. No credits were charged.",
+      "seleccionarTodos": "Select all ({sel}/{total})",
+      "completando": "Completing sheets {actual} of {total}…",
+      "detener": "Stop",
+      "completar": "Complete data for {n}",
+      "hastaCreditos": "up to {n} credits",
+      "creditosSesion": "Credits used in this import: {n}",
+      "elegir": "Import “{nombre}”",
+      "campos": {
+        "nombre": "Name",
+        "precio": "Sale price",
+        "comparacion": "Previous price",
+        "costo": "Cost",
+        "stock": "Initial stock",
+        "categoria": "Category"
+      },
+      "obteniendo": "Fetching the product sheet…",
+      "datosIncompletos": "No price or image",
+      "variantes": "{n, plural, one {# variant} other {# variants}}",
+      "imagenes": "{n, plural, one {# image} other {# images}}",
+      "verMas": "Show {n} more ({total} left)"
+    },
+    "mapeo": {
+      "titulo": "File columns",
+      "formato": {
+        "space": "“Space” format detected: {n, plural, one {# row} other {# rows}}. SKUs are generated (SP-…), sizes (small, medium, large…) become variants ({variantes}) and the 2-for-1 promo goes into notes so you can set it up in Promotions.",
+        "sistema": "Sections format detected: {n, plural, one {# row} other {# rows}}. Each single-cell row is the category of the rows below; SKUs are generated (VE-…) and cost and price are swapped if cost is higher."
+      },
+      "descripcion": "{n} of {total} columns were recognized. Review and fix what is needed.",
+      "filaCabecera": "Header row",
+      "fila": "Row {n}",
+      "faltaNombre": "Assign the name column to continue.",
+      "sinSku": "There is no SKU column: one will be generated per product (IMP-…).",
+      "variantesDetectadas": "{n, plural, one {# variant linked} other {# variants linked}} to its parent product by SKU prefix.",
+      "columnaSinNombre": "Column {n}",
+      "campoDe": "Field for column “{columna}”",
+      "noImportar": "Do not import"
+    },
+    "validacion": {
+      "titulo": "Import options",
+      "modo": "If the SKU already exists",
+      "modos": {
+        "crear_y_actualizar": {
+          "titulo": "Create and update",
+          "desc": "New ones are created and existing ones updated (only what the file brings)."
+        },
+        "solo_crear": {
+          "titulo": "Create new only",
+          "desc": "Existing ones are skipped untouched."
+        },
+        "solo_actualizar": {
+          "titulo": "Update existing only",
+          "desc": "Ones that don't exist are skipped."
+        },
+        "duplicar": {
+          "titulo": "Create as new",
+          "desc": "If the SKU exists, another product is created as SKU-2, SKU-3…"
+        }
+      },
+      "sucursal": "Stock destination branch",
+      "sucursalAyuda": "Initial stock enters this branch through the stock ledger.",
+      "sinSucursal": "Choose the destination branch.",
+      "elegirSucursal": "Choose a branch",
+      "stockExistentes": "Stock of products that already exist",
+      "stockExistentesAyuda": "Adding records an adjustment entry in the stock ledger.",
+      "stockIgnorar": "Leave it",
+      "stockSumar": "Add it",
+      "imagenes": "Download images from URLs",
+      "imagenesAyuda": "Up to 10 per product. A URL that does not respond does not stop the import.",
+      "generarSku": "Generate SKUs for rows without one",
+      "generarSkuAyuda": "If you turn it off, rows without SKU get an error.",
+      "resumenTitulo": "Validation result",
+      "validando": "Validating against your catalog…",
+      "errorContexto": "Could not validate against the catalog: {mensaje}",
+      "resumen": {
+        "crear": "Will be created",
+        "actualizar": "Will be updated",
+        "avisos": "With warnings",
+        "errores": "With errors"
+      },
+      "omitidas": "{n, plural, one {# row is skipped} other {# rows are skipped}} because of the chosen mode.",
+      "frecuentes": "Most frequent",
+      "filasCon": "{n, plural, one {# row:} other {# rows:}}"
+    },
+    "tipos": {
+      "sinNombre": "no name",
+      "sinSku": "no SKU",
+      "skuDuplicadoArchivo": "SKU repeated in the file",
+      "precioInvalido": "negative price",
+      "costoInvalido": "negative cost",
+      "stockInvalido": "negative stock",
+      "stockSinCosto": "initial stock without cost",
+      "padreNoEncontrado": "parent SKU that does not exist",
+      "nombreMuyLargo": "name too long",
+      "skuGenerado": "SKU generated",
+      "costoMayorPrecio": "cost higher than price",
+      "costoPrecioIntercambiados": "cost and price swapped",
+      "promoEnNotas": "promotion written in notes",
+      "unidadDesconocida": "unit not recognized (becomes “UN”)",
+      "estacionDesconocida": "station not recognized",
+      "impuestoNoEncontrado": "tax that does not exist in the organization",
+      "variantesSinFormato": "variant data that can't be understood",
+      "urlImagenInvalida": "invalid image URLs",
+      "categoriaNueva": "new category (will be created)",
+      "existeOmitido": "already exist (skipped)",
+      "noExisteOmitido": "don't exist (skipped)",
+      "skuRenombrado": "SKU renamed",
+      "stockIgnoradoExistente": "stock of existing products left untouched",
+      "comparacionMenorPrecio": "compare-at price not higher than sale price (ignored)",
+      "coincidePorNombre": "match an existing product by name",
+      "estadoDesconocido": "status not recognized (stays active)",
+      "modificadoresSinFormato": "modifiers that can't be understood"
+    },
+    "vista": {
+      "titulo": "Preview ({n} rows)",
+      "buscar": "Search the preview…",
+      "filtrar": "Filter rows",
+      "filtros": {
+        "todas": "All",
+        "errores": "Errors only",
+        "avisos": "Warnings only"
+      },
+      "columnas": {
+        "estado": "Status",
+        "fila": "Row",
+        "sku": "SKU",
+        "nombre": "Name",
+        "precio": "Price",
+        "costo": "Cost",
+        "stock": "Stock",
+        "categoria": "Category",
+        "impuesto": "Tax",
+        "accion": "Action"
+      },
+      "estados": {
+        "listo": "Ready",
+        "aviso": "Warning",
+        "error": "Error",
+        "excluida": "Excluded"
+      },
+      "acciones": {
+        "crear": "Create",
+        "actualizar": "Update",
+        "omitir": "Skip",
+        "ninguna": "Not imported"
+      },
+      "editar": "Edit row",
+      "incluir": "Include again",
+      "excluir": "Exclude from the import",
+      "excluidaPorError": "Rows with errors are already left out until fixed",
+      "vacio": "There are no rows to review",
+      "sinResultados": "No row matches",
+      "sustantivo": {
+        "singular": "row",
+        "plural": "rows"
+      },
+      "editarTitulo": "Edit row {n}",
+      "guardar": "Apply changes",
+      "faltaNombre": "Name is required",
+      "pie": "{importar, plural, one {# row will be imported} other {# rows will be imported}} · {excluidas, plural, =0 {none excluded} one {# excluded or skipped} other {# excluded or skipped}}"
+    },
+    "resultado": {
+      "titulo": "Import result",
+      "enCurso": "Import in progress",
+      "enCursoDesc": "Batches with one transaction per batch. Don't close this screen until it finishes.",
+      "terminada": "Import finished",
+      "terminadaDesc": "Download the report to see every row with an error, warning or skipped.",
+      "detenida": "Import stopped",
+      "lote": "Batch {actual} of {total} · {procesadas} of {filas} rows",
+      "kpi": {
+        "creados": "Created",
+        "actualizados": "Updated",
+        "conAvisos": "With warnings",
+        "fallidos": "Failed",
+        "pendientes": "{n, plural, =0 {none pending} one {# pending} other {# pending}}"
+      },
+      "omitidos": "{n, plural, one {# row skipped} other {# rows skipped}} because of the chosen mode.",
+      "errorLote": "Batch {n} could not be imported: {mensaje}. Its rows were not imported.",
+      "errores": "Errors ({n})",
+      "descargar": "Download CSV report",
+      "esperando": "Waiting for results…",
+      "sinErrores": "No row failed.",
+      "fila": "Row {n}",
+      "detener": "Stop after this batch",
+      "resultados": {
+        "creado": "Created",
+        "actualizado": "Updated",
+        "omitido": "Skipped",
+        "error": "Error",
+        "excluida": "Excluded"
+      },
+      "reporte": {
+        "fila": "Row",
+        "sku": "SKU",
+        "nombre": "Name",
+        "resultado": "Result",
+        "mensajes": "Messages",
+        "archivo": "product_import_report"
+      }
+    },
+    "mensajes": {
+      "sinNombre": "Name is missing",
+      "sinSku": "SKU is missing",
+      "skuDuplicadoArchivo": "SKU repeated in the file (it appears earlier in row {fila})",
+      "precioInvalido": "Price can't be negative",
+      "costoInvalido": "Cost can't be negative",
+      "stockInvalido": "Stock can't be negative",
+      "stockSinCosto": "Has initial stock without cost: the stock ledger requires a cost",
+      "padreNoEncontrado": "Parent SKU “{sku}” is neither in the file nor in the catalog",
+      "nombreMuyLargo": "The name is longer than {max} characters",
+      "skuGenerado": "SKU generated automatically",
+      "costoMayorPrecio": "Cost is higher than the sale price",
+      "costoPrecioIntercambiados": "Cost and price came reversed: they were swapped",
+      "promoEnNotas": "2-for-1 promo (each {unitario}, regular {normal}): written in notes to set it up in Promotions",
+      "unidadDesconocida": "Unit “{unidad}” not recognized: becomes “UN”",
+      "estacionDesconocida": "Station “{estacion}” not recognized: left without station",
+      "impuestoNoEncontrado": "Tax “{impuesto}” does not exist in the organization: not assigned",
+      "variantesSinFormato": "Variant data can't be understood: ignored",
+      "urlImagenInvalida": "{cantidad, plural, one {# invalid image URL} other {# invalid image URLs}}",
+      "categoriaNueva": "Category “{categoria}” will be created",
+      "existeOmitido": "Already exists: skipped",
+      "noExisteOmitido": "Does not exist: skipped",
+      "skuRenombrado": "Already exists: created as “{sku}”",
+      "stockIgnoradoExistente": "Already exists: its stock is left untouched",
+      "comparacionMenorPrecio": "Compare-at price is not higher than the sale price: ignored",
+      "coincidePorNombre": "Matches product {sku} by name",
+      "estadoDesconocido": "Status “{estado}” not recognized: stays active",
+      "modificadoresSinFormato": "Modifiers can't be understood: ignored",
+      "CATEGORIA_CREADA": "Category “{detalle}” created",
+      "PROVEEDOR_CREADO": "Supplier “{detalle}” created",
+      "IMPUESTO_NO_ENCONTRADO": "Tax “{detalle}” not found",
+      "STOCK_IGNORADO": "Stock of an existing product: left untouched",
+      "SKU_RENOMBRADO": "Created with SKU “{detalle}”",
+      "PRODUCTO_RESTAURADO": "The product was deleted: it was restored",
+      "EXISTE_OMITIDO": "Already existed: skipped",
+      "NO_EXISTE_OMITIDO": "Did not exist: skipped",
+      "IMAGENES_FALLIDAS": "{detalle} image(s) could not be downloaded",
+      "SIN_SKU": "SKU is missing",
+      "SIN_NOMBRE": "Name is missing",
+      "PADRE_NO_ENCONTRADO": "Parent SKU does not exist",
+      "STOCK_SIN_COSTO": "Stock without cost: the stock ledger requires a cost",
+      "PRECIO_INVALIDO": "Invalid price",
+      "COSTO_INVALIDO": "Invalid cost",
+      "STOCK_INVALIDO": "Invalid stock",
+      "DUPLICADO": "Conflicts with an existing record (SKU or another unique value)",
+      "DATO_NO_VALIDO": "Some value is not valid for the database",
+      "LOTE": "The whole batch failed",
+      "ERROR": "Error saving the row"
+    }
+  },
+  "productosFacebook": {
+    "titulo": "Meta and channels",
+    "descripcion": "Feed for Commerce Manager (Facebook and Instagram), CSV export and which products are included.",
+    "cerrar": "Close",
+    "cancelar": "Cancel",
+    "cargando": "Loading the feed settings…",
+    "reintentar": "Retry",
+    "copiar": "Copy",
+    "copiado": "Copied",
+    "base": "base",
+    "monedaPlaceholder": "Choose a currency",
+    "pestanas": {
+      "feed": "URL feed",
+      "exportar": "Export CSV",
+      "productos": "Products"
+    },
+    "errores": {
+      "cargar": "The feed could not be loaded: {mensaje}",
+      "diagnostico": "Could not calculate which products are included",
+      "regenerar": "The token could not be regenerated",
+      "moneda": "The currency could not be saved",
+      "exportar": "The catalog could not be exported"
+    },
+    "feed": {
+      "urlBase": "Feed URL (currency {moneda})",
+      "urlBaseConDefecto": "Without a currency parameter, the feed comes out in {moneda} (default currency).",
+      "urlMoneda": "Feed in {moneda} · {nombre}",
+      "sinMonedasExtra": "There are no other active currencies. Activate them in Finance › Currencies to get one feed per currency.",
+      "tasaVieja": "The latest exchange rate is from {fecha}. Update it in Finance › Currencies so Meta doesn't get outdated prices.",
+      "monedaDefecto": "Feed default currency",
+      "monedaDefectoAyuda": "Used by the main URL (without a currency parameter).",
+      "token": "Token",
+      "creado": "created on {fecha}",
+      "regenerar": "Regenerate",
+      "regenerado": "Token regenerated. The previous URL stops working within minutes.",
+      "monedaGuardada": "The feed now comes out in {moneda}",
+      "ultimaLectura": "Last read by Meta: {fecha} · {n, plural, one {# product} other {# products}}",
+      "sinLecturas": "Meta hasn't read the feed yet.",
+      "comoConectar": "How to connect it in Commerce Manager",
+      "pasos": {
+        "1": "Open Commerce Manager and choose your catalog.",
+        "2": "Go to “Data sources” › “Add items”.",
+        "3": "Choose “Data feed” › “Scheduled”.",
+        "4": "Paste the feed URL (no username or password needed).",
+        "5": "Frequency: hourly or daily. Format: CSV.",
+        "6": "Save and check errors under “Diagnostics”."
+      },
+      "vistaPrevia": "CSV preview",
+      "nota": "Only active products with price and image; variants are grouped.",
+      "confirmarTitulo": "Regenerate the feed token?",
+      "confirmarDesc": "The current URL will stop working and you'll need to paste the new one in Commerce Manager. Use it if the URL was shared by mistake."
+    },
+    "exportar": {
+      "descripcion": "Download the catalog in Meta's format (id, title, description, availability, price, sale_price, link, image_link, brand, gtin, item_group_id…). Useful to upload it manually or review it before scheduling the feed.",
+      "moneda": "Currency",
+      "correccion": "The regular price goes in “price” and the discounted one in “sale_price” (they used to be swapped). Products without stock tracking come out as available.",
+      "boton": "Export CSV for Meta",
+      "sinProductos": "There are no products Meta can publish",
+      "listo": "{n, plural, one {# product exported} other {# products exported}}"
+    },
+    "productos": {
+      "calculando": "Calculating which products are included…",
+      "incluidos": "In the catalog",
+      "variantes": "{n, plural, =0 {no variants} one {# variant} other {# variants}}",
+      "agotados": "Out of stock",
+      "excluidos": "Excluded",
+      "sinEnlace": "Your organization has no verified web domain: products come out without “link” and Meta may reject them. Set it up in Organization › Domains.",
+      "padres": "{n, plural, one {# product with variants is published} other {# products with variants are published}} through its variants.",
+      "buscar": "Search excluded…",
+      "recalcular": "Recalculate"
+    },
+    "motivos": {
+      "inactivo": "Inactive",
+      "servicio": "It's a service",
+      "sinPrecio": "No price",
+      "sinImagen": "No image",
+      "padreConVariantes": "Published through its variants",
+      "padreInactivo": "Its parent product is inactive"
+    }
   }
 }

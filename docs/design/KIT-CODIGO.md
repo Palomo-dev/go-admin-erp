@@ -480,3 +480,21 @@ Lógica pura y probada: `src/lib/utils/codigoBarras.ts` (dígito de control GS1,
 numeración espejo de `fn_codigo_barras_construir`) y `src/lib/utils/etiquetasImpresion.ts`
 (plantillas, reparto en hojas, casilla de inicio, cantidad según stock). Tests en
 `src/lib/utils/__tests__/codigoBarras.test.ts` y `etiquetasImpresion.test.ts`.
+
+## Adenda 2026-09-24 — asistente por pasos y diálogo adaptable (Importar productos · Meta)
+
+Pedidos por el rediseño de «Importar productos» (Figma `09-importar`) y «Meta y canales»
+(Figma `09-meta`). Archivos nuevos; ningún componente existente cambió de contrato.
+
+| Figma | Código | Qué hace |
+|---|---|---|
+| Stepper «Origen — Mapeo — Validación — Previsualización — Resultado» | `kit/Stepper.tsx` | Escritorio: círculos numerados unidos por línea (✓ azul los hechos, anillo en el actual, gris los pendientes) y `extra` a la derecha («Origen · Sucursal destino»). Móvil: «Paso 2 de 5 · Mapeo» + barra de avance. `ol` con `aria-current="step"`; `onPasoClick` solo en los pasos ya hechos (no se salta uno sin validar). El texto móvil lo da la pantalla (`resumenMovil`) para que salga en su idioma |
+| Diálogo «Meta y canales» (Dialog en escritorio, hoja con asa en móvil) | `kit/PanelAdaptable.tsx` | Cabecera con icono tintado de 40, título, descripción y «×» (`kit.comun.cerrar`); `debajoCabecera` fija para pestañas (`TabBar`); cuerpo con scroll; `pie` libre (a diferencia de `Dialogo`, no impone «Cancelar + primario»). Anchos 520 · 560 · 672 · 800. `ocupado` bloquea el cierre. Por debajo de `lg` es `Sheet side="bottom"` a 92 dvh con zona segura |
+
+```tsx
+<Stepper etiqueta="Pasos de la importación" pasos={[{ valor: 'origen', etiqueta: 'Origen' }, …]} actual={paso}
+  onPasoClick={setPaso} resumenMovil={(n, total, p) => t('pasos.resumenMovil', { n, total, paso: p })} extra={…} />
+
+<PanelAdaptable abierto={abierto} onAbiertoChange={setAbierto} titulo="Meta y canales" icono={Share2}
+  debajoCabecera={<TabBar id="meta" … />} pie={<Button variant="outline">Cerrar</Button>}>…</PanelAdaptable>
+```

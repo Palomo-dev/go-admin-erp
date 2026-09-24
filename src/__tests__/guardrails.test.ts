@@ -277,7 +277,6 @@ describe('F0 Guardarraíles', () => {
       'app/api/integrations/tiktok/product-sync/route.ts',
       'app/api/integrations/tiktok/setup/route.ts',
       'app/api/integrations/whatsapp/oauth/callback/route.ts', // OAuth callback (org en `state` firmado por Meta)
-      'app/api/facebook-feed/token/route.ts',
       'app/api/factus/support-document/route.ts',
       'app/api/integrations/bancolombia/create-qr/route.ts',
       'app/api/integrations/bancolombia/wompi/create-qr/route.ts',

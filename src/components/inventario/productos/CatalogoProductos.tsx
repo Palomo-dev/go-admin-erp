@@ -30,18 +30,10 @@ import ProductosPageHeader from './ProductosPageHeader';
 import FiltrosProductosComponent from './FiltrosProductos';
 import ProductosTable from './ProductosTable';
 import AccionesMasivas from './bulk/AccionesMasivas';
-import ScrapingProductos from './scraping/ScrapingProductos';
-import { FacebookFeedDialog } from './FacebookFeedDialog';
+import { FacebookFeedDialog, type PestanaMeta } from './FacebookFeedDialog';
 import { ImprimirEtiquetasDialog } from './etiquetas/ImprimirEtiquetasDialog';
 import { GenerarCodigosDialog } from './etiquetas/GenerarCodigosDialog';
 import type { CodigoAsignado } from '@/lib/services/codigosBarrasService';
-import {
-  exportToFacebookCatalog,
-  downloadCSV,
-  getOrganizationDomain,
-  getOrganizationCurrency,
-  fetchAllProductsForFacebook,
-} from './facebookCatalogExport';
 
 /** 'normal' = esqueleto hasta el primer lote · 'suave' = conserva la lista (búsqueda) · 'silencioso' = reemplaza al final. */
 type ModoCarga = 'normal' | 'suave' | 'silencioso';
@@ -108,8 +100,8 @@ const CatalogoProductos: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [productoAEliminar, setProductoAEliminar] = useState<Producto | null>(null);
   const [seleccion, setSeleccion] = useState<Set<string>>(() => new Set());
-  const [isScrapingOpen, setIsScrapingOpen] = useState<boolean>(false);
   const [isFacebookFeedOpen, setIsFacebookFeedOpen] = useState<boolean>(false);
+  const [pestanaMeta, setPestanaMeta] = useState<PestanaMeta>('feed');
   const [refreshKey, setRefreshKey] = useState<number>(0);
   // Diálogos «Imprimir etiquetas» y «Códigos de barras»: los productos elegidos.
   const [idsEtiquetas, setIdsEtiquetas] = useState<number[] | null>(null);
@@ -587,59 +579,11 @@ const CatalogoProductos: React.FC = () => {
     toast({ title: 'Exportación exitosa', description: `Se exportaron ${productosActuales.length} productos.` });
   };
 
-  const handleExportarFacebook = async () => {
-    if (!organization?.id) {
-      toast({ title: 'Error', description: 'No hay organización seleccionada.' });
-      return;
-    }
-
-    try {
-      setActionLoading(true);
-
-      const [currency, webDomain] = await Promise.all([
-        getOrganizationCurrency(organization.id),
-        getOrganizationDomain(organization.id),
-      ]);
-
-      // Consultar TODOS los productos de la BD (no depende de la UI)
-      const allProducts = await fetchAllProductsForFacebook(organization.id);
-
-      if (allProducts.length === 0) {
-        toast({ title: 'Sin productos', description: 'No hay productos activos para exportar.' });
-        setActionLoading(false);
-        return;
-      }
-
-      const { csv, count } = await exportToFacebookCatalog({
-        organizationId: organization.id,
-        products: allProducts,
-        currency,
-        webDomain: webDomain || undefined,
-        organizationName: organization.name,
-      });
-
-      if (count === 0) {
-        toast({ title: 'Sin productos válidos', description: 'No hay productos activos para exportar a Facebook.' });
-        setActionLoading(false);
-        return;
-      }
-
-      const dateStr = getToday();
-      downloadCSV(csv, `facebook_catalog_${dateStr}.csv`);
-
-      toast({
-        title: 'Exportación a Facebook exitosa',
-        description: `Se exportaron ${count} productos al formato de catálogo de Facebook.`,
-      });
-    } catch (error: unknown) {
-      console.error('Error exportando a Facebook:', error);
-      toast({
-        title: 'Error de exportación',
-        description: mensajeDe(error) || 'Ocurrió un error al exportar a Facebook.',
-      });
-    } finally {
-      setActionLoading(false);
-    }
+  // «Exportar a Facebook» y «URL del feed» abren el mismo diálogo de Meta
+  // (exportación y feed salen del mismo generador en el servidor).
+  const abrirMeta = (pestana: PestanaMeta) => {
+    setPestanaMeta(pestana);
+    setIsFacebookFeedOpen(true);
   };
 
   const recargar = () => setRefreshKey((k) => k + 1);
@@ -684,10 +628,10 @@ const CatalogoProductos: React.FC = () => {
     <div className="flex flex-col gap-4">
       <ProductosPageHeader
         onImportarArchivo={() => router.push('/app/inventario/productos/importar')}
-        onImportarWeb={() => setIsScrapingOpen(true)}
+        onImportarWeb={() => router.push('/app/inventario/productos/importar?origen=web')}
         onExportarCsv={handleExportar}
-        onExportarFacebook={handleExportarFacebook}
-        onFeedFacebook={() => setIsFacebookFeedOpen(true)}
+        onExportarFacebook={() => abrirMeta('exportar')}
+        onFeedFacebook={() => abrirMeta('feed')}
         onActualizar={recargar}
         onImprimirEtiquetas={alcanceCabecera(setIdsEtiquetas)}
         onCodigosBarras={alcanceCabecera(setIdsCodigos)}
@@ -769,12 +713,6 @@ const CatalogoProductos: React.FC = () => {
         onGenerados={aplicarCodigos}
       />
 
-      {/* Importar desde una web (IA) */}
-      <ScrapingProductos
-        open={isScrapingOpen}
-        onOpenChange={setIsScrapingOpen}
-        onImportComplete={recargar}
-      />
 
       <ConfirmDialog
         open={productoAEliminar !== null}
@@ -798,6 +736,7 @@ const CatalogoProductos: React.FC = () => {
         open={isFacebookFeedOpen}
         onOpenChange={setIsFacebookFeedOpen}
         organizationId={organization?.id}
+        pestanaInicial={pestanaMeta}
       />
     </div>
   );

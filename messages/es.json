@@ -9513,7 +9513,30 @@
       "modificador_invalido": "Un modificador de la línea ya no está configurado para el producto. Quite la línea y agréguela de nuevo. {detalle}",
       "precio_no_vigente": "Un producto no tiene precio vigente: configure su precio en Inventario. {detalle}",
       "precio_no_coincide": "El precio de una línea no coincide con el precio vigente. Quite la línea y agréguela de nuevo. {detalle}",
-      "linea_incoherente": "Los importes de una línea no cuadran con su precio, descuento e impuesto. Vuelva a abrir el cobro. {detalle}"
+      "linea_incoherente": "Los importes de una línea no cuadran con su precio, descuento e impuesto. Vuelva a abrir el cobro. {detalle}",
+      "deuda_sin_cliente": "Para registrar una deuda el carrito debe tener un cliente.",
+      "deuda_con_pagos": "Una deuda nace sin pagos: cóbrela después desde el carrito.",
+      "plazo_invalido": "El plazo de la deuda no es válido.",
+      "venta_no_encontrada": "No se encontró la venta.",
+      "venta_anulada": "La venta está anulada: no se puede cobrar.",
+      "venta_ya_pagada": "La venta ya está pagada.",
+      "cobro_de_otra_venta": "Este cobro pertenece a otra venta. Cierre y vuelva a abrir el cobro.",
+      "sin_permiso": "No tiene permiso para anular ventas (pos.void).",
+      "sin_acceso_sucursal": "No tiene acceso a la sucursal de la venta.",
+      "motivo_requerido": "Escriba el motivo de la anulación (mínimo 3 caracteres).",
+      "venta_con_devoluciones": "La venta tiene devoluciones: siga desde Devoluciones.",
+      "mesa_abierta": "La mesa sigue abierta: anule desde «Liberar mesa».",
+      "caja_cerrada": "El pago entró en una caja ya cerrada: registre una devolución.",
+      "periodo_cerrado": "El periodo contable de hoy está cerrado.",
+      "PROPINA_DISTRIBUIDA": "La propina ya se repartió: no se puede anular la venta. {detalle}",
+      "pago_en_caja_cerrada": "El pago entró en una caja ya cerrada: registre una devolución.",
+      "pago_no_anulable": "Uno de los pagos no se puede anular desde aquí. {detalle}"
+    },
+    "ventaAnulada": "Venta anulada: se revirtieron pagos, stock y factura.",
+    "anulacionFallida": "No se pudo anular la venta",
+    "avisos": {
+      "factura_electronica_sin_nota_credito_dian": "La factura ya se envió a la DIAN: emita la nota crédito electrónica (aún no se envía sola).",
+      "comision_ya_pagada": "La comisión del vendedor ya estaba pagada: revísela a mano."
     }
   },
   "facturasCompra": {

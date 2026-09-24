@@ -9408,7 +9408,30 @@
       "modificador_invalido": "Um modificador da linha não está mais configurado para o produto. Remova a linha e adicione de novo. {detalle}",
       "precio_no_vigente": "Um produto não tem preço vigente: configure o preço em Estoque. {detalle}",
       "precio_no_coincide": "O preço de uma linha não coincide com o preço vigente. Remova a linha e adicione de novo. {detalle}",
-      "linea_incoherente": "Os valores de uma linha não batem com o preço, desconto e imposto. Abra o pagamento novamente. {detalle}"
+      "linea_incoherente": "Os valores de uma linha não batem com o preço, desconto e imposto. Abra o pagamento novamente. {detalle}",
+      "deuda_sin_cliente": "Para registrar uma dívida o carrinho deve ter um cliente.",
+      "deuda_con_pagos": "Uma dívida nasce sem pagamentos: cobre depois pelo carrinho.",
+      "plazo_invalido": "O prazo da dívida não é válido.",
+      "venta_no_encontrada": "A venda não foi encontrada.",
+      "venta_anulada": "A venda está cancelada: não pode ser cobrada.",
+      "venta_ya_pagada": "A venda já está paga.",
+      "cobro_de_otra_venta": "Este pagamento pertence a outra venda. Feche e abra o pagamento de novo.",
+      "sin_permiso": "Você não tem permissão para cancelar vendas (pos.void).",
+      "sin_acceso_sucursal": "Você não tem acesso à filial da venda.",
+      "motivo_requerido": "Escreva o motivo do cancelamento (mínimo 3 caracteres).",
+      "venta_con_devoluciones": "A venda tem devoluções: continue em Devoluções.",
+      "mesa_abierta": "A mesa continua aberta: cancele em «Liberar mesa».",
+      "caja_cerrada": "O pagamento entrou em um caixa já fechado: registre uma devolução.",
+      "periodo_cerrado": "O período contábil de hoje está fechado.",
+      "PROPINA_DISTRIBUIDA": "A gorjeta já foi distribuída: a venda não pode ser cancelada. {detalle}",
+      "pago_en_caja_cerrada": "O pagamento entrou em um caixa já fechado: registre uma devolução.",
+      "pago_no_anulable": "Um dos pagamentos não pode ser cancelado aqui. {detalle}"
+    },
+    "ventaAnulada": "Venda cancelada: pagamentos, estoque e fatura foram revertidos.",
+    "anulacionFallida": "Não foi possível cancelar a venda",
+    "avisos": {
+      "factura_electronica_sin_nota_credito_dian": "A fatura já foi enviada ao fisco: emita a nota de crédito eletrônica (ainda não é enviada automaticamente).",
+      "comision_ya_pagada": "A comissão do vendedor já estava paga: revise manualmente."
     }
   },
   "facturasCompra": {

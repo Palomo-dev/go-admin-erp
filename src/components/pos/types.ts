@@ -140,6 +140,12 @@ export interface Cart {
   kitchen_round_key?: string | null;
   sale_id?: string;
   invoice_id?: string;
+  /**
+   * Id de la venta a crédito en curso («Deuda»): se guarda ANTES de llamar a
+   * pos_checkout_v1 para que un reintento tras un corte devuelva la misma
+   * deuda en vez de crear otra. Se limpia al quedar registrada.
+   */
+  debt_attempt_id?: string | null;
 }
 
 export interface Sale {
@@ -325,6 +331,17 @@ export interface CheckoutData {
    * venta que ya existe (mesa, deuda) es la llave de idempotencia de los pagos.
    */
   attemptId?: string;
+  /**
+   * Cobro de una venta que YA existe (la cuenta de una mesa): `pos_checkout_v1`
+   * en modo 'settle'. La deuda de mostrador se reconoce por `cart.sale_id` +
+   * `cart.invoice_id` y no necesita este campo.
+   */
+  settle?: CobroVentaExistente;
+}
+
+/** Datos del cobro de una venta que ya existe (mesa). */
+export interface CobroVentaExistente {
+  sale_id: string;
 }
 
 // Para impuestos

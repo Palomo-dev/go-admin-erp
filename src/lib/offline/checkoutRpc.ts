@@ -13,7 +13,7 @@
  * los tests lo ejerzan con el cliente de mentira.
  */
 
-import type { CheckoutData, Sale } from '@/components/pos/types';
+import type { CheckoutData, CobroVentaExistente, Sale } from '@/components/pos/types';
 
 export const POS_CHECKOUT_RPC = 'pos_checkout_v1';
 
@@ -45,7 +45,20 @@ export interface CheckoutEnvelopeInput {
   promotionIds: string[];
   /** `commission_amount` de la factura, calculado como hasta ahora. */
   invoiceCommissionAmount: number;
+  /**
+   * 'sale' (por omisión): venta nueva. 'debt': venta nueva a crédito (sin
+   * pagos). 'settle': cobrar una venta que ya existe (deuda, mesa).
+   */
+  mode?: CheckoutMode;
+  /** settle: llave del intento de cobro (idempotencia de pagos y propina). */
+  paymentKey?: string;
+  /** debt: motivo, plazo en días y notas de la factura a crédito. */
+  debt?: { reason: string; payment_terms: number; notes?: string | null };
+  /** settle: datos del cobro de una venta existente (mesa). */
+  settle?: CobroVentaExistente;
 }
+
+export type CheckoutMode = 'sale' | 'debt' | 'settle';
 
 export interface CheckoutEnvelopeItem {
   product_id: number | null;
@@ -104,6 +117,10 @@ export interface CheckoutEnvelope {
   } | null;
   invoice: { prefix: string; commission_amount: number };
   promotion_ids: string[];
+  /** Ausente = 'sale' (sobres anteriores al 2026-09-24, p. ej. en el outbox). */
+  mode?: CheckoutMode;
+  payment_key?: string;
+  debt?: { reason: string; payment_terms: number; notes: string | null };
 }
 
 export interface CheckoutRpcResult {
@@ -196,6 +213,11 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
       : null,
     invoice: { prefix: 'FACT', commission_amount: input.invoiceCommissionAmount },
     promotion_ids: input.promotionIds,
+    ...(input.mode && input.mode !== 'sale' ? { mode: input.mode } : {}),
+    ...(input.mode === 'settle' ? { payment_key: input.paymentKey } : {}),
+    ...(input.mode === 'debt' && input.debt
+      ? { debt: { reason: input.debt.reason, payment_terms: input.debt.payment_terms, notes: input.debt.notes ?? null } }
+      : {}),
   };
 }
 

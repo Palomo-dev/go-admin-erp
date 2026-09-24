@@ -64,7 +64,8 @@ describe('migración: validación en el servidor', () => {
   });
 
   it('la validación cubre precio vigente, modificadores, descuento, producto y coherencia', () => {
-    for (const codigo of CODIGOS_ERROR_COBRO) {
+    for (const codigo of ['producto_invalido', 'descuento_excede_linea', 'modificador_invalido', 'precio_no_vigente', 'precio_no_coincide', 'linea_incoherente']) {
+      expect(CODIGOS_ERROR_COBRO).toContain(codigo);
       expect(migracion).toContain(`'${codigo}'`);
     }
     expect(migracion).toMatch(/pp\.effective_from <= p_at\s+and \(pp\.effective_to is null or pp\.effective_to > p_at\)/);

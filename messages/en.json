@@ -9513,7 +9513,30 @@
       "modificador_invalido": "A modifier on the line is no longer set up for the product. Remove the line and add it again. {detalle}",
       "precio_no_vigente": "A product has no current price: set its price in Inventory. {detalle}",
       "precio_no_coincide": "A line's price does not match the current price. Remove the line and add it again. {detalle}",
-      "linea_incoherente": "A line's amounts do not match its price, discount and tax. Reopen the checkout. {detalle}"
+      "linea_incoherente": "A line's amounts do not match its price, discount and tax. Reopen the checkout. {detalle}",
+      "deuda_sin_cliente": "To record a debt the cart must have a customer.",
+      "deuda_con_pagos": "A debt starts without payments: collect it later from the cart.",
+      "plazo_invalido": "The debt term is not valid.",
+      "venta_no_encontrada": "The sale was not found.",
+      "venta_anulada": "The sale is voided: it cannot be collected.",
+      "venta_ya_pagada": "The sale is already paid.",
+      "cobro_de_otra_venta": "This payment belongs to another sale. Close and reopen the checkout.",
+      "sin_permiso": "You do not have permission to void sales (pos.void).",
+      "sin_acceso_sucursal": "You do not have access to the sale's branch.",
+      "motivo_requerido": "Enter the reason for voiding (at least 3 characters).",
+      "venta_con_devoluciones": "The sale has returns: continue from Returns.",
+      "mesa_abierta": "The table is still open: void it from “Release table”.",
+      "caja_cerrada": "The payment went into a cash session that is already closed: record a return.",
+      "periodo_cerrado": "Today's accounting period is closed.",
+      "PROPINA_DISTRIBUIDA": "The tip was already distributed: the sale cannot be voided. {detalle}",
+      "pago_en_caja_cerrada": "The payment went into a cash session that is already closed: record a return.",
+      "pago_no_anulable": "One of the payments cannot be voided from here. {detalle}"
+    },
+    "ventaAnulada": "Sale voided: payments, stock and invoice were reversed.",
+    "anulacionFallida": "The sale could not be voided",
+    "avisos": {
+      "factura_electronica_sin_nota_credito_dian": "The invoice was already sent to the tax authority: issue the electronic credit note (it is not sent automatically yet).",
+      "comision_ya_pagada": "The salesperson commission was already paid: review it manually."
     }
   },
   "facturasCompra": {

@@ -28,6 +28,7 @@ import DetalleFactura from '@/components/finanzas/facturas-venta/id/DetalleFactu
 import type { KitchenTicket } from '@/lib/services/kitchenService';
 import type { LucideIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { mensajeErrorCobro } from '@/lib/pos/erroresCobro';
 import { aplicarNotaALinea, estadoCocinaLinea, NOTA_MAX, type CambioNotaLinea } from '@/lib/pos/cocina/lineasCarrito';
 import { ChipsNotasRapidas, type DestinoNota } from '@/components/pos/cocina/ChipsNotasRapidas';
 
@@ -211,6 +212,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   const [noteDestino, setNoteDestino] = useState<DestinoNota>('cocina');
   const [noteAlergia, setNoteAlergia] = useState(false);
   const tNotas = useTranslations('posNotasLinea');
+  const tCobro = useTranslations('posCobroServidor');
 
   // Estado para descuentos frecuentes por item
   const [frequentDiscountsMap, setFrequentDiscountsMap] = useState<Record<number, number[]>>({});
@@ -454,7 +456,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
     } catch (error: unknown) {
       console.error('Error holding cart with debt:', error);
       toast.error('Error al registrar deuda', {
-        description: errorMessage(error) || 'No se pudo crear la factura y cuenta por cobrar'
+        description: mensajeErrorCobro(error, tCobro, 'No se pudo crear la factura y cuenta por cobrar')
       });
     } finally {
       setIsProcessingHoldWithDebt(false);
@@ -637,7 +639,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
     } catch (error: unknown) {
       console.error('Error anulando deuda:', error);
       toast.error('Error al anular deuda', {
-        description: errorMessage(error) || 'No se pudo crear la nota de crédito'
+        description: mensajeErrorCobro(error, tCobro, 'No se pudo crear la nota de crédito')
       });
     }
   };

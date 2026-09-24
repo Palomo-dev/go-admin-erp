@@ -3,6 +3,7 @@ import { getOrganizationId, getCurrentBranchId, getBranchFilter } from '@/lib/ho
 import { getDateRange, getToday } from '@/lib/utils/timezone';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { SaleWithDetails, SalesFilter, DailySummary, CashSession, CashCount } from './types';
+import { anularVentaEnServidor, type ResultadoAnulacion } from '@/lib/pos/anularVenta';
 
 export class VentasService {
   // Obtener ventas con filtros y paginación (POS + Web)
@@ -637,44 +638,26 @@ export class VentasService {
   // es `void`, el mismo que usa el camino de la nota crédito en posService.
   // Además las notas se conservan: antes se machacaba lo que hubiera escrito
   // el cajero con «[ANULADA] …».
+  //
+  // Desde 2026-09-24 anular pasa por la RPC `pos_anular_venta_v1` (una
+  // transacción): permiso pos.void en el servidor, motivo obligatorio, pagos
+  // anulados solo si su caja sigue abierta (si no: devolución), stock,
+  // seriales, propinas, comisiones, nota crédito y factura anulada, con
+  // auditoría en ops_audit_log. Antes solo marcaba `void` desde el navegador,
+  // sin permiso y sin revertir nada.
+  static async anularVenta(saleId: string, motivo: string): Promise<ResultadoAnulacion> {
+    return anularVentaEnServidor(saleId, motivo);
+  }
+
+  /** Compatibilidad: true si quedó anulada (o ya lo estaba). El error se registra en consola. */
   static async cancelSale(saleId: string, reason?: string): Promise<boolean> {
-    const { data: current, error: readError } = await supabase
-      .from('sales')
-      .select('notes, status')
-      .eq('id', saleId)
-      .maybeSingle();
-
-    if (readError) {
-      console.error('Error leyendo la venta a anular:', readError);
+    try {
+      await anularVentaEnServidor(saleId, reason ?? '');
+      return true;
+    } catch (error) {
+      console.error('Error anulando la venta:', error);
       return false;
     }
-    if (!current) {
-      console.error('Venta no encontrada al anular:', saleId);
-      return false;
-    }
-    if (current.status === 'void') return true; // ya estaba anulada
-
-    const marca = reason ? `[ANULADA] ${reason}` : '[ANULADA]';
-    const notes = current.notes ? `${current.notes}
-${marca}` : marca;
-
-    const { error } = await supabase
-      .from('sales')
-      .update({
-        status: 'void',
-        notes,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', saleId);
-
-    if (error) {
-      console.error('Error cancelling sale:', error);
-      return false;
-    }
-
-    // TODO: Registrar en audit_log
-
-    return true;
   }
 
   // Duplicar venta como base para nueva

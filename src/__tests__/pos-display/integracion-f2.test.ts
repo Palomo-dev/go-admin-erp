@@ -1038,10 +1038,14 @@ describe('7 · contratos estáticos: Aplicar → tip_amount → tabla tips; QR �
     expect(checkout).not.toMatch(/Math\.round\(baseTotal \* \(percentage \/ 100\)\)/);
   });
 
-  it('posService.checkout inserta en `tips` con sale_id y amount = tip_amount, sin implementación paralela', () => {
-    expect(service).toMatch(/checkoutData\.tip_amount && checkoutData\.tip_amount > 0/);
-    expect(service).toMatch(/sale_id: saleData\.id,\s*server_id: checkoutData\.tip_server_id \|\| userId,\s*amount: checkoutData\.tip_amount,/);
-    expect(service).toMatch(/\.from\('tips'\)\s*\.insert\(tipData\)/);
+  // Desde 2026-09-24 (punto 6) también el cobro de una deuda va por
+  // pos_checkout_v1: la propina la escribe la RPC (tips) con el tip_amount del
+  // sobre y el mesero de tip.server_id; el cliente ya no inserta en `tips`.
+  it('posService.checkout manda la propina en el sobre de pos_checkout_v1, sin implementación paralela', () => {
+    const rpc = readFileSync(join(process.cwd(), 'src/lib/offline/checkoutRpc.ts'), 'utf8');
+    expect(rpc).toMatch(/tip_amount: tip,/);
+    expect(rpc).toMatch(/tip: tip > 0 \? \{ server_id: checkout\.tip_server_id \?\? null \} : null,/);
+    expect(service).not.toMatch(/\.from\('tips'\)/);
   });
 
   it('CheckoutDialog: onPaid del QR cierra la fase de propina (skipTip) y el efecto de cobro pasa la imagen por resolveDisplayQr', () => {

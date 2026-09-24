@@ -102,3 +102,53 @@ organizaciones y la última del 2026-08-27 (las facturas web con flete de hoy s�
 
 En ambos casos hay que revisar con el contador el asiento: la venta del POS devengó el total de la
 venta (con flete) y la factura, sin él.
+
+## 6. Deuda, cobro de deuda y anulaciones (punto 6)
+
+Migración `20260925140200_pos_deuda_cobro_y_anulacion` (parche sobre la definición viva de
+`pos_checkout_v1` + tabla `pos_cobros` + `pos_anular_venta_v1`).
+
+| Flujo | Antes (navegador, N escrituras) | Ahora (una RPC, una transacción) |
+|---|---|---|
+| «Deuda» (`holdCartWithDebt`) | `sales`, `invoice_sales`, `invoice_items`, `sale_items` y stock con la sucursal del usuario; sin idempotencia; totales de un cuarto motor (`calculateCartTaxesComplete`) distintos de las líneas | `pos_checkout_v1` modo `debt`: misma validación de precios del §3, cliente obligatorio (regla existente; no exige caja), sin pagos, venta `pending`, factura `issued` a crédito con vencimiento = fecha + plazo; cartera por el disparador. Id de la venta guardado en el carrito antes de llamar (`debt_attempt_id`): el reintento no crea otra deuda. Sucursal del carrito. La línea usa la tasa y el modo que ya traía (sin resolver impuestos por defecto: no cambia el cálculo); la cabecera de la venta ahora es la suma de las líneas, igual que la factura |
+| Cobrar la deuda | update de venta y factura, pagos, comisión y propina; un reintento duplicaba pagos | `pos_checkout_v1` modo `settle`: idempotente por la llave del intento (`payment_key` → `pos_cobros`); suma propina y flete (línea de flete si la factura ya existía); saldo y estado desde los pagos; rechaza venta anulada o ya pagada |
+| «Anular deuda» (`cancelDebtWithCreditNote`) | NC, factura, venta y `accounts_receivable` a mano; sin permiso | `pos_anular_venta_v1` |
+| «Anular venta» (`VentasService.cancelSale`) | solo `status = 'void'` | `pos_anular_venta_v1` |
+
+`pos_anular_venta_v1(sale_id, motivo)`: permiso `pos.void` en el servidor (`fn_tiene_permiso`;
+hoy solo lo tiene el rol de administrador de la organización), motivo ≥ 3 caracteres, bloquea si hay
+devoluciones procesadas (→ Devoluciones) o la mesa sigue abierta (→ «Liberar mesa»). Anula los
+pagos **solo si su caja sigue abierta** (misma regla de alcance que `pos_caja_esperado`; si no:
+`caja_cerrada` → registrar una devolución), cada uno con `fn_anular_pago` — la anulación única de
+pagos que otra sesión publicó el mismo día (estado `void`, contra-asiento, cuotas, recibo y
+auditoría financiera; migración `20260925140250`) —; anula propinas con
+`fn_propina_anular`; cancela comisiones devengadas; devuelve el stock del kardex
+(`fn_stock_entrada_devolucion`, reutilizada de devoluciones) y los seriales; emite la nota
+crédito por lo facturado y anula la factura. La cartera la ajustan los disparadores. Idempotente
+(`ya_anulada`). Auditoría en `ops_audit_log` (`VOID`).
+
+**Factura electrónica:** la nota crédito ELECTRÓNICA no se envía a Factus todavía. Si la factura
+ya salió a la DIAN (`einvoice_status` pending/processing/sent/accepted) la anulación se hace igual
+y devuelve el aviso `factura_electronica_sin_nota_credito_dian`, que la pantalla muestra; la NC
+electrónica queda pendiente de enviar a mano hasta que se decida el enganche (el mismo pendiente de
+`procesar_devolucion`).
+
+**Cartera de una factura anulada:** el disparador `create_account_receivable` deja la cuenta con
+saldo 0 y estado `paid` (no `cancelled`): es el comportamiento de siempre del disparador; el
+navegador intentaba escribir `cancelled` a mano (en la base hay 0 filas `cancelled`). Si se quiere
+`cancelled`, se cambia el disparador (decisión del área de CxC).
+
+**Ventas `pending` huérfanas:** el flujo de deuda no las deja: las 284 ventas «Venta con deuda»
+pendientes tienen factura y líneas. La del 2026-09-16 en la org 140 es una **mesa abierta**
+(sesión `active`, sin factura ni pagos). Además hay 44 ventas de mesa `pending` cuya sesión quedó
+`completed` (3 organizaciones, la última del 2026-08-04, $1.924.550): anteriores a
+`pos_mesa_liberar` (que ya no suelta una mesa con saldo). Se reportan, no se tocan.
+
+Pruebas en transacción deshecha (org de prueba 120): deuda sin cliente y deuda con precio
+manipulado rechazadas; deuda válida (venta pending, factura issued a crédito con vencimiento a 15
+días, cartera creada); abono parcial (venta y cartera con saldo); reintento del mismo intento sin
+duplicar pagos; saldo con flete y propina (venta pagada, línea de flete, propina, cartera en 0);
+cobrar de nuevo una venta pagada rechazado; anular sin permiso y sin motivo rechazados; anular la
+deuda cobrada (2 pagos y 2 asientos revertidos, propina anulada, NC por −44.000, factura anulada);
+anular dos veces → `ya_anulada`; cobrar una venta anulada rechazado; venta de mostrador anulada
+(stock 100 → 97 → 100 con kardex de entrada); pago en caja cerrada → `caja_cerrada`.

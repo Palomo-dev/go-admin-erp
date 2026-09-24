@@ -22,12 +22,15 @@ import { SaleWithDetails, SalesFilter } from './types';
 import { PrintService } from '@/lib/services/printService';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { useTranslations } from 'next-intl';
+import { avisoAnulacion, mensajeErrorCobro } from '@/lib/pos/erroresCobro';
 
 export function VentasPage() {
   const router = useRouter();
   const { organization, isLoading: orgLoading } = useOrganization();
   const { branchFilter } = useBranch();
   const { timezone } = useOrgTimezone();
+  const tCobro = useTranslations('posCobroServidor');
   const [sales, setSales] = useState<SaleWithDetails[]>([]);
   const [totalSales, setTotalSales] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -73,13 +76,15 @@ export function VentasPage() {
     }
 
     const reason = prompt('Ingrese el motivo de la anulación:');
-    const success = await VentasService.cancelSale(sale.id, reason || undefined);
-    
-    if (success) {
+    if (reason === null) return;
+    // Todo lo decide el servidor (permiso pos.void, caja abierta, stock,
+    // pagos, factura): aquí solo se muestra el resultado traducido.
+    try {
+      const resultado = await VentasService.anularVenta(sale.id, reason);
       loadSales();
-      alert('Venta anulada correctamente');
-    } else {
-      alert('Error al anular la venta');
+      alert(avisoAnulacion(resultado.avisos, tCobro));
+    } catch (error) {
+      alert(mensajeErrorCobro(error, tCobro, tCobro('anulacionFallida')));
     }
   };
 

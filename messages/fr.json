@@ -9408,7 +9408,30 @@
       "modificador_invalido": "Un modificateur de la ligne n’est plus configuré pour le produit. Retirez la ligne et ajoutez-la de nouveau. {detalle}",
       "precio_no_vigente": "Un produit n’a pas de prix en vigueur : définissez son prix dans Inventaire. {detalle}",
       "precio_no_coincide": "Le prix d’une ligne ne correspond pas au prix en vigueur. Retirez la ligne et ajoutez-la de nouveau. {detalle}",
-      "linea_incoherente": "Les montants d’une ligne ne correspondent pas à son prix, sa remise et sa taxe. Rouvrez l’encaissement. {detalle}"
+      "linea_incoherente": "Les montants d’une ligne ne correspondent pas à son prix, sa remise et sa taxe. Rouvrez l’encaissement. {detalle}",
+      "deuda_sin_cliente": "Pour enregistrer une dette, le panier doit avoir un client.",
+      "deuda_con_pagos": "Une dette naît sans paiements : encaissez-la plus tard depuis le panier.",
+      "plazo_invalido": "Le délai de la dette n’est pas valide.",
+      "venta_no_encontrada": "La vente est introuvable.",
+      "venta_anulada": "La vente est annulée : elle ne peut pas être encaissée.",
+      "venta_ya_pagada": "La vente est déjà payée.",
+      "cobro_de_otra_venta": "Cet encaissement appartient à une autre vente. Fermez et rouvrez l’encaissement.",
+      "sin_permiso": "Vous n’avez pas l’autorisation d’annuler des ventes (pos.void).",
+      "sin_acceso_sucursal": "Vous n’avez pas accès à la succursale de la vente.",
+      "motivo_requerido": "Indiquez le motif de l’annulation (3 caractères minimum).",
+      "venta_con_devoluciones": "La vente a des retours : continuez depuis Retours.",
+      "mesa_abierta": "La table est toujours ouverte : annulez depuis « Libérer la table ».",
+      "caja_cerrada": "Le paiement est entré dans une caisse déjà fermée : enregistrez un retour.",
+      "periodo_cerrado": "La période comptable d’aujourd’hui est clôturée.",
+      "PROPINA_DISTRIBUIDA": "Le pourboire a déjà été réparti : la vente ne peut pas être annulée. {detalle}",
+      "pago_en_caja_cerrada": "Le paiement est entré dans une caisse déjà fermée : enregistrez un retour.",
+      "pago_no_anulable": "Un des paiements ne peut pas être annulé ici. {detalle}"
+    },
+    "ventaAnulada": "Vente annulée : paiements, stock et facture ont été annulés.",
+    "anulacionFallida": "La vente n’a pas pu être annulée",
+    "avisos": {
+      "factura_electronica_sin_nota_credito_dian": "La facture a déjà été envoyée à l’administration fiscale : émettez l’avoir électronique (il n’est pas encore envoyé automatiquement).",
+      "comision_ya_pagada": "La commission du vendeur était déjà payée : vérifiez-la manuellement."
     }
   },
   "facturasCompra": {

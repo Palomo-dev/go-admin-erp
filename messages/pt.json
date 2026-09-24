@@ -10092,7 +10092,8 @@
       "comprobante-egreso": "Comprovante de pagamento",
       "cierre-caja": "Fechamento de caixa",
       "reporte-caja-abierta": "Relatório de caixa aberto",
-      "arqueo-caja": "Conferência de caixa"
+      "arqueo-caja": "Conferência de caixa",
+      "estado-cuenta-proveedor": "Extrato do fornecedor"
     },
     "sinNumero": "Sem numeração",
     "paginacion": {
@@ -10229,7 +10230,9 @@
       "fechaArqueo": "Data da conferência",
       "contadoPor": "Contado por",
       "estado": "Status",
-      "total": "Total"
+      "total": "Total",
+      "vencido": "Vencido",
+      "porVencer": "A vencer"
     },
     "formasPago": {
       "contado": "À vista",
@@ -10268,7 +10271,8 @@
       "porMetodo": "Por meio de pagamento",
       "movimientosCaja": "Entradas e saídas de caixa",
       "arqueos": "Conferências",
-      "denominaciones": "Cédulas e moedas"
+      "denominaciones": "Cédulas e moedas",
+      "retenciones": "Retenções aplicadas ao fornecedor"
     },
     "columnas": {
       "descripcion": "Descrição",
@@ -10300,7 +10304,9 @@
       "contado": "Contado",
       "diferencia": "Diferença",
       "denominacion": "Valor de face",
-      "subtotal": "Subtotal"
+      "subtotal": "Subtotal",
+      "base": "Base",
+      "tarifa": "Alíquota (%)"
     },
     "vacios": {
       "lineas": "Sem linhas.",
@@ -10335,7 +10341,10 @@
         "esperado": "Dinheiro esperado",
         "contado": "Dinheiro contado",
         "diferencia": "Diferença"
-      }
+      },
+      "retencion": "{concepto} ({tasa} %)",
+      "totalFactura": "Total da fatura",
+      "netoPagar": "Líquido a pagar ao fornecedor"
     },
     "firmas": {
       "recibido": "Recebido de acordo",
@@ -10364,7 +10373,8 @@
         "recibo-caja": "Comprovante de um pagamento recebido. Não substitui a fatura.",
         "comprobante-egreso": "Comprovante de um pagamento realizado.",
         "cierre-caja": "Relatório interno de caixa.",
-        "arqueo-caja": "Relatório interno de conferência de caixa."
+        "arqueo-caja": "Relatório interno de conferência de caixa.",
+        "estado-cuenta-proveedor": "Extrato do fornecedor segundo nossos registros. Se encontrar alguma diferença, entre em contato conosco em até 10 dias após o recebimento."
       }
     },
     "movimientos": {
@@ -10375,7 +10385,8 @@
     },
     "estadoCuenta": {
       "prefijo": "EX",
-      "desdeInicio": "Desde o início"
+      "desdeInicio": "Desde o início",
+      "prefijoProveedor": "EXF"
     },
     "documentosAbonados": {
       "facturaVenta": "Fatura de venda {numero}",
@@ -10394,6 +10405,11 @@
         "partial": "Parcial",
         "closing": "Fechamento"
       }
+    },
+    "movimientosProveedor": {
+      "factura": "Fatura (líquido a pagar)",
+      "cuenta": "Conta a pagar",
+      "pago": "Pagamento"
     }
   },
   "posVentas": {

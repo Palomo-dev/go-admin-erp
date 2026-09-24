@@ -90,7 +90,7 @@ interface FilaFacturaCompra {
   items: Array<FilaItem & { created_at?: string | null }> | null;
 }
 
-async function pagosDeCompra(sesion: SesionDocumento, facturaId: string): Promise<FilaPago[]> {
+async function pagosDeCompra(sesion: SesionDocumento, facturaId: string): Promise<Array<FilaPago & { discount_amount?: number | string | null }>> {
   const db = sesion.supabase;
   const { data: cuentas } = await db
     .from('accounts_payable')
@@ -102,13 +102,32 @@ async function pagosDeCompra(sesion: SesionDocumento, facturaId: string): Promis
   if (ids.length > 0) filtros.push(`and(source.eq.account_payable,source_id.in.(${ids.join(',')}))`);
   const { data, error } = await db
     .from('payments')
-    .select('id, method, amount, change_amount, reference, payment_date, created_at')
+    .select('id, method, amount, change_amount, discount_amount, reference, payment_date, created_at')
     .eq('organization_id', sesion.organizationId)
     .eq('status', 'completed')
     .or(filtros.join(','))
     .order('payment_date', { ascending: true });
   if (error) fallaLectura('payments', error);
-  return (data ?? []) as FilaPago[];
+  return (data ?? []) as Array<FilaPago & { discount_amount?: number | string | null }>;
+}
+
+interface FilaRetencion {
+  concept: string;
+  base: number | string | null;
+  rate: number | string | null;
+  amount: number | string | null;
+}
+
+/** Retenciones de la factura (`invoice_purchase_withholdings`, migración 20260926100000). */
+async function retencionesDeCompra(sesion: SesionDocumento, facturaId: string): Promise<FilaRetencion[]> {
+  const { data, error } = await sesion.supabase
+    .from('invoice_purchase_withholdings')
+    .select('concept, base, rate, amount, created_at')
+    .eq('organization_id', sesion.organizationId)
+    .eq('invoice_id', facturaId)
+    .order('created_at', { ascending: true });
+  if (error) fallaLectura('invoice_purchase_withholdings', error);
+  return (data ?? []) as FilaRetencion[];
 }
 
 export async function cargarFacturaCompra(
@@ -131,19 +150,36 @@ export async function cargarFacturaCompra(
   const f = data as FilaFacturaCompra | null;
   if (!f || f.organization_id !== sesion.organizationId) throw noEncontrado();
 
-  const [base, moneda, pagos] = await Promise.all([
+  const [base, moneda, pagos, retenciones] = await Promise.all([
     cargarBase(sesion, f.branch_id),
     resolverContextoMoneda(sesion.supabase, sesion.organizationId, f.currency),
     pagosDeCompra(sesion, f.id),
+    retencionesDeCompra(sesion, f.id),
   ]);
   const proveedor = uno(f.supplier);
   const lineas = ordenarItems(f.items);
   const totales = totalesCompra(f.subtotal, f.tax_total, f.total, lineas);
-  const pagado = pagos.reduce((s, p) => s + valorAplicado(p), 0);
+
+  // Retenciones practicadas al proveedor (D4 de compras): SÍ se restan; la CxP
+  // y el saldo de la factura son por el neto (`fn_invoice_purchase_neto`).
+  const totalRetenido = retenciones.reduce((s, r) => s + num(r.amount), 0);
+  const neto = Math.max(num(f.total) - totalRetenido, 0);
+  if (retenciones.length > 0) {
+    const filaTotal = totales[totales.length - 1];
+    filaTotal.clave = 'totalFactura';
+    filaTotal.estilo = 'normal';
+    for (const r of retenciones) {
+      totales.push({ clave: 'retencion', vars: { concepto: r.concept, tasa: String(num(r.rate)) }, valor: num(r.amount), resta: true });
+    }
+    totales.push({ clave: 'netoPagar', valor: neto, estilo: 'total' });
+  }
+
+  // Pagado = amount + discount_amount, el mismo criterio que `fn_invoice_purchase_paid` (D5).
+  const pagado = pagos.reduce((s, p) => s + valorAplicado(p) + num(p.discount_amount), 0);
   if (pagado > 0) totales.push({ clave: 'pagosAplicados', valor: pagado, resta: true });
   if (f.status !== 'draft' && f.status !== 'void') {
     const saldo = num(f.balance);
-    totales.push(saldo > 0 ? { clave: 'saldoPorPagar', valor: saldo, estilo: 'saldo' } : { clave: 'pagado', valor: num(f.total), estilo: 'pagado' });
+    totales.push(saldo > 0 ? { clave: 'saldoPorPagar', valor: saldo, estilo: 'saldo' } : { clave: 'pagado', valor: neto, estilo: 'pagado' });
   }
 
   const metadatos: Campo[] = [
@@ -155,7 +191,21 @@ export async function cargarFacturaCompra(
   if (f.po_id) metadatos.push({ clave: 'ordenCompra', valor: { tipo: 'texto', v: `#${f.po_id}` } });
   if (base.sucursal) metadatos.push({ clave: 'sucursalRecibe', valor: { tipo: 'texto', v: base.sucursal.nombre } });
 
-  const secciones: SeccionTabla[] = pagos.length > 0 ? [seccionPagos(pagos, t)] : [];
+  const secciones: SeccionTabla[] = [];
+  if (retenciones.length > 0) {
+    secciones.push({
+      titulo: 'retenciones',
+      columnas: [
+        { clave: 'concepto', tipo: 'texto' },
+        { clave: 'base', tipo: 'dinero' },
+        { clave: 'tarifa', tipo: 'numero' },
+        { clave: 'valor', tipo: 'dinero' },
+      ],
+      filas: retenciones.map((r) => [r.concept, num(r.base), num(r.rate), num(r.amount)]),
+      pie: [null, null, null, totalRetenido],
+    });
+  }
+  if (pagos.length > 0) secciones.push(seccionPagos(pagos, t));
 
   return {
     tipo: 'factura-compra',

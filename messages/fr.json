@@ -10092,7 +10092,8 @@
       "comprobante-egreso": "Bon de décaissement",
       "cierre-caja": "Clôture de caisse",
       "reporte-caja-abierta": "Rapport de caisse ouverte",
-      "arqueo-caja": "Comptage de caisse"
+      "arqueo-caja": "Comptage de caisse",
+      "estado-cuenta-proveedor": "Relevé de compte fournisseur"
     },
     "sinNumero": "Sans numéro",
     "paginacion": {
@@ -10229,7 +10230,9 @@
       "fechaArqueo": "Date du comptage",
       "contadoPor": "Compté par",
       "estado": "Statut",
-      "total": "Total"
+      "total": "Total",
+      "vencido": "Échu",
+      "porVencer": "Non échu"
     },
     "formasPago": {
       "contado": "Comptant",
@@ -10268,7 +10271,8 @@
       "porMetodo": "Par moyen de paiement",
       "movimientosCaja": "Entrées et sorties de caisse",
       "arqueos": "Comptages",
-      "denominaciones": "Coupures"
+      "denominaciones": "Coupures",
+      "retenciones": "Retenues appliquées au fournisseur"
     },
     "columnas": {
       "descripcion": "Désignation",
@@ -10300,7 +10304,9 @@
       "contado": "Compté",
       "diferencia": "Écart",
       "denominacion": "Coupure",
-      "subtotal": "Sous-total"
+      "subtotal": "Sous-total",
+      "base": "Base",
+      "tarifa": "Taux (%)"
     },
     "vacios": {
       "lineas": "Aucune ligne.",
@@ -10335,7 +10341,10 @@
         "esperado": "Espèces attendues",
         "contado": "Espèces comptées",
         "diferencia": "Écart"
-      }
+      },
+      "retencion": "{concepto} ({tasa} %)",
+      "totalFactura": "Total de la facture",
+      "netoPagar": "Net à payer au fournisseur"
     },
     "firmas": {
       "recibido": "Reçu conforme",
@@ -10364,7 +10373,8 @@
         "recibo-caja": "Justificatif d'un paiement reçu. Il ne remplace pas la facture.",
         "comprobante-egreso": "Justificatif d'un paiement effectué.",
         "cierre-caja": "Rapport de caisse interne.",
-        "arqueo-caja": "Rapport interne de comptage de caisse."
+        "arqueo-caja": "Rapport interne de comptage de caisse.",
+        "estado-cuenta-proveedor": "Relevé de compte du fournisseur selon nos registres. En cas d'écart, contactez-nous dans les 10 jours suivant sa réception."
       }
     },
     "movimientos": {
@@ -10375,7 +10385,8 @@
     },
     "estadoCuenta": {
       "prefijo": "RC",
-      "desdeInicio": "Depuis le début"
+      "desdeInicio": "Depuis le début",
+      "prefijoProveedor": "RCF"
     },
     "documentosAbonados": {
       "facturaVenta": "Facture de vente {numero}",
@@ -10394,6 +10405,11 @@
         "partial": "Partiel",
         "closing": "Clôture"
       }
+    },
+    "movimientosProveedor": {
+      "factura": "Facture (net à payer)",
+      "cuenta": "Dette fournisseur",
+      "pago": "Paiement"
     }
   },
   "posVentas": {

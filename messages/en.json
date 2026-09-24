@@ -10197,7 +10197,8 @@
       "comprobante-egreso": "Payment voucher",
       "cierre-caja": "Cash register closing",
       "reporte-caja-abierta": "Open cash register report",
-      "arqueo-caja": "Cash count"
+      "arqueo-caja": "Cash count",
+      "estado-cuenta-proveedor": "Supplier account statement"
     },
     "sinNumero": "No number yet",
     "paginacion": {
@@ -10334,7 +10335,9 @@
       "fechaArqueo": "Count date",
       "contadoPor": "Counted by",
       "estado": "Status",
-      "total": "Total"
+      "total": "Total",
+      "vencido": "Overdue",
+      "porVencer": "Not yet due"
     },
     "formasPago": {
       "contado": "Cash",
@@ -10373,7 +10376,8 @@
       "porMetodo": "By payment method",
       "movimientosCaja": "Cash in and out",
       "arqueos": "Cash counts",
-      "denominaciones": "Denominations"
+      "denominaciones": "Denominations",
+      "retenciones": "Withholdings applied to the supplier"
     },
     "columnas": {
       "descripcion": "Description",
@@ -10405,7 +10409,9 @@
       "contado": "Counted",
       "diferencia": "Difference",
       "denominacion": "Denomination",
-      "subtotal": "Subtotal"
+      "subtotal": "Subtotal",
+      "base": "Base",
+      "tarifa": "Rate (%)"
     },
     "vacios": {
       "lineas": "No lines.",
@@ -10440,7 +10446,10 @@
         "esperado": "Expected cash",
         "contado": "Counted cash",
         "diferencia": "Difference"
-      }
+      },
+      "retencion": "{concepto} ({tasa} %)",
+      "totalFactura": "Invoice total",
+      "netoPagar": "Net payable to supplier"
     },
     "firmas": {
       "recibido": "Received in good order",
@@ -10469,7 +10478,8 @@
         "recibo-caja": "Receipt of a payment received. It does not replace the invoice.",
         "comprobante-egreso": "Voucher of a payment made.",
         "cierre-caja": "Internal cash register report.",
-        "arqueo-caja": "Internal cash count report."
+        "arqueo-caja": "Internal cash count report.",
+        "estado-cuenta-proveedor": "Supplier account statement according to our records. If you find any discrepancy, please contact us within 10 days of receipt."
       }
     },
     "movimientos": {
@@ -10480,7 +10490,8 @@
     },
     "estadoCuenta": {
       "prefijo": "ST",
-      "desdeInicio": "Since the beginning"
+      "desdeInicio": "Since the beginning",
+      "prefijoProveedor": "SST"
     },
     "documentosAbonados": {
       "facturaVenta": "Sales invoice {numero}",
@@ -10499,6 +10510,11 @@
         "partial": "Partial",
         "closing": "Closing"
       }
+    },
+    "movimientosProveedor": {
+      "factura": "Invoice (net payable)",
+      "cuenta": "Account payable",
+      "pago": "Payment"
     }
   },
   "posVentas": {

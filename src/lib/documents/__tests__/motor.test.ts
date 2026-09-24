@@ -40,6 +40,7 @@ const P2 = '88888888-8888-4888-8888-888888888888';
 const C1 = '99999999-9999-4999-8999-999999999999';
 const AP1 = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const XSS = '<script>alert(1)</script>';
+const llamadasProveedor: Array<Record<string, unknown>> = [];
 
 const cliente = { full_name: `Cliente ${XSS}`, doc_type: 'CC', doc_number: '1234', dv: null, fiscal_responsibilities: [] };
 const item = { description: 'Servicio', qty: 1, unit_price: 100, discount_amount: 0, tax_code: 'IVA_19', tax_rate: 19, tax_included: false, total_line: 100, impuesto: { name: 'IVA 19 %' } };
@@ -67,6 +68,8 @@ function datos() {
     quotations: [{ id: Q1, organization_id: ORG, branch_id: 1, number: 'COT-3', issue_date: '2026-09-24', valid_until: '2026-09-30', currency: 'COP', subtotal: 100, tax_total: 5, discount_total: 0, total: 105, status: 'sent', payment_terms: 30, payment_method: 'transfer', terms_conditions: 'Pago anticipado', payment_link_url: 'javascript:alert(1)', customer: cliente, items: [{ ...item, tax_code: 'IVA_5', tax_rate: 5 }] }],
     tax_templates: [{ code: 'IVA_5', name: 'IVA 5 %' }],
     invoice_purchase: [{ id: FC1, organization_id: ORG, branch_id: 1, number_ext: 'PROV-77', issue_date: '2026-09-10T15:00:00Z', due_date: '2026-10-10T15:00:00Z', currency: 'COP', subtotal: 500, tax_total: 0, total: 500, balance: 0, status: 'paid', supplier: { name: 'Proveedor Uno', nit: '800', bank_name: 'Banco', bank_account: '1234567890', account_type: 'Ahorros', credit_days: 30 }, items: [{ ...item, discount_amount: 20 }] }],
+    invoice_purchase_withholdings: [{ organization_id: ORG, invoice_id: FC1, concept: 'Retención en la fuente', base: 480, rate: 2.5, amount: 12, created_at: '2026-09-10T15:00:00Z' }],
+    suppliers: [{ id: 5, organization_id: ORG, name: 'Proveedor Uno', nit: '800', dv: '1' }, { id: 6, organization_id: AJENA, name: 'Proveedor Ajeno' }],
     cash_sessions: [
       { id: 10, organization_id: ORG, branch_id: 1, opened_by: 'cajero-1', opened_at: '2026-09-24T13:00:00Z', closed_at: '2026-09-24T23:00:00Z', closed_by: 'cajero-1', initial_amount: 100, final_amount: 480, difference: -20, status: 'closed', notes: null },
     ],
@@ -80,6 +83,13 @@ function datos() {
 
 function sesion(tablas = datos(), userId = 'usuario-1') {
   const supabase = fakeSupabase(tablas, {
+    fn_estado_cuenta_proveedor: (args) => {
+      llamadasProveedor.push(args);
+      return { moneda: 'COP', saldo_inicial: 0, total_cargos: 488, total_abonos: 500, saldo_final: -12, vencido: 0, por_vencer: 0, movimientos: [
+        { fecha: '2026-09-10T15:00:00Z', dia: '2026-09-10', tipo: 'factura', documento: 'PROV-77', vence: '2026-10-10T15:00:00Z', cargo: 488, abono: 0, saldo: 488 },
+        { fecha: '2026-09-25T15:00:00Z', dia: '2026-09-25', tipo: 'pago', documento: null, vence: null, cargo: 0, abono: 500, saldo: -12 },
+      ] };
+    },
     pos_caja_esperado: () => ({ efectivo_esperado: 500, por_metodo: { cash: 500, card: 200 }, detalle: { inicial: 100, ventas_efectivo: 420, salidas: 20 } }),
   });
   return { ctx: { userId, organizationId: ORG, roleId: 5, isSuperAdmin: false, supabase: supabase as never }, supabase };
@@ -204,6 +214,62 @@ describe('factura de compra', () => {
     expect(JSON.stringify(payload.referencia)).toContain('•••• 7890');
     expect(JSON.stringify(payload.referencia)).not.toContain('1234567890');
     expect(html).toContain('Documento recibido de un tercero');
+  });
+
+  it('retenciones: se listan y se restan; el total es el neto a pagar y el pagado cuenta el descuento', async () => {
+    permisos.add('finance.view');
+    const tablas = datos();
+    tablas.payments.push({ id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', organization_id: ORG, branch_id: 1, source: 'invoice_purchase', source_id: FC1, status: 'completed', method: 'transfer', amount: 400, change_amount: 0, discount_amount: 8, currency: 'COP', reference: null, payment_date: '2026-09-12T15:00:00Z' });
+    const { payload, html } = await pedir(sesion(tablas), 'factura-compra', FC1);
+    const claves = payload.totales.map((t) => [t.clave, t.valor]);
+    expect(claves).toContainEqual(['totalFactura', 500]);
+    expect(claves).toContainEqual(['retencion', 12]);
+    expect(claves).toContainEqual(['netoPagar', 488]);
+    // 400 + 8 de descuento (este pago) + 500 del pago a su cuenta por pagar.
+    expect(claves).toContainEqual(['pagosAplicados', 908]);
+    expect(claves).toContainEqual(['pagado', 488]);
+    expect(payload.totales.find((t) => t.clave === 'netoPagar')?.estilo).toBe('total');
+    const retenciones = payload.secciones.find((s) => s.titulo === 'retenciones');
+    expect(retenciones?.filas).toEqual([['Retención en la fuente', 480, 2.5, 12]]);
+    expect(html).toContain('Neto a pagar al proveedor');
+    expect(html).toContain('Retención en la fuente (2.5 %)');
+  });
+
+  it('sin retenciones el total sigue siendo «total a pagar al proveedor»', async () => {
+    permisos.add('finance.view');
+    const tablas = datos();
+    tablas.invoice_purchase_withholdings = [];
+    const { payload } = await pedir(sesion(tablas), 'factura-compra', FC1);
+    expect(payload.totales.find((t) => t.estilo === 'total')?.clave).toBe('totalProveedor');
+    expect(payload.secciones.some((s) => s.titulo === 'retenciones')).toBe(false);
+  });
+});
+
+describe('estado de cuenta de proveedor', () => {
+  it('sale de fn_estado_cuenta_proveedor con la organización de la sesión y el corte en su día', async () => {
+    permisos.add('finance.view');
+    llamadasProveedor.length = 0;
+    const { payload, html } = await pedir(sesion(), 'estado-cuenta-proveedor', '5', { desde: '2026-09-01' });
+    expect(llamadasProveedor).toEqual([{ p_org: ORG, p_supplier: 5, p_desde: '2026-09-01', p_hasta: '2026-09-27' }]);
+    expect(payload.contraparte).toMatchObject({ rol: 'proveedor', nombre: 'Proveedor Uno' });
+    expect(payload.secciones[0].filas.map((f) => f[6])).toEqual([488, -12]);
+    expect(payload.resumen.find((c) => c.clave === 'saldoFinal')?.valor).toEqual({ tipo: 'dinero', v: -12 });
+    expect(html).toContain('Estado de cuenta de proveedor');
+    expect(html).toContain('10/09/2026');
+    expect(payload.pieLegal.textos[0]).toMatch(/según nuestros registros/);
+  });
+
+  it('un proveedor de otra organización o un id no numérico es 404 y no se llama a la RPC', async () => {
+    permisos.add('finance.view');
+    llamadasProveedor.length = 0;
+    expect(await codigoDe(pedir(sesion(), 'estado-cuenta-proveedor', '6'))).toBe('404 NOT_FOUND');
+    expect(await codigoDe(pedir(sesion(), 'estado-cuenta-proveedor', 'abc'))).toBe('404 NOT_FOUND');
+    expect(llamadasProveedor).toEqual([]);
+  });
+
+  it('sin finance.view → 403', async () => {
+    permisos.add('pos.view');
+    expect(await codigoDe(pedir(sesion(), 'estado-cuenta-proveedor', '5'))).toBe('403 PERMISSION_REQUIRED');
   });
 });
 

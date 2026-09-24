@@ -5,9 +5,9 @@
  * (`kit/documento/EstadoCuentaDialog`, compartida con CxC). Aquí queda lo del
  * dominio: saldo inicial, cargos (facturas confirmadas por el neto), abonos
  * (pagos) y saldo corrido los calcula la base (`fn_estado_cuenta_proveedor`)
- * con el día de la organización. Se descarga en CSV; el PDF entra por la prop
- * `pdf` del kit cuando el motor de documentos tenga el tipo
- * `estado-cuenta-proveedor`.
+ * con el día de la organización. Se descarga en PDF o se imprime con el motor
+ * de documentos (tipo `estado-cuenta-proveedor`, mismo rango), y sigue
+ * disponible en CSV.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -16,6 +16,7 @@ import { toastError } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { clienteCompras, ErrorPeticionCompra } from '@/lib/services/compras/clienteCompras';
+import { descargarDocumento, imprimirDocumento } from '@/lib/documents/cliente';
 import type { EstadoCuentaProveedor, MovimientoEstadoCuenta } from '@/lib/services/compras/contrato';
 
 export interface EstadoCuentaProveedorDialogProps {
@@ -62,6 +63,7 @@ export function EstadoCuentaProveedorDialog({ abierto, onAbiertoChange, proveedo
   const [datos, setDatos] = useState<EstadoCuentaProveedor | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [descargandoPdf, setDescargandoPdf] = useState(false);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -83,6 +85,21 @@ export function EstadoCuentaProveedorDialog({ abierto, onAbiertoChange, proveedo
   const vista = useMemo(() => (datos ? vistaEstadoCuentaProveedor(datos) : null), [datos]);
   const hoy = getToday();
 
+  // PDF e impresión: el servidor arma el documento desde la base con el mismo
+  // rango (motor de documentos); aquí solo viajan el id y las fechas.
+  const rangoDocumento = { desde: rango.desde || undefined, hasta: rango.hasta || undefined };
+  const descargarPdf = async () => {
+    setDescargandoPdf(true);
+    try {
+      await descargarDocumento('estado-cuenta-proveedor', proveedorId, rangoDocumento);
+    } catch (e) {
+      console.error('Error descargando el estado de cuenta en PDF:', e);
+      toastError(t('errorDescarga'));
+    } finally {
+      setDescargandoPdf(false);
+    }
+  };
+
   return (
     <EstadoCuentaDialog
       abierto={abierto}
@@ -101,6 +118,11 @@ export function EstadoCuentaProveedorDialog({ abierto, onAbiertoChange, proveedo
       onErrorDescarga={(e) => {
         console.error('Error descargando el estado de cuenta:', e);
         toastError(t('errorDescarga'));
+      }}
+      pdf={{
+        onDescargar: () => void descargarPdf(),
+        onImprimir: () => imprimirDocumento('estado-cuenta-proveedor', proveedorId, rangoDocumento),
+        cargando: descargandoPdf,
       }}
     />
   );

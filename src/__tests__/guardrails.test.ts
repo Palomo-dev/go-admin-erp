@@ -2379,6 +2379,7 @@ describe('28. Generadores de documentos: sin moneda fija', () => {
     'lib/documents/server/cargadores/pagos.ts',
     'lib/documents/server/cargadores/estadoCuenta.ts',
     'lib/documents/server/cargadores/estadoCuentaProveedor.ts',
+    'lib/documents/server/cargadores/estadoCuentaProveedor.ts',
     'lib/documents/server/cargadores/cajas.ts',
     'lib/services/reportes/pdfExportService.ts',
     'lib/services/inicio/dashboardSectionExport.ts',

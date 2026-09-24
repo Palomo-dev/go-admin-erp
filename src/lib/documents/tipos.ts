@@ -24,6 +24,7 @@ export const TIPOS_DOCUMENTO = [
   'factura-compra',
   'documento-soporte',
   'estado-cuenta',
+  'estado-cuenta-proveedor',
   'recibo-caja',
   'comprobante-egreso',
   'cierre-caja',

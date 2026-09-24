@@ -1,13 +1,13 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { CuentaPorCobrar, FiltrosCuentasPorCobrar, AgingBucket, Recordatorio, Abono, EstadisticasCxC, ResultadoPaginado } from './types';
-import { parseLocalDate } from '@/utils/Utils';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { instantForDayInTz } from '@/lib/services/businessInstant';
 import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
 import { todayInTz } from '@/lib/utils/timezone';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
+import { estadoVivoCxC, filtroClienteCxC, tocaRecordatorio } from '@/lib/finanzas/cxcFiltros';
 
 async function getBranchIdWithFallback(organizationId: number): Promise<number> {
   const branchId = getCurrentBranchId();
@@ -47,6 +47,10 @@ interface FilaCxCRpc {
   customer_name: string | null;
   customer_email: string | null;
   customer_phone: string | null;
+  /** Estado derivado al leer (`fn_cxc_estado_vivo`): una parcial vencida es `overdue`. */
+  status_efectivo?: string | null;
+  /** Días vencidos de hoy en la zona de la sucursal u organización. */
+  dias_vencida?: number | null;
 }
 
 /** Respuesta de `get_accounts_receivable_paginated`. */
@@ -56,17 +60,6 @@ interface PaginaCxCRpc {
   page_size: number;
   page_number: number;
   total_pages: number;
-}
-
-/** Cuenta vencida con su cliente (consulta de recordatorios). */
-interface FilaRecordatorioCxC {
-  id: string;
-  customer_id: string;
-  amount: string | number;
-  due_date: string;
-  days_overdue: number;
-  last_reminder_date: string | null;
-  customers: { full_name: string | null; email: string | null; phone: string | null } | null;
 }
 
 /** Fila de `get_accounts_receivable_for_customers`. */
@@ -138,13 +131,17 @@ export class CuentasPorCobrarService {
     const organizationId = this.getOrganizationId();
 
     try {
+      // «Cliente» es texto en la pantalla: un uuid filtra por id, el resto por
+      // nombre (antes el texto iba a un parámetro uuid y la RPC fallaba).
+      const { customer_id_filter, customer_search } = filtroClienteCxC(filtros.cliente);
       const { data, error } = await supabase
         .rpc('get_accounts_receivable_paginated', {
           org_id: organizationId,
           search_term: filtros.busqueda || null,
           status_filter: filtros.estado,
           aging_filter: filtros.aging,
-          customer_id_filter: filtros.cliente || null,
+          customer_id_filter,
+          customer_search,
           date_from: filtros.fechaDesde || null,
           date_to: filtros.fechaHasta || null,
           page_size: filtros.pageSize,
@@ -169,8 +166,7 @@ export class CuentasPorCobrarService {
           amount: parseFloat(String(item.amount || 0)),
           balance: parseFloat(String(item.balance || 0)),
           due_date: item.due_date,
-          status: item.status,
-          days_overdue: item.days_overdue || 0,
+          ...estadoVivoCxC(item),
           last_reminder_date: item.last_reminder_date,
           created_at: item.created_at,
           updated_at: item.updated_at,
@@ -273,17 +269,17 @@ export class CuentasPorCobrarService {
 
       // Procesar los datos para crear buckets de aging
       const customerMap = new Map<string, AgingBucket>();
-      const today = new Date();
 
       cuentas.forEach((item) => {
         const customerId = item.customer_id;
         const balance = parseFloat(String(item.balance || 0));
-        
+
         // Solo procesar cuentas con saldo pendiente
         if (balance <= 0) return;
-        
-        const dueDate = parseLocalDate(item.due_date);
-        const daysDiff = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        // Días vencidos de hoy calculados en el servidor con la zona de la
+        // sucursal (antes: fecha del navegador contra un día UTC).
+        const daysDiff = estadoVivoCxC(item).days_overdue;
 
         if (!customerMap.has(customerId)) {
           customerMap.set(customerId, {
@@ -322,46 +318,43 @@ export class CuentasPorCobrarService {
   }
 
   // Obtener cuentas que necesitan recordatorios
+  //
+  // Vencidas según el servidor (`status_filter: 'overdue'` = estado efectivo):
+  // incluye las parciales vencidas, que con `.eq('status', 'overdue')` nunca
+  // aparecían (el disparador no las pasa a vencidas).
   static async obtenerCuentasParaRecordatorio(): Promise<Recordatorio[]> {
     const organizationId = this.getOrganizationId();
-    const today = new Date();
-    const threeDaysAgo = new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000);
+    const ahora = new Date();
     // El proximo recordatorio es un DIA calendario de la organizacion: tres
     // dias despues de hoy alli, no tres veces 24 h contadas desde UTC.
     const timezone = await resolveTimezone(organizationId);
     const proximoRecordatorio = sumarDiasAlDia(todayInTz(timezone), 3);
-    
-    const { data, error } = await supabase
-      .from('accounts_receivable')
-      .select(`
-        *,
-        customers!inner(
-          full_name,
-          email,
-          phone
-        )
-      `)
-      .eq('organization_id', organizationId)
-      .eq('status', 'overdue')
-      .gt('balance', 0)
-      .or(`last_reminder_date.is.null,last_reminder_date.lte.${threeDaysAgo.toISOString()}`);
 
-    if (error) {
-      console.error('Error al obtener cuentas para recordatorio:', error);
-      throw error;
-    }
+    const vencidas = await this.obtenerCuentasPorCobrar({
+      busqueda: '',
+      estado: 'overdue',
+      aging: 'todos',
+      cliente: '',
+      fechaDesde: '',
+      fechaHasta: '',
+      pageSize: 100,
+      pageNumber: 1,
+      branchId: null,
+    });
 
-    return (data as FilaRecordatorioCxC[] | null)?.map((item) => ({
-      id: item.id,
-      customer_id: item.customer_id,
-      customer_name: item.customers?.full_name || 'N/A',
-      customer_email: item.customers?.email || '',
-      amount: parseFloat(String(item.amount)),
-      due_date: item.due_date,
-      days_overdue: item.days_overdue,
-      last_reminder_date: item.last_reminder_date,
-      next_reminder_date: proximoRecordatorio,
-    })) || [];
+    return vencidas
+      .filter((cuenta) => !!cuenta.customer_id && cuenta.balance > 0 && tocaRecordatorio(cuenta.last_reminder_date, ahora))
+      .map((cuenta) => ({
+        id: cuenta.id,
+        customer_id: cuenta.customer_id,
+        customer_name: cuenta.customer_name || 'N/A',
+        customer_email: cuenta.customer_email || '',
+        amount: cuenta.amount,
+        due_date: cuenta.due_date,
+        days_overdue: cuenta.days_overdue,
+        last_reminder_date: cuenta.last_reminder_date,
+        next_reminder_date: proximoRecordatorio,
+      }));
   }
 
   // Aplicar abono a una cuenta por cobrar

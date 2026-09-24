@@ -56,6 +56,21 @@ export interface CheckoutEnvelopeInput {
   debt?: { reason: string; payment_terms: number; notes?: string | null };
   /** settle: datos del cobro de una venta existente (mesa). */
   settle?: CobroVentaExistente;
+  /**
+   * settle de una mesa con la cuenta dividida: líneas sin pagar que NO cobra
+   * este intento. Viajan solo para que el servidor conozca su tasa de impuesto
+   * (recalcula y valida la cuenta entera); no suman al cobro.
+   */
+  lineasMesa?: LineaMesaSinCobrar[];
+}
+
+export interface LineaMesaSinCobrar {
+  sale_item_id: string;
+  product_id: number | null;
+  quantity: number;
+  unit_price: number;
+  tax_rate: number;
+  tax_included: boolean;
 }
 
 export type CheckoutMode = 'sale' | 'debt' | 'settle';
@@ -80,6 +95,12 @@ export interface CheckoutEnvelopeItem {
    * vigente ahora, para no rechazar un carrito armado antes de un cambio de precio.
    */
   priced_at: string | null;
+  /**
+   * Cobro de una mesa: la línea de `sale_items` a la que corresponde. El
+   * servidor toma de aquí solo la tasa y el modo de impuesto; cantidad,
+   * precio y descuento salen de la base.
+   */
+  sale_item_id?: string;
 }
 
 /** Sobre que recibe `pos_checkout_v1` (ver contrato en la migración). */
@@ -121,7 +142,13 @@ export interface CheckoutEnvelope {
   mode?: CheckoutMode;
   payment_key?: string;
   debt?: { reason: string; payment_terms: number; notes: string | null };
+  /** settle de una mesa: sesión, líneas que paga este cobro y parte de la cuenta dividida. */
+  table_session_id?: string;
+  paid_sale_item_ids?: string[];
+  split_id?: string;
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface CheckoutRpcResult {
   sale: Sale;
@@ -148,6 +175,7 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
     && checkout.commission_rate > 0
     && checkout.commission_type !== 'none'
   );
+  const mesa = input.mode === 'settle' && input.settle?.table_session_id ? input.settle : null;
 
   const items: CheckoutEnvelopeItem[] = cart.items.map((item, idx) => {
     const calc = itemCalcs[idx];
@@ -174,8 +202,31 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
       modifiers: (item.modifiers ?? []).map((m) => ({ name: m.name, modifier_id: m.modifierId ?? null })),
       serial_ids: serialIds,
       priced_at: item.created_at ?? null,
+      ...(mesa && UUID_RE.test(String(item.id ?? '')) ? { sale_item_id: String(item.id) } : {}),
     };
   });
+  if (mesa) {
+    const yaEnviadas = new Set(items.map((i) => i.sale_item_id).filter(Boolean));
+    for (const l of input.lineasMesa ?? []) {
+      if (!UUID_RE.test(l.sale_item_id) || yaEnviadas.has(l.sale_item_id) || !(l.quantity > 0)) continue;
+      items.push({
+        product_id: l.product_id,
+        product_name: null,
+        quantity: l.quantity,
+        unit_price: l.unit_price,
+        discount_amount: 0,
+        tax_rate: l.tax_rate,
+        tax_amount: 0,
+        total: 0,
+        tax_included: l.tax_included,
+        notes: {},
+        modifiers: [],
+        serial_ids: [],
+        priced_at: null,
+        sale_item_id: l.sale_item_id,
+      });
+    }
+  }
 
   return {
     version: 1,
@@ -217,6 +268,15 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
     ...(input.mode === 'settle' ? { payment_key: input.paymentKey } : {}),
     ...(input.mode === 'debt' && input.debt
       ? { debt: { reason: input.debt.reason, payment_terms: input.debt.payment_terms, notes: input.debt.notes ?? null } }
+      : {}),
+    ...(mesa
+      ? {
+          table_session_id: mesa.table_session_id,
+          ...(mesa.paid_sale_item_ids && mesa.paid_sale_item_ids.length > 0
+            ? { paid_sale_item_ids: mesa.paid_sale_item_ids.filter((id) => UUID_RE.test(id)) }
+            : {}),
+          ...(mesa.split_id ? { split_id: mesa.split_id } : {}),
+        }
       : {}),
   };
 }

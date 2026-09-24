@@ -1,11 +1,8 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { POSService } from '@/lib/services/posService';
-import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
-import { stockMovementService } from '@/lib/services/stockMovementService';
-import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { promotionEngine } from '@/lib/services/promotionEngine';
-import { resolveLineTax } from '@/lib/services/taxResolver';
+import { calcularLineaVenta, totalesDeLineasGuardadas } from '@/lib/pos/lineaVenta';
 import {
   itemsParaImprimir,
   normalizarNota,
@@ -14,15 +11,10 @@ import {
   type TextosAjusteImpreso,
 } from '@/lib/pos/cocina/lineasCarrito';
 import { ajustarLineaMesa } from '@/components/pos/cocina/cocinaCliente';
-import {
-  calculateItemTaxes,
-  type OrganizationTax as TaxUtilOrganizationTax,
-  type TaxCalculationItem,
-} from '@/lib/utils/taxCalculations';
+import type { OrganizationTax as TaxUtilOrganizationTax } from '@/lib/utils/taxCalculations';
 import type {
   TableSessionWithDetails,
   ProductToAdd,
-  SaleItem,
   PreCuenta,
   KitchenTicket,
 } from './types';
@@ -313,12 +305,17 @@ export class PedidosService {
       const saleItems = [];
 
       // --- Evaluar promociones activas para POS (mesas) ---
+      // Mismos datos que el mostrador (POSService.checkout): categoría y
+      // producto padre, para que las promociones por categoría o sobre el
+      // padre de una variante alcancen también a la mesa.
       let promoDiscounts: Record<number, number> = {};
       try {
         const promoResult = await promotionEngine.evaluate({
           channel: 'pos',
           items: productos.map(p => ({
             product_id: p.product_id,
+            parent_product_id: p.parent_product_id ?? null,
+            category_id: p.category_id ?? undefined,
             quantity: p.quantity,
             unit_price: p.unit_price,
           })),
@@ -331,9 +328,13 @@ export class PedidosService {
       }
 
       for (const p of productos) {
-        let itemTaxAmount = 0;
-        let itemTotal = p.quantity * p.unit_price;
-        const itemDiscount = promoDiscounts[p.product_id] || 0;
+        // El descuento de la promoción nunca pasa de la línea (el cobro lo valida).
+        const itemDiscount = Math.min(promoDiscounts[p.product_id] || 0, p.quantity * p.unit_price);
+        // Tasa y modo de impuesto de la línea: los de siempre (impuestos del
+        // producto; si no tiene, los de la organización por defecto). Sin
+        // impuestos resueltos, la línea va sin impuesto como antes.
+        let tasaLinea = 0;
+        let incluidoLinea = false;
 
         try {
           // Intentar impuestos específicos del producto
@@ -365,33 +366,35 @@ export class PedidosService {
             effectiveOrgTaxes = productOrgTaxes;
           }
 
-          const taxItem: TaxCalculationItem = {
-            quantity: p.quantity,
-            unit_price: p.unit_price,
-            product_id: p.product_id,
-            discount_amount: itemDiscount,
-          };
-
-          const itemTaxes = calculateItemTaxes(taxItem, effectiveApplied, effectiveOrgTaxes, effectiveTaxIncluded);
-          itemTaxAmount = itemTaxes.reduce((sum, t) => sum + t.taxAmount, 0);
-          itemTaxAmount = Math.round(itemTaxAmount * 100) / 100;
-
-          if (!effectiveTaxIncluded) {
-            itemTotal = p.quantity * p.unit_price + itemTaxAmount;
-          }
+          tasaLinea = effectiveOrgTaxes
+            .filter((t) => effectiveApplied[t.id] && t.is_active !== false)
+            .reduce((sum, t) => sum + (Number(t.rate) || 0), 0);
+          incluidoLinea = effectiveTaxIncluded;
         } catch (error) {
           console.error('Error calculating tax for product', p.product_id, error);
-          itemTaxAmount = 0;
-          itemTotal = p.quantity * p.unit_price;
+          tasaLinea = 0;
+          incluidoLinea = false;
         }
+
+        // Regla única de la línea (la del cobro y la de la base). Antes: total =
+        // precio × cantidad + impuesto, sin restar el descuento.
+        const linea = calcularLineaVenta({
+          quantity: p.quantity,
+          unit_price: p.unit_price,
+          discount_amount: itemDiscount,
+          tax_rate: tasaLinea,
+          tax_included: incluidoLinea,
+        });
 
         saleItems.push({
           sale_id: saleId,
           product_id: p.product_id,
           quantity: p.quantity,
           unit_price: p.unit_price,
-          total: itemTotal,
-          tax_amount: itemTaxAmount,
+          total: linea.total,
+          tax_amount: linea.taxAmount,
+          tax_rate: linea.taxRate,
+          tax_included: linea.taxIncluded,
           discount_amount: itemDiscount,
           notes: {
             product_name: p.product_name,
@@ -492,39 +495,18 @@ export class PedidosService {
   }
 
   /**
-   * Recalcular total de una venta
+   * Recalcular los totales de la cuenta en el servidor
+   * (`pos_mesa_recalcular_venta`): líneas con la regla única y cabecera como
+   * suma de líneas + flete + propina; saldo = total − pagado.
+   *
+   * Antes se escribía desde el navegador subtotal = precio × cantidad y total =
+   * subtotal + impuesto − descuento: con el impuesto incluido en el precio el
+   * IVA contaba dos veces, y el saldo se pisaba con el total aunque ya hubiera
+   * pagos parciales.
    */
   static async recalcularTotalVenta(saleId: string): Promise<void> {
-    try {
-      const { data: items } = await supabase
-        .from('sale_items')
-        .select('unit_price, quantity, total, tax_amount, discount_amount')
-        .eq('sale_id', saleId);
-
-      if (!items) return;
-
-      const subtotal = items.reduce(
-        (sum, item) => sum + Number(item.unit_price) * Number(item.quantity),
-        0
-      );
-      const taxTotal = items.reduce((sum, item) => sum + Number(item.tax_amount), 0);
-      const discountTotal = items.reduce(
-        (sum, item) => sum + Number(item.discount_amount),
-        0
-      );
-      const total = subtotal + taxTotal - discountTotal;
-
-      await supabase
-        .from('sales')
-        .update({
-          subtotal,
-          tax_total: taxTotal,
-          discount_total: discountTotal,
-          total,
-          balance: total,
-        })
-        .eq('id', saleId);
-    } catch (error) {
+    const { error } = await supabase.rpc('pos_mesa_recalcular_venta', { p_sale_id: saleId });
+    if (error) {
       console.error('Error recalculando total:', error);
       throw error;
     }
@@ -544,10 +526,8 @@ export class PedidosService {
    */
   static async eliminarItem(saleItemId: string, motivo?: string): Promise<void> {
     try {
-      const resultado = await ajustarLineaMesa(saleItemId, 0, motivo ?? null);
-      if (resultado.sale_id) {
-        await this.recalcularTotalVenta(resultado.sale_id);
-      }
+      // La RPC recalcula la cabecera de la cuenta en la misma transacción.
+      await ajustarLineaMesa(saleItemId, 0, motivo ?? null);
     } catch (error) {
       console.error('Error eliminando item:', error);
       throw error;
@@ -557,11 +537,11 @@ export class PedidosService {
   /**
    * Actualizar cantidad de un item.
    *
-   * Misma fórmula de la línea que antes (impuesto por unidad × cantidad nueva,
-   * total = precio × cantidad + impuesto), ahora en la RPC para que el ajuste
-   * de cocina y la línea cambien en la misma transacción. Si el plato ya se
-   * envió, la comanda original no cambia en silencio: sale una de ajuste
-   * (+/−). Restar algo ya enviado exige motivo.
+   * En la RPC (`pos_cocina_ajustar_linea_mesa`), para que el ajuste de cocina,
+   * la línea y la cabecera de la cuenta cambien en la misma transacción. La
+   * línea sigue la regla única y el descuento escala con la cantidad (antes
+   * quedaba fijo). Si el plato ya se envió, la comanda original no cambia en
+   * silencio: sale una de ajuste (+/−). Restar algo ya enviado exige motivo.
    */
   static async actualizarCantidadItem(
     saleItemId: string,
@@ -569,10 +549,7 @@ export class PedidosService {
     motivo?: string
   ): Promise<void> {
     try {
-      const resultado = await ajustarLineaMesa(saleItemId, nuevaCantidad, motivo ?? null);
-      if (resultado.sale_id) {
-        await this.recalcularTotalVenta(resultado.sale_id);
-      }
+      await ajustarLineaMesa(saleItemId, nuevaCantidad, motivo ?? null);
     } catch (error) {
       console.error('Error actualizando cantidad:', error);
       throw error;
@@ -590,24 +567,18 @@ export class PedidosService {
         throw new Error('No hay items en la orden');
       }
 
+      // Totales desde las líneas guardadas (la misma suma que la base en
+      // fn_pos_recalcular_venta). Antes: precio × cantidad + impuesto −
+      // descuento, que con el impuesto incluido contaba el IVA dos veces.
       const items = detalles.sale_items;
-      const subtotal = items.reduce(
-        (sum, item) => sum + Number(item.unit_price) * Number(item.quantity),
-        0
-      );
-      const taxTotal = items.reduce((sum, item) => sum + Number(item.tax_amount), 0);
-      const discountTotal = items.reduce(
-        (sum, item) => sum + Number(item.discount_amount),
-        0
-      );
-      const total = subtotal + taxTotal - discountTotal;
+      const totales = totalesDeLineasGuardadas(items);
 
       return {
         items,
-        subtotal,
-        tax_total: taxTotal,
-        discount_total: discountTotal,
-        total,
+        subtotal: totales.subtotal,
+        tax_total: totales.taxTotal,
+        discount_total: totales.discountTotal,
+        total: totales.total,
       };
     } catch (error) {
       console.error('Error generando pre-cuenta:', error);
@@ -771,19 +742,43 @@ export class PedidosService {
           .update({ sale_id: toSession.sale_id })
           .eq('id', saleItemId);
       } else {
-        // 4. Si es parcial, crear nuevo item y reducir original
-        const newTotal = Number(originalItem.unit_price) * quantity;
-        
-        await supabase.from('sale_items').insert({
+        // 4. Si es parcial, crear nuevo item y reducir original. La parte
+        // trasladada lleva su parte del descuento y la tasa y el modo de
+        // impuesto de la línea original (antes iba sin impuesto ni descuento).
+        const cantidadOriginal = Number(originalItem.quantity) || 1;
+        const descuentoOriginal = Number(originalItem.discount_amount) || 0;
+        const descuentoQueQueda = Math.round(descuentoOriginal / cantidadOriginal * (cantidadOriginal - quantity) * 100) / 100;
+        const descuentoTrasladado = Math.round((descuentoOriginal - descuentoQueQueda) * 100) / 100;
+        const incluido: boolean | null = originalItem.tax_included ?? null;
+        // Línea anterior al modo de impuesto guardado: impuesto por unidad, como
+        // hace pos_cocina_ajustar_linea_mesa con esas líneas.
+        const impuestoLegado = Math.round((Number(originalItem.tax_amount) || 0) / cantidadOriginal * quantity * 100) / 100;
+        const linea = incluido === null
+          ? {
+              taxAmount: impuestoLegado,
+              total: Number(originalItem.unit_price) * quantity - descuentoTrasladado + impuestoLegado,
+            }
+          : calcularLineaVenta({
+              quantity,
+              unit_price: Number(originalItem.unit_price),
+              discount_amount: descuentoTrasladado,
+              tax_rate: Number(originalItem.tax_rate) || 0,
+              tax_included: incluido,
+            });
+
+        const { error: insertError } = await supabase.from('sale_items').insert({
           sale_id: toSession.sale_id,
           product_id: originalItem.product_id,
           quantity,
           unit_price: originalItem.unit_price,
-          total: newTotal,
-          tax_amount: 0,
-          discount_amount: 0,
+          total: linea.total,
+          tax_amount: linea.taxAmount,
+          tax_rate: originalItem.tax_rate ?? 0,
+          tax_included: incluido,
+          discount_amount: descuentoTrasladado,
           notes: originalItem.notes,
         });
+        if (insertError) throw insertError;
 
         await this.actualizarCantidadItem(
           saleItemId,
@@ -798,405 +793,6 @@ export class PedidosService {
       }
     } catch (error) {
       console.error('Error transfiriendo item:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Completar venta de mesa: actualiza la venta existente con pagos y estado
-   * A diferencia de POSService.checkout (que crea una venta nueva), este método
-   * actualiza la venta ya asociada a la sesión de la mesa.
-   */
-  static async completarVentaMesa(
-    saleId: string,
-    data: {
-      payments: { method: string; amount: number }[];
-      total_paid: number;
-      change?: number;
-      tip_amount?: number;
-      tip_server_id?: string;
-      tax_included?: boolean;
-      tax_breakdown?: { name: string; amount: number }[];
-      subtotal: number;
-      tax_total: number;
-      total: number;
-      table_session_id?: string;
-      driver_id?: string;
-      salesperson_id?: string;
-      commission_rate?: number;
-      commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
-      commission_method?: 'percentage' | 'fixed_amount';
-      commission_amount?: number;
-      serial_selections?: Record<number, number[]>;
-    }
-  ): Promise<{ id: string; total: number; status: string }> {
-    try {
-      const balance = Math.max(0, data.total - data.total_paid);
-      const isPaid = data.total_paid >= data.total;
-      const now = new Date().toISOString();
-
-      // 0. Verificar estado actual de la venta para evitar re-disparar el trigger
-      const { data: existingSale } = await supabase
-        .from('sales')
-        .select('status')
-        .eq('id', saleId)
-        .single();
-
-      const alreadyPaid = existingSale?.status === 'paid';
-
-      // 1. Actualizar la venta existente con totales, propina y vínculos
-      // Si la venta ya estaba 'paid', no cambiar status para evitar re-disparar
-      // el trigger trg_auto_journal_sale_pos (asiento contable duplicado)
-      const updateData: Record<string, any> = {
-        subtotal: data.subtotal,
-        tax_total: data.tax_total,
-        total: data.total,
-        balance,
-        tax_included: data.tax_included || false,
-        tax_breakdown: data.tax_breakdown || null,
-        tip_amount: data.tip_amount || 0,
-        tip_server_id: data.tip_server_id || null,
-        driver_id: data.driver_id || null,
-        table_session_id: data.table_session_id || null,
-        updated_at: now,
-      };
-
-      if (!alreadyPaid) {
-        updateData.status = isPaid ? 'paid' : 'pending';
-        updateData.payment_status = isPaid ? 'paid' : 'partial';
-      }
-
-      const { data: saleData, error: saleError } = await supabase
-        .from('sales')
-        .update(updateData)
-        .eq('id', saleId)
-        .select()
-        .single();
-
-      if (saleError) throw saleError;
-
-      // 2. Registrar pagos en tabla payments (no sale_payments que no existe)
-      const baseCurrency = await POSService.getBaseCurrency();
-      const currentUser = await supabase.auth.getUser();
-      const userId = currentUser.data.user?.id;
-
-      const changeAmount = data.change || 0;
-      let changeAssigned = false;
-      for (const payment of data.payments) {
-        if (payment.amount > 0) {
-          const isCashChange = !changeAssigned && changeAmount > 0 && payment.method === 'cash';
-          if (isCashChange) changeAssigned = true;
-          const { error: paymentError } = await supabase
-            .from('payments')
-            .insert({
-              organization_id: saleData.organization_id,
-              branch_id: saleData.branch_id,
-              source: 'sale',
-              source_id: saleId,
-              method: payment.method,
-              amount: payment.amount,
-              currency: baseCurrency.code,
-              status: 'completed',
-              created_by: userId || null,
-              payment_date: now,
-              change_amount: isCashChange ? changeAmount : 0,
-            });
-
-          if (paymentError) {
-            console.error('Error registrando pago en payments:', paymentError);
-          }
-        }
-      }
-
-      // 3. Actualizar o crear factura asociada con items
-      const { data: existingInvoice } = await supabase
-        .from('invoice_sales')
-        .select('id')
-        .eq('sale_id', saleId)
-        .maybeSingle();
-
-      let invoiceId: string | null = null;
-
-      if (existingInvoice) {
-        invoiceId = existingInvoice.id;
-        await supabase
-          .from('invoice_sales')
-          .update({
-            subtotal: data.subtotal,
-            tax_total: data.tax_total,
-            total: data.total,
-            balance,
-            status: balance > 0 ? 'partial' : 'paid',
-            tax_included: data.tax_included || false,
-            payment_method: data.payments.length > 0 ? data.payments[0].method : 'cash',
-            updated_at: now,
-          })
-          .eq('sale_id', saleId);
-      } else {
-        const invoiceNumber = await generateInvoiceNumberUtil(saleData.organization_id, 'FACT');
-
-        const { data: newInvoice, error: invoiceError } = await supabase
-          .from('invoice_sales')
-          .insert({
-            organization_id: saleData.organization_id,
-            branch_id: saleData.branch_id,
-            customer_id: saleData.customer_id || null,
-            sale_id: saleId,
-            number: invoiceNumber,
-            issue_date: now,
-            due_date: now,
-            currency: baseCurrency.code,
-            subtotal: data.subtotal,
-            tax_total: data.tax_total,
-            total: data.total,
-            balance,
-            status: balance > 0 ? 'partial' : 'paid',
-            tax_included: data.tax_included || false,
-            payment_method: data.payments.length > 0 ? data.payments[0].method : 'cash',
-            payment_terms: 0,
-            created_by: userId || null,
-            notes: `Factura generada desde Mesa - Venta #${saleId}`,
-          })
-          .select()
-          .single();
-
-        if (invoiceError) {
-          console.error('Error creando factura:', invoiceError);
-        } else {
-          invoiceId = newInvoice.id;
-        }
-      }
-
-      // 4. Crear invoice_items si hay factura y no existen items
-      if (invoiceId) {
-        const { data: existingItems } = await supabase
-          .from('invoice_items')
-          .select('id')
-          .eq('invoice_sales_id', invoiceId)
-          .limit(1);
-
-        if (!existingItems || existingItems.length === 0) {
-          // Obtener sale_items para crear invoice_items
-          const { data: saleItems } = await supabase
-            .from('sale_items')
-            .select(`
-              id, product_id, quantity, unit_price, total, tax_amount, tax_rate, discount_amount, notes
-            `)
-            .eq('sale_id', saleId);
-
-          if (saleItems && saleItems.length > 0) {
-            const productIds = saleItems.map(si => si.product_id).filter(id => id);
-            const { data: productsData } = await supabase
-              .from('products')
-              .select('id, name, description')
-              .in('id', productIds);
-
-            const productMap = new Map((productsData || []).map(p => [p.id, p]));
-
-            // F-42: la tarifa de cada línea sale del resolver único. Manda la
-            // tarifa guardada en sale_items si la hay; si no, el resolver sigue
-            // con los impuestos del producto y los de la organización por
-            // defecto, que son los mismos que usó la mesa para calcular el
-            // impuesto al agregar el producto. El modo incluido/no incluido es
-            // el de la factura, y el descuento de la línea (promociones) entra
-            // en total_line para que la línea sea coherente con la cabecera.
-            const taxIncludedFactura = data.tax_included || false;
-            const invoiceItems = await Promise.all(saleItems.map(async (item) => {
-              const product = productMap.get(item.product_id);
-              const description = product
-                ? `${product.name}${product.description ? ' - ' + product.description : ''}`
-                : `Producto ID: ${item.product_id}`;
-              const discountAmount = Number(item.discount_amount) || 0;
-              const resolved = await resolveLineTax({
-                itemTaxRate: Number(item.tax_rate) || 0,
-                productId: item.product_id || null,
-                organizationId: saleData.organization_id,
-                taxIncluded: taxIncludedFactura,
-                qty: Number(item.quantity) || 0,
-                unitPrice: Number(item.unit_price) || 0,
-                discountAmount,
-              });
-
-              return {
-                invoice_id: invoiceId,
-                invoice_sales_id: invoiceId,
-                invoice_type: 'sale',
-                product_id: item.product_id,
-                description: description.substring(0, 255),
-                qty: item.quantity,
-                unit_price: item.unit_price,
-                total_line: resolved.total_line,
-                tax_rate: resolved.tax_rate,
-                tax_code: resolved.tax_code,
-                tax_included: resolved.tax_included,
-                discount_amount: discountAmount,
-              };
-            }));
-
-            const { error: itemsError } = await supabase
-              .from('invoice_items')
-              .insert(invoiceItems);
-
-            if (itemsError) {
-              console.error('Error creando invoice_items:', itemsError);
-            }
-          }
-        }
-      }
-
-      // 5. Crear cuenta por cobrar si hay balance pendiente y cliente
-      if (balance > 0 && saleData.customer_id) {
-        const { error: arError } = await supabase
-          .from('accounts_receivable')
-          .insert({
-            organization_id: saleData.organization_id,
-            branch_id: saleData.branch_id,
-            customer_id: saleData.customer_id,
-            invoice_id: invoiceId,
-            sale_id: saleId,
-            amount: data.total,
-            balance,
-            due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            status: 'partial',
-          });
-
-        if (arError) {
-          console.error('Error creando cuenta por cobrar:', arError);
-        }
-      }
-
-      // Los pagos de ventas de mesa se registran en la tabla payments.
-      // No se crean cash_movements para evitar doble conteo en el cierre de caja.
-
-      // Nota: el asiento contable (journal_entries + journal_lines) NO se crea aquí.
-      // Ya existe un trigger de base de datos (trg_auto_journal_sale_pos ->
-      // fn_auto_journal_sale_pos) que se dispara automáticamente cuando `sales.status`
-      // pasa a 'paid' (ver paso 1 de este método) y genera el asiento usando las
-      // cuentas configuradas en `accounting_rules` por organización. Crearlo también
-      // aquí manualmente generaba asientos duplicados (source='sale' vs 'sales' del
-      // trigger) y errores de FK por usar códigos de cuenta hardcodeados que no
-      // existen para todas las organizaciones.
-
-      // 7. Descontar stock de los items vendidos
-      try {
-        const { data: saleItemsForStock } = await supabase
-          .from('sale_items')
-          .select('product_id, quantity, unit_price')
-          .eq('sale_id', saleId);
-
-        if (saleItemsForStock && saleItemsForStock.length > 0) {
-          const stockResult = await stockMovementService.decrementOnSale(
-            saleData.organization_id,
-            saleData.branch_id,
-            saleId,
-            saleItemsForStock.map((item: any) => ({
-              product_id: item.product_id,
-              quantity: Number(item.quantity),
-              unit_price: Number(item.unit_price),
-            })),
-            'mesa_sale'
-          );
-          if (stockResult.errors.length > 0) {
-            console.warn('⚠️ Algunos items no descontaron stock:', stockResult.errors);
-          }
-          console.log(`📦 Stock descontado (mesa): ${saleItemsForStock.length - stockResult.skipped} items procesados`);
-        }
-      } catch (stockError) {
-        console.warn('⚠️ Error descontando stock (no bloquea la venta):', stockError);
-      }
-
-      // 7.1. Vender seriales si hay productos serializados con seriales seleccionados
-      if (data.serial_selections) {
-        try {
-          const serialUserId = await supabase.auth.getUser().then(u => u.data.user?.id);
-          // Obtener items de la venta para mapear product_id -> unit_price
-          const { data: saleItemsForSerials } = await supabase
-            .from('sale_items')
-            .select('product_id, unit_price')
-            .eq('sale_id', saleId);
-
-          for (const item of saleItemsForSerials ?? []) {
-            const serialIds = data.serial_selections[item.product_id];
-            if (!serialIds || serialIds.length === 0) continue;
-
-            const { success: serialOk, errors: serialErrors } = await serialTrackingService.sellSerials(
-              serialIds,
-              {
-                sale_id: saleId,
-                customer_id: saleData.customer_id ?? undefined,
-                sold_by_user_id: serialUserId ?? undefined,
-                sale_channel: 'table',
-                price_at_sale: Number(item.unit_price),
-                branch_id: saleData.branch_id,
-              },
-              serialUserId ?? undefined
-            );
-
-            if (!serialOk) {
-              console.warn(`⚠️ Errores vendiendo seriales para producto ${item.product_id}:`, serialErrors);
-            } else {
-              console.log(`✅ ${serialIds.length} seriales vendidos (mesa) para producto ${item.product_id}`);
-            }
-          }
-        } catch (serialError) {
-          console.warn('⚠️ Error vendiendo seriales (no bloquea la venta):', serialError);
-        }
-      }
-
-      // 8. Crear registro de comisión si aplica
-      if (data.salesperson_id && data.commission_rate && data.commission_rate > 0 && data.commission_type && data.commission_type !== 'none') {
-        try {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', data.salesperson_id)
-            .single();
-
-          let salespersonName = 'N/A';
-          if (profileData) {
-            salespersonName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'N/A';
-          }
-
-          const baseAmount = data.subtotal > 0 ? data.subtotal : data.total;
-          const commissionAmount = data.commission_method === 'fixed_amount'
-            ? data.commission_rate
-            : Math.round(baseAmount * data.commission_rate / 100 * 100) / 100;
-
-          const { error: commissionInsertError } = await supabase
-            .from('commissions')
-            .insert({
-              organization_id: saleData.organization_id,
-              branch_id: saleData.branch_id,
-              commission_type: data.commission_type,
-              source_type: 'sale',
-              source_id: saleId,
-              payee_type: 'employee',
-              payee_id: data.salesperson_id,
-              payee_name: salespersonName,
-              base_amount: baseAmount,
-              commission_rate: data.commission_rate,
-              commission_amount: commissionAmount,
-              currency: baseCurrency.code,
-              status: 'accrued',
-              accrued_at: now,
-              created_by: userId || null,
-              metadata: { sale_id: saleId, commission_method: data.commission_method || 'percentage', source: 'mesa' },
-            });
-          if (commissionInsertError) {
-            console.error('Error al crear registro de comisión (mesa):', commissionInsertError);
-          }
-        } catch (commissionErr) {
-          console.error('Error al crear registro de comisión (mesa catch):', commissionErr);
-        }
-      }
-
-      return {
-        id: saleData.id,
-        total: saleData.total,
-        status: saleData.status,
-      };
-    } catch (error: any) {
-      console.error('Error completando venta de mesa:', error);
       throw error;
     }
   }

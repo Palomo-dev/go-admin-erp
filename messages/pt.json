@@ -9351,7 +9351,9 @@
       "periodo_cerrado": "O período contábil de hoje está fechado.",
       "PROPINA_DISTRIBUIDA": "A gorjeta já foi distribuída: a venda não pode ser cancelada. {detalle}",
       "pago_en_caja_cerrada": "O pagamento entrou em um caixa já fechado: registre uma devolução.",
-      "pago_no_anulable": "Um dos pagamentos não pode ser cancelado aqui. {detalle}"
+      "pago_no_anulable": "Um dos pagamentos não pode ser cancelado aqui. {detalle}",
+      "sesion_mesa_invalida": "A mesa não está mais aberta com esta conta. Reabra a mesa e cobre novamente.",
+      "no_es_venta_de_mesa": "Esta venda não é a conta de uma mesa."
     },
     "ventaAnulada": "Venda cancelada: pagamentos, estoque e fatura foram revertidos.",
     "anulacionFallida": "Não foi possível cancelar a venda",

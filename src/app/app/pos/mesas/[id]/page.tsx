@@ -55,7 +55,8 @@ import type {
   PreCuenta,
   SaleItem,
 } from '@/components/pos/mesas/id/types';
-import type { Cart, Customer, Sale, CheckoutData } from '@/components/pos/types';
+import type { Cart, CartItem, Customer, Sale, CheckoutData, CobroVentaExistente } from '@/components/pos/types';
+import { POSService } from '@/lib/services/posService';
 import type { TableWithSession } from '@/components/pos/mesas/types';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useTranslations } from 'next-intl';
@@ -961,37 +962,10 @@ export default function MesaDetallePage() {
       throw new Error('Se requiere una sucursal para procesar');
     }
 
-    // Solo incluir items NO pagados
-    const unpaidItems = (session.sale_items || []).filter(item => !(item as any).paid_at);
-    
-    const items = unpaidItems.map((item) => {
-      // Obtener nombre del producto de múltiples fuentes
-      const productData = (item as any).product;
-      // notes puede ser string o objeto JSON
-      const notesObj = typeof item.notes === 'string' ? JSON.parse(item.notes || '{}') : (item.notes || {});
-      const productName = productData?.name || notesObj?.product_name || 'Producto';
-      
-      return {
-        id: item.id,
-        cart_id: session.sale_id!,
-        product_id: item.product_id || 0,
-        quantity: Number(item.quantity),
-        unit_price: Number(item.unit_price),
-        total: Number(item.total),
-        tax_amount: Number(item.tax_amount || 0),
-        tax_rate: 0,
-        discount_amount: Number(item.discount_amount || 0),
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        product: {
-          id: item.product_id || productData?.id || 0,
-          name: productName,
-          sku: productData?.sku || '',
-          status: 'active',
-          organization_id: session.organization_id,
-        } as any,
-      };
-    });
+    // La tasa y el modo de impuesto de lo que se cobra los decide el diálogo
+    // de cobro, como siempre y como en el mostrador (unificar los motores de
+    // impuestos es decisión pendiente): aquí no se cambia su cálculo.
+    const items = lineasSinPagarComoCarrito().map((item) => ({ ...item, tax_rate: 0, tax_included: undefined }));
 
     // Usar totales calculados por el hook useMesaTaxes (MesaTaxBreakdown) si están disponibles
     // Esto asegura que el CheckoutDialog reciba los mismos totales que muestra el sidebar
@@ -1036,38 +1010,75 @@ export default function MesaDetallePage() {
     };
   };
 
-  // Callback para procesar pago de mesa: actualiza venta existente en vez de crear nueva
+  // Líneas sin pagar de la cuenta como líneas de carrito. Llevan la tasa y el
+  // modo de impuesto guardados en la línea (si los tiene) para que el cobro
+  // use los mismos con los que se calculó al pedir.
+  const lineasSinPagarComoCarrito = (): CartItem[] => {
+    if (!session || !session.sale_id) return [];
+    const unpaidItems = (session.sale_items || []).filter(item => !(item as any).paid_at);
+
+    return unpaidItems.map((item) => {
+      // Obtener nombre del producto de múltiples fuentes
+      const productData = (item as any).product;
+      // notes puede ser string o objeto JSON
+      const notesObj = typeof item.notes === 'string' ? JSON.parse(item.notes || '{}') : (item.notes || {});
+      const productName = productData?.name || notesObj?.product_name || 'Producto';
+      
+      return {
+        id: item.id,
+        cart_id: session.sale_id!,
+        product_id: item.product_id || 0,
+        quantity: Number(item.quantity),
+        unit_price: Number(item.unit_price),
+        total: Number(item.total),
+        tax_amount: Number(item.tax_amount || 0),
+        tax_rate: Number(item.tax_rate) || 0,
+        tax_included: item.tax_included ?? undefined,
+        discount_amount: Number(item.discount_amount || 0),
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        product: {
+          id: item.product_id || productData?.id || 0,
+          name: productName,
+          sku: productData?.sku || '',
+          status: 'active',
+          organization_id: session.organization_id,
+        } as any,
+      };
+    });
+  };
+
+  // Cobro de la mesa: el mismo cobro del POS (pos_checkout_v1 en modo
+  // 'settle' sobre la venta de la sesión), en una transacción e idempotente
+  // por el intento del diálogo. El servidor valida la sesión, recalcula la
+  // cuenta con la regla única, valida precios y descuentos, registra pagos,
+  // factura, propina, comisión, stock ('mesa_sale') y seriales, y marca las
+  // líneas pagadas de una cuenta dividida. Antes lo hacía el navegador en N
+  // escrituras (completarVentaMesa), con la cartera escrita a mano y sin
+  // idempotencia. La mesa la libera después pos_mesa_liberar (saldo 0).
   const handleProcessPayment = async (checkoutData: CheckoutData): Promise<Sale> => {
     if (!session?.sale_id) {
       throw new Error('No hay venta asociada a la sesión');
     }
 
-    const result = await PedidosService.completarVentaMesa(session.sale_id, {
-      payments: checkoutData.payments,
-      total_paid: checkoutData.total_paid,
-      change: checkoutData.change,
-      tip_amount: checkoutData.tip_amount,
-      tip_server_id: checkoutData.tip_server_id,
-      tax_included: checkoutData.tax_included,
-      tax_breakdown: checkoutData.tax_breakdown,
-      subtotal: checkoutData.cart.subtotal,
-      tax_total: checkoutData.cart.tax_total,
-      total: checkoutData.cart.total,
+    const splitActual = billSplits && billSplits.length > 0 ? billSplits[currentSplitIndex] : null;
+    const idsDelCobro = new Set(checkoutData.cart.items.map((i) => String(i.id)));
+    const settle: CobroVentaExistente = {
+      sale_id: session.sale_id,
       table_session_id: session.id,
-      salesperson_id: checkoutData.salesperson_id,
-      commission_rate: checkoutData.commission_rate,
-      commission_type: checkoutData.commission_type,
-      commission_method: checkoutData.commission_method,
-      commission_amount: checkoutData.commission_amount,
-      serial_selections: checkoutData.serial_selections,
-    });
+      ...(splitActual
+        ? {
+            split_id: splitActual.id,
+            paid_sale_item_ids: splitActual.items.map((si) => String(si.item.id)),
+            lineas_sin_cobrar: lineasSinPagarComoCarrito().filter(
+              (i) => !idsDelCobro.has(String(i.id))
+                && (session.sale_items || []).some((si) => si.id === i.id && si.sale_id === session.sale_id),
+            ),
+          }
+        : {}),
+    };
 
-    // Retornar como Sale para compatibilidad con CheckoutDialog
-    return {
-      id: result.id,
-      total: result.total,
-      status: result.status,
-    } as Sale;
+    return POSService.checkout({ ...checkoutData, settle });
   };
 
   const handleCheckout = () => {
@@ -1307,21 +1318,10 @@ export default function MesaDetallePage() {
       // Si hay splits, marcar como pagado y volver al selector
       if (billSplits && billSplits.length > 0) {
         const currentSplit = billSplits[currentSplitIndex];
-        
-        // Marcar items del split como pagados en la base de datos
-        if (currentSplit.items.length > 0) {
-          const { supabase } = await import('@/lib/supabase/config');
-          const itemIds = currentSplit.items.map(si => si.item.id);
-          
-          await supabase
-            .from('sale_items')
-            .update({
-              paid_at: new Date().toISOString(),
-              paid_by_split_id: currentSplit.id
-            })
-            .in('id', itemIds);
-        }
-        
+
+        // Las líneas del split ya quedaron pagadas en el servidor, en la misma
+        // transacción del cobro (paid_sale_item_ids de pos_checkout_v1).
+
         // Marcar split como pagado
         const newPaidIds = [...paidSplitIds, currentSplit.id];
         setPaidSplitIds(newPaidIds);

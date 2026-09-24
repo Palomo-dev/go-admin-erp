@@ -8,6 +8,10 @@ export interface SaleItem {
   unit_price: number;
   total: number;
   tax_amount: number;
+  /** Tasa de impuesto de la línea (% ; la suma de los impuestos aplicados). */
+  tax_rate?: number | null;
+  /** Modo de impuesto de la línea; null en líneas anteriores al 2026-09-24. */
+  tax_included?: boolean | null;
   discount_amount: number;
   notes: string | {
     product_name?: string;
@@ -161,6 +165,10 @@ export interface ProductToAdd {
   modifiers?: SelectedProductModifier[];
   /** La nota es una alergia: la comanda no se empieza sin confirmarla en cocina. */
   is_allergy?: boolean;
+  /** Para las promociones por categoría (igual que en el mostrador). */
+  category_id?: number | null;
+  /** Variante: su producto padre, para que una promoción sobre el padre la alcance. */
+  parent_product_id?: number | null;
 }
 
 export interface TransferItemData {

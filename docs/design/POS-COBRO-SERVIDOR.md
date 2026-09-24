@@ -11,6 +11,55 @@ Datos: conteos por MCP, sin datos personales; organizaciones solo por id.
 
 ---
 
+## 1. La mesa cobra con el mismo cobro del POS (punto 1)
+
+- **Antes:** `completarVentaMesa` (`pedidosService.ts`) reimplementaba el cobro desde el navegador
+  en N escrituras sin transacción: cabecera con los totales que mandaba la pantalla, pagos con
+  `source = 'sale'` antes de que existiera la factura, factura y líneas, **cartera escrita a mano**,
+  stock, seriales y comisión; sin idempotencia. Los totales de la cuenta
+  (`recalcularTotalVenta`, `generarPreCuenta`) sumaban precio × cantidad + impuesto − descuento:
+  con el impuesto incluido en el precio **el IVA contaba dos veces**; además el saldo se pisaba con el
+  total aunque hubiera pagos parciales. Cambiar la cantidad dejaba el descuento fijo, y las
+  promociones de la mesa no recibían categoría ni producto padre.
+- **Daño medido (2026-09-24, no corregido):** 9 ventas de mesa pagadas con pagos por encima de su
+  total en 3 organizaciones, 7 de ellas con pagos idénticos repetidos (reintentos). 16 mesas abiertas
+  en este momento, todas con líneas anteriores al modo de impuesto guardado: al cobrarlas con el
+  front nuevo sus líneas reciben tasa y modo y se recalculan con la regla única (también las que no
+  entran en la parte que se paga, vía `lineas_sin_cobrar`).
+- **Ahora** (migración `20260925140300_pos_mesa_cobra_con_pos_checkout`, parche sobre las
+  definiciones vivas):
+  - `fn_pos_linea_totales`: la regla única de la línea en SQL (la de `calcularLineaVenta`).
+  - `fn_pos_recalcular_venta` (interna) y `pos_mesa_recalcular_venta` (RPC, con pertenencia y
+    sucursal): líneas con la regla única y cabecera = líneas + flete + propina; saldo = total −
+    pagado. Solo toca cuentas pendientes.
+  - `pos_cocina_ajustar_linea_mesa`: el descuento escala con la cantidad, la línea sigue la regla
+    única y la cabecera se recalcula en la misma transacción.
+  - `pos_checkout_v1` modo `settle` con `table_session_id`: valida la sesión (activa, de la
+    organización y de esa venta; si no, `sesion_mesa_invalida`), toma la tasa y el modo de impuesto
+    de cada línea del cobro (`sale_item_id`; cantidad, precio y descuento salen de la base),
+    recalcula, **valida precio, modificadores y descuento de las líneas sin pagar** (§3), descuenta
+    stock como `mesa_sale` en la sucursal de la venta, rehace las líneas de la factura si la cuenta
+    cambió entre cobros (solo sin DIAN), marca pagadas las líneas de una cuenta dividida
+    (`paid_sale_item_ids`, `split_id`) y liga la sesión. Idempotente por la llave del intento (§6).
+    La mesa la sigue soltando `pos_mesa_liberar` (verifica saldo 0).
+  - Cliente: la página de la mesa llama a `POSService.checkout` con `settle`; `completarVentaMesa`
+    ya no existe; la página ya no marca `paid_at` desde el navegador. En una cuenta dividida viajan
+    también las demás líneas sin pagar (`lineas_sin_cobrar`), solo para que el servidor conozca su
+    tasa: no suman al cobro. `agregarProductos` calcula la línea con `calcularLineaVenta` (resta el
+    descuento) y guarda `tax_rate` y `tax_included`; las promociones reciben categoría y padre;
+    `transferirItem` lleva al destino su parte del descuento y la tasa y el modo de la línea.
+- **Qué NO cambia:** la tasa de impuesto la sigue decidiendo el diálogo de cobro (igual que en el
+  mostrador) y el desglose de la mesa (`useMesaTaxes`) sigue siendo el de siempre: unificar los
+  motores y «Excluir impuesto» es decisión pendiente. Si lo que el diálogo cobra no cubre el total
+  que recalcula el servidor, la venta queda con saldo y «Liberar mesa» lo muestra (antes el total
+  del navegador se aceptaba tal cual).
+
+Pruebas en transacción deshecha (org de prueba 120): cuenta con impuesto incluido → total 57.500
+sin IVA doble; cantidad 1 → 2 con descuento 1.000 → descuento 2.000 y total 76.000; precio de mesa
+manipulado rechazado; cuenta dividida (parte B parcial y luego pagada, factura con 2 líneas);
+reintento del mismo intento sin duplicar pagos; plato agregado entre cobros → factura rehecha con 3
+líneas por 115.000, pagada, saldo de la mesa 0.
+
 ## 2. Venta duplicada al reintentar (punto 2)
 
 - **Antes:** en el navegador `POSService.checkout` generaba el `sale_id` en cada llamada (el
@@ -152,3 +201,14 @@ cobrar de nuevo una venta pagada rechazado; anular sin permiso y sin motivo rech
 deuda cobrada (2 pagos y 2 asientos revertidos, propina anulada, NC por −44.000, factura anulada);
 anular dos veces → `ya_anulada`; cobrar una venta anulada rechazado; venta de mostrador anulada
 (stock 100 → 97 → 100 con kardex de entrada); pago en caja cerrada → `caja_cerrada`.
+
+## 7. Carritos por sucursal (punto 7)
+
+- **Antes:** `pos_carts_<org>` (almacenamiento local) guarda en una sola lista los carritos de todas
+  las sucursales. El POS de la sede A mostraba, cobraba y fiaba carritos creados en la B (el efectivo
+  entraba en la caja equivocada), y nueve mutaciones del servicio guardaban la lista *filtrada*:
+  borraban de paso los carritos en deuda.
+- **Ahora:** `getActiveCarts(branchId?)` filtra por la sucursal del POS (un carrito sin `branch_id`,
+  anterior al filtro, se sigue mostrando); las mutaciones leen y guardan la lista completa y solo
+  editan carritos vivos. La deuda y el cobro de la deuda usan la sucursal **del carrito** (§6), no la
+  seleccionada en otra pestaña. Commit `86194915`.

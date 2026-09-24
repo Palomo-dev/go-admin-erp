@@ -5,7 +5,7 @@ import { resolveLineTax } from '@/lib/services/taxResolver';
 import { promotionEngine } from '@/lib/services/promotionEngine';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { enqueueOfflineSale, shouldCheckoutOffline, newLocalUuid, newSaleId } from '@/lib/offline/salesOutbox';
-import { buildCheckoutEnvelope, callCheckoutRpc } from '@/lib/offline/checkoutRpc';
+import { buildCheckoutEnvelope, callCheckoutRpc, type LineaMesaSinCobrar } from '@/lib/offline/checkoutRpc';
 import { enqueueOfflineCustomer, findLocalCustomerDuplicate, type OfflineCustomerPayload } from '@/lib/offline/customersOutbox';
 import { posOfflineReads } from '@/lib/offline/posOfflineReads';
 import { isDesktop } from '@/lib/utils/desktop';
@@ -1591,41 +1591,58 @@ export class POSService {
         discount: number;
       }> = [];
 
-      for (const item of cart.items) {
-        const itemDiscount = item.discount_amount || 0;
-        const itemTaxIncluded = item.tax_included ?? checkoutTaxIncluded;
-
-        // F-42: Resolver impuestos con el resolver único (mismo orden que NuevaFacturaForm
-        // y cotizacionesService): item → product_tax_relations → org default → 0.
-        let itemTaxRate = Number(item.tax_rate) || 0;
-        let itemTaxCode: string | null = null;
-        if (!itemTaxRate && item.product_id) {
-          try {
-            const resolved = await resolveLineTax({
-              itemTaxRate: item.tax_rate,
-              itemTaxCode: null,
-              productId: item.product_id,
-              organizationId: this.organizationId,
-              taxIncluded: itemTaxIncluded,
-              qty: item.quantity || 1,
-              unitPrice: item.unit_price || 0,
-              discountAmount: itemDiscount,
-            });
-            itemTaxRate = resolved.tax_rate;
-            itemTaxCode = resolved.tax_code;
-          } catch (taxErr) {
-            console.warn('No se pudieron obtener impuestos del producto', item.product_id, taxErr);
-          }
+      // F-42: tasa de la línea con el resolver único (mismo orden que
+      // NuevaFacturaForm y cotizacionesService): item → product_tax_relations
+      // → org default → 0.
+      const tasaDeLinea = async (item: CartItem, itemTaxIncluded: boolean): Promise<number> => {
+        const tasaPropia = Number(item.tax_rate) || 0;
+        if (tasaPropia || !item.product_id) return tasaPropia;
+        try {
+          const resolved = await resolveLineTax({
+            itemTaxRate: item.tax_rate,
+            itemTaxCode: null,
+            productId: item.product_id,
+            organizationId: this.organizationId,
+            taxIncluded: itemTaxIncluded,
+            qty: item.quantity || 1,
+            unitPrice: item.unit_price || 0,
+            discountAmount: item.discount_amount || 0,
+          });
+          return resolved.tax_rate;
+        } catch (taxErr) {
+          console.warn('No se pudieron obtener impuestos del producto', item.product_id, taxErr);
+          return 0;
         }
+      };
 
+      for (const item of cart.items) {
+        const itemTaxIncluded = item.tax_included ?? checkoutTaxIncluded;
         // Regla única de la línea (la misma que valida pos_checkout_v1).
         itemCalcs.push(calcularLineaVenta({
           quantity: item.quantity,
           unit_price: item.unit_price,
-          discount_amount: itemDiscount,
-          tax_rate: itemTaxRate,
+          discount_amount: item.discount_amount || 0,
+          tax_rate: await tasaDeLinea(item, itemTaxIncluded),
           tax_included: itemTaxIncluded,
         }));
+      }
+
+      // Cuenta dividida de una mesa: el resto de líneas sin pagar no se cobra
+      // en este intento, pero el servidor necesita su tasa para recalcular y
+      // validar la cuenta entera (misma resolución que las líneas cobradas).
+      const lineasMesa: LineaMesaSinCobrar[] = [];
+      if (checkoutData.settle?.table_session_id) {
+        for (const item of checkoutData.settle.lineas_sin_cobrar ?? []) {
+          const itemTaxIncluded = item.tax_included ?? checkoutTaxIncluded;
+          lineasMesa.push({
+            sale_item_id: String(item.id),
+            product_id: item.product_id ?? null,
+            quantity: item.quantity,
+            unit_price: item.unit_price || 0,
+            tax_rate: await tasaDeLinea(item, itemTaxIncluded),
+            tax_included: itemTaxIncluded,
+          });
+        }
       }
       ({
         subtotal: calculatedSubtotal,
@@ -1701,6 +1718,7 @@ export class POSService {
               mode: 'settle' as const,
               paymentKey: checkoutData.attemptId || newSaleId(),
               settle: checkoutData.settle,
+              lineasMesa,
             }
           : {}),
       });

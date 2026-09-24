@@ -62,3 +62,36 @@ export function totalesDeLineas(lineas: LineaVentaCalculada[]): {
   }
   return { subtotal, taxTotal, discountTotal, total };
 }
+
+/** Línea ya guardada en `sale_items` (su total e impuesto salieron de la regla única). */
+export interface LineaGuardada {
+  quantity: number | string | null;
+  total: number | string | null;
+  tax_amount?: number | string | null;
+  discount_amount?: number | string | null;
+}
+
+/**
+ * Totales de una cuenta desde sus líneas guardadas: la misma suma que hace
+ * `fn_pos_recalcular_venta` en la base (subtotal = total − impuesto; solo
+ * líneas con cantidad). Nunca precio × cantidad + impuesto: con el impuesto
+ * incluido en el precio eso cuenta el IVA dos veces.
+ */
+export function totalesDeLineasGuardadas(lineas: LineaGuardada[]): {
+  subtotal: number;
+  taxTotal: number;
+  discountTotal: number;
+  total: number;
+} {
+  let taxTotal = 0;
+  let discountTotal = 0;
+  let total = 0;
+  for (const l of lineas) {
+    if (!(Number(l.quantity) > 0)) continue;
+    taxTotal += Number(l.tax_amount) || 0;
+    discountTotal += Number(l.discount_amount) || 0;
+    total += Number(l.total) || 0;
+  }
+  const r = (n: number) => Math.round(n * 100) / 100;
+  return { subtotal: r(total - taxTotal), taxTotal: r(taxTotal), discountTotal: r(discountTotal), total: r(total) };
+}

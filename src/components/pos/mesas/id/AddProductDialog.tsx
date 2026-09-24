@@ -168,7 +168,16 @@ export function AddProductDialog({
       categoria: variant.categories?.station ?? selectedParentProduct?.categories?.station,
     });
     const inheritedRequiresPreparation = selectedParentProduct?.categories?.requires_preparation ?? false;
-    addToCart({ ...variant, station: inheritedStation, requires_preparation: inheritedRequiresPreparation, categories: selectedParentProduct?.categories }, modifiers);
+    addToCart({
+      ...variant,
+      station: inheritedStation,
+      requires_preparation: inheritedRequiresPreparation,
+      categories: selectedParentProduct?.categories,
+      // Promociones por categoría o sobre el padre (igual que en el mostrador).
+      category_id: variant.category_id ?? selectedParentProduct?.category_id ?? null,
+      parent_product_id: variant.parent_product_id
+        ?? (selectedParentProduct && selectedParentProduct.id !== variant.id ? selectedParentProduct.id : null),
+    }, modifiers);
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
     // Retrasar reset del ref para prevenir race condition en móvil
@@ -278,6 +287,8 @@ export function AddProductDialog({
         guest_number: comensales > 1 ? 1 : undefined,
         variant_data: product.variant_data || null,
         modifiers: modifiers.length > 0 ? modifiers : undefined,
+        category_id: product.category_id ?? product.categories?.id ?? null,
+        parent_product_id: product.parent_product_id ?? null,
       });
     }
 

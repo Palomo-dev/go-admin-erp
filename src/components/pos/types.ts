@@ -342,6 +342,21 @@ export interface CheckoutData {
 /** Datos del cobro de una venta que ya existe (mesa). */
 export interface CobroVentaExistente {
   sale_id: string;
+  /**
+   * Sesión de la mesa: el servidor la valida, toma la tasa de impuesto de
+   * cada línea del cobro, recalcula la cuenta y liga la sesión a la venta.
+   */
+  table_session_id?: string;
+  /** Cuenta dividida por platos: las líneas que paga este cobro. */
+  paid_sale_item_ids?: string[];
+  /** Cuenta dividida: id de la parte que se paga (queda en `paid_by_split_id`). */
+  split_id?: string;
+  /**
+   * Cuenta dividida: el resto de líneas sin pagar. No se cobran en este
+   * intento; el servidor solo toma su tasa de impuesto para recalcular y
+   * validar la cuenta entera.
+   */
+  lineas_sin_cobrar?: CartItem[];
 }
 
 // Para impuestos

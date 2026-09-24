@@ -33,6 +33,9 @@ export const CODIGOS_ERROR_COBRO = [
   // De fn_anular_pago (anulación única de pagos), llamada por pos_anular_venta_v1.
   'pago_en_caja_cerrada',
   'pago_no_anulable',
+  // Punto 1: la mesa cobra con pos_checkout_v1.
+  'sesion_mesa_invalida',
+  'no_es_venta_de_mesa',
 ] as const;
 
 export type CodigoErrorCobro = (typeof CODIGOS_ERROR_COBRO)[number];

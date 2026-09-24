@@ -9456,7 +9456,9 @@
       "periodo_cerrado": "Today's accounting period is closed.",
       "PROPINA_DISTRIBUIDA": "The tip was already distributed: the sale cannot be voided. {detalle}",
       "pago_en_caja_cerrada": "The payment went into a cash session that is already closed: record a return.",
-      "pago_no_anulable": "One of the payments cannot be voided from here. {detalle}"
+      "pago_no_anulable": "One of the payments cannot be voided from here. {detalle}",
+      "sesion_mesa_invalida": "The table is no longer open with this bill. Reopen the table and charge again.",
+      "no_es_venta_de_mesa": "This sale is not a table bill."
     },
     "ventaAnulada": "Sale voided: payments, stock and invoice were reversed.",
     "anulacionFallida": "The sale could not be voided",

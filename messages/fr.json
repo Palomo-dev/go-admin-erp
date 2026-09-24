@@ -9391,5 +9391,322 @@
   },
   "cuentasPorPagar": {
     "titulo": "Comptes fournisseurs"
+  },
+  "documentos": {
+    "tipos": {
+      "factura-venta": "Facture de vente",
+      "factura-venta-electronica": "Facture de vente électronique",
+      "nota-credito": "Avoir",
+      "cotizacion": "Devis",
+      "factura-compra": "Facture d'achat",
+      "documento-soporte": "Document justificatif",
+      "estado-cuenta": "Relevé de compte",
+      "recibo-caja": "Reçu de caisse",
+      "comprobante-egreso": "Bon de décaissement",
+      "cierre-caja": "Clôture de caisse",
+      "reporte-caja-abierta": "Rapport de caisse ouverte",
+      "arqueo-caja": "Comptage de caisse"
+    },
+    "sinNumero": "Sans numéro",
+    "paginacion": {
+      "pagina": "Page",
+      "de": "sur"
+    },
+    "emisor": {
+      "nit": "N° fiscal {nit}",
+      "actividad": "Activité économique (CITI) : {codigo}",
+      "responsabilidades": "Responsabilités fiscales : {lista}"
+    },
+    "partes": {
+      "sucursal": "Établissement",
+      "telefono": "Tél. {telefono}",
+      "cliente": "Client",
+      "proveedor": "Fournisseur",
+      "responsable": "Responsable",
+      "tercero": "Tiers",
+      "documento": "Pièce"
+    },
+    "estados": {
+      "draft": "Brouillon",
+      "issued": "Émise",
+      "paid": "Payée",
+      "partial": "Paiement partiel",
+      "void": "Annulée",
+      "voided": "Annulée",
+      "cancelled": "Annulée",
+      "validated": "Acceptée par la DIAN",
+      "sent": "Envoyée",
+      "rejected": "Rejetée",
+      "cotizacion": {
+        "draft": "Brouillon",
+        "quotation": "Devis",
+        "sent": "Envoyé",
+        "accepted": "Accepté",
+        "rejected": "Refusé",
+        "expired": "Expiré",
+        "converted": "Converti"
+      },
+      "compra": {
+        "draft": "Brouillon",
+        "received": "Reçue",
+        "confirmed": "Confirmée",
+        "partial": "Paiement partiel",
+        "paid": "Payée",
+        "void": "Annulée"
+      },
+      "soporte": {
+        "draft": "Brouillon",
+        "pending": "En attente",
+        "sent": "Envoyé",
+        "accepted": "Accepté par la DIAN",
+        "validated": "Accepté par la DIAN",
+        "rejected": "Rejeté"
+      },
+      "pago": {
+        "completed": "Appliqué",
+        "pending": "En attente",
+        "failed": "Échoué",
+        "refunded": "Remboursé",
+        "cancelled": "Annulé",
+        "voided": "Annulé"
+      },
+      "caja": {
+        "abierta": "Ouverte",
+        "cerrada": "Clôturée",
+        "arqueo": {
+          "opening": "Ouverture",
+          "partial": "Partiel",
+          "closing": "Clôture"
+        }
+      }
+    },
+    "qr": {
+      "verificacionDian": "Vérifier auprès de la DIAN",
+      "resumen": "Données du document",
+      "enlacePago": "Payer en ligne"
+    },
+    "bandas": {
+      "documentoTercero": "Document reçu d'un tiers",
+      "borrador": "Brouillon : non valable comme facture, sans numéro ni CUFE.",
+      "anulada": "Document annulé.",
+      "monedaExtranjera": "Document émis en {moneda}, différente de la devise de base de l'organisation.",
+      "noEsFactura": "Ce devis n'est pas une facture.",
+      "cierreCiego": "Clôture à l'aveugle : les montants attendus et les écarts ne sont visibles que par l'administration."
+    },
+    "marcas": {
+      "borrador": "BROUILLON",
+      "anulada": "ANNULÉE",
+      "pagada": "PAYÉE"
+    },
+    "campos": {
+      "fechaEmision": "Date d'émission",
+      "fechaVencimiento": "Échéance",
+      "moneda": "Devise",
+      "formaPago": "Modalité de paiement",
+      "medioPago": "Moyen de paiement",
+      "sucursal": "Établissement",
+      "facturaAfectada": "Facture concernée",
+      "fechaFacturaAfectada": "Date de la facture",
+      "cufeAfectado": "CUFE de la facture",
+      "motivo": "Motif",
+      "validaHasta": "Valable jusqu'au",
+      "condicionesPago": "Conditions de paiement",
+      "banco": "Banque",
+      "cuentaBancaria": "Compte",
+      "plazoCredito": "Délai de crédit",
+      "ordenCompra": "Bon de commande",
+      "sucursalRecibe": "Établissement destinataire",
+      "referencia": "Référence",
+      "fechaPago": "Date du paiement",
+      "documentoAbonado": "Document réglé",
+      "saldoDespues": "Solde restant du document",
+      "origen": "Origine",
+      "desde": "Du",
+      "fechaCorte": "Date d'arrêté",
+      "saldoInicial": "Solde initial",
+      "cargos": "Débits",
+      "abonos": "Crédits",
+      "saldoFinal": "Solde final",
+      "saldoAFavor": "Solde créditeur",
+      "facturasAbiertas": "Factures ouvertes",
+      "montoInicial": "Fonds de caisse",
+      "efectivoEsperado": "Espèces attendues",
+      "efectivoContado": "Espèces comptées",
+      "diferencia": "Écart",
+      "cajero": "Caissier",
+      "apertura": "Ouverture",
+      "cierre": "Clôture",
+      "cerradaPor": "Clôturée par",
+      "caja": "Caisse",
+      "aperturaCaja": "Ouverture de la caisse",
+      "fechaArqueo": "Date du comptage",
+      "contadoPor": "Compté par",
+      "estado": "Statut",
+      "total": "Total"
+    },
+    "formasPago": {
+      "contado": "Comptant",
+      "credito": "Crédit"
+    },
+    "condiciones": {
+      "dias": "{dias} jours",
+      "contado": "Comptant"
+    },
+    "metodosPago": {
+      "cash": "Espèces",
+      "card": "Carte",
+      "transfer": "Virement",
+      "nequi": "Nequi",
+      "daviplata": "Daviplata",
+      "pse": "PSE",
+      "wompi": "Wompi",
+      "qr": "QR",
+      "credit": "Crédit",
+      "check": "Chèque",
+      "other": "Autre"
+    },
+    "lineas": {
+      "impuesto": "Taxe",
+      "incluido": "(incl.)",
+      "seriales": "Numéros de série : {lista}"
+    },
+    "secciones": {
+      "detalle": "Détail",
+      "pagos": "Paiements appliqués",
+      "notas": "Notes",
+      "terminos": "Conditions générales",
+      "movimientos": "Mouvements",
+      "antiguedad": "Ancienneté des créances",
+      "facturasAbiertas": "Factures ouvertes",
+      "porMetodo": "Par moyen de paiement",
+      "movimientosCaja": "Entrées et sorties de caisse",
+      "arqueos": "Comptages",
+      "denominaciones": "Coupures"
+    },
+    "columnas": {
+      "descripcion": "Désignation",
+      "cantidad": "Qté",
+      "precioUnitario": "Prix unit.",
+      "descuento": "Remise",
+      "impuesto": "Taxe",
+      "valor": "Montant",
+      "fecha": "Date",
+      "metodo": "Moyen",
+      "referencia": "Référence",
+      "concepto": "Libellé",
+      "documento": "Document",
+      "cargo": "Débit",
+      "abono": "Crédit",
+      "saldo": "Solde",
+      "corriente": "Non échu",
+      "d1_30": "1-30 jours",
+      "d31_60": "31-60 jours",
+      "d61_90": "61-90 jours",
+      "d90": "Plus de 90 jours",
+      "emision": "Émission",
+      "vencimiento": "Échéance",
+      "diasVencidos": "Jours de retard",
+      "total": "Total",
+      "esperado": "Attendu",
+      "tipo": "Type",
+      "notas": "Notes",
+      "contado": "Compté",
+      "diferencia": "Écart",
+      "denominacion": "Coupure",
+      "subtotal": "Sous-total"
+    },
+    "vacios": {
+      "lineas": "Aucune ligne.",
+      "movimientos": "Aucun mouvement sur la période.",
+      "facturasAbiertas": "Aucune facture ouverte."
+    },
+    "totales": {
+      "subtotal": "Sous-total",
+      "descuentos": "Remises",
+      "impuestos": "Taxes",
+      "impuestoNombrado": "{nombre}",
+      "total": "Total",
+      "creditoAplicado": "Avoir / solde créditeur appliqué",
+      "pagosAplicados": "Paiements appliqués",
+      "saldoPendiente": "Reste à payer",
+      "pagado": "Payé",
+      "totalProveedor": "Total dû au fournisseur",
+      "saldoPorPagar": "Solde à payer",
+      "recibido": "Reçu",
+      "cambio": "Monnaie rendue",
+      "descuentoPago": "Remise accordée",
+      "valorPagado": "Montant payé",
+      "valorRecibido": "Montant reçu",
+      "caja": {
+        "inicial": "Fonds de caisse",
+        "ventasEfectivo": "Ventes en espèces (nettes de monnaie)",
+        "abonosEfectivo": "Encaissements de créances en espèces",
+        "entradas": "Entrées manuelles",
+        "salidas": "Sorties manuelles",
+        "comprasEfectivo": "Paiements fournisseurs en espèces",
+        "devoluciones": "Retours",
+        "esperado": "Espèces attendues",
+        "contado": "Espèces comptées",
+        "diferencia": "Écart"
+      }
+    },
+    "firmas": {
+      "recibido": "Reçu conforme",
+      "aceptacion": "Acceptation du client",
+      "cajero": "Caissier",
+      "supervisor": "Superviseur",
+      "entrega": "Remis par",
+      "recibe": "Reçu par",
+      "datosRecibe": "Nom · Pièce · Date",
+      "datosAcepta": "Nom · Pièce · Fonction · Date",
+      "datosNombre": "Nom et pièce"
+    },
+    "legal": {
+      "resolucion": "Résolution DIAN n° {numero} du {fecha}, préfixe {prefijo}, numérotation autorisée du {desde} au {hasta}, valable jusqu’au {vigencia}.",
+      "cufe": "CUFE",
+      "cude": "CUDE",
+      "cuds": "CUDS",
+      "generado": "Document généré le {fecha}.",
+      "porDefecto": {
+        "factura-venta": "Cette facture produit les effets d'une lettre de change (art. 774 du Code de commerce colombien).",
+        "nota-credito": "Avoir modifiant la facture de référence.",
+        "cotizacion": "Ce document est un devis : ce n'est pas une facture, il n'a ni CUFE ni numérotation autorisée. Les prix s'appliquent pendant la validité indiquée.",
+        "factura-compra": "Document interne : enregistrement d'une facture émise par le fournisseur.",
+        "documento-soporte": "Document justificatif d'achats auprès de personnes non tenues d'émettre une facture.",
+        "estado-cuenta": "Ce relevé de compte n'est pas une facture. En cas d'écart, contactez-nous dans les 10 jours suivant sa réception ; passé ce délai, il sera réputé accepté. Vos données personnelles sont traitées conformément à notre politique de protection des données.",
+        "recibo-caja": "Justificatif d'un paiement reçu. Il ne remplace pas la facture.",
+        "comprobante-egreso": "Justificatif d'un paiement effectué.",
+        "cierre-caja": "Rapport de caisse interne.",
+        "arqueo-caja": "Rapport interne de comptage de caisse."
+      }
+    },
+    "movimientos": {
+      "factura": "Facture",
+      "notaCredito": "Avoir",
+      "pago": "Paiement",
+      "totales": "Totaux de la période"
+    },
+    "estadoCuenta": {
+      "prefijo": "RC",
+      "desdeInicio": "Depuis le début"
+    },
+    "documentosAbonados": {
+      "facturaVenta": "Facture de vente {numero}",
+      "facturaCompra": "Facture d'achat {numero}",
+      "cuentaPorCobrar": "Créance client",
+      "cuentaPorPagar": "Dette fournisseur",
+      "venta": "Vente en caisse"
+    },
+    "caja": {
+      "tipoEntrada": "Entrée",
+      "tipoSalida": "Sortie",
+      "billete": "Billet",
+      "moneda": "Pièce",
+      "arqueo": {
+        "opening": "Ouverture",
+        "partial": "Partiel",
+        "closing": "Clôture"
+      }
+    }
   }
 }

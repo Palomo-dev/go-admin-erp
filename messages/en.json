@@ -9496,5 +9496,322 @@
   },
   "cuentasPorPagar": {
     "titulo": "Accounts payable"
+  },
+  "documentos": {
+    "tipos": {
+      "factura-venta": "Sales invoice",
+      "factura-venta-electronica": "Electronic sales invoice",
+      "nota-credito": "Credit note",
+      "cotizacion": "Quote",
+      "factura-compra": "Purchase invoice",
+      "documento-soporte": "Support document",
+      "estado-cuenta": "Account statement",
+      "recibo-caja": "Cash receipt",
+      "comprobante-egreso": "Payment voucher",
+      "cierre-caja": "Cash register closing",
+      "reporte-caja-abierta": "Open cash register report",
+      "arqueo-caja": "Cash count"
+    },
+    "sinNumero": "No number yet",
+    "paginacion": {
+      "pagina": "Page",
+      "de": "of"
+    },
+    "emisor": {
+      "nit": "Tax ID {nit}",
+      "actividad": "Economic activity (ISIC): {codigo}",
+      "responsabilidades": "Tax responsibilities: {lista}"
+    },
+    "partes": {
+      "sucursal": "Branch",
+      "telefono": "Tel. {telefono}",
+      "cliente": "Customer",
+      "proveedor": "Supplier",
+      "responsable": "Responsible",
+      "tercero": "Third party",
+      "documento": "ID"
+    },
+    "estados": {
+      "draft": "Draft",
+      "issued": "Issued",
+      "paid": "Paid",
+      "partial": "Partially paid",
+      "void": "Voided",
+      "voided": "Voided",
+      "cancelled": "Cancelled",
+      "validated": "Accepted by DIAN",
+      "sent": "Sent",
+      "rejected": "Rejected",
+      "cotizacion": {
+        "draft": "Draft",
+        "quotation": "Quote",
+        "sent": "Sent",
+        "accepted": "Accepted",
+        "rejected": "Rejected",
+        "expired": "Expired",
+        "converted": "Converted"
+      },
+      "compra": {
+        "draft": "Draft",
+        "received": "Received",
+        "confirmed": "Confirmed",
+        "partial": "Partially paid",
+        "paid": "Paid",
+        "void": "Voided"
+      },
+      "soporte": {
+        "draft": "Draft",
+        "pending": "Pending",
+        "sent": "Sent",
+        "accepted": "Accepted by DIAN",
+        "validated": "Accepted by DIAN",
+        "rejected": "Rejected"
+      },
+      "pago": {
+        "completed": "Applied",
+        "pending": "Pending",
+        "failed": "Failed",
+        "refunded": "Refunded",
+        "cancelled": "Voided",
+        "voided": "Voided"
+      },
+      "caja": {
+        "abierta": "Open",
+        "cerrada": "Closed",
+        "arqueo": {
+          "opening": "Opening",
+          "partial": "Partial",
+          "closing": "Closing"
+        }
+      }
+    },
+    "qr": {
+      "verificacionDian": "Verify with DIAN",
+      "resumen": "Document details",
+      "enlacePago": "Pay online"
+    },
+    "bandas": {
+      "documentoTercero": "Document received from a third party",
+      "borrador": "Draft: not valid as an invoice; it has no number or CUFE yet.",
+      "anulada": "Voided document.",
+      "monedaExtranjera": "Document issued in {moneda}, which differs from the organization base currency.",
+      "noEsFactura": "This quote is not an invoice.",
+      "cierreCiego": "Blind closing: expected amounts and differences are visible only to administrators."
+    },
+    "marcas": {
+      "borrador": "DRAFT",
+      "anulada": "VOIDED",
+      "pagada": "PAID"
+    },
+    "campos": {
+      "fechaEmision": "Issue date",
+      "fechaVencimiento": "Due date",
+      "moneda": "Currency",
+      "formaPago": "Payment terms",
+      "medioPago": "Payment method",
+      "sucursal": "Branch",
+      "facturaAfectada": "Affected invoice",
+      "fechaFacturaAfectada": "Invoice date",
+      "cufeAfectado": "Invoice CUFE",
+      "motivo": "Reason",
+      "validaHasta": "Valid until",
+      "condicionesPago": "Payment terms",
+      "banco": "Bank",
+      "cuentaBancaria": "Account",
+      "plazoCredito": "Credit term",
+      "ordenCompra": "Purchase order",
+      "sucursalRecibe": "Receiving branch",
+      "referencia": "Reference",
+      "fechaPago": "Payment date",
+      "documentoAbonado": "Document paid",
+      "saldoDespues": "Outstanding balance of the document",
+      "origen": "Source",
+      "desde": "From",
+      "fechaCorte": "Cut-off date",
+      "saldoInicial": "Opening balance",
+      "cargos": "Charges",
+      "abonos": "Credits",
+      "saldoFinal": "Closing balance",
+      "saldoAFavor": "Credit balance",
+      "facturasAbiertas": "Open invoices",
+      "montoInicial": "Opening float",
+      "efectivoEsperado": "Expected cash",
+      "efectivoContado": "Counted cash",
+      "diferencia": "Difference",
+      "cajero": "Cashier",
+      "apertura": "Opened",
+      "cierre": "Closed",
+      "cerradaPor": "Closed by",
+      "caja": "Cash register",
+      "aperturaCaja": "Register opened",
+      "fechaArqueo": "Count date",
+      "contadoPor": "Counted by",
+      "estado": "Status",
+      "total": "Total"
+    },
+    "formasPago": {
+      "contado": "Cash",
+      "credito": "Credit"
+    },
+    "condiciones": {
+      "dias": "{dias} days",
+      "contado": "Cash on delivery"
+    },
+    "metodosPago": {
+      "cash": "Cash",
+      "card": "Card",
+      "transfer": "Bank transfer",
+      "nequi": "Nequi",
+      "daviplata": "Daviplata",
+      "pse": "PSE",
+      "wompi": "Wompi",
+      "qr": "QR",
+      "credit": "Credit",
+      "check": "Check",
+      "other": "Other"
+    },
+    "lineas": {
+      "impuesto": "Tax",
+      "incluido": "(incl.)",
+      "seriales": "Serial numbers: {lista}"
+    },
+    "secciones": {
+      "detalle": "Details",
+      "pagos": "Payments applied",
+      "notas": "Notes",
+      "terminos": "Terms and conditions",
+      "movimientos": "Transactions",
+      "antiguedad": "Receivables aging",
+      "facturasAbiertas": "Open invoices",
+      "porMetodo": "By payment method",
+      "movimientosCaja": "Cash in and out",
+      "arqueos": "Cash counts",
+      "denominaciones": "Denominations"
+    },
+    "columnas": {
+      "descripcion": "Description",
+      "cantidad": "Qty",
+      "precioUnitario": "Unit price",
+      "descuento": "Disc.",
+      "impuesto": "Tax",
+      "valor": "Amount",
+      "fecha": "Date",
+      "metodo": "Method",
+      "referencia": "Reference",
+      "concepto": "Concept",
+      "documento": "Document",
+      "cargo": "Charge",
+      "abono": "Credit",
+      "saldo": "Balance",
+      "corriente": "Current",
+      "d1_30": "1-30 days",
+      "d31_60": "31-60 days",
+      "d61_90": "61-90 days",
+      "d90": "Over 90 days",
+      "emision": "Issued",
+      "vencimiento": "Due",
+      "diasVencidos": "Days overdue",
+      "total": "Total",
+      "esperado": "Expected",
+      "tipo": "Type",
+      "notas": "Notes",
+      "contado": "Counted",
+      "diferencia": "Difference",
+      "denominacion": "Denomination",
+      "subtotal": "Subtotal"
+    },
+    "vacios": {
+      "lineas": "No lines.",
+      "movimientos": "No transactions in the period.",
+      "facturasAbiertas": "No open invoices."
+    },
+    "totales": {
+      "subtotal": "Subtotal",
+      "descuentos": "Discounts",
+      "impuestos": "Taxes",
+      "impuestoNombrado": "{nombre}",
+      "total": "Total",
+      "creditoAplicado": "Credit note / credit balance applied",
+      "pagosAplicados": "Payments applied",
+      "saldoPendiente": "Balance due",
+      "pagado": "Paid",
+      "totalProveedor": "Total payable to supplier",
+      "saldoPorPagar": "Balance payable",
+      "recibido": "Received",
+      "cambio": "Change",
+      "descuentoPago": "Discount granted",
+      "valorPagado": "Amount paid",
+      "valorRecibido": "Amount received",
+      "caja": {
+        "inicial": "Opening float",
+        "ventasEfectivo": "Cash sales (net of change)",
+        "abonosEfectivo": "Cash collections",
+        "entradas": "Manual cash in",
+        "salidas": "Manual cash out",
+        "comprasEfectivo": "Cash paid to suppliers",
+        "devoluciones": "Returns",
+        "esperado": "Expected cash",
+        "contado": "Counted cash",
+        "diferencia": "Difference"
+      }
+    },
+    "firmas": {
+      "recibido": "Received in good order",
+      "aceptacion": "Customer acceptance",
+      "cajero": "Cashier",
+      "supervisor": "Supervisor",
+      "entrega": "Delivered by",
+      "recibe": "Received by",
+      "datosRecibe": "Name · ID · Date",
+      "datosAcepta": "Name · ID · Title · Date",
+      "datosNombre": "Name and ID"
+    },
+    "legal": {
+      "resolucion": "DIAN resolution no. {numero} dated {fecha}, prefix {prefijo}, authorized numbering from {desde} to {hasta}, valid until {vigencia}.",
+      "cufe": "CUFE",
+      "cude": "CUDE",
+      "cuds": "CUDS",
+      "generado": "Document generated on {fecha}.",
+      "porDefecto": {
+        "factura-venta": "This invoice has the effects of a bill of exchange (art. 774 of the Colombian Commercial Code).",
+        "nota-credito": "Credit note that amends the referenced invoice.",
+        "cotizacion": "This document is a quote: it is not an invoice and has no CUFE or authorized numbering. Prices apply during the stated validity.",
+        "factura-compra": "Internal document: record of an invoice issued by the supplier.",
+        "documento-soporte": "Support document for purchases from parties not required to issue invoices.",
+        "estado-cuenta": "This account statement is not an invoice. If you find any discrepancy, please contact us within 10 days of receipt; after that period it will be deemed accepted. Your personal data is processed under our data protection policy.",
+        "recibo-caja": "Receipt of a payment received. It does not replace the invoice.",
+        "comprobante-egreso": "Voucher of a payment made.",
+        "cierre-caja": "Internal cash register report.",
+        "arqueo-caja": "Internal cash count report."
+      }
+    },
+    "movimientos": {
+      "factura": "Invoice",
+      "notaCredito": "Credit note",
+      "pago": "Payment",
+      "totales": "Period totals"
+    },
+    "estadoCuenta": {
+      "prefijo": "ST",
+      "desdeInicio": "Since the beginning"
+    },
+    "documentosAbonados": {
+      "facturaVenta": "Sales invoice {numero}",
+      "facturaCompra": "Purchase invoice {numero}",
+      "cuentaPorCobrar": "Account receivable",
+      "cuentaPorPagar": "Account payable",
+      "venta": "Point of sale sale"
+    },
+    "caja": {
+      "tipoEntrada": "Cash in",
+      "tipoSalida": "Cash out",
+      "billete": "Bill",
+      "moneda": "Coin",
+      "arqueo": {
+        "opening": "Opening",
+        "partial": "Partial",
+        "closing": "Closing"
+      }
+    }
   }
 }

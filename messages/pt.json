@@ -9391,5 +9391,322 @@
   },
   "cuentasPorPagar": {
     "titulo": "Contas a pagar"
+  },
+  "documentos": {
+    "tipos": {
+      "factura-venta": "Fatura de venda",
+      "factura-venta-electronica": "Fatura eletrônica de venda",
+      "nota-credito": "Nota de crédito",
+      "cotizacion": "Orçamento",
+      "factura-compra": "Fatura de compra",
+      "documento-soporte": "Documento de suporte",
+      "estado-cuenta": "Extrato da conta",
+      "recibo-caja": "Recibo de caixa",
+      "comprobante-egreso": "Comprovante de pagamento",
+      "cierre-caja": "Fechamento de caixa",
+      "reporte-caja-abierta": "Relatório de caixa aberto",
+      "arqueo-caja": "Conferência de caixa"
+    },
+    "sinNumero": "Sem numeração",
+    "paginacion": {
+      "pagina": "Página",
+      "de": "de"
+    },
+    "emisor": {
+      "nit": "ID fiscal {nit}",
+      "actividad": "Atividade econômica (CIIU): {codigo}",
+      "responsabilidades": "Responsabilidades fiscais: {lista}"
+    },
+    "partes": {
+      "sucursal": "Filial",
+      "telefono": "Tel. {telefono}",
+      "cliente": "Cliente",
+      "proveedor": "Fornecedor",
+      "responsable": "Responsável",
+      "tercero": "Terceiro",
+      "documento": "Documento"
+    },
+    "estados": {
+      "draft": "Rascunho",
+      "issued": "Emitida",
+      "paid": "Paga",
+      "partial": "Pagamento parcial",
+      "void": "Anulada",
+      "voided": "Anulada",
+      "cancelled": "Cancelada",
+      "validated": "Aceita pela DIAN",
+      "sent": "Enviada",
+      "rejected": "Rejeitada",
+      "cotizacion": {
+        "draft": "Rascunho",
+        "quotation": "Orçamento",
+        "sent": "Enviado",
+        "accepted": "Aceito",
+        "rejected": "Recusado",
+        "expired": "Vencido",
+        "converted": "Convertido"
+      },
+      "compra": {
+        "draft": "Rascunho",
+        "received": "Recebida",
+        "confirmed": "Confirmada",
+        "partial": "Pagamento parcial",
+        "paid": "Paga",
+        "void": "Anulada"
+      },
+      "soporte": {
+        "draft": "Rascunho",
+        "pending": "Pendente",
+        "sent": "Enviado",
+        "accepted": "Aceito pela DIAN",
+        "validated": "Aceito pela DIAN",
+        "rejected": "Rejeitado"
+      },
+      "pago": {
+        "completed": "Aplicado",
+        "pending": "Pendente",
+        "failed": "Falhou",
+        "refunded": "Reembolsado",
+        "cancelled": "Anulado",
+        "voided": "Anulado"
+      },
+      "caja": {
+        "abierta": "Aberto",
+        "cerrada": "Fechado",
+        "arqueo": {
+          "opening": "Abertura",
+          "partial": "Parcial",
+          "closing": "Fechamento"
+        }
+      }
+    },
+    "qr": {
+      "verificacionDian": "Verifique na DIAN",
+      "resumen": "Dados do documento",
+      "enlacePago": "Pague on-line"
+    },
+    "bandas": {
+      "documentoTercero": "Documento recebido de um terceiro",
+      "borrador": "Rascunho: não é válido como fatura; ainda não tem numeração nem CUFE.",
+      "anulada": "Documento anulado.",
+      "monedaExtranjera": "Documento emitido em {moneda}, diferente da moeda base da organização.",
+      "noEsFactura": "Este orçamento não é uma fatura.",
+      "cierreCiego": "Fechamento cego: os valores esperados e as diferenças só são visíveis para a administração."
+    },
+    "marcas": {
+      "borrador": "RASCUNHO",
+      "anulada": "ANULADA",
+      "pagada": "PAGA"
+    },
+    "campos": {
+      "fechaEmision": "Data de emissão",
+      "fechaVencimiento": "Vencimento",
+      "moneda": "Moeda",
+      "formaPago": "Forma de pagamento",
+      "medioPago": "Meio de pagamento",
+      "sucursal": "Filial",
+      "facturaAfectada": "Fatura afetada",
+      "fechaFacturaAfectada": "Data da fatura",
+      "cufeAfectado": "CUFE da fatura",
+      "motivo": "Motivo",
+      "validaHasta": "Válido até",
+      "condicionesPago": "Condições de pagamento",
+      "banco": "Banco",
+      "cuentaBancaria": "Conta",
+      "plazoCredito": "Prazo de crédito",
+      "ordenCompra": "Pedido de compra",
+      "sucursalRecibe": "Filial que recebe",
+      "referencia": "Referência",
+      "fechaPago": "Data do pagamento",
+      "documentoAbonado": "Documento pago",
+      "saldoDespues": "Saldo pendente do documento",
+      "origen": "Origem",
+      "desde": "De",
+      "fechaCorte": "Data de corte",
+      "saldoInicial": "Saldo inicial",
+      "cargos": "Débitos",
+      "abonos": "Créditos",
+      "saldoFinal": "Saldo final",
+      "saldoAFavor": "Saldo a favor",
+      "facturasAbiertas": "Faturas em aberto",
+      "montoInicial": "Fundo de troco",
+      "efectivoEsperado": "Dinheiro esperado",
+      "efectivoContado": "Dinheiro contado",
+      "diferencia": "Diferença",
+      "cajero": "Operador de caixa",
+      "apertura": "Abertura",
+      "cierre": "Fechamento",
+      "cerradaPor": "Fechado por",
+      "caja": "Caixa",
+      "aperturaCaja": "Abertura do caixa",
+      "fechaArqueo": "Data da conferência",
+      "contadoPor": "Contado por",
+      "estado": "Status",
+      "total": "Total"
+    },
+    "formasPago": {
+      "contado": "À vista",
+      "credito": "A prazo"
+    },
+    "condiciones": {
+      "dias": "{dias} dias",
+      "contado": "À vista"
+    },
+    "metodosPago": {
+      "cash": "Dinheiro",
+      "card": "Cartão",
+      "transfer": "Transferência",
+      "nequi": "Nequi",
+      "daviplata": "Daviplata",
+      "pse": "PSE",
+      "wompi": "Wompi",
+      "qr": "QR",
+      "credit": "Crédito",
+      "check": "Cheque",
+      "other": "Outro"
+    },
+    "lineas": {
+      "impuesto": "Imposto",
+      "incluido": "(incl.)",
+      "seriales": "Números de série: {lista}"
+    },
+    "secciones": {
+      "detalle": "Detalhe",
+      "pagos": "Pagamentos aplicados",
+      "notas": "Observações",
+      "terminos": "Termos e condições",
+      "movimientos": "Movimentos",
+      "antiguedad": "Idade da carteira",
+      "facturasAbiertas": "Faturas em aberto",
+      "porMetodo": "Por meio de pagamento",
+      "movimientosCaja": "Entradas e saídas de caixa",
+      "arqueos": "Conferências",
+      "denominaciones": "Cédulas e moedas"
+    },
+    "columnas": {
+      "descripcion": "Descrição",
+      "cantidad": "Qtd.",
+      "precioUnitario": "Preço unit.",
+      "descuento": "Desc.",
+      "impuesto": "Imposto",
+      "valor": "Valor",
+      "fecha": "Data",
+      "metodo": "Meio",
+      "referencia": "Referência",
+      "concepto": "Conceito",
+      "documento": "Documento",
+      "cargo": "Débito",
+      "abono": "Crédito",
+      "saldo": "Saldo",
+      "corriente": "A vencer",
+      "d1_30": "1-30 dias",
+      "d31_60": "31-60 dias",
+      "d61_90": "61-90 dias",
+      "d90": "Mais de 90 dias",
+      "emision": "Emissão",
+      "vencimiento": "Vencimento",
+      "diasVencidos": "Dias em atraso",
+      "total": "Total",
+      "esperado": "Esperado",
+      "tipo": "Tipo",
+      "notas": "Observações",
+      "contado": "Contado",
+      "diferencia": "Diferença",
+      "denominacion": "Valor de face",
+      "subtotal": "Subtotal"
+    },
+    "vacios": {
+      "lineas": "Sem linhas.",
+      "movimientos": "Sem movimentos no período.",
+      "facturasAbiertas": "Não há faturas em aberto."
+    },
+    "totales": {
+      "subtotal": "Subtotal",
+      "descuentos": "Descontos",
+      "impuestos": "Impostos",
+      "impuestoNombrado": "{nombre}",
+      "total": "Total",
+      "creditoAplicado": "Nota de crédito / saldo a favor aplicado",
+      "pagosAplicados": "Pagamentos aplicados",
+      "saldoPendiente": "Saldo pendente",
+      "pagado": "Pago",
+      "totalProveedor": "Total a pagar ao fornecedor",
+      "saldoPorPagar": "Saldo a pagar",
+      "recibido": "Recebido",
+      "cambio": "Troco",
+      "descuentoPago": "Desconto concedido",
+      "valorPagado": "Valor pago",
+      "valorRecibido": "Valor recebido",
+      "caja": {
+        "inicial": "Fundo de troco",
+        "ventasEfectivo": "Vendas em dinheiro (líquidas de troco)",
+        "abonosEfectivo": "Recebimentos de carteira em dinheiro",
+        "entradas": "Entradas manuais",
+        "salidas": "Saídas manuais",
+        "comprasEfectivo": "Pagamentos a fornecedores em dinheiro",
+        "devoluciones": "Devoluções",
+        "esperado": "Dinheiro esperado",
+        "contado": "Dinheiro contado",
+        "diferencia": "Diferença"
+      }
+    },
+    "firmas": {
+      "recibido": "Recebido de acordo",
+      "aceptacion": "Aceite do cliente",
+      "cajero": "Operador de caixa",
+      "supervisor": "Supervisor",
+      "entrega": "Entregue por",
+      "recibe": "Recebido por",
+      "datosRecibe": "Nome · Documento · Data",
+      "datosAcepta": "Nome · Documento · Cargo · Data",
+      "datosNombre": "Nome e documento"
+    },
+    "legal": {
+      "resolucion": "Resolução DIAN n.º {numero} de {fecha}, prefixo {prefijo}, numeração autorizada de {desde} a {hasta}, válida até {vigencia}.",
+      "cufe": "CUFE",
+      "cude": "CUDE",
+      "cuds": "CUDS",
+      "generado": "Documento gerado em {fecha}.",
+      "porDefecto": {
+        "factura-venta": "Esta fatura equipara-se, para todos os efeitos, a uma letra de câmbio (art. 774 do Código de Comércio colombiano).",
+        "nota-credito": "Nota de crédito que modifica a fatura referenciada.",
+        "cotizacion": "Este documento é um orçamento: não é uma fatura e não tem CUFE nem numeração autorizada. Os preços valem durante a validade indicada.",
+        "factura-compra": "Documento interno: registro de uma fatura emitida pelo fornecedor.",
+        "documento-soporte": "Documento de suporte em aquisições de pessoas não obrigadas a emitir fatura.",
+        "estado-cuenta": "Este extrato não é uma fatura. Se encontrar alguma diferença, entre em contato conosco em até 10 dias após o recebimento; após esse prazo, será considerado aceito. Seus dados pessoais são tratados conforme nossa política de proteção de dados.",
+        "recibo-caja": "Comprovante de um pagamento recebido. Não substitui a fatura.",
+        "comprobante-egreso": "Comprovante de um pagamento realizado.",
+        "cierre-caja": "Relatório interno de caixa.",
+        "arqueo-caja": "Relatório interno de conferência de caixa."
+      }
+    },
+    "movimientos": {
+      "factura": "Fatura",
+      "notaCredito": "Nota de crédito",
+      "pago": "Pagamento",
+      "totales": "Totais do período"
+    },
+    "estadoCuenta": {
+      "prefijo": "EX",
+      "desdeInicio": "Desde o início"
+    },
+    "documentosAbonados": {
+      "facturaVenta": "Fatura de venda {numero}",
+      "facturaCompra": "Fatura de compra {numero}",
+      "cuentaPorCobrar": "Conta a receber",
+      "cuentaPorPagar": "Conta a pagar",
+      "venta": "Venda no PDV"
+    },
+    "caja": {
+      "tipoEntrada": "Entrada",
+      "tipoSalida": "Saída",
+      "billete": "Cédula",
+      "moneda": "Moeda",
+      "arqueo": {
+        "opening": "Abertura",
+        "partial": "Parcial",
+        "closing": "Fechamento"
+      }
+    }
   }
 }

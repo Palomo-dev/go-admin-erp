@@ -6065,6 +6065,22 @@
         "mixto": "Mixed",
         "otros": "Other"
       }
+    },
+    "conceptos": {
+      "fondoAdicional": "Additional float",
+      "cambioEfectivo": "Cash change",
+      "prestamoInterno": "Internal loan",
+      "ventaContadoEspecial": "Special cash sale",
+      "devolucionRecibida": "Refund received",
+      "otroIngreso": "Other income",
+      "gastosMenores": "Petty expenses",
+      "compraInsumos": "Supplies purchase",
+      "pagoProveedor": "Supplier payment",
+      "gastoOperativo": "Operating expense",
+      "retiroEfectivo": "Cash withdrawal",
+      "retiroConsignacion": "Withdrawal for bank deposit",
+      "prestamoEmpleado": "Employee loan",
+      "otroEgreso": "Other expense"
     }
   },
   "productos": {

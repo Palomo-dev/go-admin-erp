@@ -33,6 +33,13 @@ import type {
 } from './types';
 import { nombreContieneTodas, numeroDeCaja, sanitizarBusqueda } from './historialCajas';
 import { parametrosArqueo } from '@/lib/pos/cajas/arqueo';
+import {
+  alcanceApertura,
+  claveTraduccionError,
+  codigoCajaYaAbierta,
+  sucursalDeApertura,
+  type CodigoCajaYaAbierta,
+} from '@/lib/pos/cajas/alcance';
 
 /**
  * Error de cajas que la UI muestra. `message` sigue en español (lo leen logs y
@@ -55,8 +62,15 @@ export class ErrorCaja extends Error {
  */
 export function claveErrorCaja(error: unknown): string | null {
   if (!(error instanceof ErrorCaja) || !error.codigo) return null;
-  return error.codigo.replace(/_([a-z])/g, (_, letra: string) => letra.toUpperCase());
+  return claveTraduccionError(error.codigo);
 }
+
+/** Mensaje en español (logs y respaldo) de cada caja ya abierta; la UI traduce el código. */
+const MENSAJE_CAJA_YA_ABIERTA: Record<CodigoCajaYaAbierta, string> = {
+  caja_global_abierta: 'Ya hay una caja global abierta. Ciérrala antes de abrir otra.',
+  caja_propia_abierta: 'Ya tienes una caja abierta en esta sucursal. Ciérrala antes de abrir otra.',
+  caja_sucursal_abierta: 'Ya hay una caja abierta en esta sucursal. Ciérrala antes de abrir otra.',
+};
 
 /** Venta de una sesión de caja (columnas seleccionadas en `getSessionSales`). */
 export interface SessionSaleRow {
@@ -512,8 +526,8 @@ export class CajasService {
       const mode = await this.getCashSessionMode();
 
       // En modo 'user' el alcance siempre es la sucursal actual (no hay caja global)
-      const scope = mode === 'user' ? 'branch' : (data.scope || 'branch');
-      const targetBranchId = scope === 'global' ? null : this.branchId;
+      const scope = alcanceApertura(mode, data.scope);
+      const targetBranchId = sucursalDeApertura(scope, this.branchId);
 
       if (scope === 'branch' && !this.branchId) {
         throw new ErrorCaja('sin_sucursal', 'No se pudo obtener la sucursal. Seleccione una sucursal.');
@@ -537,11 +551,8 @@ export class CajasService {
       }
 
       const offline = shouldOperateCashOffline();
-      const alreadyOpen = scope === 'global'
-        ? new ErrorCaja('caja_global_abierta', 'Ya hay una caja global abierta. Ciérrala antes de abrir otra.')
-        : (mode === 'user'
-          ? new ErrorCaja('caja_propia_abierta', 'Ya tienes una caja abierta en esta sucursal. Ciérrala antes de abrir otra.')
-          : new ErrorCaja('caja_sucursal_abierta', 'Ya hay una caja abierta en esta sucursal. Ciérrala antes de abrir otra.'));
+      const codigoAbierta = codigoCajaYaAbierta(mode, scope);
+      const alreadyOpen = new ErrorCaja(codigoAbierta, MENSAJE_CAJA_YA_ABIERTA[codigoAbierta]);
 
       // Sin red el GET se resuelve en la réplica local; una sesión cerrada sin
       // red sigue `open` allí hasta sincronizar, así que se descarta aparte.

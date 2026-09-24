@@ -5960,6 +5960,22 @@
         "mixto": "Mixte",
         "otros": "Autres"
       }
+    },
+    "conceptos": {
+      "fondoAdicional": "Fonds de caisse supplémentaire",
+      "cambioEfectivo": "Change d'espèces",
+      "prestamoInterno": "Prêt interne",
+      "ventaContadoEspecial": "Vente comptant spéciale",
+      "devolucionRecibida": "Remboursement reçu",
+      "otroIngreso": "Autre entrée",
+      "gastosMenores": "Menues dépenses",
+      "compraInsumos": "Achat de fournitures",
+      "pagoProveedor": "Paiement fournisseur",
+      "gastoOperativo": "Dépense d'exploitation",
+      "retiroEfectivo": "Retrait d'espèces",
+      "retiroConsignacion": "Retrait pour versement en banque",
+      "prestamoEmpleado": "Prêt à un employé",
+      "otroEgreso": "Autre sortie"
     }
   },
   "productos": {

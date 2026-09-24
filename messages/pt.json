@@ -5960,6 +5960,22 @@
         "mixto": "Misto",
         "otros": "Outros"
       }
+    },
+    "conceptos": {
+      "fondoAdicional": "Fundo adicional",
+      "cambioEfectivo": "Troca de dinheiro",
+      "prestamoInterno": "Empréstimo interno",
+      "ventaContadoEspecial": "Venda à vista especial",
+      "devolucionRecibida": "Devolução recebida",
+      "otroIngreso": "Outra entrada",
+      "gastosMenores": "Pequenas despesas",
+      "compraInsumos": "Compra de insumos",
+      "pagoProveedor": "Pagamento a fornecedor",
+      "gastoOperativo": "Despesa operacional",
+      "retiroEfectivo": "Retirada de dinheiro",
+      "retiroConsignacion": "Retirada para depósito bancário",
+      "prestamoEmpleado": "Empréstimo a funcionário",
+      "otroEgreso": "Outra saída"
     }
   },
   "productos": {

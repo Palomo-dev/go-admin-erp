@@ -6065,6 +6065,22 @@
         "mixto": "Mixto",
         "otros": "Otros"
       }
+    },
+    "conceptos": {
+      "fondoAdicional": "Fondo adicional",
+      "cambioEfectivo": "Cambio de efectivo",
+      "prestamoInterno": "Préstamo interno",
+      "ventaContadoEspecial": "Venta de contado especial",
+      "devolucionRecibida": "Devolución recibida",
+      "otroIngreso": "Otro ingreso",
+      "gastosMenores": "Gastos menores",
+      "compraInsumos": "Compra de insumos",
+      "pagoProveedor": "Pago a proveedor",
+      "gastoOperativo": "Gasto operativo",
+      "retiroEfectivo": "Retiro de efectivo",
+      "retiroConsignacion": "Retiro para consignación",
+      "prestamoEmpleado": "Préstamo a empleado",
+      "otroEgreso": "Otro egreso"
     }
   },
   "productos": {

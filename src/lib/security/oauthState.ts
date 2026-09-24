@@ -1,5 +1,6 @@
 /**
- * `state` firmado para los flujos OAuth de Meta Marketing y TikTok Marketing.
+ * `state` firmado para los flujos OAuth de Meta Marketing, TikTok Marketing y
+ * Google Ads.
  *
  * Antes de este módulo el `state` era `base64(JSON)` sin firma
  * (`{ organization_id, connection_id, user_id, ts }`) y los callbacks lo
@@ -39,7 +40,8 @@
 import crypto from 'crypto';
 import { readRealSecret } from './secrets';
 
-export type OAuthProvider = 'meta' | 'tiktok';
+export const OAUTH_PROVIDERS = ['meta', 'tiktok', 'google'] as const;
+export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 
 export interface OAuthStateClaims {
   v: 1;
@@ -175,7 +177,7 @@ function validClaims(c: unknown): c is OAuthStateClaims {
   const x = c as Record<string, unknown>;
   return (
     x.v === 1 &&
-    (x.p === 'meta' || x.p === 'tiktok') &&
+    (OAUTH_PROVIDERS as readonly unknown[]).includes(x.p) &&
     typeof x.org === 'number' && Number.isInteger(x.org) && x.org > 0 &&
     typeof x.uid === 'string' && UUID_RE.test(x.uid) &&
     (x.cid === null || (typeof x.cid === 'string' && UUID_RE.test(x.cid))) &&

@@ -7,17 +7,34 @@
  * "No hay conexión activa de Meta Marketing" aunque la tuviera `connected`.
  * Ver `src/lib/integrations/connectionStatus.ts`.
  *
- * La ruta se invoca aquí como llamada de servicio (`x-api-key` = service role),
- * que es el camino del trigger de BD. Deuda conocida, fuera de este contrato:
- * `organization_id` viene del body (allow-list del caso 5 de guardrails).
+ * Desde 2026-09-23 la organización ya no sale del body (regla dura 5): este
+ * contrato se ejerce por el camino de sesión (`withOrg`, doblado aquí), donde
+ * la organización es la de la sesión y la conexión se busca con su cliente.
+ * Los casos de seguridad del camino servidor a servidor viven en
+ * `src/__tests__/services/integracionesGoogleAdsYProductSync.test.ts`.
  */
-
-process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-de-prueba';
 
 import { makeAdminFake, connectionFixture, connectionId, NON_USABLE_STATUSES, type AdminFake } from '@/lib/integrations/__tests__/integrationConnectionsFake';
 
+const { OrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
+const { readOrgBody } = jest.requireActual<typeof import('@/lib/security/organizationBody')>('@/lib/security/organizationBody');
+
 let mockAdmin: AdminFake;
-jest.mock('@/lib/supabase/admin', () => ({ getSupabaseAdmin: () => mockAdmin }));
+const ORG = 120;
+const OTRA_ORG = 121;
+
+jest.mock('@/lib/utils/orgContext', () => ({
+  OrgContextError,
+  readOrgBody,
+  hasOrgAdminOrPermission: async () => true,
+  withOrg:
+    (handler: (ctx: unknown, req: Request, rp: unknown) => Promise<Response>) =>
+    (req: Request, rp: unknown) =>
+      handler({ organizationId: ORG, userId: 'u-1', roleId: 2, isSuperAdmin: false, supabase: mockAdmin }, req, rp),
+}));
+jest.mock('@/lib/supabase/server-service', () => ({ getServiceClient: () => mockAdmin }));
+// svix es ESM puro y Jest (CJS) no lo carga; este contrato no verifica firmas.
+jest.mock('svix', () => ({ Webhook: class {} }));
 
 const getCredentials = jest.fn();
 jest.mock('@/lib/services/integrations/meta', () => ({
@@ -30,12 +47,14 @@ jest.mock('@/lib/services/integrations/meta', () => ({
 
 import { POST } from '../route';
 
-const ORG = 120;
-const OTRA_ORG = 121;
+const rp = { params: Promise.resolve({}) };
 
 function req(body: unknown) {
-  const headers: Record<string, string> = { 'x-api-key': process.env.SUPABASE_SERVICE_ROLE_KEY as string };
-  return { json: async () => body, headers: { get: (k: string) => headers[k.toLowerCase()] ?? null } } as never;
+  return new Request('http://localhost/api/integrations/meta/product-sync', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  }) as never;
 }
 
 const SIN_CONEXION = { success: false, message: 'No hay conexión activa de Meta Marketing para esta organización' };
@@ -50,7 +69,7 @@ describe('Meta product-sync: busca la conexión por el estado real del CHECK', (
   it('encuentra la conexión `connected` de la organización (y no la `active`)', async () => {
     mockAdmin = makeAdminFake({ integration_connections: connectionFixture('meta', 'meta_marketing', ORG, true) });
 
-    const res = await POST(req({ organization_id: ORG }));
+    const res = await POST(req({}), rp);
 
     expect(await res.json()).toMatchObject({ success: false, message: expect.stringContaining('Credenciales de Meta incompletas') });
     expect(getCredentials).toHaveBeenCalledTimes(1);
@@ -62,7 +81,7 @@ describe('Meta product-sync: busca la conexión por el estado real del CHECK', (
       integration_connections: connectionFixture('meta', 'meta_marketing', ORG, true).filter((r) => r.status === status),
     });
 
-    const res = await POST(req({ organization_id: ORG }));
+    const res = await POST(req({}), rp);
 
     expect(await res.json()).toEqual(SIN_CONEXION);
     expect(getCredentials).not.toHaveBeenCalled();
@@ -71,7 +90,7 @@ describe('Meta product-sync: busca la conexión por el estado real del CHECK', (
   it('no usa la conexión `connected` de otra organización', async () => {
     mockAdmin = makeAdminFake({ integration_connections: connectionFixture('meta', 'meta_marketing', OTRA_ORG, true) });
 
-    const res = await POST(req({ organization_id: ORG }));
+    const res = await POST(req({}), rp);
 
     expect(await res.json()).toEqual(SIN_CONEXION);
     expect(getCredentials).not.toHaveBeenCalled();
@@ -79,7 +98,7 @@ describe('Meta product-sync: busca la conexión por el estado real del CHECK', (
 
   it('el select solo pide columnas reales de integration_connections', async () => {
     mockAdmin = makeAdminFake({ integration_connections: connectionFixture('meta', 'meta_marketing', ORG, true) });
-    await POST(req({ organization_id: ORG }));
+    await POST(req({}), rp);
     expect(mockAdmin.connectionSelects).toHaveLength(1);
     expect(getCredentials).toHaveBeenCalled(); // un 42703 habría dejado `connections` en null
   });

@@ -643,12 +643,12 @@ export function StepCredentials({
     setIsOAuthLoading(true);
     setOauthError(null);
     try {
-      // Meta y TikTok toman la organización de la sesión (regla dura 5): no se
-      // manda. Google Ads todavía la lee del body (deuda aparte).
+      // Meta, TikTok y Google Ads toman la organización de la sesión (regla
+      // dura 5): no se manda.
       const res = await fetch(apiRoute, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(oauthType === 'google' ? { organization_id: organizationId } : {}),
+        body: JSON.stringify({}),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) {

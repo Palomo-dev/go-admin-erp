@@ -93,12 +93,14 @@ export const POST = withOrg(async (ctx, request) => {
 
     // Marcar eventos pendientes como procesados (integration_events no tiene
     // política UPDATE para `authenticated`: con el cliente de sesión no haría nada).
+    // «Pendiente» es `received`: el CHECK solo admite received|processed|error;
+    // el filtro anterior por 'pending' no casaba nunca con ninguna fila.
     if (productIds.length > 0) {
       await service
         .from('integration_events')
         .update({ status: 'processed', processed_at: new Date().toISOString() })
         .eq('connection_id', connectionId)
-        .eq('status', 'pending')
+        .eq('status', 'received')
         .in('event_type', ['catalog.product_changed', 'catalog.price_changed']);
     }
 

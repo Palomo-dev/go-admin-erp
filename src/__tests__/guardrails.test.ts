@@ -280,8 +280,6 @@ describe('F0 Guardarraíles', () => {
       'app/api/integrations/bold/create-link/route.ts',
       'app/api/integrations/bold/create-pos-payment/route.ts',
       'app/api/integrations/breb/create-qr/route.ts',
-      'app/api/integrations/google-ads/oauth/authorize/route.ts',
-      'app/api/integrations/meta/product-sync/route.ts',
       'app/api/integrations/open-finance/consents/route.ts',
       'app/api/integrations/open-finance/links/route.ts',
       'app/api/integrations/open-finance/refresh-balances/route.ts',

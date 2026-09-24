@@ -19,7 +19,6 @@ import {
   BarChart3, 
   Bell, 
   Zap, 
-  Bus, 
   Calendar, 
   Activity,
   Crown,
@@ -50,7 +49,7 @@ import { useTranslations } from 'next-intl';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
-const moduleIcons: Record<string, React.ComponentType<any>> = {
+const moduleIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   'organizations': Building2,
   'branding': Palette,
   'branches': MapPin,
@@ -88,7 +87,7 @@ export default function ModulesMarketplacePage() {
   
   // Estado local optimista para módulos activos
   const [optimisticActiveModules, setOptimisticActiveModules] = useState<Set<string>>(new Set());
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   // Controlar si la carga inicial ya terminó (para no mostrar loader en toggle)
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
@@ -103,8 +102,6 @@ export default function ModulesMarketplacePage() {
   const {
     activeModules,
     organizationStatus,
-    refreshModules,
-    loading: modulesLoading
   } = useActiveModules(organizationId || undefined);
   // Estado local para organizationStatus (cargado en paralelo con todo lo demás)
   const [localOrgStatus, setLocalOrgStatus] = useState<OrganizationModuleStatus | null>(null);
@@ -195,7 +192,14 @@ export default function ModulesMarketplacePage() {
       if (!result.success) {
         // 3. REVERTIR SI FALLA
         setOptimisticActiveModules(previousState);
-        setError(result.message || t('modules.errorToggling'));
+        // Desde la corrección de F-76 la ruta exige administrador de la
+        // organización: un 403 no trae `message`, así que sin este caso el
+        // usuario veía el error genérico y no entendía por qué.
+        setError(
+          response.status === 403
+            ? t('modules.errorSinPermiso')
+            : result.message || t('modules.errorToggling')
+        );
         return;
       }
 
@@ -286,7 +290,11 @@ export default function ModulesMarketplacePage() {
 
       if (!result.success) {
         setPaginasOcultas(previousPages);
-        setError(result.message || 'Error al cambiar página');
+        setError(
+          response.status === 403
+            ? t('modules.errorSinPermiso')
+            : result.message || t('modules.errorToggling')
+        );
         // Revertir en sidebar también
         window.dispatchEvent(new CustomEvent('modules-updated', {
           detail: { paginasOcultas: previousPages }
@@ -459,8 +467,7 @@ export default function ModulesMarketplacePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 items-start">
           {coreModules.map((module) => {
             const Icon = moduleIcons[module.code] || Package;
-            const isActive = getModuleStatus(module.code);
-            
+
             return (
               <Card key={module.code} className="relative dark:bg-gray-900 dark:border-gray-800">
                 <CardHeader>

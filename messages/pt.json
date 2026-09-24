@@ -659,6 +659,7 @@
       "description": "Ative e desative módulos de acordo com as necessidades do seu negócio",
       "errorLoadingModules": "Erro ao carregar módulos disponíveis",
       "errorToggling": "Erro ao modificar o módulo",
+      "errorSinPermiso": "Apenas um administrador da organização pode ativar ou desativar módulos",
       "errorConnection": "Erro de conexão ao modificar o módulo",
       "usage": "Uso de módulos: {total} de {max} ({core} core + {additional} adicionais)",
       "activeModules": "{count} módulos ativos ({core} core)",
@@ -9186,5 +9187,9 @@
       "sinAccesoSucursal": "Você não tem acesso à filial desta venda.",
       "generico": "Erro ao processar a devolução"
     }
+  },
+  "posCobroServidor": {
+    "productoSinPrecio": "“{producto}” não foi adicionado: não tem preço vigente. Configure o preço em Estoque.",
+    "precioNoConsultado": "“{producto}” não foi adicionado: não foi possível consultar o preço. Verifique a conexão e tente novamente."
   }
 }

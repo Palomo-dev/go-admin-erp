@@ -270,7 +270,6 @@ describe('F0 Guardarraíles', () => {
     ]);
 
     const ALLOWLIST = new Set<string>([
-      'app/api/categorias/reglas/route.ts',
       // `integrations/whatsapp/oauth/callback`: salió el 2026-09-24 (GO-sec). El
       // motivo que tenía aquí («org en `state` firmado por Meta») no era cierto:
       // no había `state` ni sesión y la organización salía del body. Ahora es
@@ -282,19 +281,12 @@ describe('F0 Guardarraíles', () => {
       // `withOrg` + `readOrgBody` (`{ admin: true }` en los POST) y la tercera
       // a `withPlatformAdmin`. Ya NO están en esta allow-list: si alguien
       // vuelve a leer la organización del body sin sesión, este caso lo caza.
-      'app/api/organization/enterprise/route.ts',
-      'app/api/organization/members/route.ts',
-      'app/api/pms/ical/sync/route.ts',
-      'app/api/stripe/confirm-plan-change/route.ts',
-      'app/api/stripe/create-addon-subscription/route.ts',
-      'app/api/stripe/create-payment-intent/route.ts',
-      'app/api/stripe/create-subscription/route.ts',
-      'app/api/stripe/purchase-ai-credits/route.ts',
-      'app/api/subscriptions/billing-portal/route.ts',
-      'app/api/subscriptions/cancel/route.ts',
-      'app/api/subscriptions/change-billing/route.ts',
-      'app/api/subscriptions/change-plan/route.ts',
-      'app/api/subscriptions/payment-methods/route.ts',
+      // GO-sec (2026-09-24): salieron de aquí `stripe/*`, `subscriptions/*`,
+      // `organization/enterprise` y `pms/ical/sync` (sesión + membresía +
+      // permiso: `contextoDeFacturacion`, `getServerOrgContext` o `withOrg`), y
+      // `categorias/reglas` y `organization/members`, que se borraron (código
+      // muerto; el segundo dejaba a cualquiera meterse como admin de cualquier
+      // organización). Ver el caso 31.
     ]);
 
     const BODY_ORG_PATTERNS = [
@@ -306,7 +298,10 @@ describe('F0 Guardarraíles', () => {
     // verificado con `fn_is_platform_admin()`. Ahí la organización del body es
     // la organización cliente que la plataforma elige como destino (tarifa,
     // payout), no la del usuario: rutas `payfac/commission` y `payfac/payouts`.
-    const SESSION_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withWhatsAppRoute|withPlatformAdmin)\s*\(/;
+    // `contextoDeFacturacion` (GO-sec 2026-09-24, `src/lib/stripe/contextoFacturacion.ts`)
+    // es `getServerOrgContextFor` + permiso de facturación: la organización del
+    // body solo vale si el usuario de la sesión es miembro activo de ella.
+    const SESSION_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withWhatsAppRoute|withPlatformAdmin|contextoDeFacturacion)\s*\(/;
     // verifyWebOrdersSecret: /api/web-orders/** (tienda web → ERP), fail-closed.
     const CRON_RE = /\b(withCron|verifyCronSecret|verifyWebOrdersSecret)\s*\(/;
     // Solo verificaciones de FIRMA. `isPlaceholderCredential` no lo es: mencionarla
@@ -2533,5 +2528,203 @@ describe('30. Cola de facturación electrónica: nada fuera del servidor la escr
     // Ninguna sentencia de la migración quita una retención (los comentarios sí la mencionan).
     expect(sql.replace(/--.*$/gm, '')).not.toMatch(/hold_reason\s*=\s*null/);
     expect(fs.existsSync(path.join(REPO_ROOT, 'supabase', 'rollbacks', '20260925120000_einvoicing_cola_escritura_solo_servidor_rollback.sql'))).toBe(true);
+  });
+});
+
+/**
+ * 31. Toda ruta de `src/app/api/**` pasa por una puerta del servidor (GO-sec,
+ * auditoría 2026-09-24).
+ *
+ * El middleware no basta: excluye prefijos enteros (`/api/stripe/`, webhooks,
+ * crons…) y cada exclusión es una ruta que se defiende sola o no se defiende.
+ * Así cayeron `stripe/transfer-payment-method` (mover las tarjetas de
+ * cualquier cliente de Stripe), `stripe/confirm-plan-change` (cambiar el plan
+ * de otra organización), `super-admin-cleanup` (borrar membresías ajenas),
+ * `sessions` (sesión sin verificar) y, detrás del middleware pero sin mirar la
+ * organización, `organization/members` (meterse de admin en cualquier
+ * organización) y `subscriptions/billing-portal`.
+ *
+ * Cada handler exportado (GET/POST/PUT/PATCH/DELETE), directamente o por un
+ * helper local (transitivo), llama a una puerta:
+ *   - sesión: `withOrg`, `getServerOrgContext(For)`, `contextoDeFacturacion`,
+ *     `requireSessionUser`, `withWhatsAppRoute`, o `getServerUserClient()` +
+ *     `.auth.getUser()` (verificado por Auth; NO `createClient` sin cookies,
+ *     que es exactamente la «sesión» falsa que tenía `create-subscription`);
+ *   - plataforma: `withPlatformAdmin`, `requirePlatformAdmin`;
+ *   - cron / servidor a servidor: `withCron`, `verifyCronSecret`,
+ *     `verifyWebOrdersSecret`;
+ *   - firma: `constructEvent`, `constructWebhookEvent`, `verifyTwilio*`,
+ *     `verifyMetaSignature`, `verifyResendWebhook`, `safeEqual`;
+ *   - pantalla del POS: `authenticateDisplayRequest`, `resolveDisplayActor`,
+ *     `requireDisplayToken`; feed de catálogo: `validateFeedToken`.
+ * O no lee nada de la petición y responde 401 (`CERRADO_SIN_ENTRADA_RE`).
+ *
+ * `integrations/**` queda fuera: lo vigila el caso 27b (zona de la sesión de
+ * integraciones, con sus propias puertas).
+ *
+ * `SIN_PUERTA` es la allow-list documentada: rutas públicas POR DISEÑO o que
+ * verifican dentro de un servicio. Si una entrada gana puerta o desaparece, el
+ * segundo test pide quitarla. Una reexportación de handler (`export { POST }
+ * from`) esconde el cuerpo: solo se admite en la allow-list.
+ */
+describe('31. Toda ruta de src/app/api pasa por una puerta del servidor', () => {
+  const API = path.join(SRC_ROOT, 'app', 'api');
+  const INTEGRACIONES = path.join(API, 'integrations');
+  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|contextoDeFacturacion|requireSessionUser|withWhatsAppRoute|withPlatformAdmin|requirePlatformAdmin|withCron|verifyCronSecret|verifyWebOrdersSecret|constructEvent|constructWebhookEvent|verifyTwilioWebhook|verifyTwilioRequest|verifyTwilioUrlSignature|verifyMetaSignature|verifyResendWebhook|safeEqual|authenticateDisplayRequest|resolveDisplayActor|requireDisplayToken|validateFeedToken)\s*\(/;
+  const SESION_USUARIO_RE = /\bgetServerUserClient\s*\(\s*\)[\s\S]*?\.auth\.getUser\s*\(/;
+  const CERRADO_SIN_ENTRADA_RE = /^export\s+(?:async\s+)?function\s+(?:GET|POST|PUT|PATCH|DELETE)\s*\(\s*\)[\s\S]*status:\s*401\b/;
+  const HANDLER_RE = /^export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE)\b/;
+  const REEXPORT_RE = /^export\s*\{[^}]*\b(GET|POST|PUT|PATCH|DELETE)\b[^}]*\}\s*from\s*['"][^'"]+['"]/m;
+  const TOP_RE = /^(export\s|async function |function |const |let )/;
+
+  /** `ruta MÉTODO` (o `ruta REEXPORT`) → por qué no necesita puerta en el handler. */
+  const SIN_PUERTA = new Map<string, string>([
+    ['app/api/auth/accept-invitation/route.ts POST', 'pública: crea la cuenta del invitado; valida el código con validate_invitation_by_code y solo cuentas nuevas/huérfanas (estadoCuentaInvitacion)'],
+    ['app/api/auth/check-email/route.ts POST', 'pública para el registro (aún no hay cuenta); límite por IP'],
+    ['app/api/auth/invite/context/route.ts GET', 'pública: se abre desde el correo con el código; límite por IP'],
+    ['app/api/auth/invite/resend/route.ts POST', 'pública: reenvía el enlace validando contra invitations; límite por IP y por correo'],
+    ['app/api/auth/native-callback/route.ts GET', 'puente OAuth de la app móvil: solo redirige al esquema de la app, no lee ni escribe datos'],
+    ['app/api/coupons/validate/route.ts POST', 'detrás del middleware (sesión verificada); solo consulta el catálogo de cupones de la plataforma, sin datos de un tenant'],
+    ['app/api/crm/contracts/webhook/route.ts REEXPORT', 'reexporta el POST de crm/webhooks/documenso (firma verificada allí)'],
+    ['app/api/crm/webhooks/documenso/route.ts POST', 'la firma se verifica dentro de processDocumensoWebhook (contractService, fail-closed)'],
+    ['app/api/crm/webhooks/stripe/route.ts POST', 'la firma se verifica dentro de processStripeWebhook (stripePaymentLinkService, constructEvent)'],
+    ['app/api/csrf/route.ts GET', 'emite el token CSRF del navegador; no lee ni devuelve datos'],
+    ['app/api/email/webhook/route.ts POST', 'verifyResendWebhook dentro de crm/email/webhookService (caso 7)'],
+    ['app/api/modules/public/route.ts GET', 'catálogo público de módulos para el registro; sin datos de un tenant'],
+    ['app/api/pms/ical/[token]/route.ts GET', 'feed iCal público: el token secreto (≥ 32 caracteres) de la conexión es la credencial'],
+    ['app/api/pos/display/pair/route.ts POST', 'canje del código de emparejamiento de un solo uso con límite de intentos (caso 5, pantalla del POS)'],
+    ['app/api/pricing/enterprise/route.ts GET', 'precios públicos del plan Enterprise; sin datos de un tenant'],
+    ['app/api/stripe/setup-intent/route.ts POST', 'paso de tarjeta del alta, sin cuenta aún: siempre un cliente de Stripe nuevo de alta (clienteDeAlta.ts) y límite por IP'],
+    ['app/api/stripe/setup-intent/route.ts GET', 'solo SetupIntents del alta cuyo cliente sigue pendiente (esClienteDeAltaPendiente); límite por IP'],
+    ['app/api/super-admin-access/route.ts POST', 'canje de un token uuid de un solo uso (atómico, 5 min) emitido por go-admin-super para un platform_admin activo'],
+    ['app/api/webhooks/facebook/[channelId]/route.ts POST', 'firma X-Hub-Signature-256 obligatoria con metaMessagingService.verifySignature (401 sin secreto o con firma mala); además el middleware la cubre'],
+    ['app/api/webhooks/instagram/[channelId]/route.ts POST', 'ídem Facebook'],
+  ]);
+
+  function bloques(content: string): Array<{ nombre: string; metodo: string | null; texto: string }> {
+    const lineas = content.split(/\r?\n/);
+    const inicios: number[] = [];
+    lineas.forEach((l, i) => {
+      if (TOP_RE.test(l)) inicios.push(i);
+    });
+    return inicios.map((ini, k) => {
+      const fin = k + 1 < inicios.length ? inicios[k + 1] : lineas.length;
+      const cabeza = lineas[ini];
+      return {
+        nombre: /(?:function|const|let)\s+(\w+)/.exec(cabeza)?.[1] ?? '',
+        metodo: HANDLER_RE.exec(cabeza)?.[1] ?? null,
+        texto: lineas.slice(ini, fin).join('\n'),
+      };
+    });
+  }
+
+  const tienePuerta = (texto: string) => PUERTA_RE.test(texto) || SESION_USUARIO_RE.test(texto);
+
+  /** Handlers sin puerta (`ruta MÉTODO`) de un archivo ya sin comentarios. */
+  function sinPuertaEn(relPath: string, content: string): string[] {
+    const todos = bloques(content);
+    const helpers = todos.filter((b) => !b.metodo && b.nombre);
+    const conPuerta = helpers.filter((b) => tienePuerta(b.texto)).map((b) => b.nombre);
+    for (let cambio = true; cambio; ) {
+      cambio = false;
+      for (const b of helpers) {
+        if (conPuerta.includes(b.nombre)) continue;
+        const cuerpo = b.texto.replace(/^[^=({]*/, '');
+        if (conPuerta.some((n) => new RegExp(`\\b${n}\\s*\\(`).test(cuerpo))) {
+          conPuerta.push(b.nombre);
+          cambio = true;
+        }
+      }
+    }
+    const fallos: string[] = [];
+    for (const h of todos.filter((b) => b.metodo)) {
+      const directo = tienePuerta(h.texto) || CERRADO_SIN_ENTRADA_RE.test(h.texto);
+      const porHelper = conPuerta.some((n) => new RegExp(`\\b${n}\\b`).test(h.texto.replace(/^[^=({]*/, '')));
+      if (!directo && !porHelper) fallos.push(`${relPath} ${h.metodo}`);
+    }
+    if (REEXPORT_RE.test(content)) fallos.push(`${relPath} REEXPORT`);
+    return fallos;
+  }
+
+  let sinPuerta: string[] = [];
+  beforeAll(() => {
+    sinPuerta = walkDir(API)
+      .filter((f) => /route\.ts$/.test(f) && !isExcluded(f) && !f.startsWith(INTEGRACIONES + path.sep))
+      .flatMap((f) => {
+        try {
+          return sinPuertaEn(rel(f), stripAllComments(readFile(f)));
+        } catch (err) {
+          // Archivo transitorio de otra sesión: saltar, no caer.
+          if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
+          throw err;
+        }
+      });
+  });
+
+  test('cada handler tiene sesión, plataforma, cron, firma o está en la allow-list documentada', () => {
+    const ofensores = sinPuerta.filter((k) => !SIN_PUERTA.has(k)).sort();
+    if (ofensores.length > 0) console.error('handlers sin puerta del servidor:\n' + ofensores.join('\n'));
+    expect(ofensores).toEqual([]);
+  });
+
+  test('la allow-list no tiene entradas viejas (ya con puerta o borradas)', () => {
+    const viejas = [...SIN_PUERTA.keys()].filter((k) => !sinPuerta.includes(k)).sort();
+    expect(viejas).toEqual([]);
+  });
+
+  test('el detector reconoce la sesión falsa (cliente sin cookies) y la puerta por helper local', () => {
+    const falsa = [
+      "export async function POST(request: Request) {",
+      "  const supabaseAuth = createClient(url, anon);",
+      "  const { data: { user } } = await supabaseAuth.auth.getUser();",
+      "  return Response.json({ ok: !!user });",
+      "}",
+    ].join('\n');
+    expect(sinPuertaEn('x/route.ts', falsa)).toEqual(['x/route.ts POST']);
+    const porHelper = [
+      "async function ctxDe(req: Request) {",
+      "  return getServerOrgContext(req);",
+      "}",
+      "export async function GET(request: Request) {",
+      "  const ctx = await ctxDe(request);",
+      "  return Response.json(ctx.organizationId);",
+      "}",
+    ].join('\n');
+    expect(sinPuertaEn('y/route.ts', porHelper)).toEqual([]);
+    expect(sinPuertaEn('z/route.ts', "export { POST } from '../otra/route';")).toEqual(['z/route.ts REEXPORT']);
+  });
+
+  test('el middleware ya no excluye rutas borradas ni super-admin-cleanup, y los handlers borrados no vuelven', () => {
+    const mw = readFile(path.join(SRC_ROOT, 'middleware.ts'));
+    const skip = /function shouldSkipRoute[\s\S]*?const skipPatterns = \[([\s\S]*?)\];/.exec(stripAllComments(mw))?.[1] ?? '';
+    for (const prefijo of ["'/api/test'", "'/api/sessions/'", "'/api/super-admin-cleanup'"]) {
+      expect(skip).not.toContain(prefijo);
+    }
+    const matcher = /matcher:\s*\[[\s\S]*?'([^']+)'/.exec(mw)?.[1] ?? '';
+    for (const token of ['api/test|', 'api/sessions|', 'api/super-admin-cleanup|']) expect(matcher).not.toContain(token);
+    for (const muerta of [
+      'stripe/transfer-payment-method',
+      'sessions',
+      'sessions/activity',
+      'test-geolocation',
+      'organization/members',
+      'categorias/reglas',
+      'domains/check-availability',
+    ]) {
+      expect(fs.existsSync(path.join(API, ...muerta.split('/'), 'route.ts'))).toBe(false);
+    }
+  });
+
+  test('confirm-plan-change: organización de la sesión = metadata del Checkout, nunca del body; una sola implementación con el webhook', () => {
+    const ruta = stripAllComments(readFile(path.join(API, 'stripe', 'confirm-plan-change', 'route.ts')));
+    expect(ruta).toMatch(/getServerOrgContext\(\s*request\s*\)/);
+    expect(ruta).toMatch(/exigirPermisoDeFacturacion\(/);
+    expect(ruta).toMatch(/readOrgBody/);
+    expect(ruta).toMatch(/organizacionDelCheckout\(\s*checkout\s*\)\s*;[\s\S]*!==\s*ctx\.organizationId/);
+    expect(ruta).not.toMatch(/\|\|\s*(?:parseInt\()?\s*metadata/);
+    expect(ruta).toMatch(/aplicarCheckoutDePlan\(/);
+    const webhook = stripAllComments(readFile(path.join(API, 'stripe', 'webhook', 'route.ts')));
+    expect(webhook).toMatch(/aplicarCheckoutDePlan\(/);
+    expect(webhook).toMatch(/constructWebhookEvent\(/);
   });
 });

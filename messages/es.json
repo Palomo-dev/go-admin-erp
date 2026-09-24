@@ -660,6 +660,7 @@
       "description": "Activa y desactiva módulos según las necesidades de tu negocio",
       "errorLoadingModules": "Error al cargar módulos disponibles",
       "errorToggling": "Error al modificar el módulo",
+      "errorSinPermiso": "Solo un administrador de la organización puede activar o desactivar módulos",
       "errorConnection": "Error de conexión al modificar el módulo",
       "usage": "Uso de módulos: {total} de {max} ({core} core + {additional} adicionales)",
       "activeModules": "{count} módulos activos ({core} core)",
@@ -9291,5 +9292,9 @@
       "sinAccesoSucursal": "No tienes acceso a la sucursal de esta venta.",
       "generico": "Error al procesar la devolución"
     }
+  },
+  "posCobroServidor": {
+    "productoSinPrecio": "No se agregó «{producto}»: no tiene un precio vigente. Configure su precio en Inventario.",
+    "precioNoConsultado": "No se agregó «{producto}»: no se pudo consultar su precio. Revise la conexión e intente de nuevo."
   }
 }

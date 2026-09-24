@@ -2,49 +2,34 @@
  * /api/modules/audit — auditoría de módulos de TODAS las organizaciones.
  *
  * Es una herramienta de plataforma (no la llama ninguna pantalla ni cron):
- * exige sesión de un administrador de plataforma activo
- * (`platform_admins.user_id = auth user` y `status = 'active'`, consultado con
- * service role). Antes no tenía ninguna comprobación y corría con el cliente
- * browser (como `anon`). El trabajo de auditoría/corrección va con el cliente
- * service-role, SOLO después de la comprobación.
+ * exige sesión de un **administrador de plataforma** activo. Antes no tenía
+ * ninguna comprobación y corría con el cliente browser (como `anon`); luego
+ * pasó a comprobarlo con una función local que consultaba `platform_admins`
+ * con `service_role`.
+ *
+ * Desde 2026-09-24 usa el punto único del repositorio, `withPlatformAdmin`
+ * (`@/lib/security/platformAdmin` → `fn_is_platform_admin()`, `SECURITY
+ * DEFINER`, `status = 'active'`, con el cliente de la sesión y fail-closed),
+ * en vez de repetir la comprobación aquí (regla dura 7). Semántica idéntica a
+ * la que tenía: mismo `platform_admins`, mismo `status = 'active'`.
+ *
+ * El trabajo de auditoría / corrección sí va con `service_role`, y **solo
+ * después** de esa comprobación: recorre organizaciones de las que el admin de
+ * plataforma no es miembro, así que RLS lo dejaría sin datos.
+ *
+ * `organizationId` del body es la organización CLIENTE de destino, no la del
+ * usuario: aquí no hay `readOrgBody` porque no hay organización de sesión con la
+ * que compararla — el permiso es de plataforma, no de organización.
  */
 
 import { NextResponse } from 'next/server';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
-import { getServerUserClient } from '@/lib/supabase/server-user';
+import { withPlatformAdmin } from '@/lib/security/platformAdmin';
 import { getServiceClient } from '@/lib/supabase/server-service';
 
-/** `null` si la sesión es de un admin de plataforma activo; si no, la respuesta 401/403. */
-async function requirePlatformAdmin(): Promise<NextResponse | null> {
-  const userClient = await getServerUserClient();
-  const { data: { user }, error } = await userClient.auth.getUser();
-  if (error || !user) {
-    return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-  }
-
-  const { data: admin, error: adminError } = await getServiceClient()
-    .from('platform_admins')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .maybeSingle();
-
-  if (adminError || !admin) {
-    console.warn('[api/modules/audit] acceso denegado: no es admin de plataforma', {
-      userId: user.id,
-      error: adminError?.message ?? null,
-    });
-    return NextResponse.json({ error: 'Requiere administrador de plataforma' }, { status: 403 });
-  }
-  return null;
-}
-
 // GET /api/modules/audit - Ejecutar auditoría de módulos
-export async function GET() {
+export const GET = withPlatformAdmin(async () => {
   try {
-    const denied = await requirePlatformAdmin();
-    if (denied) return denied;
-
     const auditResults = await moduleManagementService.auditOrganizationModules(getServiceClient());
 
     return NextResponse.json({
@@ -59,14 +44,11 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+});
 
 // POST /api/modules/audit - Corregir inconsistencias de una organización
-export async function POST(request: Request) {
+export const POST = withPlatformAdmin(async (_admin, request) => {
   try {
-    const denied = await requirePlatformAdmin();
-    if (denied) return denied;
-
     const body = await request.json();
     const { organizationId } = body;
 
@@ -95,4 +77,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});

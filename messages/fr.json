@@ -659,6 +659,7 @@
       "description": "Activez et désactivez les modules selon les besoins de votre entreprise",
       "errorLoadingModules": "Erreur lors du chargement des modules disponibles",
       "errorToggling": "Erreur lors de la modification du module",
+      "errorSinPermiso": "Seul un administrateur de l'organisation peut activer ou désactiver des modules",
       "errorConnection": "Erreur de connexion lors de la modification du module",
       "usage": "Utilisation des modules : {total} sur {max} ({core} core + {additional} supplémentaires)",
       "activeModules": "{count} modules actifs ({core} core)",
@@ -9186,5 +9187,9 @@
       "sinAccesoSucursal": "Vous n'avez pas accès à la succursale de cette vente.",
       "generico": "Erreur lors du traitement du retour"
     }
+  },
+  "posCobroServidor": {
+    "productoSinPrecio": "« {producto} » n’a pas été ajouté : il n’a pas de prix en vigueur. Définissez son prix dans Inventaire.",
+    "precioNoConsultado": "« {producto} » n’a pas été ajouté : son prix n’a pas pu être consulté. Vérifiez la connexion et réessayez."
   }
 }

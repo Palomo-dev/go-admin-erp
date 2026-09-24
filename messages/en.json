@@ -660,6 +660,7 @@
       "description": "Activate and deactivate modules according to your business needs",
       "errorLoadingModules": "Error loading available modules",
       "errorToggling": "Error modifying the module",
+      "errorSinPermiso": "Only an organization administrator can activate or deactivate modules",
       "errorConnection": "Connection error modifying the module",
       "usage": "Module usage: {total} of {max} ({core} core + {additional} additional)",
       "activeModules": "{count} active modules ({core} core)",
@@ -9291,5 +9292,9 @@
       "sinAccesoSucursal": "You do not have access to the branch of this sale.",
       "generico": "Error processing the return"
     }
+  },
+  "posCobroServidor": {
+    "productoSinPrecio": "“{producto}” was not added: it has no current price. Set its price in Inventory.",
+    "precioNoConsultado": "“{producto}” was not added: its price could not be loaded. Check the connection and try again."
   }
 }

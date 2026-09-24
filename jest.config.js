@@ -16,9 +16,16 @@ const config = {
     // solo usa `Parser`, que existe igual en htmlparser2@8 (CJS, top-level).
     '^htmlparser2$': '<rootDir>/node_modules/htmlparser2/lib/index.js',
   },
+  // `tsconfig.jest.json` = tsconfig.json con `jsx: react-jsx`: las pruebas de
+  // render (`.test.tsx` con el docblock `@jest-environment jsdom`, Testing
+  // Library, POS-PLAN D9) necesitan JSX compilado; Next usa `preserve`.
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.jest.json' }],
+    // next-intl y sus dependencias solo publican ESM: se transpilan para que
+    // las pruebas de render usen el proveedor real con messages/*.json.
+    'node_modules[\\\\/].+\\.m?js$': ['ts-jest', { tsconfig: 'tsconfig.jest.json' }],
   },
+  transformIgnorePatterns: ['/node_modules/(?!(next-intl|use-intl|intl-messageformat|@formatjs|@schummar)/)'],
   // Ignorar módulos que dependen de Supabase/browser APIs en los tests
   // (se mockean individualmente en cada test).
   testPathIgnorePatterns: ['/node_modules/', '/mobile/', '/print-agent/'],

@@ -95,7 +95,7 @@ export interface SaleWithDetails extends Sale {
   driver_id?: string;
   table_session_id?: string;
   delivery_type?: string;
-  delivery_address?: any;
+  delivery_address?: unknown;
   coupon_code?: string;
   salesperson_name?: string;
   commission_amount?: number;

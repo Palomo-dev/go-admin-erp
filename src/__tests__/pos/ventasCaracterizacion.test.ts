@@ -330,3 +330,45 @@ describe('Paso 16 · detalle de venta en una respuesta', () => {
     expect(tarjetas).toMatch(/useFormatDate\(\)/);
   });
 });
+
+describe('Paso 18 · nueva venta en el POS, limpieza y cajas para Tesorería', () => {
+  const SRC = path.resolve(__dirname, '..', '..');
+  const leer = (r: string) => fs.readFileSync(path.join(SRC, r), 'utf8');
+
+  test('D3: /app/pos/ventas/nuevo no tiene carrito propio; duplicar usa el carrito del POS', () => {
+    expect(fs.existsSync(path.join(SRC, 'components/pos/ventas/nuevo'))).toBe(false);
+    expect(leer('app/app/pos/ventas/nuevo/page.tsx')).toMatch(/<NuevaVenta \/>/);
+    const duplicar = leer('lib/pos/ventas/duplicarEnPos.ts');
+    expect(duplicar).toMatch(/POSService\.createCart\(/);
+    expect(duplicar).toMatch(/POSService\.addItemToCart\(/);
+    expect(duplicar).toMatch(/lineasDuplicadas\(/);
+    expect(duplicar).not.toMatch(/unit_price|from\('/);
+  });
+
+  test('VentasService ya no abre ni cierra cajas ni lee el detalle desde el navegador', () => {
+    const svc = leer('components/pos/ventas/VentasService.ts');
+    expect(svc).not.toMatch(/static async (openCashSession|closeCashSession|getSaleById|duplicateSale|getSales)\(/);
+    expect(svc).not.toMatch(/from\('cash_sessions'\)\s*\.(insert|update)|from\('cash_counts'\)/);
+    // El resumen del día cuenta estados que existen en sales_status_check.
+    expect(svc).not.toMatch(/=== 'completed'|=== 'cancelled'/);
+  });
+
+  test('cajas como cuentas de dinero: sesiones abiertas y el esperado enmascarado de resumenesCompactos', () => {
+    const src = leer('lib/pos/cajas/cuentasDeDinero.ts');
+    expect(src).toMatch(/\.eq\('status', 'open'\)/);
+    expect(src).toMatch(/resumenesCompactos\(ctx,/);
+    expect(src).toMatch(/modoCajaOrganizacion\(ctx\)/);
+    expect(src).not.toMatch(/rpc\('pos_caja_esperado'/);
+  });
+
+  test('nadie usa ya la clave vieja de duplicar ni la ruta de devolución inexistente', () => {
+    const archivos = (d: string): string[] =>
+      fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? archivos(path.join(d, e.name)) : [path.join(d, e.name)]));
+    for (const f of archivos(path.join(SRC, 'components/pos/ventas')).filter((x) => /\.tsx?$/.test(x))) {
+      const src = fs.readFileSync(f, 'utf8');
+      // Solo código (los comentarios pueden contar la historia).
+      const codigo = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+      expect({ f, hit: /duplicateSaleItems|devoluciones\/nuevo\?sale_id/.test(codigo) }).toEqual({ f, hit: false });
+    }
+  });
+});

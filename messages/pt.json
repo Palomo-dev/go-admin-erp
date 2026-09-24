@@ -10749,6 +10749,15 @@
       "descripcion": "Escolha os produtos e o reembolso. O estoque, o caixa e a nota de crédito são registrados em uma única operação.",
       "errorCarga": "Não foi possível carregar a venda para a devolução",
       "hecha": "Devolução registrada."
+    },
+    "nueva": {
+      "abriendo": "Abrindo o ponto de venda…",
+      "preparando": "Preparando um carrinho com os produtos da venda…",
+      "lista": "{n, plural, one {Foi criado um novo carrinho no PDV com # produto.} other {Foi criado um novo carrinho no PDV com # produtos.}}",
+      "conOmitidas": "Foi criado um novo carrinho no PDV com {n} produtos; {omitidas} não puderam ser levados (sem produto ou sem preço vigente).",
+      "ninguna": "Nenhum produto da venda pôde ser levado ao PDV (sem produto ou sem preço vigente).",
+      "error": "Não foi possível preparar a venda",
+      "irAlPos": "Ir para o ponto de venda"
     }
   },
   "cartera": {

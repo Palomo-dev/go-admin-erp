@@ -711,3 +711,36 @@ end; $$;
 Probado en seco (transacción que se deshace, usuario simulado): cajero con cierre ciego → `{oculto:
 true}` sin cifras; administrador → cifras; `UPDATE` directo → 0 filas; cierre de caja ajena →
 `sin_permiso`.
+
+### Ventas (pasos 14–18) — decisiones y registro
+
+| # | Aplicado |
+|---|---|
+| D1 | `pos_ventas_listado` lee solo `sales` (migración `20260926140000`); los pedidos web sin venta quedan en Pedidos online. Paginado, filtrado y ordenado en la base (~45 ms con 1.250 ventas). |
+| D2 | `fn_inicio_ventas_rango(org, desde, hasta, sucursal)`: cobrado por `payment_date` menos reintegros en efectivo, con el periodo anterior de igual duración, ticket, impuestos, facturado y cortes por canal y sucursal. Es la función que debe llamar el Inicio. |
+| D3 | `/app/pos/ventas/nuevo` ya no tiene carrito: sin parámetros redirige a `/app/pos`; con `?duplicar={id}` crea un carrito NUEVO del POS con `POSService.createCart`/`addItemToCart` (los mismos del POS, guardados en `pos_carts_<org>`) y redirige. No se tocó la pantalla del POS (zona de otro agente): el carrito aparece como una pestaña más. |
+| D16 | **Anular sin ruta propia.** El paso 17 pedía `POST /api/pos/ventas/[id]/anular`; el agente de cobro entregó `pos_anular_venta_v1`, que ya exige `pos.void` con `fn_tiene_permiso`, motivo, caja abierta, sin devoluciones y audita en `ops_audit_log`, y su cliente `anularVentaEnServidor`. Una ruta encima solo repetía esa lógica: el listado y el detalle llaman al cliente del agente desde `AnularVentaDialog` (`DialogoMotivo` con «qué se revierte»). Los pedidos web y las ventas con devoluciones quedan deshabilitados con motivo antes de intentarlo. |
+| D17 | «Registrar cobro» usa `RegistrarPagoConectado` (agente de facturas y CxC, `fn_registrar_pago`) con origen `venta_pos`: a la factura si la hay; si no, a la cuenta por cobrar. |
+| D18 | Imprimir = `factura-venta` del motor de documentos (80 mm; PDF carta en ⋯). 107 de 3.569 ventas no tienen factura: para ellas «Imprimir» queda deshabilitado con motivo y sirve «Reimprimir en la impresora de caja» (`PrintJobsService.enqueueSaleTicket`). No existe un tipo «comprobante de venta» en el motor. |
+| D19 | Permisos de las acciones en el servidor (`permisosVentas.ts`, `GET /api/pos/ventas/permisos` y el detalle): `pos.void`, `pos.refund`, `pos.create` (cobrar y duplicar), `reports.sales` (exportar, además exigido por `GET /api/pos/ventas/exportar` con 403 registrado). |
+| D20 | Desktop sin red: el listado lee la réplica local (`clienteVentas.ts` → `ventaLocal.ts`), con las ventas del outbox como «Pendiente de sincronizar» y un aviso de que filtros, búsqueda y cifras esperan a la red. El detalle vive en el servidor: sin red muestra un estado propio. |
+| — | Filtro «Cajero»: se respeta en la URL (chip) pero no hay selector: no existe una lectura de miembros para el navegador. «Imprimir» masivo y «Enviar» no se hicieron: abrir N pestañas lo bloquea el navegador y no hay envío por correo de ventas. |
+
+**Cajas como cuentas de dinero (para Tesorería):** `cajasComoCuentasDeDinero(ctx)` en
+`src/lib/pos/cajas/cuentasDeDinero.ts` (solo servidor) devuelve el modo y, por cada caja
+ABIERTA, `{ tipo: 'caja', sesion_id, uuid, alcance: 'sucursal'|'todas'|'usuario', sucursal,
+responsable, abierta_desde, saldo, href }`. `saldo` es el efectivo esperado de
+`pos_caja_esperado` por `resumenesCompactos`, así que el cierre ciego se respeta (sin
+`pos.cajas.ver_esperado`, `saldo = null`). Tesorería no debe recalcular el esperado.
+
+**Pendiente, con motivo:**
+- Fase 2 de la RLS y la máscara (sección anterior): tras desplegar estos commits.
+- D5 (`payments.cash_session_id`): exige cambiar `pos_checkout_v1` a la vez.
+- Plan de anulación «en simulación» (lista exacta de lo que revertiría) en `pos_anular_venta_v1`: se pide al agente de cobro; hoy el diálogo muestra la lista genérica.
+- El cargador `cierre-caja`/`arqueo-caja` del motor de documentos decide «ver esperado» con `admin.full_access`; debería usar `pos.cajas.ver_esperado` (`fn_caja_ve_esperado`).
+- `fn_notify_cash_session_closed` incluye la diferencia en la notificación aunque el cierre sea ciego.
+- La RLS de `cash_movements` sigue siendo una política ALL por pertenencia.
+- El historial de cajas lee `difference` desde el navegador (se oculta en la UI, no en el servidor).
+- `parametrosArqueo` descarta los métodos contados en 0.
+- Las versiones `20260926130000` y `20260926140000` coinciden con dos migraciones de compras; son copias documentales (la política ya admite versiones repetidas) y la base las registró con su propia versión.
+- Verificación visual en navegador: el preview pide iniciar sesión y no se escriben contraseñas.

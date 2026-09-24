@@ -10854,6 +10854,15 @@
       "descripcion": "Elija los productos y el reintegro. El inventario, la caja y la nota crédito se registran en una sola operación.",
       "errorCarga": "No se pudo cargar la venta para la devolución",
       "hecha": "Devolución registrada."
+    },
+    "nueva": {
+      "abriendo": "Abriendo el punto de venta…",
+      "preparando": "Preparando un carrito con los productos de la venta…",
+      "lista": "{n, plural, one {Se creó un carrito nuevo en el POS con # producto.} other {Se creó un carrito nuevo en el POS con # productos.}}",
+      "conOmitidas": "Se creó un carrito nuevo en el POS con {n} productos; {omitidas} no se pudieron llevar (sin producto o sin precio vigente).",
+      "ninguna": "Ningún producto de la venta se pudo llevar al POS (sin producto o sin precio vigente).",
+      "error": "No se pudo preparar la venta",
+      "irAlPos": "Ir al punto de venta"
     }
   },
   "cartera": {

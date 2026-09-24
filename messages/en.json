@@ -10854,6 +10854,15 @@
       "descripcion": "Choose the products and the refund. Stock, cash and the credit note are recorded in a single operation.",
       "errorCarga": "The sale could not be loaded for the return",
       "hecha": "Return recorded."
+    },
+    "nueva": {
+      "abriendo": "Opening the point of sale…",
+      "preparando": "Preparing a cart with the sale's products…",
+      "lista": "{n, plural, one {A new POS cart was created with # product.} other {A new POS cart was created with # products.}}",
+      "conOmitidas": "A new POS cart was created with {n} products; {omitidas} could not be added (no product or no current price).",
+      "ninguna": "None of the sale's products could be added to the POS (no product or no current price).",
+      "error": "The sale could not be prepared",
+      "irAlPos": "Go to the point of sale"
     }
   },
   "cartera": {

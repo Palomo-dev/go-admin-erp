@@ -10749,6 +10749,15 @@
       "descripcion": "Choisissez les produits et le remboursement. Le stock, la caisse et l'avoir sont enregistrés en une seule opération.",
       "errorCarga": "La vente n'a pas pu être chargée pour le retour",
       "hecha": "Retour enregistré."
+    },
+    "nueva": {
+      "abriendo": "Ouverture du point de vente…",
+      "preparando": "Préparation d'un panier avec les produits de la vente…",
+      "lista": "{n, plural, one {Un nouveau panier a été créé dans le PDV avec # produit.} other {Un nouveau panier a été créé dans le PDV avec # produits.}}",
+      "conOmitidas": "Un nouveau panier a été créé dans le PDV avec {n} produits ; {omitidas} n'ont pas pu être ajoutés (sans produit ou sans prix en vigueur).",
+      "ninguna": "Aucun produit de la vente n'a pu être ajouté au PDV (sans produit ou sans prix en vigueur).",
+      "error": "La vente n'a pas pu être préparée",
+      "irAlPos": "Aller au point de vente"
     }
   },
   "cartera": {

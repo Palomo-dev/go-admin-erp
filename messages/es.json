@@ -8952,6 +8952,48 @@
       "errorTitulo": "No se pudo liberar la mesa"
     }
   },
+  "vozCampanasDisparo": {
+    "interruptor": {
+      "titulo": "Agente IA de voz",
+      "etiqueta": "Permitir que el agente IA llame",
+      "ayuda": "Con esto apagado, ninguna campaña marca. Encenderlo no salta las demás comprobaciones: número propio, minutos, agente activo y consentimiento del cliente.",
+      "encendido": "Agente IA de voz encendido",
+      "apagado": "Agente IA de voz apagado",
+      "errorGuardar": "No se pudo guardar"
+    },
+    "titulo": "Probar la cola ahora",
+    "descripcion": "La cola se ejecuta sola cada 5 minutos. Aqui puedes forzarla y ver por que una campana activa no esta llamando.",
+    "ejecutar": "Ejecutar ahora",
+    "ejecutando": "Ejecutando…",
+    "actualizar": "Volver a comprobar",
+    "sinPermiso": "Ejecutar la cola requiere rol de administrador de la organización.",
+    "errorDiagnostico": "No se pudo comprobar el estado del agente de voz",
+    "errorEjecutar": "No se pudo ejecutar la cola",
+    "resultadoConLlamadas": "{n, plural, one {Se inició # llamada} other {Se iniciaron # llamadas}}",
+    "resultadoSinLlamadas": "No se inició ninguna llamada",
+    "todoListo": "Todo listo: la cola puede marcar.",
+    "bloqueosOrganizacion": "Lo que impide llamar en esta organización",
+    "motivos": {
+      "sin_comm_settings": "Esta organización no tiene el canal de comunicaciones configurado. Ve a Configuración › CRM › Telefonía y guarda los ajustes.",
+      "canal_inactivo": "El canal de comunicaciones está inactivo (Configuración › CRM › Telefonía).",
+      "agente_voz_apagado": "El agente de voz está apagado para esta organización. Enciéndelo en Configuración › CRM › Telefonía.",
+      "sin_numero_propio": "La organización no tiene un número de salida propio. Configúralo en Configuración › CRM › Telefonía: nunca se marca desde el número compartido de la plataforma.",
+      "sin_minutos": "No quedan minutos de voz ({minutos} disponibles).",
+      "sin_campanas_activas": "No hay ninguna campaña activa. Crea una y pulsa «Activar».",
+      "campana_pausada": "La campaña no está activa (estado: {estado}).",
+      "parada_emergencia": "La campaña tiene la parada de emergencia puesta. Vuelve a activarla para quitarla.",
+      "agente_inactivo": "El agente que llama está inactivo. Actívalo en la pestaña «Agentes».",
+      "agente_no_encontrado": "El agente de la campaña ya no existe.",
+      "fuera_de_franja_campana": "Fuera de la franja horaria de la campaña ({desde}:00–{hasta}:00, zona {zona}).",
+      "fuera_de_franja_cliente": "Fuera de la franja legal de contacto (08:00–20:00, nunca domingo; zona {zona}).",
+      "tope_diario": "Tope diario alcanzado: {hechos} de {tope} intentos.",
+      "tope_hora": "Tope por hora alcanzado: {hechos} de {tope} intentos.",
+      "sin_objetivos": "La campaña no tiene a quién llamar: la etapa del embudo elegida no tiene clientes.",
+      "objetivos_sin_telefono": "{sinTelefono, plural, =0 {Ninguno de los {revisados} clientes revisados tiene teléfono.} one {# de los {revisados} clientes revisados no tiene teléfono.} other {# de los {revisados} clientes revisados no tienen teléfono.}}",
+      "objetivos_sin_consentimiento": "{bloqueados, plural, =0 {Los {revisados} clientes revisados tienen la llamada bloqueada por consentimiento o por «no llamar».} one {# de los {revisados} clientes revisados tiene la llamada bloqueada por consentimiento o por «no llamar».} other {# de los {revisados} clientes revisados tienen la llamada bloqueada por consentimiento o por «no llamar».}}",
+      "twilio_no_verificable": "Que las credenciales de Twilio y el número estén activos no se puede comprobar sin marcar de verdad ({cuenta, select, subcuenta_propia {subcuenta propia de la organización} other {cuenta maestra de la plataforma}})."
+    }
+  },
   "facturacionElectronica": {
     "configuracion": {
       "titulo": "Configuración de facturación electrónica",

@@ -8847,6 +8847,48 @@
       "errorTitulo": "La table n’a pas pu être libérée"
     }
   },
+  "vozCampanasDisparo": {
+    "interruptor": {
+      "titulo": "Agent vocal IA",
+      "etiqueta": "Autoriser l'agent IA à appeler",
+      "ayuda": "Désactivé, aucune campagne ne compose. L'activer ne saute pas les autres vérifications : numéro propre, minutes, agent actif et consentement du client.",
+      "encendido": "Agent vocal IA activé",
+      "apagado": "Agent vocal IA désactivé",
+      "errorGuardar": "Impossible d'enregistrer"
+    },
+    "titulo": "Tester la file maintenant",
+    "descripcion": "La file s'exécute toute seule toutes les 5 minutes. Ici vous pouvez la forcer et voir pourquoi une campagne active n'appelle pas.",
+    "ejecutar": "Exécuter maintenant",
+    "ejecutando": "Exécution…",
+    "actualizar": "Vérifier à nouveau",
+    "sinPermiso": "Exécuter la file requiert le rôle d'administrateur de l'organisation.",
+    "errorDiagnostico": "Impossible de vérifier l'état de l'agent vocal",
+    "errorEjecutar": "Impossible d'exécuter la file",
+    "resultadoConLlamadas": "{n, plural, one {# appel lancé} other {# appels lancés}}",
+    "resultadoSinLlamadas": "Aucun appel n'a été lancé",
+    "todoListo": "Tout est prêt : la file peut composer.",
+    "bloqueosOrganizacion": "Ce qui empêche d'appeler dans cette organisation",
+    "motivos": {
+      "sin_comm_settings": "Cette organisation n'a pas de canal de communication configuré. Allez dans Configuration › CRM › Téléphonie et enregistrez les réglages.",
+      "canal_inactivo": "Le canal de communication est inactif (Configuration › CRM › Téléphonie).",
+      "agente_voz_apagado": "L'agent vocal est désactivé pour cette organisation. Activez-le dans Configuration › CRM › Téléphonie.",
+      "sin_numero_propio": "L'organisation n'a pas de numéro d'appel sortant propre. Configurez-en un dans Configuration › CRM › Téléphonie : le numéro partagé de la plateforme n'est jamais utilisé.",
+      "sin_minutos": "Plus de minutes vocales ({minutos} disponibles).",
+      "sin_campanas_activas": "Aucune campagne active. Créez-en une et appuyez sur « Activer ».",
+      "campana_pausada": "La campagne n'est pas active (statut : {estado}).",
+      "parada_emergencia": "L'arrêt d'urgence de la campagne est enclenché. Réactivez-la pour le lever.",
+      "agente_inactivo": "L'agent qui appelle est inactif. Activez-le dans l'onglet « Agents ».",
+      "agente_no_encontrado": "L'agent de la campagne n'existe plus.",
+      "fuera_de_franja_campana": "Hors de la plage horaire de la campagne ({desde}:00–{hasta}:00, zone {zona}).",
+      "fuera_de_franja_cliente": "Hors de la plage légale de contact (08:00–20:00, jamais le dimanche ; zone {zona}).",
+      "tope_diario": "Plafond quotidien atteint : {hechos} sur {tope} tentatives.",
+      "tope_hora": "Plafond horaire atteint : {hechos} sur {tope} tentatives.",
+      "sin_objetivos": "La campagne n'a personne à appeler : l'étape du pipeline choisie n'a aucun client.",
+      "objetivos_sin_telefono": "{sinTelefono, plural, =0 {Aucun des {revisados} clients vérifiés n'a de téléphone.} one {# des {revisados} clients vérifiés n'a pas de téléphone.} other {# des {revisados} clients vérifiés n'ont pas de téléphone.}}",
+      "objetivos_sin_consentimiento": "{bloqueados, plural, =0 {Les {revisados} clients vérifiés sont bloqués par le consentement ou par « ne pas appeler ».} one {# des {revisados} clients vérifiés est bloqué par le consentement ou par « ne pas appeler ».} other {# des {revisados} clients vérifiés sont bloqués par le consentement ou par « ne pas appeler ».}}",
+      "twilio_no_verificable": "Vérifier que les identifiants Twilio et le numéro sont actifs est impossible sans composer réellement ({cuenta, select, subcuenta_propia {sous-compte propre de l'organisation} other {compte maître de la plateforme}})."
+    }
+  },
   "facturacionElectronica": {
     "configuracion": {
       "titulo": "Paramètres de facturation électronique",

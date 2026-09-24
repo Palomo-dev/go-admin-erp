@@ -34,6 +34,7 @@ import type { VoiceAgentListItem } from "./AgentesIaPage";
 import { buildCampaignBody, type CampaignRow } from "./campanas/campaignModel";
 import { CampaignTargetPicker } from "./campanas/CampaignTargetPicker";
 import { CampaignCard } from "./campanas/CampaignCard";
+import { CampaignRunNow } from "./campanas/CampaignRunNow";
 
 interface Props {
   agents: VoiceAgentListItem[];
@@ -161,6 +162,14 @@ function CampaignsPanelInner({
 
   return (
     <div className="space-y-5">
+      {/*
+        Hasta 2026-09-23 crear una campaña y activarla no hacía llamar a nadie:
+        `runCampaignQueue` no tenía disparador. Ahora la ejecuta el planificador
+        (`ScheduledTask 'voice_campaigns'`) y este bloque permite forzarla y, sobre
+        todo, ver POR QUÉ no marca cuando falta algo.
+      */}
+      <CampaignRunNow onRan={() => void load()} />
+
       <section
         aria-labelledby="c-new-title"
         className="rounded-xl border border-gray-200 p-4 dark:border-gray-700"

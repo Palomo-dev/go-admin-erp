@@ -21,6 +21,21 @@ export interface CampaignRunSummary {
   campaigns_stopped: string[];
   execution_time_ms: number;
   date: string;
+  /** El presupuesto o la señal cortaron el recorrido antes de ver todas las orgs. */
+  truncated?: boolean;
+  /** Orgs que quedaron sin procesar en esta pasada (las recoge la siguiente). */
+  pending_org_ids?: number[];
+}
+
+/**
+ * Presupuesto cooperativo del recorrido (lo aporta el planificador de
+ * `/api/crm/jobs/run`, que tiene `maxDuration = 60`). Se comprueba ENTRE
+ * organizaciones: nunca a mitad de una, para no dejar filas reclamadas sin
+ * marcar. Sin opciones, el comportamiento es el de antes (recorrido completo).
+ */
+export interface CampaignRunBudget {
+  signal?: AbortSignal;
+  budgetMs?: number;
 }
 
 function emptyRow(organizationId: number, message: string): CampaignRunRow {
@@ -49,9 +64,19 @@ function summarize(results: CampaignRunRow[], startedAt: number): CampaignRunSum
 /** Recorre las organizaciones con campañas `running` y sin parada de emergencia. */
 export async function runCampaignsForAllOrgs(
   supabase: SupabaseClient,
-  worker: string
+  worker: string,
+  budget: CampaignRunBudget = {}
 ): Promise<CampaignRunSummary> {
   const startedAt = Date.now();
+  const deadlineAt = startedAt + Math.max(0, budget.budgetMs ?? Number.POSITIVE_INFINITY);
+  const exhausted = () => budget.signal?.aborted === true || Date.now() >= deadlineAt;
+
+  // Con el presupuesto ya agotado no se gasta ni una ida y vuelta a la base.
+  if (exhausted()) {
+    const empty = summarize([], startedAt);
+    empty.truncated = true;
+    return empty;
+  }
 
   const { data, error } = await supabase
     .from('voice_agent_campaigns')
@@ -62,10 +87,16 @@ export async function runCampaignsForAllOrgs(
 
   const orgIds = Array.from(
     new Set((data || []).map((r) => (r as { organization_id: number }).organization_id))
-  );
+  ).sort((a, b) => a - b);
 
   const results: CampaignRunRow[] = [];
-  for (const orgId of orgIds) {
+  const pending: number[] = [];
+  for (let i = 0; i < orgIds.length; i++) {
+    const orgId = orgIds[i];
+    if (exhausted()) {
+      pending.push(...orgIds.slice(i));
+      break;
+    }
     try {
       const result = await runCampaignQueue(orgId, supabase, { worker });
       results.push({ organization_id: orgId, ...result });
@@ -77,7 +108,12 @@ export async function runCampaignsForAllOrgs(
     }
   }
 
-  return summarize(results, startedAt);
+  const summary = summarize(results, startedAt);
+  if (pending.length > 0) {
+    summary.truncated = true;
+    summary.pending_org_ids = pending;
+  }
+  return summary;
 }
 
 /** Ejecuta el despachador para una sola organización (alias histórico del cron). */

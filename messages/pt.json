@@ -8847,6 +8847,48 @@
       "errorTitulo": "Não foi possível liberar a mesa"
     }
   },
+  "vozCampanasDisparo": {
+    "interruptor": {
+      "titulo": "Agente de voz IA",
+      "etiqueta": "Permitir que o agente IA ligue",
+      "ayuda": "Com isto desligado, nenhuma campanha disca. Ligá-lo não pula as outras verificações: número próprio, minutos, agente ativo e consentimento do cliente.",
+      "encendido": "Agente de voz IA ligado",
+      "apagado": "Agente de voz IA desligado",
+      "errorGuardar": "Não foi possível salvar"
+    },
+    "titulo": "Testar a fila agora",
+    "descripcion": "A fila é executada sozinha a cada 5 minutos. Aqui você pode forçá-la e ver por que uma campanha ativa não está ligando.",
+    "ejecutar": "Executar agora",
+    "ejecutando": "Executando…",
+    "actualizar": "Verificar de novo",
+    "sinPermiso": "Executar a fila exige função de administrador da organização.",
+    "errorDiagnostico": "Não foi possível verificar o estado do agente de voz",
+    "errorEjecutar": "Não foi possível executar a fila",
+    "resultadoConLlamadas": "{n, plural, one {# chamada iniciada} other {# chamadas iniciadas}}",
+    "resultadoSinLlamadas": "Nenhuma chamada foi iniciada",
+    "todoListo": "Tudo pronto: a fila pode discar.",
+    "bloqueosOrganizacion": "O que impede as chamadas nesta organização",
+    "motivos": {
+      "sin_comm_settings": "Esta organização não tem o canal de comunicações configurado. Vá em Configuração › CRM › Telefonia e salve os ajustes.",
+      "canal_inactivo": "O canal de comunicações está inativo (Configuração › CRM › Telefonia).",
+      "agente_voz_apagado": "O agente de voz está desligado para esta organização. Ligue-o em Configuração › CRM › Telefonia.",
+      "sin_numero_propio": "A organização não tem um número de saída próprio. Configure um em Configuração › CRM › Telefonia: o número compartilhado da plataforma nunca é usado para discar.",
+      "sin_minutos": "Não há minutos de voz ({minutos} disponíveis).",
+      "sin_campanas_activas": "Não há nenhuma campanha ativa. Crie uma e toque em «Ativar».",
+      "campana_pausada": "A campanha não está ativa (estado: {estado}).",
+      "parada_emergencia": "A campanha está com a parada de emergência ligada. Ative-a de novo para removê-la.",
+      "agente_inactivo": "O agente que liga está inativo. Ative-o na aba «Agentes».",
+      "agente_no_encontrado": "O agente da campanha já não existe.",
+      "fuera_de_franja_campana": "Fora da faixa horária da campanha ({desde}:00–{hasta}:00, zona {zona}).",
+      "fuera_de_franja_cliente": "Fora da faixa legal de contato (08:00–20:00, nunca domingo; zona {zona}).",
+      "tope_diario": "Limite diário alcançado: {hechos} de {tope} tentativas.",
+      "tope_hora": "Limite por hora alcançado: {hechos} de {tope} tentativas.",
+      "sin_objetivos": "A campanha não tem quem ligar: a etapa do funil escolhida não tem clientes.",
+      "objetivos_sin_telefono": "{sinTelefono, plural, =0 {Nenhum dos {revisados} clientes verificados tem telefone.} one {# dos {revisados} clientes verificados não tem telefone.} other {# dos {revisados} clientes verificados não têm telefone.}}",
+      "objetivos_sin_consentimiento": "{bloqueados, plural, =0 {Os {revisados} clientes verificados estão bloqueados por consentimento ou por «não ligar».} one {# dos {revisados} clientes verificados está bloqueado por consentimento ou por «não ligar».} other {# dos {revisados} clientes verificados estão bloqueados por consentimento ou por «não ligar».}}",
+      "twilio_no_verificable": "Se as credenciais da Twilio e o número estão ativos não é possível verificar sem discar de verdade ({cuenta, select, subcuenta_propia {subconta própria da organização} other {conta mestra da plataforma}})."
+    }
+  },
   "facturacionElectronica": {
     "configuracion": {
       "titulo": "Configuração de faturamento eletrônico",

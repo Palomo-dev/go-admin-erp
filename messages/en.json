@@ -8952,6 +8952,48 @@
       "errorTitulo": "The table could not be released"
     }
   },
+  "vozCampanasDisparo": {
+    "interruptor": {
+      "titulo": "AI voice agent",
+      "etiqueta": "Allow the AI agent to call",
+      "ayuda": "With this off, no campaign dials. Turning it on does not skip the other checks: own number, minutes, active agent and customer consent.",
+      "encendido": "AI voice agent turned on",
+      "apagado": "AI voice agent turned off",
+      "errorGuardar": "It could not be saved"
+    },
+    "titulo": "Test the queue now",
+    "descripcion": "The queue runs on its own every 5 minutes. Here you can force it and see why an active campaign is not calling.",
+    "ejecutar": "Run now",
+    "ejecutando": "Running…",
+    "actualizar": "Check again",
+    "sinPermiso": "Running the queue requires an organization administrator role.",
+    "errorDiagnostico": "The voice agent status could not be checked",
+    "errorEjecutar": "The queue could not be run",
+    "resultadoConLlamadas": "{n, plural, one {# call started} other {# calls started}}",
+    "resultadoSinLlamadas": "No call was started",
+    "todoListo": "All set: the queue can dial.",
+    "bloqueosOrganizacion": "What is blocking calls in this organization",
+    "motivos": {
+      "sin_comm_settings": "This organization has no communications channel configured. Go to Settings › CRM › Telephony and save the settings.",
+      "canal_inactivo": "The communications channel is inactive (Settings › CRM › Telephony).",
+      "agente_voz_apagado": "The voice agent is switched off for this organization. Turn it on in Settings › CRM › Telephony.",
+      "sin_numero_propio": "The organization has no outbound number of its own. Set one up in Settings › CRM › Telephony: the platform's shared number is never used to dial.",
+      "sin_minutos": "No voice minutes left ({minutos} available).",
+      "sin_campanas_activas": "There is no active campaign. Create one and press “Activate”.",
+      "campana_pausada": "The campaign is not active (status: {estado}).",
+      "parada_emergencia": "The campaign has the emergency stop on. Activate it again to clear it.",
+      "agente_inactivo": "The calling agent is inactive. Activate it on the “Agents” tab.",
+      "agente_no_encontrado": "The campaign's agent no longer exists.",
+      "fuera_de_franja_campana": "Outside the campaign's time window ({desde}:00–{hasta}:00, zone {zona}).",
+      "fuera_de_franja_cliente": "Outside the legal contact window (08:00–20:00, never on Sunday; zone {zona}).",
+      "tope_diario": "Daily cap reached: {hechos} of {tope} attempts.",
+      "tope_hora": "Hourly cap reached: {hechos} of {tope} attempts.",
+      "sin_objetivos": "The campaign has nobody to call: the selected pipeline stage has no customers.",
+      "objetivos_sin_telefono": "{sinTelefono, plural, =0 {None of the {revisados} customers checked has a phone number.} one {# of the {revisados} customers checked has no phone number.} other {# of the {revisados} customers checked have no phone number.}}",
+      "objetivos_sin_consentimiento": "{bloqueados, plural, =0 {All {revisados} customers checked are blocked by consent or by “do not call”.} one {# of the {revisados} customers checked is blocked by consent or by “do not call”.} other {# of the {revisados} customers checked are blocked by consent or by “do not call”.}}",
+      "twilio_no_verificable": "Whether the Twilio credentials and the number are active cannot be checked without actually dialing ({cuenta, select, subcuenta_propia {organization's own subaccount} other {platform master account}})."
+    }
+  },
   "facturacionElectronica": {
     "configuracion": {
       "titulo": "E-invoicing settings",

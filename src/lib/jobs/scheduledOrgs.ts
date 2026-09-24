@@ -9,8 +9,24 @@ import { isJobKind, type JobKind } from './types';
  * `renewals_sync`, y esta fase no lleva migraciones. Por eso son un tipo aparte
  * (`ScheduledTask`) que el cron diario ejecuta directamente, como
  * `maintenance`, sin insertar nada en la cola.
+ *
+ * F6 (`voice_campaigns`) sigue el mismo patrón y por el mismo motivo: hasta
+ * 2026-09-23 la cola de campañas del agente de voz (`runCampaignQueue`) NO
+ * tenía ningún disparador —ni cron en `vercel.json` ni `JobKind`—, así que una
+ * campaña `running` no llamaba nunca. Se engancha aquí en vez de crear un
+ * `JobKind` nuevo porque:
+ *   · el trabajo ya se reclama fila a fila en la base con
+ *     `fn_claim_voice_agent_calls` (FOR UPDATE SKIP LOCKED), de modo que la
+ *     unidad de reclamo/reintento de `outbound_jobs` sería una segunda capa
+ *     redundante sobre la que ya existe;
+ *   · un `JobKind` nuevo exige ampliar el CHECK de `outbound_jobs.kind` con
+ *     migración + regeneración de `db-checks.json` (guardarraíl 9) para no
+ *     ganar nada; y
+ *   · el número de crons de Vercel es limitado y el schedule `*\/5` de
+ *     `/api/crm/jobs/run` ya existe: basta añadir el kind a su tabla en
+ *     `schedule.ts` (`VERCEL_SCHEDULE_KINDS`) para que se ejecute sola.
  */
-export const SCHEDULED_TASKS = ['health_recalculate', 'renewals_sync'] as const;
+export const SCHEDULED_TASKS = ['health_recalculate', 'renewals_sync', 'voice_campaigns'] as const;
 export type ScheduledTask = (typeof SCHEDULED_TASKS)[number];
 export type ScheduledKind = JobKind | ScheduledTask;
 

@@ -6,6 +6,7 @@ import { runMaintenance, type MaintenanceResult } from './handlers/maintenance';
 import { makeJobLogger } from './runner';
 import { runHealthRecalculate, type HealthRecalcResult } from './scheduled/healthRecalculate';
 import { runRenewalsSync, type RenewalsSyncResult } from './scheduled/renewalsSync';
+import { runVoiceCampaigns, type VoiceCampaignsResult } from './scheduled/voiceCampaigns';
 import { isScheduledTask, type ScheduledKind } from './scheduledOrgs';
 import { loadOrgTimezones, orgDay } from './orgTimezone';
 import { DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
@@ -45,11 +46,20 @@ import { DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
  *    que falla no detiene a las demás. Idempotentes: si pg_cron y Vercel
  *    coinciden, la segunda pasada no escribe snapshots ni renovaciones nuevas.
  *
+ *  - `voice_campaigns` (F6) → tarea EN PROCESO que drena la cola de campañas
+ *    del agente de voz para TODAS las organizaciones con campañas `running`
+ *    (`runCampaignsForAllOrgs`). Tampoco es `outbound_jobs.kind` y por el mismo
+ *    motivo (el CHECK no lo admite y no haría falta: el reclamo de trabajo ya
+ *    está en la base, `fn_claim_voice_agent_calls` con FOR UPDATE SKIP LOCKED).
+ *    Viaja en el cron `*\/5` que ya existe (`VERCEL_SCHEDULE_KINDS` en
+ *    `schedule.ts`), sin añadir entradas a `vercel.json`. Idempotente y a prueba
+ *    de solape: dos pasadas reclaman filas disjuntas.
+ *
  * Solo se activa cuando la petición trae explícitamente esos kinds
  * (`?kind=`, body.kinds o `x-vercel-cron-schedule`); el drenaje sin kinds
  * (cada minuto) no lo dispara.
  */
-export const SCHEDULED_KINDS: readonly ScheduledKind[] = ['maintenance', 'recording_cleanup', 'health_recalculate', 'renewals_sync'];
+export const SCHEDULED_KINDS: readonly ScheduledKind[] = ['maintenance', 'recording_cleanup', 'health_recalculate', 'renewals_sync', 'voice_campaigns'];
 
 export interface RecordingCleanupEnqueueResult {
   enqueued: number;
@@ -74,6 +84,8 @@ export interface ScheduledRunResult {
   recording_cleanup?: RecordingCleanupEnqueueResult;
   health_recalculate?: { ok: true; ms: number; result: HealthRecalcResult } | TaskFailure;
   renewals_sync?: { ok: true; ms: number; result: RenewalsSyncResult } | TaskFailure;
+  /** F6: cola de campañas del agente de voz (`ScheduledTask`, nunca un JobKind). */
+  voice_campaigns?: { ok: true; ms: number; result: VoiceCampaignsResult } | TaskFailure;
 }
 
 export interface RunScheduledOptions {
@@ -213,6 +225,21 @@ export async function runScheduledKinds(opts: RunScheduledOptions): Promise<Sche
       } else {
         out.renewals_sync = await runTimed(perTask, (signal) => runRenewalsSync(sb, now, log, signal));
         if (!out.renewals_sync.ok) log.error('renewals_sync_failed', { error: out.renewals_sync.error });
+      }
+    }
+    // F6: el despachador de campañas de voz. Mide su propio presupuesto ADEMÁS
+    // de la señal porque corta entre organizaciones, no a mitad de una: una fila
+    // ya reclamada se marca o se libera, nunca se queda colgada.
+    if (tasks.includes('voice_campaigns')) {
+      const perTask = budgetFor();
+      if (perTask <= 0) {
+        out.voice_campaigns = exhaustedTask();
+        log.warn('voice_campaigns_skipped', { reason: 'budget_exhausted' });
+      } else {
+        out.voice_campaigns = await runTimed(perTask, (signal) =>
+          runVoiceCampaigns(sb, log, signal, { budgetMs: perTask, worker: opts.worker }),
+        );
+        if (!out.voice_campaigns.ok) log.error('voice_campaigns_failed', { error: out.voice_campaigns.error });
       }
     }
   }

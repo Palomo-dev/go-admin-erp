@@ -865,7 +865,7 @@ function oneHourAgoIso(): string {
  * horaria ponen `claimed_at` a NULL, de modo que el intento desaparecía del
  * conteo y el techo real era `tope × max_attempts` (hasta 5×).
  */
-async function countAttempts(
+export async function countAttempts(
   supabase: SupabaseClient,
   campaignId: string,
   sinceIso: string
@@ -912,6 +912,25 @@ async function countAgentInProgress(
     .eq('voice_agent_id', agentId)
     .eq('status', 'in_progress');
   if (res.error) throw new VoiceAgentDbError('countAgentInProgress', res.error);
+  return res.count ?? 0;
+}
+
+/**
+ * Llamadas del agente IA en curso en TODA la organización.
+ *
+ * Es el contador que gobierna `comm_settings.voice_max_concurrent_calls`. Hasta
+ * 2026-09-23 la cola de campañas solo miraba `campaign.max_concurrent` por
+ * campaña, así que tres campañas de 3 podían tener 9 llamadas simultáneas y el
+ * tope de la organización —el que existe para no saturar la centralita— no se
+ * aplicaba en este camino (sí en el despacho puntual, `dispatchAgentCall`).
+ */
+async function countOrgInProgress(supabase: SupabaseClient, orgId: number): Promise<number> {
+  const res = await supabase
+    .from('voice_agent_calls')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', orgId)
+    .eq('status', 'in_progress');
+  if (res.error) throw new VoiceAgentDbError('countOrgInProgress', res.error);
   return res.count ?? 0;
 }
 
@@ -973,6 +992,18 @@ export async function runCampaignQueue(
   const webhookBase = getWebhookBaseUrl();
   const recordingSettings = orgSettings;
 
+  // Barrera de ORGANIZACIÓN (`comm_settings.voice_max_concurrent_calls`): el
+  // cupo es compartido por todas las campañas y por el despacho puntual. Se lee
+  // una vez y se descuenta con lo que cada campaña vaya marcando en esta pasada,
+  // para que dos campañas no se reparta cada una el cupo completo.
+  let orgConcurrencyRoom = orgSettings.maxConcurrentCalls - (await countOrgInProgress(supabase, orgId));
+  if (orgConcurrencyRoom <= 0) {
+    result.errors.push(
+      `Se alcanzó el máximo de llamadas simultáneas de la organización (${orgSettings.maxConcurrentCalls}).`
+    );
+    return result;
+  }
+
   for (const campaign of campaigns) {
     result.campaigns_processed++;
 
@@ -1026,7 +1057,7 @@ export async function runCampaignQueue(
       agentCaps.max_calls_per_hour - agentAttemptsHour
     );
 
-    const slots = Math.min(maxConcurrent - inProgress, dayRoom, hourRoom);
+    const slots = Math.min(maxConcurrent - inProgress, dayRoom, hourRoom, orgConcurrencyRoom);
     if (slots <= 0) continue;
 
     // Encolar objetivos solo hasta lo que cabe en la cuota diaria restante.
@@ -1071,6 +1102,7 @@ export async function runCampaignQueue(
         });
         if (dialed.initiated) {
           result.calls_initiated++;
+          orgConcurrencyRoom--;
           streak = 0;
         } else {
           result.calls_skipped++;
@@ -1220,7 +1252,7 @@ export interface AgentCaps {
   max_calls_per_hour: number;
 }
 
-async function getAgentCaps(
+export async function getAgentCaps(
   supabase: SupabaseClient,
   orgId: number,
   agentId: string
@@ -1254,7 +1286,12 @@ export interface OrgVoiceSettings extends RecordingSettings {
   maxConcurrentCalls: number;
 }
 
-async function getOrgVoiceSettings(
+/**
+ * Exportada (r-voz 2026-09-23) para que el diagnóstico del panel enseñe el MISMO
+ * veredicto que aplica el despachador, en vez de reimplementar la lectura de
+ * `comm_settings` (regla dura 7).
+ */
+export async function getOrgVoiceSettings(
   orgId: number,
   supabase: SupabaseClient
 ): Promise<OrgVoiceSettings> {
@@ -1806,7 +1843,7 @@ export async function dispatchAgentCall(
  * `pickCallerId` y, si el único candidato es el de la plataforma, se devuelve
  * vacío y el despacho se bloquea (`caller_id`), igual que hace `twiml/outbound`.
  */
-async function pickAgentCallerId(orgId: number, supabase: SupabaseClient, fallback: string | null): Promise<string> {
+export async function pickAgentCallerId(orgId: number, supabase: SupabaseClient, fallback: string | null): Promise<string> {
   const settings = await getTelephonySettings(orgId, supabase);
   const picked = await pickCallerId(orgId, settings, supabase, fallback ?? undefined);
   if (!picked.e164) return '';

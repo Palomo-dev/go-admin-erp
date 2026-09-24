@@ -907,18 +907,54 @@ export class POSService {
     }
   }
 
-  static async getActiveCarts(): Promise<Cart[]> {
+  /**
+   * Carritos vivos (activos o en espera) DE LA SUCURSAL. `pos_carts_<org>`
+   * guarda los carritos de todas las sucursales de la organización en una
+   * sola lista: antes el POS de la sucursal A mostraba (y cobraba o fiaba)
+   * carritos creados en la B, y el efectivo quedaba en la caja equivocada.
+   *
+   * @param branchId sucursal del POS; sin argumento, la seleccionada
+   *   (`getCurrentBranchId`). `null` = «Todas» (no se filtra). Un carrito sin
+   *   `branch_id` (anterior a este filtro) se muestra en cualquier sucursal.
+   */
+  static async getActiveCarts(branchId?: number | null): Promise<Cart[]> {
     try {
-      // Por ahora obtenemos los carritos del localStorage
-      const cartsData = localStorage.getItem(`pos_carts_${this.organizationId}`);
-      if (!cartsData) return [];
-
-      const carts: Cart[] = JSON.parse(cartsData);
-      return carts.filter(cart => cart.status === 'active' || cart.status === 'hold');
+      const sucursal = branchId === undefined ? (getCurrentBranchId() ?? null) : branchId;
+      return this.readAllCarts().filter(
+        (cart) => (cart.status === 'active' || cart.status === 'hold') && this.esDeLaSucursal(cart, sucursal),
+      );
     } catch (error) {
       console.error('Error getting active carts:', error);
       return [];
     }
+  }
+
+  /** true si el carrito pertenece a la sucursal (o si no hay sucursal elegida, o el carrito no la tiene). */
+  static esDeLaSucursal(cart: Pick<Cart, 'branch_id'>, branchId: number | null): boolean {
+    if (branchId === null || branchId === undefined) return true;
+    if (cart.branch_id === null || cart.branch_id === undefined) return true;
+    return Number(cart.branch_id) === Number(branchId);
+  }
+
+  /**
+   * Lista COMPLETA de `pos_carts_<org>` (todas las sucursales y estados). Las
+   * mutaciones leen y guardan esta lista: guardar la filtrada borraba de paso
+   * los carritos en deuda y, con el filtro por sucursal, los de otras sedes.
+   */
+  private static readAllCarts(): Cart[] {
+    try {
+      const data = localStorage.getItem(`pos_carts_${this.organizationId}`);
+      const carts = data ? JSON.parse(data) : [];
+      return Array.isArray(carts) ? carts : [];
+    } catch (error) {
+      console.error('Error leyendo los carritos guardados:', error);
+      return [];
+    }
+  }
+
+  /** Índice de un carrito vivo (activo o en espera) en la lista completa; -1 si no está. */
+  private static indexOfLiveCart(carts: Cart[], cartId: string): number {
+    return carts.findIndex((c) => c.id === cartId && (c.status === 'active' || c.status === 'hold'));
   }
 
   static async addItemToCart(
@@ -928,8 +964,8 @@ export class POSService {
     modifiers?: CartItemModifier[]
   ): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
       
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -988,8 +1024,8 @@ export class POSService {
 
   static async removeItemFromCart(cartId: string, itemId: string): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
       
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1013,8 +1049,8 @@ export class POSService {
 
   static async updateCartItemQuantity(cartId: string, itemId: string, quantity: number): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
       
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1047,8 +1083,8 @@ export class POSService {
 
   static async updateCartItemDiscount(cartId: string, itemId: string, discountAmount: number): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
 
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1076,8 +1112,8 @@ export class POSService {
 
   static async updateItemTaxIncluded(cartId: string, itemId: string, taxIncluded: boolean): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
 
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1191,8 +1227,8 @@ export class POSService {
 
   static async setCartCustomer(cartId: string, customerId?: string): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
       
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1235,8 +1271,8 @@ export class POSService {
     settings: { tax_included?: boolean; applied_tax_ids?: string[] }
   ): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
 
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1264,8 +1300,8 @@ export class POSService {
 
   static async recalculateCart(cartId: string): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
 
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1285,8 +1321,8 @@ export class POSService {
 
   static async holdCart(cartId: string, reason?: string): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
       
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1349,8 +1385,8 @@ export class POSService {
       const { cartId, reason, paymentTerms = 30, notes } = data;
       
       // PASO 1: Validar carrito
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
       
       if (cartIndex === -1) {
         throw new Error('Carrito no encontrado');

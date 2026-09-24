@@ -288,7 +288,8 @@ export default function POSPage() {
     setIsRefreshing(true);
     try {
       // Cargar carritos existentes
-      const existingCarts = await POSService.getActiveCarts();
+      // Solo los carritos de ESTA sucursal (pos_carts_<org> guarda los de todas).
+      const existingCarts = await POSService.getActiveCarts(selectedBranchId);
       
       if (existingCarts.length > 0) {
         setCarts(existingCarts);

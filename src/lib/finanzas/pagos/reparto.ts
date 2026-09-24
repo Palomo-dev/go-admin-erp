@@ -111,9 +111,3 @@ export function validarAplicaciones(
   }
   return { ok: true, total: deCentavos(total) };
 }
-
-/** Cambio del efectivo: recibido − a cobrar, nunca negativo. `null` si no aplica. */
-export function calcularCambio(recibido: number | null | undefined, aCobrar: number): number | null {
-  if (recibido == null || !Number.isFinite(recibido)) return null;
-  return Math.max(deCentavos(aCentavos(recibido) - aCentavos(aCobrar)), 0);
-}

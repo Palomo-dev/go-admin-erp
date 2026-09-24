@@ -7,7 +7,6 @@
  * fn_factura_venta_anular); aquí se fija el contrato que la interfaz consume.
  */
 import {
-  calcularCambio,
   monedaComun,
   ordenarFifo,
   repartirFifo,
@@ -98,12 +97,9 @@ describe('L9 · repartirFifo', () => {
     expect(validarAplicaciones([{ id: 'a', monto: 0 }], docs)).toEqual({ ok: false, id: 'a', error: 'monto_invalido' });
   });
 
-  test('monedaComun y cambio del efectivo', () => {
+  test('monedaComun', () => {
     expect(monedaComun([{ moneda: 'cop' }, { moneda: 'COP' }])).toBe('COP');
     expect(monedaComun([{ moneda: 'COP' }, { moneda: 'USD' }])).toBeNull();
-    expect(calcularCambio(50000, 42300)).toBe(7700);
-    expect(calcularCambio(10000, 42300)).toBe(0);
-    expect(calcularCambio(null, 1)).toBeNull();
   });
 });
 

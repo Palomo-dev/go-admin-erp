@@ -52,3 +52,50 @@ describe('L1 · un pago solo inserta en payments; los disparadores mandan (20260
     expect(rollback).toMatch(/create policy payments_delete_policy/);
   });
 });
+
+describe('L9 · L17 · pago único fn_registrar_pago / fn_anular_pago (20260926110000)', () => {
+  const sql = leer('supabase/migrations/20260926110000_pago_unico_registrar_y_anular.sql');
+
+  /**
+   * Dry-run 2026-09-24 (usuario administrador de una organización de pruebas,
+   * transacción deshecha), tres cuentas de 800 de un mismo cliente:
+   *   pago 2.000 por transferencia → recibo RC-000001; cuentas 0/paid · 0/paid · 400/partial;
+   *                                   tres asientos settlement:payment:* publicados
+   *   misma clave de idempotencia   → repetida=true, mismo recibo, sin filas nuevas
+   *   anular el primero             → contra-asiento; esa cuenta vuelve a 800/issued/current;
+   *                                   recibo partially_void
+   *   efectivo sin caja abierta     → sin_caja_abierta
+   *   monto > saldo                 → monto_excede_saldo
+   *   dos clientes en un recibo     → terceros_distintos
+   *   documento de otra organización→ documento_no_encontrado
+   *   400 + sobrante 100 con casilla→ cuenta 0/paid y saldo a favor 100/100/active (RC-000002)
+   */
+  test('D2: el pago posterior va a la cuenta por cobrar o por pagar', () => {
+    expect(sql).toMatch(/case when p_direccion = 'cobro' then 'account_receivable' else 'account_payable' end/);
+  });
+
+  test('nunca escribe saldos: no hay update de invoice_sales ni de accounts_receivable', () => {
+    expect(sql).not.toMatch(/update public\.invoice_sales/i);
+    expect(sql).not.toMatch(/update public\.accounts_receivable/i);
+    expect(sql).not.toMatch(/update public\.accounts_payable/i);
+  });
+
+  test('L17: efectivo sin caja abierta se bloquea con el modo de caja de la organización', () => {
+    expect(sql).toMatch(/raise exception 'sin_caja_abierta'/);
+    expect(sql).toMatch(/os\.key = 'pos_cash_session_mode'/);
+  });
+
+  test('autor, permiso e idempotencia en la base; anon fuera', () => {
+    expect(sql).toMatch(/v_uid uuid := auth\.uid\(\)/);
+    expect(sql).toMatch(/fn_finanzas_exigir_permiso\(v_org,/);
+    expect(sql).toMatch(/pg_advisory_xact_lock\(hashtextextended\('fn_registrar_pago:'/);
+    expect(sql).toMatch(/revoke all on function public\.fn_registrar_pago\([^)]*\) from public, anon/);
+    expect(sql).toMatch(/revoke all on function public\.fn_anular_pago\(uuid, text\) from public, anon/);
+  });
+
+  test('anular: estado void, contra-asiento y nunca DELETE', () => {
+    expect(sql).toMatch(/set status = 'void', voided_at = now\(\)/);
+    expect(sql).toMatch(/fn_revertir_asiento_en_fecha\(v_asiento, 'anulacion_pago'/);
+    expect(sql).not.toMatch(/delete from public\.payments/i);
+  });
+});

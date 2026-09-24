@@ -8951,5 +8951,104 @@
       "sinCocinar": "Siguen en cocina sin cocinar: {n}.",
       "errorTitulo": "No se pudo liberar la mesa"
     }
+  },
+  "facturacionElectronica": {
+    "configuracion": {
+      "titulo": "Configuración de facturación electrónica",
+      "subtitulo": "Servicio de GO Admin, resolución y numeración",
+      "migas": {
+        "finanzas": "Finanzas",
+        "facturacion": "Facturación electrónica",
+        "configuracion": "Configuración"
+      },
+      "errores": {
+        "sinPermiso": "No tienes permiso para esta acción",
+        "titulo": "No se pudo completar",
+        "red": "Revisa tu conexión e inténtalo de nuevo",
+        "carga": "No se pudo cargar la configuración"
+      },
+      "verificacion": {
+        "activado": "Servicio activado",
+        "ok": "Verificación registrada"
+      },
+      "servicio": {
+        "titulo": "Servicio de facturación electrónica de GO Admin",
+        "descripcion": "GO Admin emite tus documentos electrónicos ante la DIAN con el NIT de tu empresa. El equipo de GO Admin gestiona las credenciales del proveedor: no necesitas configurarlas.",
+        "verificar": "Verificar conexión",
+        "estado": "Estado",
+        "estados": {
+          "active": "Activo",
+          "pending_activation": "Pendiente de activación",
+          "suspended": "Suspendido"
+        },
+        "ambiente": "Ambiente",
+        "ambientes": {
+          "sandbox": "Pruebas",
+          "production": "Producción"
+        },
+        "nit": "NIT verificado",
+        "activoDesde": "Activo desde",
+        "ultimaVerificacion": "Última verificación",
+        "verificacionEnCurso": "Verificación en curso: tarda unos minutos después de que el equipo de GO Admin carga las credenciales.",
+        "sinCredenciales": "El equipo de GO Admin aún no ha activado el servicio para tu organización.",
+        "ayudaPendiente": "Mientras el servicio no esté activo, las facturas que marques como electrónicas quedan en cola, retenidas, y no se envían a la DIAN.",
+        "ayudaSuspendido": "El servicio está suspendido. Escríbenos para reactivarlo; mientras tanto no se envían documentos a la DIAN."
+      },
+      "cola": {
+        "etiqueta": "Envíos a la DIAN",
+        "enCola": "En cola",
+        "retenidos": "Retenidos",
+        "aceptados": "Enviados",
+        "conError": "Con error o rechazo"
+      },
+      "retenidos": {
+        "titulo": "Documentos retenidos",
+        "descripcion": "Quedaron en cola antes de que el servicio estuviera activo. La DIAN los recibirá con la fecha del día en que se envíen, no con la fecha de la venta.",
+        "fechaVenta": "Venta del {fecha}",
+        "enviar": "Enviar con la fecha de hoy",
+        "requiereActivo": "Podrás enviarlos cuando el servicio esté activo.",
+        "enviado": "Documento enviado a la cola",
+        "confirmarTitulo": "¿Enviar este documento a la DIAN?",
+        "confirmarDescripcion": "Se emitirá con la fecha de hoy, no con la fecha de la venta. Esta acción no se puede deshacer.",
+        "cancelar": "Cancelar"
+      },
+      "rangos": {
+        "titulo": "Resolución y rangos de numeración",
+        "descripcion": "Rangos autorizados por la DIAN en la cuenta de facturación de tu organización.",
+        "sucursal": "Sucursal",
+        "sinSucursales": "Sin sucursales con numeración",
+        "sincronizar": "Sincronizar rangos",
+        "sincronizados": "Rangos sincronizados",
+        "resumen": "{importados} importados · {desactivados} desactivados",
+        "columnas": {
+          "tipo": "Documento",
+          "sucursal": "Sucursal",
+          "prefijo": "Prefijo",
+          "resolucion": "Resolución",
+          "rango": "Rango",
+          "actual": "Consecutivo actual",
+          "vigencia": "Vigencia",
+          "estado": "Estado"
+        },
+        "sinResolucion": "No requiere",
+        "hasta": "Hasta {fecha}",
+        "sinVencimiento": "Sin vencimiento",
+        "activo": "Activo",
+        "inactivo": "Inactivo",
+        "vacioTitulo": "Aún no hay rangos de numeración",
+        "vacioDescripcion": "Cuando el servicio esté activo, sincroniza los rangos de tu resolución DIAN."
+      },
+      "tipos": {
+        "invoice": "Factura",
+        "credit_note": "Nota crédito",
+        "debit_note": "Nota débito",
+        "support_document": "Documento soporte"
+      },
+      "panel": {
+        "siempreElectronica": "Facturar siempre como electrónica",
+        "siempreElectronicaAyuda": "Activa la factura electrónica por defecto en el POS, la pre-cuenta y las facturas nuevas.",
+        "verDetalle": "Ver resolución, rangos y envíos"
+      }
+    }
   }
 }

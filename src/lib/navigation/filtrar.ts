@@ -7,9 +7,8 @@
  * viejos, cada uno por su cuenta:
  *  - un módulo sin código (Inicio) siempre se ve;
  *  - un módulo se ve si la organización lo tiene activo y el cargo no lo oculta;
- *  - sus páginas se filtran por `paginaActiva()` (única fuente de la regla
- *    ausente = activa), por el acceso del cargo y por las capacidades
- *    calculadas en el servidor;
+ *  - sus páginas se filtran por las páginas activas de la organización, por el
+ *    acceso del cargo y por las capacidades calculadas en el servidor;
  *  - si no le queda ninguna página, el módulo desaparece;
  *  - su enlace es su primera página visible (así quien solo tiene la bandeja de
  *    notificaciones entra directo a la bandeja).
@@ -22,17 +21,15 @@ import {
   type ModuloNav,
   type PaginaNav,
 } from './catalog';
-import { paginaActiva, type AccesoPaginas } from './paginaActiva';
 
-export interface AccesoNav extends AccesoPaginas {
+export interface AccesoNav {
   /** Códigos de módulo activos en la organización (`organization_modules` ∪ núcleo). */
   modulosActivos: string[];
   /**
-   * Páginas explícitamente apagadas por módulo (`organization_module_pages` con
-   * `is_active = false`). Un módulo sin entrada no esconde ninguna página: la
-   * ausencia de fila significa «activa». Ver `paginaActiva.ts`.
+   * Páginas activas por módulo (`organization_module_pages`). Un módulo sin
+   * entrada tiene todas sus páginas activas.
    */
-  paginasOcultas: Record<string, string[]>;
+  paginasActivas: Record<string, string[]>;
   /** Módulos que permite el cargo. `null` = el cargo no restringe. */
   modulosCargo: string[] | null;
   /** Páginas que permite el cargo. `null` = el cargo no restringe. */
@@ -62,15 +59,11 @@ function paginasVisibles(modulo: ModuloNav, acceso: AccesoNav): PaginaNav[] {
   // filtraron por página en el sidebar viejo: su visibilidad la decide el
   // módulo. Filtrarlos ahora haría desaparecer «Clientes» a cualquier cargo con
   // permisos por página que no lo tuviera en su lista.
-  // La exención de los módulos de una sola página vive dentro de
-  // `paginaActiva()`; aquí solo queda para las restricciones por cargo, que son
-  // un mecanismo aparte y no cambian.
   const filtrable = modulo.codigo !== null && modulo.paginas.length > 1;
+  const activas = filtrable ? acceso.paginasActivas[modulo.codigo!] : undefined;
   return modulo.paginas.filter((p) => {
     if (p.enMenu === false) return false;
-    // La activación por organización se decide SOLO en `paginaActiva()`. No
-    // escribas aquí una comprobación a mano: `paginaActiva.test.ts` la caza.
-    if (!paginaActiva(modulo.codigo, p.href, acceso)) return false;
+    if (activas !== undefined && !activas.includes(p.href)) return false;
     if (filtrable && acceso.paginasCargo !== null && !acceso.paginasCargo.includes(p.href)) {
       return false;
     }

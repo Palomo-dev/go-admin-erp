@@ -8951,5 +8951,104 @@
       "sinCocinar": "Still in the kitchen, not cooked: {n}.",
       "errorTitulo": "The table could not be released"
     }
+  },
+  "facturacionElectronica": {
+    "configuracion": {
+      "titulo": "E-invoicing settings",
+      "subtitulo": "GO Admin service, resolution and numbering",
+      "migas": {
+        "finanzas": "Finance",
+        "facturacion": "E-invoicing",
+        "configuracion": "Settings"
+      },
+      "errores": {
+        "sinPermiso": "You don't have permission for this action",
+        "titulo": "Could not complete",
+        "red": "Check your connection and try again",
+        "carga": "Could not load the settings"
+      },
+      "verificacion": {
+        "activado": "Service activated",
+        "ok": "Check recorded"
+      },
+      "servicio": {
+        "titulo": "GO Admin e-invoicing service",
+        "descripcion": "GO Admin issues your electronic documents to the DIAN under your company's tax ID. The GO Admin team manages the provider credentials: you don't need to set them up.",
+        "verificar": "Check connection",
+        "estado": "Status",
+        "estados": {
+          "active": "Active",
+          "pending_activation": "Pending activation",
+          "suspended": "Suspended"
+        },
+        "ambiente": "Environment",
+        "ambientes": {
+          "sandbox": "Testing",
+          "production": "Production"
+        },
+        "nit": "Verified tax ID",
+        "activoDesde": "Active since",
+        "ultimaVerificacion": "Last check",
+        "verificacionEnCurso": "Check in progress: it takes a few minutes after the GO Admin team loads the credentials.",
+        "sinCredenciales": "The GO Admin team has not activated the service for your organization yet.",
+        "ayudaPendiente": "Until the service is active, invoices you mark as electronic stay queued and on hold, and are not sent to the DIAN.",
+        "ayudaSuspendido": "The service is suspended. Contact us to reactivate it; meanwhile no documents are sent to the DIAN."
+      },
+      "cola": {
+        "etiqueta": "Submissions to the DIAN",
+        "enCola": "Queued",
+        "retenidos": "On hold",
+        "aceptados": "Sent",
+        "conError": "Failed or rejected"
+      },
+      "retenidos": {
+        "titulo": "Documents on hold",
+        "descripcion": "They were queued before the service was active. The DIAN will receive them with the date they are sent, not the date of the sale.",
+        "fechaVenta": "Sale of {fecha}",
+        "enviar": "Send with today's date",
+        "requiereActivo": "You can send them once the service is active.",
+        "enviado": "Document sent to the queue",
+        "confirmarTitulo": "Send this document to the DIAN?",
+        "confirmarDescripcion": "It will be issued with today's date, not the date of the sale. This action can't be undone.",
+        "cancelar": "Cancel"
+      },
+      "rangos": {
+        "titulo": "Resolution and numbering ranges",
+        "descripcion": "Ranges authorized by the DIAN in your organization's invoicing account.",
+        "sucursal": "Branch",
+        "sinSucursales": "No branches with numbering",
+        "sincronizar": "Sync ranges",
+        "sincronizados": "Ranges synced",
+        "resumen": "{importados} imported · {desactivados} deactivated",
+        "columnas": {
+          "tipo": "Document",
+          "sucursal": "Branch",
+          "prefijo": "Prefix",
+          "resolucion": "Resolution",
+          "rango": "Range",
+          "actual": "Current number",
+          "vigencia": "Valid until",
+          "estado": "Status"
+        },
+        "sinResolucion": "Not required",
+        "hasta": "Until {fecha}",
+        "sinVencimiento": "No expiry",
+        "activo": "Active",
+        "inactivo": "Inactive",
+        "vacioTitulo": "No numbering ranges yet",
+        "vacioDescripcion": "Once the service is active, sync the ranges of your DIAN resolution."
+      },
+      "tipos": {
+        "invoice": "Invoice",
+        "credit_note": "Credit note",
+        "debit_note": "Debit note",
+        "support_document": "Support document"
+      },
+      "panel": {
+        "siempreElectronica": "Always invoice electronically",
+        "siempreElectronicaAyuda": "Turns on e-invoicing by default in the POS, the pre-bill and new invoices.",
+        "verDetalle": "See resolution, ranges and submissions"
+      }
+    }
   }
 }

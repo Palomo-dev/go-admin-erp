@@ -7,7 +7,6 @@ import { jobPositionPermissionsService } from '@/lib/services/jobPositionPermiss
 import { jobPositionModuleAccessService } from '@/lib/services/jobPositionModuleAccessService';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { MODULE_PAGES, MODULE_HREF_TO_CODE, getModuleCodeByHref } from '@/lib/config/modulePages';
-import { filtrarPaginasActivas } from '@/lib/navigation/paginaActiva';
 import { 
   X, 
   Search, 
@@ -81,6 +80,7 @@ export default function JobPositionPermissionsManager({
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('permissions');
   const [activeModuleCodes, setActiveModuleCodes] = useState<string[]>([]);
+  const [activeModulePages, setActiveModulePages] = useState<Record<string, string[]>>({});
   const [moduleAccess, setModuleAccess] = useState<ModuleAccessState[]>([]);
   const [pageAccess, setPageAccess] = useState<PageAccessState[]>([]);
   const [accessLoading, setAccessLoading] = useState(false);
@@ -146,12 +146,13 @@ export default function JobPositionPermissionsManager({
       setAccessLoading(true);
       const [modules, pages, access] = await Promise.all([
         moduleManagementService.getActiveModules(organizationId),
-        moduleManagementService.getHiddenModulePages(organizationId),
+        moduleManagementService.getActiveModulePages(organizationId),
         jobPositionModuleAccessService.getJobPositionAccess(jobPositionId),
       ]);
 
       const moduleCodes = modules.map(m => m.code);
       setActiveModuleCodes(moduleCodes);
+      setActiveModulePages(pages);
 
       // Construir estado de acceso a módulos
       const moduleAccessState: ModuleAccessState[] = moduleCodes.map(code => {
@@ -164,21 +165,22 @@ export default function JobPositionPermissionsManager({
       });
       setModuleAccess(moduleAccessState);
 
-      // Construir estado de acceso a páginas. Qué páginas tiene la
-      // organización lo decide `paginaActiva()` y solo él: una página sin fila
-      // en `organization_module_pages` está activa, y solo la esconde una fila
-      // con `is_active = false`. Si aquí se filtrara a mano, un cargo no
-      // podría recibir permiso sobre una página que el menú sí muestra.
-      const acceso = { modulosActivos: moduleCodes, paginasOcultas: pages };
+      // Construir estado de acceso a páginas
       const pageAccessState: PageAccessState[] = [];
       for (const code of moduleCodes) {
         const modulePages = MODULE_PAGES[code] || [];
-        for (const pageDef of filtrarPaginasActivas(code, modulePages, acceso)) {
-          const existing = access.pages.find(p => p.page_href === pageDef.href);
+        // Si no hay datos en organization_module_pages para este módulo,
+        // asumir que todas las páginas están activas (organizaciones viejas)
+        const activeHrefs = pages[code] === undefined
+          ? modulePages.map(p => p.href)
+          : pages[code];
+        for (const href of activeHrefs) {
+          const pageDef = modulePages.find(p => p.href === href);
+          const existing = access.pages.find(p => p.page_href === href);
           pageAccessState.push({
             module_code: code,
-            page_href: pageDef.href,
-            page_name: pageDef.name || pageDef.href,
+            page_href: href,
+            page_name: pageDef?.name || href,
             can_view: existing?.can_view ?? true,
             can_access: existing?.can_access ?? true,
           });

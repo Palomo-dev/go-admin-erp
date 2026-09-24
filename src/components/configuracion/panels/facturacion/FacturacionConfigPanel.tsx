@@ -6,17 +6,9 @@ import { useToast } from '@/components/ui/use-toast';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
-import { electronicInvoicingConfigService } from '@/lib/services/electronicInvoicingConfigService';
+import { electronicInvoicingConfigService, type EstadoFacturacionElectronica } from '@/lib/services/electronicInvoicingConfigService';
 import { CredencialesFactusSection } from './sections/CredencialesFactusSection';
 import { RangosDianSection } from './sections/RangosDianSection';
-
-const DOCUMENT_TYPE_MAP: Record<string, string> = {
-  'Factura de Venta': 'invoice',
-  'Nota Crédito': 'credit_note',
-  'Nota Débito': 'debit_note',
-  'Nota de Ajuste Documento Soporte': 'adjustment_note',
-  'Documento Soporte': 'support_document',
-};
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   invoice: 'Factura de Venta',
@@ -47,8 +39,7 @@ export function FacturacionConfigPanel() {
   const { toast } = useToast();
   const orgId = getOrganizationId();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
+  const [servicio, setServicio] = useState<EstadoFacturacionElectronica | null>(null);
   const [savingRange, setSavingRange] = useState(false);
   const [fetchingRanges, setFetchingRanges] = useState(false);
   const [savedRanges, setSavedRanges] = useState<Record<string, unknown>[]>([]);
@@ -62,24 +53,11 @@ export function FacturacionConfigPanel() {
     technicalKey: '', testSetId: '', factusNumberingRangeId: '', isActive: true,
   });
 
-  const [config, setConfig] = useState({
-    provider: 'factus',
-    environment: 'sandbox' as 'sandbox' | 'production',
-    clientId: '', clientSecret: '', username: '', password: '', isActive: true,
-  });
-
   useEffect(() => {
     async function loadConfig() {
       if (!orgId) return;
-      const existing = await electronicInvoicingConfigService.getConfig(orgId);
-      if (existing) {
-        setConfig({
-          provider: existing.provider, environment: existing.environment,
-          clientId: existing.client_id || '', clientSecret: existing.client_secret || '',
-          username: existing.username || '', password: existing.password || '',
-          isActive: existing.is_active,
-        });
-      }
+      // Estado del servicio, sin credenciales: las gestiona la plataforma.
+      setServicio(await electronicInvoicingConfigService.getStatus());
       const { supabase } = await import('@/lib/supabase/config');
       const { data: seqs } = await supabase.from('invoice_sequences').select('*').eq('organization_id', orgId).order('document_type');
       if (seqs && seqs.length > 0) {
@@ -100,66 +78,31 @@ export function FacturacionConfigPanel() {
     loadConfig();
   }, [orgId]);
 
-  const handleSave = async () => {
-    if (!orgId) return;
-    setSaving(true);
-    const result = await electronicInvoicingConfigService.saveConfig({
-      organization_id: orgId, provider: config.provider, environment: config.environment,
-      client_id: config.clientId, client_secret: config.clientSecret,
-      username: config.username, password: config.password, is_active: config.isActive,
-    });
-    setSaving(false);
-    if (result.success) {
-      toast({ title: 'Configuración guardada', description: 'Las credenciales se guardaron correctamente.' });
-    } else {
-      toast({ title: 'Error', description: result.error, variant: 'destructive' });
-    }
-  };
-
-  const handleTest = async () => {
-    if (!orgId) return;
-    setTesting(true);
-    const result = await electronicInvoicingConfigService.testConnection(orgId);
-    setTesting(false);
-    toast({ title: result.success ? 'Conexión exitosa' : 'Error de conexión', description: result.message, variant: result.success ? 'default' : 'destructive' });
-  };
-
+  /**
+   * Sincroniza los rangos de la cuenta de Factus DE LA ORGANIZACIÓN en el
+   * servidor (antes: desde el navegador, con la cuenta de la plataforma y la
+   * sucursal «2» de respaldo). Sucursal: la activa; sin ella, se pide ir a la
+   * pantalla de configuración, que deja elegirla.
+   */
   const handleFetchRanges = async () => {
+    const sucursalActiva = typeof window !== 'undefined' ? Number.parseInt(localStorage.getItem('currentBranchId') || '', 10) : NaN;
+    if (!Number.isInteger(sucursalActiva) || sucursalActiva <= 0) {
+      toast({ title: 'Seleccione una sucursal', description: 'Elija la sucursal en Finanzas › Facturación electrónica › Configuración.', variant: 'destructive' });
+      return;
+    }
     setFetchingRanges(true);
     try {
-      const res = await fetch('/api/factus/numbering-ranges');
-      const json = await res.json();
-      if (json.success && json.data) {
-        const ranges = json.data;
-        if (ranges.length === 0) {
-          toast({ title: 'Sin rangos', description: 'No hay rangos de numeración configurados en Factus.', variant: 'destructive' });
-        } else {
-          const { supabase } = await import('@/lib/supabase/config');
-          const branchId = typeof window !== 'undefined' ? parseInt(localStorage.getItem('currentBranchId') || '2', 10) : 2;
-          let saved = 0; let updated = 0;
-          for (const fr of ranges) {
-            const docType = DOCUMENT_TYPE_MAP[fr.document] || 'invoice';
-            const data = {
-              organization_id: orgId, branch_id: branchId, document_type: docType,
-              prefix: fr.prefix || '', range_start: fr.from || 0, range_end: fr.to || 0,
-              current_number: fr.current || 0, resolution_number: fr.resolution_number || null,
-              resolution_date: fr.start_date || null, valid_from: fr.start_date || null,
-              valid_until: fr.end_date || null, technical_key: fr.technical_key || null,
-              factus_numbering_range_id: fr.id, is_active: !fr.is_expired, updated_at: new Date().toISOString(),
-            };
-            const { data: existing } = await supabase.from('invoice_sequences').select('id').eq('organization_id', orgId).eq('factus_numbering_range_id', fr.id).maybeSingle();
-            if (existing) {
-              await supabase.from('invoice_sequences').update(data).eq('id', existing.id);
-              updated++;
-            } else {
-              await supabase.from('invoice_sequences').insert({ ...data, created_at: new Date().toISOString() });
-              saved++;
-            }
-          }
-          const { data: allSeqs } = await supabase.from('invoice_sequences').select('*').eq('organization_id', orgId).order('document_type');
-          if (allSeqs) setSavedRanges(allSeqs);
-          toast({ title: 'Rangos sincronizados', description: `${saved} nuevo(s), ${updated} actualizado(s). Total: ${ranges.length} rangos.` });
-        }
+      const res = await fetch('/api/factus/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sincronizar_rangos', branchId: sucursalActiva }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) {
+        const { supabase } = await import('@/lib/supabase/config');
+        const { data: allSeqs } = await supabase.from('invoice_sequences').select('*').eq('organization_id', orgId).order('document_type');
+        if (allSeqs) setSavedRanges(allSeqs);
+        toast({ title: 'Rangos sincronizados', description: `${json.importados ?? 0} importado(s), ${json.desactivados ?? 0} desactivado(s).` });
       } else {
         toast({ title: 'Error', description: json.error || 'No se pudieron obtener los rangos.', variant: 'destructive' });
       }
@@ -226,12 +169,8 @@ export function FacturacionConfigPanel() {
   return (
     <div className="space-y-4 max-w-2xl mx-auto">
       <CredencialesFactusSection
-        config={config}
-        onConfigChange={setConfig}
-        onSave={handleSave}
-        onTest={handleTest}
-        saving={saving}
-        testing={testing}
+        servicio={servicio}
+        cargando={loading}
         eInvoiceAlwaysEnabled={eInvoiceAlwaysEnabled}
         savingEInvoiceToggle={savingEInvoiceToggle}
         loadingEInvoicePref={loadingEInvoicePref}
@@ -266,10 +205,9 @@ export function FacturacionConfigPanel() {
           <CardTitle className="text-sm">Información</CardTitle>
         </CardHeader>
         <CardContent className="text-xs text-gray-500 space-y-1">
-          <p>• Las credenciales se almacenan en la base de datos de la organización.</p>
-          <p>• El ambiente <strong>sandbox</strong> es para pruebas, no envía a DIAN real.</p>
-          <p>• El ambiente <strong>producción</strong> envía facturas reales a DIAN.</p>
-          <p>• Si no hay configuración por organización, se usan las variables de entorno (.env).</p>
+          <p>• GO Admin presta la facturación electrónica: el equipo de GO Admin gestiona las credenciales del proveedor.</p>
+          <p>• El ambiente de <strong>pruebas</strong> no envía documentos reales a la DIAN.</p>
+          <p>• En <strong>producción</strong> los documentos se envían a la DIAN con el NIT de la organización.</p>
         </CardContent>
       </Card>
     </div>

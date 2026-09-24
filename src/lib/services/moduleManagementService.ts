@@ -553,55 +553,15 @@ export const moduleManagementService = {
    * Corregir inconsistencias detectadas en la auditoría
    */
   /**
-   * Páginas explícitamente APAGADAS por módulo: las filas de
-   * `organization_module_pages` con `is_active = false`.
-   *
-   * Es lo único que hace falta para decidir qué se ve, porque desde el
-   * 2026-09-23 la ausencia de fila significa «activa» en todos los lectores
-   * (ver `src/lib/navigation/paginaActiva.ts`). Un módulo sin filas apagadas no
-   * aparece en el mapa, y eso no oculta nada.
-   *
-   * Las filas huérfanas —las que nombran un `page_href` que ya no está en el
-   * catálogo— se descartan aquí a propósito, en vez de dejarlas ensuciar el
-   * mapa: no pueden esconder ninguna página real y confundirían al depurar.
-   * Medidas el 2026-09-23: las hay en varias organizaciones (p. ej. un módulo
-   * de reportes con 8 rutas que ya no existen).
-   */
-  async getHiddenModulePages(
-    organizationId: number,
-    supabaseClient = supabase
-  ): Promise<Record<string, string[]>> {
-    const { data, error } = await supabaseClient
-      .from('organization_module_pages')
-      .select('module_code, page_href')
-      .eq('organization_id', organizationId)
-      .eq('is_active', false);
-
-    if (error) {
-      console.error('Error getting hidden module pages:', error);
-      // Fallar abriendo: el menú no es la barrera de acceso (lo es la RLS), y
-      // esconder pantallas por un fallo de red deja a la persona sin salida.
-      return {};
-    }
-
-    const result: Record<string, string[]> = {};
-    for (const row of data || []) {
-      const delCatalogo = MODULE_PAGES[row.module_code];
-      if (!delCatalogo?.some((p) => p.href === row.page_href)) continue; // huérfana
-      if (!result[row.module_code]) result[row.module_code] = [];
-      result[row.module_code].push(row.page_href);
-    }
-    return result;
-  },
-
-  /**
    * Obtener páginas activas de módulos para una organización
    * Retorna un mapa: module_code -> Set de page_href activos
    *
-   * OJO: esto es «qué filas hay en true», NO «qué se ve». Para decidir si una
-   * página se ve, el único camino es `paginaActiva()` con
-   * `getHiddenModulePages()`. Este método queda para lo que de verdad necesita
-   * saber qué filas existen (auditoría y estado del propio registro).
+   * IMPORTANTE: si un módulo tiene registros en organization_module_pages
+   * (aunque sean todos is_active=false), debe aparecer en el resultado con
+   * un array (posiblemente vacío). Esto permite que isPageActive distinga:
+   *   - undefined  → módulo sin registros → todas activas por defecto
+   *   - []         → módulo con registros pero todas inactivas
+   *   - ['a','b']  → solo 'a' y 'b' activas
    */
   async getActiveModulePages(organizationId: number, supabaseClient = supabase): Promise<Record<string, string[]>> {
     // Consultar TODOS los registros (activos e inactivos) para saber qué

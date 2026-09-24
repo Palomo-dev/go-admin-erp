@@ -11,8 +11,7 @@
  * | Qué                    | Fuente real                                    |
  * |------------------------|------------------------------------------------|
  * | módulos                | `organization_modules` × `modules`             |
- * | rutas                  | catálogo del módulo menos lo apagado en          |
- * |                        | `organization_module_pages` de ESA organización |
+ * | rutas                  | `organization_module_pages` de ESA organización|
  * | estado de arranque     | las tablas de configuración, contando filas     |
  *
  * Ninguna lista de módulos ni de rutas está escrita en este archivo. Lo único
@@ -26,8 +25,6 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getModulePages } from '@/lib/config/modulePages';
-import { filtrarPaginasActivas } from '@/lib/navigation/paginaActiva';
 import type { JsonSchemaObject, ToolContext, ToolDefinition, ToolPreview, ToolResult } from '../types';
 
 /** El preview de una herramienta de lectura nunca se enseña: se ejecuta directo. */
@@ -121,57 +118,29 @@ interface PaginaModulo {
   ruta: string;
 }
 
-/**
- * Las pantallas que ESTA organización tiene habilitadas. Nunca una lista fija.
- *
- * Se lee `organization_module_pages` para saber qué páginas están APAGADAS a
- * propósito (`is_active = false`); todo lo demás del catálogo del módulo está
- * activo. La regla la decide `paginaActiva()` y nadie más: si el asistente
- * aplicara la suya, diría que una pantalla no existe mientras el menú la
- * muestra, que es exactamente el desacuerdo que se vino a arreglar.
- */
+/** Las pantallas que ESTA organización tiene habilitadas. Nunca una lista fija. */
 async function cargarPaginas(
   supabase: SupabaseClient,
   organizationId: number,
   codigos?: string[]
 ): Promise<PaginaModulo[]> {
-  // Sin códigos explícitos, los módulos activos de la organización: el
-  // catálogo se recorre por módulo, así que hace falta saber cuáles tiene.
-  let activos = codigos;
-  if (!activos || activos.length === 0) {
-    const modulos = await cargarModulosActivos(supabase, organizationId);
-    if (modulos === null) return [];
-    activos = modulos.map((m) => m.codigo);
-  }
-  if (activos.length === 0) return [];
-
-  const { data, error } = await supabase
+  let q = supabase
     .from('organization_module_pages')
-    .select('module_code, page_href')
+    .select('module_code, page_name, page_href')
     .eq('organization_id', organizationId)
-    .eq('is_active', false)
-    .in('module_code', activos);
+    .eq('is_active', true);
 
+  if (codigos && codigos.length > 0) q = q.in('module_code', codigos);
+
+  const { data, error } = await q;
   if (error) {
     console.warn('[GO Assistant] No se pudieron leer las páginas de los módulos:', error.message);
     return [];
   }
 
-  const paginasOcultas: Record<string, string[]> = {};
-  for (const f of (data ?? []) as Array<{ module_code: string; page_href: string }>) {
-    if (!paginasOcultas[f.module_code]) paginasOcultas[f.module_code] = [];
-    paginasOcultas[f.module_code].push(f.page_href);
-  }
-
-  const acceso = { modulosActivos: activos, paginasOcultas };
-  return activos
-    .flatMap((codigo) =>
-      filtrarPaginasActivas(codigo, getModulePages(codigo), acceso).map((p) => ({
-        modulo: codigo,
-        nombre: p.name,
-        ruta: p.href,
-      }))
-    )
+  const filas = (data ?? []) as Array<{ module_code: string; page_name: string; page_href: string }>;
+  return filas
+    .map((f) => ({ modulo: f.module_code, nombre: f.page_name, ruta: f.page_href }))
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 

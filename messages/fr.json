@@ -8846,5 +8846,104 @@
       "sinCocinar": "Toujours en cuisine, non cuisinés : {n}.",
       "errorTitulo": "La table n’a pas pu être libérée"
     }
+  },
+  "facturacionElectronica": {
+    "configuracion": {
+      "titulo": "Paramètres de facturation électronique",
+      "subtitulo": "Service GO Admin, résolution et numérotation",
+      "migas": {
+        "finanzas": "Finances",
+        "facturacion": "Facturation électronique",
+        "configuracion": "Paramètres"
+      },
+      "errores": {
+        "sinPermiso": "Vous n'avez pas l'autorisation pour cette action",
+        "titulo": "Action impossible",
+        "red": "Vérifiez votre connexion et réessayez",
+        "carga": "Impossible de charger les paramètres"
+      },
+      "verificacion": {
+        "activado": "Service activé",
+        "ok": "Vérification enregistrée"
+      },
+      "servicio": {
+        "titulo": "Service de facturation électronique GO Admin",
+        "descripcion": "GO Admin émet vos documents électroniques auprès de la DIAN avec le NIT de votre entreprise. L'équipe GO Admin gère les identifiants du fournisseur : vous n'avez rien à configurer.",
+        "verificar": "Vérifier la connexion",
+        "estado": "Statut",
+        "estados": {
+          "active": "Actif",
+          "pending_activation": "En attente d'activation",
+          "suspended": "Suspendu"
+        },
+        "ambiente": "Environnement",
+        "ambientes": {
+          "sandbox": "Test",
+          "production": "Production"
+        },
+        "nit": "NIT vérifié",
+        "activoDesde": "Actif depuis",
+        "ultimaVerificacion": "Dernière vérification",
+        "verificacionEnCurso": "Vérification en cours : elle prend quelques minutes après le chargement des identifiants par l'équipe GO Admin.",
+        "sinCredenciales": "L'équipe GO Admin n'a pas encore activé le service pour votre organisation.",
+        "ayudaPendiente": "Tant que le service n'est pas actif, les factures marquées comme électroniques restent en file d'attente, retenues, et ne sont pas envoyées à la DIAN.",
+        "ayudaSuspendido": "Le service est suspendu. Contactez-nous pour le réactiver ; en attendant, aucun document n'est envoyé à la DIAN."
+      },
+      "cola": {
+        "etiqueta": "Envois à la DIAN",
+        "enCola": "En file d'attente",
+        "retenidos": "Retenus",
+        "aceptados": "Envoyés",
+        "conError": "En erreur ou rejetés"
+      },
+      "retenidos": {
+        "titulo": "Documents retenus",
+        "descripcion": "Ils ont été mis en file d'attente avant l'activation du service. La DIAN les recevra à la date d'envoi, et non à la date de la vente.",
+        "fechaVenta": "Vente du {fecha}",
+        "enviar": "Envoyer à la date d'aujourd'hui",
+        "requiereActivo": "Vous pourrez les envoyer quand le service sera actif.",
+        "enviado": "Document envoyé dans la file d'attente",
+        "confirmarTitulo": "Envoyer ce document à la DIAN ?",
+        "confirmarDescripcion": "Il sera émis à la date d'aujourd'hui, et non à la date de la vente. Cette action est irréversible.",
+        "cancelar": "Annuler"
+      },
+      "rangos": {
+        "titulo": "Résolution et plages de numérotation",
+        "descripcion": "Plages autorisées par la DIAN dans le compte de facturation de votre organisation.",
+        "sucursal": "Succursale",
+        "sinSucursales": "Aucune succursale avec numérotation",
+        "sincronizar": "Synchroniser les plages",
+        "sincronizados": "Plages synchronisées",
+        "resumen": "{importados} importées · {desactivados} désactivées",
+        "columnas": {
+          "tipo": "Document",
+          "sucursal": "Succursale",
+          "prefijo": "Préfixe",
+          "resolucion": "Résolution",
+          "rango": "Plage",
+          "actual": "Numéro actuel",
+          "vigencia": "Validité",
+          "estado": "Statut"
+        },
+        "sinResolucion": "Non requise",
+        "hasta": "Jusqu'au {fecha}",
+        "sinVencimiento": "Sans date d'expiration",
+        "activo": "Active",
+        "inactivo": "Inactive",
+        "vacioTitulo": "Aucune plage de numérotation pour le moment",
+        "vacioDescripcion": "Quand le service sera actif, synchronisez les plages de votre résolution DIAN."
+      },
+      "tipos": {
+        "invoice": "Facture",
+        "credit_note": "Avoir",
+        "debit_note": "Note de débit",
+        "support_document": "Document justificatif"
+      },
+      "panel": {
+        "siempreElectronica": "Toujours facturer en électronique",
+        "siempreElectronicaAyuda": "Active par défaut la facture électronique dans le POS, la pré-addition et les nouvelles factures.",
+        "verDetalle": "Voir la résolution, les plages et les envois"
+      }
+    }
   }
 }

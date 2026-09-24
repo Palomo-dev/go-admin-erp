@@ -124,10 +124,8 @@ export const AppLayout = ({
   
   // Estado para módulos activos de la organización (controla visibilidad del sidebar)
   const [activeModuleCodes, setActiveModuleCodes] = useState<string[] | undefined>(undefined);
-  // Páginas APAGADAS a propósito por módulo: { moduleCode: [pageHref, ...] }.
-  // La ausencia de una página en este mapa significa que se ve (ver
-  // `src/lib/navigation/paginaActiva.ts`).
-  const [paginasOcultas, setPaginasOcultas] = useState<Record<string, string[]> | undefined>(undefined);
+  // Estado para páginas activas por módulo: { moduleCode: [pageHref, ...] }
+  const [activeModulePages, setActiveModulePages] = useState<Record<string, string[]> | undefined>(undefined);
   // true si la carga de módulos falló (el menú cae a mostrar todos).
   const [modulosError, setModulosError] = useState(false);
   // Estado para acceso del cargo del usuario: null = sin restricciones
@@ -139,15 +137,15 @@ export const AppLayout = ({
     try {
       const [modules, pages] = await Promise.all([
         moduleManagementService.getActiveModules(parseInt(organizationId)),
-        moduleManagementService.getHiddenModulePages(parseInt(organizationId)),
+        moduleManagementService.getActiveModulePages(parseInt(organizationId)),
       ]);
       setActiveModuleCodes(modules.map(m => m.code));
-      setPaginasOcultas(pages);
+      setActiveModulePages(pages);
       setModulosError(false);
     } catch (error) {
       console.error('Error cargando módulos activos:', error);
       setActiveModuleCodes(undefined);
-      setPaginasOcultas(undefined);
+      setActiveModulePages(undefined);
       setModulosError(true);
     }
   }, []);
@@ -240,8 +238,8 @@ export const AppLayout = ({
       // Si el evento trae datos optimistas, aplicarlos inmediatamente
       const customEvent = event as CustomEvent;
       if (customEvent.detail) {
-        if (customEvent.detail.paginasOcultas) {
-          setPaginasOcultas(customEvent.detail.paginasOcultas);
+        if (customEvent.detail.activeModulePages) {
+          setActiveModulePages(customEvent.detail.activeModulePages);
         }
         if (customEvent.detail.activeModuleCodes) {
           setActiveModuleCodes(customEvent.detail.activeModuleCodes);
@@ -883,12 +881,12 @@ export const AppLayout = ({
     const todos = CATALOGO_NAV.map((m) => m.codigo).filter((c): c is string => c !== null);
     return filtrarNavegacion({
       modulosActivos: activeModuleCodes ?? (modulosError ? todos : []),
-      paginasOcultas: paginasOcultas ?? {},
+      paginasActivas: activeModulePages ?? {},
       modulosCargo: jobPositionVisibleModules ?? null,
       paginasCargo: jobPositionVisiblePages ?? null,
       capacidades: capacidadesNav,
     });
-  }, [activeModuleCodes, paginasOcultas, jobPositionVisibleModules, jobPositionVisiblePages, capacidadesNav, modulosError]);
+  }, [activeModuleCodes, activeModulePages, jobPositionVisibleModules, jobPositionVisiblePages, capacidadesNav, modulosError]);
   // Páginas del buscador global: las mismas que el menú deja ver.
   const paginasBuscables = useMemo<PaginaBuscable[]>(
     () =>

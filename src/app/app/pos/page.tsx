@@ -2,25 +2,29 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle, useDefaultLayout } from 'react-resizable-panels';
-import { ShoppingCart, Users, Settings, Clock, Lock, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, Users, Settings, ArrowLeft, MoreHorizontal } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/kit/EmptyState';
+import { useAtajos } from '@/components/kit/useAtajos';
 import { ProductSearch } from '@/components/pos/ProductSearch';
 import { CustomerSelector } from '@/components/pos/CustomerSelector';
 import { CartView } from '@/components/pos/CartView';
 import { CartTabs } from '@/components/pos/CartTabs';
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
-import { CustomerDisplayIndicator } from '@/components/pos/display/CustomerDisplayIndicator';
+import { CabeceraPos, abrirMenuPantallaCliente } from '@/components/pos/venta/CabeceraPos';
+import { HojaCajaDispositivo } from '@/components/pos/venta/HojaCajaDispositivo';
+import { MapaAtajos } from '@/components/pos/venta/MapaAtajos';
+import { teclaAtajo } from '@/lib/pos/venta/atajos';
+import { hayRafagaDelLector } from '@/hooks/useHardwareBarcodeScanner';
 import { POSService } from '@/lib/services/posService';
 import { getPosDisplayEmitter, resolveDisplayCurrency, startPosDisplay, stopPosDisplay } from '@/lib/pos/display/posDisplay';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { Product, Customer, Cart, CartItemModifier } from '@/components/pos/types';
 import { cn } from '@/utils/Utils';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { StatsSkeleton, CardListSkeleton, PageHeaderSkeleton } from '@/components/common/PageSkeletons';
 import { VentasService, DailySummary } from '@/components/pos/ventas';
 import { PrintJobsService } from '@/lib/services/printJobsService';
 import KitchenService from '@/lib/services/kitchenService';
@@ -29,7 +33,6 @@ import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
 import { AperturaCajaDialog } from '@/components/pos/cajas/AperturaCajaDialog';
 import { CierreCajaDialog } from '@/components/pos/cajas/CierreCajaDialog';
-import { PendientesSinConexionDialog } from '@/components/pos/PendientesSinConexionDialog';
 import { startSalesSync } from '@/lib/offline/salesSync';
 import { startOfflineSync } from '@/lib/offline/syncStages';
 import { CASH_OUTBOX_CHANGED_EVENT } from '@/lib/offline/cashOutbox';
@@ -72,8 +75,12 @@ export default function POSPage() {
   const isFirstLoadRef = useRef(true);
   const isInitializingRef = useRef(false);
   const [, setLastUpdate] = useState(new Date());
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [mobileView, setMobileView] = useState<'products' | 'cart'>('products');
+  // Cabecera (paso 3): apertura/cierre de caja abiertos por programa (F9, la
+  // hoja móvil, el botón de la cabecera), hoja «Caja y dispositivo» y mapa F1.
+  const [dialogoCaja, setDialogoCaja] = useState(false);
+  const [hojaCaja, setHojaCaja] = useState(false);
+  const [mapaAtajos, setMapaAtajos] = useState(false);
   const [, setDailySummary] = useState<DailySummary | null>(null);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -84,16 +91,49 @@ export default function POSPage() {
   const tHeader = useTranslations('header');
   const tCocina = useTranslations('posCocina');
   const tCobro = useTranslations('posCobroServidor');
+  const tCabecera = useTranslations('posVenta.cabecera');
+  const tAtajos = useTranslations('posVenta.atajos');
+  // Quién puede cerrar la caja lo decide el servidor (`usePermisosCaja`),
+  // nunca el nombre del rol (regla dura 6).
+  const canClose = cashSession ? puedeCerrarCaja(cashSession, permisosCaja.userId ?? currentUserId, permisosCaja.cerrarCajasAjenas) : false;
+  const estadoCaja = cashSession
+    ? tHeader('posCashOpen', { time: formatTimeInTz(cashSession.opened_at, timezone) })
+    : tHeader('posCashClosed');
+  // F9, «Abrir/Cerrar caja» de la cabecera y de la hoja móvil: abre el diálogo
+  // que toque (apertura sin caja; cierre si este cajero puede cerrarla).
+  const abrirDialogoCaja = () => {
+    if (cashSession && !canClose) return;
+    setDialogoCaja(true);
+  };
   // Shell móvil (Figma MobileHeader Mode=pos y MobileTabBar): la cabecera
-  // muestra el estado de la caja, y la barra inferior se oculta con el carrito
-  // abierto o cobrando, donde manda la botonera «Cobrar».
+  // muestra el estado de la caja y «⋯ Caja y dispositivo», y la barra inferior
+  // se oculta con el carrito abierto o cobrando, donde manda la botonera «Cobrar».
   useCabeceraMovil({
     modo: 'pos',
-    estadoPos: cashSession
-      ? { texto: tHeader('posCashOpen', { time: formatTimeInTz(cashSession.opened_at, timezone) }), tono: 'exito' }
-      : { texto: tHeader('posCashClosed'), tono: 'advertencia' },
+    estadoPos: { texto: estadoCaja, tono: cashSession ? 'exito' : 'advertencia' },
+    accion: (
+      <button
+        type="button"
+        onClick={() => setHojaCaja(true)}
+        aria-label={tCabecera('abrirHoja')}
+        title={tCabecera('abrirHoja')}
+        className="flex size-10 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      >
+        <MoreHorizontal aria-hidden="true" className="size-5" strokeWidth={1.5} />
+      </button>
+    ),
     ocultarBarra: mobileView === 'cart' || showCheckout,
   });
+  // Atajos de la pantalla (mapa canónico, src/lib/pos/venta/atajos.ts). Con el
+  // cobro abierto manda el cobro. El resto de atajos los registra cada pieza.
+  useAtajos(
+    [
+      { tecla: teclaAtajo('mapa'), accion: () => setMapaAtajos(true), descripcion: tAtajos('mapa') },
+      { tecla: teclaAtajo('caja'), accion: abrirDialogoCaja, descripcion: tAtajos('caja') },
+      { tecla: teclaAtajo('pantallaCliente'), accion: () => abrirMenuPantallaCliente(), descripcion: tAtajos('pantallaCliente') },
+    ],
+    { activo: !showCheckout, hayRafaga: hayRafagaDelLector },
+  );
   // Escritorio (≥ lg): productos y carrito en paneles redimensionables. El
   // ancho elegido se recuerda por navegador; doble clic en el divisor lo
   // restablece. En móvil se conserva la vista de pantalla completa por sección.
@@ -177,12 +217,6 @@ export default function POSPage() {
     getPosDisplayEmitter().setSession({ sessionOpen: !!cashSession });
   }, [cashSession]);
 
-  // Reloj en tiempo real: actualiza la hora mostrada en el header cada segundo
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   // Desktop (fase 4B): reproducir las ventas hechas sin conexión al abrir el
   // POS con red y cada vez que vuelva la conectividad real. No-op en navegador.
   useEffect(() => {
@@ -255,10 +289,9 @@ export default function POSPage() {
   const handleSessionOpened = (session: CashSession) => {
     setCashSession(session);
     loadDashboardData();
-    toast.success(session.pending_sync ? 'Caja abierta sin conexión' : 'Caja abierta exitosamente', {
-      description: session.pending_sync
-        ? `Monto inicial: ${formatear(session.initial_amount)} · pendiente de sincronizar`
-        : `Monto inicial: ${formatear(session.initial_amount)}`
+    const monto = tCabecera('montoInicial', { monto: formatear(session.initial_amount) });
+    toast.success(session.pending_sync ? tCabecera('cajaAbiertaSinConexion') : tCabecera('cajaAbiertaToast'), {
+      description: session.pending_sync ? `${monto} · ${tCabecera('pendienteSincronizar')}` : monto,
     });
   };
 
@@ -272,9 +305,9 @@ export default function POSPage() {
         setCashSession(null);
       });
     loadDashboardData();
-    toast.success(session.pending_sync ? 'Caja cerrada sin conexión' : 'Caja cerrada exitosamente', {
-      description: (showExpected ? `Diferencia: ${formatear(Math.abs(session.difference || 0))}` : 'Caja cerrada')
-        + (session.pending_sync ? ' · pendiente de sincronizar' : '')
+    toast.success(session.pending_sync ? tCabecera('cajaCerradaSinConexion') : tCabecera('cajaCerradaToast'), {
+      description: (showExpected ? tCabecera('diferencia', { monto: formatear(Math.abs(session.difference || 0)) }) : tCabecera('cajaCerradaToast'))
+        + (session.pending_sync ? ` · ${tCabecera('pendienteSincronizar')}` : '')
     });
   };
 
@@ -424,126 +457,81 @@ export default function POSPage() {
     getPosDisplayEmitter().setActiveCart(activeCart ?? null);
   }, [activeCart]);
 
+  // Contadores de la cabecera: los mismos carritos de la sucursal que las pestañas.
+  const carritosActivos = carts.filter(c => c.status === 'active').length;
+  const carritosEnEspera = carts.filter(c => c.status === 'hold').length;
+
   // Estados de carga
   if (orgLoading || branchLoading || (isLoading && carts.length === 0)) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <PageHeaderSkeleton />
-        <StatsSkeleton count={4} />
-        <CardListSkeleton cards={3} columns="1" />
+      <div className="flex h-full flex-col gap-3 bg-canvas p-2 sm:p-4" aria-busy="true">
+        <Skeleton className="hidden h-16 w-full rounded-xl lg:block" />
+        <div className="flex min-h-0 flex-1 gap-4">
+          <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-8 w-2/3 rounded-lg" />
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+              {Array.from({ length: 6 }, (_, i) => (
+                <Skeleton key={i} className="h-48 rounded-xl" />
+              ))}
+            </div>
+          </div>
+          <Skeleton className="hidden w-[400px] shrink-0 rounded-xl lg:block" />
+        </div>
       </div>
     );
   }
 
   if (!organization) {
     return (
-      <div className="flex items-center justify-center h-screen dark:bg-gray-900 bg-gray-50">
-        <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
-          <CardContent className="p-6 text-center">
-            <Settings className="h-12 w-12 mx-auto mb-4 dark:text-gray-400 text-gray-500" />
-            <h2 className="text-lg font-semibold mb-2 dark:text-white text-gray-900">
-              Organización no encontrada
-            </h2>
-            <p className="dark:text-gray-400 text-gray-600">
-              Configure su organización para usar el sistema POS
-            </p>
-          </CardContent>
-        </Card>
+      <div className="flex h-full items-center justify-center bg-canvas p-4">
+        <EmptyState
+          variante="error"
+          icono={Settings}
+          titulo={tCabecera('organizacionNoEncontrada')}
+          descripcion={tCabecera('configureOrganizacion')}
+        />
       </div>
     );
   }
 
   return (
-    <div className={cn("h-full dark:bg-gray-900 bg-gray-50 p-2 sm:p-4", isRefreshing && "opacity-60 pointer-events-none")}>
+    <div className={cn("h-full bg-canvas p-2 sm:p-4", isRefreshing && "opacity-60 pointer-events-none")}>
       <div className="w-full h-full flex flex-col space-y-2 sm:space-y-3">
-        {/* Header - Responsive con estado de caja y accesos rápidos */}
-        <Card className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200 shadow-sm">
-          <CardHeader className="p-3 sm:p-4 md:pb-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              {/* Título y Logo */}
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <div className="p-1.5 sm:p-2 rounded-full dark:bg-blue-500/20 bg-blue-100 shrink-0">
-                  <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 dark:text-blue-400 text-blue-600" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <CardTitle className="text-base sm:text-lg md:text-xl dark:text-white text-gray-900 break-words whitespace-normal">
-                    Sistema POS
-                  </CardTitle>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-xs sm:text-sm dark:text-gray-400 text-gray-600 break-words whitespace-normal">
-                      {organization?.name || 'Caja rápida / Venta'}
-                    </p>
-                    <BranchBadge className="" />
-                  </div>
-                </div>
-              </div>
-              
-              {/* Info y Badges - Responsive */}
-              <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4">
-                {/* Botones de Caja - Abrir/Cerrar */}
-                {cashSession ? (
-                  (() => {
-                    const canClose = puedeCerrarCaja(cashSession, permisosCaja.userId ?? currentUserId, permisosCaja.cerrarCajasAjenas);
-                    if (!canClose) {
-                      return (
-                        <Button
-                          disabled
-                          size="sm"
-                          className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
-                          title="Solo el cajero que abrió la caja o un administrador puede cerrarla"
-                        >
-                          <Lock className="h-4 w-4 mr-1" />
-                          <span className="hidden sm:inline">Cerrar Caja</span>
-                        </Button>
-                      );
-                    }
-                    return (
-                      <CierreCajaDialog
-                        session={cashSession}
-                        onSessionClosed={handleSessionClosed}
-                      />
-                    );
-                  })()
-                ) : (
-                  <AperturaCajaDialog onSessionOpened={handleSessionOpened} />
-                )}
-
-                {/* Ventas, clientes y caja sin conexión pendientes de sincronizar (solo Desktop, fases 4B/4D/4F) */}
-                <PendientesSinConexionDialog />
-
-                {/* Hora */}
-                <div className="hidden xs:flex items-center space-x-1.5 sm:space-x-2">
-                  <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 dark:text-gray-400 text-gray-500 shrink-0" />
-                  <span className="text-xs sm:text-sm dark:text-gray-400 text-gray-600 whitespace-nowrap">
-                    {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-
-                {/* Pantalla del cliente: punto verde/gris + menú abrir/cerrar (PLAN pos-doble-pantalla §5.1) */}
-                <CustomerDisplayIndicator />
-
-                {/* Badges - Compactos en móvil */}
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <Badge 
-                    variant="outline" 
-                    className="dark:border-green-600 dark:text-green-400 dark:bg-green-500/10 border-green-500 text-green-700 bg-green-50 text-xs px-1.5 sm:px-2 py-0.5"
-                  >
-                    <span className="hidden xs:inline">{carts.filter(c => c.status === 'active').length} Activos</span>
-                    <span className="inline xs:hidden">{carts.filter(c => c.status === 'active').length}A</span>
-                  </Badge>
-                  <Badge 
-                    variant="outline" 
-                    className="dark:border-yellow-600 dark:text-yellow-400 dark:bg-yellow-500/10 border-yellow-500 text-yellow-700 bg-yellow-50 text-xs px-1.5 sm:px-2 py-0.5"
-                  >
-                    <span className="hidden xs:inline">{carts.filter(c => c.status === 'hold').length} En Espera</span>
-                    <span className="inline xs:hidden">{carts.filter(c => c.status === 'hold').length}E</span>
-                  </Badge>
-                </div>
-
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
+        {/* Cabecera (escritorio y tableta ≥ lg; en celular la lleva el MobileHeader Mode=pos y su «⋯»). */}
+        <CabeceraPos
+          organizacionNombre={organization?.name}
+          cajaAbierta={!!cashSession}
+          cierreBloqueado={!!cashSession && !canClose}
+          onCaja={abrirDialogoCaja}
+          carritosActivos={carritosActivos}
+          carritosEnEspera={carritosEnEspera}
+        />
+        {/* Apertura y cierre de caja: abiertos por programa (cabecera, F9, hoja móvil, «Abrir caja para cobrar»). */}
+        {cashSession ? (
+          canClose && (
+            <CierreCajaDialog
+              session={cashSession}
+              onSessionClosed={handleSessionClosed}
+              open={dialogoCaja}
+              onOpenChange={setDialogoCaja}
+            />
+          )
+        ) : (
+          <AperturaCajaDialog onSessionOpened={handleSessionOpened} open={dialogoCaja} onOpenChange={setDialogoCaja} />
+        )}
+        <HojaCajaDispositivo
+          abierta={hojaCaja}
+          onAbiertaChange={setHojaCaja}
+          cajaAbierta={!!cashSession}
+          estadoCaja={estadoCaja}
+          cierreBloqueado={!!cashSession && !canClose}
+          onCaja={abrirDialogoCaja}
+          onAtajos={() => setMapaAtajos(true)}
+          carritosActivos={carritosActivos}
+          carritosEnEspera={carritosEnEspera}
+        />
+        <MapaAtajos abierto={mapaAtajos} onAbiertoChange={setMapaAtajos} />
 
         {/* Contenido principal - Layout Responsive */}
         {(() => {

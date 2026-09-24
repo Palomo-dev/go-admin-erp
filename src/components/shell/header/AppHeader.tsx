@@ -226,6 +226,8 @@ function MobileHeader({
             <span className="truncate">{estado.texto}</span>
           </span>
         )}
+        {/* «⋯ Caja y dispositivo» del POS (Figma 187:7933): lo pone la página con `accion`. */}
+        {pagina?.accion ? <div className={cn('shrink-0', !estado && 'ml-auto')}>{pagina.accion}</div> : null}
       </div>
     );
   }

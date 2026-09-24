@@ -34,7 +34,7 @@ export interface CabeceraMovilPagina {
   modo?: ModoCabeceraMovil;
   titulo?: string;
   subtitulo?: string;
-  /** Acción a la derecha en modo página: un botón «⋯», «Guardar», filtros… */
+  /** Acción a la derecha en modo página («⋯», «Guardar», filtros…) y en modo POS («⋯ Caja y dispositivo»). */
   accion?: ReactNode;
   /** A dónde vuelve «←» si no hay historial (por defecto, la página padre del menú). */
   volverA?: string;

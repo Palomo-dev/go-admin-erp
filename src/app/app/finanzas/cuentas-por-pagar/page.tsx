@@ -1,6 +1,5 @@
-import React from 'react';
-import { CuentasPorPagarPage } from '@/components/finanzas/cuentas-por-pagar/CuentasPorPagarPage';
+import CuentasPorPagarListado from '@/components/finanzas/cuentas-por-pagar/listado/CuentasPorPagarListado';
 
 export default function CuentasPorPagarPageRoute() {
-  return <CuentasPorPagarPage />;
+  return <CuentasPorPagarListado />;
 }

@@ -9780,6 +9780,239 @@
         "excede_saldo": "Il ne peut pas dépasser {disponible}.",
         "fecha": "La date ne peut pas être antérieure à aujourd'hui."
       }
+    },
+    "sustantivo": {
+      "singular": "compte fournisseur",
+      "plural": "comptes fournisseurs"
+    },
+    "migas": {
+      "finanzas": "Finances"
+    },
+    "estado": {
+      "pendiente": "En attente",
+      "parcial": "Paiement partiel",
+      "vencida": "Échue",
+      "pagada": "Payée",
+      "anulada": "Annulée"
+    },
+    "estadoVencida": "{dias, plural, one {Échue depuis # jour} other {Échue depuis # jours}}",
+    "antiguedad": {
+      "titulo": "Ancienneté du solde",
+      "quitar": "Voir toutes les tranches",
+      "tramos": {
+        "al_dia": "À jour",
+        "d1_30": "1–30 jours",
+        "d31_60": "31–60 jours",
+        "d61_90": "61–90 jours",
+        "d90_mas": "Plus de 90 jours"
+      }
+    },
+    "listado": {
+      "subtitulo": "{n} comptes",
+      "facturas": "Factures d'achat",
+      "aprobaciones": "Approbations ({n})",
+      "buscar": {
+        "etiqueta": "Rechercher des comptes fournisseurs",
+        "placeholder": "Fournisseur, n° fiscal ou facture"
+      },
+      "kpis": {
+        "etiqueta": "Résumé des comptes fournisseurs",
+        "porPagar": "À payer",
+        "cuentas": "Comptes : {n}",
+        "vencido": "Échu",
+        "alDia": "À jour",
+        "proximo": "Prochaine échéance : {fecha}",
+        "aprobaciones": "Paiements à approuver"
+      },
+      "filtros": {
+        "estado": "Statut",
+        "antiguedad": "Ancienneté",
+        "todos": "Tous",
+        "verN": "Voir {n} résultats"
+      },
+      "columnas": {
+        "proveedor": "Fournisseur",
+        "vence": "Échéance",
+        "monto": "Montant",
+        "saldo": "Solde",
+        "cuotas": "Échéances",
+        "estado": "Statut"
+      },
+      "acciones": {
+        "ver": "Voir le détail",
+        "pagar": "Enregistrer un paiement",
+        "programar": "Programmer un paiement",
+        "estadoCuenta": "Relevé de compte",
+        "factura": "Voir la facture"
+      },
+      "motivos": {
+        "sinPermiso": "Vous n'avez pas l'autorisation pour cette action",
+        "sinSaldo": "Aucun solde restant"
+      },
+      "exportar": {
+        "csv": "Exporter en CSV",
+        "seleccion": "Exporter la sélection",
+        "banca": "Exporter vers la banque en ligne",
+        "exportando": "Exportation…",
+        "listo": "{n} comptes exportés",
+        "error": "Exportation impossible",
+        "sinDatos": "Aucun compte à exporter",
+        "archivo": "comptes_fournisseurs",
+        "columnas": {
+          "proveedor": "Fournisseur",
+          "nit": "N° fiscal",
+          "factura": "Facture",
+          "vence": "Échéance",
+          "moneda": "Devise",
+          "monto": "Montant",
+          "saldo": "Solde",
+          "estado": "Statut",
+          "dias": "Jours de retard"
+        }
+      },
+      "factura": "Facture {numero}",
+      "cuotasDe": "{pagadas} sur {total}",
+      "programado": "Programmé : {monto}",
+      "etiquetaFila": "Compte de {proveedor}, solde {saldo}",
+      "pagarA": "Payer {proveedor}",
+      "vence": "Échéance {fecha}",
+      "vencidaHace": "Échue depuis {dias} j",
+      "errorCarga": "Impossible de charger les comptes fournisseurs",
+      "sinResultados": "Aucun compte ne correspond aux filtres.",
+      "vacio": {
+        "titulo": "Aucun compte fournisseur",
+        "descripcion": "Ils sont créés à la confirmation d'une facture d'achat."
+      }
+    },
+    "aprobaciones": {
+      "titulo": "Paiements à approuver ({n})",
+      "descripcion": "La personne qui a programmé un paiement ne peut pas l'approuver. L'approbation enregistre le paiement.",
+      "para": "pour le {fecha}",
+      "solicitado": "Demandé le {fecha}",
+      "aprobar": "Approuver",
+      "rechazar": "Refuser",
+      "cancelar": "Annuler",
+      "aprobado": "Paiement de {monto} approuvé et enregistré",
+      "rechazado": "Paiement programmé refusé",
+      "cancelado": "Paiement programmé annulé",
+      "motivos": {
+        "sinPermiso": "Vous devez avoir l'autorisation d'approuver",
+        "propia": "Vous l'avez programmé : une autre personne doit l'approuver"
+      },
+      "rechazo": {
+        "titulo": "Refuser le paiement programmé",
+        "descripcion": "Paiement de {monto}. Expliquez le motif du refus."
+      }
+    },
+    "detalle": {
+      "titulo": "Compte fournisseur · {numero}",
+      "tituloSinFactura": "Compte fournisseur",
+      "cargando": "Chargement du compte fournisseur…",
+      "volver": "Retour aux comptes fournisseurs",
+      "noEncontrada": "Compte fournisseur introuvable",
+      "noEncontradaDescripcion": "Il n'existe pas ou n'appartient pas à votre organisation.",
+      "errorCarga": "Impossible de charger le compte fournisseur",
+      "errorCargaDescripcion": "Vérifiez votre connexion et réessayez.",
+      "vence": "Échéance {fecha}",
+      "eslabon": "Compte fournisseur",
+      "pago": "Paiement",
+      "enlaces": "Documents liés",
+      "resumen": "Résumé",
+      "monto": "Montant",
+      "pagado": "Payé",
+      "programado": "Programmé, non approuvé",
+      "saldo": "Solde",
+      "datos": "Données",
+      "proveedor": "Fournisseur",
+      "factura": "Facture",
+      "vencimiento": "Échéance",
+      "moneda": "Devise",
+      "creada": "Créé",
+      "historialProgramaciones": "Programmations précédentes",
+      "programacion": {
+        "pending": "En attente",
+        "approved": "Approuvée",
+        "rejected": "Refusée",
+        "cancelled": "Annulée"
+      },
+      "acciones": {
+        "pagar": "Enregistrer un paiement",
+        "programar": "Programmer un paiement",
+        "plan": "Créer un échéancier",
+        "estadoCuenta": "Relevé de compte du fournisseur",
+        "factura": "Voir la facture"
+      },
+      "motivos": {
+        "sinPermiso": "Vous n'avez pas l'autorisation pour cette action"
+      },
+      "cuotas": {
+        "titulo": "Échéancier",
+        "vacio": "Pas d'échéancier : le paiement se fait sur le solde.",
+        "numero": "Échéance {numero} · le {fecha}",
+        "detalle": "Montant {valor} · solde {saldo}",
+        "pagarCuota": "Payer l'échéance {numero}",
+        "eliminar": "Supprimer l'échéancier",
+        "eliminarConfirmar": "Supprimer l'échéancier ? Le solde du compte ne change pas.",
+        "eliminado": "Échéancier supprimé"
+      },
+      "pagos": {
+        "titulo": "Paiements",
+        "vacio": "Pas encore de paiements",
+        "aCuota": "Sur une échéance",
+        "comprobanteDe": "Bon de décaissement de {monto}"
+      }
+    },
+    "estadoCuenta": {
+      "titulo": "Relevé de compte · {proveedor}",
+      "tabla": "Mouvements de {proveedor}",
+      "periodo": "Période",
+      "cargando": "Chargement du relevé…",
+      "vacio": "Aucun mouvement sur la période.",
+      "saldoInicial": "Solde initial",
+      "saldoFinal": "Solde final",
+      "vencido": "Échu",
+      "porVencer": "À échoir",
+      "totales": "Totaux",
+      "descargar": "Télécharger en CSV",
+      "cerrar": "Fermer",
+      "sinDatos": "Aucune donnée à télécharger",
+      "errorDescarga": "Téléchargement impossible",
+      "archivo": "releve_fournisseur",
+      "tipos": {
+        "factura": "Facture",
+        "cuenta": "Compte fournisseur",
+        "pago": "Paiement"
+      },
+      "columnas": {
+        "fecha": "Date",
+        "documento": "Document",
+        "vence": "Échéance",
+        "cargo": "Débit",
+        "abono": "Crédit",
+        "saldo": "Solde"
+      }
+    },
+    "plan": {
+      "titulo": "Échéancier",
+      "descripcion": "Répartissez le solde de {saldo} en échéances mensuelles.",
+      "cuotas": "Nombre d'échéances",
+      "primera": "Première échéance",
+      "interes": "Intérêt par échéance",
+      "interesAyuda": "Facultatif, sur le capital de chaque échéance.",
+      "vistaPrevia": "Aperçu de l'échéancier",
+      "vence": "Échéance",
+      "capital": "Capital",
+      "interesCol": "Intérêt",
+      "valor": "Montant",
+      "total": "Total",
+      "crear": "Créer l'échéancier",
+      "revisar": "Vérifiez le nombre d'échéances, la date et l'intérêt",
+      "creado": "{n, plural, one {Échéancier de # échéance créé} other {Échéancier de # échéances créé}}",
+      "errores": {
+        "cuotas": "Entre 1 et 60 échéances.",
+        "fecha": "La première échéance ne peut pas être antérieure à aujourd'hui.",
+        "interes": "Entre 0 et 100 %."
+      }
     }
   },
   "documentos": {

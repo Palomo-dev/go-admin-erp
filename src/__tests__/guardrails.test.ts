@@ -1883,6 +1883,105 @@ describe('26. Compras: un solo asiento por hecho, con la factura (ADR-CC-009)', 
   });
 });
 
+describe('26b. Compras y CxP: una sola RPC para registrar la compra y nada escrito a mano', () => {
+  // Plan docs/implementacion/FACTURAS-COMPRA-CXP-PLAN.md (F1–F13). Registrar una
+  // compra estaba implementado tres veces (formulario, GO Assistant y generador
+  // desde OC) y cada una escribía la factura, la CxP y el costo a su manera. Hoy
+  // es fn_factura_compra_guardar/confirmar/desde_oc; la CxP nace y se recalcula
+  // por disparador (D2/D4), el costo va por fn_kardex_entrada_compra con vigencia
+  // y el estado de la factura solo lo cambian las RPC.
+  const escritura = (tabla: string) =>
+    new RegExp(String.raw`from\(\s*['"\`]` + tabla + String.raw`['"\`]\s*\)[\s\S]{0,200}?\.(insert|update|upsert|delete)\(`);
+
+  /** Superficie NUEVA de compras y CxP: nada de escrituras directas. */
+  const nuevos = () =>
+    [
+      'lib/services/compras',
+      'components/finanzas/facturas-compra/listado',
+      'components/finanzas/facturas-compra/detalle',
+      'components/finanzas/facturas-compra/formulario',
+      'components/finanzas/cuentas-por-pagar/listado',
+      'components/finanzas/cuentas-por-pagar/detalle',
+    ]
+      .flatMap((d) => walkDir(path.join(SRC_ROOT, d)))
+      .concat(
+        [
+          'RegistrarPagoProveedor.tsx',
+          'ProgramarPagoDialog.tsx',
+          'AprobacionesPanel.tsx',
+          'EstadoCuentaProveedorDialog.tsx',
+          'PlanCuotasDialog.tsx',
+          'BandaAntiguedad.tsx',
+        ].map((f) => path.join(SRC_ROOT, 'components/finanzas/cuentas-por-pagar', f)),
+      )
+      .filter((f) => !isExcluded(f));
+
+  test('la superficie nueva no escribe tablas: solo llama a las rutas del servidor', () => {
+    const archivos = nuevos();
+    expect(archivos.length).toBeGreaterThan(10);
+    const infractores = archivos.filter((f) => /\.(insert|update|upsert|delete)\(/.test(readFile(f))).map(rel);
+    expect(infractores).toEqual([]);
+  });
+
+  test('nadie fuera de las migraciones escribe accounts_payable, invoice_purchase ni ap_payment_schedules (salvo el servicio viejo)', () => {
+    // FacturasCompraService.ts: servicio anterior al plan, ya sin pantallas que lo
+    // monten (las páginas usan listado/detalle/formulario). Lo fijan las pruebas de
+    // caracterización de src/__tests__/finanzas/compras y lo importan todavía los
+    // modales viejos de CxP; se borra en cuanto esas pruebas apunten a las RPC.
+    // Igual CuentasPorPagarService.ts e id/service.ts (cuotas a mano en
+    // ap_installments): el listado y el detalle viejos de CxP ya no se montan
+    // (plan de cuotas por fn_cxp_crear_plan_cuotas), pero los fijan
+    // antiguedadCxp/planCuotas y la exportación a banca, que otro frente edita.
+    const PERMITIDOS = new Set([
+      'components/finanzas/facturas-compra/FacturasCompraService.ts',
+      'components/finanzas/cuentas-por-pagar/CuentasPorPagarService.ts',
+      'components/finanzas/cuentas-por-pagar/id/service.ts',
+    ]);
+    const infractores = walkDir(SRC_ROOT)
+      .filter((f) => !isExcluded(f) && !PERMITIDOS.has(rel(f)))
+      .filter((f) => {
+        const src = readFile(f);
+        return ['accounts_payable', 'invoice_purchase', 'ap_payment_schedules', 'ap_installments'].some((t) => escritura(t).test(src));
+      })
+      .map(rel);
+    expect(infractores).toEqual([]);
+  });
+
+  test('compras no escribe product_costs: el costo lo pone la base con vigencia', () => {
+    const archivos = [
+      ...nuevos(),
+      path.join(SRC_ROOT, 'lib/services/purchaseOrderService.ts'),
+      path.join(SRC_ROOT, 'components/finanzas/facturas-compra/FacturasCompraService.ts'),
+    ];
+    expect(archivos.filter((f) => escritura('product_costs').test(readFile(f))).map(rel)).toEqual([]);
+  });
+
+  test('el generador desde OC llama a la RPC única y no arma la factura a mano', () => {
+    const src = readFile(path.join(SRC_ROOT, 'lib/services/purchaseOrderService.ts'));
+    expect(src).toMatch(/clienteCompras\.desdeOrden\(/);
+    expect(src).not.toMatch(escritura('invoice_items'));
+  });
+
+  test('las páginas de compras y CxP montan las pantallas nuevas (las URL no cambian)', () => {
+    const paginas: Record<string, RegExp> = {
+      'app/app/finanzas/facturas-compra/page.tsx': /facturas-compra\/listado\/FacturasCompraListado/,
+      'app/app/inventario/facturas-compra/page.tsx': /facturas-compra\/listado\/FacturasCompraListado/,
+      'app/app/finanzas/facturas-compra/nuevo/page.tsx': /facturas-compra\/formulario\/FormularioFacturaCompra/,
+      'app/app/inventario/facturas-compra/nuevo/page.tsx': /facturas-compra\/formulario\/FormularioFacturaCompra/,
+      'app/app/finanzas/facturas-compra/[id]/page.tsx': /facturas-compra\/detalle\/DetalleFacturaCompraV2/,
+      'app/app/inventario/facturas-compra/[id]/page.tsx': /facturas-compra\/detalle\/DetalleFacturaCompraV2/,
+      'app/app/finanzas/facturas-compra/[id]/editar/page.tsx': /facturas-compra\/formulario\/FormularioFacturaCompra/,
+      'app/app/inventario/facturas-compra/[id]/editar/page.tsx': /facturas-compra\/formulario\/FormularioFacturaCompra/,
+      'app/app/finanzas/cuentas-por-pagar/page.tsx': /cuentas-por-pagar\/listado\/CuentasPorPagarListado/,
+      'app/app/finanzas/cuentas-por-pagar/[id]/page.tsx': /cuentas-por-pagar\/detalle\/CuentaPorPagarDetalle/,
+      'app/app/finanzas/cuentas-por-pagar/[id]/cuotas/page.tsx': /redirect\(/,
+    };
+    for (const [pagina, patron] of Object.entries(paginas)) {
+      expect({ pagina, ok: patron.test(readFile(path.join(SRC_ROOT, pagina))) }).toEqual({ pagina, ok: true });
+    }
+  });
+});
+
 describe('27. RLS del catálogo: filas globales de solo lectura y nada abierto a anon', () => {
   // Auditoría del catálogo (docs/design/AUDITORIA-CATALOGO-PRODUCCION.md):
   // un administrador de cualquier organización editaba `units` para todas, un

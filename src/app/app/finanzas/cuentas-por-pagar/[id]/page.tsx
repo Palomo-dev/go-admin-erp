@@ -1,14 +1,13 @@
 'use client';
 
 import { use } from 'react';
-import { CuentaPorPagarDetailPage } from '@/components/finanzas/cuentas-por-pagar/id';
+import CuentaPorPagarDetalle from '@/components/finanzas/cuentas-por-pagar/detalle/CuentaPorPagarDetalle';
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
 export default function CuentaPorPagarDetailPageRoute({ params }: PageProps) {
-  const resolvedParams = use(params);
-  
-  return <CuentaPorPagarDetailPage accountId={resolvedParams.id} />;
+  const { id } = use(params);
+  return <CuentaPorPagarDetalle id={id} />;
 }

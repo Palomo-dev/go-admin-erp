@@ -1,14 +1,11 @@
-'use client';
-
-import { use } from 'react';
-import { CuotasPage } from '@/components/finanzas/cuentas-por-pagar/id/cuotas';
+import { redirect } from 'next/navigation';
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function CuotasPageRoute({ params }: PageProps) {
-  const resolvedParams = use(params);
-  
-  return <CuotasPage accountId={resolvedParams.id} />;
+/** El plan de cuotas vive en el detalle de la CxP (plan F9); la URL vieja se conserva. */
+export default async function CuotasPageRoute({ params }: PageProps) {
+  const { id } = await params;
+  redirect(`/app/finanzas/cuentas-por-pagar/${encodeURIComponent(id)}#cuotas`);
 }

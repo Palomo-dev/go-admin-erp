@@ -9780,6 +9780,239 @@
         "excede_saldo": "Não pode exceder {disponible}.",
         "fecha": "A data não pode ser anterior a hoje."
       }
+    },
+    "sustantivo": {
+      "singular": "conta a pagar",
+      "plural": "contas a pagar"
+    },
+    "migas": {
+      "finanzas": "Finanças"
+    },
+    "estado": {
+      "pendiente": "Pendente",
+      "parcial": "Pagamento parcial",
+      "vencida": "Vencida",
+      "pagada": "Paga",
+      "anulada": "Anulada"
+    },
+    "estadoVencida": "{dias, plural, one {Vencida há # dia} other {Vencida há # dias}}",
+    "antiguedad": {
+      "titulo": "Antiguidade do saldo",
+      "quitar": "Ver todas as faixas",
+      "tramos": {
+        "al_dia": "Em dia",
+        "d1_30": "1–30 dias",
+        "d31_60": "31–60 dias",
+        "d61_90": "61–90 dias",
+        "d90_mas": "Mais de 90 dias"
+      }
+    },
+    "listado": {
+      "subtitulo": "{n} contas",
+      "facturas": "Faturas de compra",
+      "aprobaciones": "Aprovações ({n})",
+      "buscar": {
+        "etiqueta": "Buscar contas a pagar",
+        "placeholder": "Fornecedor, ID fiscal ou fatura"
+      },
+      "kpis": {
+        "etiqueta": "Resumo das contas a pagar",
+        "porPagar": "A pagar",
+        "cuentas": "Contas: {n}",
+        "vencido": "Vencido",
+        "alDia": "Em dia",
+        "proximo": "Próximo vencimento: {fecha}",
+        "aprobaciones": "Pagamentos a aprovar"
+      },
+      "filtros": {
+        "estado": "Status",
+        "antiguedad": "Antiguidade",
+        "todos": "Todos",
+        "verN": "Ver {n} resultados"
+      },
+      "columnas": {
+        "proveedor": "Fornecedor",
+        "vence": "Vence",
+        "monto": "Valor",
+        "saldo": "Saldo",
+        "cuotas": "Parcelas",
+        "estado": "Status"
+      },
+      "acciones": {
+        "ver": "Ver detalhes",
+        "pagar": "Registrar pagamento",
+        "programar": "Programar pagamento",
+        "estadoCuenta": "Extrato da conta",
+        "factura": "Ver fatura"
+      },
+      "motivos": {
+        "sinPermiso": "Você não tem permissão para esta ação",
+        "sinSaldo": "Sem saldo pendente"
+      },
+      "exportar": {
+        "csv": "Exportar CSV",
+        "seleccion": "Exportar seleção",
+        "banca": "Exportar para o banco online",
+        "exportando": "Exportando…",
+        "listo": "{n} contas exportadas",
+        "error": "Não foi possível exportar",
+        "sinDatos": "Não há contas para exportar",
+        "archivo": "contas_a_pagar",
+        "columnas": {
+          "proveedor": "Fornecedor",
+          "nit": "ID fiscal",
+          "factura": "Fatura",
+          "vence": "Vence",
+          "moneda": "Moeda",
+          "monto": "Valor",
+          "saldo": "Saldo",
+          "estado": "Status",
+          "dias": "Dias de atraso"
+        }
+      },
+      "factura": "Fatura {numero}",
+      "cuotasDe": "{pagadas} de {total}",
+      "programado": "Programado: {monto}",
+      "etiquetaFila": "Conta de {proveedor}, saldo {saldo}",
+      "pagarA": "Pagar {proveedor}",
+      "vence": "Vence {fecha}",
+      "vencidaHace": "Vencida há {dias} d",
+      "errorCarga": "Não foi possível carregar as contas a pagar",
+      "sinResultados": "Nenhuma conta corresponde aos filtros.",
+      "vacio": {
+        "titulo": "Não há contas a pagar",
+        "descripcion": "Elas são criadas ao confirmar uma fatura de compra."
+      }
+    },
+    "aprobaciones": {
+      "titulo": "Pagamentos a aprovar ({n})",
+      "descripcion": "Quem programou um pagamento não pode aprová-lo. Ao aprovar, o pagamento é registrado.",
+      "para": "para {fecha}",
+      "solicitado": "Solicitado em {fecha}",
+      "aprobar": "Aprovar",
+      "rechazar": "Rejeitar",
+      "cancelar": "Cancelar",
+      "aprobado": "Pagamento de {monto} aprovado e registrado",
+      "rechazado": "Pagamento programado rejeitado",
+      "cancelado": "Pagamento programado cancelado",
+      "motivos": {
+        "sinPermiso": "Você precisa de permissão de aprovação",
+        "propia": "Você o programou: outra pessoa deve aprová-lo"
+      },
+      "rechazo": {
+        "titulo": "Rejeitar pagamento programado",
+        "descripcion": "Pagamento de {monto}. Explique por que é rejeitado."
+      }
+    },
+    "detalle": {
+      "titulo": "Conta a pagar · {numero}",
+      "tituloSinFactura": "Conta a pagar",
+      "cargando": "Carregando conta a pagar…",
+      "volver": "Voltar às contas a pagar",
+      "noEncontrada": "Conta a pagar não encontrada",
+      "noEncontradaDescripcion": "Ela não existe ou não pertence à sua organização.",
+      "errorCarga": "Não foi possível carregar a conta a pagar",
+      "errorCargaDescripcion": "Verifique sua conexão e tente novamente.",
+      "vence": "Vence {fecha}",
+      "eslabon": "Conta a pagar",
+      "pago": "Pagamento",
+      "enlaces": "Documentos relacionados",
+      "resumen": "Resumo",
+      "monto": "Valor",
+      "pagado": "Pago",
+      "programado": "Programado sem aprovação",
+      "saldo": "Saldo",
+      "datos": "Dados",
+      "proveedor": "Fornecedor",
+      "factura": "Fatura",
+      "vencimiento": "Vencimento",
+      "moneda": "Moeda",
+      "creada": "Criada",
+      "historialProgramaciones": "Programações anteriores",
+      "programacion": {
+        "pending": "Pendente",
+        "approved": "Aprovada",
+        "rejected": "Rejeitada",
+        "cancelled": "Cancelada"
+      },
+      "acciones": {
+        "pagar": "Registrar pagamento",
+        "programar": "Programar pagamento",
+        "plan": "Criar plano de parcelas",
+        "estadoCuenta": "Extrato do fornecedor",
+        "factura": "Ver fatura"
+      },
+      "motivos": {
+        "sinPermiso": "Você não tem permissão para esta ação"
+      },
+      "cuotas": {
+        "titulo": "Plano de parcelas",
+        "vacio": "Sem plano de parcelas: paga-se contra o saldo.",
+        "numero": "Parcela {numero} · vence {fecha}",
+        "detalle": "Valor {valor} · saldo {saldo}",
+        "pagarCuota": "Pagar a parcela {numero}",
+        "eliminar": "Excluir plano",
+        "eliminarConfirmar": "Excluir o plano de parcelas? O saldo da conta não muda.",
+        "eliminado": "Plano de parcelas excluído"
+      },
+      "pagos": {
+        "titulo": "Pagamentos",
+        "vacio": "Ainda não há pagamentos",
+        "aCuota": "Para uma parcela",
+        "comprobanteDe": "Comprovante de pagamento de {monto}"
+      }
+    },
+    "estadoCuenta": {
+      "titulo": "Extrato da conta · {proveedor}",
+      "tabla": "Movimentos de {proveedor}",
+      "periodo": "Período",
+      "cargando": "Carregando extrato…",
+      "vacio": "Sem movimentos no período.",
+      "saldoInicial": "Saldo inicial",
+      "saldoFinal": "Saldo final",
+      "vencido": "Vencido",
+      "porVencer": "A vencer",
+      "totales": "Totais",
+      "descargar": "Baixar CSV",
+      "cerrar": "Fechar",
+      "sinDatos": "Não há dados para baixar",
+      "errorDescarga": "Não foi possível baixar",
+      "archivo": "extrato_fornecedor",
+      "tipos": {
+        "factura": "Fatura",
+        "cuenta": "Conta a pagar",
+        "pago": "Pagamento"
+      },
+      "columnas": {
+        "fecha": "Data",
+        "documento": "Documento",
+        "vence": "Vence",
+        "cargo": "Débito",
+        "abono": "Crédito",
+        "saldo": "Saldo"
+      }
+    },
+    "plan": {
+      "titulo": "Plano de parcelas",
+      "descripcion": "Divida o saldo de {saldo} em parcelas mensais.",
+      "cuotas": "Número de parcelas",
+      "primera": "Primeira parcela",
+      "interes": "Juros por parcela",
+      "interesAyuda": "Opcional, sobre o principal de cada parcela.",
+      "vistaPrevia": "Prévia do plano",
+      "vence": "Vence",
+      "capital": "Principal",
+      "interesCol": "Juros",
+      "valor": "Valor",
+      "total": "Total",
+      "crear": "Criar plano",
+      "revisar": "Revise o número de parcelas, a data e os juros",
+      "creado": "{n, plural, one {Plano de # parcela criado} other {Plano de # parcelas criado}}",
+      "errores": {
+        "cuotas": "Entre 1 e 60 parcelas.",
+        "fecha": "A primeira parcela não pode ser anterior a hoje.",
+        "interes": "Entre 0 e 100 %."
+      }
     }
   },
   "documentos": {

@@ -9885,6 +9885,239 @@
         "excede_saldo": "It can't exceed {disponible}.",
         "fecha": "The date can't be before today."
       }
+    },
+    "sustantivo": {
+      "singular": "account payable",
+      "plural": "accounts payable"
+    },
+    "migas": {
+      "finanzas": "Finance"
+    },
+    "estado": {
+      "pendiente": "Pending",
+      "parcial": "Partially paid",
+      "vencida": "Overdue",
+      "pagada": "Paid",
+      "anulada": "Voided"
+    },
+    "estadoVencida": "{dias, plural, one {Overdue by # day} other {Overdue by # days}}",
+    "antiguedad": {
+      "titulo": "Balance aging",
+      "quitar": "Show all buckets",
+      "tramos": {
+        "al_dia": "Current",
+        "d1_30": "1–30 days",
+        "d31_60": "31–60 days",
+        "d61_90": "61–90 days",
+        "d90_mas": "Over 90 days"
+      }
+    },
+    "listado": {
+      "subtitulo": "{n} accounts",
+      "facturas": "Purchase invoices",
+      "aprobaciones": "Approvals ({n})",
+      "buscar": {
+        "etiqueta": "Search accounts payable",
+        "placeholder": "Supplier, tax ID or invoice"
+      },
+      "kpis": {
+        "etiqueta": "Accounts payable summary",
+        "porPagar": "To pay",
+        "cuentas": "Accounts: {n}",
+        "vencido": "Overdue",
+        "alDia": "Current",
+        "proximo": "Next due date: {fecha}",
+        "aprobaciones": "Payments to approve"
+      },
+      "filtros": {
+        "estado": "Status",
+        "antiguedad": "Aging",
+        "todos": "All",
+        "verN": "Show {n} results"
+      },
+      "columnas": {
+        "proveedor": "Supplier",
+        "vence": "Due",
+        "monto": "Amount",
+        "saldo": "Balance",
+        "cuotas": "Installments",
+        "estado": "Status"
+      },
+      "acciones": {
+        "ver": "View details",
+        "pagar": "Record payment",
+        "programar": "Schedule payment",
+        "estadoCuenta": "Account statement",
+        "factura": "View invoice"
+      },
+      "motivos": {
+        "sinPermiso": "You don't have permission for this action",
+        "sinSaldo": "No outstanding balance"
+      },
+      "exportar": {
+        "csv": "Export CSV",
+        "seleccion": "Export selection",
+        "banca": "Export to online banking",
+        "exportando": "Exporting…",
+        "listo": "Exported {n} accounts",
+        "error": "Couldn't export",
+        "sinDatos": "No accounts to export",
+        "archivo": "accounts_payable",
+        "columnas": {
+          "proveedor": "Supplier",
+          "nit": "Tax ID",
+          "factura": "Invoice",
+          "vence": "Due",
+          "moneda": "Currency",
+          "monto": "Amount",
+          "saldo": "Balance",
+          "estado": "Status",
+          "dias": "Days overdue"
+        }
+      },
+      "factura": "Invoice {numero}",
+      "cuotasDe": "{pagadas} of {total}",
+      "programado": "Scheduled: {monto}",
+      "etiquetaFila": "Account of {proveedor}, balance {saldo}",
+      "pagarA": "Pay {proveedor}",
+      "vence": "Due {fecha}",
+      "vencidaHace": "Overdue {dias} d",
+      "errorCarga": "Couldn't load accounts payable",
+      "sinResultados": "No account matches the filters.",
+      "vacio": {
+        "titulo": "No accounts payable",
+        "descripcion": "They are created when a purchase invoice is confirmed."
+      }
+    },
+    "aprobaciones": {
+      "titulo": "Payments to approve ({n})",
+      "descripcion": "Whoever scheduled a payment can't approve it. Approving records the payment.",
+      "para": "for {fecha}",
+      "solicitado": "Requested {fecha}",
+      "aprobar": "Approve",
+      "rechazar": "Reject",
+      "cancelar": "Cancel",
+      "aprobado": "Payment of {monto} approved and recorded",
+      "rechazado": "Scheduled payment rejected",
+      "cancelado": "Scheduled payment cancelled",
+      "motivos": {
+        "sinPermiso": "You need approval permission",
+        "propia": "You scheduled it: someone else must approve it"
+      },
+      "rechazo": {
+        "titulo": "Reject scheduled payment",
+        "descripcion": "Payment of {monto}. Explain why it's rejected."
+      }
+    },
+    "detalle": {
+      "titulo": "Account payable · {numero}",
+      "tituloSinFactura": "Account payable",
+      "cargando": "Loading account payable…",
+      "volver": "Back to accounts payable",
+      "noEncontrada": "Account payable not found",
+      "noEncontradaDescripcion": "It doesn't exist or doesn't belong to your organization.",
+      "errorCarga": "Couldn't load the account payable",
+      "errorCargaDescripcion": "Check your connection and try again.",
+      "vence": "Due {fecha}",
+      "eslabon": "Account payable",
+      "pago": "Payment",
+      "enlaces": "Related documents",
+      "resumen": "Summary",
+      "monto": "Amount",
+      "pagado": "Paid",
+      "programado": "Scheduled, not approved",
+      "saldo": "Balance",
+      "datos": "Details",
+      "proveedor": "Supplier",
+      "factura": "Invoice",
+      "vencimiento": "Due date",
+      "moneda": "Currency",
+      "creada": "Created",
+      "historialProgramaciones": "Previous schedules",
+      "programacion": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "cancelled": "Cancelled"
+      },
+      "acciones": {
+        "pagar": "Record payment",
+        "programar": "Schedule payment",
+        "plan": "Create installment plan",
+        "estadoCuenta": "Supplier account statement",
+        "factura": "View invoice"
+      },
+      "motivos": {
+        "sinPermiso": "You don't have permission for this action"
+      },
+      "cuotas": {
+        "titulo": "Installment plan",
+        "vacio": "No installment plan: paid against the balance.",
+        "numero": "Installment {numero} · due {fecha}",
+        "detalle": "Amount {valor} · balance {saldo}",
+        "pagarCuota": "Pay installment {numero}",
+        "eliminar": "Delete plan",
+        "eliminarConfirmar": "Delete the installment plan? The account balance doesn't change.",
+        "eliminado": "Installment plan deleted"
+      },
+      "pagos": {
+        "titulo": "Payments",
+        "vacio": "No payments yet",
+        "aCuota": "To an installment",
+        "comprobanteDe": "Payment voucher for {monto}"
+      }
+    },
+    "estadoCuenta": {
+      "titulo": "Account statement · {proveedor}",
+      "tabla": "Transactions of {proveedor}",
+      "periodo": "Period",
+      "cargando": "Loading account statement…",
+      "vacio": "No transactions in the period.",
+      "saldoInicial": "Opening balance",
+      "saldoFinal": "Closing balance",
+      "vencido": "Overdue",
+      "porVencer": "Not yet due",
+      "totales": "Totals",
+      "descargar": "Download CSV",
+      "cerrar": "Close",
+      "sinDatos": "No data to download",
+      "errorDescarga": "Couldn't download",
+      "archivo": "supplier_statement",
+      "tipos": {
+        "factura": "Invoice",
+        "cuenta": "Account payable",
+        "pago": "Payment"
+      },
+      "columnas": {
+        "fecha": "Date",
+        "documento": "Document",
+        "vence": "Due",
+        "cargo": "Charge",
+        "abono": "Payment",
+        "saldo": "Balance"
+      }
+    },
+    "plan": {
+      "titulo": "Installment plan",
+      "descripcion": "Split the balance of {saldo} into monthly installments.",
+      "cuotas": "Number of installments",
+      "primera": "First installment",
+      "interes": "Interest per installment",
+      "interesAyuda": "Optional, on each installment's principal.",
+      "vistaPrevia": "Plan preview",
+      "vence": "Due",
+      "capital": "Principal",
+      "interesCol": "Interest",
+      "valor": "Amount",
+      "total": "Total",
+      "crear": "Create plan",
+      "revisar": "Check the number of installments, the date and the interest",
+      "creado": "{n, plural, one {Plan with # installment created} other {Plan with # installments created}}",
+      "errores": {
+        "cuotas": "Between 1 and 60 installments.",
+        "fecha": "The first installment can't be before today.",
+        "interes": "Between 0 and 100 %."
+      }
     }
   },
   "documentos": {

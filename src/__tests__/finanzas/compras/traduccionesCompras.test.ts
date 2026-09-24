@@ -35,6 +35,12 @@ const PANTALLAS = [
   'src/components/finanzas/facturas-compra/formulario/FormularioFacturaCompra.tsx',
   'src/components/finanzas/cuentas-por-pagar/RegistrarPagoProveedor.tsx',
   'src/components/finanzas/cuentas-por-pagar/ProgramarPagoDialog.tsx',
+  'src/components/finanzas/cuentas-por-pagar/listado/CuentasPorPagarListado.tsx',
+  'src/components/finanzas/cuentas-por-pagar/detalle/CuentaPorPagarDetalle.tsx',
+  'src/components/finanzas/cuentas-por-pagar/AprobacionesPanel.tsx',
+  'src/components/finanzas/cuentas-por-pagar/EstadoCuentaProveedorDialog.tsx',
+  'src/components/finanzas/cuentas-por-pagar/PlanCuotasDialog.tsx',
+  'src/components/finanzas/cuentas-por-pagar/BandaAntiguedad.tsx',
 ];
 
 /** Claves literales `x('clave')` por namespace de cada `useTranslations`. Un
@@ -79,6 +85,13 @@ describe('traducciones de compras y CxP', () => {
       ...['monto_invalido', 'excede_saldo'].map((c) => `cuentasPorPagar.programar.errores.${c}`),
       ...['numero', 'proveedor', 'nit', 'emitida', 'vence', 'moneda', 'total', 'neto', 'saldo', 'estado', 'recepcion'].map(
         (c) => `facturasCompra.listado.exportar.columnas.${c}`,
+      ),
+      ...['pendiente', 'parcial', 'vencida', 'pagada', 'anulada'].map((e) => `cuentasPorPagar.estado.${e}`),
+      ...['al_dia', 'd1_30', 'd31_60', 'd61_90', 'd90_mas'].map((k) => `cuentasPorPagar.antiguedad.tramos.${k}`),
+      ...['pending', 'approved', 'rejected', 'cancelled'].map((s) => `cuentasPorPagar.detalle.programacion.${s}`),
+      ...['factura', 'cuenta', 'pago'].map((s) => `cuentasPorPagar.estadoCuenta.tipos.${s}`),
+      ...['proveedor', 'nit', 'factura', 'vence', 'moneda', 'monto', 'saldo', 'estado', 'dias'].map(
+        (c) => `cuentasPorPagar.listado.exportar.columnas.${c}`,
       ),
     ];
     for (const l of IDIOMAS) {

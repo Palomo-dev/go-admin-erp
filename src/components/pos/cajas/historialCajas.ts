@@ -5,6 +5,7 @@
  */
 import type { CashSession, ResultadoCierre } from './types';
 import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { celdaCsv } from '@/lib/utils/csv';
 
 /**
  * «$ 1.068.400» (sin centavos, como en las cifras de Figma) en la moneda base
@@ -184,13 +185,8 @@ export function haceCuanto(desde: string | Date, ahora: Date = new Date()): stri
   }
 }
 
-/** Valor de celda CSV: comillas si hace falta y sin fórmulas que Excel ejecute. */
-export function celdaCsv(valor: string | number | null | undefined): string {
-  if (valor === null || valor === undefined) return '';
-  let texto = String(valor);
-  if (typeof valor === 'string' && /^[=+\-@\t\r]/.test(texto)) texto = `'${texto}`;
-  return /[";\n\r]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
-}
+/** Valor de celda CSV (utilidad única: `src/lib/utils/csv.ts`). */
+export { celdaCsv };
 
 export interface FilaCsvHistorial {
   caja: number;

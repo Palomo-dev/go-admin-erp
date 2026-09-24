@@ -156,6 +156,41 @@ describe('V-g · duplicar conserva cantidades', () => {
   });
 });
 
+describe('Paso 14 · la regla del estado es la misma en SQL y en TypeScript', () => {
+  const sql = fs.readFileSync(path.resolve(__dirname, '../../../supabase/migrations/20260926140000_pos_ventas_listado_y_cobrado_rango.sql'), 'utf8');
+  const bloque = sql.slice(sql.indexOf("when b.status in ('void', 'cancelled') then 'anulada'"), sql.indexOf('end as estado'));
+
+  test('mismo orden de prioridad que estadoVenta (sin «pendiente de sincronizar», que solo existe en el equipo)', () => {
+    const orden = ['anulada', 'borrador', 'devuelta', 'devuelta_parcial', 'pagada', 'pago_parcial', 'pendiente_pago'];
+    const posiciones = orden.map((e) => bloque.indexOf(`'${e}'`));
+    expect(posiciones.every((p) => p >= 0)).toBe(true);
+    expect([...posiciones].sort((a, b) => a - b)).toEqual(posiciones);
+    // Manda el cobro sobre el estado, como en TS.
+    expect(bloque).toMatch(/coalesce\(nullif\(b\.payment_status, ''\), b\.status\) = 'paid'/);
+  });
+
+  test('mismo origen que origenVenta', () => {
+    const origen = sql.slice(sql.indexOf("when b.web_order_id is not null or b.source = 'web' then 'web'"), sql.indexOf('end as origen'));
+    expect(origen.indexOf("'web'")).toBeLessThan(origen.indexOf("'mesa'"));
+    expect(origen.indexOf("'mesa'")).toBeLessThan(origen.indexOf("'factura'"));
+    expect(origen).toMatch(/else 'pos'/);
+  });
+
+  test('D1: el listado solo lee sales (ni web_orders sueltos ni paginación en memoria)', () => {
+    const listado = sql.slice(sql.indexOf('create or replace function public.pos_ventas_listado'), sql.indexOf('create or replace function public.fn_inicio_ventas_rango'));
+    expect(listado).toMatch(/from public\.sales s/);
+    expect(listado).not.toMatch(/from public\.web_orders/);
+    expect(listado).toMatch(/offset v_desp\s+limit v_limite/);
+  });
+
+  test('D2: los KPI son lo cobrado por fecha de pago (payments), no las ventas por fecha de venta', () => {
+    const kpi = sql.slice(sql.indexOf('create or replace function public.fn_inicio_ventas_rango'));
+    expect(kpi).toMatch(/p\.payment_date >= p_desde - v_duracion/);
+    expect(kpi).toMatch(/p\.status = 'completed'\s+and p\.voided_at is null/);
+    expect(kpi).toMatch(/coalesce\(r\.refund_method, 'cash'\) = 'cash'/);
+  });
+});
+
 describe('Guardarraíles de fuente de ventas', () => {
   const SRC = path.resolve(__dirname, '..', '..');
   const archivos = (dir: string): string[] =>

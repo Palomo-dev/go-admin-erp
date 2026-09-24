@@ -19,6 +19,7 @@
 // usen getDayRange/getDateRange, sin necesidad de cambiar cada archivo.
 // ============================================================
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 
 // Cache en memoria: organizationId -> OperatingHours
@@ -79,6 +80,8 @@ function normalizeOperatingHours(raw: unknown): OperatingHours | null {
  */
 export async function getOperatingHours(
   organizationId: number,
+  /** Cliente con la sesión del usuario (servidor); por defecto, el del navegador. */
+  db: Pick<SupabaseClient, 'from'> = supabase,
 ): Promise<OperatingHours | null> {
   // 1. Cache
   if (hoursCache.has(organizationId)) {
@@ -91,7 +94,7 @@ export async function getOperatingHours(
 
   const promise = (async (): Promise<OperatingHours | null> => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('organization_settings')
         .select('settings')
         .eq('organization_id', organizationId)

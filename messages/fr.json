@@ -10469,6 +10469,142 @@
         "duplicada": "Vente en double"
       },
       "motivo": "Motif de l'annulation"
+    },
+    "detalle": {
+      "cargando": "Chargement de la vente…",
+      "noExiste": {
+        "titulo": "Vente introuvable",
+        "descripcion": "La vente n'existe pas ou n'appartient pas à cette organisation."
+      },
+      "sinRed": {
+        "titulo": "Hors ligne",
+        "descripcion": "Le détail de la vente est lu sur le serveur : ouvrez-le au retour de la connexion."
+      },
+      "error": "La vente n'a pas pu être chargée",
+      "volver": "Retour aux ventes",
+      "subtitulo": "{fecha} · {origen}",
+      "cajero": "Caissier : {nombre}",
+      "sucursalNumero": "Succursale {id}",
+      "cadena": "Documents de la vente",
+      "avisoAnulada": "Cette vente est annulée : ses paiements, son stock et ses écritures ont été contrepassés.",
+      "avisoAnuladaNc": "Cette vente est annulée. La facture a été annulée par l'avoir {numero}.",
+      "motivoAnulada": "La vente est annulée.",
+      "acciones": {
+        "pdf": "Voir le PDF (lettre)",
+        "reimprimirCaja": "Réimprimer sur l'imprimante de caisse"
+      },
+      "reimpresion": {
+        "enviada": "Le ticket a été envoyé à l'imprimante de caisse.",
+        "sinImpresora": "Aucune imprimante n'est configurée pour le poste de caisse de cette succursale.",
+        "error": "Le ticket n'a pas pu être réimprimé.",
+        "enviando": "Envoi à l'imprimante…"
+      },
+      "productos": {
+        "titulo": "{count, plural, one {Produits (#)} other {Produits (#)}}",
+        "vacio": "La vente n'a pas de lignes.",
+        "producto": "Produit",
+        "cantidad": "Qté",
+        "precio": "Prix",
+        "impuesto": "Taxe",
+        "total": "Total",
+        "sinNombre": "Produit",
+        "descuento": "Remise {monto}",
+        "tasa": "{tasa} %"
+      },
+      "pagos": {
+        "titulo": "Paiements imputés",
+        "vacio": "La vente n'a pas de paiements.",
+        "vuelto": "Monnaie rendue {monto}"
+      },
+      "historial": {
+        "titulo": "Historique",
+        "creada": "Vente enregistrée par {nombre}",
+        "facturada": "Facture {numero} émise",
+        "pago": "Paiement de {monto}",
+        "devolucion": "Retour de {monto}",
+        "notaCredito": "Avoir {numero}"
+      },
+      "notas": "Notes",
+      "cliente": {
+        "titulo": "Client",
+        "ver": "Voir la fiche",
+        "nombre": "Nom",
+        "documento": "Pièce d'identité",
+        "correo": "E-mail",
+        "telefono": "Téléphone",
+        "consumidorFinal": "Client de passage (sans client)"
+      },
+      "resumen": {
+        "titulo": "Récapitulatif",
+        "subtotal": "Sous-total",
+        "descuentos": "Remises",
+        "impuestos": "Taxes",
+        "impuestosIncluidos": "Taxes (incluses)",
+        "impuesto": "Taxe",
+        "envio": "Livraison",
+        "propina": "Pourboire",
+        "total": "Total",
+        "pagado": "Payé",
+        "saldo": "Solde en attente",
+        "devuelto": "Retourné"
+      },
+      "comision": {
+        "titulo": "Commission",
+        "vendedor": "Vendeur",
+        "monto": "Commission",
+        "beneficiario": "Bénéficiaire",
+        "estado": "État"
+      },
+      "factura": {
+        "titulo": "Facture",
+        "ver": "Voir la facture",
+        "numero": "Numéro",
+        "emitida": "Émise",
+        "vence": "Échéance",
+        "saldo": "Solde",
+        "estado": "État",
+        "estadoFe": "Facture électronique"
+      },
+      "cxc": {
+        "titulo": "Créance",
+        "ver": "Voir la créance",
+        "monto": "Montant",
+        "saldo": "Solde",
+        "vence": "Échéance",
+        "estado": "État"
+      },
+      "asientos": {
+        "titulo": "{count, plural, one {Écriture comptable} other {Écritures comptables}}",
+        "numero": "Écriture n° {id}"
+      },
+      "devoluciones": {
+        "titulo": "Retours et avoirs",
+        "devolucion": "Retour n° {id}",
+        "notaCredito": "Avoir {numero}"
+      },
+      "mesa": {
+        "titulo": "Table",
+        "mesa": "Table",
+        "mesero": "Serveur",
+        "comensales": "Couverts",
+        "abierta": "Ouverte",
+        "cerrada": "Fermée"
+      },
+      "pedido": {
+        "titulo": "Commande web",
+        "ver": "Voir la commande",
+        "numero": "Numéro",
+        "entrega": "Livraison",
+        "direccion": "Adresse",
+        "cupon": "Coupon"
+      }
+    },
+    "devolucion": {
+      "titulo": "Créer un retour",
+      "tituloNumero": "Retour de la vente {numero}",
+      "descripcion": "Choisissez les produits et le remboursement. Le stock, la caisse et l'avoir sont enregistrés en une seule opération.",
+      "errorCarga": "La vente n'a pas pu être chargée pour le retour",
+      "hecha": "Retour enregistré."
     }
   },
   "cartera": {

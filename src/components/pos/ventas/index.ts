@@ -2,4 +2,3 @@
 export * from './types';
 export { VentasService } from './VentasService';
 export { VentasPage } from './VentasPage';
-export { VentaDetalle } from './VentaDetalle';

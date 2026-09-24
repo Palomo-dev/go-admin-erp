@@ -10574,6 +10574,142 @@
         "duplicada": "Duplicate sale"
       },
       "motivo": "Reason for voiding"
+    },
+    "detalle": {
+      "cargando": "Loading sale…",
+      "noExiste": {
+        "titulo": "Sale not found",
+        "descripcion": "The sale does not exist or does not belong to this organization."
+      },
+      "sinRed": {
+        "titulo": "Offline",
+        "descripcion": "Sale details are read from the server: open them when the connection is back."
+      },
+      "error": "The sale could not be loaded",
+      "volver": "Back to sales",
+      "subtitulo": "{fecha} · {origen}",
+      "cajero": "Cashier: {nombre}",
+      "sucursalNumero": "Branch {id}",
+      "cadena": "Sale documents",
+      "avisoAnulada": "This sale is void: its payments, stock and journal entries were reversed.",
+      "avisoAnuladaNc": "This sale is void. The invoice was reversed with credit note {numero}.",
+      "motivoAnulada": "The sale is void.",
+      "acciones": {
+        "pdf": "View PDF (letter)",
+        "reimprimirCaja": "Reprint on the cashier printer"
+      },
+      "reimpresion": {
+        "enviada": "The ticket was sent to the cashier printer.",
+        "sinImpresora": "No printer is set up for this branch's cashier station.",
+        "error": "The ticket could not be reprinted.",
+        "enviando": "Sending to the printer…"
+      },
+      "productos": {
+        "titulo": "{count, plural, one {Products (#)} other {Products (#)}}",
+        "vacio": "The sale has no lines.",
+        "producto": "Product",
+        "cantidad": "Qty",
+        "precio": "Price",
+        "impuesto": "Tax",
+        "total": "Total",
+        "sinNombre": "Product",
+        "descuento": "Discount {monto}",
+        "tasa": "{tasa}%"
+      },
+      "pagos": {
+        "titulo": "Applied payments",
+        "vacio": "The sale has no payments.",
+        "vuelto": "Change {monto}"
+      },
+      "historial": {
+        "titulo": "History",
+        "creada": "Sale recorded by {nombre}",
+        "facturada": "Invoice {numero} issued",
+        "pago": "Payment of {monto}",
+        "devolucion": "Return of {monto}",
+        "notaCredito": "Credit note {numero}"
+      },
+      "notas": "Notes",
+      "cliente": {
+        "titulo": "Customer",
+        "ver": "View profile",
+        "nombre": "Name",
+        "documento": "ID",
+        "correo": "Email",
+        "telefono": "Phone",
+        "consumidorFinal": "Walk-in customer (no customer)"
+      },
+      "resumen": {
+        "titulo": "Summary",
+        "subtotal": "Subtotal",
+        "descuentos": "Discounts",
+        "impuestos": "Taxes",
+        "impuestosIncluidos": "Taxes (included)",
+        "impuesto": "Tax",
+        "envio": "Shipping",
+        "propina": "Tip",
+        "total": "Total",
+        "pagado": "Paid",
+        "saldo": "Outstanding balance",
+        "devuelto": "Returned"
+      },
+      "comision": {
+        "titulo": "Commission",
+        "vendedor": "Salesperson",
+        "monto": "Commission",
+        "beneficiario": "Payee",
+        "estado": "Status"
+      },
+      "factura": {
+        "titulo": "Invoice",
+        "ver": "View invoice",
+        "numero": "Number",
+        "emitida": "Issued",
+        "vence": "Due",
+        "saldo": "Balance",
+        "estado": "Status",
+        "estadoFe": "E-invoice"
+      },
+      "cxc": {
+        "titulo": "Receivable",
+        "ver": "View receivable",
+        "monto": "Amount",
+        "saldo": "Balance",
+        "vence": "Due",
+        "estado": "Status"
+      },
+      "asientos": {
+        "titulo": "{count, plural, one {Journal entry} other {Journal entries}}",
+        "numero": "Entry #{id}"
+      },
+      "devoluciones": {
+        "titulo": "Returns and credit notes",
+        "devolucion": "Return #{id}",
+        "notaCredito": "Credit note {numero}"
+      },
+      "mesa": {
+        "titulo": "Table",
+        "mesa": "Table",
+        "mesero": "Server",
+        "comensales": "Guests",
+        "abierta": "Opened",
+        "cerrada": "Closed"
+      },
+      "pedido": {
+        "titulo": "Web order",
+        "ver": "View order",
+        "numero": "Number",
+        "entrega": "Delivery",
+        "direccion": "Address",
+        "cupon": "Coupon"
+      }
+    },
+    "devolucion": {
+      "titulo": "Create return",
+      "tituloNumero": "Return for sale {numero}",
+      "descripcion": "Choose the products and the refund. Stock, cash and the credit note are recorded in a single operation.",
+      "errorCarga": "The sale could not be loaded for the return",
+      "hecha": "Return recorded."
     }
   },
   "cartera": {

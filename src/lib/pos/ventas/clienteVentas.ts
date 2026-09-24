@@ -21,6 +21,7 @@ import { getDateRange } from '@/lib/utils/dateRanges';
 import { filaVentaLocal, type FilaSalesLocal } from './ventaLocal';
 import { filtrosVentas } from './filtrosVentas';
 import type { CifrasVentas, FilaVenta, PaginaVentas } from './listadoServidor';
+import type { DetalleVenta } from './detalleServidor';
 import { SIN_PERMISOS_VENTAS, type PermisosVentas } from './accionesVenta';
 
 export type PaginaVentasCliente = PaginaVentas & { sinRed?: boolean };
@@ -67,6 +68,12 @@ export async function pedirCifrasVentas(consulta: URLSearchParams): Promise<Cifr
 
 export async function pedirExportacionVentas(consulta: URLSearchParams): Promise<{ filas: FilaVenta[]; truncado: boolean }> {
   return pedir(`/api/pos/ventas/exportar?${consulta.toString()}`);
+}
+
+/** Detalle de una venta en una respuesta. Sin red: `sin_red` (el detalle vive en el servidor). */
+export async function pedirDetalleVenta(id: string): Promise<DetalleVenta> {
+  if (sinRed()) throw new ErrorPeticionVentas('sin_red', 0);
+  return pedir<DetalleVenta>(`/api/pos/ventas/${encodeURIComponent(id)}`);
 }
 
 export async function pedirPermisosVentas(): Promise<PermisosVentas> {

@@ -10574,6 +10574,142 @@
         "duplicada": "Venta duplicada"
       },
       "motivo": "Motivo de la anulación"
+    },
+    "detalle": {
+      "cargando": "Cargando venta…",
+      "noExiste": {
+        "titulo": "Venta no encontrada",
+        "descripcion": "La venta no existe o no pertenece a esta organización."
+      },
+      "sinRed": {
+        "titulo": "Sin conexión",
+        "descripcion": "El detalle de la venta se consulta en el servidor: ábralo cuando vuelva la conexión."
+      },
+      "error": "No se pudo cargar la venta",
+      "volver": "Volver a ventas",
+      "subtitulo": "{fecha} · {origen}",
+      "cajero": "Cajero: {nombre}",
+      "sucursalNumero": "Sucursal {id}",
+      "cadena": "Documentos de la venta",
+      "avisoAnulada": "Esta venta está anulada: sus pagos, inventario y asientos se revirtieron.",
+      "avisoAnuladaNc": "Esta venta está anulada. La factura se revirtió con la nota crédito {numero}.",
+      "motivoAnulada": "La venta está anulada.",
+      "acciones": {
+        "pdf": "Ver PDF (carta)",
+        "reimprimirCaja": "Reimprimir en la impresora de caja"
+      },
+      "reimpresion": {
+        "enviada": "El ticket se envió a la impresora de caja.",
+        "sinImpresora": "No hay impresora configurada para la estación de caja de esta sucursal.",
+        "error": "No se pudo reimprimir el ticket.",
+        "enviando": "Enviando a la impresora…"
+      },
+      "productos": {
+        "titulo": "{count, plural, one {Productos (#)} other {Productos (#)}}",
+        "vacio": "La venta no tiene líneas.",
+        "producto": "Producto",
+        "cantidad": "Cant.",
+        "precio": "Precio",
+        "impuesto": "Impuesto",
+        "total": "Total",
+        "sinNombre": "Producto",
+        "descuento": "Descuento {monto}",
+        "tasa": "{tasa} %"
+      },
+      "pagos": {
+        "titulo": "Pagos aplicados",
+        "vacio": "La venta no tiene pagos.",
+        "vuelto": "Cambio {monto}"
+      },
+      "historial": {
+        "titulo": "Historial",
+        "creada": "Venta registrada por {nombre}",
+        "facturada": "Factura {numero} emitida",
+        "pago": "Pago de {monto}",
+        "devolucion": "Devolución de {monto}",
+        "notaCredito": "Nota crédito {numero}"
+      },
+      "notas": "Notas",
+      "cliente": {
+        "titulo": "Cliente",
+        "ver": "Ver ficha",
+        "nombre": "Nombre",
+        "documento": "Documento",
+        "correo": "Correo",
+        "telefono": "Teléfono",
+        "consumidorFinal": "Consumidor final (sin cliente)"
+      },
+      "resumen": {
+        "titulo": "Resumen",
+        "subtotal": "Subtotal",
+        "descuentos": "Descuentos",
+        "impuestos": "Impuestos",
+        "impuestosIncluidos": "Impuestos (incluidos)",
+        "impuesto": "Impuesto",
+        "envio": "Envío",
+        "propina": "Propina",
+        "total": "Total",
+        "pagado": "Pagado",
+        "saldo": "Saldo pendiente",
+        "devuelto": "Devuelto"
+      },
+      "comision": {
+        "titulo": "Comisión",
+        "vendedor": "Vendedor",
+        "monto": "Comisión",
+        "beneficiario": "Beneficiario",
+        "estado": "Estado"
+      },
+      "factura": {
+        "titulo": "Factura",
+        "ver": "Ver factura",
+        "numero": "Número",
+        "emitida": "Emitida",
+        "vence": "Vence",
+        "saldo": "Saldo",
+        "estado": "Estado",
+        "estadoFe": "Factura electrónica"
+      },
+      "cxc": {
+        "titulo": "Cuenta por cobrar",
+        "ver": "Ver la cuenta",
+        "monto": "Monto",
+        "saldo": "Saldo",
+        "vence": "Vence",
+        "estado": "Estado"
+      },
+      "asientos": {
+        "titulo": "{count, plural, one {Asiento contable} other {Asientos contables}}",
+        "numero": "Asiento #{id}"
+      },
+      "devoluciones": {
+        "titulo": "Devoluciones y notas crédito",
+        "devolucion": "Devolución #{id}",
+        "notaCredito": "Nota crédito {numero}"
+      },
+      "mesa": {
+        "titulo": "Mesa",
+        "mesa": "Mesa",
+        "mesero": "Mesero",
+        "comensales": "Comensales",
+        "abierta": "Abierta",
+        "cerrada": "Cerrada"
+      },
+      "pedido": {
+        "titulo": "Pedido web",
+        "ver": "Ver pedido",
+        "numero": "Número",
+        "entrega": "Entrega",
+        "direccion": "Dirección",
+        "cupon": "Cupón"
+      }
+    },
+    "devolucion": {
+      "titulo": "Crear devolución",
+      "tituloNumero": "Devolución de la venta {numero}",
+      "descripcion": "Elija los productos y el reintegro. El inventario, la caja y la nota crédito se registran en una sola operación.",
+      "errorCarga": "No se pudo cargar la venta para la devolución",
+      "hecha": "Devolución registrada."
     }
   },
   "cartera": {

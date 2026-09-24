@@ -297,3 +297,36 @@ describe('Paso 15 · guardarraíles del listado', () => {
     expect(leer('components/pos/ventas/VentasPage.tsx')).not.toMatch(/role_name|roleName|'admin'|'owner'/);
   });
 });
+
+describe('Paso 16 · detalle de venta en una respuesta', () => {
+  const SRC = path.resolve(__dirname, '..', '..');
+  const leer = (r: string) => fs.readFileSync(path.join(SRC, r), 'utf8');
+
+  test('la ruta de detalle no cambia y monta el detalle nuevo', () => {
+    const ruta = leer('app/app/pos/ventas/[id]/page.tsx');
+    expect(ruta).toMatch(/VentaDetallePage ventaId=\{id\}/);
+    expect(fs.existsSync(path.join(SRC, 'components/pos/ventas/VentaDetalle.tsx'))).toBe(false);
+  });
+
+  test('el detalle lee todo del servidor, sin consultas sueltas desde el navegador', () => {
+    for (const f of ['components/pos/ventas/detalle/VentaDetallePage.tsx', 'components/pos/ventas/detalle/tarjetasVenta.tsx']) {
+      const src = leer(f);
+      expect({ f, hit: /from\('|supabase\.|getSaleById|\.split\('T'\)\[0\]|toLocaleString\(|confirm\(|prompt\(|alert\(/.test(src) }).toEqual({ f, hit: false });
+    }
+    expect(leer('components/pos/ventas/detalle/VentaDetallePage.tsx')).toMatch(/pedirDetalleVenta\(/);
+  });
+
+  test('V4: «Crear devolución» abre el formulario del agente de devoluciones con la venta (no una ruta inexistente)', () => {
+    const panel = leer('components/pos/ventas/detalle/DevolucionPanel.tsx');
+    expect(panel).toMatch(/DevolucionesService\.obtenerDetalleVenta\(ventaId\)/);
+    expect(panel).toMatch(/<ReturnForm/);
+    expect(leer('components/pos/ventas/detalle/VentaDetallePage.tsx')).not.toMatch(/devoluciones\/nuevo\?sale_id/);
+  });
+
+  test('V12: los vencimientos pasan por la zona de la organización (timestamptz → formatDate del hook)', () => {
+    const tarjetas = leer('components/pos/ventas/detalle/tarjetasVenta.tsx');
+    expect(tarjetas).toMatch(/formatDate\(f\.vence\)/);
+    expect(tarjetas).toMatch(/formatDate\(c\.vence\)/);
+    expect(tarjetas).toMatch(/useFormatDate\(\)/);
+  });
+});

@@ -52,6 +52,7 @@ import {
   type TextosAjusteImpreso,
 } from '@/lib/pos/cocina/lineasCarrito';
 import { CocinaError, enviarRondaCocina } from '@/components/pos/cocina/cocinaCliente';
+import { ProductoSinPrecioError } from '@/lib/pos/precioVigente';
 
 /** Clave de localStorage con el ancho elegido para el panel de carrito/pago. */
 const POS_LAYOUT_ID = 'pos-layout-productos-carrito';
@@ -81,6 +82,7 @@ export default function POSPage() {
   const { timezone } = useOrgTimezone();
   const tHeader = useTranslations('header');
   const tCocina = useTranslations('posCocina');
+  const tCobro = useTranslations('posCobroServidor');
   // Shell móvil (Figma MobileHeader Mode=pos y MobileTabBar): la cabecera
   // muestra el estado de la caja, y la barra inferior se oculta con el carrito
   // abierto o cobrando, donde manda la botonera «Cobrar».
@@ -364,7 +366,10 @@ export default function POSPage() {
       updateCartInState(updatedCart);
     } catch (error) {
       console.error('Error adding product to cart:', error);
-      alert('Error al agregar producto al carrito');
+      // Sin precio vigente el producto ya no entra gratis: se dice por qué.
+      alert(error instanceof ProductoSinPrecioError
+        ? tCobro(error.causa === 'sin_precio' ? 'productoSinPrecio' : 'precioNoConsultado', { producto: product.name ?? String(product.id) })
+        : 'Error al agregar producto al carrito');
     }
   };
 

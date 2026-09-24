@@ -30,6 +30,7 @@ import {
   type CatalogStatus,
   type CatalogStockLevel,
 } from './catalogStore';
+import { precioVigente } from '@/lib/pos/precioVigente';
 
 /** Mensaje único para «no hay catálogo local todavía». */
 export const CATALOG_NOT_REPLICATED_MESSAGE = 'Catálogo local aún no replicado: conecta a internet una vez';
@@ -63,10 +64,18 @@ function num(value: number | string | null | undefined): number {
   return Number.isFinite(n) ? (n as number) : 0;
 }
 
-/** Precio vigente: el de `effective_from` más reciente (igual que online). */
+/**
+ * Precio vigente con la misma regla que en línea (`lib/pos/precioVigente`):
+ * effective_from <= ahora < effective_to, el más reciente.
+ */
 function currentPrice(prices: CatalogProductPrice[]): CatalogProductPrice | null {
-  if (prices.length === 0) return null;
-  return [...prices].sort((a, b) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime())[0];
+  return precioVigente(prices);
+}
+
+/** Filas de precio del catálogo local de un producto (para `POSService.getProductPrice`). */
+export async function getProductPriceRows(organizationId: number, productId: number): Promise<CatalogProductPrice[]> {
+  await requireCatalog(organizationId);
+  return getCatalogRowsByProducts('product_prices', [productId]);
 }
 
 function groupBy<T, K extends string | number>(rows: T[], key: (row: T) => K): Map<K, T[]> {
@@ -398,6 +407,7 @@ export const posOfflineReads = {
   getProductVariants,
   getProductByBarcode,
   getProductById,
+  getProductPriceRows,
   getCategories,
   getCategoryRanking,
   searchCustomers,

@@ -35,6 +35,7 @@ import {
 // URL pública de una imagen de Storage (compartida con el replicador del catálogo, fase 4D).
 import { getStorageImageUrl } from '@/lib/utils/storageImageUrl';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { precioVigente, importePrecioVigente, ProductoSinPrecioError } from '@/lib/pos/precioVigente';
 import {
   aplicarNotaALinea,
   aplicarRondaAlCarrito,
@@ -382,7 +383,7 @@ export class POSService {
         productIds.length > 0
           ? supabase
               .from('product_prices')
-              .select('product_id, price, compare_price, effective_from')
+              .select('product_id, price, compare_price, effective_from, effective_to')
               .in('product_id', productIds)
           : Promise.resolve({ data: [] as any[], error: null as any }),
 
@@ -485,15 +486,14 @@ export class POSService {
         // la branch actual. Antes se requería hasStockData, pero eso hacía que
         // productos sin registro de stock aparecieran como disponibles.
         const isOutOfStock = product.track_stock === true && stockQty <= 0;
-        // Ordenar precios por effective_from descendente para tomar el mas reciente
-        const sortedPrices = (pricesMap[product.id] || []).sort(
-          (a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime()
-        );
+        // Precio vigente (effective_from <= ahora < effective_to), no el último
+        // registrado: un precio vencido o programado a futuro no se muestra.
+        const vigente = precioVigente(pricesMap[product.id] || []);
         return {
           ...product,
           category: categoriesMap[product.category_id] || null,
-          price: sortedPrices[0]?.price || null,
-          compare_price: sortedPrices[0]?.compare_price || null,
+          price: vigente?.price || null,
+          compare_price: vigente?.compare_price || null,
           product_images: productImagesMap[product.id] || [],
           // Información de variantes
           has_variants: product.is_parent === true,
@@ -547,7 +547,7 @@ export class POSService {
             station,
             requires_preparation
           ),
-          product_prices(price)
+          product_prices(price, effective_from, effective_to)
         `)
         .eq('parent_product_id', parentProductId)
         .eq('status', 'active')
@@ -594,9 +594,7 @@ export class POSService {
 
         return {
           ...variant,
-          price: (variant.product_prices || []).sort(
-            (a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime()
-          )[0]?.price || null,
+          price: precioVigente(variant.product_prices || [])?.price || null,
           product_images: ownImages.length > 0 ? ownImages : (parentImages || []),
           image: resolvedImage
         };
@@ -951,7 +949,7 @@ export class POSService {
         cart.items[existingItemIndex].total = cart.items[existingItemIndex].quantity * cart.items[existingItemIndex].unit_price;
       } else {
         // Agregar nuevo item
-        const basePrice = await this.getProductPrice(product.id); // Implementar función de precios
+        const basePrice = await this.getProductPrice(product.id, product.name);
         const extraTotal = (modifiers || []).reduce((sum, m) => sum + (m.extraPrice || 0), 0);
         const newItem: CartItem = {
           id: crypto.randomUUID(),
@@ -2277,13 +2275,14 @@ export class POSService {
             station,
             requires_preparation
           ),
-          product_prices!inner(
-            price
+          product_prices(
+            price,
+            effective_from,
+            effective_to
           )
         `)
         .eq('id', productId)
         .eq('organization_id', this.organizationId)
-        .eq('product_prices.effective_to', null) // Precio actual
         .single();
 
       if (error) throw error;
@@ -2296,7 +2295,9 @@ export class POSService {
         name: data.name,
         description: data.description,
         barcode: data.barcode,
-        price: parseFloat(data.product_prices?.[0]?.price || '0'),
+        // Vigencia real (antes `.eq('effective_to', null)`, que es `= null` y
+        // nunca coincide: con el `!inner` el producto no se encontraba).
+        price: importePrecioVigente(data.product_prices) ?? 0,
         cost: 0, // TODO: Implementar desde product_costs
         stock_quantity: 0, // TODO: Implementar desde stock_levels
         min_stock_level: 0,
@@ -2317,23 +2318,42 @@ export class POSService {
     }
   }
 
-  private static async getProductPrice(productId: number): Promise<number> {
+  /**
+   * Precio vigente del producto para el carrito. Antes devolvía 0 si la
+   * consulta fallaba o no había fila: el producto entraba GRATIS sin aviso.
+   * Ahora falla con `ProductoSinPrecioError` (la pantalla lo muestra) y aplica
+   * la vigencia real (`effective_from <= ahora < effective_to`); sin red en el
+   * escritorio lee el catálogo local con la misma regla.
+   */
+  private static async getProductPrice(productId: number, productName?: string | null): Promise<number> {
+    let precio: number | null;
     try {
-      const { data, error } = await supabase
-        .from('product_prices')
-        .select('price')
-        .eq('product_id', productId)
-        .is('effective_to', null)
-        .order('effective_from', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) throw error;
-      return parseFloat(data?.price || '0');
+      if (this.usesLocalCatalog()) {
+        precio = importePrecioVigente(await posOfflineReads.getProductPriceRows(this.organizationId, productId));
+      } else {
+        // La vigencia la filtra la consulta; la fila más reciente es la que rige.
+        const ahora = new Date().toISOString();
+        const { data, error } = await supabase
+          .from('product_prices')
+          .select('price, effective_from, effective_to')
+          .eq('product_id', productId)
+          .lte('effective_from', ahora)
+          .or(`effective_to.is.null,effective_to.gt.${ahora}`)
+          .order('effective_from', { ascending: false })
+          .limit(1);
+        if (error) throw error;
+        const fila = (Array.isArray(data) ? data[0] : data) as { price?: number | string | null } | null | undefined;
+        const n = fila ? Number(fila.price) : NaN;
+        precio = fila && fila.price !== null && fila.price !== undefined && Number.isFinite(n) ? n : null;
+      }
     } catch (error) {
-      console.error('Error getting product price:', error);
-      return 0;
+      console.error('Error consultando el precio del producto:', productId, error);
+      throw new ProductoSinPrecioError(productId, 'consulta_fallida', productName);
     }
+    if (precio === null) {
+      throw new ProductoSinPrecioError(productId, 'sin_precio', productName);
+    }
+    return precio;
   }
 
   private static getPaymentMethodIcon(code: string): string {

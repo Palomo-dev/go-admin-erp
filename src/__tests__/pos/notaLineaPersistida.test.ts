@@ -21,7 +21,13 @@ jest.mock('@/lib/supabase/config', () => {
   chain.single = () => Promise.resolve({ data: null, error: null });
   chain.then = (onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
     Promise.resolve({ data: [], error: null }).then(onFulfilled, onRejected);
-  return { supabase: { from: () => chain } };
+  // Precio vigente del producto (getProductPrice ya no convierte «sin fila» en 0).
+  const precios: Record<string, unknown> = { ...chain };
+  for (const m of ['select', 'eq', 'is', 'in', 'order', 'limit', 'lte', 'or']) precios[m] = () => precios;
+  precios.then = (onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
+    Promise.resolve({ data: [{ price: '20000', effective_from: '2026-01-01T00:00:00Z', effective_to: null }], error: null })
+      .then(onFulfilled, onRejected);
+  return { supabase: { from: (tabla: string) => (tabla === 'product_prices' ? precios : chain) } };
 });
 jest.mock('@/lib/hooks/useOrganization', () => ({
   getOrganizationId: () => 120,

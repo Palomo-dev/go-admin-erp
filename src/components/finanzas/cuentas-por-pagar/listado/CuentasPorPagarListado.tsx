@@ -38,6 +38,8 @@ import {
   type ChipFiltro,
   type ColumnaTabla,
   type ListadoServidor,
+  BandaAntiguedad,
+  TRAMOS_ANTIGUEDAD,
 } from '@/components/kit';
 import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -62,7 +64,6 @@ import { ProgramarPagoDialog } from '../ProgramarPagoDialog';
 import { ExportarBancaModal } from '../ExportarBancaModal';
 import { AprobacionesPanel, type ProgramacionPanel } from '../AprobacionesPanel';
 import { EstadoCuentaProveedorDialog } from '../EstadoCuentaProveedorDialog';
-import { BandaAntiguedad, TRAMOS_CXP } from '../BandaAntiguedad';
 
 const ESTADOS = ['pendiente', 'parcial', 'vencida', 'pagada', 'anulada'] as const;
 
@@ -71,7 +72,7 @@ function filtrosServidor(l: ListadoServidor, branch: number | null): Omit<Filtro
   return {
     busqueda: l.busqueda || null,
     estado: (ESTADOS as readonly string[]).includes(f.estado ?? '') ? f.estado : null,
-    tramo: (TRAMOS_CXP as readonly string[]).includes(f.tramo ?? '') ? f.tramo : null,
+    tramo: (TRAMOS_ANTIGUEDAD as readonly string[]).includes(f.tramo ?? '') ? f.tramo : null,
     branch,
     orden: l.orden?.campo ?? 'vencimiento',
     direccion: l.orden?.direccion ?? 'asc',
@@ -360,7 +361,7 @@ export default function CuentasPorPagarListado() {
         />
       </KpiStrip>
 
-      <BandaAntiguedad tramos={resumen?.tramos ?? null} formatear={formatearBase} activo={l.filtros.tramo ?? null} onElegir={(k) => l.setFiltro('tramo', k)} />
+      <BandaAntiguedad tramos={resumen?.tramos ?? null} formatear={formatearBase} seleccionado={l.filtros.tramo ?? null} onSeleccionar={(k) => l.setFiltro('tramo', k)} />
 
       <AprobacionesPanel id="aprobaciones" programaciones={aprobaciones} moneda={moneda} puedeAprobar={permisos.aprobar} onCambio={recargar} />
 
@@ -395,7 +396,7 @@ export default function CuentasPorPagarListado() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">{t('listado.filtros.todos')}</SelectItem>
-                    {TRAMOS_CXP.map((k) => (
+                    {TRAMOS_ANTIGUEDAD.map((k) => (
                       <SelectItem key={k} value={k}>
                         {t(`antiguedad.tramos.${k}`)}
                       </SelectItem>

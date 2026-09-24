@@ -28,6 +28,26 @@ export {
 } from './documentoLineasLogica';
 export { DocumentoTotales, type DocumentoTotalesProps } from './DocumentoTotales';
 export { RegistrarPagoDialog, type RegistrarPagoDialogProps, type DocumentoPago } from './RegistrarPagoDialog';
+export { BandaAntiguedad, type BandaAntiguedadProps } from './BandaAntiguedad';
+export { PlanCuotasDialog, type PlanCuotasDialogProps, type ParametrosPlan } from './PlanCuotasDialog';
+export { EstadoCuentaDialog, descargarTexto, type EstadoCuentaDialogProps } from './EstadoCuentaDialog';
+export {
+  TRAMOS_ANTIGUEDAD,
+  esTramoAntiguedad,
+  normalizarTramos,
+  validarPlanCuotas,
+  totalesPlan,
+  estadoCuentaCsv,
+  type TramoAntiguedad,
+  type DatoTramo,
+  type TramosEntrada,
+  type CuotaVista,
+  type FormularioPlan,
+  type ErrorPlan,
+  type MovimientoCuenta,
+  type EstadoCuentaVista,
+  type TextosCsvEstadoCuenta,
+} from './carteraLogica';
 export {
   validarPago,
   montosRapidos,

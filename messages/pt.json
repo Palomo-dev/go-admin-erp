@@ -3208,6 +3208,70 @@
         "saldo": "Saldo",
         "netoPagar": "Líquido a pagar",
         "netoCobrar": "Líquido a receber"
+      },
+      "antiguedad": {
+        "titulo": "Antiguidade do saldo",
+        "quitar": "Ver todas as faixas",
+        "filtrar": "Filtrar por antiguidade",
+        "cuentas": "{count, plural, =0 {Sem contas} one {# conta} other {# contas}}",
+        "tramos": {
+          "al_dia": "Em dia",
+          "d1_30": "1–30 dias",
+          "d31_60": "31–60 dias",
+          "d61_90": "61–90 dias",
+          "d90_mas": "Mais de 90 dias"
+        }
+      },
+      "planCuotas": {
+        "titulo": "Plano de parcelas",
+        "descripcion": "Divida o saldo de {saldo} em parcelas.",
+        "cuotas": "Número de parcelas",
+        "primera": "Primeira parcela",
+        "interes": "Juros por parcela",
+        "interesAyuda": "Opcional, sobre o principal de cada parcela.",
+        "frecuencia": "Frequência",
+        "vistaPrevia": "Prévia do plano",
+        "vence": "Vence",
+        "capital": "Principal",
+        "interesCol": "Juros",
+        "valor": "Valor",
+        "total": "Total",
+        "crear": "Criar plano",
+        "revisar": "Revise o número de parcelas, a data e os juros",
+        "errores": {
+          "cuotas": "Entre 1 e {maximo} parcelas.",
+          "fecha": "A primeira parcela não pode ser anterior a hoje.",
+          "interes": "Entre 0 e 100 %."
+        }
+      },
+      "estadoCuenta": {
+        "titulo": "Extrato de conta · {tercero}",
+        "tabla": "Movimentos de {tercero}",
+        "descripcion": {
+          "cliente": "Faturas, notas e pagamentos do cliente no período, com saldo corrente.",
+          "proveedor": "Faturas, contas e pagamentos ao fornecedor no período, com saldo corrente."
+        },
+        "periodo": "Período",
+        "cargando": "Carregando extrato…",
+        "vacio": "Sem movimentos no período.",
+        "saldoInicial": "Saldo inicial",
+        "saldoFinal": "Saldo final",
+        "vencido": "Vencido",
+        "porVencer": "A vencer",
+        "totales": "Totais",
+        "resumen": "Resumo do extrato",
+        "descargar": "Baixar CSV",
+        "descargarPdf": "Baixar PDF",
+        "imprimir": "Imprimir",
+        "sinDatos": "Não há dados para baixar",
+        "columnas": {
+          "fecha": "Data",
+          "documento": "Documento",
+          "vence": "Vence",
+          "cargo": "Débito",
+          "abono": "Crédito",
+          "saldo": "Saldo"
+        }
       }
     },
     "teclas": {

@@ -40,7 +40,8 @@ const PANTALLAS = [
   'src/components/finanzas/cuentas-por-pagar/AprobacionesPanel.tsx',
   'src/components/finanzas/cuentas-por-pagar/EstadoCuentaProveedorDialog.tsx',
   'src/components/finanzas/cuentas-por-pagar/PlanCuotasDialog.tsx',
-  'src/components/finanzas/cuentas-por-pagar/BandaAntiguedad.tsx',
+  // BandaAntiguedad subió al kit (textos en kit.documento.antiguedad, los cubre
+  // src/__tests__/i18n/traduccionesModulos.test.ts).
 ];
 
 /** Claves literales `x('clave')` por namespace de cada `useTranslations`. Un

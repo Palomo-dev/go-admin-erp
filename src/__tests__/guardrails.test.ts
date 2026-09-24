@@ -1911,7 +1911,9 @@ describe('26b. Compras y CxP: una sola RPC para registrar la compra y nada escri
           'AprobacionesPanel.tsx',
           'EstadoCuentaProveedorDialog.tsx',
           'PlanCuotasDialog.tsx',
-          'BandaAntiguedad.tsx',
+          // BandaAntiguedad.tsx subió al kit (kit/documento/BandaAntiguedad, compartida
+          // con CxC; solo pinta lo que recibe). Los dos diálogos de arriba son ahora
+          // adaptadores de kit/documento/PlanCuotasDialog y EstadoCuentaDialog.
         ].map((f) => path.join(SRC_ROOT, 'components/finanzas/cuentas-por-pagar', f)),
       )
       .filter((f) => !isExcluded(f));
@@ -2376,6 +2378,7 @@ describe('28. Generadores de documentos: sin moneda fija', () => {
     'lib/documents/server/cargadores/compras.ts',
     'lib/documents/server/cargadores/pagos.ts',
     'lib/documents/server/cargadores/estadoCuenta.ts',
+    'lib/documents/server/cargadores/estadoCuentaProveedor.ts',
     'lib/documents/server/cargadores/cajas.ts',
     'lib/services/reportes/pdfExportService.ts',
     'lib/services/inicio/dashboardSectionExport.ts',

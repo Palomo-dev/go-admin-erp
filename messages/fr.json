@@ -3208,6 +3208,70 @@
         "saldo": "Solde",
         "netoPagar": "Net à payer",
         "netoCobrar": "Net à encaisser"
+      },
+      "antiguedad": {
+        "titulo": "Ancienneté du solde",
+        "quitar": "Voir toutes les tranches",
+        "filtrar": "Filtrer par ancienneté",
+        "cuentas": "{count, plural, =0 {Aucun compte} one {# compte} other {# comptes}}",
+        "tramos": {
+          "al_dia": "À jour",
+          "d1_30": "1–30 jours",
+          "d31_60": "31–60 jours",
+          "d61_90": "61–90 jours",
+          "d90_mas": "Plus de 90 jours"
+        }
+      },
+      "planCuotas": {
+        "titulo": "Échéancier",
+        "descripcion": "Répartissez le solde de {saldo} en échéances.",
+        "cuotas": "Nombre d'échéances",
+        "primera": "Première échéance",
+        "interes": "Intérêt par échéance",
+        "interesAyuda": "Facultatif, sur le capital de chaque échéance.",
+        "frecuencia": "Fréquence",
+        "vistaPrevia": "Aperçu de l'échéancier",
+        "vence": "Échéance",
+        "capital": "Capital",
+        "interesCol": "Intérêt",
+        "valor": "Montant",
+        "total": "Total",
+        "crear": "Créer l'échéancier",
+        "revisar": "Vérifiez le nombre d'échéances, la date et l'intérêt",
+        "errores": {
+          "cuotas": "Entre 1 et {maximo} échéances.",
+          "fecha": "La première échéance ne peut pas être antérieure à aujourd'hui.",
+          "interes": "Entre 0 et 100 %."
+        }
+      },
+      "estadoCuenta": {
+        "titulo": "Relevé de compte · {tercero}",
+        "tabla": "Mouvements de {tercero}",
+        "descripcion": {
+          "cliente": "Factures, avoirs et règlements du client sur la période, avec le solde cumulé.",
+          "proveedor": "Factures, dettes et paiements au fournisseur sur la période, avec le solde cumulé."
+        },
+        "periodo": "Période",
+        "cargando": "Chargement du relevé…",
+        "vacio": "Aucun mouvement sur la période.",
+        "saldoInicial": "Solde initial",
+        "saldoFinal": "Solde final",
+        "vencido": "Échu",
+        "porVencer": "À échoir",
+        "totales": "Totaux",
+        "resumen": "Récapitulatif du relevé",
+        "descargar": "Télécharger en CSV",
+        "descargarPdf": "Télécharger le PDF",
+        "imprimir": "Imprimer",
+        "sinDatos": "Aucune donnée à télécharger",
+        "columnas": {
+          "fecha": "Date",
+          "documento": "Document",
+          "vence": "Échéance",
+          "cargo": "Débit",
+          "abono": "Crédit",
+          "saldo": "Solde"
+        }
       }
     },
     "teclas": {

@@ -127,6 +127,7 @@ export { KpiCompacto, type KpiCompactoProps, type CifraCompacta } from './KpiCom
 export { DialogoMotivo, type DialogoMotivoProps } from './DialogoMotivo';
 export { validarMotivo, componerMotivo, limpiarMotivo, MOTIVO_MINIMO, MOTIVO_MAXIMO, type ResultadoMotivo, type ErrorMotivo } from './motivo';
 // Totales, teclado, botón con importe y pagos
+export { CampoNumero, type CampoNumeroProps } from './CampoNumero';
 export { ResumenTotales, type ResumenTotalesProps } from './ResumenTotales';
 export {
   filasResumen,

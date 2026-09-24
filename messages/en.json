@@ -3313,6 +3313,70 @@
         "saldo": "Balance",
         "netoPagar": "Net payable",
         "netoCobrar": "Net receivable"
+      },
+      "antiguedad": {
+        "titulo": "Balance aging",
+        "quitar": "Show all buckets",
+        "filtrar": "Filter by age",
+        "cuentas": "{count, plural, =0 {No accounts} one {# account} other {# accounts}}",
+        "tramos": {
+          "al_dia": "Current",
+          "d1_30": "1–30 days",
+          "d31_60": "31–60 days",
+          "d61_90": "61–90 days",
+          "d90_mas": "Over 90 days"
+        }
+      },
+      "planCuotas": {
+        "titulo": "Installment plan",
+        "descripcion": "Split the balance of {saldo} into installments.",
+        "cuotas": "Number of installments",
+        "primera": "First installment",
+        "interes": "Interest per installment",
+        "interesAyuda": "Optional, on each installment's principal.",
+        "frecuencia": "Frequency",
+        "vistaPrevia": "Plan preview",
+        "vence": "Due",
+        "capital": "Principal",
+        "interesCol": "Interest",
+        "valor": "Amount",
+        "total": "Total",
+        "crear": "Create plan",
+        "revisar": "Check the number of installments, the date and the interest",
+        "errores": {
+          "cuotas": "Between 1 and {maximo} installments.",
+          "fecha": "The first installment can't be before today.",
+          "interes": "Between 0 and 100 %."
+        }
+      },
+      "estadoCuenta": {
+        "titulo": "Account statement · {tercero}",
+        "tabla": "Transactions of {tercero}",
+        "descripcion": {
+          "cliente": "The customer's invoices, notes and payments in the period, with running balance.",
+          "proveedor": "The supplier's invoices, payables and payments in the period, with running balance."
+        },
+        "periodo": "Period",
+        "cargando": "Loading account statement…",
+        "vacio": "No transactions in the period.",
+        "saldoInicial": "Opening balance",
+        "saldoFinal": "Closing balance",
+        "vencido": "Overdue",
+        "porVencer": "Not yet due",
+        "totales": "Totals",
+        "resumen": "Statement summary",
+        "descargar": "Download CSV",
+        "descargarPdf": "Download PDF",
+        "imprimir": "Print",
+        "sinDatos": "No data to download",
+        "columnas": {
+          "fecha": "Date",
+          "documento": "Document",
+          "vence": "Due",
+          "cargo": "Charge",
+          "abono": "Payment",
+          "saldo": "Balance"
+        }
       }
     },
     "teclas": {

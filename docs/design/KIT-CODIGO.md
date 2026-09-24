@@ -582,6 +582,24 @@ Pruebas: `kit/__tests__/teclado.test.ts`, `datosYTotales.test.ts`, `pagosYDocume
 
 Pruebas: `kit/__tests__/selectoresYVista.test.ts`.
 
+### Cartera: antigüedad, plan de cuotas y estado de cuenta (CxC y CxP)
+
+Subidas desde las pantallas de CxP (commit `698f9cde`) a pedido de su agente, genéricas para
+cliente y proveedor. **CxC debe usarlas** en lugar de `finanzas/cartera/BandaAntiguedad` y
+`CrearPlanCuotasDialog` (API compatible: `tramos` en lista, `seleccionado`, `onSeleccionar`,
+`cargando`, `frecuencias`). `CampoNumero` se exporta ahora desde `@/components/kit`.
+
+| Figma / captura | Código | Contrato |
+|---|---|---|
+| Banda de antigüedad (`26-cartera-01`, `26-cartera-08`) | `kit/documento/BandaAntiguedad.tsx` + `carteraLogica.ts` | `tramos` (lista `{ tramo, saldo, cuentas? }` o mapa tramo → saldo), `formatear`, `seleccionado`, `onSeleccionar`, `cargando`, `conTitulo`, `titulo`. Tramos `TRAMOS_ANTIGUEDAD` (al día · 1–30 · 31–60 · 61–90 · > 90). Cada tramo es un botón `aria-pressed` que filtra; la barra es decorativa |
+| Plan de cuotas (X1 `740:49675`, `26-cartera-09`) | `kit/documento/PlanCuotasDialog.tsx` | `saldo`, `moneda`, `hoy`, `formatearDia`, `calcular(ParametrosPlan)` (**la función del dominio**: `planCuotas` de compras, `generarPlanCuotas` de cartera), `onConfirmar(plan, parametros)` (su RPC), `cargando`, `error`, `conInteres`, `frecuencias`, `maxCuotas`. Valida cuotas, primera fecha (no anterior a hoy) e interés; muestra la vista previa con total |
+| Estado de cuenta (X3 `740:52422`, Y3) | `kit/documento/EstadoCuentaDialog.tsx` | `tercero: { tipo: 'cliente' \| 'proveedor', nombre }`, `datos: { saldoInicial, saldoFinal, vencido, porVencer, totalCargos, totalAbonos, movimientos: { id, dia, tipo (TipoDocumento), documento?, vence?, cargo, abono, saldo }[] }`, `cargando`, `error`, `onReintentar`, `rango` / `onRangoChange`, `hoy`, `moneda`, `formatearDia`, `nombreArchivo` (CSV), `pdf: { onDescargar, onImprimir?, cargando? }` (motor de documentos: el PDF pasa a primario), `secundarios`, `opciones` |
+
+CxP usa las tres: `finanzas/cuentas-por-pagar/PlanCuotasDialog` y `EstadoCuentaProveedorDialog`
+quedan como adaptadores (su RPC, su mapeo de datos) y el listado importa `BandaAntiguedad` del kit.
+
+Pruebas: `kit/__tests__/cartera.test.ts`.
+
 ### Sin pruebas de render (todavía)
 
 El repo corre jest en `node` y no tiene `@testing-library/react` ni `jest-environment-jsdom`: las

@@ -80,13 +80,41 @@ uno (POS · CAJAS-VENTAS · COMPRAS-CXP · VENTA-CXC).
 7. Ubicación `shared/documentos/` y `shared/pagos/` (cajas-ventas) frente a `kit/documento/`
    (compras) → `kit/documento/`.
 8. `CobrarButton` (Figma) = `BotonImporte`; `CheckoutAccordion` (Figma) = `SeccionPlegable`.
+9. `BandaAntiguedad` de CxP (`finanzas/cuentas-por-pagar/`) y de CxC (`finanzas/cartera/`),
+   `PlanCuotasDialog` (CxP) y `CrearPlanCuotasDialog` (CxC), `EstadoCuentaProveedorDialog` (CxP)
+   y el estado de cuenta del cliente (CxC) → `kit/documento/BandaAntiguedad`, `PlanCuotasDialog`
+   y `EstadoCuentaDialog` (ver abajo).
+
+## Cartera: piezas compartidas CxC · CxP (subidas el 2026-09-24)
+
+A pedido del agente de compras/CxP (commit `698f9cde`), sus tres piezas pasaron al kit, genéricas
+para cliente y proveedor, sin lógica de negocio (datos por props, acciones por callbacks, textos en
+`kit.documento.*`, 4 idiomas):
+
+| Pieza | Lo que recibe | Lo que pone la pantalla |
+|---|---|---|
+| `BandaAntiguedad` | tramos (lista `{ tramo, saldo, cuentas? }` o mapa tramo → saldo), `formatear`, `seleccionado`, `onSeleccionar`, `cargando` | los tramos (RPC de resumen) y el filtro en la URL |
+| `PlanCuotasDialog` | `saldo`, `moneda`, `hoy`, `formatearDia`, `conInteres`, `frecuencias`, `maxCuotas` | `calcular` (la función del dominio: `planCuotas` de compras, `generarPlanCuotas` de cartera) y `onConfirmar` (su RPC), `cargando` y `error` |
+| `EstadoCuentaDialog` | `tercero` (cliente · proveedor), `datos` (saldos y movimientos con `tipo` de `TIPOS_DOCUMENTO`), `rango`, `moneda`, `formatearDia`, `nombreArchivo`, `pdf` | la lectura (RPC o route handler) al abrir y al cambiar el rango; el PDF del motor de documentos por `pdf` |
+
+- **CxP ya las usa**: `finanzas/cuentas-por-pagar/PlanCuotasDialog.tsx` y
+  `EstadoCuentaProveedorDialog.tsx` quedan como adaptadores (llamada a su RPC y mapeo de datos);
+  el listado importa `BandaAntiguedad` del kit; `finanzas/cuentas-por-pagar/BandaAntiguedad.tsx`
+  se borró.
+- **CxC debe usarlas** (agente de facturas de venta y CxC, en curso): sustituir
+  `finanzas/cartera/BandaAntiguedad.tsx` y `CrearPlanCuotasDialog.tsx` y el estado de cuenta del
+  cliente por las del kit. La API es compatible con la de cartera (`tramos` en lista con
+  `cuentas`, `seleccionado`, `onSeleccionar`, `cargando`; `frecuencias` en el plan). Esta sesión
+  no tocó pantallas de CxC.
+- `CampoNumero` se exporta desde `@/components/kit` (antes solo por ruta de archivo; las rutas
+  viejas siguen funcionando).
 
 ## Pendientes (no construidos en esta fase)
 
 | Pieza | Por qué | Quién |
 |---|---|---|
 | `CartTag`, `CartLine`, `ProductCard` (pos · movil-tarjeta · movil-lista), `CategoryBar` | Del POS y de mesas; dependen de la extracción de lógica del paso 1 de POS-PLAN (`CartLine` no calcula, recibe lo que devuelvan `useCobro`/`TaxSummary`). Contrato en POS-PLAN §3.3 | agente del POS, en `kit/` |
-| `HistorialDocumento`, `BandaAntiguedad` (+ `antiguedad.ts`), `PlanCuotas`, `EstadoCuentaDialog`, `RepartoPago` | Piden datos y reglas del dominio (cartera, cuotas, reparto FIFO) que aún no tienen route handler; `RepartoPago` entra por la ranura `reparto` del diálogo de pago | agentes de compras-CxP y venta-CxC, en `kit/documento/` |
+| `HistorialDocumento`, `RepartoPago` | Piden datos y reglas del dominio (historial de auditoría, reparto FIFO); `RepartoPago` entra por la ranura `reparto` del diálogo de pago. (`BandaAntiguedad`, `PlanCuotasDialog` y `EstadoCuentaDialog` ya están: ver «Cartera») | agentes de compras-CxP y venta-CxC, en `kit/documento/` |
 | `Aviso` (banda con acciones), `ConteoEfectivo`, `ConteoPorMetodo`, `ResumenArqueo`, `MovimientoCajaForm`, `EfectoEnCaja` | Del dominio de cajas (`pos/cajas/…` según su plan); `ResumenArqueo` usa `FilaDato` | agente de cajas |
 | `SeleccionLineasNota`, `DianPanel` | Propios de venta-CxC; `SeleccionLineasNota` se compone con `DocumentoLineas` | agente de venta-CxC |
 | Conexión real del pago | `fn_registrar_pago` / `POST /api/pagos` no existen: el diálogo es esqueleto | agentes de venta-CxC y compras-CxP |

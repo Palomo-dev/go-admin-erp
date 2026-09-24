@@ -3313,6 +3313,70 @@
         "saldo": "Saldo",
         "netoPagar": "Neto a pagar",
         "netoCobrar": "Neto a cobrar"
+      },
+      "antiguedad": {
+        "titulo": "Antigüedad del saldo",
+        "quitar": "Ver todos los tramos",
+        "filtrar": "Filtrar por antigüedad",
+        "cuentas": "{count, plural, =0 {Sin cuentas} one {# cuenta} other {# cuentas}}",
+        "tramos": {
+          "al_dia": "Al día",
+          "d1_30": "1–30 días",
+          "d31_60": "31–60 días",
+          "d61_90": "61–90 días",
+          "d90_mas": "Más de 90 días"
+        }
+      },
+      "planCuotas": {
+        "titulo": "Plan de cuotas",
+        "descripcion": "Reparte el saldo de {saldo} en cuotas.",
+        "cuotas": "Número de cuotas",
+        "primera": "Primera cuota",
+        "interes": "Interés por cuota",
+        "interesAyuda": "Opcional, sobre el capital de cada cuota.",
+        "frecuencia": "Frecuencia",
+        "vistaPrevia": "Vista previa del plan",
+        "vence": "Vence",
+        "capital": "Capital",
+        "interesCol": "Interés",
+        "valor": "Valor",
+        "total": "Total",
+        "crear": "Crear plan",
+        "revisar": "Revisa el número de cuotas, la fecha y el interés",
+        "errores": {
+          "cuotas": "Entre 1 y {maximo} cuotas.",
+          "fecha": "La primera cuota no puede ser anterior a hoy.",
+          "interes": "Entre 0 y 100 %."
+        }
+      },
+      "estadoCuenta": {
+        "titulo": "Estado de cuenta · {tercero}",
+        "tabla": "Movimientos de {tercero}",
+        "descripcion": {
+          "cliente": "Facturas, notas y abonos del cliente en el periodo, con el saldo corrido.",
+          "proveedor": "Facturas, cuentas y pagos al proveedor en el periodo, con el saldo corrido."
+        },
+        "periodo": "Periodo",
+        "cargando": "Cargando estado de cuenta…",
+        "vacio": "Sin movimientos en el periodo.",
+        "saldoInicial": "Saldo inicial",
+        "saldoFinal": "Saldo final",
+        "vencido": "Vencido",
+        "porVencer": "Por vencer",
+        "totales": "Totales",
+        "resumen": "Resumen del estado de cuenta",
+        "descargar": "Descargar CSV",
+        "descargarPdf": "Descargar PDF",
+        "imprimir": "Imprimir",
+        "sinDatos": "No hay datos para descargar",
+        "columnas": {
+          "fecha": "Fecha",
+          "documento": "Documento",
+          "vence": "Vence",
+          "cargo": "Cargo",
+          "abono": "Abono",
+          "saldo": "Saldo"
+        }
       }
     },
     "teclas": {

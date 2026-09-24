@@ -28,7 +28,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { serialTrackingService } from '@/lib/services/serialTrackingService';
+import { ErrorPeticionFactura, guardarFacturaVenta } from '@/lib/finanzas/ventas/clienteFacturas';
 import { resolveLineTax } from '@/lib/services/taxResolver';
 import { tasaImpuestosDelDocumento } from '@/lib/services/taxCoverage';
 import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
@@ -57,30 +57,6 @@ export type InvoiceItem = {
   product_sku?: string | null; // SKU del producto (para SerialSelectorDialog)
 };
 
-// Tipo para una factura
-interface Invoice {
-  id?: string;
-  organization_id: number;
-  branch_id: number; // Campo obligatorio según el esquema de la DB
-  customer_id: string | null; // Cambiado a string para UUID
-  sale_id?: string; // Relación con la tabla sales
-  number: string;
-  issue_date: string | null;
-  due_date: string | null;
-  currency: string | null;
-  subtotal: number | null;
-  tax_total: number | null;
-  total: number | null;
-  balance: number | null;
-  status: string;
-  payment_terms: number | null;
-  payment_method: string | null;
-  notes: string | null;
-  tax_included?: boolean; // Indicador si los impuestos están incluidos en los precios
-  opportunity_id?: string | null; // Relación con oportunidad (opcional)
-  created_by?: string; // ID del usuario que crea la factura
-};
-
 /** Línea de una factura guardada (lo que usa el formulario al editar). */
 interface ItemFacturaGuardada {
   id?: string;
@@ -96,7 +72,7 @@ interface ItemFacturaGuardada {
 }
 
 /** Factura que llega para editar (fila de `invoice_sales` con relaciones). */
-interface FacturaInicialVenta {
+export interface FacturaInicialVenta {
   id?: string;
   number?: string | null;
   customer_id?: string | null;
@@ -125,10 +101,47 @@ interface TotalImpuesto {
   included: boolean;
 }
 
+/** Lo que el formulario entrega en modo edición (ver `datosFactura` en handleSubmit). */
+export interface DatosEdicionFactura {
+  number: string;
+  customer_id: string | null;
+  branch_id: number;
+  issue_date: string | null;
+  due_date: string | null;
+  currency: string | null;
+  payment_terms: number;
+  payment_method: string | null;
+  notes: string | null;
+  tax_included: boolean;
+  subtotal: number;
+  tax_total: number;
+  total: number;
+  salesperson_id: string | null;
+  opportunity_id: string | null;
+  commission_rate: number;
+  commission_type: 'salesperson' | 'intermediation_sale' | 'none';
+  commission_method: 'percentage' | 'fixed_amount';
+  commission_amount: number;
+  appliedTaxes: Record<string, boolean>;
+  items: {
+    id?: string;
+    product_id?: number | null;
+    description: string;
+    qty: number;
+    unit_price: number;
+    tax_code?: string | null;
+    tax_rate?: number | null;
+    tax_included: boolean;
+    total_line: number;
+    discount_amount: number;
+  }[];
+  serial_selections?: Record<number, number[]>;
+}
+
 interface NuevaFacturaFormProps {
   facturaInicial?: FacturaInicialVenta | null;
   // Los datos de edición los arma este formulario (ver `datosFactura` en handleSubmit).
-  onSubmit?: (datosFactura: Record<string, unknown>) => Promise<void>;
+  onSubmit?: (datosFactura: DatosEdicionFactura) => Promise<void>;
   saving?: boolean;
   esEdicion?: boolean;
 }
@@ -843,310 +856,60 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
 
     try {
       setIsLoading(true);
-      
-      // 1. Primero crear el registro en sales
-      // source='invoice' para distinguir de ventas POS y web.
-      // include_in_cash_register se controla con un checkbox (Fase 3).
-      const sale = {
-        organization_id: Number(organizationId),
-        branch_id: branchId,
+
+      // Una sola llamada al servidor (fn_factura_venta_guardar): la base crea en
+      // una transacción la venta ligada, el borrador, sus líneas, los impuestos
+      // aplicados y la comisión; los totales y el saldo los calculan los
+      // disparadores. Los seriales elegidos quedan en las líneas y se venden al
+      // emitir, cuando sale la mercancía.
+      const guardada = await guardarFacturaVenta(null, {
+        number: invoiceNumber || null,
         customer_id: selectedCustomerId || null,
-        user_id: currentUserId,
-        sale_date: issueDate ? toInstant(toDate(issueDate)) : new Date().toISOString(),
-        subtotal: safeSubtotal,
-        tax_total: safeTaxTotal,
-        total: safeTotal,
-        balance: safeTotal, // Al crear, el balance es igual al total
-        status: 'pending', // Estado permitido por la restricción sales_status_check
-        payment_status: 'pending', // Por defecto pendiente de pago
-        source: 'invoice',
-        include_in_cash_register: includeInCashRegister,
-        notes: notes,
-        discount_total: 0 // Valor por defecto
-      };
-      
-      // Guardar venta en Supabase
-      const { data: saleData, error: saleError } = await supabase
-        .from('sales')
-        .insert(sale)
-        .select()
-        .single();
-        
-      if (saleError) throw saleError;
-      
-      // 2. Crear los items de venta
-      const saleItemPromises = evaluatedItems.map(item => {
-        return supabase
-          .from('sale_items')
-          .insert({
-            sale_id: saleData.id,
-            product_id: item.product_id,
-            quantity: item.qty,
-            unit_price: item.unit_price,
-            total: item.total_line,
-            tax_rate: item.tax_rate || 0,
-            tax_amount: (item.total_line * (item.tax_rate || 0)) / 100,
-            discount_amount: item.discount_amount || 0
-          });
-      });
-      
-      // Guardar items de venta
-      const saleItemsResults = await Promise.all(saleItemPromises);
-      
-      // Verificar si alguna promesa tuvo error
-      const saleItemsError = saleItemsResults.find(result => result.error);
-      if (saleItemsError) throw saleItemsError.error;
-
-      // 2.5. Vender seriales si hay productos serializados con seriales seleccionados
-      // (mismo flujo que el POS: serialTrackingService.sellSerials por cada producto)
-      if (serializedItems.length > 0 && serialSelections) {
-        try {
-          for (const item of serializedItems) {
-            const serialIds = serialSelections[item.product_id as number];
-            if (!serialIds || serialIds.length === 0) continue;
-
-            const { success: serialOk, errors: serialErrors } = await serialTrackingService.sellSerials(
-              serialIds,
-              {
-                sale_id: saleData.id,
-                customer_id: selectedCustomerId || undefined,
-                sold_by_user_id: currentUserId,
-                sale_channel: 'invoice',
-                price_at_sale: item.unit_price,
-                branch_id: branchId,
-              },
-              currentUserId
-            );
-
-            if (!serialOk) {
-              console.warn(`⚠️ Errores vendiendo seriales para producto ${item.product_id}:`, serialErrors);
-            }
-          }
-        } catch (serialError) {
-          console.warn('⚠️ Error vendiendo seriales (no bloquea la factura):', serialError);
-        }
-      }
-
-      // 3. Crear objeto de factura con el sale_id
-      const invoice: Invoice = {
-        organization_id: Number(organizationId),
         branch_id: branchId,
-        customer_id: selectedCustomerId || null,
-        sale_id: saleData.id, // Vinculamos con la venta creada
-        number: invoiceNumber,
         issue_date: issueDate ? toInstant(toDate(issueDate)) : null,
         due_date: dueDate ? toInstant(toDate(dueDate)) : null,
-        // Moneda elegida; si aún no hay, la base la pone (`trg_00_moneda_base_por_defecto`).
         currency: currency || null,
-        subtotal: safeSubtotal,
-        tax_total: safeTaxTotal,
-        total: safeTotal,
-        balance: safeTotal, // Al crear, el balance es igual al total
-        status: 'draft', // Por defecto
         payment_terms: paymentTerms,
-        payment_method: paymentMethodCode,
-        notes: notes,
-        tax_included: taxIncluded, // Agregamos el campo tax_included
-        created_by: currentUserId, // Asignamos el ID del usuario actual
-      };
-
-      // Añadir opportunity_id si se seleccionó una oportunidad
-      const invoiceWithOpportunity = selectedOpportunityId !== 'none'
-        ? { ...invoice, opportunity_id: selectedOpportunityId }
-        : invoice;
-      
-      // Añadir campos de comisión al insert
-      const commissionAmountCalc = salespersonId && commissionRate > 0
-        ? (commissionMethod === 'fixed_amount' ? commissionRate : Math.round((safeSubtotal > 0 ? safeSubtotal : safeTotal) * commissionRate / 100 * 100) / 100)
-        : 0;
-      const invoiceWithCommission = {
-        ...invoiceWithOpportunity,
+        payment_method: paymentMethodCode || null,
+        notes: notes || null,
+        tax_included: taxIncluded,
         salesperson_id: salespersonId || null,
+        opportunity_id: selectedOpportunityId !== 'none' ? selectedOpportunityId : null,
         commission_rate: commissionRate || 0,
         commission_type: salespersonId && commissionRate > 0 ? commissionType : 'none',
         commission_method: salespersonId && commissionRate > 0 ? commissionMethod : 'percentage',
-        commission_amount: commissionAmountCalc
-      };
-      
-      // 4. Guardar factura en Supabase
-      const { data: invoiceData, error: invoiceError } = await supabase
-        .from('invoice_sales')
-        .insert(invoiceWithCommission)
-        .select()
-        .single();
-        
-      if (invoiceError) throw invoiceError;
-      
-      // 5. Preparar ítems para guardar con el ID de la factura.
-      // IMPORTANTE: se insertan todos en UNA sola llamada (un solo INSERT/transacción)
-      // en vez de una promesa por ítem. El trigger fn_recalc_invoice_totals() recalcula
-      // subtotal/total de invoice_sales sumando invoice_items en cada INSERT; con
-      // inserts paralelos (Promise.all de N .insert() separados = N transacciones
-      // concurrentes) cada trigger solo veía los ítems ya confirmados en ese instante,
-      // y el último en confirmar sobrescribía el total con una suma parcial. Un único
-      // INSERT masivo dispara el trigger dentro de la misma transacción, donde todas
-      // las filas ya son visibles entre sí.
-      // Consultar los números de serial correspondientes a los IDs seleccionados
-      // para guardarlos en invoice_items (para mostrar en detalle y PDF).
-      const serialNumbersMap: Record<number, string[]> = {};
-      const allSerialIds = items.flatMap(item =>
-        item.product_id != null && item.track_serial === true
-          ? (serialSelections[item.product_id] || [])
-          : []
-      );
-      if (allSerialIds.length > 0) {
-        const { data: serialsData } = await supabase
-          .from('product_serials')
-          .select('id, serial_number')
-          .in('id', allSerialIds);
-        if (serialsData) {
-          serialsData.forEach((s: { id: number; serial_number: string }) => {
-            if (!serialNumbersMap[s.id]) serialNumbersMap[s.id] = [];
-            serialNumbersMap[s.id].push(s.serial_number);
-          });
-        }
-      }
-
-      const invoiceItemsToInsert = evaluatedItems.map(item => {
-        // Obtener los seriales seleccionados para este producto
-        const serialIds = item.product_id != null && item.track_serial === true
-          ? (serialSelections[item.product_id] || [])
-          : [];
-
-        // Mapear IDs a números de serial legibles
-        const serialNumbers = serialIds.length > 0
-          ? serialIds.flatMap(id => serialNumbersMap[id] || [])
-          : null;
-
-        return {
-          invoice_sales_id: invoiceData.id, // Usamos el ID UUID de la factura
-          invoice_id: invoiceData.id, // Por compatibilidad con código existente
-          product_id: item.product_id,
+        include_in_cash_register: includeInCashRegister,
+        applied_taxes: Object.keys(appliedTaxes)
+          .filter((code) => appliedTaxes[code])
+          .map((code) => ({ tax_code: code, tax_rate: appliedTaxTotals[code]?.rate || 0 })),
+        items: evaluatedItems.map((item) => ({
+          product_id: item.product_id ?? null,
           description: item.description,
-          qty: item.qty,
-          unit_price: item.unit_price,
-          tax_code: item.tax_code,
-          tax_rate: item.tax_rate,
-          tax_included: item.tax_included || false, // Guardamos si el impuesto está incluido
-          total_line: item.total_line,
-          discount_amount: item.discount_amount || 0,
-          invoice_type: 'sale', // Tipo de factura (venta)
-          serial_ids: serialIds.length > 0 ? serialIds : null,
-          serial_numbers: serialNumbers,
-        };
+          qty: Number(item.qty) || 0,
+          unit_price: Number(item.unit_price) || 0,
+          tax_code: item.tax_code ?? null,
+          tax_rate: Number(item.tax_rate) || 0,
+          tax_included: item.tax_included || false,
+          total_line: Number(item.total_line) || 0,
+          discount_amount: Number(item.discount_amount) || 0,
+          serial_ids:
+            item.product_id != null && item.track_serial === true ? serialSelections[item.product_id] || [] : undefined,
+        })),
       });
 
-      // 6. Guardar ítems de factura
-      // Si el insert falla por RLS o constraints, la factura queda sin items ni totales
-      // (causa raiz del bug de facturas con total=0). El fallback fn_sync_invoice_items_from_sale
-      // copia desde sale_items via RPC (SECURITY DEFINER, bypassa RLS) y el trigger
-      // fn_recalc_invoice_totals recalcula subtotal/total/balance automaticamente.
-      const { error: itemsError } = await supabase
-        .from('invoice_items')
-        .insert(invoiceItemsToInsert);
-
-      if (itemsError) {
-        console.warn('Insert directo de invoice_items falló, sincronizando desde sale_items:', itemsError);
-        const { data: syncedCount, error: syncError } = await supabase
-          .rpc('fn_sync_invoice_items_from_sale', { p_invoice_id: invoiceData.id });
-        if (syncError) throw syncError;
-        if (!syncedCount || syncedCount === 0) throw itemsError;
-      } else {
-        // Verificar que los items se insertaron realmente (RLS puede filtrar silenciosamente)
-        const { count } = await supabase
-          .from('invoice_items')
-          .select('*', { count: 'exact', head: true })
-          .eq('invoice_sales_id', invoiceData.id);
-        if (!count || count === 0) {
-          console.warn('invoice_items no se insertaron (posible RLS), sincronizando desde sale_items');
-          const { error: syncError } = await supabase
-            .rpc('fn_sync_invoice_items_from_sale', { p_invoice_id: invoiceData.id });
-          if (syncError) throw syncError;
-        }
-      }
-      
-      // 6.5. Guardar impuestos aplicados en invoice_applied_taxes
-      const appliedTaxCodes = Object.keys(appliedTaxes).filter(code => appliedTaxes[code]);
-      if (appliedTaxCodes.length > 0) {
-        const taxRows = appliedTaxCodes.map(code => ({
-          invoice_id: invoiceData.id,
-          tax_code: code,
-          tax_rate: appliedTaxTotals[code]?.rate || 0,
-          is_applied: true
-        }));
-        const { error: taxInsertError } = await supabase
-          .from('invoice_applied_taxes')
-          .insert(taxRows);
-        if (taxInsertError) console.warn('Error guardando impuestos aplicados:', taxInsertError);
+      // Guardar un borrador no compromete inventario: el bloqueo está en la
+      // emisión. Aquí solo se avisa para evitar la sorpresa al final.
+      if (guardada.faltantes.length > 0) {
+        const detalle = guardada.faltantes
+          .map((f) => `${f.producto}: necesita ${f.requerido}, hay ${f.disponible}`)
+          .join(' | ');
+        toastError('Guardada, pero sin existencias para emitir', `${detalle}. Repon el inventario antes de emitirla.`);
       }
 
-      // Nota: el asiento contable de devengo se crea automaticamente en la BD
-      // mediante el trigger trg_auto_journal_sale (fn_auto_journal_sale) al
-      // insertar en invoice_sales, usando la tabla accounting_rules.
-
-      // 6.6. Crear registro de comisión si aplica
-      if (salespersonId && commissionRate > 0 && commissionType !== 'none') {
-        try {
-          const salespersonName = organizationMembers.find(m => m.id === salespersonId)?.name || 'N/A';
-          const baseAmount = subtotal > 0 ? subtotal : total;
-
-          const { error: commissionInsertError } = await supabase
-            .from('commissions')
-            .insert({
-              organization_id: Number(organizationId),
-              branch_id: branchId,
-              commission_type: commissionType,
-              source_type: 'invoice_sale',
-              source_id: invoiceData.id,
-              payee_type: 'employee',
-              payee_id: salespersonId,
-              payee_name: salespersonName,
-              base_amount: baseAmount,
-              commission_rate: commissionRate,
-              commission_amount: commissionAmountCalc,
-              // La comisión va en la moneda de la factura.
-              currency: invoiceData.currency || currency || null,
-              status: 'accrued',
-              accrued_at: new Date().toISOString(),
-              created_by: currentUserId,
-              metadata: { invoice_number: invoiceNumber, commission_method: commissionMethod },
-            });
-          if (commissionInsertError) {
-            console.error('Error al crear registro de comisión:', commissionInsertError);
-          }
-        } catch (commissionErr) {
-          console.error('Error al crear registro de comisión (catch):', commissionErr);
-        }
-      }
-
-      // 6.6. Avisar si la factura no tiene existencias para emitirse.
-      // Guardar un borrador no compromete inventario, asi que no se bloquea: el
-      // bloqueo esta en la emision, que es cuando la mercancia sale. Esto solo
-      // evita la sorpresa de descubrirlo al final. La comprobacion corre sobre la
-      // factura ya guardada porque debe expandir las recetas igual que el descuento.
-      try {
-        const { data: faltantes } = await supabase
-          .rpc('fn_invoice_stock_shortages', { p_invoice_id: invoiceData.id });
-
-        if (faltantes && faltantes.length > 0) {
-          const detalle = faltantes
-            .map((f: { product_name: string; required: number; available: number }) => `${f.product_name}: necesita ${f.required}, hay ${f.available}`)
-            .join(' | ');
-
-          toastError('Guardada, pero sin existencias para emitir', `${detalle}. Repon el inventario antes de emitirla.`);
-        }
-      } catch (stockCheckError) {
-        console.warn('No se pudo verificar el stock de la factura guardada:', stockCheckError);
-      }
-
-      // 7. Si está activada la opción de factura electrónica, enviar a DIAN
+      // Si está activada la opción de factura electrónica, enviar a DIAN
       if (sendToFactus) {
         try {
-          const result = await electronicInvoicingService.sendToFactus(
-            invoiceData.id,
-            Number(organizationId)
-          );
-          
+          const result = await electronicInvoicingService.sendToFactus(guardada.id, Number(organizationId));
           if (result.success) {
             toastSuccess("Factura creada y enviada a DIAN", `La factura ${invoiceNumber} se ha creado y enviado para validación electrónica.`);
           } else {
@@ -1159,13 +922,19 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       } else {
         toastSuccess("Éxito", "La factura se ha creado correctamente.");
       }
-      
-      // Redireccionar a la vista de la factura
-      router.push(`/app/finanzas/facturas-venta/${invoiceData.id.toString()}`);
-      
+
+      router.push(`/app/finanzas/facturas-venta/${guardada.id}`);
     } catch (error) {
       console.error('Error al guardar la factura:', error);
-      toastError("Error", `Ocurrió un error al guardar la factura: ${JSON.stringify(error)}`);
+      const codigo = error instanceof ErrorPeticionFactura ? error.codigo : null;
+      toastError(
+        "Error",
+        codigo === 'numero_duplicado'
+          ? 'Ya existe una factura con ese número.'
+          : codigo === 'sin_permiso'
+            ? 'No tienes permiso para crear facturas.'
+            : 'Ocurrió un error al guardar la factura. Revisa los datos e inténtalo de nuevo.',
+      );
     } finally {
       setIsLoading(false);
     }

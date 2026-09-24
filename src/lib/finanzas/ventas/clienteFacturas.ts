@@ -7,7 +7,7 @@
  * pestañas. Nada se escribe desde el navegador.
  */
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import type { DetalleFacturaVenta, ErrorFactura, FaltanteStock } from './contratoFacturas';
+import type { DatosFactura, DetalleFacturaVenta, ErrorFactura, FaltanteStock, ResultadoGuardarFactura } from './contratoFacturas';
 import type { RespuestaListadoFacturas } from './listadoFacturas';
 import type { ContextoNota, ResultadoNota, SolicitudNota } from './contratoNotaCredito';
 
@@ -65,6 +65,17 @@ export async function anularFacturaVenta(id: string, motivo: string): Promise<{ 
     body: JSON.stringify({ motivo }),
   });
   return (await leer<{ resultado: { productos_devueltos: number } }>(r)).resultado;
+}
+
+/** Crea (`id` null) o edita un borrador; la base calcula totales y crea la venta ligada. */
+export async function guardarFacturaVenta(id: string | null, datos: DatosFactura): Promise<ResultadoGuardarFactura> {
+  const r = await fetch(id ? `/api/facturas-venta/${encodeURIComponent(id)}` : '/api/facturas-venta', {
+    method: id ? 'PUT' : 'POST',
+    credentials: 'same-origin',
+    headers: cabeceras(true),
+    body: JSON.stringify(datos),
+  });
+  return (await leer<{ resultado: ResultadoGuardarFactura }>(r)).resultado;
 }
 
 export async function pedirContextoNota(id: string): Promise<ContextoNota> {

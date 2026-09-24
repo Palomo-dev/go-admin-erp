@@ -7,9 +7,11 @@
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import {
   codigoErrorFactura,
+  type DatosFactura,
   type DetalleFacturaVenta,
   type ErrorFactura,
   type FaltanteStock,
+  type ResultadoGuardarFactura,
 } from '@/lib/finanzas/ventas/contratoFacturas';
 import type { ConsultaFacturas, RespuestaListadoFacturas } from '@/lib/finanzas/ventas/listadoFacturas';
 
@@ -66,6 +68,22 @@ export async function emitirFactura(ctx: Ctx, id: string): Promise<{ id: string;
   const { data, error } = await ctx.supabase.rpc('fn_factura_venta_emitir', { p_invoice_id: id });
   if (error) lanzar('fn_factura_venta_emitir', ctx, error);
   return data as { id: string; numero: string; stock_descontado: boolean };
+}
+
+/**
+ * Crea (`id` null) o edita un BORRADOR en una transacción
+ * (`fn_factura_venta_guardar`): venta ligada, cabecera, líneas, impuestos y
+ * comisión. La organización es la de la sesión; los totales los calcula la base.
+ */
+export async function guardarFactura(ctx: Ctx, id: string | null, datos: DatosFactura): Promise<ResultadoGuardarFactura> {
+  const { data, error } = await ctx.supabase.rpc('fn_factura_venta_guardar', {
+    p_org: ctx.organizationId,
+    p_invoice_id: id,
+    p_datos: datos,
+  });
+  if (error) lanzar('fn_factura_venta_guardar', ctx, error);
+  const r = (data ?? {}) as { id: string; numero: string | null; sale_id: string | null; total: number | string; faltantes?: FaltanteStock[] };
+  return { id: r.id, numero: r.numero ?? null, saleId: r.sale_id ?? null, total: num(r.total), faltantes: r.faltantes ?? [] };
 }
 
 export function faltantesDe(err: ErrorFacturaServidor): FaltanteStock[] {

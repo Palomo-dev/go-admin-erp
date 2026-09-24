@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
@@ -9,9 +9,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FileText, ArrowLeft, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { NuevaFacturaForm } from '../nueva-factura/NuevaFacturaForm';
+import { NuevaFacturaForm, type DatosEdicionFactura, type FacturaInicialVenta } from '../nueva-factura/NuevaFacturaForm';
 import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { resolveLineTax } from '@/lib/services/taxResolver';
+import { ErrorPeticionFactura, guardarFacturaVenta } from '@/lib/finanzas/ventas/clienteFacturas';
 
 interface EditarFacturaVentaProps {
   facturaId: string;
@@ -21,15 +22,11 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [factura, setFactura] = useState<any>(null);
+  const [factura, setFactura] = useState<(FacturaInicialVenta & { id: string }) | null>(null);
   const [error, setError] = useState<string | null>(null);
   const organizationId = getOrganizationId();
 
-  useEffect(() => {
-    cargarFactura();
-  }, [facturaId]);
-
-  const cargarFactura = async () => {
+  const cargarFactura = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -75,93 +72,29 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
         items: itemsData || [],
         applied_taxes: appliedTaxesData || []
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error cargando factura:', error);
-      setError(error.message || 'Error al cargar la factura');
+      setError((error as { message?: string } | null)?.message || 'Error al cargar la factura');
     } finally {
       setLoading(false);
     }
-  };
+  }, [facturaId, organizationId]);
 
-  const handleSubmit = async (datosFactura: any) => {
+  useEffect(() => {
+    void cargarFactura();
+  }, [cargarFactura]);
+
+  const handleSubmit = async (datosFactura: DatosEdicionFactura) => {
     if (!factura) return;
 
     try {
       setSaving(true);
 
-      // Calcular el balance: total nuevo - pagos ya realizados
-      // Usar Number() para asegurar aritmética correcta (Supabase devuelve numeric como string)
-      const totalActual = Number(factura.total) || 0;
-      const balanceActual = Number(factura.balance) || 0;
-      const pagosRealizados = totalActual - balanceActual;
-      const nuevoBalance = Number(datosFactura.total) - pagosRealizados;
-
-      // Recalcular commission_amount basándose en el total real y el método
-      const commissionRateNum = Number(datosFactura.commission_rate) || 0;
-      const commissionMethod = datosFactura.commission_method || 'percentage';
-      const baseComision = Number(datosFactura.subtotal) > 0
-        ? Number(datosFactura.subtotal)
-        : Number(datosFactura.total) || 0;
-      const commissionAmountRecalc = datosFactura.salesperson_id && commissionRateNum > 0
-        ? (commissionMethod === 'fixed_amount'
-            ? commissionRateNum
-            : Math.round(baseComision * commissionRateNum / 100 * 100) / 100)
-        : 0;
-
-      const { error: updateError } = await supabase
-        .from('invoice_sales')
-        .update({
-          number: datosFactura.number,
-          customer_id: datosFactura.customer_id,
-          branch_id: datosFactura.branch_id,
-          issue_date: datosFactura.issue_date,
-          due_date: datosFactura.due_date,
-          currency: datosFactura.currency,
-          payment_terms: Number(datosFactura.payment_terms) || 0,
-          payment_method: datosFactura.payment_method,
-          notes: datosFactura.notes,
-          tax_included: datosFactura.tax_included,
-          subtotal: Number(datosFactura.subtotal) || 0,
-          tax_total: Number(datosFactura.tax_total) || 0,
-          total: Number(datosFactura.total) || 0,
-          balance: nuevoBalance,
-          salesperson_id: datosFactura.salesperson_id || null,
-          commission_rate: commissionRateNum,
-          commission_type: datosFactura.commission_type || 'none',
-          commission_method: commissionMethod,
-          commission_amount: commissionAmountRecalc
-        })
-        .eq('id', factura.id);
-
-      if (updateError) throw updateError;
-
-      const { data: existingItems, error: fetchItemsError } = await supabase
-        .from('invoice_items')
-        .select('id')
-        .eq('invoice_sales_id', factura.id);
-
-      if (fetchItemsError) throw fetchItemsError;
-
-      const existingIds = (existingItems || []).map(i => i.id);
-      const newItemIds = datosFactura.items.filter((i: any) => i.id).map((i: any) => i.id);
-      const idsToDelete = existingIds.filter(id => !newItemIds.includes(id));
-
-      if (idsToDelete.length > 0) {
-        const { error: deleteError } = await supabase
-          .from('invoice_items')
-          .delete()
-          .in('id', idsToDelete)
-          .eq('invoice_sales_id', factura.id);
-
-        if (deleteError) throw deleteError;
-      }
-
-      // F-42: cada línea pasa por el resolver único antes de persistirse. La
+      // F-42: cada línea pasa por el resolver único antes de guardarse. La
       // tarifa elegida en el formulario manda; si viene en 0, el resolver sigue
       // con los impuestos del producto y los de la organización por defecto.
-      // El modo incluido/no incluido es el del documento, que es el que lee
-      // fn_recalc_invoice_totals para derivar la base.
       const documentoTaxIncluded = Boolean(datosFactura.tax_included);
+      const lineas = [];
       for (const item of datosFactura.items) {
         const qty = Number(item.qty) || 0;
         const unitPrice = Number(item.unit_price) || 0;
@@ -176,85 +109,62 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
           unitPrice,
           discountAmount,
         });
-
-        const itemData = {
-          invoice_sales_id: factura.id,
-          invoice_id: factura.id,
-          invoice_type: 'sale',
+        lineas.push({
           product_id: item.product_id || null,
           description: item.description,
-          qty: item.qty,
-          unit_price: item.unit_price,
+          qty,
+          unit_price: unitPrice,
           tax_code: resolved.tax_code,
           tax_rate: resolved.tax_rate,
           tax_included: resolved.tax_included,
           total_line: resolved.total_line,
-          discount_amount: discountAmount
-        };
-
-        if (item.id) {
-          const { error: updateItemError } = await supabase
-            .from('invoice_items')
-            .update(itemData)
-            .eq('id', item.id)
-            .eq('invoice_sales_id', factura.id);
-
-          if (updateItemError) throw updateItemError;
-        } else {
-          const { error: insertItemError } = await supabase
-            .from('invoice_items')
-            .insert(itemData);
-
-          if (insertItemError) throw insertItemError;
-        }
+          discount_amount: discountAmount,
+          serial_ids:
+            item.product_id && datosFactura.serial_selections?.[item.product_id]?.length
+              ? datosFactura.serial_selections[item.product_id]
+              : undefined,
+        });
       }
 
-      // Guardar impuestos aplicados (reemplazar los anteriores)
-      if (datosFactura.appliedTaxes) {
-        await supabase
-          .from('invoice_applied_taxes')
-          .delete()
-          .eq('invoice_id', factura.id);
-
-        const appliedTaxCodes = Object.keys(datosFactura.appliedTaxes).filter(code => datosFactura.appliedTaxes[code]);
-        if (appliedTaxCodes.length > 0) {
-          const taxRows = appliedTaxCodes.map(code => ({
-            invoice_id: factura.id,
-            tax_code: code,
-            tax_rate: 0,
-            is_applied: true
-          }));
-          const { error: taxInsertError } = await supabase
-            .from('invoice_applied_taxes')
-            .insert(taxRows);
-          if (taxInsertError) console.warn('Error guardando impuestos aplicados:', taxInsertError);
-        }
-      }
-
-      if (factura.sale_id) {
-        const { error: saleUpdateError } = await supabase
-          .from('sales')
-          .update({
-            customer_id: datosFactura.customer_id,
-            branch_id: datosFactura.branch_id,
-            subtotal: Number(datosFactura.subtotal) || 0,
-            tax_total: Number(datosFactura.tax_total) || 0,
-            total: Number(datosFactura.total) || 0,
-            balance: nuevoBalance
-          })
-          .eq('id', factura.sale_id);
-
-        if (saleUpdateError) {
-          console.error('Error al actualizar venta:', saleUpdateError);
-        }
-      }
+      // Una sola llamada: la base edita el borrador en una transacción (cabecera,
+      // líneas, impuestos y venta ligada) y recalcula totales y saldo; nada de
+      // saldos escritos desde el navegador.
+      await guardarFacturaVenta(factura.id, {
+        number: datosFactura.number || null,
+        customer_id: datosFactura.customer_id || null,
+        branch_id: Number(datosFactura.branch_id),
+        issue_date: datosFactura.issue_date || null,
+        due_date: datosFactura.due_date || null,
+        currency: datosFactura.currency || null,
+        payment_terms: Number(datosFactura.payment_terms) || 0,
+        payment_method: datosFactura.payment_method || null,
+        notes: datosFactura.notes || null,
+        tax_included: documentoTaxIncluded,
+        salesperson_id: datosFactura.salesperson_id || null,
+        opportunity_id: datosFactura.opportunity_id || null,
+        commission_rate: Number(datosFactura.commission_rate) || 0,
+        commission_type: datosFactura.commission_type || 'none',
+        commission_method: datosFactura.commission_method || 'percentage',
+        applied_taxes: Object.keys(datosFactura.appliedTaxes || {})
+          .filter((code) => datosFactura.appliedTaxes[code])
+          .map((code) => ({ tax_code: code })),
+        items: lineas,
+      });
 
       toastSuccess('Factura actualizada', 'La factura de venta se ha actualizado correctamente.');
 
       router.push(`/app/finanzas/facturas-venta/${factura.id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error actualizando factura:', error);
-      toastError('Error al actualizar', error.message || 'Error al actualizar la factura');
+      const codigo = error instanceof ErrorPeticionFactura ? error.codigo : null;
+      toastError(
+        'Error al actualizar',
+        codigo === 'factura_no_borrador'
+          ? 'La factura ya no está en borrador.'
+          : codigo === 'numero_duplicado'
+            ? 'Ya existe una factura con ese número.'
+            : 'No se pudo actualizar la factura. Revisa los datos e inténtalo de nuevo.',
+      );
     } finally {
       setSaving(false);
     }

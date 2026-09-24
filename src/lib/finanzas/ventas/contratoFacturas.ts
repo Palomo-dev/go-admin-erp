@@ -19,6 +19,12 @@ export const ERRORES_FACTURA = [
   'nota_credito',
   'con_pagos',
   'fe_aceptada',
+  'sucursal_invalida',
+  'cliente_invalido',
+  'linea_invalida',
+  'producto_invalido',
+  'vendedor_invalido',
+  'numero_duplicado',
 ] as const;
 export type ErrorFactura = (typeof ERRORES_FACTURA)[number] | 'error_desconocido' | 'datos_invalidos';
 
@@ -46,6 +52,7 @@ export function estadoHttpErrorFactura(codigo: ErrorFactura): number {
     case 'fe_aceptada':
     case 'nota_credito':
     case 'stock_insuficiente':
+    case 'numero_duplicado':
       return 409;
     case 'error_desconocido':
       return 500;
@@ -55,6 +62,64 @@ export function estadoHttpErrorFactura(codigo: ErrorFactura): number {
 }
 
 export const anulacionFacturaSchema = z.object({ motivo: z.string().trim().min(3).max(500) }).strict();
+
+// ─── Guardar borrador (POST /api/facturas-venta, PUT /api/facturas-venta/[id]) ─
+
+const numeroOpcional = z.number().finite();
+const uuidOpcional = z.string().uuid().nullable().optional();
+const fechaInstante = z.string().datetime({ offset: true }).nullable().optional();
+
+export const lineaFacturaSchema = z
+  .object({
+    id: z.string().optional(),
+    product_id: z.number().int().positive().nullable().optional(),
+    description: z.string().trim().min(1).max(1000),
+    qty: numeroOpcional.positive(),
+    unit_price: numeroOpcional.min(0),
+    tax_code: z.string().max(40).nullable().optional(),
+    tax_rate: numeroOpcional.min(0).max(100).nullable().optional(),
+    tax_included: z.boolean().optional(),
+    total_line: numeroOpcional,
+    discount_amount: numeroOpcional.min(0).nullable().optional(),
+    serial_ids: z.array(z.number().int().positive()).max(1000).optional(),
+  })
+  .strip();
+
+/**
+ * Lo que envía el formulario. La organización NO viaja: sale de la sesión.
+ * Los totales tampoco: los calcula la base desde las líneas.
+ */
+export const guardarFacturaSchema = z
+  .object({
+    number: z.string().trim().max(60).nullable().optional(),
+    customer_id: uuidOpcional,
+    branch_id: z.number().int().positive(),
+    issue_date: fechaInstante,
+    due_date: fechaInstante,
+    currency: z.string().trim().length(3).nullable().optional(),
+    payment_terms: z.number().int().min(0).max(3650).nullable().optional(),
+    payment_method: z.string().trim().max(60).nullable().optional(),
+    notes: z.string().max(5000).nullable().optional(),
+    tax_included: z.boolean().optional(),
+    salesperson_id: uuidOpcional,
+    opportunity_id: uuidOpcional,
+    commission_rate: numeroOpcional.min(0).nullable().optional(),
+    commission_type: z.enum(['salesperson', 'intermediation_sale', 'none']).nullable().optional(),
+    commission_method: z.enum(['percentage', 'fixed_amount']).nullable().optional(),
+    include_in_cash_register: z.boolean().optional(),
+    applied_taxes: z.array(z.object({ tax_code: z.string().trim().min(1).max(40), tax_rate: numeroOpcional.min(0).max(100).optional() }).strip()).max(50).optional(),
+    items: z.array(lineaFacturaSchema).min(1).max(500),
+  })
+  .strip();
+export type DatosFactura = z.infer<typeof guardarFacturaSchema>;
+
+export interface ResultadoGuardarFactura {
+  id: string;
+  numero: string | null;
+  saleId: string | null;
+  total: number;
+  faltantes: FaltanteStock[];
+}
 
 export interface FaltanteStock {
   product_id: number;

@@ -45,8 +45,6 @@ import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import { useTranslations } from 'next-intl';
-
-/** Clave de localStorage con el ancho elegido para el panel de carrito/pago. */
 import {
   itemsParaImprimir,
   lineaParaRonda,
@@ -54,6 +52,8 @@ import {
   type TextosAjusteImpreso,
 } from '@/lib/pos/cocina/lineasCarrito';
 import { CocinaError, enviarRondaCocina } from '@/components/pos/cocina/cocinaCliente';
+
+/** Clave de localStorage con el ancho elegido para el panel de carrito/pago. */
 const POS_LAYOUT_ID = 'pos-layout-productos-carrito';
 
 export default function POSPage() {
@@ -80,9 +80,9 @@ export default function POSPage() {
   const { formatear } = useMonedaOrganizacion();
   const { timezone } = useOrgTimezone();
   const tHeader = useTranslations('header');
+  const tCocina = useTranslations('posCocina');
   // Shell móvil (Figma MobileHeader Mode=pos y MobileTabBar): la cabecera
   // muestra el estado de la caja, y la barra inferior se oculta con el carrito
-  const tCocina = useTranslations('posCocina');
   // abierto o cobrando, donde manda la botonera «Cobrar».
   useCabeceraMovil({
     modo: 'pos',

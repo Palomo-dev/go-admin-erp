@@ -8847,6 +8847,114 @@
       "errorTitulo": "La table n’a pas pu être libérée"
     }
   },
+  "posNotasLinea": {
+    "errorExcluirImpuesto": "Impossible d’enregistrer « Exclure la taxe »",
+    "errorNota": "Impossible d’enregistrer la note",
+    "enviada": "En cuisine ×{cantidad}",
+    "cambioPendiente": "Modification non envoyée en cuisine",
+    "notaCocina": "Note pour la cuisine",
+    "notaCliente": "Note pour le client",
+    "alergiaBadge": "Allergie : {nota}",
+    "destino": "Destination de la note",
+    "destinoCocina": "Cuisine",
+    "destinoCliente": "Client",
+    "alergia": "Allergie",
+    "placeholderCocina": "Ex. : sans oignon, bien cuit…",
+    "placeholderCliente": "Ex. : emballer à emporter",
+    "guardar": "Enregistrer la note",
+    "cancelar": "Annuler",
+    "editarNota": "Modifier la note",
+    "agregarNota": "Ajouter une note",
+    "rapidas": "Notes rapides",
+    "masUsadas": "Les plus utilisées :",
+    "usos": "Utilisée {usos} fois",
+    "alergiaMesa": "La note est une allergie (la cuisine doit la confirmer)"
+  },
+  "posCocina": {
+    "sinPreparacion": "Aucun produit du panier ne nécessite de préparation",
+    "sinCambios": "Rien de nouveau ni de modifié à envoyer en cuisine",
+    "yaEnviada": "Cette tournée était déjà en cuisine : elle n’a pas été renvoyée",
+    "sinImpresora": "Bon créé dans Commandes. Pas d’imprimante pour : {estaciones}",
+    "enviado": "Envoyé en cuisine : {nuevas} nouveaux, {ajustes} ajustements",
+    "impreso": {
+      "ajuste": "AJUSTEMENT du #{id}",
+      "mas": "+{cantidad} EN PLUS",
+      "menos": "−{cantidad} EN MOINS",
+      "anular": "ANNULER",
+      "nota": "NOUVELLE NOTE",
+      "alergia": "ALLERGIE"
+    },
+    "errores": {
+      "sin_membresia": "Vous n’appartenez pas à cette organisation",
+      "datos_invalidos": "Les données du bon ne sont pas valides",
+      "sucursal_de_otra_organizacion": "La succursale n’appartient pas à cette organisation",
+      "ronda_de_otro_carrito": "La tournée appartient à un autre panier",
+      "linea_invalida": "Le panier contient une ligne invalide",
+      "linea_duplicada": "Le panier contient une ligne en double",
+      "error_interno": "Impossible d’envoyer en cuisine. Réessayez : il n’y aura pas de doublon."
+    }
+  },
+  "posComandas": {
+    "ajuste": "AJUSTEMENT",
+    "ajusteDe": "AJUSTEMENT du #{id}",
+    "alergiaPendiente": "ALLERGIE : confirmez-la avant de commencer",
+    "alergiaConfirmada": "Allergie confirmée à {hora}",
+    "confirmarAlergia": "Confirmer l’allergie",
+    "mas": "+{cantidad} en plus",
+    "menos": "−{cantidad} en moins",
+    "anular": "ANNULER",
+    "notaCambiada": "NOUVELLE NOTE",
+    "anulado": "Annulé",
+    "anuladoMotivo": "Annulé : {motivo}",
+    "motivo": "Motif : {motivo}",
+    "alergia": "Allergie",
+    "alergiaConfirmadaToast": "Allergie du bon #{id} confirmée",
+    "errorConfirmarAlergia": "Impossible de confirmer l’allergie"
+  },
+  "posMesaAjuste": {
+    "alergia": "Allergie : {nota}",
+    "notaCliente": "Pour le client : {nota}",
+    "anularTitulo": "Annuler un plat déjà en cuisine ?",
+    "anularDescripcion": "« {producto} » a déjà été envoyé en cuisine. Il n’est pas supprimé : il est annulé, la cuisine est avertie et le motif est conservé.",
+    "cancelar": "Retour",
+    "anulando": "Annulation…",
+    "anular": "Annuler le plat",
+    "restarTitulo": "Retirer des unités d’un plat en cuisine",
+    "restarDescripcion": "« {producto} » : de {antes} à {despues}. La cuisine recevra un bon d’ajustement avec le motif.",
+    "confirmarCambio": "Confirmer la modification",
+    "motivo": "Motif",
+    "motivoPlaceholder": "Ex. : le client a changé d’avis",
+    "motivoAyuda": "Obligatoire : il figure sur le bon d’ajustement et dans l’historique de la table."
+  },
+  "posNotasRapidas": {
+    "titulo": "Notes rapides",
+    "descripcion": "Boutons de l’éditeur de note de ligne du POS, pour toute l’organisation ou par succursale.",
+    "errorCargar": "Impossible de charger les notes rapides",
+    "placeholder": "Ex. : sans oignon",
+    "texto": "Texte de la note",
+    "tipo": "Type de note",
+    "sucursal": "Succursale",
+    "toda": "Toute l’organisation",
+    "agregar": "Ajouter",
+    "vacio": "Aucune note rapide configurée pour l’instant",
+    "activa": "Active",
+    "borrar": "Supprimer",
+    "masUsadas": "Les plus utilisées dans les ventes",
+    "agregarSugerida": "Ajouter comme note rapide de cuisine",
+    "tipos": {
+      "kitchen": "Cuisine",
+      "customer": "Client",
+      "allergy": "Allergie"
+    },
+    "errores": {
+      "sin_permiso": "Vous n’avez pas l’autorisation de configurer les notes rapides",
+      "datos_invalidos": "Vérifiez le texte de la note",
+      "nota_duplicada": "Cette note rapide existe déjà",
+      "nota_no_encontrada": "La note rapide n’existe plus",
+      "sucursal_de_otra_organizacion": "La succursale n’appartient pas à cette organisation",
+      "error_interno": "Impossible d’enregistrer. Réessayez."
+    }
+  },
   "vozCampanasDisparo": {
     "interruptor": {
       "titulo": "Agent vocal IA",

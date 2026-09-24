@@ -532,7 +532,7 @@ export class PrintJobsService {
       discountTotal?: number;
       tipAmount?: number;
       deliveryFee?: number;
-      items: Array<{ productName: string; quantity: number; unitPrice: number; total: number; taxAmount?: number; discountAmount?: number; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null }>;
+      items: Array<{ productName: string; quantity: number; unitPrice: number; total: number; taxAmount?: number; discountAmount?: number; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null; note?: string | null }>;
       payments?: Array<{ method: string; methodName?: string; amount: number }>;
       businessName?: string;
       businessNit?: string;
@@ -939,7 +939,7 @@ export class PrintJobsService {
       discountTotal?: number;
       taxIncluded?: boolean;
       taxLines?: Array<{ name: string; amount: number }> | null;
-      items: Array<{ productName: string; quantity: number; unitPrice: number; total: number; taxAmount?: number; discountAmount?: number; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null }>;
+      items: Array<{ productName: string; quantity: number; unitPrice: number; total: number; taxAmount?: number; discountAmount?: number; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null; note?: string | null }>;
       payments?: Array<{ method: string; methodName?: string; amount: number }>;
       customerName?: string;
       customerDocType?: string;

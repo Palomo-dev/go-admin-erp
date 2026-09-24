@@ -48,6 +48,8 @@ export interface SaleTicketItemPayload {
   discountAmount?: number;
   variantData?: Record<string, string> | null;
   modifiers?: Array<{ name: string; extraPrice: number }> | null;
+  /** Nota de la línea PARA EL CLIENTE. La de cocina nunca viaja en un ticket de venta. */
+  note?: string | null;
 }
 
 export interface SaleTicketPayment {

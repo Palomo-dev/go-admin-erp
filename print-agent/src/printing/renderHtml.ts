@@ -295,6 +295,10 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
     const discLine = item.discountAmount && item.discountAmount > 0
       ? `<div class="item-detail">Desc: -${formatMoney(item.discountAmount)}</div>`
       : '';
+    // Nota para el cliente (texto libre del cajero): se escapa.
+    const noteLine = item.note
+      ? `<div class="item-detail item-note">&raquo; ${item.note.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string)}</div>`
+      : '';
 
     return `
     <div class="item">
@@ -305,6 +309,7 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
       <div class="item-detail">${formatMoney(item.unitPrice)} c/u</div>
       ${variantLine}
       ${modifierLine}
+      ${noteLine}
       ${taxLine}
       ${discLine}
     </div>`;
@@ -665,6 +670,10 @@ function buildElectronicInvoiceBody(payload: ElectronicInvoicePrintPayload): str
     const discLine = item.discountAmount && item.discountAmount > 0
       ? `<div class="item-detail">Desc: -${formatMoney(item.discountAmount)}</div>`
       : '';
+    // Nota para el cliente (texto libre del cajero): se escapa.
+    const noteLine = item.note
+      ? `<div class="item-detail item-note">&raquo; ${item.note.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string)}</div>`
+      : '';
 
     return `
     <div class="item">
@@ -675,6 +684,7 @@ function buildElectronicInvoiceBody(payload: ElectronicInvoicePrintPayload): str
       <div class="item-detail">${formatMoney(item.unitPrice)} c/u</div>
       ${variantLine}
       ${modifierLine}
+      ${noteLine}
       ${taxLine}
       ${discLine}
     </div>`;

@@ -159,7 +159,10 @@ function projectLine(item: CartItem, index: number): DisplayLine {
   // → 3000 vs 2999.997). La pantalla formatea con Intl.NumberFormat.
   const total = qty * unitPrice;
   const discount = toAmount(item.discount_amount);
-  const note = typeof item.notes === 'string' && item.notes.trim().length > 0 ? item.notes.trim() : null;
+  // Solo la nota PARA EL CLIENTE: la de cocina (`notes`: «sin cebolla»,
+  // alergias) nunca sale en una pantalla que ve el cliente (decisión del
+  // dueño, 2026-09-23; POS-CARRITO-LINEAS-NOTAS.md).
+  const note = typeof item.customer_note === 'string' && item.customer_note.trim().length > 0 ? item.customer_note.trim() : null;
 
   return {
     id: lineId(item, index),

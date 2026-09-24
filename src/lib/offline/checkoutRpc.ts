@@ -128,7 +128,11 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
   const items: CheckoutEnvelopeItem[] = cart.items.map((item, idx) => {
     const calc = itemCalcs[idx];
     const notes: Record<string, unknown> = { product_name: item.product?.name };
+    // `extra` = nota de COCINA (nunca va al cliente); `customer_note` = nota
+    // para el cliente: pos_checkout_v1 la copia a invoice_items.note (factura).
     if (item.notes) notes.extra = item.notes;
+    if (item.notes && item.is_allergy) notes.is_allergy = true;
+    if (item.customer_note) notes.customer_note = item.customer_note;
     if (item.modifiers && item.modifiers.length > 0) notes.modifiers = item.modifiers;
     const fallbackNet = (item.unit_price || 0) * (item.quantity || 1) - (item.discount_amount || 0);
     const serialIds = checkout.serial_selections?.[item.product_id] ?? [];

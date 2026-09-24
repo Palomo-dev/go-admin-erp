@@ -35,6 +35,12 @@ import {
 // URL pública de una imagen de Storage (compartida con el replicador del catálogo, fase 4D).
 import { getStorageImageUrl } from '@/lib/utils/storageImageUrl';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import {
+  aplicarNotaALinea,
+  aplicarRondaAlCarrito,
+  type CambioNotaLinea,
+  type RespuestaRonda,
+} from '@/lib/pos/cocina/lineasCarrito';
 
 export class POSService {
   /**
@@ -932,8 +938,11 @@ export class POSService {
       const cart = carts[cartIndex];
       const modifiersKey = (mods?: CartItemModifier[]) =>
         (mods || []).map((m) => m.modifierId).sort().join(',');
+      // Una línea con nota (cocina, cliente o alergia) no absorbe unidades sin
+      // nota: «2 hamburguesas, una sin cebolla» son dos líneas (N4).
       const existingItemIndex = cart.items.findIndex(
         item => item.product_id === product.id && modifiersKey(item.modifiers) === modifiersKey(modifiers)
+          && !item.notes && !item.customer_note && !item.is_allergy
       );
 
       if (existingItemIndex >= 0) {
@@ -1093,6 +1102,56 @@ export class POSService {
       console.error('Error updating item tax_included:', error);
       throw error;
     }
+  }
+
+  /**
+   * Cambia un carrito guardado en `pos_carts_<org>` y lo guarda. Lee la lista
+   * COMPLETA (no `getActiveCarts()`), para no borrar de paso los carritos
+   * `hold_with_debt` o `cancelled` (misma razón que `removeCart`).
+   */
+  private static mutateStoredCart(cartId: string, mutate: (cart: Cart) => Cart): Cart {
+    const allCarts: Cart[] = JSON.parse(localStorage.getItem(`pos_carts_${this.organizationId}`) || '[]');
+    const cartIndex = allCarts.findIndex(c => c.id === cartId);
+    if (cartIndex === -1) throw new Error('Carrito no encontrado');
+    const updated = { ...mutate(allCarts[cartIndex]), updated_at: new Date().toISOString() };
+    allCarts[cartIndex] = updated;
+    this.saveCartsToStorage(allCarts);
+    return updated;
+  }
+
+  /**
+   * Nota de la línea (cocina, cliente, alergia). Hasta 2026-09-23 vivía solo
+   * en el estado de la pantalla y se perdía con la siguiente operación del
+   * servicio o al recargar (N1). No recalcula: la nota no toca importes.
+   */
+  static async updateCartItemNote(cartId: string, itemId: string, cambio: CambioNotaLinea): Promise<Cart> {
+    return this.mutateStoredCart(cartId, (cart) => {
+      if (!cart.items.some(item => item.id === itemId)) throw new Error('Item no encontrado');
+      return { ...cart, items: cart.items.map(item => (item.id === itemId ? aplicarNotaALinea(item, cambio) : item)) };
+    });
+  }
+
+  /**
+   * «Excluir impuesto» de la línea: se guarda con la línea (N1) con la MISMA
+   * semántica de siempre. No recalcula, igual que antes: `calculateCartTotals`
+   * no lee este flag; lo leen el Resumen y el cobro (análisis en
+   * docs/design/POS-CARRITO-LINEAS-NOTAS.md §7).
+   */
+  static async updateCartItemTaxExcluded(cartId: string, itemId: string, taxExcluded: boolean): Promise<Cart> {
+    return this.mutateStoredCart(cartId, (cart) => {
+      if (!cart.items.some(item => item.id === itemId)) throw new Error('Item no encontrado');
+      return { ...cart, items: cart.items.map(item => (item.id === itemId ? { ...item, tax_excluded: taxExcluded } : item)) };
+    });
+  }
+
+  /** Llave de la ronda «Enviar a cocina» en curso (se reutiliza al reintentar). */
+  static async setCartKitchenRoundKey(cartId: string, roundKey: string | null): Promise<Cart> {
+    return this.mutateStoredCart(cartId, (cart) => ({ ...cart, kitchen_round_key: roundKey }));
+  }
+
+  /** Guarda en el carrito lo que devolvió la ronda: comanda y lo enviado por línea. */
+  static async applyKitchenRound(cartId: string, respuesta: RespuestaRonda): Promise<Cart> {
+    return this.mutateStoredCart(cartId, (cart) => aplicarRondaAlCarrito(cart, respuesta));
   }
 
   static async getFrequentDiscounts(productId: number, organizationId: number): Promise<number[]> {

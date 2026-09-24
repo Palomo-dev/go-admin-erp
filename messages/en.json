@@ -8952,6 +8952,114 @@
       "errorTitulo": "The table could not be released"
     }
   },
+  "posNotasLinea": {
+    "errorExcluirImpuesto": "Could not save “Exclude tax”",
+    "errorNota": "Could not save the note",
+    "enviada": "In kitchen ×{cantidad}",
+    "cambioPendiente": "Change not sent to kitchen",
+    "notaCocina": "Note for the kitchen",
+    "notaCliente": "Note for the customer",
+    "alergiaBadge": "Allergy: {nota}",
+    "destino": "Note destination",
+    "destinoCocina": "Kitchen",
+    "destinoCliente": "Customer",
+    "alergia": "Allergy",
+    "placeholderCocina": "E.g. no onion, well done…",
+    "placeholderCliente": "E.g. pack to go",
+    "guardar": "Save note",
+    "cancelar": "Cancel",
+    "editarNota": "Edit note",
+    "agregarNota": "Add note",
+    "rapidas": "Quick notes",
+    "masUsadas": "Most used:",
+    "usos": "Used {usos} times",
+    "alergiaMesa": "The note is an allergy (the kitchen must confirm it)"
+  },
+  "posCocina": {
+    "sinPreparacion": "There are no products that require preparation in the cart",
+    "sinCambios": "Nothing new or changed to send to the kitchen",
+    "yaEnviada": "This round was already in the kitchen: it was not sent again",
+    "sinImpresora": "Ticket created in Kitchen orders. No printer for: {estaciones}",
+    "enviado": "Sent to kitchen: {nuevas} new, {ajustes} adjustments",
+    "impreso": {
+      "ajuste": "ADJUSTMENT to #{id}",
+      "mas": "+{cantidad} MORE",
+      "menos": "−{cantidad} LESS",
+      "anular": "CANCEL",
+      "nota": "NEW NOTE",
+      "alergia": "ALLERGY"
+    },
+    "errores": {
+      "sin_membresia": "You do not belong to this organization",
+      "datos_invalidos": "The kitchen order data is not valid",
+      "sucursal_de_otra_organizacion": "The branch does not belong to this organization",
+      "ronda_de_otro_carrito": "The round belongs to another cart",
+      "linea_invalida": "There is an invalid line in the cart",
+      "linea_duplicada": "There is a repeated line in the cart",
+      "error_interno": "Could not send to the kitchen. Try again: it will not be duplicated."
+    }
+  },
+  "posComandas": {
+    "ajuste": "ADJUSTMENT",
+    "ajusteDe": "ADJUSTMENT to #{id}",
+    "alergiaPendiente": "ALLERGY: confirm it before starting",
+    "alergiaConfirmada": "Allergy confirmed at {hora}",
+    "confirmarAlergia": "Confirm allergy",
+    "mas": "+{cantidad} more",
+    "menos": "−{cantidad} less",
+    "anular": "CANCEL",
+    "notaCambiada": "NEW NOTE",
+    "anulado": "Cancelled",
+    "anuladoMotivo": "Cancelled: {motivo}",
+    "motivo": "Reason: {motivo}",
+    "alergia": "Allergy",
+    "alergiaConfirmadaToast": "Allergy of order #{id} confirmed",
+    "errorConfirmarAlergia": "Could not confirm the allergy"
+  },
+  "posMesaAjuste": {
+    "alergia": "Allergy: {nota}",
+    "notaCliente": "For the customer: {nota}",
+    "anularTitulo": "Cancel a dish that is already in the kitchen?",
+    "anularDescripcion": "“{producto}” was already sent to the kitchen. It is not deleted: it is cancelled, the kitchen is notified and the reason is kept.",
+    "cancelar": "Back",
+    "anulando": "Cancelling…",
+    "anular": "Cancel dish",
+    "restarTitulo": "Remove units from a dish in the kitchen",
+    "restarDescripcion": "“{producto}”: from {antes} to {despues}. The kitchen will receive an adjustment ticket with the reason.",
+    "confirmarCambio": "Confirm change",
+    "motivo": "Reason",
+    "motivoPlaceholder": "E.g. the customer changed their mind",
+    "motivoAyuda": "Required: it appears on the adjustment ticket and in the table history."
+  },
+  "posNotasRapidas": {
+    "titulo": "Quick notes",
+    "descripcion": "Buttons of the line note editor in the POS, for the whole organization or per branch.",
+    "errorCargar": "Could not load the quick notes",
+    "placeholder": "E.g. no onion",
+    "texto": "Note text",
+    "tipo": "Note type",
+    "sucursal": "Branch",
+    "toda": "Whole organization",
+    "agregar": "Add",
+    "vacio": "No quick notes configured yet",
+    "activa": "Active",
+    "borrar": "Delete",
+    "masUsadas": "Most used in sales",
+    "agregarSugerida": "Add as a kitchen quick note",
+    "tipos": {
+      "kitchen": "Kitchen",
+      "customer": "Customer",
+      "allergy": "Allergy"
+    },
+    "errores": {
+      "sin_permiso": "You do not have permission to configure quick notes",
+      "datos_invalidos": "Check the note text",
+      "nota_duplicada": "That quick note already exists",
+      "nota_no_encontrada": "The quick note no longer exists",
+      "sucursal_de_otra_organizacion": "The branch does not belong to this organization",
+      "error_interno": "Could not save. Try again."
+    }
+  },
   "vozCampanasDisparo": {
     "interruptor": {
       "titulo": "AI voice agent",

@@ -8847,6 +8847,114 @@
       "errorTitulo": "Não foi possível liberar a mesa"
     }
   },
+  "posNotasLinea": {
+    "errorExcluirImpuesto": "Não foi possível salvar «Excluir imposto»",
+    "errorNota": "Não foi possível salvar a nota",
+    "enviada": "Na cozinha ×{cantidad}",
+    "cambioPendiente": "Alteração não enviada à cozinha",
+    "notaCocina": "Nota para a cozinha",
+    "notaCliente": "Nota para o cliente",
+    "alergiaBadge": "Alergia: {nota}",
+    "destino": "Destino da nota",
+    "destinoCocina": "Cozinha",
+    "destinoCliente": "Cliente",
+    "alergia": "Alergia",
+    "placeholderCocina": "Ex.: sem cebola, bem passado…",
+    "placeholderCliente": "Ex.: embalar para viagem",
+    "guardar": "Salvar nota",
+    "cancelar": "Cancelar",
+    "editarNota": "Editar nota",
+    "agregarNota": "Adicionar nota",
+    "rapidas": "Notas rápidas",
+    "masUsadas": "Mais usadas:",
+    "usos": "Usada {usos} vezes",
+    "alergiaMesa": "A nota é uma alergia (a cozinha deve confirmá-la)"
+  },
+  "posCocina": {
+    "sinPreparacion": "Não há produtos que exijam preparo no carrinho",
+    "sinCambios": "Não há nada novo nem alterado para enviar à cozinha",
+    "yaEnviada": "Esta rodada já estava na cozinha: não foi enviada de novo",
+    "sinImpresora": "Comanda criada em Comandas. Sem impressora para: {estaciones}",
+    "enviado": "Enviado à cozinha: {nuevas} novos, {ajustes} ajustes",
+    "impreso": {
+      "ajuste": "AJUSTE da #{id}",
+      "mas": "+{cantidad} A MAIS",
+      "menos": "−{cantidad} A MENOS",
+      "anular": "CANCELAR",
+      "nota": "NOTA NOVA",
+      "alergia": "ALERGIA"
+    },
+    "errores": {
+      "sin_membresia": "Você não pertence a esta organização",
+      "datos_invalidos": "Os dados da comanda não são válidos",
+      "sucursal_de_otra_organizacion": "A filial não é desta organização",
+      "ronda_de_otro_carrito": "A rodada pertence a outro carrinho",
+      "linea_invalida": "Há uma linha inválida no carrinho",
+      "linea_duplicada": "Há uma linha repetida no carrinho",
+      "error_interno": "Não foi possível enviar à cozinha. Tente de novo: não será duplicado."
+    }
+  },
+  "posComandas": {
+    "ajuste": "AJUSTE",
+    "ajusteDe": "AJUSTE da #{id}",
+    "alergiaPendiente": "ALERGIA: confirme antes de começar",
+    "alergiaConfirmada": "Alergia confirmada às {hora}",
+    "confirmarAlergia": "Confirmar alergia",
+    "mas": "+{cantidad} a mais",
+    "menos": "−{cantidad} a menos",
+    "anular": "CANCELAR",
+    "notaCambiada": "NOTA NOVA",
+    "anulado": "Cancelado",
+    "anuladoMotivo": "Cancelado: {motivo}",
+    "motivo": "Motivo: {motivo}",
+    "alergia": "Alergia",
+    "alergiaConfirmadaToast": "Alergia da comanda #{id} confirmada",
+    "errorConfirmarAlergia": "Não foi possível confirmar a alergia"
+  },
+  "posMesaAjuste": {
+    "alergia": "Alergia: {nota}",
+    "notaCliente": "Para o cliente: {nota}",
+    "anularTitulo": "Cancelar um prato que já está na cozinha?",
+    "anularDescripcion": "«{producto}» já foi enviado à cozinha. Não é apagado: é cancelado, a cozinha recebe o aviso e o motivo fica registrado.",
+    "cancelar": "Voltar",
+    "anulando": "Cancelando…",
+    "anular": "Cancelar prato",
+    "restarTitulo": "Retirar unidades de um prato na cozinha",
+    "restarDescripcion": "«{producto}»: de {antes} para {despues}. A cozinha receberá uma comanda de ajuste com o motivo.",
+    "confirmarCambio": "Confirmar alteração",
+    "motivo": "Motivo",
+    "motivoPlaceholder": "Ex.: o cliente mudou de ideia",
+    "motivoAyuda": "Obrigatório: aparece na comanda de ajuste e no histórico da mesa."
+  },
+  "posNotasRapidas": {
+    "titulo": "Notas rápidas",
+    "descripcion": "Botões do editor de nota da linha no PDV, para toda a organização ou por filial.",
+    "errorCargar": "Não foi possível carregar as notas rápidas",
+    "placeholder": "Ex.: sem cebola",
+    "texto": "Texto da nota",
+    "tipo": "Tipo de nota",
+    "sucursal": "Filial",
+    "toda": "Toda a organização",
+    "agregar": "Adicionar",
+    "vacio": "Ainda não há notas rápidas configuradas",
+    "activa": "Ativa",
+    "borrar": "Excluir",
+    "masUsadas": "As mais usadas nas vendas",
+    "agregarSugerida": "Adicionar como nota rápida de cozinha",
+    "tipos": {
+      "kitchen": "Cozinha",
+      "customer": "Cliente",
+      "allergy": "Alergia"
+    },
+    "errores": {
+      "sin_permiso": "Você não tem permissão para configurar as notas rápidas",
+      "datos_invalidos": "Revise o texto da nota",
+      "nota_duplicada": "Essa nota rápida já existe",
+      "nota_no_encontrada": "A nota rápida não existe mais",
+      "sucursal_de_otra_organizacion": "A filial não é desta organização",
+      "error_interno": "Não foi possível salvar. Tente de novo."
+    }
+  },
   "vozCampanasDisparo": {
     "interruptor": {
       "titulo": "Agente de voz IA",

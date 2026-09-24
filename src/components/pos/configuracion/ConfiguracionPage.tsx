@@ -51,6 +51,7 @@ import {
 } from './configuracionService';
 import { CajasService } from '@/components/pos/cajas/CajasService';
 import { PrintersSection } from './printers/PrintersSection';
+import { NotasRapidasSection } from './NotasRapidasSection';
 import { PrintAgentStatusCard } from './printers/PrintAgentStatusCard';
 import { RecentPrintJobsTable } from './printers/RecentPrintJobsTable';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -960,6 +961,9 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
           )}
         </CardContent>
       </Card>
+
+      {/* Notas rápidas del editor de nota de la línea (por organización o sucursal) */}
+      <NotasRapidasSection branches={branches} />
 
       {/* Impresoras */}
       <PrintersSection branches={branches} />

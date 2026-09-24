@@ -144,7 +144,7 @@ describe('proyección · contrato básico', () => {
             { groupId: 1, groupName: 'Leche', modifierId: 5, name: 'Leche de almendras', extraPrice: 1500 },
             { groupId: 2, groupName: 'Tamaño', modifierId: 9, name: 'Grande', extraPrice: 0 },
           ],
-          notes: '  sin azúcar  ',
+          customer_note: '  sin azúcar  ',
         }),
       ],
     });
@@ -202,9 +202,9 @@ describe('proyección · contrato básico', () => {
   it('notas: solo espacios → null; con texto se recortan los extremos y se conservan los saltos internos', () => {
     const c = cart({
       items: [
-        item({ id: 'l1', product_id: 1, notes: '   ' }),
-        item({ id: 'l2', product_id: 2, notes: ' bien caliente ' }),
-        item({ id: 'l3', product_id: 3, notes: '  sin cebolla\n  bien caliente  ' }),
+        item({ id: 'l1', product_id: 1, customer_note: '   ' }),
+        item({ id: 'l2', product_id: 2, customer_note: ' bien caliente ' }),
+        item({ id: 'l3', product_id: 3, customer_note: '  sin cebolla\n  bien caliente  ' }),
       ],
     });
     expect(projectCartForDisplay(c, { currency: 'COP' }).lines.map((l) => l.note)).toEqual([null, 'bien caliente', 'sin cebolla\n  bien caliente']);
@@ -268,7 +268,7 @@ describe('proyección · contrato básico', () => {
 
   it('la salida sobrevive a structuredClone y a JSON (lo que exigen BroadcastChannel y Realtime)', () => {
     const c = cart({
-      items: [item({ id: 'l1', product_id: 1, notes: 'x', modifiers: [{ groupId: 1, groupName: 'g', modifierId: 1, name: 'M', extraPrice: 5 }] })],
+      items: [item({ id: 'l1', product_id: 1, customer_note: 'x', modifiers: [{ groupId: 1, groupName: 'g', modifierId: 1, name: 'M', extraPrice: 5 }] })],
     });
     const out = projectCartForDisplay(c, { currency: 'COP', lastChangedLineId: 'l1' });
     expect(JSON.parse(JSON.stringify(out))).toEqual(out);
@@ -680,7 +680,7 @@ describe('proyección · carritos corruptos de localStorage', () => {
       { groupId: 1, groupName: 'g', modifierId: 4, name: 42, extraPrice: 100 },
       { name: 'x'.repeat(500), extraPrice: 0 },
     ]);
-    const c = cart({ items: [item({ id: 'l1', product_id: 1, notes: 'sin sal', modifiers: mods })] });
+    const c = cart({ items: [item({ id: 'l1', product_id: 1, customer_note: 'sin sal', modifiers: mods })] });
     const line = projectCartForDisplay(c, { currency: 'COP' }).lines[0];
     expect(line.modifiers).toEqual([
       { name: 'Sin precio', extraPrice: 0 },
@@ -698,7 +698,7 @@ describe('proyección · carritos corruptos de localStorage', () => {
   });
 
   it('producto ausente → name "" y variant null; modifiers y note siguen saliendo; product.name no string → ""', () => {
-    const sinProducto = { ...item({ id: 'l1', product_id: 1, notes: 'n' }), product: undefined } as unknown as CartItem;
+    const sinProducto = { ...item({ id: 'l1', product_id: 1, customer_note: 'n' }), product: undefined } as unknown as CartItem;
     const line = projectCartForDisplay(cart({ items: [sinProducto] }), { currency: 'COP' }).lines[0];
     expect(line.name).toBe('');
     expect(line.variant).toBeNull();

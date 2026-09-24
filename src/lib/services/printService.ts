@@ -283,6 +283,9 @@ export class PrintService {
           discountAmount: item.discount_amount,
           variantData: anyItem.product?.variant_data || anyItem.variant_data || null,
           modifiers: Array.isArray(notes?.modifiers) ? notes.modifiers : null,
+          // Solo la nota para el cliente (`customer_note`); la de cocina
+          // (`extra`) nunca sale en el recibo.
+          note: typeof notes?.customer_note === 'string' && notes.customer_note.trim() ? notes.customer_note.trim() : null,
         };
       }),
       subtotal: sale.subtotal,

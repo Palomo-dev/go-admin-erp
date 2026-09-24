@@ -1222,6 +1222,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             discountAmount: item.discount_amount,
             variantData: (item as any).product?.variant_data || null,
             modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
+            // Solo la nota PARA EL CLIENTE; la de cocina (`notes`) nunca va al ticket.
+            note: item.customer_note || null,
           })),
           payments: paymentsList,
           businessName: organization?.name,
@@ -1416,6 +1418,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                         discountAmount: item.discount_amount,
                         variantData: (item as any).product?.variant_data || null,
                         modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
+                        note: item.customer_note || null,
                       })),
                       payments: payments.filter(p => p.amount > 0).map(p => ({
                         method: p.method,
@@ -1513,6 +1516,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         notes: {
           product_name: item.product?.name || 'Producto',
           ...(item.modifiers && item.modifiers.length > 0 ? { modifiers: item.modifiers } : {}),
+          ...(item.customer_note ? { customer_note: item.customer_note } : {}),
         },
         product_name: item.product?.name || 'Producto',
         product: item.product

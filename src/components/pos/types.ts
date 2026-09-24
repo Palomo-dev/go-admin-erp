@@ -98,7 +98,18 @@ export interface CartItem {
   tax_rate?: number;
   tax_excluded?: boolean;
   tax_included?: boolean;
+  /** Nota para COCINA (comanda, KDS, ticket de cocina). Nunca sale al cliente. */
   notes?: string;
+  /** Nota para el CLIENTE: ticket, recibo y factura electrónica. */
+  customer_note?: string;
+  /** La nota de cocina es una alergia: la comanda no se empieza sin confirmarla. */
+  is_allergy?: boolean;
+  /** Unidades que la cocina ya tiene de esta línea (según la última ronda enviada). */
+  kitchen_sent_qty?: number;
+  /** Nota de cocina tal como se envió la última vez. */
+  kitchen_sent_note?: string | null;
+  /** Si lo último enviado de esta línea era alergia. */
+  kitchen_sent_allergy?: boolean;
   modifiers?: CartItemModifier[];
   created_at: string;
   updated_at: string;
@@ -125,6 +136,8 @@ export interface Cart {
   tax_included?: boolean;
   applied_tax_ids?: string[];
   kitchen_ticket_id?: number | null;
+  /** Llave de la ronda «Enviar a cocina» en curso: reintentarla no duplica la comanda. */
+  kitchen_round_key?: string | null;
   sale_id?: string;
   invoice_id?: string;
 }

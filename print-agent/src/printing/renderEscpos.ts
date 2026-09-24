@@ -424,6 +424,10 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, pa
       device.style('normal');
     }
 
+    if (item.note) {
+      for (const line of wrapText(`» ${item.note}`, chars - 2)) device.text(`  ${line}`);
+    }
+
     if (item.taxAmount && item.taxAmount > 0) {
       device.text(`  Imp: ${formatMoney(item.taxAmount)}`);
     }
@@ -610,6 +614,8 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
       const text = `+ ${item.modifiers.map((m) => m.extraPrice > 0 ? `${m.name} (+${formatMoney(m.extraPrice)})` : m.name).join(', ')}`;
       lines.push(...wrapText(text, chars - 2).map((l) => `  ${l}`));
     }
+
+    if (item.note) lines.push(...wrapText(`» ${item.note}`, chars - 2).map((l) => `  ${l}`));
 
     if (item.taxAmount && item.taxAmount > 0) lines.push(`  Imp: ${formatMoney(item.taxAmount)}`);
     if (item.discountAmount && item.discountAmount > 0) lines.push(`  Desc: -${formatMoney(item.discountAmount)}`);
@@ -1003,6 +1009,10 @@ export function printElectronicInvoice(device: any, payload: ElectronicInvoicePr
       device.style('b');
       for (const line of wrapText(text, chars - 2)) device.text(`  ${line}`);
       device.style('normal');
+    }
+
+    if (item.note) {
+      for (const line of wrapText(`» ${item.note}`, chars - 2)) device.text(`  ${line}`);
     }
 
     if (item.taxAmount && item.taxAmount > 0) {

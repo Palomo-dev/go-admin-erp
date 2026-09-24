@@ -118,9 +118,12 @@ export function PreCuentaDialog({
                         👤 Comensal {notasObjeto(item.notes)?.guest_number}
                       </p>
                     )}
-                    {(typeof item.notes === 'object' ? notasObjeto(item.notes)?.extra : item.notes) && (
+                    {/* Solo la nota PARA EL CLIENTE. La de cocina («sin cebolla»,
+                        alergias: `extra`, o un texto suelto) nunca sale en la
+                        pre-cuenta, que se entrega al cliente (N5). */}
+                    {notasObjeto(item.notes)?.customer_note && (
                       <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 break-words whitespace-normal">
-                        📝 {typeof item.notes === 'object' ? notasObjeto(item.notes)?.extra : item.notes}
+                        {notasObjeto(item.notes)?.customer_note}
                       </p>
                     )}
                   </div>

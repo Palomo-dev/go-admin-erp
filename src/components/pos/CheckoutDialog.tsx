@@ -275,6 +275,13 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // el recibido es solo el efectivo tecleado (resolveCashReceived): teclear
   // la tarjeta no convierte en «recibido» un efectivo pre-rellenado.
   const saleConfirmedRef = useRef(false);
+  // Intento de cobro (E-35 / BE3): el id de la venta se genera UNA vez por
+  // intento, al primer «Completar venta», y se reutiliza en los reintentos.
+  // Si el primer envío llegó a la base pero la respuesta se perdió (timeout,
+  // red), reintentar con el mismo id hace que pos_checkout_v1 devuelva la venta
+  // ya creada en vez de crear otra. Antes el navegador lo generaba dentro de
+  // POSService.checkout en cada clic (y el escritorio, en cada clic también).
+  const intentoCobroRef = useRef<{ id: string; creadoEn: string } | null>(null);
   const [touchedIds, setTouchedIds] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     if (!open || showReceipt) return;
@@ -363,6 +370,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     if (open) {
       saleConfirmedRef.current = false;
       setTouchedIds(new Set());
+      // Cada apertura del cobro es un intento nuevo (otra venta u otra cuenta
+      // de la mesa); los reintentos DENTRO del mismo intento reusan su id.
+      intentoCobroRef.current = null;
       return;
     }
     // Cerrado sin vender: la pantalla vuelve al pedido. Tras una venta el
@@ -1135,6 +1145,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         total: calculatedTotals.finalTotal
       };
 
+      if (!intentoCobroRef.current) {
+        intentoCobroRef.current = { id: newSaleId(), creadoEn: new Date().toISOString() };
+      }
+      const intento = intentoCobroRef.current;
+
       const checkoutData: CheckoutData = {
         cart: updatedCart,
         payments: payments.map(p => ({ method: p.method, amount: p.amount })),
@@ -1160,10 +1175,13 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         driver_id: deliveryType === 'delivery_own' ? (selectedDriverId || undefined) : undefined,
         shipping_fee: shippingFee > 0 ? shippingFee : undefined,
         serial_selections: hasSerialItems && serialSelectionsComplete ? serialSelections : undefined,
-        // Desktop (fase 4B): id y fecha generados en el cliente. Con red la
-        // venta se inserta con ese id; sin red va al outbox y se reproduce con
-        // el mismo id (idempotente). En navegador no se envían: nada cambia.
-        ...(isDesktop() ? { saleId: newSaleId(), createdAt: new Date().toISOString() } : {}),
+        // Id y fecha del intento de cobro, generados una vez y reutilizados en
+        // los reintentos (navegador y escritorio). Con red la venta se inserta
+        // con ese id; sin red (escritorio) va al outbox con el mismo id. En un
+        // cobro de mesa o de deuda es la llave de idempotencia de los pagos.
+        saleId: intento.id,
+        createdAt: intento.creadoEn,
+        attemptId: intento.id,
       };
 
       const sale = onProcessPayment

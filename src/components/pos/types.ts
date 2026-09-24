@@ -319,6 +319,12 @@ export interface CheckoutData {
   userId?: string;
   /** true cuando `salesSync` reproduce un sobre: nunca vuelve a encolarse en el outbox. */
   replayFromOutbox?: boolean;
+  /**
+   * Id del intento de cobro del diálogo (uno por apertura, igual en todos sus
+   * reintentos). En una venta nueva coincide con `saleId`; en el cobro de una
+   * venta que ya existe (mesa, deuda) es la llave de idempotencia de los pagos.
+   */
+  attemptId?: string;
 }
 
 // Para impuestos

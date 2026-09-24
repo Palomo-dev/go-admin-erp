@@ -469,7 +469,7 @@ export function CuentasPorPagarPage() {
             setMostrarModalOpenFinance(open);
             if (!open) setCuentaSeleccionada(null);
           }}
-          accountPayableId={Number(cuentaSeleccionada.id)}
+          accountPayableId={String(cuentaSeleccionada.id)}
           supplierName={cuentaSeleccionada.supplier?.name || 'Sin nombre'}
           amount={cuentaSeleccionada.balance}
           dueDate={cuentaSeleccionada.due_date}

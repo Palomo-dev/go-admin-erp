@@ -1,8 +1,7 @@
 'use client';
 
-import React from 'react';
-import { FacturasCompraPage } from '@/components/finanzas/facturas-compra/FacturasCompraPage';
+import FacturasCompraListado from '@/components/finanzas/facturas-compra/listado/FacturasCompraListado';
 
 export default function FacturasCompra() {
-  return <FacturasCompraPage />;
+  return <FacturasCompraListado />;
 }

@@ -9364,21 +9364,423 @@
   },
   "facturasCompra": {
     "titulo": "Factures d'achat",
+    "sustantivo": {
+      "singular": "facture d'achat",
+      "plural": "factures d'achat"
+    },
+    "migas": {
+      "finanzas": "Finances"
+    },
     "recepcion": {
       "por_recibir": "À réceptionner",
       "recibido": "Réceptionné",
       "no_aplica": "Sans objet"
     },
-    "pago": {
+    "estadoPago": {
+      "borrador": "Brouillon",
       "pendiente": "En attente",
       "parcial": "Paiement partiel",
+      "vencida": "Échue",
       "pagada": "Payée",
-      "anulada": "Annulée",
-      "borrador": "Brouillon"
+      "anulada": "Annulée"
+    },
+    "estadoVencida": "{dias, plural, one {Échue depuis # jour} other {Échue depuis # jours}}",
+    "errores": {
+      "sin_permiso": "Vous n'avez pas l'autorisation de faire cela.",
+      "sucursal_no_permitida": "Vous n'avez pas accès à cette succursale.",
+      "no_encontrado": "La facture n'existe pas ou n'appartient pas à votre organisation.",
+      "numero_requerido": "Saisissez le numéro de la facture du fournisseur.",
+      "numero_duplicado": "Il existe déjà une facture de ce fournisseur avec ce numéro.",
+      "proveedor_invalido": "Choisissez un fournisseur de votre organisation.",
+      "sucursal_invalida": "Choisissez une succursale valide.",
+      "lineas_requeridas": "Ajoutez au moins une ligne.",
+      "linea_invalida": "Une ligne a une quantité, un prix ou une remise invalide.",
+      "linea_sin_descripcion": "Une ligne n'a pas de description.",
+      "producto_ajeno": "L'un des produits n'appartient pas à votre organisation.",
+      "moneda_invalida": "La devise n'est pas valide.",
+      "metodo_invalido": "Le mode de paiement n'est pas valide.",
+      "orden_invalida": "Le bon de commande n'existe pas ou ne peut pas être facturé.",
+      "orden_sin_recepcion": "Rien n'a encore été réceptionné sur le bon de commande.",
+      "retencion_invalida": "Vérifiez les retenues : la base, le taux ou le montant n'est pas valide.",
+      "vencimiento_antes_de_emision": "L'échéance ne peut pas précéder la date d'émission.",
+      "no_editable": "Seuls les brouillons peuvent être modifiés.",
+      "ya_confirmada": "La facture était déjà confirmée.",
+      "sin_lineas": "La facture n'a pas de lignes.",
+      "no_confirmada": "Confirmez d'abord la facture.",
+      "anulada": "La facture est annulée.",
+      "solo_borrador": "Seuls les brouillons peuvent être supprimés.",
+      "tiene_pagos": "La facture a des paiements : annulez-les d'abord.",
+      "tiene_asiento": "La facture a déjà une écriture comptable.",
+      "ya_anulada": "La facture était déjà annulée.",
+      "cuenta_sin_saldo": "Le compte n'a pas de solde restant.",
+      "monto_invalido": "Le montant doit être supérieur à zéro.",
+      "excede_saldo": "Le montant dépasse le solde restant.",
+      "excede_saldo_programable": "Le montant dépasse ce qui reste à programmer.",
+      "fecha_pasada": "La date ne peut pas être antérieure à aujourd'hui.",
+      "cuenta_bancaria_invalida": "Le compte bancaire n'est pas valide.",
+      "cuota_invalida": "L'échéance n'est pas valide.",
+      "programacion_no_pendiente": "Cette programmation n'est plus en attente.",
+      "segregacion_funciones": "La personne qui programme un paiement ne peut pas l'approuver.",
+      "motivo_requerido": "Indiquez le motif.",
+      "plan_con_abonos": "L'échéancier a déjà des paiements et ne peut pas être modifié.",
+      "plan_no_cuadra": "Les échéances ne correspondent pas au solde du compte.",
+      "cuotas_invalidas": "Vérifiez les échéances : montants ou dates invalides.",
+      "rango_invalido": "La période n'est pas valide.",
+      "datos_invalidos": "Vérifiez les données du formulaire.",
+      "error_desconocido": "L'opération n'a pas pu aboutir. Réessayez."
+    },
+    "listado": {
+      "subtitulo": "{n} factures",
+      "nueva": "Nouvelle facture",
+      "proveedores": "Fournisseurs",
+      "buscar": {
+        "etiqueta": "Rechercher des factures",
+        "placeholder": "Numéro ou fournisseur"
+      },
+      "kpis": {
+        "etiqueta": "Résumé des factures d'achat",
+        "porPagar": "À payer",
+        "abiertas": "Factures ouvertes : {n}",
+        "vencidas": "Échues",
+        "nFacturas": "Factures : {n}",
+        "proximas": "Échéance sous 7 jours",
+        "criticas": "Sous 3 jours ou moins : {n}",
+        "porRecibir": "À réceptionner",
+        "borradores": "Brouillons : {n}"
+      },
+      "filtros": {
+        "estado": "Statut",
+        "recepcion": "Réception",
+        "emision": "Émission",
+        "todos": "Tous",
+        "todas": "Toutes",
+        "verN": "Voir {n} résultats"
+      },
+      "chips": {
+        "rango": "Émission : {desde} – {hasta}"
+      },
+      "columnas": {
+        "numero": "Numéro",
+        "emitida": "Émise",
+        "vence": "Échéance",
+        "total": "Total",
+        "saldo": "Solde",
+        "recepcion": "Réception",
+        "estado": "Statut",
+        "documentoSoporte": "Doc. justificatif"
+      },
+      "acciones": {
+        "ver": "Voir le détail",
+        "pagar": "Enregistrer un paiement",
+        "recepcionar": "Réceptionner",
+        "pdf": "Télécharger le PDF",
+        "editar": "Modifier",
+        "eliminar": "Supprimer le brouillon"
+      },
+      "motivos": {
+        "borrador": "Confirmez d'abord la facture",
+        "sinSaldo": "Aucun solde restant",
+        "yaRecibida": "Déjà réceptionnée en stock"
+      },
+      "exportar": {
+        "csv": "Exporter en CSV",
+        "seleccion": "Exporter la sélection",
+        "exportando": "Exportation…",
+        "listo": "{n} factures exportées",
+        "error": "Exportation impossible",
+        "sinDatos": "Aucune facture à exporter",
+        "archivo": "factures_achat",
+        "columnas": {
+          "numero": "Numéro",
+          "proveedor": "Fournisseur",
+          "nit": "N° fiscal",
+          "emitida": "Émise",
+          "vence": "Échéance",
+          "moneda": "Devise",
+          "total": "Total",
+          "neto": "Net à payer",
+          "saldo": "Solde",
+          "estado": "Statut",
+          "recepcion": "Réception"
+        }
+      },
+      "etiquetaFila": "Facture {numero} de {proveedor}",
+      "pagarA": "Payer la facture {numero}",
+      "vence": "Échéance {fecha}",
+      "vencidaHace": "Échue depuis {dias} j",
+      "eliminarConfirmar": "Supprimer le brouillon {numero} ? Action irréversible.",
+      "eliminada": "Brouillon {numero} supprimé",
+      "errorCarga": "Impossible de charger les factures",
+      "sinResultados": "Aucune facture ne correspond aux filtres.",
+      "vacio": {
+        "titulo": "Pas encore de factures d'achat",
+        "descripcion": "Enregistrez la première facture d'un fournisseur ou générez-la depuis un bon de commande réceptionné."
+      }
+    },
+    "detalle": {
+      "titulo": "Facture {numero}",
+      "cargando": "Chargement de la facture…",
+      "volver": "Retour aux factures",
+      "noEncontrada": "Facture introuvable",
+      "noEncontradaDescripcion": "Elle n'existe pas ou n'appartient pas à votre organisation.",
+      "errorCarga": "Impossible de charger la facture",
+      "errorCargaDescripcion": "Vérifiez votre connexion et réessayez.",
+      "iva": "TVA",
+      "pago": "Paiement",
+      "lineas": "Lignes",
+      "sinLineas": "La facture n'a pas de lignes",
+      "notas": "Notes",
+      "asientos": "Écritures comptables",
+      "eliminarConfirmar": "Supprimer le brouillon {numero} ? Action irréversible.",
+      "eliminada": "Brouillon {numero} supprimé",
+      "acciones": {
+        "confirmar": "Confirmer",
+        "recepcionar": "Réceptionner",
+        "pagar": "Enregistrer un paiement",
+        "programar": "Programmer un paiement",
+        "editar": "Modifier",
+        "pdf": "Télécharger le PDF",
+        "imprimir": "Imprimer",
+        "anular": "Annuler",
+        "eliminar": "Supprimer le brouillon"
+      },
+      "motivos": {
+        "sinPermiso": "Vous n'avez pas l'autorisation pour cette action",
+        "sinPermisoAnular": "Vous n'avez pas l'autorisation d'annuler",
+        "tienePagos": "Elle a des paiements : annulez-les d'abord"
+      },
+      "enlaces": {
+        "titulo": "Documents liés",
+        "cuenta": "Compte fournisseur"
+      },
+      "datos": {
+        "titulo": "Données de la facture",
+        "proveedor": "Fournisseur",
+        "sucursal": "Succursale",
+        "emision": "Émission",
+        "vencimiento": "Échéance",
+        "plazo": "Délai",
+        "dias": "{n} jours",
+        "moneda": "Devise",
+        "orden": "Bon de commande",
+        "recepcion": "Réception"
+      },
+      "cuenta": {
+        "titulo": "Compte fournisseur",
+        "monto": "Montant",
+        "saldo": "Solde",
+        "ver": "Détail",
+        "abrir": "Ouvrir le compte fournisseur"
+      },
+      "pagos": {
+        "titulo": "Paiements",
+        "vacio": "Pas encore de paiements",
+        "aCuota": "Sur une échéance",
+        "comprobanteDe": "Bon de décaissement de {monto}",
+        "programado": "Programmé, non approuvé : {monto}"
+      },
+      "confirmada": {
+        "conRecepcion": "Facture confirmée et réceptionnée en stock",
+        "sinRecepcion": "Facture confirmée"
+      },
+      "confirmar": {
+        "titulo": "Confirmer la facture {numero}",
+        "descripcion": "Total {total}.",
+        "boton": "Confirmer la facture",
+        "consecuencias": {
+          "cuenta": "Le compte fournisseur est créé pour le net (total moins retenues).",
+          "asiento": "L'écriture comptable de l'achat est générée.",
+          "noEditable": "La facture n'est plus modifiable ; pour la corriger, il faudra l'annuler."
+        },
+        "recepcionar": "Réceptionner à la confirmation",
+        "recepcionarAyuda": "Les produits entrent en stock à leur coût.",
+        "recepcionarSinProductos": "Aucune ligne avec produit : rien n'entre en stock.",
+        "recepcionarSinPermiso": "Vous n'avez pas l'autorisation de mouvementer le stock.",
+        "generarDs": "Générer le document justificatif",
+        "generarDsAyuda": "Pour les fournisseurs non tenus de facturer."
+      },
+      "recepcionar": {
+        "titulo": "Réceptionner la facture {numero}",
+        "descripcion": "Voici ce qui entre en stock.",
+        "boton": "Réceptionner",
+        "tabla": "Produits entrant en stock",
+        "producto": "Produit",
+        "cantidad": "Quantité",
+        "costo": "Coût unitaire",
+        "ayudaCosto": "Coût estimé hors TVA déductible ; le coût définitif est calculé par le système à la réception.",
+        "lineasSinProducto": "{n, plural, one {# ligne sans produit n'affecte pas le stock.} other {# lignes sans produit n'affectent pas le stock.}}",
+        "sinProductos": "Aucun produit à réceptionner",
+        "listo": "Marchandise réceptionnée en stock",
+        "saltadas": "{n, plural, one {# ligne n'a pas été réceptionnée.} other {# lignes n'ont pas été réceptionnées.}}"
+      },
+      "anular": {
+        "titulo": "Annuler la facture {numero}",
+        "descripcion": "L'annulation est irréversible.",
+        "boton": "Annuler la facture",
+        "listo": "Facture annulée",
+        "consecuencias": {
+          "cuenta": "Le compte fournisseur est annulé.",
+          "asiento": "L'écriture comptable est contrepassée.",
+          "inventario": "Si elle a déjà été réceptionnée, la marchandise sort du stock."
+        },
+        "motivos": {
+          "error": "Erreur de saisie",
+          "duplicada": "Facture en double",
+          "devolucion": "Retour au fournisseur"
+        }
+      }
+    },
+    "formulario": {
+      "tituloNueva": "Nouvelle facture d'achat",
+      "tituloEditar": "Modifier la facture {numero}",
+      "subtitulo": "Enregistrez la facture envoyée par le fournisseur.",
+      "desdeOrden": "Depuis le bon {orden}",
+      "notaOrden": "Générée depuis le bon {orden}",
+      "volver": "Retour",
+      "cancelar": "Annuler",
+      "guardarBorrador": "Enregistrer le brouillon",
+      "guardando": "Enregistrement…",
+      "confirmar": "Confirmer la facture",
+      "guardado": "Brouillon {numero} enregistré",
+      "confirmada": "Facture {numero} confirmée",
+      "errorCarga": "Impossible de charger la facture",
+      "noEncontrada": "La facture n'existe pas",
+      "noEditable": "La facture {numero} n'est plus un brouillon",
+      "noEditableDescripcion": "Seuls les brouillons peuvent être modifiés.",
+      "salirSinGuardar": "Des modifications ne sont pas enregistrées. Quitter quand même ?",
+      "serialesOmitidos": "{n, plural, one {# numéro de série en double a été ignoré.} other {# numéros de série en double ont été ignorés.}}",
+      "producto": "Produit",
+      "iva": "TVA",
+      "aplicar": "Appliquer",
+      "resumenPago": "Vous paierez {proveedor} au plus tard le {fecha}.",
+      "secciones": {
+        "documento": "Document",
+        "lineas": "Lignes",
+        "retenciones": "Retenues",
+        "notas": "Notes"
+      },
+      "campos": {
+        "numero": "Numéro de facture du fournisseur",
+        "numeroAyuda": "Tel qu'il figure sur la facture.",
+        "consecutivo": "Suggérer le numéro suivant",
+        "sucursal": "Succursale",
+        "elegir": "Choisir…",
+        "emision": "Émission",
+        "plazo": "Délai",
+        "dias": "jours",
+        "vence": "Échéance",
+        "venceEl": "Échéance le {fecha}",
+        "moneda": "Devise",
+        "monedaAyuda": "Par défaut, la devise de base ({base}).",
+        "monedaBase": "{base} (devise de base)",
+        "ivaIncluido": "Les prix incluent la TVA",
+        "notas": "Notes internes"
+      },
+      "lineas": {
+        "vacio": "Pas encore de lignes",
+        "vacioDescripcion": "Recherchez un produit ou ajoutez un poste sans produit.",
+        "manual": "Poste sans produit",
+        "iva": "TVA {tarifa} %",
+        "sinIva": "Sans TVA",
+        "actual": "Taux actuel",
+        "nota": "Note de ligne",
+        "seriales": "Numéros de série",
+        "serialesAyuda": "Un par ligne."
+      },
+      "manual": {
+        "titulo": "Poste sans produit",
+        "descripcion": "Services, fret ou autres frais qui n'entrent pas en stock.",
+        "concepto": "Poste",
+        "cantidad": "Quantité",
+        "precio": "Prix unitaire",
+        "iva": "TVA",
+        "agregar": "Ajouter",
+        "invalido": "Vérifiez le poste, la quantité et le prix."
+      },
+      "retenciones": {
+        "descripcion": "Les montants retenus sont déduits du net à payer au fournisseur.",
+        "vacio": "Aucune retenue",
+        "agregar": "Ajouter une retenue",
+        "concepto": "Poste",
+        "base": "Base",
+        "tarifa": "Taux %",
+        "retefuente": "Retenue à la source",
+        "quitar": "Retirer {concepto}"
+      },
+      "errores": {
+        "revisar": "Vérifiez les champs signalés.",
+        "proveedor": "Choisissez un fournisseur.",
+        "numero": "Saisissez le numéro de la facture.",
+        "sucursal": "Choisissez une succursale.",
+        "emision": "Saisissez la date d'émission.",
+        "vence": "L'échéance ne peut pas précéder la date d'émission.",
+        "lineas": "Ajoutez au moins une ligne.",
+        "linea": "Quantité, prix ou remise invalide.",
+        "descripcion": "La ligne doit avoir une description.",
+        "retencion": "Vérifiez la base et le taux de la retenue."
+      }
     }
   },
   "cuentasPorPagar": {
-    "titulo": "Comptes fournisseurs"
+    "titulo": "Comptes fournisseurs",
+    "errores": {
+      "sin_permiso": "Vous n'avez pas l'autorisation de faire cela.",
+      "sucursal_no_permitida": "Vous n'avez pas accès à cette succursale.",
+      "no_encontrado": "Le compte fournisseur n'existe pas ou n'appartient pas à votre organisation.",
+      "anulada": "Le compte est annulé.",
+      "cuenta_sin_saldo": "Le compte n'a pas de solde restant.",
+      "monto_invalido": "Le montant doit être supérieur à zéro.",
+      "excede_saldo": "Le montant dépasse le solde restant.",
+      "excede_saldo_programable": "Le montant dépasse ce qui reste à programmer.",
+      "fecha_pasada": "La date ne peut pas être antérieure à aujourd'hui.",
+      "metodo_invalido": "Le mode de paiement n'est pas valide.",
+      "cuenta_bancaria_invalida": "Le compte bancaire n'est pas valide.",
+      "cuota_invalida": "L'échéance n'est pas valide.",
+      "programacion_no_pendiente": "Cette programmation n'est plus en attente.",
+      "segregacion_funciones": "La personne qui programme un paiement ne peut pas l'approuver.",
+      "motivo_requerido": "Indiquez le motif.",
+      "plan_con_abonos": "L'échéancier a déjà des paiements et ne peut pas être modifié.",
+      "plan_no_cuadra": "Les échéances ne correspondent pas au solde du compte.",
+      "cuotas_invalidas": "Vérifiez les échéances : montants ou dates invalides.",
+      "rango_invalido": "La période n'est pas valide.",
+      "datos_invalidos": "Vérifiez les données du formulaire.",
+      "error_desconocido": "L'opération n'a pas pu aboutir. Réessayez."
+    },
+    "pago": {
+      "titulo": "Enregistrer un paiement fournisseur",
+      "confirmar": "Enregistrer le paiement",
+      "sinSaldo": "Ce compte n'a pas de solde restant.",
+      "cuentaOrigen": "Compte d'origine",
+      "registrado": {
+        "titulo": "Paiement enregistré",
+        "descripcion": "Bon {recibo} de {monto}"
+      },
+      "errores": {
+        "documento_borrador": "Confirmez la facture avant de la payer.",
+        "documento_anulado": "La facture est annulée."
+      }
+    },
+    "programar": {
+      "titulo": "Programmer un paiement",
+      "descripcion": "Une autre personne autorisée à approuver doit le valider avant qu'il soit enregistré.",
+      "confirmar": "Programmer",
+      "monto": "Montant",
+      "disponible": "Disponible {disponible} (solde {saldo}, déjà programmé {programado})",
+      "sinDisponible": "Tout le solde est déjà programmé",
+      "fecha": "Date de paiement",
+      "cuota": "Échéance",
+      "cuotaNinguna": "Sans échéance",
+      "cuotaOpcion": "Échéance {numero} · solde {saldo}",
+      "referencia": "Référence",
+      "referenciaAyuda": "Facultatif. Conservée telle quelle sur le paiement.",
+      "justificacion": "Justification",
+      "programado": "Paiement de {monto} programmé pour le {fecha}",
+      "errores": {
+        "monto_invalido": "Le montant doit être supérieur à zéro.",
+        "excede_saldo": "Il ne peut pas dépasser {disponible}.",
+        "fecha": "La date ne peut pas être antérieure à aujourd'hui."
+      }
+    }
   },
   "documentos": {
     "tipos": {

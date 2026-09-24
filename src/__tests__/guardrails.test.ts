@@ -2408,7 +2408,8 @@ describe('28b. Sin moneda fija en escrituras ni pantallas', () => {
     'app/app/finanzas/metodos-pago/qr-sessions/page.tsx': 'sesiones QR de rieles colombianos',
     'components/shared/QrPaymentDialog.tsx': 'diálogo de cobro QR (Bold, Bancolombia, Redeban, Bre-B): solo COP',
     'components/pms/checkout/CheckoutDialog.tsx': 'solo el cobro QR del folio (rieles COP); los importes van en la moneda base',
-    'lib/services/integrations/openFinance/paymentInitiationService.ts': 'open finance colombiano: iniciación de pagos en COP',
+    // paymentInitiationService.ts salió de la lista (2026-09-24, compras y CxP F11): el pago a
+    // proveedor ya usa la moneda de la factura o la base de la organización, no 'COP' fijo.
     'lib/services/integrations/openFinance/openFinanceService.ts': 'moneda que reporta el agregador bancario',
     'lib/services/integrations/openFinance/balanceService.ts': 'moneda que reporta el agregador bancario',
     'lib/services/integrations/openFinance/treasuryService.ts': 'moneda de la cuenta del agregador bancario',

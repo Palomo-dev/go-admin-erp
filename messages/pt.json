@@ -9364,21 +9364,423 @@
   },
   "facturasCompra": {
     "titulo": "Faturas de compra",
+    "sustantivo": {
+      "singular": "fatura de compra",
+      "plural": "faturas de compra"
+    },
+    "migas": {
+      "finanzas": "Finanças"
+    },
     "recepcion": {
       "por_recibir": "A receber",
       "recibido": "Recebido",
       "no_aplica": "Não se aplica"
     },
-    "pago": {
+    "estadoPago": {
+      "borrador": "Rascunho",
       "pendiente": "Pendente",
       "parcial": "Pagamento parcial",
+      "vencida": "Vencida",
       "pagada": "Paga",
-      "anulada": "Anulada",
-      "borrador": "Rascunho"
+      "anulada": "Anulada"
+    },
+    "estadoVencida": "{dias, plural, one {Vencida há # dia} other {Vencida há # dias}}",
+    "errores": {
+      "sin_permiso": "Você não tem permissão para fazer isso.",
+      "sucursal_no_permitida": "Você não tem acesso a essa filial.",
+      "no_encontrado": "A fatura não existe ou não pertence à sua organização.",
+      "numero_requerido": "Informe o número da fatura do fornecedor.",
+      "numero_duplicado": "Já existe uma fatura deste fornecedor com esse número.",
+      "proveedor_invalido": "Escolha um fornecedor da sua organização.",
+      "sucursal_invalida": "Escolha uma filial válida.",
+      "lineas_requeridas": "Adicione pelo menos uma linha.",
+      "linea_invalida": "Há uma linha com quantidade, preço ou desconto inválidos.",
+      "linea_sin_descripcion": "Há uma linha sem descrição.",
+      "producto_ajeno": "Um dos produtos não pertence à sua organização.",
+      "moneda_invalida": "A moeda não é válida.",
+      "metodo_invalido": "O método de pagamento não é válido.",
+      "orden_invalida": "A ordem de compra não existe ou não pode ser faturada.",
+      "orden_sin_recepcion": "Ainda não há nada recebido na ordem de compra.",
+      "retencion_invalida": "Revise as retenções: a base, a alíquota ou o valor não são válidos.",
+      "vencimiento_antes_de_emision": "O vencimento não pode ser anterior à emissão.",
+      "no_editable": "Somente rascunhos podem ser editados.",
+      "ya_confirmada": "A fatura já estava confirmada.",
+      "sin_lineas": "A fatura não tem linhas.",
+      "no_confirmada": "Confirme a fatura primeiro.",
+      "anulada": "A fatura está anulada.",
+      "solo_borrador": "Somente rascunhos podem ser excluídos.",
+      "tiene_pagos": "A fatura tem pagamentos: anule-os antes.",
+      "tiene_asiento": "A fatura já tem lançamento contábil.",
+      "ya_anulada": "A fatura já estava anulada.",
+      "cuenta_sin_saldo": "A conta não tem saldo pendente.",
+      "monto_invalido": "O valor deve ser maior que zero.",
+      "excede_saldo": "O valor excede o saldo pendente.",
+      "excede_saldo_programable": "O valor excede o que resta a programar.",
+      "fecha_pasada": "A data não pode ser anterior a hoje.",
+      "cuenta_bancaria_invalida": "A conta bancária não é válida.",
+      "cuota_invalida": "A parcela não é válida.",
+      "programacion_no_pendiente": "Essa programação já não está pendente.",
+      "segregacion_funciones": "Quem programa um pagamento não pode aprová-lo.",
+      "motivo_requerido": "Informe o motivo.",
+      "plan_con_abonos": "O plano de parcelas já tem pagamentos e não pode ser alterado.",
+      "plan_no_cuadra": "As parcelas não somam o saldo da conta.",
+      "cuotas_invalidas": "Revise as parcelas: valores ou datas inválidos.",
+      "rango_invalido": "O intervalo de datas não é válido.",
+      "datos_invalidos": "Revise os dados do formulário.",
+      "error_desconocido": "Não foi possível concluir a operação. Tente novamente."
+    },
+    "listado": {
+      "subtitulo": "{n} faturas",
+      "nueva": "Nova fatura",
+      "proveedores": "Fornecedores",
+      "buscar": {
+        "etiqueta": "Buscar faturas",
+        "placeholder": "Número ou fornecedor"
+      },
+      "kpis": {
+        "etiqueta": "Resumo das faturas de compra",
+        "porPagar": "A pagar",
+        "abiertas": "Faturas em aberto: {n}",
+        "vencidas": "Vencidas",
+        "nFacturas": "Faturas: {n}",
+        "proximas": "Vencem em 7 dias",
+        "criticas": "Em 3 dias ou menos: {n}",
+        "porRecibir": "A receber",
+        "borradores": "Rascunhos: {n}"
+      },
+      "filtros": {
+        "estado": "Status",
+        "recepcion": "Recebimento",
+        "emision": "Emissão",
+        "todos": "Todos",
+        "todas": "Todas",
+        "verN": "Ver {n} resultados"
+      },
+      "chips": {
+        "rango": "Emissão: {desde} – {hasta}"
+      },
+      "columnas": {
+        "numero": "Número",
+        "emitida": "Emitida",
+        "vence": "Vence",
+        "total": "Total",
+        "saldo": "Saldo",
+        "recepcion": "Recebimento",
+        "estado": "Status",
+        "documentoSoporte": "Doc. suporte"
+      },
+      "acciones": {
+        "ver": "Ver detalhes",
+        "pagar": "Registrar pagamento",
+        "recepcionar": "Receber",
+        "pdf": "Baixar PDF",
+        "editar": "Editar",
+        "eliminar": "Excluir rascunho"
+      },
+      "motivos": {
+        "borrador": "Confirme a fatura primeiro",
+        "sinSaldo": "Sem saldo pendente",
+        "yaRecibida": "Já recebida no estoque"
+      },
+      "exportar": {
+        "csv": "Exportar CSV",
+        "seleccion": "Exportar seleção",
+        "exportando": "Exportando…",
+        "listo": "{n} faturas exportadas",
+        "error": "Não foi possível exportar",
+        "sinDatos": "Não há faturas para exportar",
+        "archivo": "faturas_compra",
+        "columnas": {
+          "numero": "Número",
+          "proveedor": "Fornecedor",
+          "nit": "ID fiscal",
+          "emitida": "Emitida",
+          "vence": "Vence",
+          "moneda": "Moeda",
+          "total": "Total",
+          "neto": "Líquido a pagar",
+          "saldo": "Saldo",
+          "estado": "Status",
+          "recepcion": "Recebimento"
+        }
+      },
+      "etiquetaFila": "Fatura {numero} de {proveedor}",
+      "pagarA": "Pagar fatura {numero}",
+      "vence": "Vence {fecha}",
+      "vencidaHace": "Vencida há {dias} d",
+      "eliminarConfirmar": "Excluir o rascunho {numero}? Não é possível desfazer.",
+      "eliminada": "Rascunho {numero} excluído",
+      "errorCarga": "Não foi possível carregar as faturas",
+      "sinResultados": "Nenhuma fatura corresponde aos filtros.",
+      "vacio": {
+        "titulo": "Ainda não há faturas de compra",
+        "descripcion": "Registre a primeira fatura de um fornecedor ou gere-a a partir de uma ordem de compra recebida."
+      }
+    },
+    "detalle": {
+      "titulo": "Fatura {numero}",
+      "cargando": "Carregando fatura…",
+      "volver": "Voltar às faturas",
+      "noEncontrada": "Fatura não encontrada",
+      "noEncontradaDescripcion": "Ela não existe ou não pertence à sua organização.",
+      "errorCarga": "Não foi possível carregar a fatura",
+      "errorCargaDescripcion": "Verifique sua conexão e tente novamente.",
+      "iva": "IVA",
+      "pago": "Pagamento",
+      "lineas": "Linhas",
+      "sinLineas": "A fatura não tem linhas",
+      "notas": "Notas",
+      "asientos": "Lançamentos contábeis",
+      "eliminarConfirmar": "Excluir o rascunho {numero}? Não é possível desfazer.",
+      "eliminada": "Rascunho {numero} excluído",
+      "acciones": {
+        "confirmar": "Confirmar",
+        "recepcionar": "Receber",
+        "pagar": "Registrar pagamento",
+        "programar": "Programar pagamento",
+        "editar": "Editar",
+        "pdf": "Baixar PDF",
+        "imprimir": "Imprimir",
+        "anular": "Anular",
+        "eliminar": "Excluir rascunho"
+      },
+      "motivos": {
+        "sinPermiso": "Você não tem permissão para esta ação",
+        "sinPermisoAnular": "Você não tem permissão para anular",
+        "tienePagos": "Tem pagamentos: anule-os antes"
+      },
+      "enlaces": {
+        "titulo": "Documentos relacionados",
+        "cuenta": "Conta a pagar"
+      },
+      "datos": {
+        "titulo": "Dados da fatura",
+        "proveedor": "Fornecedor",
+        "sucursal": "Filial",
+        "emision": "Emissão",
+        "vencimiento": "Vencimento",
+        "plazo": "Prazo",
+        "dias": "{n} dias",
+        "moneda": "Moeda",
+        "orden": "Ordem de compra",
+        "recepcion": "Recebimento"
+      },
+      "cuenta": {
+        "titulo": "Conta a pagar",
+        "monto": "Valor",
+        "saldo": "Saldo",
+        "ver": "Detalhes",
+        "abrir": "Abrir conta a pagar"
+      },
+      "pagos": {
+        "titulo": "Pagamentos",
+        "vacio": "Ainda não há pagamentos",
+        "aCuota": "Para uma parcela",
+        "comprobanteDe": "Comprovante de pagamento de {monto}",
+        "programado": "Programado sem aprovação: {monto}"
+      },
+      "confirmada": {
+        "conRecepcion": "Fatura confirmada e recebida no estoque",
+        "sinRecepcion": "Fatura confirmada"
+      },
+      "confirmar": {
+        "titulo": "Confirmar a fatura {numero}",
+        "descripcion": "Total {total}.",
+        "boton": "Confirmar fatura",
+        "consecuencias": {
+          "cuenta": "A conta a pagar é criada pelo líquido (total menos retenções).",
+          "asiento": "O lançamento contábil da compra é gerado.",
+          "noEditable": "A fatura deixa de ser editável; para corrigi-la, será preciso anulá-la."
+        },
+        "recepcionar": "Receber ao confirmar",
+        "recepcionarAyuda": "Os produtos entram no estoque pelo custo.",
+        "recepcionarSinProductos": "Não há linhas com produto: nada entra no estoque.",
+        "recepcionarSinPermiso": "Você não tem permissão para movimentar o estoque.",
+        "generarDs": "Gerar documento suporte",
+        "generarDsAyuda": "Para fornecedores não obrigados a faturar."
+      },
+      "recepcionar": {
+        "titulo": "Receber a fatura {numero}",
+        "descripcion": "Isto é o que entra no estoque.",
+        "boton": "Receber",
+        "tabla": "Produtos que entram no estoque",
+        "producto": "Produto",
+        "cantidad": "Quantidade",
+        "costo": "Custo unitário",
+        "ayudaCosto": "Custo estimado sem IVA dedutível; o definitivo é calculado pelo sistema no recebimento.",
+        "lineasSinProducto": "{n, plural, one {# linha sem produto não afeta o estoque.} other {# linhas sem produto não afetam o estoque.}}",
+        "sinProductos": "Não há produtos para receber",
+        "listo": "Mercadoria recebida no estoque",
+        "saltadas": "{n, plural, one {# linha não foi recebida.} other {# linhas não foram recebidas.}}"
+      },
+      "anular": {
+        "titulo": "Anular a fatura {numero}",
+        "descripcion": "A anulação não pode ser desfeita.",
+        "boton": "Anular fatura",
+        "listo": "Fatura anulada",
+        "consecuencias": {
+          "cuenta": "A conta a pagar fica anulada.",
+          "asiento": "O lançamento contábil é estornado.",
+          "inventario": "Se já foi recebida, a mercadoria sai do estoque."
+        },
+        "motivos": {
+          "error": "Erro de registro",
+          "duplicada": "Fatura duplicada",
+          "devolucion": "Devolução ao fornecedor"
+        }
+      }
+    },
+    "formulario": {
+      "tituloNueva": "Nova fatura de compra",
+      "tituloEditar": "Editar fatura {numero}",
+      "subtitulo": "Registre a fatura que o fornecedor enviou.",
+      "desdeOrden": "A partir da ordem {orden}",
+      "notaOrden": "Gerada a partir da ordem {orden}",
+      "volver": "Voltar",
+      "cancelar": "Cancelar",
+      "guardarBorrador": "Salvar rascunho",
+      "guardando": "Salvando…",
+      "confirmar": "Confirmar fatura",
+      "guardado": "Rascunho {numero} salvo",
+      "confirmada": "Fatura {numero} confirmada",
+      "errorCarga": "Não foi possível carregar a fatura",
+      "noEncontrada": "A fatura não existe",
+      "noEditable": "A fatura {numero} já não é um rascunho",
+      "noEditableDescripcion": "Somente rascunhos podem ser editados.",
+      "salirSinGuardar": "Há alterações não salvas. Sair mesmo assim?",
+      "serialesOmitidos": "{n, plural, one {# número de série repetido foi omitido.} other {# números de série repetidos foram omitidos.}}",
+      "producto": "Produto",
+      "iva": "IVA",
+      "aplicar": "Aplicar",
+      "resumenPago": "Você pagará {proveedor} até {fecha}.",
+      "secciones": {
+        "documento": "Documento",
+        "lineas": "Linhas",
+        "retenciones": "Retenções",
+        "notas": "Notas"
+      },
+      "campos": {
+        "numero": "Número da fatura do fornecedor",
+        "numeroAyuda": "Exatamente como aparece na fatura.",
+        "consecutivo": "Sugerir próximo número",
+        "sucursal": "Filial",
+        "elegir": "Escolha…",
+        "emision": "Emissão",
+        "plazo": "Prazo",
+        "dias": "dias",
+        "vence": "Vencimento",
+        "venceEl": "Vence em {fecha}",
+        "moneda": "Moeda",
+        "monedaAyuda": "Por padrão, a moeda base ({base}).",
+        "monedaBase": "{base} (moeda base)",
+        "ivaIncluido": "Os preços incluem IVA",
+        "notas": "Notas internas"
+      },
+      "lineas": {
+        "vacio": "Ainda não há linhas",
+        "vacioDescripcion": "Busque um produto ou adicione um item sem produto.",
+        "manual": "Item sem produto",
+        "iva": "IVA {tarifa} %",
+        "sinIva": "Sem IVA",
+        "actual": "Alíquota atual",
+        "nota": "Nota da linha",
+        "seriales": "Números de série",
+        "serialesAyuda": "Um por linha."
+      },
+      "manual": {
+        "titulo": "Item sem produto",
+        "descripcion": "Serviços, fretes ou outras despesas que não entram no estoque.",
+        "concepto": "Item",
+        "cantidad": "Quantidade",
+        "precio": "Preço unitário",
+        "iva": "IVA",
+        "agregar": "Adicionar",
+        "invalido": "Revise o item, a quantidade e o preço."
+      },
+      "retenciones": {
+        "descripcion": "O valor retido é descontado do líquido a pagar ao fornecedor.",
+        "vacio": "Sem retenções",
+        "agregar": "Adicionar retenção",
+        "concepto": "Item",
+        "base": "Base",
+        "tarifa": "Alíquota %",
+        "retefuente": "Retenção na fonte",
+        "quitar": "Remover {concepto}"
+      },
+      "errores": {
+        "revisar": "Revise os campos destacados.",
+        "proveedor": "Escolha um fornecedor.",
+        "numero": "Informe o número da fatura.",
+        "sucursal": "Escolha uma filial.",
+        "emision": "Informe a data de emissão.",
+        "vence": "O vencimento não pode ser anterior à emissão.",
+        "lineas": "Adicione pelo menos uma linha.",
+        "linea": "Quantidade, preço ou desconto inválidos.",
+        "descripcion": "A linha precisa de uma descrição.",
+        "retencion": "Revise a base e a alíquota da retenção."
+      }
     }
   },
   "cuentasPorPagar": {
-    "titulo": "Contas a pagar"
+    "titulo": "Contas a pagar",
+    "errores": {
+      "sin_permiso": "Você não tem permissão para fazer isso.",
+      "sucursal_no_permitida": "Você não tem acesso a essa filial.",
+      "no_encontrado": "A conta a pagar não existe ou não pertence à sua organização.",
+      "anulada": "A conta está anulada.",
+      "cuenta_sin_saldo": "A conta não tem saldo pendente.",
+      "monto_invalido": "O valor deve ser maior que zero.",
+      "excede_saldo": "O valor excede o saldo pendente.",
+      "excede_saldo_programable": "O valor excede o que resta a programar.",
+      "fecha_pasada": "A data não pode ser anterior a hoje.",
+      "metodo_invalido": "O método de pagamento não é válido.",
+      "cuenta_bancaria_invalida": "A conta bancária não é válida.",
+      "cuota_invalida": "A parcela não é válida.",
+      "programacion_no_pendiente": "Essa programação já não está pendente.",
+      "segregacion_funciones": "Quem programa um pagamento não pode aprová-lo.",
+      "motivo_requerido": "Informe o motivo.",
+      "plan_con_abonos": "O plano de parcelas já tem pagamentos e não pode ser alterado.",
+      "plan_no_cuadra": "As parcelas não somam o saldo da conta.",
+      "cuotas_invalidas": "Revise as parcelas: valores ou datas inválidos.",
+      "rango_invalido": "O intervalo de datas não é válido.",
+      "datos_invalidos": "Revise os dados do formulário.",
+      "error_desconocido": "Não foi possível concluir a operação. Tente novamente."
+    },
+    "pago": {
+      "titulo": "Registrar pagamento a fornecedor",
+      "confirmar": "Registrar pagamento",
+      "sinSaldo": "Esta conta não tem saldo pendente.",
+      "cuentaOrigen": "Conta de origem",
+      "registrado": {
+        "titulo": "Pagamento registrado",
+        "descripcion": "Comprovante {recibo} de {monto}"
+      },
+      "errores": {
+        "documento_borrador": "Confirme a fatura antes de pagá-la.",
+        "documento_anulado": "A fatura está anulada."
+      }
+    },
+    "programar": {
+      "titulo": "Programar pagamento",
+      "descripcion": "Outra pessoa com permissão de aprovação deve aprová-lo antes que seja registrado.",
+      "confirmar": "Programar",
+      "monto": "Valor",
+      "disponible": "Disponível {disponible} (saldo {saldo}, já programado {programado})",
+      "sinDisponible": "Todo o saldo já está programado",
+      "fecha": "Data do pagamento",
+      "cuota": "Parcela",
+      "cuotaNinguna": "Sem parcela",
+      "cuotaOpcion": "Parcela {numero} · saldo {saldo}",
+      "referencia": "Referência",
+      "referenciaAyuda": "Opcional. Mantida como está no pagamento.",
+      "justificacion": "Justificativa",
+      "programado": "Pagamento de {monto} programado para {fecha}",
+      "errores": {
+        "monto_invalido": "O valor deve ser maior que zero.",
+        "excede_saldo": "Não pode exceder {disponible}.",
+        "fecha": "A data não pode ser anterior a hoje."
+      }
+    }
   },
   "documentos": {
     "tipos": {

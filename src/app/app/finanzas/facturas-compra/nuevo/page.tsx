@@ -1,8 +1,7 @@
 'use client';
 
-import React from 'react';
-import { NuevaFacturaForm } from '@/components/finanzas/facturas-compra/nueva-factura/NuevaFacturaForm';
+import FormularioFacturaCompra from '@/components/finanzas/facturas-compra/formulario/FormularioFacturaCompra';
 
 export default function NuevaFacturaCompra() {
-  return <NuevaFacturaForm />;
+  return <FormularioFacturaCompra />;
 }

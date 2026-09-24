@@ -8,6 +8,8 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { openFinanceService } from './openFinanceService';
 import type { AccountValidationResponse } from './openFinanceTypes';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // --------------------------------------------------------
 // Tipos publicos
 // --------------------------------------------------------
@@ -18,7 +20,8 @@ export interface PaymentResult {
   transferId?: string;
   amount: number;
   supplierName: string;
-  accountPayableId: number;
+  /** uuid de `accounts_payable` (antes `number`: `Number(uuid)` daba NaN). */
+  accountPayableId: string;
   error?: string;
 }
 
@@ -153,12 +156,12 @@ function mapDocumentType(docType: string | null): string {
 export class PaymentInitiationService {
   /**
    * Paga una cuenta por pagar a un proveedor via Open Finance.
-   * @param accountPayableId ID de la cuenta por pagar (uuid como string o numero)
+   * @param accountPayableId uuid de la cuenta por pagar
    * @param bankAccountId ID de la cuenta bancaria origen
    * @param userId ID del usuario que ejecuta el pago
    */
   static async paySupplier(
-    accountPayableId: number,
+    accountPayableId: string,
     bankAccountId: number,
     userId: string,
   ): Promise<PaymentResult> {
@@ -169,7 +172,7 @@ export class PaymentInitiationService {
       const { data: apRow, error: apError } = await supabase
         .from('accounts_payable')
         .select('id, organization_id, supplier_id, invoice_id, amount, balance, due_date, status')
-        .eq('id', String(accountPayableId))
+        .eq('id', accountPayableId)
         .single();
 
       if (apError || !apRow) {
@@ -349,6 +352,20 @@ export class PaymentInitiationService {
         };
       }
 
+      // Moneda de la factura o, sin ella, la base de la organización (nunca COP supuesto).
+      let monedaPago: string | null = null;
+      if (ap.invoice_id) {
+        const { data: factura } = await supabase.from('invoice_purchase').select('currency').eq('id', ap.invoice_id).maybeSingle();
+        monedaPago = ((factura as { currency?: string | null } | null)?.currency ?? '').trim().toUpperCase() || null;
+      }
+      if (!monedaPago) {
+        const { data: base } = await supabase.rpc('fn_moneda_base_organizacion', { p_org: ap.organization_id });
+        monedaPago = typeof base === 'string' && base.trim() ? base.trim().toUpperCase() : null;
+      }
+      if (!monedaPago) {
+        return { success: false, amount: balance, supplierName: supplier.name, accountPayableId, error: 'La organización no tiene moneda base configurada' };
+      }
+
       // 7. Iniciar la transferencia
       const reference = `PAGO-CXP-${ap.id.substring(0, 8)}`;
       const transferResult = await openFinanceService.initiateTransfer(
@@ -360,23 +377,28 @@ export class PaymentInitiationService {
           document_number: documentNumber,
           document_type: documentType,
           amount: balance,
-          currency: 'COP',
+          currency: monedaPago,
           description: `Pago a proveedor ${supplier.name} - CxP ${ap.id.substring(0, 8)}`,
           reference,
         },
         userId,
       );
 
-      // 8. Registrar el pago en la tabla payments
+      // 8. Registrar el pago en la tabla payments. Origen `account_payable` (en
+      //    singular: es el que reconocen los disparadores de saldo; con
+      //    `accounts_payable` el pago no recalculaba ni la CxP ni la factura y no
+      //    salía en ningún historial), método `transfer` (existe en
+      //    `payment_methods`; el proveedor queda en `processor_response`) y la
+      //    moneda de la factura o, sin ella, la base de la organización.
       const { error: paymentError } = await supabase
         .from('payments')
         .insert({
           organization_id: ap.organization_id,
-          source: 'accounts_payable',
+          source: 'account_payable',
           source_id: ap.id,
-          method: 'open_finance',
+          method: 'transfer',
           amount: balance,
-          currency: 'COP',
+          currency: monedaPago,
           reference,
           processor_response: {
             transfer_id: transferResult.id,
@@ -386,7 +408,8 @@ export class PaymentInitiationService {
             supplier_name: supplier.name,
           },
           status: transferResult.status === 'completed' ? 'completed' : 'pending',
-          created_by: userId,
+          // El cron ejecuta con 'system-cron': `created_by` es FK a auth.users.
+          created_by: UUID_RE.test(userId) ? userId : null,
           payment_date: new Date().toISOString(),
           discount_amount: 0,
           change_amount: 0,
@@ -396,22 +419,10 @@ export class PaymentInitiationService {
         console.error('[PaymentInitiation] Error al registrar pago:', paymentError.message);
       }
 
-      // 9. Actualizar el balance de accounts_payable
-      const newBalance = 0; // Se asume pago completo del balance
-      const newStatus = newBalance === 0 ? 'paid' : ap.status;
-
-      const { error: updateError } = await supabase
-        .from('accounts_payable')
-        .update({
-          balance: newBalance,
-          status: newStatus,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', ap.id);
-
-      if (updateError) {
-        console.error('[PaymentInitiation] Error al actualizar CxP:', updateError.message);
-      }
+      // 9. El saldo y el estado de la CxP (y de su factura) los recalculan los
+      //    disparadores de `payments` cuando el pago queda `completed`. Antes se
+      //    ponía el saldo en 0 y `paid` a mano, aunque la transferencia siguiera
+      //    pendiente.
 
       // 10. Retornar resultado
       return {
@@ -516,75 +527,16 @@ export class PaymentInitiationService {
   }
 
   /**
-   * Registra un pago programado para ejecucion posterior (cron job Fase 9).
-   * @param accountPayableId ID de la cuenta por pagar
-   * @param bankAccountId ID de la cuenta bancaria origen
-   * @param scheduledDate Fecha programada (ISO string)
-   * @param userId ID del usuario
+   * Programar un pago ya NO escribe en `payments` (plan de compras y CxP, D3):
+   * un pago programado no es un pago. La programación vive en
+   * `ap_payment_schedules` (`fn_programar_pago`, `POST /api/cuentas-por-pagar/[id]/programaciones`)
+   * y la aprueba otra persona con `finance.approve`. Este método no tenía
+   * llamadores y escribía `source='accounts_payable'` y un método que no existe
+   * en `payment_methods` (el insert fallaba siempre).
    */
-  static async schedulePayment(
-    accountPayableId: number,
-    bankAccountId: number,
-    scheduledDate: string,
-    userId: string,
-  ): Promise<{ scheduled: boolean; paymentId: string }> {
-    try {
-      const supabase = getSupabaseAdmin();
-
-      // Leer la cuenta por pagar para obtener organization_id y balance
-      const { data: apRow, error: apError } = await supabase
-        .from('accounts_payable')
-        .select('id, organization_id, balance')
-        .eq('id', String(accountPayableId))
-        .single();
-
-      if (apError || !apRow) {
-        throw new Error('Cuenta por pagar no encontrada');
-      }
-
-      const ap = apRow as { id: string; organization_id: number; balance: number };
-      const balance = Number(ap.balance) || 0;
-
-      // Registrar la intencion de pago en payments con status 'pending'
-      // El cron job de la Fase 9 ejecutara la transferencia
-      const { data: paymentRow, error: paymentError } = await supabase
-        .from('payments')
-        .insert({
-          organization_id: ap.organization_id,
-          source: 'accounts_payable',
-          source_id: ap.id,
-          method: 'open_finance_scheduled',
-          amount: balance,
-          currency: 'COP',
-          reference: `PROGRAMADO-CXP-${ap.id.substring(0, 8)}`,
-          processor_response: {
-            bank_account_id: bankAccountId,
-            scheduled_date: scheduledDate,
-            status: 'scheduled',
-          },
-          status: 'pending',
-          created_by: userId,
-          payment_date: scheduledDate,
-          discount_amount: 0,
-          change_amount: 0,
-        })
-        .select('id')
-        .single();
-
-      if (paymentError) {
-        throw new Error(`Error al registrar pago programado: ${paymentError.message}`);
-      }
-
-      return {
-        scheduled: true,
-        paymentId: paymentRow.id,
-      };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error al programar pago';
-      throw new Error(message);
-    }
+  static async schedulePayment(): Promise<never> {
+    throw new Error('Programar pagos a proveedores se hace con fn_programar_pago (ap_payment_schedules)');
   }
-
   /**
    * Obtiene el historial de pagos a un proveedor via Open Finance.
    * @param supplierId ID del proveedor
@@ -616,7 +568,8 @@ export class PaymentInitiationService {
         .select('id, payment_date, amount, reference, status, processor_response')
         .in('source_id', apIds)
         .eq('organization_id', organizationId)
-        .in('method', ['open_finance', 'open_finance_scheduled'])
+        .eq('source', 'account_payable')
+        .not('processor_response->>transfer_id', 'is', null)
         .order('payment_date', { ascending: false });
 
       if (error) {
@@ -642,7 +595,7 @@ export class PaymentInitiationService {
   }
 
   /**
-   * Cancela una transferencia pendiente y revierte el efecto en accounts_payable.
+   * Cancela una transferencia pendiente (los disparadores devuelven el saldo de la CxP).
    * @param transferId ID de la transferencia de Prometeo
    */
   static async cancelPayment(transferId: string): Promise<{ success: boolean }> {
@@ -653,7 +606,7 @@ export class PaymentInitiationService {
       const { data: paymentRow, error: findError } = await supabase
         .from('payments')
         .select('id, source_id, amount, status, processor_response')
-        .eq('method', 'open_finance')
+        .in('method', ['transfer', 'open_finance'])
         .eq('status', 'pending')
         .filter('processor_response->>transfer_id', 'eq', transferId)
         .maybeSingle();
@@ -683,32 +636,8 @@ export class PaymentInitiationService {
         return { success: false };
       }
 
-      // Revertir el efecto en accounts_payable: restaurar el balance
-      if (payment.source_id) {
-        const { data: apRow } = await supabase
-          .from('accounts_payable')
-          .select('id, balance, amount, status')
-          .eq('id', payment.source_id)
-          .single();
-
-        if (apRow) {
-          const ap = apRow as { id: string; balance: number; amount: number; status: string };
-          const restoredBalance = Number(ap.balance) + Number(payment.amount);
-
-          const { error: revertError } = await supabase
-            .from('accounts_payable')
-            .update({
-              balance: restoredBalance,
-              status: restoredBalance >= ap.amount ? 'pending' : 'partial',
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', ap.id);
-
-          if (revertError) {
-            console.error('[PaymentInitiation] Error al revertir CxP:', revertError.message);
-          }
-        }
-      }
+      // El saldo de la CxP lo recalculan los disparadores de `payments` al pasar
+      // el pago a `cancelled` (antes se sumaba a mano y se desfasaba).
 
       return { success: true };
     } catch (err) {

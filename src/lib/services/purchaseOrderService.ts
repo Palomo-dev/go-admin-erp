@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { stockMovementService, type StockDecrementResult } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
+import { clienteCompras } from '@/lib/services/compras/clienteCompras';
 
 // Tipos para Órdenes de Compra
 export interface PurchaseOrder {
@@ -85,17 +86,6 @@ export interface PurchaseOrderStats {
   received: number;
   cancelled: number;
   totalAmount: number;
-}
-
-/** Línea de la OC leída para generar su factura de compra. */
-interface ItemOrdenParaFactura {
-  id: string;
-  product_id: number | null;
-  quantity: number;
-  unit_cost: number;
-  subtotal: number | null;
-  serials_received: string[] | null;
-  products: { name: string | null } | null;
 }
 
 /** Fila de `products` que lee `getProducts`. */
@@ -665,7 +655,7 @@ class PurchaseOrderService {
         // Si la recepción es completa, generar factura de compra y cuenta por pagar automáticamente
         if (isComplete) {
           try {
-            await this.generateInvoiceFromPurchaseOrder(orderId, organizationId, branchId);
+            await this.generateInvoiceFromPurchaseOrder(orderUuid);
           } catch (invError) {
             console.warn('⚠️ Error generando factura automática (no bloquea recepción):', invError);
           }
@@ -813,7 +803,7 @@ class PurchaseOrderService {
 
         if (isComplete) {
           try {
-            await this.generateInvoiceFromPurchaseOrder(orderId, organizationId, branchId);
+            await this.generateInvoiceFromPurchaseOrder(orderUuid);
           } catch (invError) {
             console.warn('⚠️ Error generando factura automática (no bloquea recepción):', invError);
           }
@@ -828,162 +818,20 @@ class PurchaseOrderService {
   }
 
   /**
-   * Generar factura de compra y cuenta por pagar automáticamente desde una OC recibida
+   * Factura de compra desde una OC recibida por completo. Es UNA sola RPC
+   * (`fn_factura_compra_desde_oc`, vía `POST /api/facturas-compra/desde-orden`)
+   * la que la arma, la confirma sin kardex (la mercancía ya entró con la
+   * recepción de la OC), deja `po_id`, crea la CxP por el neto con su
+   * disparador y enlaza los seriales. Es idempotente: si la OC ya tiene
+   * factura, devuelve la existente.
+   *
+   * Antes esta función insertaba la factura, las líneas y la CxP a mano, con el
+   * día UTC, un consecutivo leído del último registro y sin `po_id` (plan de
+   * compras y CxP, F1/F7): la tercera implementación de «registrar una compra».
    */
-  private async generateInvoiceFromPurchaseOrder(
-    orderId: number,
-    organizationId: number,
-    branchId: number
-  ): Promise<void> {
-    // Obtener datos de la OC y sus items
-    const { data: order, error: orderError } = await supabase
-      .from('purchase_orders')
-      .select('id, supplier_id, total, notes, created_at')
-      .eq('id', orderId)
-      .single();
-
-    if (orderError || !order) {
-      throw new Error('No se pudo obtener la orden de compra para generar factura');
-    }
-
-    // Verificar si ya existe una factura para esta OC (evitar duplicados)
-    const { data: existingInvoice } = await supabase
-      .from('invoice_purchase')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .eq('supplier_id', order.supplier_id)
-      .eq('total', order.total)
-      .eq('issue_date', new Date().toISOString().split('T')[0])
-      .ilike('notes', `%OC-${orderId}%`)
-      .limit(1);
-
-    if (existingInvoice && existingInvoice.length > 0) {
-      console.log('ℹ️ Ya existe factura para esta OC, se omite generación automática');
-      return;
-    }
-
-    // Obtener items de la OC con datos del producto
-    const { data: items, error: itemsError } = await supabase
-      .from('purchase_order_items')
-      .select(`
-        id, product_id, quantity, unit_cost, subtotal, serials_received,
-        products(id, name, sku)
-      `)
-      .eq('purchase_order_id', orderId);
-
-    if (itemsError || !items) {
-      throw new Error('No se pudieron obtener los items de la OC');
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 30);
-    const dueDateStr = dueDate.toISOString().split('T')[0];
-
-    // Generar número de factura
-    const { data: lastInvoice } = await supabase
-      .from('invoice_purchase')
-      .select('number_ext')
-      .eq('organization_id', organizationId)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    const year = new Date().getFullYear();
-    const nextNum = lastInvoice && lastInvoice.length > 0
-      ? (parseInt(lastInvoice[0].number_ext?.split('-').pop() || '0') + 1)
-      : 1;
-    const numberExt = `COMP-${year}-${String(nextNum).padStart(4, '0')}`;
-
-    // Calcular subtotal
-    const filasOC = items as unknown as ItemOrdenParaFactura[];
-    const subtotal = filasOC.reduce((sum: number, item) => sum + Number(item.subtotal || item.quantity * item.unit_cost), 0);
-
-    // Crear factura de compra
-    const { data: factura, error: facturaError } = await supabase
-      .from('invoice_purchase')
-      .insert({
-        organization_id: organizationId,
-        branch_id: branchId,
-        supplier_id: order.supplier_id,
-        number_ext: numberExt,
-        issue_date: today,
-        due_date: dueDateStr,
-        // La OC no tiene moneda: la base de la organización la pone el trigger
-        // `trg_00_moneda_base_por_defecto` (nunca COP supuesto).
-        currency: null,
-        subtotal,
-        tax_total: 0,
-        total: subtotal,
-        balance: subtotal,
-        status: 'received',
-        notes: `Factura generada automáticamente desde Orden de Compra OC-${orderId}. ${(order.notes || '').trim()}`.trim(),
-        payment_terms: 30,
-        tax_included: false,
-      })
-      .select()
-      .single();
-
-    if (facturaError || !factura) {
-      throw new Error(`Error creando factura automática: ${facturaError?.message}`);
-    }
-
-    // Crear items de la factura (incluyendo seriales recibidos en la OC)
-    const invoiceItems = filasOC.map((item) => ({
-      invoice_id: factura.id,
-      invoice_type: 'purchase',
-      invoice_purchase_id: factura.id,
-      invoice_sales_id: null,
-      product_id: item.product_id || null,
-      description: item.products?.name || 'Producto',
-      qty: Number(item.quantity),
-      unit_price: Number(item.unit_cost),
-      tax_rate: 0,
-      total_line: Number(item.subtotal || item.quantity * item.unit_cost),
-      discount_amount: 0,
-      tax_included: false,
-      serial_numbers: item.serials_received && item.serials_received.length > 0 ? item.serials_received : null,
-    }));
-
-    const { error: invItemsError } = await supabase
-      .from('invoice_items')
-      .insert(invoiceItems);
-
-    if (invItemsError) {
-      console.warn('⚠️ Error creando items de factura automática:', invItemsError);
-    }
-
-    // Vincular los seriales ya creados (con purchase_order_id) a la nueva factura
-    // para mantener la trazabilidad completa: OC -> Factura -> Seriales
-    try {
-      const { error: serialLinkError } = await supabase
-        .from('serial_numbers')
-        .update({ purchase_invoice_id: factura.id })
-        .eq('purchase_order_id', orderId);
-      if (serialLinkError) {
-        console.warn('⚠️ Error vinculando seriales a factura automática:', serialLinkError);
-      }
-    } catch (serialLinkErr) {
-      console.warn('⚠️ Error vinculando seriales a factura automática:', serialLinkErr);
-    }
-
-    // Crear cuenta por pagar
-    const { error: apError } = await supabase
-      .from('accounts_payable')
-      .insert({
-        organization_id: organizationId,
-        supplier_id: order.supplier_id,
-        invoice_id: factura.id,
-        amount: subtotal,
-        balance: subtotal,
-        due_date: dueDateStr,
-        status: 'pending',
-      });
-
-    if (apError) {
-      console.warn('⚠️ Error creando cuenta por pagar automática:', apError);
-    }
-
-    console.log(`✅ Factura ${numberExt} generada automáticamente desde OC-${orderId}`);
+  private async generateInvoiceFromPurchaseOrder(orderUuid: string): Promise<void> {
+    const r = await clienteCompras.desdeOrden(orderUuid);
+    console.log(r.ya_existia ? 'ℹ️ La OC ya tenía factura de compra' : '✅ Factura de compra generada desde la OC');
   }
 
   /**

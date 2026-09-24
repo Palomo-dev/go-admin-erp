@@ -39,7 +39,8 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 interface PayWithOpenFinanceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  accountPayableId: number;
+  /** uuid de la cuenta por pagar (antes `number`: `Number(uuid)` era NaN). */
+  accountPayableId: string;
   supplierName: string;
   amount: number;
   dueDate?: string;

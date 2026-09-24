@@ -1,15 +1,13 @@
 'use client';
 
-import React from 'react';
-import { EditarFacturaCompra } from '@/components/finanzas/facturas-compra/editar/EditarFacturaCompra';
+import { use } from 'react';
+import FormularioFacturaCompra from '@/components/finanzas/facturas-compra/formulario/FormularioFacturaCompra';
 
 interface PageProps {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>;
 }
 
 export default function EditarFacturaPage({ params }: PageProps) {
-  const { id } = React.use(params);
-  return <EditarFacturaCompra facturaId={id} />;
+  const { id } = use(params);
+  return <FormularioFacturaCompra id={id} />;
 }

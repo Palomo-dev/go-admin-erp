@@ -9469,21 +9469,423 @@
   },
   "facturasCompra": {
     "titulo": "Purchase invoices",
+    "sustantivo": {
+      "singular": "purchase invoice",
+      "plural": "purchase invoices"
+    },
+    "migas": {
+      "finanzas": "Finance"
+    },
     "recepcion": {
       "por_recibir": "To receive",
       "recibido": "Received",
-      "no_aplica": "Not applicable"
+      "no_aplica": "N/A"
     },
-    "pago": {
+    "estadoPago": {
+      "borrador": "Draft",
       "pendiente": "Pending",
       "parcial": "Partially paid",
+      "vencida": "Overdue",
       "pagada": "Paid",
-      "anulada": "Voided",
-      "borrador": "Draft"
+      "anulada": "Voided"
+    },
+    "estadoVencida": "{dias, plural, one {Overdue by # day} other {Overdue by # days}}",
+    "errores": {
+      "sin_permiso": "You don't have permission to do this.",
+      "sucursal_no_permitida": "You don't have access to that branch.",
+      "no_encontrado": "The invoice doesn't exist or doesn't belong to your organization.",
+      "numero_requerido": "Enter the supplier's invoice number.",
+      "numero_duplicado": "There is already an invoice from this supplier with that number.",
+      "proveedor_invalido": "Choose a supplier from your organization.",
+      "sucursal_invalida": "Choose a valid branch.",
+      "lineas_requeridas": "Add at least one line.",
+      "linea_invalida": "A line has an invalid quantity, price or discount.",
+      "linea_sin_descripcion": "A line has no description.",
+      "producto_ajeno": "One of the products doesn't belong to your organization.",
+      "moneda_invalida": "The currency is not valid.",
+      "metodo_invalido": "The payment method is not valid.",
+      "orden_invalida": "The purchase order doesn't exist or can't be invoiced.",
+      "orden_sin_recepcion": "Nothing has been received on the purchase order yet.",
+      "retencion_invalida": "Check the withholdings: the base, rate or amount is not valid.",
+      "vencimiento_antes_de_emision": "The due date can't be before the issue date.",
+      "no_editable": "Only drafts can be edited.",
+      "ya_confirmada": "The invoice was already confirmed.",
+      "sin_lineas": "The invoice has no lines.",
+      "no_confirmada": "Confirm the invoice first.",
+      "anulada": "The invoice is voided.",
+      "solo_borrador": "Only drafts can be deleted.",
+      "tiene_pagos": "The invoice has payments: void them first.",
+      "tiene_asiento": "The invoice already has a journal entry.",
+      "ya_anulada": "The invoice was already voided.",
+      "cuenta_sin_saldo": "The account has no outstanding balance.",
+      "monto_invalido": "The amount must be greater than zero.",
+      "excede_saldo": "The amount exceeds the outstanding balance.",
+      "excede_saldo_programable": "The amount exceeds what is left to schedule.",
+      "fecha_pasada": "The date can't be before today.",
+      "cuenta_bancaria_invalida": "The bank account is not valid.",
+      "cuota_invalida": "The installment is not valid.",
+      "programacion_no_pendiente": "That schedule is no longer pending.",
+      "segregacion_funciones": "Whoever schedules a payment can't approve it.",
+      "motivo_requerido": "Enter the reason.",
+      "plan_con_abonos": "The installment plan already has payments and can't be changed.",
+      "plan_no_cuadra": "The installments don't add up to the account balance.",
+      "cuotas_invalidas": "Check the installments: invalid amounts or dates.",
+      "rango_invalido": "The date range is not valid.",
+      "datos_invalidos": "Check the form data.",
+      "error_desconocido": "The operation couldn't be completed. Please try again."
+    },
+    "listado": {
+      "subtitulo": "{n} invoices",
+      "nueva": "New invoice",
+      "proveedores": "Suppliers",
+      "buscar": {
+        "etiqueta": "Search invoices",
+        "placeholder": "Number or supplier"
+      },
+      "kpis": {
+        "etiqueta": "Purchase invoice summary",
+        "porPagar": "To pay",
+        "abiertas": "Open invoices: {n}",
+        "vencidas": "Overdue",
+        "nFacturas": "Invoices: {n}",
+        "proximas": "Due in 7 days",
+        "criticas": "In 3 days or less: {n}",
+        "porRecibir": "To receive",
+        "borradores": "Drafts: {n}"
+      },
+      "filtros": {
+        "estado": "Status",
+        "recepcion": "Receipt",
+        "emision": "Issue date",
+        "todos": "All",
+        "todas": "All",
+        "verN": "Show {n} results"
+      },
+      "chips": {
+        "rango": "Issued: {desde} – {hasta}"
+      },
+      "columnas": {
+        "numero": "Number",
+        "emitida": "Issued",
+        "vence": "Due",
+        "total": "Total",
+        "saldo": "Balance",
+        "recepcion": "Receipt",
+        "estado": "Status",
+        "documentoSoporte": "Support doc."
+      },
+      "acciones": {
+        "ver": "View details",
+        "pagar": "Record payment",
+        "recepcionar": "Receive",
+        "pdf": "Download PDF",
+        "editar": "Edit",
+        "eliminar": "Delete draft"
+      },
+      "motivos": {
+        "borrador": "Confirm the invoice first",
+        "sinSaldo": "No outstanding balance",
+        "yaRecibida": "Already received into inventory"
+      },
+      "exportar": {
+        "csv": "Export CSV",
+        "seleccion": "Export selection",
+        "exportando": "Exporting…",
+        "listo": "Exported {n} invoices",
+        "error": "Couldn't export",
+        "sinDatos": "No invoices to export",
+        "archivo": "purchase_invoices",
+        "columnas": {
+          "numero": "Number",
+          "proveedor": "Supplier",
+          "nit": "Tax ID",
+          "emitida": "Issued",
+          "vence": "Due",
+          "moneda": "Currency",
+          "total": "Total",
+          "neto": "Net payable",
+          "saldo": "Balance",
+          "estado": "Status",
+          "recepcion": "Receipt"
+        }
+      },
+      "etiquetaFila": "Invoice {numero} from {proveedor}",
+      "pagarA": "Pay invoice {numero}",
+      "vence": "Due {fecha}",
+      "vencidaHace": "Overdue {dias} d",
+      "eliminarConfirmar": "Delete draft {numero}? This can't be undone.",
+      "eliminada": "Draft {numero} deleted",
+      "errorCarga": "Couldn't load the invoices",
+      "sinResultados": "No invoice matches the filters.",
+      "vacio": {
+        "titulo": "No purchase invoices yet",
+        "descripcion": "Record a supplier's first invoice or generate it from a received purchase order."
+      }
+    },
+    "detalle": {
+      "titulo": "Invoice {numero}",
+      "cargando": "Loading invoice…",
+      "volver": "Back to invoices",
+      "noEncontrada": "Invoice not found",
+      "noEncontradaDescripcion": "It doesn't exist or doesn't belong to your organization.",
+      "errorCarga": "Couldn't load the invoice",
+      "errorCargaDescripcion": "Check your connection and try again.",
+      "iva": "VAT",
+      "pago": "Payment",
+      "lineas": "Lines",
+      "sinLineas": "The invoice has no lines",
+      "notas": "Notes",
+      "asientos": "Journal entries",
+      "eliminarConfirmar": "Delete draft {numero}? This can't be undone.",
+      "eliminada": "Draft {numero} deleted",
+      "acciones": {
+        "confirmar": "Confirm",
+        "recepcionar": "Receive",
+        "pagar": "Record payment",
+        "programar": "Schedule payment",
+        "editar": "Edit",
+        "pdf": "Download PDF",
+        "imprimir": "Print",
+        "anular": "Void",
+        "eliminar": "Delete draft"
+      },
+      "motivos": {
+        "sinPermiso": "You don't have permission for this action",
+        "sinPermisoAnular": "You don't have permission to void",
+        "tienePagos": "It has payments: void them first"
+      },
+      "enlaces": {
+        "titulo": "Related documents",
+        "cuenta": "Account payable"
+      },
+      "datos": {
+        "titulo": "Invoice details",
+        "proveedor": "Supplier",
+        "sucursal": "Branch",
+        "emision": "Issued",
+        "vencimiento": "Due date",
+        "plazo": "Terms",
+        "dias": "{n} days",
+        "moneda": "Currency",
+        "orden": "Purchase order",
+        "recepcion": "Receipt"
+      },
+      "cuenta": {
+        "titulo": "Account payable",
+        "monto": "Amount",
+        "saldo": "Balance",
+        "ver": "Details",
+        "abrir": "Open account payable"
+      },
+      "pagos": {
+        "titulo": "Payments",
+        "vacio": "No payments yet",
+        "aCuota": "To an installment",
+        "comprobanteDe": "Payment voucher for {monto}",
+        "programado": "Scheduled, not approved: {monto}"
+      },
+      "confirmada": {
+        "conRecepcion": "Invoice confirmed and received into inventory",
+        "sinRecepcion": "Invoice confirmed"
+      },
+      "confirmar": {
+        "titulo": "Confirm invoice {numero}",
+        "descripcion": "Total {total}.",
+        "boton": "Confirm invoice",
+        "consecuencias": {
+          "cuenta": "The account payable is created for the net amount (total minus withholdings).",
+          "asiento": "The purchase journal entry is generated.",
+          "noEditable": "The invoice can no longer be edited; to correct it you'll have to void it."
+        },
+        "recepcionar": "Receive on confirm",
+        "recepcionarAyuda": "Products enter inventory at their cost.",
+        "recepcionarSinProductos": "No lines with products: nothing enters inventory.",
+        "recepcionarSinPermiso": "You don't have permission to move inventory.",
+        "generarDs": "Generate support document",
+        "generarDsAyuda": "For suppliers not required to invoice."
+      },
+      "recepcionar": {
+        "titulo": "Receive invoice {numero}",
+        "descripcion": "This is what enters inventory.",
+        "boton": "Receive",
+        "tabla": "Products entering inventory",
+        "producto": "Product",
+        "cantidad": "Quantity",
+        "costo": "Unit cost",
+        "ayudaCosto": "Estimated cost without deductible VAT; the final cost is calculated by the system on receipt.",
+        "lineasSinProducto": "{n, plural, one {# line without a product doesn't affect inventory.} other {# lines without a product don't affect inventory.}}",
+        "sinProductos": "There are no products to receive",
+        "listo": "Goods received into inventory",
+        "saltadas": "{n, plural, one {# line was not received.} other {# lines were not received.}}"
+      },
+      "anular": {
+        "titulo": "Void invoice {numero}",
+        "descripcion": "Voiding can't be undone.",
+        "boton": "Void invoice",
+        "listo": "Invoice voided",
+        "consecuencias": {
+          "cuenta": "The account payable is voided.",
+          "asiento": "The journal entry is reversed.",
+          "inventario": "If already received, the goods leave inventory."
+        },
+        "motivos": {
+          "error": "Entry error",
+          "duplicada": "Duplicate invoice",
+          "devolucion": "Return to supplier"
+        }
+      }
+    },
+    "formulario": {
+      "tituloNueva": "New purchase invoice",
+      "tituloEditar": "Edit invoice {numero}",
+      "subtitulo": "Record the invoice the supplier sent you.",
+      "desdeOrden": "From order {orden}",
+      "notaOrden": "Generated from order {orden}",
+      "volver": "Back",
+      "cancelar": "Cancel",
+      "guardarBorrador": "Save draft",
+      "guardando": "Saving…",
+      "confirmar": "Confirm invoice",
+      "guardado": "Draft {numero} saved",
+      "confirmada": "Invoice {numero} confirmed",
+      "errorCarga": "Couldn't load the invoice",
+      "noEncontrada": "The invoice doesn't exist",
+      "noEditable": "Invoice {numero} is no longer a draft",
+      "noEditableDescripcion": "Only drafts can be edited.",
+      "salirSinGuardar": "There are unsaved changes. Leave anyway?",
+      "serialesOmitidos": "{n, plural, one {# duplicate serial was skipped.} other {# duplicate serials were skipped.}}",
+      "producto": "Product",
+      "iva": "VAT",
+      "aplicar": "Apply",
+      "resumenPago": "You'll pay {proveedor} no later than {fecha}.",
+      "secciones": {
+        "documento": "Document",
+        "lineas": "Lines",
+        "retenciones": "Withholdings",
+        "notas": "Notes"
+      },
+      "campos": {
+        "numero": "Supplier invoice number",
+        "numeroAyuda": "Exactly as it appears on the invoice.",
+        "consecutivo": "Suggest next number",
+        "sucursal": "Branch",
+        "elegir": "Choose…",
+        "emision": "Issue date",
+        "plazo": "Terms",
+        "dias": "days",
+        "vence": "Due date",
+        "venceEl": "Due on {fecha}",
+        "moneda": "Currency",
+        "monedaAyuda": "Defaults to the base currency ({base}).",
+        "monedaBase": "{base} (base currency)",
+        "ivaIncluido": "Prices include VAT",
+        "notas": "Internal notes"
+      },
+      "lineas": {
+        "vacio": "No lines yet",
+        "vacioDescripcion": "Search for a product or add an item without a product.",
+        "manual": "Item without product",
+        "iva": "VAT {tarifa} %",
+        "sinIva": "No VAT",
+        "actual": "Current rate",
+        "nota": "Line note",
+        "seriales": "Serial numbers",
+        "serialesAyuda": "One per line."
+      },
+      "manual": {
+        "titulo": "Item without product",
+        "descripcion": "Services, freight or other expenses that don't enter inventory.",
+        "concepto": "Item",
+        "cantidad": "Quantity",
+        "precio": "Unit price",
+        "iva": "VAT",
+        "agregar": "Add",
+        "invalido": "Check the item, quantity and price."
+      },
+      "retenciones": {
+        "descripcion": "Withheld amounts are deducted from the net payable to the supplier.",
+        "vacio": "No withholdings",
+        "agregar": "Add withholding",
+        "concepto": "Item",
+        "base": "Base",
+        "tarifa": "Rate %",
+        "retefuente": "Income tax withholding",
+        "quitar": "Remove {concepto}"
+      },
+      "errores": {
+        "revisar": "Check the highlighted fields.",
+        "proveedor": "Choose a supplier.",
+        "numero": "Enter the invoice number.",
+        "sucursal": "Choose a branch.",
+        "emision": "Enter the issue date.",
+        "vence": "The due date can't be before the issue date.",
+        "lineas": "Add at least one line.",
+        "linea": "Invalid quantity, price or discount.",
+        "descripcion": "The line needs a description.",
+        "retencion": "Check the withholding base and rate."
+      }
     }
   },
   "cuentasPorPagar": {
-    "titulo": "Accounts payable"
+    "titulo": "Accounts payable",
+    "errores": {
+      "sin_permiso": "You don't have permission to do this.",
+      "sucursal_no_permitida": "You don't have access to that branch.",
+      "no_encontrado": "The account payable doesn't exist or doesn't belong to your organization.",
+      "anulada": "The account is voided.",
+      "cuenta_sin_saldo": "The account has no outstanding balance.",
+      "monto_invalido": "The amount must be greater than zero.",
+      "excede_saldo": "The amount exceeds the outstanding balance.",
+      "excede_saldo_programable": "The amount exceeds what is left to schedule.",
+      "fecha_pasada": "The date can't be before today.",
+      "metodo_invalido": "The payment method is not valid.",
+      "cuenta_bancaria_invalida": "The bank account is not valid.",
+      "cuota_invalida": "The installment is not valid.",
+      "programacion_no_pendiente": "That schedule is no longer pending.",
+      "segregacion_funciones": "Whoever schedules a payment can't approve it.",
+      "motivo_requerido": "Enter the reason.",
+      "plan_con_abonos": "The installment plan already has payments and can't be changed.",
+      "plan_no_cuadra": "The installments don't add up to the account balance.",
+      "cuotas_invalidas": "Check the installments: invalid amounts or dates.",
+      "rango_invalido": "The date range is not valid.",
+      "datos_invalidos": "Check the form data.",
+      "error_desconocido": "The operation couldn't be completed. Please try again."
+    },
+    "pago": {
+      "titulo": "Record supplier payment",
+      "confirmar": "Record payment",
+      "sinSaldo": "This account has no outstanding balance.",
+      "cuentaOrigen": "Source account",
+      "registrado": {
+        "titulo": "Payment recorded",
+        "descripcion": "Voucher {recibo} for {monto}"
+      },
+      "errores": {
+        "documento_borrador": "Confirm the invoice before paying it.",
+        "documento_anulado": "The invoice is voided."
+      }
+    },
+    "programar": {
+      "titulo": "Schedule payment",
+      "descripcion": "Another person with approval permission must approve it before it's recorded.",
+      "confirmar": "Schedule",
+      "monto": "Amount",
+      "disponible": "Available {disponible} (balance {saldo}, already scheduled {programado})",
+      "sinDisponible": "The whole balance is already scheduled",
+      "fecha": "Payment date",
+      "cuota": "Installment",
+      "cuotaNinguna": "No installment",
+      "cuotaOpcion": "Installment {numero} · balance {saldo}",
+      "referencia": "Reference",
+      "referenciaAyuda": "Optional. Kept as is on the payment.",
+      "justificacion": "Justification",
+      "programado": "Payment of {monto} scheduled for {fecha}",
+      "errores": {
+        "monto_invalido": "The amount must be greater than zero.",
+        "excede_saldo": "It can't exceed {disponible}.",
+        "fecha": "The date can't be before today."
+      }
+    }
   },
   "documentos": {
     "tipos": {

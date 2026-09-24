@@ -118,3 +118,13 @@ export { HojaEtiquetas, type HojaEtiquetasProps } from './HojaEtiquetas';
 // Asistentes (importar productos) y diálogo que en móvil es hoja inferior (Meta y canales)
 export { Stepper, type StepperProps, type PasoStepper } from './Stepper';
 export { PanelAdaptable, type PanelAdaptableProps } from './PanelAdaptable';
+
+// ── Kit compartido de POS y finanzas (2026-09-24) · docs/implementacion/KIT-COMPARTIDO.md
+// Datos, tarjetas y confirmación con motivo
+export { FilaDato, ListaDatos, clasesTonoFilaDato, type FilaDatoProps, type ListaDatosProps, type TonoFilaDato } from './FilaDato';
+export { Tarjeta, clasesTonoTarjeta, type TarjetaProps, type TonoTarjeta } from './Tarjeta';
+export { KpiCompacto, type KpiCompactoProps, type CifraCompacta } from './KpiCompacto';
+export { DialogoMotivo, type DialogoMotivoProps } from './DialogoMotivo';
+export { validarMotivo, componerMotivo, limpiarMotivo, MOTIVO_MINIMO, MOTIVO_MAXIMO, type ResultadoMotivo, type ErrorMotivo } from './motivo';
+// Documentos (cadena, chips)
+export * from './documento';

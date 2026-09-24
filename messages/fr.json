@@ -3127,7 +3127,56 @@
       "usada": "Utilisée",
       "usado": "Utilisé",
       "vencida": "En retard",
-      "vencido": "En retard"
+      "vencido": "En retard",
+      "en_cola": "En file d’attente",
+      "por_recibir": "À réceptionner",
+      "pendiente_de_pago": "Paiement en attente",
+      "no_aplica": "Sans objet",
+      "castigada": "Passée en perte",
+      "castigado": "Passé en perte",
+      "devuelta": "Retournée",
+      "devuelto": "Retourné",
+      "devuelta_parcial": "Retournée en partie",
+      "devuelto_parcial": "Retourné en partie"
+    },
+    "filaDato": {
+      "oculto": "Masqué"
+    },
+    "motivo": {
+      "etiqueta": "Motif",
+      "placeholder": "Expliquez pourquoi, pour que cela reste dans l’historique",
+      "consecuencias": "En confirmant :",
+      "rapidos": "Motifs fréquents",
+      "contador": "{n}/{maximo}",
+      "errores": {
+        "vacio": "Saisissez le motif.",
+        "corto": "Le motif doit comporter au moins {minimo} caractères.",
+        "largo": "Le motif ne peut pas dépasser {maximo} caractères."
+      }
+    },
+    "documento": {
+      "cadena": "Documents liés",
+      "actual": "document actuel",
+      "chipAnulado": "{tipo} {numero} (annulé)",
+      "tipos": {
+        "cotizacion": "Devis",
+        "pedido": "Commande",
+        "reserva": "Réservation",
+        "ordenCompra": "Bon de commande",
+        "venta": "Vente",
+        "factura": "Facture",
+        "facturaCompra": "Facture d’achat",
+        "entradaInventario": "Entrée en stock",
+        "documentoSoporte": "Document justificatif",
+        "cuentaPorCobrar": "Créance client",
+        "cuentaPorPagar": "Dette fournisseur",
+        "pago": "Paiement",
+        "recibo": "Reçu",
+        "devolucion": "Retour",
+        "notaCredito": "Avoir",
+        "notaDebito": "Note de débit",
+        "asiento": "Écriture comptable"
+      }
     }
   },
   "inventarioEtiquetas": {

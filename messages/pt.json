@@ -3127,7 +3127,56 @@
       "usada": "Usada",
       "usado": "Usado",
       "vencida": "Vencida",
-      "vencido": "Vencido"
+      "vencido": "Vencido",
+      "en_cola": "Na fila",
+      "por_recibir": "A receber",
+      "pendiente_de_pago": "Pagamento pendente",
+      "no_aplica": "Não se aplica",
+      "castigada": "Baixada",
+      "castigado": "Baixado",
+      "devuelta": "Devolvida",
+      "devuelto": "Devolvido",
+      "devuelta_parcial": "Devolvida parcialmente",
+      "devuelto_parcial": "Devolvido parcialmente"
+    },
+    "filaDato": {
+      "oculto": "Oculto"
+    },
+    "motivo": {
+      "etiqueta": "Motivo",
+      "placeholder": "Explique o porquê, para que fique no histórico",
+      "consecuencias": "Ao confirmar:",
+      "rapidos": "Motivos frequentes",
+      "contador": "{n}/{maximo}",
+      "errores": {
+        "vacio": "Escreva o motivo.",
+        "corto": "O motivo deve ter pelo menos {minimo} caracteres.",
+        "largo": "O motivo não pode passar de {maximo} caracteres."
+      }
+    },
+    "documento": {
+      "cadena": "Documentos relacionados",
+      "actual": "documento atual",
+      "chipAnulado": "{tipo} {numero} (anulado)",
+      "tipos": {
+        "cotizacion": "Orçamento",
+        "pedido": "Pedido",
+        "reserva": "Reserva",
+        "ordenCompra": "Ordem de compra",
+        "venta": "Venda",
+        "factura": "Fatura",
+        "facturaCompra": "Fatura de compra",
+        "entradaInventario": "Entrada no estoque",
+        "documentoSoporte": "Documento de suporte",
+        "cuentaPorCobrar": "Conta a receber",
+        "cuentaPorPagar": "Conta a pagar",
+        "pago": "Pagamento",
+        "recibo": "Recibo",
+        "devolucion": "Devolução",
+        "notaCredito": "Nota de crédito",
+        "notaDebito": "Nota de débito",
+        "asiento": "Lançamento contábil"
+      }
     }
   },
   "inventarioEtiquetas": {

@@ -168,6 +168,11 @@ Ordenada por frecuencia. La columna «Hoy» resume lo que encontraron las audito
 | Variantes («3 var.») · Personalizable | información · suave | Tarjeta de producto del POS | **Morado** y ámbar |
 | Trazabilidad activa · Auto-generación · Garantía vigente | información · contorno | Pestaña de seriales | Son informativos, no estados: el contorno lo dice |
 | Frío · Tibio · Caliente | información · advertencia · peligro, con punto | Temperatura del CRM | Punto de 10 px azul/ámbar/rojo; se conserva la lectura con el punto de la escala |
+| En cola (`queued`) | información · suave | Envío a la DIAN (estado de la factura electrónica) | Añadido 2026-09-24 (plan de facturas de venta §3.4): es un «Procesando» que aún no empezó |
+| Por recibir · Pendiente de pago | advertencia · suave | Recepción de la factura de compra; venta con saldo | Añadido 2026-09-24 (planes de compras §3.4 y de ventas §3.3): son «Pendiente» con el sustantivo del dominio |
+| Al día (`current`) | éxito · suave | Cartera (`accounts_receivable.status = 'current'`, 532 filas) | `current` no estaba en la tabla y salía gris con la palabra en inglés |
+| Devuelta · Devuelta parcial (`returned`, `partially returned`) | información · contorno | Ventas con devolución | Añadido 2026-09-24: mismo tono que «Reembolsado»; la parcialidad va en la etiqueta, no en otro color |
+| No aplica · Castigada (`written off`) | neutro · suave | Recepción de una factura sin productos; cuota o cartera dada de baja | Añadido 2026-09-24: son cierres sin éxito ni error, como «Cancelado» |
 | Efectivo · Transferencia · Tarjeta · Cheque | neutro · contorno | Historial de pagos | Verde/azul/**morado**/naranja: son categorías, no estados, y no deben competir con el estado de la fila |
 | «Confirmado» de ingresos y egresos | éxito · suave | `IngresoDetalle.tsx:148` · `EgresoDetalle.tsx:147` | Mismo literal, **verde en ingresos y rojo en egresos** |
 

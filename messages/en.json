@@ -3232,7 +3232,56 @@
       "usada": "Used",
       "usado": "Used",
       "vencida": "Overdue",
-      "vencido": "Overdue"
+      "vencido": "Overdue",
+      "en_cola": "Queued",
+      "por_recibir": "To receive",
+      "pendiente_de_pago": "Payment pending",
+      "no_aplica": "Not applicable",
+      "castigada": "Written off",
+      "castigado": "Written off",
+      "devuelta": "Returned",
+      "devuelto": "Returned",
+      "devuelta_parcial": "Partially returned",
+      "devuelto_parcial": "Partially returned"
+    },
+    "filaDato": {
+      "oculto": "Hidden"
+    },
+    "motivo": {
+      "etiqueta": "Reason",
+      "placeholder": "Explain why, so it stays in the history",
+      "consecuencias": "When you confirm:",
+      "rapidos": "Common reasons",
+      "contador": "{n}/{maximo}",
+      "errores": {
+        "vacio": "Enter the reason.",
+        "corto": "The reason must be at least {minimo} characters long.",
+        "largo": "The reason can't exceed {maximo} characters."
+      }
+    },
+    "documento": {
+      "cadena": "Related documents",
+      "actual": "current document",
+      "chipAnulado": "{tipo} {numero} (voided)",
+      "tipos": {
+        "cotizacion": "Quote",
+        "pedido": "Order",
+        "reserva": "Reservation",
+        "ordenCompra": "Purchase order",
+        "venta": "Sale",
+        "factura": "Invoice",
+        "facturaCompra": "Purchase invoice",
+        "entradaInventario": "Stock receipt",
+        "documentoSoporte": "Support document",
+        "cuentaPorCobrar": "Receivable",
+        "cuentaPorPagar": "Payable",
+        "pago": "Payment",
+        "recibo": "Receipt",
+        "devolucion": "Return",
+        "notaCredito": "Credit note",
+        "notaDebito": "Debit note",
+        "asiento": "Journal entry"
+      }
     }
   },
   "inventarioEtiquetas": {

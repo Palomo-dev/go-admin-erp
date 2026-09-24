@@ -47,12 +47,18 @@ const TABLA: Record<string, Fila> = {
   'en proceso': S('informacion'),
   'in progress': S('informacion'),
   'en transito': S('informacion'),
+  // En cola (envío a la DIAN)
+  'en cola': S('informacion'),
+  queued: S('informacion'),
   // Pendiente · Por cobrar
   pendiente: S('advertencia'),
   pending: S('advertencia'),
   'por cobrar': S('advertencia'),
   'por pagar': S('advertencia'),
   'por revisar': S('advertencia'),
+  // Por recibir (factura de compra sin entrada a inventario) · Pendiente de pago (venta)
+  'por recibir': S('advertencia'),
+  'pendiente de pago': S('advertencia'),
   // Pago parcial
   'pago parcial': C('advertencia'),
   parcial: C('advertencia'),
@@ -69,6 +75,7 @@ const TABLA: Record<string, Fila> = {
   cobrado: S('exito'),
   // Al día · Activo · Aceptada · Ganada · Conectado · Confirmado · Abierta (caja)
   'al dia': S('exito'),
+  current: S('exito'),
   activo: S('exito'),
   activa: S('exito'),
   active: S('exito'),
@@ -135,7 +142,12 @@ const TABLA: Record<string, Fila> = {
   archivado: S('neutro'),
   archived: S('neutro'),
   'sin seguimiento': S('neutro'),
-  // Reembolsado · Convertida · Clawback
+  // No aplica (recepción de una factura sin productos) · Castigada (cartera dada de baja)
+  'no aplica': S('neutro'),
+  castigada: S('neutro'),
+  castigado: S('neutro'),
+  'written off': S('neutro'),
+  // Reembolsado · Convertida · Clawback · Devuelta (venta con devolución)
   reembolsado: C('informacion'),
   reembolsada: C('informacion'),
   refunded: C('informacion'),
@@ -143,6 +155,12 @@ const TABLA: Record<string, Fila> = {
   convertido: C('informacion'),
   converted: C('informacion'),
   clawback: C('informacion'),
+  devuelta: C('informacion'),
+  devuelto: C('informacion'),
+  returned: C('informacion'),
+  'devuelta parcial': C('informacion'),
+  'devuelto parcial': C('informacion'),
+  'partially returned': C('informacion'),
   // Crítico · Alta prioridad · Alto riesgo · Agotado (estado dominante)
   critico: SO('peligro'),
   critica: SO('peligro'),
@@ -230,6 +248,11 @@ const ETIQUETA_DB: Record<string, string> = {
   converted: 'Convertida',
   'out of stock': 'Agotado',
   'on hold': 'En espera',
+  current: 'Al día',
+  queued: 'En cola',
+  returned: 'Devuelta',
+  'partially returned': 'Devuelta parcial',
+  'written off': 'Castigada',
 };
 
 /**

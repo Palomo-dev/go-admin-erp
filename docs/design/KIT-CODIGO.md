@@ -513,3 +513,35 @@ categorías adicionales, etiquetas y cifras con moneda). Aditivo: ningún contra
 Pruebas: `src/components/inventario/productos/__tests__/productoLogica.test.ts` (filtro y
 alternancia del `MultiSelect`, conversión del `CampoNumero`).
 
+## Adenda 2026-09-24 — kit compartido de POS, cajas, ventas, facturas, CxC y CxP
+
+Lista consolidada, equivalencias con Figma y con los nombres de cada plan, y qué pantalla usa
+cada pieza: `docs/implementacion/KIT-COMPARTIDO.md`. Aquí va el contrato. Textos por props con
+respaldo en `kit.*` (4 idiomas); dinero con `crearFormateadorMoneda` sobre la moneda que pasa la
+pantalla (`useMonedaOrganizacion()` o la del documento); fechas ya formateadas por la pantalla
+(`useFormatDate`). **Ninguna pieza calcula el negocio ni llama a Supabase.**
+
+### Datos, tarjetas y confirmación con motivo
+
+| Figma | Código | Contrato |
+|---|---|---|
+| `FilaDato` (6 tonos) `680:406357` | `kit/FilaDato.tsx` | `etiqueta`, `valor`, `tono` (`neutro · fuerte · exito · peligro · advertencia · enlace`), `sangria` (0 · 1 · 2), `descripcion`, `accesorio`, `oculto` (cierre ciego: «Oculto» con ojo tachado), `tamano` (`lg` = total), `href`, `separadorAntes`. Es un par `dt`/`dd`: va dentro de `ListaDatos` (`<dl>`), `ResumenTotales`, `Tarjeta` o `ResultadoOperacion` |
+| `Tarjeta` `680:406329` | `kit/Tarjeta.tsx` | `titulo`, `descripcion`, `icono` (caja de 32), `accion`, `tono` (`neutro · peligro · advertencia · exito · informacion`: borde y caja del icono), `sinRelleno` (tablas), `pie`. Sustituye a las tarjetas privadas de cada detalle |
+| `KpiCompacto` `680:406370` | `kit/KpiCompacto.tsx` | `cifras: { etiqueta, valor, tono?, href?, onClick? }[]`, `cargando`. Franja móvil de 2–4 cifras con divisores; en escritorio sigue `KpiStrip` |
+| Diálogo «Anular venta» `331:54986` | `kit/DialogoMotivo.tsx` + `kit/motivo.ts` | `titulo`, `textoConfirmar`, `onConfirmar(motivo)`, `consecuencias` («qué se revierte»), `motivosRapidos` (chips), `minimo` (5) / `maximo` (500), `destructiva` (por defecto sí), `cargando`, `bloqueo` (aviso + primario deshabilitado con su motivo), `error` (del servidor), `children` (alternativa: «Generar nota crédito»). Es también el `AnularDocumentoDialog` del plan de compras |
+| `ChipDocumento` `680:406423` (+ `729:18827…18863`) | `kit/documento/ChipDocumento.tsx` | `tipo`, `numero`, `href` u `onClick`, `anulado`, `tamano`. Nombre accesible «Factura FV-00042» |
+| `CadenaDocumento` + `EslabonDocumento` `680:409052`, `680:408881` | `kit/documento/CadenaDocumento.tsx` + `documentos.ts` | `eslabones: { id, tipo, numero, estado?, fecha?, importe?, href?, onClick?, actual?, pendiente?, accion? }[]`, `ordenar` (por tipo: origen → documento → cartera → pagos → devolución → nota → asiento). Fila con flechas en escritorio, lista con conector en móvil; `aria-current="page"` en el actual |
+
+Tipos de documento (`TIPOS_DOCUMENTO`) e iconos (`ICONO_DOCUMENTO`, uno por concepto, los de
+CATALOGO-ICONOS §2 donde existen): cotización `Calculator`, pedido `ShoppingBag`, reserva
+`CalendarClock`, orden de compra `ClipboardList`, venta `Receipt`, factura `FileText`, factura de
+compra `ReceiptText`, entrada a inventario `PackagePlus`, documento soporte `FileCheck`, CxC
+`Wallet`, CxP `HandCoins`, pago `CircleDollarSign`, recibo `ScrollText`, devolución `Undo2`,
+nota crédito `FileMinus`, nota débito `FilePlus`, asiento `BookOpen`.
+
+`StatusBadge` / `estadoTono.ts` (extendido, SISTEMA-BADGES §4 primero): «En cola» (`queued`),
+«Por recibir», «Pendiente de pago», «Al día» (`current`, que la cartera ya usa en 532 filas y
+salía gris en inglés), «Devuelta» / «Devuelta parcial» (`returned`, `partially returned`),
+«No aplica», «Castigada» (`written off`).
+
+Pruebas: `kit/__tests__/documentoYMotivo.test.ts`.

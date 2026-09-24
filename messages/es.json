@@ -3232,7 +3232,56 @@
       "usada": "Usada",
       "usado": "Usado",
       "vencida": "Vencida",
-      "vencido": "Vencido"
+      "vencido": "Vencido",
+      "en_cola": "En cola",
+      "por_recibir": "Por recibir",
+      "pendiente_de_pago": "Pendiente de pago",
+      "no_aplica": "No aplica",
+      "castigada": "Castigada",
+      "castigado": "Castigado",
+      "devuelta": "Devuelta",
+      "devuelto": "Devuelto",
+      "devuelta_parcial": "Devuelta parcial",
+      "devuelto_parcial": "Devuelto parcial"
+    },
+    "filaDato": {
+      "oculto": "Oculto"
+    },
+    "motivo": {
+      "etiqueta": "Motivo",
+      "placeholder": "Escribe por qué, para que quede en el historial",
+      "consecuencias": "Al confirmar:",
+      "rapidos": "Motivos frecuentes",
+      "contador": "{n}/{maximo}",
+      "errores": {
+        "vacio": "Escribe el motivo.",
+        "corto": "El motivo debe tener al menos {minimo} caracteres.",
+        "largo": "El motivo no puede pasar de {maximo} caracteres."
+      }
+    },
+    "documento": {
+      "cadena": "Documentos relacionados",
+      "actual": "documento actual",
+      "chipAnulado": "{tipo} {numero} (anulado)",
+      "tipos": {
+        "cotizacion": "Cotización",
+        "pedido": "Pedido",
+        "reserva": "Reserva",
+        "ordenCompra": "Orden de compra",
+        "venta": "Venta",
+        "factura": "Factura",
+        "facturaCompra": "Factura de compra",
+        "entradaInventario": "Entrada a inventario",
+        "documentoSoporte": "Documento soporte",
+        "cuentaPorCobrar": "Cuenta por cobrar",
+        "cuentaPorPagar": "Cuenta por pagar",
+        "pago": "Pago",
+        "recibo": "Recibo",
+        "devolucion": "Devolución",
+        "notaCredito": "Nota crédito",
+        "notaDebito": "Nota débito",
+        "asiento": "Asiento"
+      }
     }
   },
   "inventarioEtiquetas": {

@@ -342,3 +342,24 @@ Se añade al final, sin reescribir lo anterior.
   agente maqueta la etiqueta en `print-agent/src/printing/labels.ts` (ESC/POS con `GS k`, HTML con
   el SVG que manda el ERP, texto plano). Hay que volver a empaquetar el Desktop para que el agente
   instalado la reconozca.
+
+## Adenda 2026-09-24 (2) — códigos repetidos resueltos e índice único
+
+Se añade al final, sin reescribir lo anterior. Decisión del dueño sobre la duda 5.
+
+- **Renumeradas 744 variantes** que tenían el mismo código que su padre (742 vivas y 2 eliminadas),
+  con el generador del servidor y la numeración de cada organización. Por organización:
+  org 2: 8 · org 112: 5 · org 129: 38 · org 132: 689 · org 134: 3 · org 143: 1. Los productos
+  principales y las variantes con código propio no se tocaron. Respaldo en
+  `products_barcode_auditoria` (código anterior y nuevo, para revertir).
+- **Índice único** `ux_products_org_barcode` sobre `(organization_id, barcode)` para productos no
+  eliminados con código. Quedan **9 grupos (22 filas)** repetidos que no son herencia y se dejan
+  para decidir: org 2 (1 grupo, 3 productos principales), org 112 (1 grupo, 2 principales), org 129
+  (5 grupos, 10 principales), org 132 (1 grupo, 5 variantes hermanas con código propio distinto al
+  del padre) y org 144 (1 grupo: un principal y una variante de otro producto). La fila más antigua
+  de cada grupo está en el índice; las otras 13 quedan fuera por id. Resueltos esos grupos, se
+  recrea el índice sin la lista.
+- **Importación CSV:** `fn_importar_productos_lote` ya aislaba cada fila en su subtransacción; un
+  código repetido falla esa fila («Choca con un registro existente») y el lote sigue (probado).
+- **Carga con IA:** es todo o nada; el plan ahora omite la segunda fila nueva con un código repetido
+  dentro del archivo, y si aun así choca con el índice el asistente lo explica.

@@ -203,6 +203,7 @@ export function planificar(filas: FilaEntrada[], catalogo: ProductoCatalogo[], c
 
   const vistosSku = new Set<string>();
   const vistosNombre = new Set<string>();
+  const barcodesNuevos = new Set<string>();
   const plan: FilaPlan[] = [];
 
   filas.forEach((f, i) => {
@@ -248,6 +249,11 @@ export function planificar(filas: FilaEntrada[], catalogo: ProductoCatalogo[], c
       plan.push({ ...base, estado: 'existente', productId: existente.id, coincidePor: por });
       return;
     }
+    // El código de barras es único por organización (índice
+    // ux_products_org_barcode): dos productos nuevos con el mismo código harían
+    // fallar la carga entera, que es todo o nada. La segunda fila se omite.
+    if (barcode && barcodesNuevos.has(barcode)) return error(`Código de barras "${barcode}" repetido en el archivo.`);
+    if (barcode) barcodesNuevos.add(barcode);
     plan.push(base);
   });
 
@@ -365,6 +371,9 @@ export function mapCargaError(message: string): ToolResult | null {
   }
   if (message.includes('SKU_TAKEN')) {
     return { ok: false, errorCode: 'sku_taken', message: 'Uno de los SKU del listado ya existe con otro nombre. No cargué nada: corrige ese SKU y lo intentamos de nuevo.' };
+  }
+  if (message.includes('ux_products_org_barcode')) {
+    return { ok: false, errorCode: 'barcode_taken', message: 'Uno de los códigos de barras del listado ya lo usa otro producto. No cargué nada: corrige ese código y lo intentamos de nuevo.' };
   }
   if (message.includes('PRODUCT_NOT_IN_ORG')) {
     return { ok: false, errorCode: 'not_found', message: 'Uno de los productos a actualizar ya no existe. No cargué nada.' };

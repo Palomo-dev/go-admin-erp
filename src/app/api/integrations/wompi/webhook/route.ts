@@ -1,6 +1,12 @@
 // ============================================================
 // POST /api/integrations/wompi/webhook
 // Recibe eventos de Wompi (transaction.updated, etc.)
+//
+// SEGURIDAD (GO-sec, 2026-09-23; auditoria §2.2 «Webhooks de cobro»): el
+// checksum solo se verificaba SI la conexion tenia `events_secret`; sin el
+// (o con un error de BD) el evento se procesaba y un «APPROVED» falso marcaba
+// el pago `completed`. Ahora es FAIL-CLOSED: sin secreto activo → 401 sin
+// procesar, y la comparacion del checksum es en tiempo constante.
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -57,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Obtener secreto de eventos para verificar checksum
-    const { data: creds } = await getSupabaseAdmin()
+    const { data: creds, error: credsError } = await getSupabaseAdmin()
       .from('integration_credentials')
       .select('secret_ref')
       .eq('connection_id', wompiConnection.id)
@@ -65,16 +71,18 @@ export async function POST(request: NextRequest) {
       .eq('status', 'active')
       .single();
 
-    if (creds?.secret_ref) {
-      // Verificar checksum
-      const isValid = verifyChecksum(event, creds.secret_ref);
-      if (!isValid) {
-        console.error('[Wompi Webhook] Checksum inválido para transacción:', transactionId);
-        return NextResponse.json(
-          { error: 'Checksum inválido' },
-          { status: 401 }
-        );
-      }
+    if (credsError || !creds?.secret_ref) {
+      console.warn('[Wompi Webhook] rechazado: la conexion no tiene events_secret activo (fail-closed)');
+      return NextResponse.json({ error: 'webhook_unauthorized' }, { status: 401 });
+    }
+
+    // Verificar checksum
+    if (!verifyChecksum(event, creds.secret_ref)) {
+      console.error('[Wompi Webhook] Checksum inválido para transacción:', transactionId);
+      return NextResponse.json(
+        { error: 'Checksum inválido' },
+        { status: 401 }
+      );
     }
 
     // Registrar evento en integration_events
@@ -141,7 +149,10 @@ function verifyChecksum(event: WompiWebhookEvent, eventsSecret: string): boolean
       .digest('hex')
       .toUpperCase();
 
-    return calculated === event.signature.checksum;
+    const recibido = String(event.signature.checksum ?? '').toUpperCase();
+    const a = Buffer.from(calculated, 'utf8');
+    const b = Buffer.from(recibido, 'utf8');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
   } catch {
     return false;
   }

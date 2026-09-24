@@ -1,43 +1,26 @@
 // ============================================================
 // POST /api/integrations/redeban/webhook
 // Recibe notificaciones de Redeban (callback del proveedor).
-// Sin autenticacion: es un endpoint publico invocado por Redeban.
-// IMPORTANTE: responde 200 siempre para evitar reintentos infinitos.
+//
+// SEGURIDAD (GO-sec, 2026-09-23; auditoria de integraciones §2.2 «Webhooks de
+// cobro»): este handler NO verificaba nada. Con un JSON cualquiera (y el
+// `connectionId` en el propio body) marcaba una sesion QR como pagada y creaba
+// un `payment completed` via `confirmQrPayment`. El middleware no lo protege:
+// da por buena una cookie con un JWT sin verificar.
+//
+// `redebanService.verifyWebhookSignature` existe pero nadie la llamaba, y el
+// codigo no dice en que header ni con que credencial firma Redeban. Inventarlo
+// seria adivinar el contrato del proveedor, asi que el webhook queda CERRADO
+// (fail-closed, 401) hasta implementar la verificacion contra la documentacion
+// de Redeban. No hay trafico real (0 peticiones en los logs de produccion).
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { redebanService } from '@/lib/services/integrations/redeban';
-import type { RedebanWebhookPayload } from '@/lib/services/integrations/redeban/redebanTypes';
+import { NextResponse } from 'next/server';
 
-export async function POST(request: NextRequest) {
-  try {
-    // Leer payload crudo y parsear
-    const rawBody = await request.text();
-    const payload: RedebanWebhookPayload = JSON.parse(rawBody);
-
-    // Log del payload recibido
-    console.log('[Redeban Webhook] Payload recibido:', payload);
-
-    // Extraer connectionId del payload o de query params
-    const url = new URL(request.url);
-    const connectionId =
-      (payload as { connectionId?: string }).connectionId ??
-      url.searchParams.get('connectionId') ??
-      undefined;
-
-    if (!connectionId) {
-      console.error('[Redeban Webhook] No se encontro connectionId en payload ni query params');
-      // Responder 200 igualmente para evitar reintentos
-      return NextResponse.json({ received: true }, { status: 200 });
-    }
-
-    // Procesar webhook via servicio
-    await redebanService.processWebhook(connectionId, payload);
-
-    return NextResponse.json({ received: true }, { status: 200 });
-  } catch (err) {
-    // Log del error pero responder 200 para que Redeban no reintente
-    console.error('[Redeban Webhook] Error procesando:', err);
-    return NextResponse.json({ received: true }, { status: 200 });
-  }
+export async function POST() {
+  console.warn('[Redeban Webhook] rechazado: la verificacion de firma no esta implementada (fail-closed)');
+  return NextResponse.json(
+    { error: 'webhook_signature_not_implemented' },
+    { status: 401 },
+  );
 }

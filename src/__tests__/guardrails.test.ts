@@ -1980,6 +1980,92 @@ describe('27. RLS del catálogo: filas globales de solo lectura y nada abierto a
 });
 
 /**
+ * 27b. Integraciones con credenciales de la PLATAFORMA (Open Finance, PayFac,
+ * Factus): cada handler exportado se autentica solo (GO-sec, 2026-09-23;
+ * docs/design/AUDITORIA-INTEGRACIONES-OPENFINANCE-PAYFAC-FACTUS.md).
+ *
+ * La auditoría encontró `GET`/`DELETE /api/factus/support-document?ref=` sin
+ * NINGUNA autenticación en un archivo cuyo `POST` sí la tenía, `POST
+ * open-finance/transfer` con la llave de la plataforma para cualquier sesión, y
+ * 27 rutas de Open Finance con la organización de la query y service role. El
+ * guardarraíl 5 solo mira escrituras que leen la organización del BODY; este
+ * mira TODOS los métodos de estos tres árboles:
+ *   - cada handler exportado (o el helper local que invoca) llama a una de las
+ *     puertas del servidor: `withOrg`/`getServerOrgContext` (sesión +
+ *     organización), `withPlatformAdmin`/`requirePlatformAdmin`/
+ *     `resolverAlcancePayfac` (plataforma verificada con `fn_is_platform_admin`),
+ *     `withCron`/`verifyCronSecret` (Bearer CRON_SECRET) o una verificación de
+ *     firma fail-closed (`verificarTokenWebhookPrometeo`, `safeEqual` del HMAC);
+ *   - nadie usa `createRouteHandlerClient` ni `auth.getSession()` (lee la
+ *     cookie sin validar el JWT) ni resuelve la organización por «la membresía
+ *     más reciente».
+ * `/api/factus/**` está fuera del middleware: sin esto, un handler nuevo sin
+ * guarda queda abierto a internet con la cuenta de la plataforma.
+ */
+describe('27b. Open Finance, PayFac y Factus: todo handler pasa por una puerta del servidor', () => {
+  const RAICES = [
+    path.join(SRC_ROOT, 'app', 'api', 'integrations', 'open-finance'),
+    path.join(SRC_ROOT, 'app', 'api', 'integrations', 'payfac'),
+    path.join(SRC_ROOT, 'app', 'api', 'factus'),
+  ];
+  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withPlatformAdmin|requirePlatformAdmin|resolverAlcancePayfac|withCron|verifyCronSecret|verificarTokenWebhookPrometeo|safeEqual)\s*\(/;
+  const HANDLER_RE = /^export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE)\b/;
+  const TOP_RE = /^(export\s|async function |function |const |let )/;
+
+  function rutas(): string[] {
+    return RAICES.flatMap((r) => (fs.existsSync(r) ? walkDir(r) : [])).filter((f) => /route\.ts$/.test(f));
+  }
+
+  /** Bloques de nivel superior: `{ nombre, texto }` (handlers y helpers locales). */
+  function bloques(content: string): Array<{ nombre: string; metodo: string | null; texto: string }> {
+    const lineas = content.split(/\r?\n/);
+    const inicios: number[] = [];
+    lineas.forEach((l, i) => {
+      if (TOP_RE.test(l)) inicios.push(i);
+    });
+    return inicios.map((ini, k) => {
+      const fin = k + 1 < inicios.length ? inicios[k + 1] : lineas.length;
+      const cabeza = lineas[ini];
+      const metodo = HANDLER_RE.exec(cabeza)?.[1] ?? null;
+      const nombre = /(?:function|const|let)\s+(\w+)/.exec(cabeza)?.[1] ?? '';
+      return { nombre, metodo, texto: lineas.slice(ini, fin).join('\n') };
+    });
+  }
+
+  test('cada handler exportado tiene sesión, plataforma, cron o firma', () => {
+    const sinPuerta: string[] = [];
+    for (const file of rutas()) {
+      const content = stripAllComments(readFile(file));
+      const todos = bloques(content);
+      const helpersConPuerta = todos.filter((b) => !b.metodo && b.nombre && PUERTA_RE.test(b.texto)).map((b) => b.nombre);
+      for (const h of todos.filter((b) => b.metodo)) {
+        const directo = PUERTA_RE.test(h.texto);
+        const porHelper = helpersConPuerta.some((n) => new RegExp(`\\b${n}\\b`).test(h.texto.replace(/^[^=({]*/, '')));
+        if (!directo && !porHelper) sinPuerta.push(`${rel(file)} ${h.metodo}`);
+      }
+    }
+    expect(sinPuerta).toEqual([]);
+  });
+
+  test('nadie usa createRouteHandlerClient, auth.getSession() ni «la membresía más reciente»', () => {
+    const infracciones = rutas()
+      .filter((f) => /createRouteHandlerClient|\.auth\.getSession\(|getActiveOrganizationId\(/.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(infracciones).toEqual([]);
+  });
+
+  test('Open Finance no devuelve la clave de sesión bancaria y transfer/pay-supplier no llaman al proveedor', () => {
+    const links = stripAllComments(readFile(path.join(RAICES[0], 'links', 'route.ts')));
+    expect(links).toMatch(/sinSecretosDeLink/);
+    for (const ruta of ['transfer', 'pay-supplier', 'validate-account']) {
+      const src = stripAllComments(readFile(path.join(RAICES[0], ruta, 'route.ts')));
+      expect(src).toMatch(/flujoDeshabilitado\(/);
+      expect(src).not.toMatch(/initiateTransfer|paySupplier|validateAccount\(/);
+    }
+  });
+});
+
+/**
  * 28. Documentos impresos y exportados: ni pesos fijos ni el formateador que
  * los supone. Regla del dueño (2026-09-23): los montos van en la moneda del
  * documento o, en su defecto, en la moneda base de la organización

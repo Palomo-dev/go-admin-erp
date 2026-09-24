@@ -1,53 +1,43 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Calculator, Lock, CreditCard, Banknote, Wallet, Smartphone, ArrowUpCircle, ArrowDownCircle, ShoppingCart, UtensilsCrossed, FileText, Receipt, EyeOff } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { createPortal } from 'react-dom';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { RichTextEditor } from '@/components/shared/RichTextEditor';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrency } from '@/utils/Utils';
-import { CajasService, claveErrorCaja } from './CajasService';
-import { useBlindCloseMode } from './useBlindCloseMode';
-import type { CashSession, CashSummary, CloseCashSessionData, SessionMovementType, SessionPaymentDetail } from './types';
-import { getPaymentMethodLabel } from './paymentMethodLabels';
-import { toast } from 'sonner';
+/**
+ * «Arqueo y cierre de caja» (Figma `I-Cierre` · `I-CierreCiego`, captura
+ * `10-pos-cierre-caja.png`; paso 11 de docs/implementacion/CAJAS-VENTAS-PLAN.md).
+ *
+ * - Diálogo en escritorio y hoja inferior en móvil (`PanelAdaptable`), sin
+ *   portales hechos a mano.
+ * - El esperado y su desglose vienen del servidor (`GET /api/pos/cajas/[id]/resumen`);
+ *   con cierre ciego y sin permiso no llegan y el cajero cuenta a ciegas.
+ * - Conteo por método (efectivo escrito o por billetes y monedas) con el mismo
+ *   `ConteoPorMetodo` / `ConteoEfectivo` / `ResumenArqueo` del arqueo.
+ * - Cierra con `CajasService.closeSession`: con red por `POST
+ *   /api/pos/cajas/[id]/cerrar` → `pos_caja_cerrar`, que guarda el conteo por
+ *   método en la MISMA transacción (D6) y calcula la diferencia en el servidor;
+ *   sin red (Desktop) al outbox con el conteo, que luego reproduce la misma RPC.
+ *
+ * API conservada para la pantalla del POS: `session`, `onSessionClosed` y,
+ * opcionales, `open`/`onOpenChange` (sin ellos dibuja su botón «Cerrar caja»).
+ */
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-
-/** Clave de `cajas.cierre.tiposMovimiento` para cada tipo de movimiento de la sesión. */
-const CLAVE_TIPO_MOVIMIENTO: Record<SessionMovementType, string> = {
-  venta_pos: 'ventaPos',
-  venta_mesa: 'ventaMesa',
-  venta_factura: 'ventaFactura',
-  compra_factura: 'compraFactura',
-  cuenta_por_cobrar: 'cuentaPorCobrar',
-  cuenta_por_pagar: 'cuentaPorPagar',
-  otro: 'otro',
-};
-
-const METHOD_LABELS = getPaymentMethodLabel;
-
-const METHOD_ICONS: Record<string, React.ReactNode> = {
-  cash: <Banknote className="h-3.5 w-3.5" />,
-  card: <CreditCard className="h-3.5 w-3.5" />,
-  transfer: <Smartphone className="h-3.5 w-3.5" />,
-  credit: <Wallet className="h-3.5 w-3.5" />,
-};
-
-const MOVEMENT_ICONS: Record<string, React.ReactNode> = {
-  venta_pos: <ShoppingCart className="h-3.5 w-3.5" />,
-  venta_mesa: <UtensilsCrossed className="h-3.5 w-3.5" />,
-  venta_factura: <FileText className="h-3.5 w-3.5" />,
-  compra_factura: <Receipt className="h-3.5 w-3.5" />,
-  cuenta_por_cobrar: <FileText className="h-3.5 w-3.5" />,
-  cuenta_por_pagar: <Receipt className="h-3.5 w-3.5" />,
-  otro: <Wallet className="h-3.5 w-3.5" />,
-};
+import { Calculator, Lock, ReceiptText } from 'lucide-react';
+import { toast } from 'sonner';
+import { FormField, PanelAdaptable, Tarjeta } from '@/components/kit';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
+import { diferenciasPorMetodo, observacionObligatoria, totalesConteo } from '@/lib/pos/cajas/arqueo';
+import { conteoParaGuardar, denominacionesDe, totalDenominaciones, type ConteoDenominaciones } from '@/lib/pos/cajas/denominaciones';
+import { CajasService } from './CajasService';
+import { useBlindCloseMode } from './useBlindCloseMode';
+import { useResumenCaja } from './useResumenCaja';
+import { useMensajeErrorCaja, useMetodosPagoActivos, useMonedaCaja } from './comunesCaja';
+import { ConteoEfectivo } from './conteo/ConteoEfectivo';
+import { ConteoPorMetodo } from './conteo/ConteoPorMetodo';
+import { ResumenArqueo } from './conteo/ResumenArqueo';
+import { TarjetaDesglose } from './detalle/seccionesCaja';
+import { useEtiquetaMetodoPago } from './paymentMethodLabels';
+import type { CashSession, SessionPaymentDetail } from './types';
 
 interface CierreCajaDialogProps {
   session: CashSession;
@@ -56,624 +46,250 @@ interface CierreCajaDialogProps {
   onOpenChange?: (open: boolean) => void;
 }
 
+const MAX_NOTAS = 1000;
+
 export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpen, onOpenChange }: CierreCajaDialogProps) {
+  const t = useTranslations('cajas.cerrarCaja');
+  const tMetodo = useTranslations('cajas.cierre.tiposMovimiento');
   const [internalOpen, setInternalOpen] = useState(false);
-  
-  // Usar estado controlado si se proporciona, sino usar estado interno.
-  // Controlado = la pantalla pone su propio botón: no se dibuja el disparador.
   const controlled = controlledOpen !== undefined;
   const open = controlled ? controlledOpen : internalOpen;
   const setOpen = onOpenChange || setInternalOpen;
-  const [loading, setLoading] = useState(false);
-  const [loadingSummary, setLoadingSummary] = useState(true);
-  const [summary, setSummary] = useState<CashSummary | null>(null);
-  const [movements, setMovements] = useState<SessionPaymentDetail[]>([]);
-  const [formData, setFormData] = useState<CloseCashSessionData>({
-    final_amount: 0,
-    notes: ''
+
+  const { moneda, simbolo, formatear } = useMonedaCaja();
+  const etiquetaMetodo = useEtiquetaMetodoPago();
+  const mensajeError = useMensajeErrorCaja();
+  const metodosActivos = useMetodosPagoActivos();
+  const { showExpected } = useBlindCloseMode();
+  const { resumen, cargando, error, recargar } = useResumenCaja(session.id > 0 ? session.uuid : session.id, {
+    ventas: false,
+    sesionLocal: session,
+    activo: open,
   });
-  // Estado para conteo por método de pago
-  const [methodCounts, setMethodCounts] = useState<Record<string, number>>({});
-  const { showExpected: showExpectedBlind, loading: blindModeLoading } = useBlindCloseMode();
-  const t = useTranslations('cajas.cierre');
-  const tError = useTranslations('cajas.errores');
 
-  // Cargar resumen cuando se abre el modal y ya se resolvió el modo ciego
+  const [porDenominacion, setPorDenominacion] = useState(false);
+  const [denominaciones, setDenominaciones] = useState<ConteoDenominaciones>({});
+  const [contado, setContado] = useState<Record<string, number | null>>({});
+  const [notas, setNotas] = useState('');
+  const [intento, setIntento] = useState(false);
+  const [cerrando, setCerrando] = useState(false);
+  const [movimientos, setMovimientos] = useState<SessionPaymentDetail[]>([]);
+
+  // Sin red el resumen se calcula en local: la visibilidad la decide el cierre ciego de la pantalla.
+  const visible = resumen ? (resumen.sinRed ? showExpected : resumen.verImportes) : false;
+  const conLista = denominacionesDe(moneda.code) !== null;
+  const efectivo = porDenominacion && conLista ? totalDenominaciones(denominaciones) : contado.cash ?? null;
+
   useEffect(() => {
-    if (open && !blindModeLoading) {
-      loadCashSummary();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, blindModeLoading]);
-
-  const loadCashSummary = async () => {
-    setLoadingSummary(true);
-    try {
-      const [cashSummary, sessionMovements] = await Promise.all([
-        CajasService.getCashSummary(session.id),
-        CajasService.getSessionPaymentsDetail(session.id),
-      ]);
-      setSummary(cashSummary);
-      setMovements(sessionMovements);
-      // Pre-llenar conteo por método con los valores esperados del sistema
-      // Solo en modo no-ciego (admin o cierre ciego desactivado).
-      // En cierre ciego, los inputs arrancan vacíos para que el cajero cuente físico.
-      const initialCounts: Record<string, number> = {};
-      if (showExpectedBlind) {
-        // Efectivo: usar expected_amount del sistema
-        initialCounts['cash'] = cashSummary.expected_amount;
-        // Otros métodos: usar income_by_method
-        if (cashSummary.income_by_method) {
-          for (const [method, amount] of Object.entries(cashSummary.income_by_method)) {
-            if (method !== 'cash') {
-              initialCounts[method] = amount;
-            }
-          }
-        }
-        // Pre-llenar con el monto esperado en efectivo
-        setFormData(prev => ({
-          ...prev,
-          final_amount: cashSummary.expected_amount
-        }));
-      } else {
-        // Cierre ciego: arrancar en 0 para forzar conteo físico real
-        initialCounts['cash'] = 0;
-        if (cashSummary.income_by_method) {
-          for (const [method] of Object.entries(cashSummary.income_by_method)) {
-            if (method !== 'cash') {
-              initialCounts[method] = 0;
-            }
-          }
-        }
-        setFormData(prev => ({
-          ...prev,
-          final_amount: 0
-        }));
-      }
-      setMethodCounts(initialCounts);
-    } catch (error) {
-      console.error('Error loading cash summary:', error);
-      toast.error(t('errorResumen'));
-    } finally {
-      setLoadingSummary(false);
-    }
-  };
-
-  const handleInputChange = (field: keyof CloseCashSessionData, value: CloseCashSessionData[keyof CloseCashSessionData]) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleMethodCountChange = (method: string, value: number) => {
-    setMethodCounts(prev => ({
-      ...prev,
-      [method]: value
-    }));
-    // Si es efectivo, actualizar final_amount también
-    if (method === 'cash') {
-      setFormData(prev => ({
-        ...prev,
-        final_amount: value
-      }));
-    }
-  };
-
-  const getMethodExpected = (method: string): number => {
-    if (!summary) return 0;
-    if (method === 'cash') return summary.expected_amount;
-    return summary.income_by_method?.[method] || 0;
-  };
-
-  // Helper para ocultar montos en modo ciego: los empleados no deben ver
-  // ventas, ingresos, egresos ni ningún valor esperado. Solo cuentan físico.
-  const mask = (value: number | string): string => {
-    if (showExpectedBlind) return typeof value === 'number' ? formatCurrency(value) : value;
-    return '****';
-  };
-
-  const getTotalCounted = (): number => {
-    return Object.values(methodCounts).reduce((sum, val) => sum + (val || 0), 0);
-  };
-
-  const getTotalExpected = (): number => {
-    if (!summary) return 0;
-    let total = summary.expected_amount;
-    if (summary.income_by_method) {
-      for (const [method, amount] of Object.entries(summary.income_by_method)) {
-        if (method !== 'cash') {
-          total += amount;
-        }
-      }
-    }
-    return total;
-  };
-
-  const getTotalDifference = (): number => {
-    return getTotalCounted() - getTotalExpected();
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (formData.final_amount < 0) {
-      toast.error(t('montoNegativo'));
+    if (!open) {
+      setPorDenominacion(false);
+      setDenominaciones({});
+      setContado({});
+      setNotas('');
+      setIntento(false);
       return;
     }
+    if (!visible || session.id < 0) {
+      setMovimientos([]);
+      return;
+    }
+    let vigente = true;
+    CajasService.getSessionPaymentsDetail(session.id)
+      .then((m) => vigente && setMovimientos(m))
+      .catch(() => vigente && setMovimientos([]));
+    return () => {
+      vigente = false;
+    };
+  }, [open, visible, session.id]);
 
-    setLoading(true);
+  const filas = useMemo(
+    () =>
+      diferenciasPorMetodo(
+        visible && resumen ? resumen.esperado.por_metodo ?? {} : null,
+        { ...contado, cash: efectivo },
+        metodosActivos,
+      ),
+    [visible, resumen, contado, efectivo, metodosActivos],
+  );
+  const totales = useMemo(() => totalesConteo(filas), [filas]);
+  const notasObligatorias = observacionObligatoria(totales.diferenciaTotal);
+  const errorNotas = intento && notasObligatorias && !notas.trim() ? t('notasObligatorias') : null;
+  const sinEfectivo = efectivo === null;
+
+  const cerrar = async () => {
+    setIntento(true);
+    if (sinEfectivo) return;
+    if (notasObligatorias && !notas.trim()) return;
+    setCerrando(true);
     try {
-      // Se cierra ESTA caja (no «la activa»): desde «Cajas abiertas» o el detalle
-      // puede ser la de otro cajero, y ese cierre lo autoriza el servidor.
-      const closedSession = await CajasService.closeSession(formData, session);
-      toast.success(closedSession.pending_sync ? t('cerradaSinConexion') : t('cerradaExito'), {
-        description: t('toastDescripcion', {
-          visible: showExpectedBlind ? 'si' : 'no',
-          diferencia: formatCurrency(Math.abs(getTotalDifference())),
-          pendiente: closedSession.pending_sync ? 'si' : 'no',
-        })
+      const porMetodo: Record<string, number> = {};
+      for (const [k, v] of Object.entries(contado)) if (k !== 'cash' && v !== null && v > 0) porMetodo[k] = v;
+      const cerrada = await CajasService.closeSession(
+        {
+          final_amount: efectivo ?? 0,
+          notes: notas.trim() || undefined,
+          counted_by_method: porMetodo,
+          denominations: porDenominacion && conLista ? conteoParaGuardar(denominaciones) : undefined,
+        },
+        session,
+      );
+      const dif = cerrada.difference;
+      toast.success(cerrada.pending_sync ? t('cerradaSinRed') : t('cerrada'), {
+        description:
+          cerrada.pending_sync
+            ? t('pendienteSincronizar')
+            : dif !== null && dif !== undefined
+              ? t('cerradaDiferencia', { monto: formatear(Number(dif)) })
+              : t('cerradaSinCifras'),
       });
-      
-      onSessionClosed(closedSession);
+      setCerrando(false);
+      onSessionClosed(cerrada);
       setOpen(false);
-    } catch (error) {
-      console.error('Error closing cash session:', error);
-      const clave = claveErrorCaja(error);
-      toast.error(t('errorCerrar'), {
-        description: clave && tError.has(clave) ? tError(clave) : (error as Error)?.message
-      });
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      const codigo = (e as { codigo?: string })?.codigo;
+      toast.error(t('errorCerrar'), { description: mensajeError(codigo, (e as Error)?.message) });
+      setCerrando(false);
     }
   };
+
+  const pie = (
+    <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <Button variant="outline" className="h-10" onClick={() => setOpen(false)} disabled={cerrando}>
+        {t('cancelar')}
+      </Button>
+      <Button variant="destructive" className="h-10 gap-2" onClick={() => void cerrar()} disabled={cerrando || !resumen} title={sinEfectivo ? t('cuentaEfectivo') : undefined}>
+        <Lock aria-hidden="true" className="size-4" strokeWidth={1.5} />
+        {cerrando ? t('cerrando') : t('cerrarCaja')}
+      </Button>
+    </div>
+  );
 
   return (
     <>
       {!controlled && (
-        <Button 
-          size="lg"
-          className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
-          onClick={() => setOpen(true)}
-        >
-          <Lock className="h-5 w-5 mr-2" />
+        <Button variant="destructive" className="h-10 gap-2" onClick={() => setOpen(true)}>
+          <Lock aria-hidden="true" className="size-4" strokeWidth={1.5} />
           {t('cerrarCaja')}
         </Button>
       )}
-      {open && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
-          <div className="min-h-screen px-1 sm:px-4 py-2 sm:py-8 flex items-center justify-center">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[97vh] sm:max-h-[90vh] overflow-hidden relative animate-in fade-in-0 zoom-in-95 duration-300 dark:bg-gray-800">
-              <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center space-x-2">
-                  <Calculator className="h-5 w-5 text-red-600" />
-                  <span>{t('titulo')}</span>
-                </h2>
-                <button type="button" aria-label={t('cerrar')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700" onClick={() => setOpen(false)}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="overflow-y-auto max-h-[calc(90vh-80px)] bg-gray-50 dark:bg-gray-900">
-                <div className="p-4 sm:p-6">
-                  {loadingSummary ? (
-          <div className="py-8 space-y-3">
-            <Skeleton className="h-5 w-1/2" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-20 w-full" />
+      <PanelAdaptable
+        abierto={open}
+        onAbiertoChange={(v) => !cerrando && setOpen(v)}
+        titulo={t('titulo')}
+        descripcion={t('descripcion', { id: session.id > 0 ? session.id : '—' })}
+        icono={Calculator}
+        ancho={800}
+        ocupado={cerrando}
+        pie={pie}
+      >
+        {cargando && !resumen ? (
+          <div className="flex flex-col gap-3" aria-busy="true">
+            <Skeleton className="h-40 rounded-xl" />
+            <Skeleton className="h-56 rounded-xl" />
+          </div>
+        ) : error || !resumen ? (
+          <div className="flex flex-col items-start gap-3 rounded-lg border border-line-danger bg-danger-subtle p-4 text-sm text-danger-text" role="alert">
+            <p>{mensajeError(error)}</p>
+            <Button variant="outline" size="sm" onClick={() => void recargar()}>
+              {t('reintentar')}
+            </Button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Resumen de movimientos */}
-            <Card className="dark:bg-gray-700 dark:border-gray-600 bg-gray-50 border-gray-200">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm dark:text-gray-200 text-gray-700">
-                  {t('resumenMovimientos')}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="dark:text-gray-400 text-gray-600">{t('montoInicial')}</span>
-                    <p className="font-medium dark:text-white text-gray-900">
-                      {summary ? mask(summary.initial_amount) : '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="dark:text-gray-400 text-gray-600">{t('ventasEfectivo')}</span>
-                    <p className="font-medium text-green-600">
-                      {summary ? mask(summary.sales_cash) : '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="dark:text-gray-400 text-gray-600">{t('ventasTotales')}</span>
-                    <p className="font-medium text-emerald-600">
-                      {summary ? mask(summary.sales_total ?? summary.sales_cash) : '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="dark:text-gray-400 text-gray-600">{t('ingresos')}</span>
-                    <p className="font-medium text-blue-600">
-                      {summary ? mask(summary.cash_in) : '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="dark:text-gray-400 text-gray-600">{t('egresos')}</span>
-                    <p className="font-medium text-red-600">
-                      {summary ? mask(summary.cash_out) : '-'}
-                    </p>
-                  </div>
-                  {summary && summary.change_total > 0 && (
-                    <div>
-                      <span className="dark:text-gray-400 text-gray-600">{t('vueltoEntregado')}</span>
-                      <p className="font-medium text-orange-600">
-                        -{mask(summary.change_total)}
-                      </p>
-                    </div>
-                  )}
-                  {summary && summary.returns_total > 0 && (
-                    <div>
-                      <span className="dark:text-gray-400 text-gray-600">{t('devoluciones')}</span>
-                      <p className="font-medium text-red-600">
-                        -{mask(summary.returns_total)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                
-                <Separator className="dark:bg-gray-600 bg-gray-300" />
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void cerrar();
+            }}
+          >
+            {resumen.sinRed && <p className="rounded-lg border border-line-warning bg-warning-subtle px-3 py-2 text-sm text-warning-text">{t('avisoSinRed')}</p>}
 
-                {/* Desglose por metodo de pago: ingresos */}
-                {summary?.income_by_method && Object.keys(summary.income_by_method).length > 0 && (
-                  <div className="space-y-2">
-                    <span className="text-xs font-medium flex items-center gap-1 dark:text-green-400 text-green-700">
-                      <ArrowUpCircle className="h-3.5 w-3.5" /> {t('ingresosPorMetodo')}
-                    </span>
-                    <div className="space-y-1.5">
-                      {Object.entries(summary.income_by_method).map(([method, amount]) => (
-                        <div key={method} className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-1.5 dark:text-gray-300 text-gray-700">
-                            {METHOD_ICONS[method] || <Wallet className="h-3.5 w-3.5" />}
-                            {METHOD_LABELS(method)}:
-                          </span>
-                          <span className="font-medium text-green-600">
-                            {mask(amount)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Desglose de VENTAS por metodo de pago (solo ventas, sin abonos ni compras) */}
-                {summary?.sales_by_method && Object.keys(summary.sales_by_method).length > 0 && (
-                  <div className="space-y-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
-                    <span className="text-xs font-medium flex items-center gap-1 dark:text-emerald-400 text-emerald-700">
-                      <ShoppingCart className="h-3.5 w-3.5" /> {t('ventasPorMetodo')}
-                    </span>
-                    <div className="space-y-1.5">
-                      {Object.entries(summary.sales_by_method).map(([method, amount]) => (
-                        <div key={method} className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-1.5 dark:text-gray-300 text-gray-700">
-                            {METHOD_ICONS[method] || <Wallet className="h-3.5 w-3.5" />}
-                            {METHOD_LABELS(method)}:
-                          </span>
-                          <span className="font-medium text-emerald-600">
-                            {mask(method === 'cash' ? amount - (summary.change_total || 0) : amount)}
-                          </span>
-                        </div>
-                      ))}
-                      <div className="flex items-center justify-between text-sm pt-1 border-t dark:border-emerald-800 border-emerald-200">
-                        <span className="font-medium dark:text-gray-300 text-gray-700">
-                          {t('totalVentas')}
-                        </span>
-                        <span className="font-bold text-emerald-600">
-                          {mask(summary.sales_total ?? 0)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Recibos de caja (abonos a cuentas por cobrar) */}
-                {summary && summary.cash_receipts_total > 0 && (
-                  <div className="space-y-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                    <span className="text-xs font-medium flex items-center gap-1 dark:text-blue-400 text-blue-700">
-                      <Receipt className="h-3.5 w-3.5" /> {t('recibosCaja')}
-                    </span>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="dark:text-gray-300 text-gray-700">{t('totalRecibido')}</span>
-                      <span className="font-bold text-blue-600">{mask(summary.cash_receipts_total)}</span>
-                    </div>
-                    {summary.cash_receipts_by_method && Object.keys(summary.cash_receipts_by_method).length > 0 && (
-                      <div className="space-y-1">
-                        {Object.entries(summary.cash_receipts_by_method).map(([method, amount]) => (
-                          <div key={method} className="flex items-center justify-between text-xs">
-                            <span className="flex items-center gap-1.5 dark:text-gray-400 text-gray-600">
-                              {METHOD_ICONS[method] || <Wallet className="h-3 w-3" />}
-                              {METHOD_LABELS(method)}:
-                            </span>
-                            <span className="font-medium text-blue-600">{mask(amount)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Desglose por metodo de pago: egresos (compras a proveedores) */}
-                {summary?.expense_by_method && Object.keys(summary.expense_by_method).length > 0 && (
-                  <div className="space-y-2">
-                    <span className="text-xs font-medium flex items-center gap-1 dark:text-red-400 text-red-700">
-                      <ArrowDownCircle className="h-3.5 w-3.5" /> {t('egresosPorMetodo')}
-                    </span>
-                    <div className="space-y-1.5">
-                      {Object.entries(summary.expense_by_method).map(([method, amount]) => (
-                        <div key={method} className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-1.5 dark:text-gray-300 text-gray-700">
-                            {METHOD_ICONS[method] || <Wallet className="h-3.5 w-3.5" />}
-                            {METHOD_LABELS(method)}:
-                          </span>
-                          <span className="font-medium text-red-600">
-                            {mask(amount)}
-                          </span>
-                        </div>
-                      ))}
-                      <div className="flex items-center justify-between text-sm pt-1 border-t dark:border-gray-600">
-                        <span className="font-medium dark:text-gray-300 text-gray-700">
-                          {t('totalPagosProveedores')}
-                        </span>
-                        <span className="font-bold text-red-600">
-                          -{mask(summary.purchases_total || 0)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <Separator className="dark:bg-gray-600 bg-gray-300" />
-                
-                <div className="flex justify-between items-center">
-                  <span className="font-medium dark:text-gray-200 text-gray-800 flex items-center gap-1.5">
-                    {!showExpectedBlind && (
-                      <EyeOff className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-                    )}
-                    {t('montoEsperado')}
-                  </span>
-                  <span className="text-lg font-bold text-blue-600">
-                    {showExpectedBlind
-                      ? (summary ? formatCurrency(summary.expected_amount) : '-')
-                      : '****'}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Movimientos de la sesion */}
-            {movements.length > 0 && (
-              <Card className="dark:bg-gray-700 dark:border-gray-600 bg-gray-50 border-gray-200">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm dark:text-gray-200 text-gray-700">
-                    {t('movimientosSesion', { n: movements.length })}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
-                    {movements.map((mov) => (
-                      <div
-                        key={mov.id}
-                        className="flex items-center justify-between text-sm p-2 rounded-md dark:bg-gray-600/50 bg-white border dark:border-gray-600 border-gray-200"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className={mov.direction === 'in' ? 'text-green-600' : 'text-red-600'}>
-                            {MOVEMENT_ICONS[mov.type]}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="font-medium dark:text-white text-gray-900 break-words whitespace-normal">
-                              {t(`tiposMovimiento.${CLAVE_TIPO_MOVIMIENTO[mov.type] ?? 'otro'}`)}
-                              {mov.reference ? ` #${mov.reference}` : ''}
-                            </p>
-                            <p className="text-xs dark:text-gray-400 text-gray-500 break-words whitespace-normal">
-                              {mov.counterparty || t('sinContraparte')}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Badge variant="outline" className="text-xs dark:border-gray-500">
-                            {METHOD_LABELS(mov.method)}
-                          </Badge>
-                          <span className={`font-medium ${mov.direction === 'in' ? 'text-green-600' : 'text-red-600'}`}>
-                            {mov.direction === 'in' ? '+' : '-'}{mask(mov.amount)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+            {visible ? (
+              <TarjetaDesglose resumen={{ ...resumen, verImportes: true }} formatear={formatear} />
+            ) : (
+              <p className="rounded-lg border border-line-info bg-info-subtle px-3 py-2 text-sm text-info-text">{t('avisoCierreCiego')}</p>
             )}
 
-            {/* Arqueo por método de pago */}
-            <Card className="dark:bg-gray-700 dark:border-gray-600 bg-gray-50 border-gray-200">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm dark:text-gray-200 text-gray-700">
-                  {t('arqueoPorMetodo')}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Tabla de conteo por método */}
-                <div className="space-y-3">
-                  {/* Efectivo siempre presente */}
-                  {['cash', ...Object.keys(summary?.income_by_method || {}).filter(m => m !== 'cash')].map((method) => {
-                    const expected = getMethodExpected(method);
-                    const counted = methodCounts[method] || 0;
-                    const diff = counted - expected;
-                    return (
-                      <div key={method} className="space-y-2 p-3 rounded-lg dark:bg-gray-600/50 bg-white border dark:border-gray-600 border-gray-200">
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-2 text-sm font-medium dark:text-white text-gray-900">
-                            {METHOD_ICONS[method] || <Wallet className="h-4 w-4" />}
-                            {METHOD_LABELS(method)}
-                          </span>
-                          <span className="text-xs dark:text-gray-400 text-gray-500">
-                            {t('esperado')} <span className="font-medium">
-                              {showExpectedBlind ? formatCurrency(expected) : '****'}
-                            </span>
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 items-center">
-                          <div>
-                            <Label className="text-xs dark:text-gray-400 text-gray-500 mb-1 block">
-                              {t('contadoReal')}
-                            </Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={counted}
-                              onChange={(e) => handleMethodCountChange(method, parseFloat(e.target.value) || 0)}
-                              className="dark:bg-gray-700 dark:border-gray-500 dark:text-white bg-white border-gray-300 h-8 text-sm"
-                            />
-                          </div>
-                          <div className="text-right">
-                            <Label className="text-xs dark:text-gray-400 text-gray-500 mb-1 block">
-                              {t('diferencia')}
-                            </Label>
-                            {showExpectedBlind ? (
-                              <span className={`text-sm font-bold ${
-                                diff === 0
-                                  ? 'text-gray-600 dark:text-gray-400'
-                                  : diff > 0
-                                  ? 'text-green-600 dark:text-green-400'
-                                  : 'text-red-600 dark:text-red-400'
-                              }`}>
-                                {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
-                              </span>
-                            ) : (
-                              <span className="text-sm font-bold text-gray-400 dark:text-gray-500">
-                                ****
-                              </span>
-                            )}
-                          </div>
-                        </div>
+            {visible && movimientos.length > 0 && (
+              <Tarjeta titulo={t('movimientosSesion', { n: movimientos.length })} icono={ReceiptText}>
+                <ul className="flex max-h-56 flex-col divide-y divide-line overflow-y-auto">
+                  {movimientos.map((m) => (
+                    <li key={m.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-fg">
+                          {tMetodo(CLAVE_TIPO[m.type] ?? 'otro')}
+                          {m.reference ? ` #${m.reference}` : ''}
+                        </p>
+                        <p className="truncate text-xs text-fg-muted">
+                          {m.counterparty || t('sinContraparte')} · {etiquetaMetodo(m.method)}
+                        </p>
                       </div>
-                    );
-                  })}
-                </div>
-
-                <Separator className="dark:bg-gray-600 bg-gray-300" />
-
-                {/* Totales */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="dark:text-gray-300 text-gray-700">{t('totalEsperado')}</span>
-                    <span className="font-medium dark:text-white">
-                      {showExpectedBlind ? formatCurrency(getTotalExpected()) : '****'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="dark:text-gray-300 text-gray-700">{t('totalContado')}</span>
-                    <span className="font-medium dark:text-white">{formatCurrency(getTotalCounted())}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 rounded-lg dark:bg-gray-600/50 bg-gray-100">
-                    <span className="font-semibold dark:text-white text-gray-900 flex items-center gap-1.5">
-                      {!showExpectedBlind && (
-                        <EyeOff className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                      )}
-                      {t('diferenciaTotal')}
-                    </span>
-                    {showExpectedBlind ? (
-                      <span className={`text-lg font-bold ${
-                        getTotalDifference() === 0
-                          ? 'text-gray-600 dark:text-gray-400'
-                          : getTotalDifference() > 0
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-red-600 dark:text-red-400'
-                      }`}>
-                        {getTotalDifference() >= 0 ? '+' : ''}{formatCurrency(getTotalDifference())}
+                      <span className={m.direction === 'in' ? 'shrink-0 font-semibold tabular-nums text-success-text' : 'shrink-0 font-semibold tabular-nums text-danger-text'}>
+                        {`${m.direction === 'in' ? '+' : '−'}${formatear(m.amount)}`}
                       </span>
-                    ) : (
-                      <span className="text-lg font-bold text-gray-400 dark:text-gray-500">
-                        ****
-                      </span>
-                    )}
-                  </div>
-                  {showExpectedBlind && getTotalDifference() !== 0 && (
-                    <p className="text-xs dark:text-gray-400 text-gray-500">
-                      {getTotalDifference() > 0 ? t('sobranteArqueo') : t('faltanteArqueo')}
-                    </p>
-                  )}
-                </div>
+                    </li>
+                  ))}
+                </ul>
+              </Tarjeta>
+            )}
 
-                {/* Notas */}
-                <div className="space-y-2">
-                  <Label htmlFor="notes" className="dark:text-gray-200 text-gray-700">
-                    {t('observaciones')}
-                  </Label>
-                  <RichTextEditor
-                    value={formData.notes || ''}
-                    onChange={(html) => handleInputChange('notes', html)}
-                    placeholder={t('observacionesPlaceholder')}
-                    className="dark:bg-gray-600 dark:border-gray-500 dark:text-white bg-white border-gray-300"
-                    minHeight={60}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Advertencia si hay diferencia */}
-            {showExpectedBlind && Math.abs(getTotalDifference()) > 0 && (
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  {getTotalDifference() > 0
-                    ? t.rich('advertenciaSobrante', {
-                        monto: formatCurrency(Math.abs(getTotalDifference())),
-                        strong: (partes) => <strong>{partes}</strong>,
-                      })
-                    : t.rich('advertenciaFaltante', {
-                        monto: formatCurrency(Math.abs(getTotalDifference())),
-                        strong: (partes) => <strong>{partes}</strong>,
-                      })}
-                </p>
+            {conLista && (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-fg-secondary">{porDenominacion ? t('contandoDenominaciones') : t('contarDenominacionesAyuda')}</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => setPorDenominacion((v) => !v)} aria-pressed={porDenominacion}>
+                  {porDenominacion ? t('escribirTotal') : t('contarDenominaciones')}
+                </Button>
               </div>
             )}
+            {porDenominacion && conLista && (
+              <ConteoEfectivo
+                compacto
+                moneda={moneda.code}
+                valor={denominaciones}
+                onValorChange={setDenominaciones}
+                totalManual={null}
+                onTotalManualChange={() => undefined}
+                formatear={formatear}
+                simbolo={simbolo}
+                deshabilitado={cerrando}
+              />
+            )}
 
-            {/* Botones */}
-            <div className="flex space-x-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                onClick={() => setOpen(false)}
-                disabled={loading}
-              >
-                {t('cancelar')}
-              </Button>
-              <Button
-                type="submit"
-                className="flex-1 bg-red-600 hover:bg-red-700"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                    {t('cerrando')}
-                  </>
-                ) : (
-                  t('cerrarCaja')
-                )}
-              </Button>
-            </div>
+            <ConteoPorMetodo
+              titulo={t('arqueoPorMetodo')}
+              filas={filas}
+              efectivoEditable={!(porDenominacion && conLista)}
+              onContadoChange={(metodo, v) => setContado((prev) => ({ ...prev, [metodo]: v }))}
+              etiquetaMetodo={etiquetaMetodo}
+              formatear={formatear}
+              simbolo={simbolo}
+              visible={visible}
+              deshabilitado={cerrando}
+            />
+
+            <ResumenArqueo titulo={t('resumenCierre')} totales={totales} formatear={formatear} visible={visible} />
+
+            <FormField etiqueta={t('observaciones')} obligatorio={notasObligatorias} error={errorNotas} ayuda={t('observacionesAyuda', { max: MAX_NOTAS })}>
+              <Textarea value={notas} onChange={(e) => setNotas(e.target.value.slice(0, MAX_NOTAS))} rows={3} placeholder={t('observacionesPlaceholder')} />
+            </FormField>
+            {intento && sinEfectivo && (
+              <p role="alert" className="text-sm text-danger-text">
+                {t('cuentaEfectivo')}
+              </p>
+            )}
           </form>
         )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      </PanelAdaptable>
     </>
   );
 }
+
+const CLAVE_TIPO: Record<SessionPaymentDetail['type'], string> = {
+  venta_pos: 'ventaPos',
+  venta_mesa: 'ventaMesa',
+  venta_factura: 'ventaFactura',
+  compra_factura: 'compraFactura',
+  cuenta_por_cobrar: 'cuentaPorCobrar',
+  cuenta_por_pagar: 'cuentaPorPagar',
+  otro: 'otro',
+};

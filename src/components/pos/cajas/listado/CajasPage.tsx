@@ -5,13 +5,14 @@
  * pestañas «Mi caja», «Cajas abiertas» e «Historial» con el kit compartido.
  *
  * Funcionalidad que se conserva del listado anterior: abrir caja con monto
- * inicial (AperturaCajaDialog), entradas y salidas manuales (MovimientosDialog),
- * cierre con conteo por método, diferencia y observaciones (CierreCajaDialog),
- * reporte imprimible carta / POS 80 mm (ReportGenerator), resumen y movimientos
- * de la caja propia, cajas abiertas de la organización, historial paginado,
- * cierre ciego, realtime y el modo de cajas de la organización (por cajero o
- * por sucursal). El arqueo con conteo por denominación sigue en el detalle
- * (/app/pos/cajas/[id]/arqueos/nuevo), enlazado desde «⋯».
+ * inicial (AperturaCajaDialog), entradas y salidas manuales (MovimientosDialog,
+ * formulario único), cierre con conteo por método guardado en la misma
+ * transacción (CierreCajaDialog → pos_caja_cerrar), reporte de caja en carta o
+ * 80 mm por el motor único de documentos, resumen y movimientos de la caja
+ * propia (datos del servidor), cajas abiertas de la organización, historial
+ * paginado, cierre ciego (enmascarado en el servidor), realtime y el modo de
+ * cajas de la organización (por cajero o por sucursal). El arqueo con conteo
+ * por denominación está en /app/pos/cajas/[id]/arqueos/nuevo, enlazado desde «⋯».
  *
  * Permisos (regla dura 6): quién puede cerrar cajas ajenas y ver el esperado
  * en cierre ciego lo decide el servidor (`usePermisosCaja`); el cierre de una
@@ -20,7 +21,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Banknote, DollarSign, Eye, History, ListChecks, Lock, Plus, RefreshCw } from 'lucide-react';
+import { Banknote, DollarSign, Eye, FileText, History, ListChecks, Lock, Plus, Printer, RefreshCw } from 'lucide-react';
 import {
   BranchBadgeActiva,
   EmptyState,
@@ -47,7 +48,9 @@ import { MovimientosDialog } from '../MovimientosDialog';
 import { CajasService } from '../CajasService';
 import { useBlindCloseMode } from '../useBlindCloseMode';
 import { usePermisosCaja } from '../usePermisosCaja';
-import type { CashSession, CashSummary } from '../types';
+import type { CashSession } from '../types';
+import type { ResumenCompacto } from '@/lib/pos/cajas/resumenServidor';
+import { abrirDocumento, imprimirDocumento } from '@/lib/documents/cliente';
 import { dinero, dineroConSigno, resumenCajasAbiertas, resumenDiferencias, type ResumenDiferencias } from '../historialCajas';
 import { CajasAbiertasTab } from './CajasAbiertasTab';
 import { HistorialTab } from './HistorialTab';
@@ -91,7 +94,7 @@ export function CajasPage() {
   const [abiertas, setAbiertas] = useState<CashSession[]>([]);
   const [cargandoAbiertas, setCargandoAbiertas] = useState(true);
   const [errorAbiertas, setErrorAbiertas] = useState<string | null>(null);
-  const [resumenes, setResumenes] = useState<Map<number, CashSummary>>(new Map());
+  const [resumenes, setResumenes] = useState<Map<number, ResumenCompacto>>(new Map());
   const [delDia, setDelDia] = useState<ResumenDiferencias | null>(null);
   const [refrescando, setRefrescando] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -124,14 +127,15 @@ export function CajasPage() {
       const sesiones = await CajasService.getActiveSessions();
       setAbiertas(sesiones);
       setCargandoAbiertas(false);
-      // El resumen de cada caja (ventas en efectivo, movimientos, esperado) es el
-      // mismo `getCashSummary` del cierre: una sola forma de calcular el esperado.
-      const calculados = await Promise.allSettled(sesiones.map((s) => CajasService.getCashSummary(s.id)));
-      const mapa = new Map<number, CashSummary>();
-      calculados.forEach((r, i) => {
-        if (r.status === 'fulfilled') mapa.set(sesiones[i].id, r.value);
-      });
-      setResumenes(mapa);
+      // Cifras de todas las cajas abiertas en UNA petición al servidor
+      // (`pos_caja_esperado`, con la máscara del cierre ciego); antes, un
+      // `getCashSummary` por caja desde el navegador (N+1).
+      try {
+        setResumenes(await CajasService.getResumenes(sesiones.map((s) => s.id)));
+      } catch (e) {
+        console.warn('No se pudieron leer las cifras de las cajas abiertas:', e);
+        setResumenes(new Map());
+      }
     } catch (e) {
       console.error('Error loading active sessions:', e);
       setErrorAbiertas(e instanceof Error ? e.message : tListado('errorDesconocido'));
@@ -254,6 +258,20 @@ export function CajasPage() {
       etiqueta: t('nuevoArqueo'),
       icono: ListChecks,
       onSelect: () => miCaja && router.push(`/app/pos/cajas/${miCaja.uuid}/arqueos/nuevo`),
+      oculta: !miCaja || miCaja.id < 0,
+    },
+    {
+      id: 'reporte',
+      etiqueta: t('reporteCarta'),
+      icono: FileText,
+      onSelect: () => miCaja && abrirDocumento('cierre-caja', miCaja.id),
+      oculta: !miCaja || miCaja.id < 0,
+    },
+    {
+      id: 'ticket',
+      etiqueta: t('reporteTicket'),
+      icono: Printer,
+      onSelect: () => miCaja && imprimirDocumento('cierre-caja', miCaja.id, { papel: '80mm' }),
       oculta: !miCaja || miCaja.id < 0,
     },
     { id: 'historial', etiqueta: tListado('verHistorial'), icono: History, onSelect: () => setTab('historial'), separadorAntes: true },
@@ -475,7 +493,9 @@ export function CajasPage() {
 
       {/* Diálogos controlados: los disparadores son los botones de esta pantalla. */}
       <AperturaCajaDialog open={aperturaAbierta} onOpenChange={setAperturaAbierta} onSessionOpened={alAbrir} />
-      {miCaja && <MovimientosDialog open={movimientoAbierto} onOpenChange={setMovimientoAbierto} onMovementAdded={alRegistrarMovimiento} />}
+      {miCaja && (
+        <MovimientosDialog sesion={miCaja} open={movimientoAbierto} onOpenChange={setMovimientoAbierto} onMovementAdded={alRegistrarMovimiento} />
+      )}
       {cajaACerrar && (
         <CierreCajaDialog
           session={cajaACerrar}

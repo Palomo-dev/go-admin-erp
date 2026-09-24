@@ -21,7 +21,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { puedeCerrarCaja } from '@/lib/pos/cajas/reglasCierre';
-import type { CashSession, CashSummary } from '../types';
+import type { CashSession } from '../types';
+import type { ResumenCompacto } from '@/lib/pos/cajas/resumenServidor';
 import { cajaCoincide, dinero, dineroConSigno } from '../historialCajas';
 import { Oculto, SucursalCaja, useHaceCuanto } from './comunes';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -30,7 +31,8 @@ type FiltroCajero = 'todas' | 'mias' | 'otros';
 
 export interface CajasAbiertasTabProps {
   sesiones: readonly CashSession[];
-  resumenes: ReadonlyMap<number, CashSummary>;
+  /** Cifras del servidor (`GET /api/pos/cajas/resumenes`), ya sin dinero si hay cierre ciego. */
+  resumenes: ReadonlyMap<number, ResumenCompacto>;
   cargando: boolean;
   error: string | null;
   onReintentar: () => void;
@@ -69,7 +71,6 @@ export function CajasAbiertasTab({
   const tListado = useTranslations('cajas.listado');
   const tError = useTranslations('cajas.errores');
   const haceCuanto = useHaceCuanto();
-  const motivoCierreCiego = tListado('motivoCierreCiego');
   const motivoNoPuedeCerrar = tError('sinPermiso');
   const etiquetaFiltro = (v: FiltroCajero) => t(`filtroCajero.${v}`);
   const [busqueda, setBusqueda] = useState('');
@@ -95,14 +96,9 @@ export function CajasAbiertasTab({
   const accionesDe = (s: CashSession): AccionFila[] => {
     const puedeCerrar = puedeCerrarCaja(s, userId, cerrarAjenas);
     return [
-      {
-        id: 'ver',
-        etiqueta: tListado('verDetalle'),
-        icono: Eye,
-        onSelect: () => irADetalle(s),
-        deshabilitada: !showExpected,
-        motivo: showExpected ? undefined : motivoCierreCiego,
-      },
+      // Con cierre ciego el detalle ya no lo bloquea la pantalla: el servidor
+      // no manda el esperado ni las diferencias a quien no puede verlos.
+      { id: 'ver', etiqueta: tListado('verDetalle'), icono: Eye, onSelect: () => irADetalle(s) },
       {
         id: 'cerrar',
         etiqueta: tListado('cerrarCaja'),
@@ -114,7 +110,7 @@ export function CajasAbiertasTab({
     ];
   };
 
-  const celdaResumen = (s: CashSession, pintar: (r: CashSummary) => ReactNode) => {
+  const celdaResumen = (s: CashSession, pintar: (r: ResumenCompacto) => ReactNode) => {
     const r = resumenes.get(s.id);
     return r ? pintar(r) : <Skeleton className="ml-auto h-4 w-16" />;
   };
@@ -151,7 +147,7 @@ export function CajasAbiertasTab({
       celda: (s) =>
         celdaResumen(s, (r) => (
           <div className="flex flex-col items-end">
-            <span className="font-medium">{dinero(r.sales_cash, moneda)}</span>
+            {r.sales_cash === null ? <Oculto /> : <span className="font-medium">{dinero(r.sales_cash, moneda)}</span>}
             <span className="text-xs text-fg-secondary">
               {t('ventas', { count: r.sales_cash_count ?? 0 })}
             </span>
@@ -180,7 +176,8 @@ export function CajasAbiertasTab({
       id: 'esperado',
       encabezado: t('columnas.esperado'),
       variante: 'importe',
-      celda: (s) => (showExpected ? celdaResumen(s, (r) => <span className="font-medium">{dinero(r.expected_amount, moneda)}</span>) : <Oculto />),
+      celda: (s) =>
+        showExpected ? celdaResumen(s, (r) => (r.expected_amount === null ? <Oculto /> : <span className="font-medium">{dinero(r.expected_amount, moneda)}</span>)) : <Oculto />,
     },
   ];
 
@@ -248,7 +245,7 @@ export function CajasAbiertasTab({
           filas={filas}
           obtenerId={(s) => String(s.id)}
           estado={estado}
-          onFilaClick={showExpected ? irADetalle : undefined}
+          onFilaClick={irADetalle}
           etiquetaFila={(s) =>
             s.opened_by_name ? tListado('etiquetaFila', { id: s.id, nombre: s.opened_by_name }) : tListado('etiquetaFilaSinNombre', { id: s.id })
           }
@@ -256,14 +253,7 @@ export function CajasAbiertasTab({
             const puedeCerrar = puedeCerrarCaja(s, userId, cerrarAjenas);
             return (
               <>
-                <AccionRapida
-                  soloIcono
-                  etiqueta={tListado('verDetalle')}
-                  icono={Eye}
-                  onClick={() => irADetalle(s)}
-                  deshabilitada={!showExpected}
-                  motivo={showExpected ? undefined : motivoCierreCiego}
-                />
+                <AccionRapida soloIcono etiqueta={tListado('verDetalle')} icono={Eye} onClick={() => irADetalle(s)} />
                 <AccionRapida
                   etiqueta={t('cerrar')}
                   icono={Lock}
@@ -280,9 +270,9 @@ export function CajasAbiertasTab({
               titulo={`${s.opened_by_name || tListado('cajero')} · #${s.id}`}
               subtitulo={t('tarjetaSubtitulo', { sucursal: s.branch_name ?? '', hace: haceCuanto(s.opened_at) })}
               meta={s.opened_by === userId ? t('tuCaja') : t('tarjetaInicial', { monto: dinero(s.initial_amount, moneda) })}
-              valor={showExpected ? (resumenes.get(s.id) ? dinero(resumenes.get(s.id)?.expected_amount, moneda) : undefined) : undefined}
+              valor={showExpected && resumenes.get(s.id)?.expected_amount != null ? dinero(resumenes.get(s.id)?.expected_amount, moneda) : undefined}
               estado={showExpected ? undefined : <Oculto />}
-              onClick={showExpected ? () => irADetalle(s) : undefined}
+              onClick={() => irADetalle(s)}
               acciones={accionesDe(s)}
             />
           )}

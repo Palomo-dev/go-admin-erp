@@ -22,8 +22,6 @@ import type {
   OpenCashSessionData,
   CloseCashSessionData,
   CashMovementData,
-  CashSessionReport,
-  CashSessionFilter,
   CashCount,
   CreateCashCountData,
   CreateCashMovementData,
@@ -33,6 +31,8 @@ import type {
 } from './types';
 import { nombreContieneTodas, numeroDeCaja, sanitizarBusqueda } from './historialCajas';
 import { parametrosArqueo } from '@/lib/pos/cajas/arqueo';
+import { claveDeConcepto } from '@/lib/pos/cajas/conceptos';
+import type { ResumenCaja, ResumenCompacto } from '@/lib/pos/cajas/resumenServidor';
 import {
   alcanceApertura,
   claveTraduccionError,
@@ -71,17 +71,6 @@ const MENSAJE_CAJA_YA_ABIERTA: Record<CodigoCajaYaAbierta, string> = {
   caja_propia_abierta: 'Ya tienes una caja abierta en esta sucursal. Ciérrala antes de abrir otra.',
   caja_sucursal_abierta: 'Ya hay una caja abierta en esta sucursal. Ciérrala antes de abrir otra.',
 };
-
-/** Venta de una sesión de caja (columnas seleccionadas en `getSessionSales`). */
-export interface SessionSaleRow {
-  id: string;
-  total: number;
-  status: string;
-  payment_status: string;
-  created_at: string;
-  customer_id: string | null;
-  source: string | null;
-}
 
 interface InvoiceSaleRef { id: string; number: string | null; customer_id: string | null; sale_id: string | null }
 interface InvoicePurchaseRef { id: string; number_ext: string | null; supplier_id: string | null }
@@ -738,6 +727,8 @@ export class CajasService {
           amount: data.amount,
           userId,
           notes: data.notes ?? null,
+          conceptCode: data.concept_code ?? null,
+          reference: data.reference ?? null,
         });
         console.log('Movimiento registrado sin red (pendiente de sincronizar):', movement.id);
         return movement;
@@ -750,6 +741,8 @@ export class CajasService {
           cash_session_id: activeSession.id,
           type: data.type,
           concept: data.concept,
+          concept_code: data.concept_code ?? null,
+          reference: data.reference ?? null,
           amount: data.amount,
           user_id: userId,
           notes: data.notes
@@ -1029,6 +1022,149 @@ export class CajasService {
   }
 
   /**
+   * Resumen completo de una caja (sesión, esperado, movimientos, arqueos,
+   * ventas del turno y permisos) leído del servidor con la máscara del cierre
+   * ciego ya aplicada (`GET /api/pos/cajas/[id]/resumen`). `idOUuid` es el
+   * número de la caja o su uuid.
+   *
+   * Desktop sin red: el servidor no está; se arma con el cálculo local de
+   * siempre (`getCashSummary` sobre réplica + outbox) y `sinRed: true`. La
+   * visibilidad la decide entonces la pantalla con `useBlindCloseMode`.
+   */
+  static async getResumen(
+    idOUuid: string | number,
+    opciones: { ventas?: boolean; sesionLocal?: CashSession } = {},
+  ): Promise<ResumenCaja & { sinRed?: boolean }> {
+    const local = opciones.sesionLocal;
+    if (shouldOperateCashOffline() || (local && local.id < 0)) {
+      return this.resumenSinRed(local ?? (await this.getSessionById(Number(idOUuid))));
+    }
+    const headers: Record<string, string> = {};
+    if (this.organizationId) headers['x-organization-id'] = String(this.organizationId);
+    const qs = opciones.ventas === false ? '?ventas=0' : '';
+    const response = await fetch(`/api/pos/cajas/${encodeURIComponent(String(idOUuid))}/resumen${qs}`, {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers,
+    });
+    const body = (await response.json().catch(() => null)) as (ResumenCaja & { error?: string; codigo?: string }) | null;
+    if (!response.ok || !body || !('sesion' in body)) {
+      throw new ErrorCaja(body?.codigo || 'lectura_fallida', body?.error || 'No se pudo leer la caja');
+    }
+    return body;
+  }
+
+  /**
+   * Cifras de varias cajas abiertas en una petición (`GET /api/pos/cajas/resumenes`).
+   * Sin red: el cálculo local de cada una.
+   */
+  static async getResumenes(ids: number[]): Promise<Map<number, ResumenCompacto>> {
+    const mapa = new Map<number, ResumenCompacto>();
+    const reales = ids.filter((id) => id > 0);
+    if (shouldOperateCashOffline() || reales.length === 0) {
+      const calculados = await Promise.allSettled(ids.map((id) => this.getCashSummary(id)));
+      calculados.forEach((r, i) => {
+        if (r.status === 'fulfilled') {
+          mapa.set(ids[i], {
+            sales_cash: r.value.sales_cash,
+            sales_cash_count: r.value.sales_cash_count ?? 0,
+            expected_amount: r.value.expected_amount,
+            cash_in: r.value.cash_in,
+            cash_out: r.value.cash_out,
+            cash_in_count: r.value.cash_in_count ?? 0,
+            cash_out_count: r.value.cash_out_count ?? 0,
+          });
+        }
+      });
+      return mapa;
+    }
+    const headers: Record<string, string> = {};
+    if (this.organizationId) headers['x-organization-id'] = String(this.organizationId);
+    const response = await fetch(`/api/pos/cajas/resumenes?ids=${reales.join(',')}`, { credentials: 'same-origin', cache: 'no-store', headers });
+    const body = (await response.json().catch(() => null)) as { resumenes?: Record<string, ResumenCompacto>; codigo?: string; error?: string } | null;
+    if (!response.ok || !body?.resumenes) throw new ErrorCaja(body?.codigo || 'lectura_fallida', body?.error || 'No se pudieron leer las cajas');
+    for (const [id, r] of Object.entries(body.resumenes)) mapa.set(Number(id), r);
+    return mapa;
+  }
+
+  /** Resumen sin red (Desktop): mismo contrato que el del servidor, con el cálculo local. */
+  private static async resumenSinRed(session: CashSession): Promise<ResumenCaja & { sinRed: true }> {
+    const [summary, movements, mode] = await Promise.all([
+      this.getCashSummary(session.id),
+      this.getSessionMovements(session.id),
+      this.getCashSessionMode(),
+    ]);
+    const userId = await getCurrentUserId();
+    const porMetodo: Record<string, number> = { ...(summary.income_by_method ?? {}) };
+    porMetodo.cash = summary.expected_amount;
+    return {
+      sinRed: true,
+      modo: mode,
+      sesion: {
+        id: session.id,
+        uuid: session.uuid,
+        organization_id: session.organization_id,
+        branch_id: session.branch_id,
+        branch_name: session.branch_name ?? null,
+        opened_by: session.opened_by,
+        opened_by_name: session.opened_by_name ?? null,
+        opened_at: session.opened_at,
+        initial_amount: Number(session.initial_amount),
+        closed_at: session.closed_at ?? null,
+        closed_by: session.closed_by ?? null,
+        closed_by_name: session.closed_by_name ?? null,
+        final_amount: session.final_amount ?? null,
+        difference: session.difference ?? null,
+        status: session.status,
+        notes: session.notes ?? null,
+      },
+      esperado: {
+        session_id: session.id,
+        status: session.status,
+        efectivo_esperado: summary.expected_amount,
+        por_metodo: porMetodo,
+        detalle: {
+          inicial: summary.initial_amount,
+          ventas_efectivo: summary.sales_cash,
+          vuelto: summary.change_total,
+          abonos_efectivo: summary.cash_receipts_by_method?.cash ?? 0,
+          entradas: summary.cash_in,
+          salidas: summary.cash_out,
+          compras_efectivo: summary.purchases_by_method?.cash ?? 0,
+          devoluciones: summary.returns_total,
+        },
+        por_cajero: mode === 'user',
+        hasta: session.closed_at ?? null,
+        oculto: false,
+      },
+      movimientos: movements.map((m) => ({
+        id: m.id,
+        uuid: m.uuid ?? null,
+        type: m.type,
+        concept: m.concept,
+        concept_code: m.concept_code ?? null,
+        clave_concepto: claveDeConcepto(m),
+        reference: m.reference ?? null,
+        amount: Number(m.amount),
+        notes: m.notes ?? null,
+        created_at: m.created_at,
+        user_id: m.user_id,
+        user_name: m.user_name ?? null,
+      })),
+      arqueos: [],
+      ventas: { cantidad: 0, total: 0, filas: [], truncadas: false },
+      permisos: {
+        cerrarCajasAjenas: false,
+        verEsperadoEnCierreCiego: false,
+        esPropia: session.opened_by === userId,
+        puedeCerrar: session.status === 'open' && session.opened_by === userId,
+      },
+      cierreCiego: false,
+      verImportes: true,
+    };
+  }
+
+  /**
    * Obtiene una sesión por ID numérico
    */
   static async getSessionById(sessionId: number): Promise<CashSession> {
@@ -1101,136 +1237,6 @@ export class CajasService {
     }
   }
 
-  /**
-   * Obtiene el historial de sesiones con filtros
-   */
-  static async getSessionHistory(filter?: CashSessionFilter): Promise<CashSession[]> {
-    try {
-      const branchFilter = getBranchFilter();
-      let query = supabase
-        .from('cash_sessions')
-        .select('*')
-        .eq('organization_id', this.organizationId)
-        .order('opened_at', { ascending: false });
-
-      // Filtrar por sucursal salvo en modo "Todas las sucursales"
-      if (branchFilter) {
-        query = query.eq('branch_id', branchFilter);
-      }
-
-      if (filter?.status && filter.status !== 'all') {
-        query = query.eq('status', filter.status);
-      }
-
-      if (filter?.date_from) {
-        query = query.gte('opened_at', filter.date_from);
-      }
-
-      if (filter?.date_to) {
-        query = query.lte('opened_at', filter.date_to);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      return data || [];
-    } catch (error) {
-      console.error('Error getting session history:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Genera reporte completo de una sesión para PDF
-   */
-  static async generateSessionReport(sessionId: number): Promise<CashSessionReport> {
-    try {
-      // Obtener sesión con nombre del cajero
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('cash_sessions')
-        .select('*')
-        .eq('id', sessionId)
-        .single();
-
-      if (sessionError) throw sessionError;
-
-      const session = sessionData as CashSession;
-      // Obtener nombre del cajero desde profiles (no hay FK directa)
-      if (session?.opened_by) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('id', session.opened_by)
-          .single();
-
-        if (profileData) {
-          session.opened_by_name = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Usuario';
-        } else {
-          session.opened_by_name = 'Usuario';
-        }
-      }
-
-      // Obtener nombre de la sucursal
-      if (session?.branch_id) {
-        const { data: branchData } = await supabase
-          .from('branches')
-          .select('name')
-          .eq('id', session.branch_id)
-          .single();
-        if (branchData) {
-          session.branch_name = branchData.name;
-        } else {
-          session.branch_name = `#${session.branch_id}`;
-        }
-      } else {
-        session.branch_name = 'Todas las sucursales';
-      }
-
-      const movements = await this.getSessionMovements(sessionId);
-      const summary = await this.getCashSummary(sessionId);
-
-      // En modo 'user' el reporte solo incluye las ventas del cajero de esta caja
-      const reportCashMode = await this.getCashSessionMode();
-      const reportFilterByCashier = reportCashMode === 'user' && !!session.opened_by;
-
-      // Obtener resumen de ventas con change_amount
-      let salesQuery = supabase
-        .from('payments')
-        .select('amount, method, change_amount')
-        .eq('organization_id', this.organizationId)
-        .eq('status', 'completed')
-        .gte('created_at', session.opened_at)
-        .lte('created_at', session.closed_at || new Date().toISOString());
-      if (session.branch_id) {
-        salesQuery = salesQuery.eq('branch_id', session.branch_id);
-      }
-      if (reportFilterByCashier) {
-        salesQuery = salesQuery.eq('created_by', session.opened_by);
-      }
-      const { data: salesData, error: salesError } = await salesQuery;
-
-      if (salesError) throw salesError;
-
-      const salesSummary = {
-        total_sales: (salesData || []).reduce((sum, p) => sum + Number(p.amount), 0),
-        cash_sales: (salesData || []).filter(p => p.method === 'cash').reduce((sum, p) => sum + Number(p.amount), 0),
-        card_sales: (salesData || []).filter(p => p.method === 'card').reduce((sum, p) => sum + Number(p.amount), 0),
-        other_sales: (salesData || []).filter(p => p.method !== 'cash' && p.method !== 'card').reduce((sum, p) => sum + Number(p.amount), 0)
-      };
-
-      return {
-        session,
-        movements,
-        summary,
-        sales_summary: salesSummary
-      };
-    } catch (error) {
-      console.error('Error generating session report:', error);
-      throw error;
-    }
-  }
-
   // ===============================
   // ARQUEOS DE CAJA
   // ===============================
@@ -1294,6 +1300,16 @@ export class CajasService {
         throw new ErrorCaja('no_autenticado', 'Usuario no autenticado');
       }
 
+      // Un movimiento es de una caja abierta (antes solo lo comprobaba la pantalla).
+      const { data: caja, error: errorCaja } = await supabase
+        .from('cash_sessions')
+        .select('status')
+        .eq('id', sessionId)
+        .maybeSingle();
+      if (errorCaja) throw errorCaja;
+      if (!caja) throw new ErrorCaja('caja_no_encontrada', 'La caja no existe');
+      if (caja.status !== 'open') throw new ErrorCaja('caja_ya_cerrada', 'La caja ya está cerrada');
+
       const { data: movement, error } = await supabase
         .from('cash_movements')
         .insert({
@@ -1301,6 +1317,8 @@ export class CajasService {
           cash_session_id: sessionId,
           type: data.type,
           concept: data.concept,
+          concept_code: data.concept_code ?? null,
+          reference: data.reference ?? null,
           amount: data.amount,
           user_id: userId,
           notes: data.notes
@@ -1319,126 +1337,11 @@ export class CajasService {
   }
 
   /**
-   * Obtiene detalle completo de una sesión con movimientos y arqueos (por ID numérico)
-   */
-  static async getSessionDetail(sessionId: number): Promise<{
-    session: CashSession;
-    movements: CashMovement[];
-    counts: CashCount[];
-    summary: CashSummary;
-  }> {
-    try {
-      const [session, movements, counts, summary] = await Promise.all([
-        this.getSessionById(sessionId),
-        this.getSessionMovements(sessionId),
-        this.getSessionCounts(sessionId),
-        this.getCashSummary(sessionId)
-      ]);
-
-      return { session, movements, counts, summary };
-    } catch (error) {
-      console.error('Error getting session detail:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Obtiene detalle completo de una sesión por UUID
-   */
-  static async getSessionDetailByUuid(uuid: string): Promise<{
-    session: CashSession;
-    movements: CashMovement[];
-    counts: CashCount[];
-    summary: CashSummary;
-  }> {
-    try {
-      const session = await this.getSessionByUuid(uuid);
-      const [movements, counts, summary] = await Promise.all([
-        this.getSessionMovements(session.id),
-        this.getSessionCounts(session.id),
-        this.getCashSummary(session.id)
-      ]);
-
-      return { session, movements, counts, summary };
-    } catch (error) {
-      console.error('Error getting session detail by UUID:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Obtiene resumen de caja por UUID
-   */
-  static async getCashSummaryByUuid(uuid: string): Promise<CashSummary> {
-    const session = await this.getSessionByUuid(uuid);
-    return this.getCashSummary(session.id);
-  }
-
-  /**
    * Crea arqueo por UUID de sesión
    */
   static async createCashCountByUuid(uuid: string, data: CreateCashCountData): Promise<CashCount> {
     const session = await this.getSessionByUuid(uuid);
     return this.createCashCount(session.id, data);
-  }
-
-  /**
-   * Registra movimiento por UUID de sesión
-   */
-  static async addMovementToSessionByUuid(uuid: string, data: CreateCashMovementData): Promise<CashMovement> {
-    const session = await this.getSessionByUuid(uuid);
-    return this.addMovementToSession(session.id, data);
-  }
-
-  /**
-   * Obtiene ventas por UUID de sesión
-   */
-  static async getSessionSalesByUuid(uuid: string): Promise<SessionSaleRow[]> {
-    const session = await this.getSessionByUuid(uuid);
-    return this.getSessionSales(session.id);
-  }
-
-  /**
-   * Obtiene pagos por método por UUID de sesión
-   */
-  static async getSessionPaymentsByMethodByUuid(uuid: string): Promise<Record<string, number>> {
-    const session = await this.getSessionByUuid(uuid);
-    return this.getSessionPaymentsByMethod(session.id);
-  }
-
-  /**
-   * Obtiene las ventas de una sesión de caja
-   */
-  static async getSessionSales(sessionId: number): Promise<SessionSaleRow[]> {
-    try {
-      const session = await this.getSessionById(sessionId);
-
-      // En modo 'user' solo se incluyen las ventas registradas por el cajero de esta caja
-      const salesCashMode = await this.getCashSessionMode();
-      const salesFilterByCashier = salesCashMode === 'user' && !!session.opened_by;
-
-      let salesQuery = supabase
-        .from('sales')
-        .select('id, total, status, payment_status, created_at, customer_id, source')
-        .eq('organization_id', this.organizationId)
-        .eq('branch_id', session.branch_id)
-        .eq('include_in_cash_register', true)
-        .neq('payment_status', 'pending')
-        .gte('created_at', session.opened_at)
-        .lte('created_at', session.closed_at || new Date().toISOString());
-      if (salesFilterByCashier) {
-        salesQuery = salesQuery.eq('user_id', session.opened_by);
-      }
-      const { data, error } = await salesQuery
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      return (data || []) as SessionSaleRow[];
-    } catch (error) {
-      console.error('Error getting session sales:', error);
-      throw error;
-    }
   }
 
   /**
@@ -1610,45 +1513,6 @@ export class CajasService {
       return details;
     } catch (error) {
       console.error('Error getting session payments detail:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Obtiene los pagos de una sesión de caja agrupados por método
-   */
-  static async getSessionPaymentsByMethod(sessionId: number): Promise<Record<string, number>> {
-    try {
-      const session = await this.getSessionById(sessionId);
-
-      // En modo 'user' solo se incluyen los pagos del cajero de esta caja
-      const pbmCashMode = await this.getCashSessionMode();
-      const pbmFilterByCashier = pbmCashMode === 'user' && !!session.opened_by;
-
-      let paymentsByMethodQuery = supabase
-        .from('payments')
-        .select('method, amount')
-        .eq('organization_id', this.organizationId)
-        .eq('branch_id', session.branch_id)
-        .eq('status', 'completed')
-        .gte('created_at', session.opened_at)
-        .lte('created_at', session.closed_at || new Date().toISOString());
-      if (pbmFilterByCashier) {
-        paymentsByMethodQuery = paymentsByMethodQuery.eq('created_by', session.opened_by);
-      }
-      const { data, error } = await paymentsByMethodQuery;
-
-      if (error) throw error;
-
-      const paymentsByMethod: Record<string, number> = {};
-      (data || []).forEach(p => {
-        const method = p.method || 'other';
-        paymentsByMethod[method] = (paymentsByMethod[method] || 0) + Number(p.amount);
-      });
-
-      return paymentsByMethod;
-    } catch (error) {
-      console.error('Error getting session payments by method:', error);
       throw error;
     }
   }

@@ -41,7 +41,7 @@ import {
   MONEDAS_CON_DENOMINACIONES,
   totalDenominaciones,
 } from '@/lib/pos/cajas/denominaciones';
-import { diferenciasPorMetodo } from '@/lib/pos/cajas/arqueo';
+import { diferenciasPorMetodo, observacionObligatoria, parametrosCierre, totalesConteo } from '@/lib/pos/cajas/arqueo';
 import {
   claveDeConcepto,
   conceptoParaGuardar,
@@ -204,11 +204,72 @@ describe('K6 · conteo por método = method_breakdown del servidor', () => {
     expect(diferenciasPorMetodo({ cash: 100 }, { cash: 100, nequi: 50 })[1]).toEqual({ metodo: 'nequi', esperado: 0, contado: 50, diferencia: 50 });
   });
 
+  test('los métodos activos aparecen aunque no tengan esperado (cierre ciego o sin ventas)', () => {
+    expect(diferenciasPorMetodo(null, { cash: 10 }, ['card', 'nequi']).map((f) => f.metodo)).toEqual(['cash', 'card', 'nequi']);
+  });
+
+  test('totales del resumen: total contra total; la diferencia guardada es solo del efectivo', () => {
+    const t = totalesConteo(diferenciasPorMetodo({ cash: 1000, card: 500 }, { cash: 990, card: 500 }));
+    expect(t).toEqual({ efectivoContado: 990, otrosContado: 500, totalContado: 1490, totalEsperado: 1500, diferenciaTotal: -10, diferenciaEfectivo: -10 });
+    expect(observacionObligatoria(t.diferenciaTotal)).toBe(true);
+    expect(observacionObligatoria(0.4)).toBe(false);
+    expect(observacionObligatoria(null)).toBe(false);
+    const ciego = totalesConteo(diferenciasPorMetodo(null, { cash: 990 }));
+    expect(ciego).toMatchObject({ totalEsperado: null, diferenciaTotal: null, diferenciaEfectivo: null });
+  });
+
+  test('D6: el cierre manda lo contado por método para pos_caja_cerrar (sin esperado ni diferencia)', () => {
+    expect(parametrosCierre(12, { counted_amount: 990, counted_by_method: { card: 500, cash: 1, nequi: 0 }, notes: ' ' }, '2026-09-24T20:00:00Z')).toEqual({
+      p_session_id: 12,
+      p_efectivo_contado: 990,
+      p_contado_por_metodo: { card: 500 },
+      p_denominaciones: null,
+      p_notas: null,
+      p_cerrada_en: '2026-09-24T20:00:00Z',
+    });
+  });
+
   test('en cierre ciego (sin esperado) no hay diferencias que mostrar', () => {
     expect(diferenciasPorMetodo(null, { cash: 100, card: 20 })).toEqual([
       { metodo: 'cash', esperado: null, contado: 100, diferencia: null },
       { metodo: 'card', esperado: null, contado: 20, diferencia: null },
     ]);
+  });
+});
+
+describe('K13 · guardarraíles de las pantallas de caja', () => {
+  const DIR = path.join(RAIZ, 'src/components/pos/cajas');
+  const archivos = (dir: string): string[] =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? archivos(path.join(dir, d.name)) : [path.join(dir, d.name)]));
+  const fuentes = archivos(DIR).filter((f) => /\.tsx?$/.test(f) && !f.includes('__tests__'));
+
+  test.each([
+    ['createPortal', /createPortal/],
+    ['window.open / document.write', /window\.open|document\.write/],
+    ['toISOString().split', /toISOString\(\)\.split/],
+    ['toLocaleString', /toLocaleString\(/],
+    ['editor de HTML en notas', /RichTextEditor/],
+  ])('ningún archivo de components/pos/cajas usa %s', (_nombre, patron) => {
+    const culpables = fuentes.filter((f) => patron.test(fs.readFileSync(f, 'utf8'))).map((f) => path.relative(RAIZ, f));
+    expect(culpables).toEqual([]);
+  });
+
+  test('las pantallas con red leen el esperado del servidor, no de getCashSummary', () => {
+    for (const rel of ['detalle/CajaDetallePage.tsx', 'arqueos/NuevoArqueoPage.tsx', 'movimientos/NuevoMovimientoPage.tsx', 'listado/MiCajaTab.tsx']) {
+      const src = fs.readFileSync(path.join(DIR, rel), 'utf8');
+      expect({ rel, local: /getCashSummary/.test(src) }).toEqual({ rel, local: false });
+    }
+  });
+
+  test('K8: el diálogo de cierre no escribe en cash_sessions (cierra por el servicio → pos_caja_cerrar)', () => {
+    const src = fs.readFileSync(path.join(DIR, 'CierreCajaDialog.tsx'), 'utf8');
+    expect(src).not.toMatch(/from\('cash_sessions'\)/);
+    expect(src).toMatch(/CajasService\.closeSession\(/);
+  });
+
+  test('K12: apertura, movimiento y cierre siguen pasando por CajasService (outbox sin red)', () => {
+    expect(fs.readFileSync(path.join(DIR, 'AperturaCajaDialog.tsx'), 'utf8')).toMatch(/CajasService\.openSession\(/);
+    expect(fs.readFileSync(path.join(DIR, 'MovimientosDialog.tsx'), 'utf8')).toMatch(/CajasService\.addMovement\(/);
   });
 });
 

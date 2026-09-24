@@ -2286,7 +2286,8 @@ describe('28. Generadores de documentos: sin moneda fija', () => {
     'lib/services/parkingTicketService.ts',
     'lib/services/crm/proposalNarrative.ts',
     'components/parking/sesiones/SessionReceipt.tsx',
-    'components/pos/cajas/ReportGenerator.tsx',
+    // `components/pos/cajas/ReportGenerator.tsx` se retiró (2026-09-24): el reporte de caja lo arma
+    // el motor único (`lib/documents/server/cargadores/cajas.ts`, ya en esta lista).
     'components/pos/cajas/historialCajas.ts',
     'components/pos/configuracion/impresiones/sampleData.ts',
     'components/transporte/envios/shipmentLabelPrinter.ts',

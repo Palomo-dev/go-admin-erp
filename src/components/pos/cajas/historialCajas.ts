@@ -130,7 +130,7 @@ export interface ResumenCajasAbiertas {
 
 export function resumenCajasAbiertas(
   sesiones: readonly Pick<CashSession, 'id' | 'branch_id'>[],
-  resumenes: ReadonlyMap<number, { expected_amount: number; cash_in_count?: number; cash_out_count?: number }>,
+  resumenes: ReadonlyMap<number, { expected_amount: number | null; cash_in_count?: number; cash_out_count?: number }>,
 ): ResumenCajasAbiertas {
   const sucursales = new Set(sesiones.map((s) => (s.branch_id === null ? 'global' : String(s.branch_id))));
   const r: ResumenCajasAbiertas = { cajas: sesiones.length, sucursales: sucursales.size, esperado: 0, movimientos: 0, ingresos: 0, egresos: 0 };

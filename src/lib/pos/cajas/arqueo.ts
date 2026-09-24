@@ -115,6 +115,42 @@ export function diferenciaEfectivo(contado: number, esperado: number): number {
   return Math.round((contado - esperado) * 100) / 100;
 }
 
+export interface TotalesConteo {
+  efectivoContado: number;
+  otrosContado: number;
+  totalContado: number;
+  /** `null` en cierre ciego. */
+  totalEsperado: number | null;
+  /** Total contado − total esperado (todos los métodos). `null` en cierre ciego. */
+  diferenciaTotal: number | null;
+  /** Lo que se guarda en `cash_counts.difference`: solo efectivo. */
+  diferenciaEfectivo: number | null;
+}
+
+/** Totales del resumen del arqueo y del cierre a partir de las filas por método. */
+export function totalesConteo(filas: readonly FilaConteoMetodo[]): TotalesConteo {
+  const r = (n: number) => Math.round(n * 100) / 100;
+  const efectivo = filas.find((f) => f.metodo === 'cash');
+  const efectivoContado = r(efectivo?.contado ?? 0);
+  const otrosContado = r(filas.filter((f) => f.metodo !== 'cash').reduce((s, f) => s + (f.contado ?? 0), 0));
+  const totalContado = r(efectivoContado + otrosContado);
+  const hayEsperado = filas.length > 0 && filas.every((f) => f.esperado !== null);
+  const totalEsperado = hayEsperado ? r(filas.reduce((s, f) => s + (f.esperado ?? 0), 0)) : null;
+  return {
+    efectivoContado,
+    otrosContado,
+    totalContado,
+    totalEsperado,
+    diferenciaTotal: totalEsperado === null ? null : r(totalContado - totalEsperado),
+    diferenciaEfectivo: efectivo && efectivo.esperado !== null ? r(efectivoContado - efectivo.esperado) : null,
+  };
+}
+
+/** Con una diferencia visible (≥ 0,5 en valor absoluto) la observación es obligatoria. */
+export function observacionObligatoria(diferencia: number | null): boolean {
+  return diferencia !== null && Math.abs(diferencia) >= 0.5;
+}
+
 /** Una fila del conteo por método tal como la pinta la pantalla. */
 export interface FilaConteoMetodo {
   metodo: string;
@@ -139,8 +175,11 @@ export interface FilaConteoMetodo {
 export function diferenciasPorMetodo(
   esperadoPorMetodo: Record<string, number> | null,
   contado: Record<string, number | null | undefined>,
+  /** Métodos activos de la organización: aparecen aunque no tengan esperado (cierre ciego, sin ventas). */
+  metodosActivos: readonly string[] = [],
 ): FilaConteoMetodo[] {
   const metodos = new Set<string>(['cash']);
+  for (const k of metodosActivos) if (k) metodos.add(k);
   for (const k of Object.keys(esperadoPorMetodo ?? {})) metodos.add(k);
   for (const [k, v] of Object.entries(contado)) if (v != null) metodos.add(k);
   const orden = ['cash', ...[...metodos].filter((m) => m !== 'cash').sort()];

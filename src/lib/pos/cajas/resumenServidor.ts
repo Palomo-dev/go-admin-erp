@@ -230,6 +230,77 @@ async function ventasDelTurno(
   };
 }
 
+/** Cifras de una caja abierta para el listado «Cajas abiertas» (sin N+1 desde el navegador). */
+export interface ResumenCompacto {
+  sales_cash: number | null;
+  sales_cash_count: number;
+  expected_amount: number | null;
+  cash_in: number;
+  cash_out: number;
+  cash_in_count: number;
+  cash_out_count: number;
+}
+
+const MAX_CAJAS_LOTE = 60;
+
+/**
+ * Resumen compacto de varias cajas (`GET /api/pos/cajas/resumenes?ids=…`):
+ * esperado y ventas en efectivo de `pos_caja_esperado`, conteo de movimientos
+ * y de cobros en efectivo. Con cierre ciego sin permiso, sin cifras de dinero.
+ * Antes el listado pedía `getCashSummary` por cada caja desde el navegador (R12).
+ */
+export async function resumenesCompactos(ctx: Ctx, ids: readonly number[]): Promise<Record<number, ResumenCompacto>> {
+  const unicos = [...new Set(ids.filter((n) => Number.isInteger(n) && n > 0))].slice(0, MAX_CAJAS_LOTE);
+  if (unicos.length === 0) return {};
+  const [permisos, cierreCiego, modo, sesionesRes, movRes] = await Promise.all([
+    resolverPermisosCaja(ctx),
+    organizacionUsaCierreCiego(ctx),
+    modoCajaOrganizacion(ctx),
+    ctx.supabase
+      .from('cash_sessions')
+      .select('id, branch_id, opened_by, opened_at, closed_at')
+      .eq('organization_id', ctx.organizationId)
+      .in('id', unicos),
+    ctx.supabase.from('cash_movements').select('cash_session_id, type, amount').eq('organization_id', ctx.organizationId).in('cash_session_id', unicos),
+  ]);
+  if (sesionesRes.error) throw new ErrorResumenCaja('lectura_fallida', 500, sesionesRes.error.message);
+  const visible = visibilidadImportes(cierreCiego, permisos.verEsperadoEnCierreCiego);
+  const sesiones = (sesionesRes.data ?? []) as Array<{ id: number; branch_id: number | null; opened_by: string; opened_at: string; closed_at: string | null }>;
+  const movimientos = (movRes.data ?? []) as Array<{ cash_session_id: number; type: string; amount: number | string }>;
+
+  const salida: Record<number, ResumenCompacto> = {};
+  await Promise.all(
+    sesiones.map(async (s) => {
+      let cobros = ctx.supabase
+        .from('payments')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', ctx.organizationId)
+        .eq('method', 'cash')
+        .eq('status', 'completed')
+        .in('source', ['invoice_sales', 'sale'])
+        .gte('created_at', s.opened_at)
+        .lte('created_at', s.closed_at ?? new Date().toISOString());
+      if (s.branch_id) cobros = cobros.eq('branch_id', s.branch_id);
+      if (modo === 'user') cobros = cobros.eq('created_by', s.opened_by);
+      const [esp, cuenta] = await Promise.all([ctx.supabase.rpc('pos_caja_esperado', { p_session_id: s.id }), cobros]);
+      const e = esp.error ? null : enmascararEsperado(leerEsperado(esp.data), visible);
+      const propios = movimientos.filter((m) => m.cash_session_id === s.id);
+      const entradas = propios.filter((m) => m.type === 'in');
+      const salidas = propios.filter((m) => m.type === 'out');
+      salida[s.id] = {
+        sales_cash: e?.detalle ? e.detalle.ventas_efectivo : null,
+        sales_cash_count: cuenta.count ?? 0,
+        expected_amount: e?.efectivo_esperado ?? null,
+        cash_in: entradas.reduce((acc, m) => acc + n(m.amount), 0),
+        cash_out: salidas.reduce((acc, m) => acc + n(m.amount), 0),
+        cash_in_count: entradas.length,
+        cash_out_count: salidas.length,
+      };
+    }),
+  );
+  return salida;
+}
+
 /** Resumen completo de una caja con la máscara del cierre ciego aplicada. */
 export async function resumenCaja(ctx: Ctx, idOUuid: string, opciones: { ventas?: boolean } = {}): Promise<ResumenCaja> {
   const s = await leerSesion(ctx, idOUuid);

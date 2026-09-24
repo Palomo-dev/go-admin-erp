@@ -194,18 +194,6 @@ export interface CashMovementData {
   notes?: string;
 }
 
-export interface CashSessionReport {
-  session: CashSession;
-  movements: CashMovement[];
-  summary: CashSummary;
-  sales_summary: {
-    total_sales: number;
-    cash_sales: number;
-    card_sales: number;
-    other_sales: number;
-  };
-}
-
 /** Resultado del cierre según la diferencia entre lo contado y lo esperado. */
 export type ResultadoCierre = 'faltante' | 'sobrante' | 'cuadrada';
 
@@ -225,22 +213,4 @@ export interface CashHistoryFilters {
   busqueda?: string;
   resultado?: ResultadoCierre;
   orden?: { campo: CampoOrdenHistorial; direccion: 'asc' | 'desc' };
-}
-
-// Estados y filtros
-export interface CashSessionFilter {
-  status?: 'open' | 'closed' | 'all';
-  date_from?: string;
-  date_to?: string;
-  branch_id?: number;
-}
-
-// Para la generación de PDFs
-export interface CashReportData {
-  session: CashSession;
-  movements: CashMovement[];
-  summary: CashSummary;
-  organization_name: string;
-  branch_name: string;
-  user_name: string;
 }

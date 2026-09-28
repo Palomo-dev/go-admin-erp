@@ -1,5 +1,17 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/utils/orgId';
+import { fetchJson } from '@/lib/utils/fetchJson';
+
+const RATES_URL = '/api/crm/commission-rates';
+
+async function postRate(body: { id?: string | null; salesperson_id: string | null; rate: number }): Promise<CommissionRate> {
+  const res = await fetchJson<{ success: boolean; data: CommissionRate }>(RATES_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return res.data;
+}
 
 /**
  * Servicio CRM para gestión de comisiones de oportunidades.
@@ -17,21 +29,25 @@ import { getOrganizationId } from '@/lib/utils/orgId';
  *    - status='accrued'
  *    - base_amount, rate, amount
  *
- * Tabla: vendor_commission_rates (id, organization_id, salesperson_id, salesperson_name,
- *        rate, valid_from, valid_until, created_at, updated_at)
- * Tabla: commissions (ver esquema existente en commissionsService.ts)
+ * Tabla: vendor_commission_rates (id, organization_id, salesperson_id, rate,
+ *        valid_from date, valid_to date, created_at) — verificada por MCP el
+ *        2026-09-28. No tiene valid_until, updated_at ni salesperson_name.
+ *        Lectura de la tasa vigente: RPC fn_tasa_comision_vigente (día de la
+ *        organización). Escritura: SOLO por /api/crm/commission-rates (servidor,
+ *        rol de gestión; la tabla ya no admite escritura desde el navegador).
+ * Tabla: commissions
  */
 
 export interface CommissionRate {
   id: string;
   organization_id: number;
   salesperson_id: string | null;
-  salesperson_name: string | null;
+  /** Solo en las lecturas de la ruta (join con profiles); no es columna. */
+  salesperson_name?: string | null;
   rate: number;
   valid_from: string | null;
-  valid_until: string | null;
+  valid_to: string | null;
   created_at: string;
-  updated_at: string;
 }
 
 /** Alias para compatibilidad con el spec original */
@@ -39,10 +55,9 @@ export type VendorCommissionRate = CommissionRate;
 
 export interface CommissionRateInput {
   salesperson_id: string;
-  salesperson_name?: string;
   rate: number;
   valid_from?: string | null;
-  valid_until?: string | null;
+  valid_to?: string | null;
 }
 
 export interface CommissionAccrualResult {
@@ -95,88 +110,46 @@ class CommissionService {
    * @returns Tasa de comisión (0-100)
    */
   async getRate(opportunityId: string, salespersonId?: string): Promise<number> {
-    try {
-      // 1. Obtener la oportunidad
-      const { data: opp, error: oppError } = await supabase
-        .from('opportunities')
-        .select('id, organization_id, salesperson_id, commission_rate, amount, currency')
-        .eq('id', opportunityId)
-        .single();
+    // Sin try/catch que devuelva 0: un error de lectura no puede devengar una
+    // comisión en cero (accrueCommission lo propaga).
+    const { data: opp, error: oppError } = await supabase
+      .from('opportunities')
+      .select('id, organization_id, salesperson_id, commission_rate, amount, currency')
+      .eq('id', opportunityId)
+      .eq('organization_id', this.getOrgId())
+      .single();
+    if (oppError) throw oppError;
 
-      if (oppError || !opp) {
-        console.warn('No se pudo obtener la oportunidad para resolver tasa:', oppError?.message);
-        return 0;
-      }
+    const oppData = opp as OpportunityCommissionRow;
+    const salesperson = salespersonId || oppData.salesperson_id;
 
-      const oppData = opp as OpportunityCommissionRow;
-      const salesperson = salespersonId || oppData.salesperson_id;
-
-      // 2. Override en la oportunidad
-      if (oppData.commission_rate !== null && oppData.commission_rate > 0) {
-        return Number(oppData.commission_rate);
-      }
-
-      // 3. Tasa del vendedor
-      if (salesperson) {
-        const vendorRate = await this.getVendorRate(salesperson);
-        if (vendorRate > 0) return vendorRate;
-      }
-
-      // 4. Tasa general de la org
-      const orgRate = await this.getOrgDefaultRate();
-      return orgRate;
-    } catch (err) {
-      console.error('Error en commissionService.getRate:', err);
-      return 0;
+    // 1. Override en la oportunidad
+    if (oppData.commission_rate !== null && oppData.commission_rate > 0) {
+      return Number(oppData.commission_rate);
     }
+    // 2. Tasa vigente del vendedor y, si no hay, la general (una sola RPC).
+    return this.resolveVigente(salesperson ?? null, true);
   }
 
-  /**
-   * Obtiene la tasa general de la organización (fila con salesperson_id IS NULL).
-   */
+  /** Tasa vigente hoy en el día de la organización (fn_tasa_comision_vigente). Lanza si la BD falla. */
+  private async resolveVigente(salespersonId: string | null, includeGeneral: boolean): Promise<number> {
+    const { data, error } = await supabase.rpc('fn_tasa_comision_vigente', {
+      p_org: this.getOrgId(),
+      p_salesperson: salespersonId,
+      p_incluir_general: includeGeneral,
+    });
+    if (error) throw error;
+    return Number(data) || 0;
+  }
+
+  /** Tasa general vigente de la organización. */
   async getOrgDefaultRate(): Promise<number> {
-    try {
-      const rate = await this.getGeneralRate();
-      return rate?.rate ?? 0;
-    } catch (err) {
-      console.warn('Error en commissionService.getOrgDefaultRate:', err);
-      return 0;
-    }
+    return this.resolveVigente(null, true);
   }
 
-  /**
-   * Obtiene la tasa de un vendedor específico (fila con salesperson_id NOT NULL).
-   */
+  /** Tasa vigente de un vendedor (sin caer a la general). Lanza si la BD falla. */
   async getVendorRate(salespersonId: string): Promise<number> {
-    try {
-      const orgId = this.getOrgId();
-      const { data, error } = await supabase
-        .from('vendor_commission_rates')
-        .select('rate, valid_from, valid_until')
-        .eq('organization_id', orgId)
-        .eq('salesperson_id', salespersonId)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        console.warn('Advertencia obteniendo tasa del vendedor:', error.message);
-        return 0;
-      }
-      if (!data) return 0;
-
-      // Verificar vigencia
-      const now = new Date();
-      const validFrom = (data as { valid_from?: string | null }).valid_from;
-      const validUntil = (data as { valid_until?: string | null }).valid_until;
-      if (validFrom && now < new Date(validFrom)) return 0;
-      if (validUntil && now > new Date(validUntil)) return 0;
-
-      return Number((data as { rate: number }).rate);
-    } catch (err) {
-      console.warn('Error en commissionService.getVendorRate:', err);
-      return 0;
-    }
+    return this.resolveVigente(salespersonId, false);
   }
 
   /**
@@ -260,198 +233,35 @@ class CommissionService {
     }
   }
 
-  /**
-   * Guarda (upsert) la tasa general de la organización (salesperson_id IS NULL).
-   */
-  async saveOrgDefaultRate(rate: number): Promise<CommissionRate | null> {
-    return this.setGeneralRate(rate);
-  }
-
-  /**
-   * Guarda (upsert) la tasa de un vendedor específico.
-   */
-  async saveVendorRate(salespersonId: string, rate: number): Promise<CommissionRate | null> {
-    return this.setOverride(null, {
-      salesperson_id: salespersonId,
-      rate,
-    });
-  }
-
-  /**
-   * Obtiene todas las tasas de comisión de la organización (generales + por vendedor).
-   */
-  async listVendorRates(): Promise<CommissionRate[]> {
-    return this.getOverrides();
-  }
-
   // ============== MÉTODOS PARA UI (CommissionsPanel) ==============
+  // Todo por la ruta del servidor: la organización sale de la sesión y la
+  // escritura exige rol de gestión (dos veces: ruta y RPC).
 
-  /**
-   * Obtiene la tasa general de la organización (fila con salesperson_id IS NULL).
-   * @returns Registro CommissionRate o null si no existe
-   */
+  /** Guarda la tasa general de la organización. */
+  async saveOrgDefaultRate(rate: number): Promise<CommissionRate> {
+    return postRate({ salesperson_id: null, rate });
+  }
+
+  /** Guarda la tasa de un vendedor (actualiza la existente si ya tiene). */
+  async saveVendorRate(salespersonId: string, rate: number, id?: string | null): Promise<CommissionRate> {
+    return postRate({ id: id ?? null, salesperson_id: salespersonId, rate });
+  }
+
+  /** Tasas por vendedor de la organización, con el nombre del vendedor. */
+  async listVendorRates(): Promise<CommissionRate[]> {
+    const res = await fetchJson<{ success: boolean; data: { general: CommissionRate | null; vendors: CommissionRate[] } }>(RATES_URL);
+    return res.data.vendors;
+  }
+
+  /** Tasa general guardada (la fila), o null. */
   async getGeneralRate(): Promise<CommissionRate | null> {
-    try {
-      const orgId = this.getOrgId();
-      const { data, error } = await supabase
-        .from('vendor_commission_rates')
-        .select('*')
-        .eq('organization_id', orgId)
-        .is('salesperson_id', null)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        console.warn('Advertencia obteniendo tasa general:', error.message);
-        return null;
-      }
-      return (data as CommissionRate) || null;
-    } catch (err) {
-      console.warn('Error en commissionService.getGeneralRate:', err);
-      return null;
-    }
+    const res = await fetchJson<{ success: boolean; data: { general: CommissionRate | null; vendors: CommissionRate[] } }>(RATES_URL);
+    return res.data.general;
   }
 
-  /**
-   * Obtiene todos los overrides por vendedor (salesperson_id NOT NULL).
-   */
-  async getOverrides(): Promise<CommissionRate[]> {
-    try {
-      const orgId = this.getOrgId();
-      const { data, error } = await supabase
-        .from('vendor_commission_rates')
-        .select('*')
-        .eq('organization_id', orgId)
-        .not('salesperson_id', 'is', null)
-        .order('updated_at', { ascending: false });
-
-      if (error) {
-        console.warn('Advertencia obteniendo overrides:', error.message);
-        return [];
-      }
-      return (data || []) as CommissionRate[];
-    } catch (err) {
-      console.warn('Error en commissionService.getOverrides:', err);
-      return [];
-    }
-  }
-
-  /**
-   * Guarda la tasa general de la organización.
-   */
-  async setGeneralRate(rate: number): Promise<CommissionRate | null> {
-    try {
-      const orgId = this.getOrgId();
-
-      // Verificar si ya existe
-      const { data: existing } = await supabase
-        .from('vendor_commission_rates')
-        .select('id')
-        .eq('organization_id', orgId)
-        .is('salesperson_id', null)
-        .maybeSingle();
-
-      if (existing) {
-        const { data, error } = await supabase
-          .from('vendor_commission_rates')
-          .update({
-            rate,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', (existing as { id: string }).id)
-          .select()
-          .single();
-
-        if (error) throw error;
-        return data as CommissionRate;
-      }
-
-      const { data, error } = await supabase
-        .from('vendor_commission_rates')
-        .insert({
-          organization_id: orgId,
-          salesperson_id: null,
-          salesperson_name: null,
-          rate,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as CommissionRate;
-    } catch (err) {
-      console.error('Error en commissionService.setGeneralRate:', err);
-      throw err;
-    }
-  }
-
-  /**
-   * Guarda (upsert) un override por vendedor.
-   * @param id - ID del override existente (null para crear nuevo)
-   * @param data - Datos del override
-   */
-  async setOverride(id: string | null, data: CommissionRateInput): Promise<CommissionRate | null> {
-    try {
-      const orgId = this.getOrgId();
-
-      if (id) {
-        // Actualizar existente
-        const { data: result, error } = await supabase
-          .from('vendor_commission_rates')
-          .update({
-            salesperson_id: data.salesperson_id,
-            salesperson_name: data.salesperson_name || null,
-            rate: data.rate,
-            valid_from: data.valid_from || null,
-            valid_until: data.valid_until || null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', id)
-          .select()
-          .single();
-
-        if (error) throw error;
-        return result as CommissionRate;
-      }
-
-      // Crear nuevo
-      const { data: result, error } = await supabase
-        .from('vendor_commission_rates')
-        .insert({
-          organization_id: orgId,
-          salesperson_id: data.salesperson_id,
-          salesperson_name: data.salesperson_name || null,
-          rate: data.rate,
-          valid_from: data.valid_from || null,
-          valid_until: data.valid_until || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return result as CommissionRate;
-    } catch (err) {
-      console.error('Error en commissionService.setOverride:', err);
-      throw err;
-    }
-  }
-
-  /**
-   * Elimina un override por vendedor.
-   */
+  /** Elimina la tasa de un vendedor. */
   async deleteOverride(id: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('vendor_commission_rates')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-    } catch (err) {
-      console.error('Error en commissionService.deleteOverride:', err);
-      throw err;
-    }
+    await fetchJson(`${RATES_URL}?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 
   /**
@@ -460,14 +270,8 @@ class CommissionService {
    * @returns { rate, commission }
    */
   async simulate(amount: number): Promise<SimulationResult> {
-    try {
-      const rate = await this.getOrgDefaultRate();
-      const commission = (amount * rate) / 100;
-      return { rate, commission };
-    } catch (err) {
-      console.error('Error en commissionService.simulate:', err);
-      return { rate: 0, commission: 0 };
-    }
+    const rate = await this.getOrgDefaultRate();
+    return { rate, commission: (amount * rate) / 100 };
   }
 }
 

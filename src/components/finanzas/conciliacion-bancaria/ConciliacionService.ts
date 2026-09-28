@@ -111,7 +111,7 @@ export class ConciliacionService {
   static async obtenerPagosCandidatos(
     startDate: string,
     endDate: string
-  ): Promise<any[]> {
+  ): Promise<Record<string, unknown>[]> {
     const organizationId = this.getOrganizationId();
 
     try {
@@ -149,6 +149,7 @@ export class ConciliacionService {
     id: string,
     updates: Partial<BankReconciliation>
   ): Promise<void> {
+    const organizationId = this.getOrganizationId();
     try {
       const { error } = await supabase
         .from('bank_reconciliations')
@@ -156,7 +157,8 @@ export class ConciliacionService {
           ...updates,
           updated_at: new Date().toISOString()
         })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('organization_id', organizationId);
 
       if (error) throw error;
     } catch (error) {
@@ -233,14 +235,16 @@ export class ConciliacionService {
       const difference = (reconciliation.statement_balance || 0) - 
         (reconciliation.opening_balance + matchedAmount);
 
-      await supabase
+      const { error } = await supabase
         .from('bank_reconciliations')
         .update({
           difference,
           closing_balance: reconciliation.opening_balance + matchedAmount,
           updated_at: new Date().toISOString()
         })
-        .eq('id', reconciliationId);
+        .eq('id', reconciliationId)
+        .eq('organization_id', this.getOrganizationId());
+      if (error) throw error;
 
       return difference;
     } catch (error) {

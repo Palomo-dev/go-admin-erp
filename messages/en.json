@@ -12163,5 +12163,48 @@
       "asiento_no_creado": "It could not be posted. Check the chart of accounts and the accounting period.",
       "error_desconocido": "It could not be completed. Try again."
     }
+  },
+  "tesoreria": {
+    "reintentar": "Retry",
+    "errorTitulo": "Error",
+    "errorCarga": {
+      "ingresos": "Income entries could not be loaded.",
+      "egresos": "Expense entries could not be loaded.",
+      "ingreso": "The income entry could not be loaded.",
+      "egreso": "The expense entry could not be loaded.",
+      "transferencias": "Transfers could not be loaded.",
+      "transferencia": "The transfer could not be loaded.",
+      "cuentasBancarias": "Bank accounts could not be loaded.",
+      "cuentaBancaria": "The account data could not be loaded."
+    },
+    "yaAnulado": "That entry was already voided; no second reversal was recorded.",
+    "transferenciaYaAnulada": "The transfer was already voided; balances were not changed again.",
+    "transferenciaRepetida": "The transfer was already recorded; no new one was created.",
+    "errores": {
+      "saldo_insuficiente_para_revertir": "The destination account no longer has enough balance to return the money.",
+      "saldo_insuficiente": "Insufficient balance in the source account.",
+      "moneda_distinta": "Both accounts must use the same currency.",
+      "cuenta_no_encontrada": "The bank account does not exist in this organization.",
+      "cuenta_inactiva": "One of the accounts is inactive.",
+      "cuenta_requerida": "Select the bank account.",
+      "cuentas_iguales": "Source and destination accounts must be different.",
+      "monto_invalido": "The amount must be greater than 0.",
+      "fecha_futura": "The date cannot be later than today.",
+      "sucursal_invalida": "The branch does not belong to this organization.",
+      "sucursal_requerida": "Select the branch.",
+      "transferencia_no_encontrada": "The transfer does not exist in this organization.",
+      "movimiento_no_encontrado": "The entry does not exist in this organization.",
+      "movimiento_conciliado": "The entry is already reconciled: undo the reconciliation before voiding it.",
+      "movimiento_importado": "The entry comes from the bank statement and cannot be voided; reconcile it or record the opposite entry.",
+      "anulacion_de_anulacion": "A reversal cannot be voided: record the entry again.",
+      "sin_caja_abierta_sucursal": "There is no open cash register in the entry's branch.",
+      "caja_cerrada": "The cash register is already closed.",
+      "saldo_bancario_por_movimientos": "The account balance is moved by its entries; it cannot be edited by hand.",
+      "sin_permiso": "You do not have permission for this operation.",
+      "sin_acceso_sucursal": "You do not have access to the account's branch.",
+      "no_autenticado": "Your session expired. Sign in again.",
+      "sin_organizacion": "The active organization was not found.",
+      "desconocido": "The operation could not be completed."
+    }
   }
 }

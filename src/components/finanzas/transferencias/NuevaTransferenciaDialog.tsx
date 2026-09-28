@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,8 @@ import {
 } from '@/components/ui/select';
 import { Loader2, ArrowLeftRight, ArrowRight, Building2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
+import { useTranslations } from 'next-intl';
 import { transferenciasService, BankAccount } from '@/lib/services/transferenciasService';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
@@ -44,6 +46,10 @@ export function NuevaTransferenciaDialog({
   const { formatear: formatCurrency } = useMonedaOrganizacion();
   const { getToday } = useFormatDate();
   const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
+  const t = useTranslations('tesoreria');
+  // Clave de idempotencia (= id de la transferencia): una por apertura del
+  // diálogo. Un doble clic o un reintento tras un corte no crea dos.
+  const claveRef = useRef<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [formData, setFormData] = useState({
@@ -55,8 +61,28 @@ export function NuevaTransferenciaDialog({
     notes: '',
   });
 
+  const loadBankAccounts = useCallback(async (): Promise<void> => {
+    try {
+      const accounts = await transferenciasService.getBankAccounts();
+      setBankAccounts(accounts);
+    } catch (error) {
+      console.error('Error loading bank accounts:', error);
+      toast({
+        title: t('errorTitulo'),
+        description: t('errorCarga.cuentasBancarias'),
+        variant: 'destructive',
+        action: (
+          <ToastAction altText={t('reintentar')} onClick={() => void loadBankAccounts()}>
+            {t('reintentar')}
+          </ToastAction>
+        ),
+      });
+    }
+  }, [t]);
+
   useEffect(() => {
     if (open) {
+      claveRef.current = globalThis.crypto.randomUUID();
       loadBankAccounts();
       setFormData({
         from_account_id: '',
@@ -67,12 +93,8 @@ export function NuevaTransferenciaDialog({
         notes: '',
       });
     }
-  }, [open, getToday]);
+  }, [open, getToday, loadBankAccounts]);
 
-  const loadBankAccounts = async () => {
-    const accounts = await transferenciasService.getBankAccounts();
-    setBankAccounts(accounts);
-  };
 
   const selectedFromAccount = bankAccounts.find(
     a => a.id.toString() === formData.from_account_id
@@ -122,13 +144,17 @@ export function NuevaTransferenciaDialog({
         reference: formData.reference || undefined,
         notes: formData.notes || undefined,
         branch_id: branchId,
-      });
+      }, claveRef.current || undefined);
 
       if (result.success) {
-        toast({ title: 'Éxito', description: 'Transferencia realizada correctamente' });
+        toast({
+          title: 'Éxito',
+          description: result.repetida ? t('transferenciaRepetida') : 'Transferencia realizada correctamente',
+        });
         onSuccess();
       } else {
-        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        // El servidor es quien decide saldo, moneda y organización.
+        toast({ title: t('errorTitulo'), description: t(`errores.${result.codigo ?? 'desconocido'}`), variant: 'destructive' });
       }
     } catch {
       toast({ title: 'Error', description: 'Error al realizar la transferencia', variant: 'destructive' });

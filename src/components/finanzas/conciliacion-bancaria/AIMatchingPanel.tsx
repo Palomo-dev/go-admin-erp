@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ConciliacionService } from './ConciliacionService';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
+import { esEntradaBancaria } from '@/lib/finanzas/movimientoBancario';
 
 // ==================== Tipos ====================
 
@@ -324,7 +325,7 @@ export function AIMatchingPanel({ reconciliationId, onMatchComplete, monedaCuent
                       </span>
                     </div>
                     <p className={`text-sm font-semibold mt-1 ${
-                      sug.transaction.transaction_type === 'credit'
+                      esEntradaBancaria(sug.transaction)
                         ? 'text-green-600 dark:text-green-400'
                         : 'text-red-600 dark:text-red-400'
                     }`}>

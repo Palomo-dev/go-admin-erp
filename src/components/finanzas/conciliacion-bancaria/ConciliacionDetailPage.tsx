@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ConciliacionService } from './ConciliacionService';
+import { esEntradaBancaria } from '@/lib/finanzas/movimientoBancario';
 import { AIMatchingPanel } from './AIMatchingPanel';
 import { BankReconciliation, BankReconciliationItem, BankTransaction } from '../bancos/BancosService';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -320,11 +321,11 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`font-semibold ${
-                        tx.transaction_type === 'credit' 
+                        esEntradaBancaria(tx) 
                           ? 'text-green-600 dark:text-green-400' 
                           : 'text-red-600 dark:text-red-400'
                       }`}>
-                        {tx.transaction_type === 'credit' ? '+' : '-'}
+                        {esEntradaBancaria(tx) ? '+' : '-'}
                         {formatearCuenta(Math.abs(tx.amount))}
                       </span>
                       {reconciliation.status !== 'closed' && (

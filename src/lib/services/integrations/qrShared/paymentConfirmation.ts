@@ -209,11 +209,14 @@ export async function confirmQrPayment(
         organization_id: input.organizationId,
         bank_account_id: input.bankAccountId,
         amount: session.amount,
-        transaction_type: 'credit',
+        // Valores reales del CHECK y columna real (`trans_date`): con 'credit' y
+        // `transaction_date` el INSERT fallaba siempre y el error se tragaba.
+        // El saldo de la cuenta lo mueve el disparador trg_bank_tx_saldo.
+        transaction_type: 'deposit',
         status: 'unmatched',
         import_source: session.provider_code,
         import_id: input.externalQrId ?? session.external_qr_id ?? null,
-        transaction_date: now,
+        trans_date: now,
         reference: session.reference,
       };
 

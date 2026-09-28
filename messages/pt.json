@@ -12058,5 +12058,48 @@
       "asiento_no_creado": "Não foi possível contabilizar. Revise o plano de contas e o período contábil.",
       "error_desconocido": "Não foi possível concluir. Tente novamente."
     }
+  },
+  "tesoreria": {
+    "reintentar": "Tentar novamente",
+    "errorTitulo": "Erro",
+    "errorCarga": {
+      "ingresos": "Não foi possível carregar as receitas.",
+      "egresos": "Não foi possível carregar as despesas.",
+      "ingreso": "Não foi possível carregar a receita.",
+      "egreso": "Não foi possível carregar a despesa.",
+      "transferencias": "Não foi possível carregar as transferências.",
+      "transferencia": "Não foi possível carregar a transferência.",
+      "cuentasBancarias": "Não foi possível carregar as contas bancárias.",
+      "cuentaBancaria": "Não foi possível carregar os dados da conta."
+    },
+    "yaAnulado": "Esse movimento já estava anulado; nenhum outro estorno foi registrado.",
+    "transferenciaYaAnulada": "A transferência já estava anulada; os saldos não foram alterados novamente.",
+    "transferenciaRepetida": "A transferência já estava registrada; nenhuma outra foi criada.",
+    "errores": {
+      "saldo_insuficiente_para_revertir": "A conta de destino não tem mais saldo suficiente para devolver o dinheiro.",
+      "saldo_insuficiente": "Saldo insuficiente na conta de origem.",
+      "moneda_distinta": "As duas contas devem ter a mesma moeda.",
+      "cuenta_no_encontrada": "A conta bancária não existe nesta organização.",
+      "cuenta_inactiva": "Uma das contas está inativa.",
+      "cuenta_requerida": "Selecione a conta bancária.",
+      "cuentas_iguales": "As contas de origem e destino devem ser diferentes.",
+      "monto_invalido": "O valor deve ser maior que 0.",
+      "fecha_futura": "A data não pode ser posterior a hoje.",
+      "sucursal_invalida": "A filial não pertence a esta organização.",
+      "sucursal_requerida": "Selecione a filial.",
+      "transferencia_no_encontrada": "A transferência não existe nesta organização.",
+      "movimiento_no_encontrado": "O movimento não existe nesta organização.",
+      "movimiento_conciliado": "O movimento já está conciliado: desfaça a conciliação antes de anulá-lo.",
+      "movimiento_importado": "O movimento vem do extrato bancário e não é anulado; concilie-o ou registre o movimento contrário.",
+      "anulacion_de_anulacion": "Um estorno não é anulado: registre o movimento novamente.",
+      "sin_caja_abierta_sucursal": "Não há caixa aberto na filial do movimento.",
+      "caja_cerrada": "O caixa já está fechado.",
+      "saldo_bancario_por_movimientos": "O saldo da conta é movido pelos seus movimentos; não é editado à mão.",
+      "sin_permiso": "Você não tem permissão para esta operação.",
+      "sin_acceso_sucursal": "Você não tem acesso à filial da conta.",
+      "no_autenticado": "Sua sessão expirou. Entre novamente.",
+      "sin_organizacion": "A organização ativa não foi encontrada.",
+      "desconocido": "Não foi possível concluir a operação."
+    }
   }
 }

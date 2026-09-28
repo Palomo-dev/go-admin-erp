@@ -12058,5 +12058,48 @@
       "asiento_no_creado": "La comptabilisation a échoué. Vérifiez le plan comptable et la période.",
       "error_desconocido": "L’opération n’a pas pu aboutir. Réessayez."
     }
+  },
+  "tesoreria": {
+    "reintentar": "Réessayer",
+    "errorTitulo": "Erreur",
+    "errorCarga": {
+      "ingresos": "Impossible de charger les encaissements.",
+      "egresos": "Impossible de charger les décaissements.",
+      "ingreso": "Impossible de charger l'encaissement.",
+      "egreso": "Impossible de charger le décaissement.",
+      "transferencias": "Impossible de charger les virements.",
+      "transferencia": "Impossible de charger le virement.",
+      "cuentasBancarias": "Impossible de charger les comptes bancaires.",
+      "cuentaBancaria": "Impossible de charger les données du compte."
+    },
+    "yaAnulado": "Ce mouvement était déjà annulé ; aucune autre contrepassation n'a été enregistrée.",
+    "transferenciaYaAnulada": "Le virement était déjà annulé ; les soldes n'ont pas été modifiés à nouveau.",
+    "transferenciaRepetida": "Le virement était déjà enregistré ; aucun autre n'a été créé.",
+    "errores": {
+      "saldo_insuficiente_para_revertir": "Le compte de destination n'a plus assez de solde pour restituer l'argent.",
+      "saldo_insuficiente": "Solde insuffisant sur le compte d'origine.",
+      "moneda_distinta": "Les deux comptes doivent avoir la même devise.",
+      "cuenta_no_encontrada": "Le compte bancaire n'existe pas dans cette organisation.",
+      "cuenta_inactiva": "L'un des comptes est inactif.",
+      "cuenta_requerida": "Sélectionnez le compte bancaire.",
+      "cuentas_iguales": "Les comptes d'origine et de destination doivent être différents.",
+      "monto_invalido": "Le montant doit être supérieur à 0.",
+      "fecha_futura": "La date ne peut pas être postérieure à aujourd'hui.",
+      "sucursal_invalida": "L'établissement n'appartient pas à cette organisation.",
+      "sucursal_requerida": "Sélectionnez l'établissement.",
+      "transferencia_no_encontrada": "Le virement n'existe pas dans cette organisation.",
+      "movimiento_no_encontrado": "Le mouvement n'existe pas dans cette organisation.",
+      "movimiento_conciliado": "Le mouvement est déjà rapproché : annulez le rapprochement avant de l'annuler.",
+      "movimiento_importado": "Le mouvement provient du relevé bancaire et ne s'annule pas ; rapprochez-le ou enregistrez le mouvement inverse.",
+      "anulacion_de_anulacion": "Une contrepassation ne s'annule pas : enregistrez de nouveau le mouvement.",
+      "sin_caja_abierta_sucursal": "Aucune caisse n'est ouverte dans l'établissement du mouvement.",
+      "caja_cerrada": "La caisse est déjà fermée.",
+      "saldo_bancario_por_movimientos": "Le solde du compte évolue avec ses mouvements ; il ne se modifie pas à la main.",
+      "sin_permiso": "Vous n'avez pas l'autorisation pour cette opération.",
+      "sin_acceso_sucursal": "Vous n'avez pas accès à l'établissement du compte.",
+      "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
+      "sin_organizacion": "L'organisation active est introuvable.",
+      "desconocido": "L'opération n'a pas pu aboutir."
+    }
   }
 }

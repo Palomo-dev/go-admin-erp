@@ -18,7 +18,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/use-toast';
-import { formatDate } from '@/utils/Utils';
+import { ToastAction } from '@/components/ui/toast';
+import { useTranslations } from 'next-intl';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { transferenciasService, BankTransfer } from '@/lib/services/transferenciasService';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
@@ -44,6 +46,9 @@ export function TransferenciaDetalle({ id }: TransferenciaDetalleProps) {
   // monedaOrganizacion.ts), también en el documento exportado. Nunca pesos fijos.
   const { formatear: formatCurrency } = useMonedaOrganizacion();
   const router = useRouter();
+  const t = useTranslations('tesoreria');
+  // transfer_date es timestamptz: se muestra en la zona de la organización.
+  const { formatDate } = useFormatDate();
   const [transfer, setTransfer] = useState<BankTransfer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -55,14 +60,19 @@ export function TransferenciaDetalle({ id }: TransferenciaDetalleProps) {
     } catch (error) {
       console.error('Error loading transfer:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo cargar el detalle de la transferencia',
+        title: t('errorTitulo'),
+        description: t('errorCarga.transferencia'),
         variant: 'destructive',
+        action: (
+          <ToastAction altText={t('reintentar')} onClick={() => void loadTransfer()}>
+            {t('reintentar')}
+          </ToastAction>
+        ),
       });
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     loadTransfer();
@@ -76,12 +86,15 @@ export function TransferenciaDetalle({ id }: TransferenciaDetalleProps) {
     try {
       const result = await transferenciasService.cancelTransfer(transfer.id, reason || undefined);
       if (result.success) {
-        toast({ title: 'Éxito', description: 'Transferencia anulada correctamente' });
+        toast({
+          title: 'Éxito',
+          description: result.repetida ? t('transferenciaYaAnulada') : 'Transferencia anulada correctamente',
+        });
         router.push('/app/finanzas/transferencias');
       } else {
-        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        toast({ title: t('errorTitulo'), description: t(`errores.${result.codigo ?? 'desconocido'}`), variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
     }
   };

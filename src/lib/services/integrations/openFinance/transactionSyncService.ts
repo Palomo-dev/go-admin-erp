@@ -10,6 +10,7 @@ import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { plainDayOfInstant } from '@/lib/services/businessInstant';
 import { addPlainDays, todayInTz } from '@/lib/utils/timezone';
 import type { OpenFinanceAccount, OpenFinanceLink, OpenFinanceTransaction } from './openFinanceTypes';
+import { tipoBanco, tipoDesdeImporteBancario } from '@/lib/finanzas/movimientoBancario';
 
 // ============================================================
 // Fase B, tanda 9. Las ventanas de sincronizacion ("ultimos 30 dias", "desde
@@ -292,7 +293,8 @@ export class TransactionSyncService {
       }
 
       // 4. Determinar tipo de transaccion segun el monto
-      const transactionType = ofTx.amount >= 0 ? 'credit' : 'debit';
+      // (valores del CHECK: 'credit'/'debit' no existen y el INSERT fallaba)
+      const transactionType = tipoBanco(tipoDesdeImporteBancario(ofTx.amount));
 
       // 5. Insertar en bank_transactions
       const { data: inserted, error: insertError } = await supabase

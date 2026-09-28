@@ -5,7 +5,15 @@
  * página, scroll infinito, vuelta a la página 1 al buscar, vista recordada,
  * agotado, variantes, favorito, Enter sobre la tarjeta enfocada, «3*» y
  * escaneo con el cobro abierto.
+ *
+ * Todo corre dos veces: sin StrictMode y con StrictMode en la raíz, como lo
+ * pone Next con `reactStrictMode: true`. React 19 monta, desmonta y vuelve a
+ * montar: la grilla tiene que seguir pidiendo la página 1 una sola vez
+ * (antes salían tres pedidos al entrar, porque las marcas de «primera vez»
+ * de los efectos de búsqueda y de vista no se reiniciaban al volver a montar)
+ * y el error con «Reintentar» tiene que alcanzarse.
  */
+import type { ReactElement } from 'react';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderConIdioma } from '@/test-utils/renderConIdioma';
 
@@ -78,13 +86,18 @@ beforeEach(() => {
   intersectar = null;
 });
 
-describe('ProductSearch (grilla del POS)', () => {
+describe.each([
+  ['sin StrictMode', false],
+  ['con StrictMode (reactStrictMode de Next)', true],
+])('ProductSearch (grilla del POS) · %s', (_modo, estricto) => {
+  const renderizar = (ui: ReactElement) => renderConIdioma(ui, { reactStrictMode: estricto });
+
   test('carga la página 1 una sola vez y la 2 al asomar el final (un pedido en vuelo)', async () => {
     let resolver2: (v: unknown) => void = () => undefined;
     getProductsPaginated
       .mockResolvedValueOnce(pagina(productos(1, 16), 1, 3))
       .mockImplementationOnce(() => new Promise((r) => (resolver2 = r)));
-    renderConIdioma(<ProductSearch onProductSelect={jest.fn()} />);
+    renderizar(<ProductSearch onProductSelect={jest.fn()} />);
     await screen.findByRole('button', { name: 'Elegir Producto 1' });
     expect(getProductsPaginated).toHaveBeenCalledTimes(1);
     expect(getProductsPaginated.mock.calls[0][0]).toMatchObject({ page: 1, limit: 16, branchFilter: 3 });
@@ -98,23 +111,25 @@ describe('ProductSearch (grilla del POS)', () => {
   test('buscar vuelve a la página 1 a los 300 ms', async () => {
     jest.useFakeTimers();
     getProductsPaginated.mockResolvedValue(pagina(productos(1, 4), 1, 1));
-    renderConIdioma(<ProductSearch onProductSelect={jest.fn()} />);
+    renderizar(<ProductSearch onProductSelect={jest.fn()} />);
     await act(async () => { await Promise.resolve(); });
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'coca' } });
     await act(async () => { jest.advanceTimersByTime(299); });
     expect(getProductsPaginated).toHaveBeenCalledTimes(1);
     await act(async () => { jest.advanceTimersByTime(2); });
     expect(getProductsPaginated).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, search: 'coca' }));
+    expect(getProductsPaginated).toHaveBeenCalledTimes(2);
     jest.useRealTimers();
   });
 
   test('la vista Lista se recuerda en el dispositivo y pide páginas de 20', async () => {
     getProductsPaginated.mockResolvedValue(pagina(productos(1, 4), 1, 1));
-    renderConIdioma(<ProductSearch onProductSelect={jest.fn()} />);
+    renderizar(<ProductSearch onProductSelect={jest.fn()} />);
     await screen.findByRole('button', { name: 'Elegir Producto 1' });
     fireEvent.click(screen.getByRole('radio', { name: 'Lista' }));
     expect(window.localStorage.getItem('pos_vista_productos')).toBe('lista');
     await waitFor(() => expect(getProductsPaginated).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, limit: 20 })));
+    expect(getProductsPaginated).toHaveBeenCalledTimes(2);
   });
 
   test('simple se agrega; agotado avisa y no agrega; con variantes abre el diálogo', async () => {
@@ -122,7 +137,7 @@ describe('ProductSearch (grilla del POS)', () => {
       pagina([...productos(1, 1), ...productos(2, 1, { is_out_of_stock: true }), ...productos(3, 1, { variant_count: 2, has_variants: true })], 1, 1),
     );
     const onSelect = jest.fn();
-    renderConIdioma(<ProductSearch onProductSelect={onSelect} />);
+    renderizar(<ProductSearch onProductSelect={onSelect} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Elegir Producto 1' }));
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
     fireEvent.click(screen.getByRole('button', { name: /Producto 2$/ }));
@@ -137,7 +152,7 @@ describe('ProductSearch (grilla del POS)', () => {
     getProductsPaginated.mockResolvedValue(pagina(productos(1, 1), 1, 1));
     toggleProductFavorite.mockResolvedValue(true);
     const onSelect = jest.fn();
-    renderConIdioma(<ProductSearch onProductSelect={onSelect} />);
+    renderizar(<ProductSearch onProductSelect={onSelect} />);
     await screen.findByRole('button', { name: 'Elegir Producto 1' });
     fireEvent.click(screen.getByRole('button', { name: 'Marcar Producto 1 como favorita' }));
     await waitFor(() => expect(toggleProductFavorite).toHaveBeenCalledWith(1));
@@ -147,7 +162,7 @@ describe('ProductSearch (grilla del POS)', () => {
   test('«3*» y elegir: agrega 3 y limpia la cantidad', async () => {
     getProductsPaginated.mockResolvedValue(pagina(productos(1, 1), 1, 1));
     const onSelect = jest.fn();
-    renderConIdioma(<ProductSearch onProductSelect={onSelect} />);
+    renderizar(<ProductSearch onProductSelect={onSelect} />);
     await screen.findByRole('button', { name: 'Elegir Producto 1' });
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: '3*' } });
     expect(screen.getByText('Se agregarán 3 unidades del producto que elijas')).toBeTruthy();
@@ -159,7 +174,7 @@ describe('ProductSearch (grilla del POS)', () => {
   test('flechas mueven el foco y Enter agrega el producto enfocado', async () => {
     getProductsPaginated.mockResolvedValue(pagina(productos(1, 3), 1, 1));
     const onSelect = jest.fn();
-    renderConIdioma(<ProductSearch onProductSelect={onSelect} />);
+    renderizar(<ProductSearch onProductSelect={onSelect} />);
     const primera = await screen.findByRole('button', { name: 'Elegir Producto 1' });
     primera.focus();
     fireEvent.keyDown(primera, { key: 'ArrowRight' });
@@ -173,7 +188,7 @@ describe('ProductSearch (grilla del POS)', () => {
   test('Ctrl+B: el código escrito a mano se resuelve como un escaneo', async () => {
     const posService = jest.requireMock('@/lib/services/posService') as { POSService: { getProductByBarcode: jest.Mock } };
     getProductsPaginated.mockResolvedValue(pagina(productos(1, 1), 1, 1));
-    renderConIdioma(<ProductSearch onProductSelect={jest.fn()} />);
+    renderizar(<ProductSearch onProductSelect={jest.fn()} />);
     await screen.findByRole('button', { name: 'Elegir Producto 1' });
     fireEvent.keyDown(document.body, { key: 'b', ctrlKey: true });
     const campo = await screen.findByRole('textbox', { name: 'Código de barras' });
@@ -185,12 +200,29 @@ describe('ProductSearch (grilla del POS)', () => {
   test('con el cobro abierto un escaneo avisa y no agrega', async () => {
     getProductsPaginated.mockResolvedValue(pagina(productos(1, 1), 1, 1));
     const onSelect = jest.fn();
-    renderConIdioma(<ProductSearch onProductSelect={onSelect} bloqueado />);
+    renderizar(<ProductSearch onProductSelect={onSelect} bloqueado />);
     await screen.findByRole('button', { name: 'Elegir Producto 1' });
     for (const key of [...'7701234567890'.split(''), 'Enter']) {
       document.body.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
     }
     await waitFor(() => expect(toastInfo).toHaveBeenCalledWith('Cierra el cobro para agregar productos'));
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  test('si falla la página 1 queda el error con «Reintentar» y reintentar vuelve a pedir', async () => {
+    const aviso = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      getProductsPaginated.mockRejectedValueOnce(new Error('sin red')).mockResolvedValue(pagina(productos(1, 2), 1, 1));
+      renderizar(<ProductSearch onProductSelect={jest.fn()} />);
+      const reintentar = await screen.findByRole('button', { name: 'Reintentar' });
+      expect(screen.getByText('Error al cargar productos')).toBeTruthy();
+      expect(getProductsPaginated).toHaveBeenCalledTimes(1);
+      expect(toastError).toHaveBeenCalledTimes(1);
+      fireEvent.click(reintentar);
+      expect(await screen.findByRole('button', { name: 'Elegir Producto 1' })).toBeTruthy();
+      expect(getProductsPaginated).toHaveBeenCalledTimes(2);
+    } finally {
+      aviso.mockRestore();
+    }
   });
 });

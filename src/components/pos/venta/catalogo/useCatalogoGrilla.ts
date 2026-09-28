@@ -13,7 +13,8 @@ import { crearControlPedidos, fusionarPaginas, hayMasPaginas } from '@/lib/pos/v
  *
  * - Al montar pide la página 1 una sola vez (antes salían hasta tres pedidos
  *   iguales al entrar: el de montaje, el de la búsqueda y el del tamaño de
- *   página).
+ *   página), también con `reactStrictMode`: un solo efecto es dueño de la
+ *   carga y su limpieza cancela lo programado y lo que esté en vuelo.
  * - Cambiar la búsqueda, la categoría o la sucursal vuelve a la página 1 a los
  *   300 ms (`programarBusqueda`, L14); lo cargado se queda a la vista
  *   (atenuado) hasta que llega la respuesta nueva.
@@ -137,42 +138,46 @@ export function useCatalogoGrilla({ busqueda, categoria, branchFilter, limite, o
     }
   }, [control, pedir]);
 
-  // Al montar: la página 1, una vez.
-  const montado = useRef(false);
+  // La página 1: al montar y cada vez que cambian la búsqueda, la categoría,
+  // la sucursal o la vista. Un solo efecto, dueño de su carga: la limpieza
+  // cancela lo programado y descarta lo que esté en vuelo. Con
+  // `reactStrictMode` React monta, desmonta y vuelve a montar; antes las
+  // marcas de «primera vez» de los efectos de búsqueda y de vista no se
+  // reiniciaban al volver a montar y salían tres pedidos al entrar.
+  const filtrosPrevios = useRef<{ busqueda: string; categoria: number | null; branchFilter: number | null | undefined } | null>(null);
   useEffect(() => {
-    montado.current = true;
-    void cargarPrimera();
+    const antes = filtrosPrevios.current;
+    filtrosPrevios.current = { busqueda, categoria, branchFilter };
+    const filtrosCambiaron =
+      antes !== null && (antes.busqueda !== busqueda || antes.categoria !== categoria || antes.branchFilter !== branchFilter);
+
+    let cancelar: () => void;
+    if (filtrosCambiaron) {
+      // L14: búsqueda, categoría o sucursal ⇒ página 1 a los 300 ms (sale solo la última).
+      cancelar = programarBusqueda({
+        paginaActual: estadoRef.current.pagina,
+        volverAPaginaUno: () => setEstado((e) => ({ ...e, cargandoMas: false, errorMas: false, recargando: e.productos.length > 0 })),
+        cargarPaginaUno: () => void cargarPrimera(),
+      });
+    } else {
+      // Al montar (o volver a montar) y al cambiar de vista (otro tamaño de
+      // página): la página 1 en el acto. Sale en una microtarea y no en el
+      // cuerpo del efecto: el desmontaje simulado de StrictMode llega antes y
+      // la cancela, así también en desarrollo sale un solo pedido.
+      let vigente = true;
+      void Promise.resolve().then(() => {
+        if (vigente) void cargarPrimera();
+      });
+      cancelar = () => {
+        vigente = false;
+      };
+    }
     return () => {
-      // Lo que llegue después de desmontar se descarta.
+      cancelar();
+      // Lo que esté en vuelo es del montaje, la búsqueda o la vista anterior: se descarta.
       control.reiniciar();
     };
-  }, [cargarPrimera, control]);
-
-  // L14: búsqueda, categoría o sucursal ⇒ página 1 a los 300 ms (sale solo la última).
-  const primeraBusqueda = useRef(true);
-  useEffect(() => {
-    if (primeraBusqueda.current) {
-      primeraBusqueda.current = false;
-      return;
-    }
-    // Lo que esté en vuelo es de la búsqueda anterior: se descarta desde ya.
-    control.reiniciar();
-    return programarBusqueda({
-      paginaActual: estadoRef.current.pagina,
-      volverAPaginaUno: () => setEstado((e) => ({ ...e, cargandoMas: false, errorMas: false, recargando: e.productos.length > 0 })),
-      cargarPaginaUno: () => void cargarPrimera(),
-    });
-  }, [busqueda, categoria, branchFilter, cargarPrimera, control]);
-
-  // Otra vista ⇒ otro tamaño de página: la página 1 en el acto (como el cambio de rejilla de antes).
-  const primerLimite = useRef(true);
-  useEffect(() => {
-    if (primerLimite.current) {
-      primerLimite.current = false;
-      return;
-    }
-    void cargarPrimera();
-  }, [limite, cargarPrimera]);
+  }, [busqueda, categoria, branchFilter, limite, cargarPrimera, control]);
 
   /** Cambia productos ya cargados (favorito optimista) sin volver a pedir. */
   const actualizarProductos = useCallback((cambio: (productos: PosGridProduct[]) => PosGridProduct[]) => {

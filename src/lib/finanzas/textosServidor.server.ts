@@ -40,7 +40,7 @@ export async function idiomaDelUsuario(ctx: Pick<ServerOrgContext, 'supabase' | 
   return 'es';
 }
 
-export async function traductorFinanzas(namespace: 'facturasVenta' | 'cartera', idioma: IdiomaDocumento): Promise<Traductor> {
+export async function traductorFinanzas(namespace: 'facturasVenta' | 'cartera' | 'documentosVenta', idioma: IdiomaDocumento): Promise<Traductor> {
   const [pedido, respaldo] = await Promise.all([mensajes(idioma), idioma === 'es' ? Promise.resolve(null) : mensajes('es')]);
   return crearTraductor(pedido[namespace] as Mensajes | undefined, (respaldo?.[namespace] as Mensajes | undefined) ?? undefined);
 }

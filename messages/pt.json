@@ -7248,7 +7248,8 @@
           "room_consumption": "Consumo no quarto",
           "return": "Devolução",
           "production": "Produção",
-          "conversion": "Conversão de unidades"
+          "conversion": "Conversão de unidades",
+          "credit_note_void": "Anulação de nota de crédito"
         }
       },
       "documentos": {
@@ -7614,7 +7615,8 @@
           "web_refund": "Reembolso on-line",
           "folio_item_reversal": "Estorno de fólio",
           "transfer_out": "Transferência enviada",
-          "transfer_in": "Transferência recebida"
+          "transfer_in": "Transferência recebida",
+          "credit_note_void": "Anulação de nota de crédito"
         }
       }
     },
@@ -12100,6 +12102,25 @@
       "no_autenticado": "Sua sessão expirou. Entre novamente.",
       "sin_organizacion": "A organização ativa não foi encontrada.",
       "desconocido": "Não foi possível concluir a operação."
+    }
+  },
+  "documentosVenta": {
+    "notaCreditoAnular": {
+      "errores": {
+        "no_autenticado": "Sua sessão terminou. Entre novamente.",
+        "sin_permiso": "Você não tem permissão para anular notas de crédito (finance.void).",
+        "nota_no_encontrada": "A nota de crédito não existe nesta organização.",
+        "sin_acceso_sucursal": "Você não tem acesso à filial desta nota de crédito.",
+        "motivo_obligatorio": "Informe o motivo da anulação (mínimo 5 caracteres).",
+        "documento_invalido": "O documento não é uma nota de crédito.",
+        "nota_aceptada_dian": "A DIAN já aceitou esta nota de crédito: ela não é anulada, é corrigida com uma nota de débito (ainda não disponível).",
+        "nota_en_envio_dian": "A nota está sendo enviada à DIAN: aguarde a resposta antes de anulá-la.",
+        "saldo_a_favor_aplicado": "O saldo a favor desta nota já foi usado. Anule primeiro a sua aplicação.",
+        "pago_en_caja_cerrada": "A devolução desta nota saiu de um caixa já fechado: registre-a como saída de caixa.",
+        "pago_no_anulable": "A devolução desta nota não pode ser anulada.",
+        "datos_invalidos": "Os dados enviados não são válidos.",
+        "error_desconocido": "Não foi possível anular a nota de crédito. Tente novamente."
+      }
     }
   }
 }

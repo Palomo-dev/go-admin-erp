@@ -7353,7 +7353,8 @@
           "room_consumption": "Room consumption",
           "return": "Return",
           "production": "Production",
-          "conversion": "Unit conversion"
+          "conversion": "Unit conversion",
+          "credit_note_void": "Credit note void"
         }
       },
       "documentos": {
@@ -7719,7 +7720,8 @@
           "web_refund": "Online refund",
           "folio_item_reversal": "Folio reversal",
           "transfer_out": "Transfer out",
-          "transfer_in": "Transfer in"
+          "transfer_in": "Transfer in",
+          "credit_note_void": "Credit note void"
         }
       }
     },
@@ -12205,6 +12207,25 @@
       "no_autenticado": "Your session expired. Sign in again.",
       "sin_organizacion": "The active organization was not found.",
       "desconocido": "The operation could not be completed."
+    }
+  },
+  "documentosVenta": {
+    "notaCreditoAnular": {
+      "errores": {
+        "no_autenticado": "Your session ended. Please sign in again.",
+        "sin_permiso": "You do not have permission to void credit notes (finance.void).",
+        "nota_no_encontrada": "The credit note does not exist in this organization.",
+        "sin_acceso_sucursal": "You do not have access to this credit note’s branch.",
+        "motivo_obligatorio": "Enter the reason for voiding (at least 5 characters).",
+        "documento_invalido": "The document is not a credit note.",
+        "nota_aceptada_dian": "The tax authority (DIAN) already accepted this credit note: it cannot be voided, it must be corrected with a debit note (not available yet).",
+        "nota_en_envio_dian": "The note is being sent to the DIAN: wait for the response before voiding it.",
+        "saldo_a_favor_aplicado": "The customer credit from this note has already been used. Void its application first.",
+        "pago_en_caja_cerrada": "The refund of this note came from a closed cash register: record it as a cash withdrawal.",
+        "pago_no_anulable": "The refund of this note cannot be voided.",
+        "datos_invalidos": "The data sent is not valid.",
+        "error_desconocido": "The credit note could not be voided. Please try again."
+      }
     }
   }
 }

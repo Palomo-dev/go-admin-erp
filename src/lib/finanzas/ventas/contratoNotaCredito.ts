@@ -171,3 +171,61 @@ export function totalNota(
   const cantidadDe = (l: LineaAcreditable) => (modo === 'total' ? l.disponible : Math.min(seleccion[l.itemId] ?? 0, l.disponible));
   return r2(lineas.reduce((s, l) => s + valorLineaNota(l, cantidadDe(l)), 0));
 }
+
+// ─── Anular una nota crédito (POST /api/notas-credito/[id]/anular) ──────────
+
+/** Motivo de la anulación: obligatorio, como en `fn_nota_credito_anular` (5 caracteres). */
+export const anulacionNotaSchema = z.object({ motivo: z.string().trim().min(5).max(500) }).strict();
+
+export const ERRORES_ANULAR_NOTA = [
+  'no_autenticado',
+  'sin_permiso',
+  'nota_no_encontrada',
+  'sin_acceso_sucursal',
+  'motivo_obligatorio',
+  'documento_invalido',
+  'nota_aceptada_dian',
+  'nota_en_envio_dian',
+  'saldo_a_favor_aplicado',
+  'pago_en_caja_cerrada',
+  'pago_no_anulable',
+] as const;
+export type ErrorAnularNota = (typeof ERRORES_ANULAR_NOTA)[number] | 'error_desconocido' | 'datos_invalidos';
+
+/** Mensaje de `fn_nota_credito_anular` → código estable (`documentosVenta.notaCreditoAnular.errores.<codigo>`). */
+export function codigoErrorAnularNota(mensaje: string | null | undefined): ErrorAnularNota {
+  const texto = (mensaje ?? '').trim();
+  // fn_assert_acceso_org: nota de otra organización → no se distingue de «no existe».
+  if (texto.startsWith('Acceso denegado a la organización')) return 'nota_no_encontrada';
+  const primero = texto.split(/[\s:]/)[0];
+  return (ERRORES_ANULAR_NOTA as readonly string[]).includes(primero) ? (primero as ErrorAnularNota) : 'error_desconocido';
+}
+
+export function estadoHttpErrorAnularNota(codigo: ErrorAnularNota): number {
+  switch (codigo) {
+    case 'no_autenticado':
+      return 401;
+    case 'sin_permiso':
+    case 'sin_acceso_sucursal':
+      return 403;
+    case 'nota_no_encontrada':
+      return 404;
+    case 'motivo_obligatorio':
+    case 'datos_invalidos':
+      return 400;
+    case 'error_desconocido':
+      return 500;
+    default:
+      // Aceptada o en envío a la DIAN, saldo a favor ya usado, devolución en caja cerrada.
+      return 409;
+  }
+}
+
+export interface ResultadoAnularNota {
+  id: string;
+  yaAnulada: boolean;
+  saldoFactura: number | null;
+  saldosAFavorCancelados: number;
+  devolucionesAnuladas: number;
+  productosRetirados: number;
+}

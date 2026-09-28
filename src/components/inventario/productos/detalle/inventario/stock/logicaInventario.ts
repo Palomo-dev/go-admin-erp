@@ -169,6 +169,7 @@ export const ORIGENES_KARDEX = [
   'folio_item_reversal',
   'transfer_out',
   'transfer_in',
+  'credit_note_void',
 ] as const;
 
 export type OrigenKardex = (typeof ORIGENES_KARDEX)[number];
@@ -187,6 +188,7 @@ export function tonoOrigen(origen: string): TonoBadge {
     case 'folio_item':
     case 'room_consumption':
     case 'web_order':
+    case 'credit_note_void':
       return 'peligro';
     case 'purchase':
     case 'purchase_order':
@@ -236,6 +238,7 @@ export function rutaDocumento(
   switch (origen) {
     case 'invoice_sale':
     case 'credit_note':
+    case 'credit_note_void':
     case 'invoice_void':
       return `/app/finanzas/facturas-venta/${encodeURIComponent(origenId)}`;
     case 'purchase_invoice':

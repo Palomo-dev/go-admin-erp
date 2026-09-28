@@ -7248,7 +7248,8 @@
           "room_consumption": "Consommation en chambre",
           "return": "Retour",
           "production": "Production",
-          "conversion": "Conversion d’unités"
+          "conversion": "Conversion d’unités",
+          "credit_note_void": "Annulation d’avoir"
         }
       },
       "documentos": {
@@ -7614,7 +7615,8 @@
           "web_refund": "Remboursement en ligne",
           "folio_item_reversal": "Annulation sur folio",
           "transfer_out": "Transfert sortant",
-          "transfer_in": "Transfert entrant"
+          "transfer_in": "Transfert entrant",
+          "credit_note_void": "Annulation d’avoir"
         }
       }
     },
@@ -12100,6 +12102,25 @@
       "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
       "sin_organizacion": "L'organisation active est introuvable.",
       "desconocido": "L'opération n'a pas pu aboutir."
+    }
+  },
+  "documentosVenta": {
+    "notaCreditoAnular": {
+      "errores": {
+        "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
+        "sin_permiso": "Vous n’avez pas l’autorisation d’annuler des avoirs (finance.void).",
+        "nota_no_encontrada": "L’avoir n’existe pas dans cette organisation.",
+        "sin_acceso_sucursal": "Vous n’avez pas accès à l’agence de cet avoir.",
+        "motivo_obligatorio": "Indiquez le motif de l’annulation (5 caractères minimum).",
+        "documento_invalido": "Le document n’est pas un avoir.",
+        "nota_aceptada_dian": "La DIAN a déjà accepté cet avoir : il ne s’annule pas, il se corrige par une note de débit (pas encore disponible).",
+        "nota_en_envio_dian": "L’avoir est en cours d’envoi à la DIAN : attendez la réponse avant de l’annuler.",
+        "saldo_a_favor_aplicado": "Le crédit client de cet avoir a déjà été utilisé. Annulez d’abord son imputation.",
+        "pago_en_caja_cerrada": "Le remboursement de cet avoir provient d’une caisse déjà clôturée : enregistrez-le comme sortie de caisse.",
+        "pago_no_anulable": "Le remboursement de cet avoir ne peut pas être annulé.",
+        "datos_invalidos": "Les données envoyées ne sont pas valides.",
+        "error_desconocido": "Impossible d’annuler l’avoir. Réessayez."
+      }
     }
   }
 }

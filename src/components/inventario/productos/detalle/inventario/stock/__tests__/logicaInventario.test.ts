@@ -54,11 +54,12 @@ describe('lotes', () => {
 });
 
 describe('kardex', () => {
-  it('cubre los 22 orígenes del CHECK de stock_movements', () => {
-    expect(ORIGENES_KARDEX).toHaveLength(22);
-    expect(new Set(ORIGENES_KARDEX).size).toBe(22);
+  it('cubre los orígenes del kardex (22 + credit_note_void de la anulación de notas crédito)', () => {
+    expect(ORIGENES_KARDEX).toHaveLength(23);
+    expect(new Set(ORIGENES_KARDEX).size).toBe(23);
     expect(tonoOrigen('sale')).toBe('peligro');
     expect(tonoOrigen('otro')).toBe('neutro');
+    expect(tonoOrigen('credit_note_void')).toBe('peligro');
   });
 
   it('enlaza el documento según el origen', () => {

@@ -5,11 +5,17 @@
  * líneas con su impuesto, reingreso, excedente y auditoría). El saldo de la
  * factura y la cartera los mueven los disparadores. La factura electrónica de
  * la nota se encola DESPUÉS, fuera de la transacción, con la cola única.
+ * Anular: solo por `fn_nota_credito_anular` (una transacción: saldo a favor,
+ * devolución, contra-asiento e inventario; el saldo de la factura lo recalcula
+ * el disparador de notas).
  */
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import {
+  codigoErrorAnularNota,
   codigoErrorNota,
   type ContextoNota,
+  type ErrorAnularNota,
+  type ResultadoAnularNota,
   type ErrorNota,
   type LineaAcreditable,
   type ResultadoNota,
@@ -168,4 +174,47 @@ export async function emitirNotaCredito(ctx: Ctx, id: string, s: SolicitudNota):
     }
   }
   return resultado;
+}
+
+// ─── Anular ─────────────────────────────────────────────────────────────────
+
+export class ErrorAnularNotaServidor extends Error {
+  constructor(public readonly codigo: ErrorAnularNota) {
+    super(codigo);
+  }
+}
+
+/**
+ * Anula una nota crédito de la organización de la SESIÓN con
+ * `fn_nota_credito_anular` (permiso finance.void, idempotente, bloquea si la
+ * DIAN la aceptó). La nota se busca primero con la organización de la sesión:
+ * una nota de otra organización (o una factura) es 404, sin llamar a la RPC.
+ */
+export async function anularNotaCredito(ctx: Ctx, id: string, motivo: string): Promise<ResultadoAnularNota> {
+  const { data: nota, error: errorNota } = await ctx.supabase
+    .from('invoice_sales')
+    .select('id, document_type')
+    .eq('id', id)
+    .eq('organization_id', ctx.organizationId)
+    .maybeSingle();
+  if (errorNota || !nota || (nota as { document_type: string | null }).document_type !== 'credit_note') {
+    throw new ErrorAnularNotaServidor('nota_no_encontrada');
+  }
+  const { data, error } = await ctx.supabase.rpc('fn_nota_credito_anular', { p_nota_id: id, p_motivo: motivo });
+  if (error) {
+    const codigo = codigoErrorAnularNota(error.message);
+    if (codigo === 'error_desconocido') {
+      console.error('[notaCredito] fn_nota_credito_anular', { organizationId: ctx.organizationId, message: error.message });
+    }
+    throw new ErrorAnularNotaServidor(codigo);
+  }
+  const r = (data ?? {}) as Record<string, unknown>;
+  return {
+    id: String(r.id ?? id),
+    yaAnulada: r.ya_anulada === true,
+    saldoFactura: r.saldo_factura == null ? null : num(r.saldo_factura),
+    saldosAFavorCancelados: num(r.saldos_a_favor_cancelados),
+    devolucionesAnuladas: num(r.devoluciones_anuladas),
+    productosRetirados: num(r.productos_retirados),
+  };
 }

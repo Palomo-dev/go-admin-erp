@@ -17,6 +17,8 @@ export interface NotaCredito {
   balance: number;
   status: string;
   notes?: string;
+  /** Motivo de la nota (lo escribe fn_nota_credito_emitir); `notes` guarda la anulación. */
+  description?: string | null;
   document_type: string;
   related_invoice_id?: string;
   reference_code?: string;
@@ -251,72 +253,26 @@ class NotasCreditoService {
   }
 
   /**
-   * Anular nota de crédito
+   * Anular nota de crédito — en el servidor (`POST /api/notas-credito/[id]/anular`
+   * → `fn_nota_credito_anular`): permiso finance.void, motivo obligatorio y una
+   * transacción que revierte saldo a favor, devolución, asiento e inventario.
+   * El saldo de la factura lo recalcula el disparador de notas; aquí ya no se
+   * escribe nada (antes se sumaba dos veces el monto de la nota).
+   * `error` es el texto del servidor, ya en el idioma del usuario.
    */
   async anularNotaCredito(
     id: string,
     reason?: string
-  ): Promise<{ success: boolean; error?: string }> {
-    const nota = await this.getNotaCreditoById(id);
-    if (!nota) {
-      return { success: false, error: 'Nota de crédito no encontrada' };
-    }
-
-    if (nota.status === 'void') {
-      return { success: false, error: 'La nota de crédito ya está anulada' };
-    }
-
-    const { error } = await supabase
-      .from('invoice_sales')
-      .update({
-        status: 'void',
-        notes: nota.notes 
-          ? `${nota.notes}\n\nANULADA: ${reason || 'Sin motivo'}`
-          : `ANULADA: ${reason || 'Sin motivo'}`,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error anulando nota credito:', error);
-      return { success: false, error: error.message };
-    }
-
-    // Restaurar el balance de la factura original
-    if (nota.related_invoice_id) {
-      const montoNota = Math.abs(Number(nota.total));
-      const { data: facturaOriginal } = await supabase
-        .from('invoice_sales')
-        .select('id, balance, total, status')
-        .eq('id', nota.related_invoice_id)
-        .single();
-
-      if (facturaOriginal) {
-        const balanceActual = Number(facturaOriginal.balance);
-        const totalActual = Number(facturaOriginal.total);
-        const nuevoBalance = balanceActual + montoNota;
-
-        // Determinar el nuevo status de la factura original
-        let nuevoStatus = facturaOriginal.status;
-        if (nuevoBalance >= totalActual) {
-          nuevoStatus = 'issued';
-        } else if (nuevoBalance > 0) {
-          nuevoStatus = 'partial';
-        } else {
-          nuevoStatus = 'paid';
-        }
-
-        await supabase
-          .from('invoice_sales')
-          .update({
-            balance: nuevoBalance,
-            status: nuevoStatus,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', nota.related_invoice_id);
-      }
-    }
-
+  ): Promise<{ success: boolean; error?: string; codigo?: string }> {
+    const org = getOrganizationId();
+    const res = await fetch(`/api/notas-credito/${encodeURIComponent(id)}/anular`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', ...(org > 0 ? { 'x-organization-id': String(org) } : {}) },
+      body: JSON.stringify({ motivo: (reason ?? '').trim() }),
+    });
+    const cuerpo = (await res.json().catch(() => ({}))) as { error?: string; codigo?: string };
+    if (!res.ok) return { success: false, error: cuerpo.error ?? cuerpo.codigo, codigo: cuerpo.codigo };
     return { success: true };
   }
 

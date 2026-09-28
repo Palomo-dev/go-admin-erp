@@ -182,7 +182,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
     }
     setIsSendingDian(true);
     try {
-      const reason = nota.notes || 'Nota de crédito';
+      const reason = nota.description || nota.notes || 'Nota de crédito';
       const result = await notasCreditoService.sendToFactus(nota.id, Number(orgId), reason);
       if (result.success) {
         toast({
@@ -527,11 +527,11 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
                   <p className="text-gray-900 dark:text-white">{nota.reference_code}</p>
                 </div>
               )}
-              {nota.notes && (
+              {(nota.description || nota.notes) && (
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Notas</p>
                   <p className="text-gray-900 dark:text-white whitespace-pre-wrap text-sm">
-                    {nota.notes}
+                    {nota.description || nota.notes}
                   </p>
                 </div>
               )}

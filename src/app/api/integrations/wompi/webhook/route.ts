@@ -123,8 +123,12 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'Evento inválido' }, { status: 400 });
   }
-  if (!event?.event || !event.data?.transaction || !event.signature) {
+  if (!event?.event || !event.data?.transaction) {
     return NextResponse.json({ error: 'Evento inválido' }, { status: 400 });
+  }
+  // Sin firma no hay forma de saber qué conexión lo envía: no autorizado.
+  if (!event.signature?.checksum) {
+    return noAutorizado('evento sin checksum');
   }
 
   try {

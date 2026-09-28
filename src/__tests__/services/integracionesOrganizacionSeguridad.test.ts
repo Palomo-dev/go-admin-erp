@@ -631,6 +631,14 @@ describe('Webhook de Wompi: confirma el QR del POS por la conexión que firmó',
     expect(mockConfirmar).not.toHaveBeenCalled();
   });
 
+  test('sin firma (sin checksum) → 401 sin escribir', async () => {
+    const sinFirma = { ...evento('secreto-A'), signature: undefined };
+    const r = await call(wWebhook.POST, req('POST', '/x', sinFirma));
+    expect(r.status).toBe(401);
+    expect(mockData.integration_events).toHaveLength(0);
+    expect(mockConfirmar).not.toHaveBeenCalled();
+  });
+
   test('APPROVED firmado por la conexión A confirma la sesión QR de A (referencia POS-<ts>-<org>)', async () => {
     const r = await call(wWebhook.POST, req('POST', '/x', evento('secreto-A')));
     expect(r.status).toBe(200);

@@ -1,7 +1,9 @@
 /**
  * Confirmacion de pago QR via webhook.
  * Funcion compartida que actualiza sesion, payment y bank_transaction.
- * Operacion idempotente: si la sesion ya esta pagada, retorna success.
+ * Operacion idempotente: si la sesion ya esta pagada, retorna success. El
+ * cambio de estado es un reclamo atómico (update condicionado a que no esté
+ * pagada), así que dos avisos simultáneos crean un solo pago.
  */
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
@@ -96,16 +98,34 @@ export async function confirmQrPayment(
       sessionUpdate.provider_response = input.providerResponse;
     }
 
-    const { error: updateSessionError } = await supabase
+    // Reclamo atómico: solo el primer webhook que cambia la sesión sigue
+    // adelante. El proveedor reintenta y puede mandar dos avisos a la vez;
+    // con leer-y-luego-escribir ambos veían «pendiente» y cada uno insertaba
+    // su propio pago. Una sesión pagada nunca se reescribe.
+    const { data: reclamada, error: updateSessionError } = await supabase
       .from('payment_qr_sessions')
       .update(sessionUpdate)
-      .eq('id', input.qrSessionId);
+      .eq('id', input.qrSessionId)
+      .eq('organization_id', input.organizationId)
+      .neq('status', 'paid')
+      .select('id');
 
     if (updateSessionError) {
       return {
         success: false,
         error: `Error al actualizar sesion QR: ${updateSessionError.message}`,
       };
+    }
+
+    if (!reclamada || reclamada.length === 0) {
+      // Otro aviso ya la confirmó entre la lectura y este update.
+      const { data: actual } = await supabase
+        .from('payment_qr_sessions')
+        .select('payment_id')
+        .eq('id', input.qrSessionId)
+        .eq('organization_id', input.organizationId)
+        .maybeSingle();
+      return { success: true, paymentId: (actual?.payment_id as string | null) ?? undefined };
     }
 
     // Si fue rechazada, no se inserta payment ni bank_transaction

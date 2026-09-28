@@ -3501,6 +3501,30 @@
       "obtenidosCache": "Données obtenues depuis {proveedor} (cache)",
       "errorConexion": "Erreur de connexion lors de la consultation DIAN/RUES",
       "habeasData": "J’autorise la consultation de mes informations auprès de la DIAN et du RUES à des fins de facturation électronique et de conformité fiscale (loi colombienne 1581 de 2012)."
+    },
+    "selectorIcono": {
+      "etiqueta": "Icône",
+      "seleccionar": "Choisir une icône",
+      "titulo": "Choisir une icône",
+      "buscar": "Rechercher une icône...",
+      "vacio": "Aucune icône trouvée"
+    },
+    "selectorColor": {
+      "etiqueta": "Couleur",
+      "personalizado": "Couleur personnalisée :",
+      "vistaPrevia": "Aperçu"
+    },
+    "editorTexto": {
+      "negrita": "Gras",
+      "cursiva": "Italique",
+      "subrayado": "Souligné",
+      "vinetas": "Liste à puces",
+      "numeracion": "Liste numérotée",
+      "alinearIzquierda": "Aligner à gauche",
+      "centrar": "Centrer",
+      "alinearDerecha": "Aligner à droite",
+      "verMas": "Voir plus",
+      "verMenos": "Voir moins"
     }
   },
   "inventarioEtiquetas": {
@@ -6438,6 +6462,21 @@
       "eliminar": {
         "titulo": "{count, plural, one {Supprimer le produit ?} other {Supprimer {n} produits ?}}",
         "descripcion": "{count, plural, one {{n} produit sera supprimé. Cette action est irréversible.} other {{n} produits seront supprimés. Cette action est irréversible.}}"
+      },
+      "errores": {
+        "expandir": "Impossible de lire les variantes des produits sélectionnés. Réessayez dans quelques secondes.",
+        "sinProductos": "Les produits sélectionnés sont introuvables",
+        "sinCostoPrevio": "{count, plural, one {{n} produit sans coût antérieur (utilisez le mode « Définir une valeur fixe » pour lui attribuer un coût)} other {{n} produits sans coût antérieur (utilisez le mode « Définir une valeur fixe » pour leur attribuer un coût)}}",
+        "cerrarCostos": "Erreur lors de la clôture des coûts : {detalle}",
+        "insertarCostos": "Erreur lors de l'enregistrement des coûts : {detalle}",
+        "cerrarPrecios": "Erreur lors de la clôture des prix : {detalle}",
+        "insertarPrecios": "Erreur lors de l'enregistrement des prix : {detalle}",
+        "lote": "Lot {desde}-{hasta} : {detalle}",
+        "sinPrecio": "Produit {producto} : aucun prix de vente",
+        "sinCosto": "Produit {producto} : aucun coût",
+        "sinPermisoProducto": "Produit {producto} : autorisation refusée",
+        "producto": "Produit {producto} : {detalle}",
+        "detalle": "{detalle}"
       }
     },
     "tabla": {
@@ -6469,6 +6508,50 @@
       "error": {
         "titulo": "Impossible de charger le catalogue",
         "descripcion": "Vérifiez la connexion et réessayez."
+      }
+    },
+    "catalogo": {
+      "errorTitulo": "Erreur",
+      "errorCarga": "Impossible de charger les produits. Réessayez plus tard.",
+      "sucursalN": "Succursale n° {id}",
+      "consolidado": "{count, plural, one {Consolidé · {n} succursale} other {Consolidé · {n} succursales}}",
+      "productos": "{count, plural, one {{n} produit} other {{n} produits}}",
+      "cargandoDe": "chargement de {cargados} sur {total}",
+      "sinStock": "{n} en rupture de stock",
+      "stockBajo": "{n} en stock faible",
+      "cargandoCatalogo": "Chargement du catalogue…",
+      "cargando": "Chargement…",
+      "eliminado": "Produit supprimé",
+      "eliminadoDetalle": "Le produit a bien été supprimé.",
+      "errorEliminar": "Impossible de supprimer le produit. Réessayez plus tard.",
+      "sinPermisoEliminar": "Impossible de supprimer le produit. Vérifiez vos autorisations.",
+      "idCopiado": "ID copié",
+      "idCopiadoDetalle": "L'identifiant du produit a été copié dans le presse-papiers.",
+      "noCopiar": "Copie impossible",
+      "noCopiarDetalle": "Le navigateur n'a pas autorisé l'accès au presse-papiers.",
+      "acciones": {
+        "ver": "Voir le détail",
+        "editar": "Modifier",
+        "duplicar": "Dupliquer",
+        "copiarId": "Copier l'ID",
+        "eliminar": "Supprimer"
+      },
+      "exportar": {
+        "sinProductos": "Aucun produit",
+        "sinProductosDetalle": "Il n'y a aucun produit à exporter.",
+        "sinOrganizacion": "Aucune organisation n'est sélectionnée.",
+        "exito": "Export terminé",
+        "exitoDetalle": "{count, plural, one {{n} produit exporté.} other {{n} produits exportés.}}"
+      },
+      "vacio": {
+        "titulo": "Vous n'avez encore aucun produit",
+        "descripcion": "Créez votre premier produit ou importez-le depuis un fichier.",
+        "nuevo": "Nouveau produit"
+      },
+      "eliminarDialogo": {
+        "titulo": "Supprimer le produit ?",
+        "descripcion": "« {nombre} » ne sera plus visible dans le catalogue. Cette action est irréversible.",
+        "confirmar": "Supprimer"
       }
     }
   },
@@ -6913,6 +6996,38 @@
       "DATO_NO_VALIDO": "Une valeur n’est pas valide pour la base",
       "LOTE": "Le lot entier a échoué",
       "ERROR": "Erreur lors de l’enregistrement de la ligne"
+    },
+    "cabeceras": {
+      "sku": "SKU",
+      "name": "Nom",
+      "type": "Type",
+      "description": "Description",
+      "category": "Catégorie",
+      "unit": "Unité",
+      "barcode": "Code-barres",
+      "brand": "Marque",
+      "reference": "Référence",
+      "supplier": "Fournisseur",
+      "price": "Prix de vente",
+      "comparePrice": "Prix barré",
+      "cost": "Coût",
+      "tax": "Taxe",
+      "trackStock": "Suivre le stock",
+      "stock": "Stock total",
+      "minLevel": "Stock minimum",
+      "tags": "Étiquettes",
+      "notes": "Notes",
+      "imageUrls": "URL des images",
+      "parentSku": "SKU parent",
+      "variantData": "Données de variante",
+      "isParent": "Produit parent",
+      "station": "Station",
+      "modifiers": "Modificateurs",
+      "status": "Statut"
+    },
+    "valores": {
+      "producto": "Produit",
+      "servicio": "Service"
     }
   },
   "productosFacebook": {
@@ -8403,6 +8518,39 @@
           "garantia": "Garantie",
           "meses": "Mois de garantie"
         }
+      },
+      "reclamo": {
+        "titulo": "Nouvelle réclamation sous garantie",
+        "descripcion": "Enregistrez une réclamation sous garantie pour un numéro de série vendu.",
+        "errorTitulo": "Erreur",
+        "errorCargar": "Impossible de charger le numéro de série sélectionné",
+        "seleccionaSerial": "Sélectionnez un numéro de série",
+        "motivoObligatorio": "Le motif de la réclamation est obligatoire",
+        "creado": "Réclamation créée",
+        "creadoDetalle": "Réclamation n° {id} enregistrée",
+        "errorCrear": "Impossible de créer la réclamation",
+        "buscar": "Rechercher un numéro de série",
+        "buscarPlaceholder": "Saisissez le numéro de série (3 caractères min.)...",
+        "buscando": "Recherche...",
+        "sinResultados": "Aucun numéro de série trouvé.",
+        "sku": "SKU : {sku}",
+        "sinDato": "N/D",
+        "serial": "Numéro de série",
+        "cambiar": "Changer",
+        "sinContacto": "Aucun contact",
+        "sinCliente": "Ce numéro de série n'est associé à aucun client (il n'a pas été vendu)",
+        "garantia": "Garantie",
+        "vigente": "{count, plural, one {En cours (# jour)} other {En cours (# jours)}}",
+        "vencida": "Expirée",
+        "sinGarantia": "Sans garantie",
+        "fechaVenta": "Date de vente : {fecha}",
+        "motivo": "Motif de la réclamation",
+        "motivoPlaceholder": "Ex. : Produit défectueux, ne s'allume pas...",
+        "descripcionCampo": "Description (facultatif)",
+        "descripcionPlaceholder": "Décrivez le problème en détail...",
+        "cancelar": "Annuler",
+        "creando": "Création...",
+        "crear": "Créer la réclamation"
       }
     },
     "variantes": {
@@ -9053,6 +9201,45 @@
       "atras": "Retour",
       "continuar": "Continuer",
       "guardarProducto": "Enregistrer le produit"
+    },
+    "categoriaRapida": {
+      "creada": "Catégorie créée",
+      "creadaDetalle": "« {nombre} » est maintenant sélectionnée.",
+      "errores": {
+        "nombreObligatorio": "Le nom est obligatoire",
+        "sinOrganizacion": "L'organisation active est introuvable.",
+        "noCrear": "Impossible de créer la catégorie.",
+        "slugOcupado": "Une catégorie utilise déjà /{slug}."
+      },
+      "slugValidando": "Vérification de la disponibilité…",
+      "slugLibre": "Disponible · ce sera l’adresse dans la boutique en ligne",
+      "slugError": "Impossible de la vérifier pour l'instant ; elle sera validée à la création.",
+      "slugAyuda": "Elle est formée à partir du nom. C'est l'adresse publique dans la boutique en ligne.",
+      "nombre": "Nom",
+      "nombrePlaceholder": "Ex. : Boissons chaudes",
+      "padre": "Catégorie parente",
+      "padreError": "Impossible de charger les catégories : elle sera créée comme catégorie principale.",
+      "sinPadre": "Sans catégorie parente (principale)",
+      "buscarCategoria": "Rechercher une catégorie",
+      "slug": "Slug",
+      "slugPlaceholder": "boissons-chaudes",
+      "sugerencia": "Utilisez celle-ci, qui est disponible :",
+      "color": "Couleur",
+      "icono": "Icône",
+      "masOpciones": "Plus d'options",
+      "masOpcionesDetalle": "Description, cuisine et statut",
+      "descripcion": "Description",
+      "descripcionPlaceholder": "Ce que regroupe cette catégorie (facultatif)",
+      "estacion": "Poste de cuisine",
+      "preparacion": "Nécessite une préparation",
+      "preparacionAyuda": "Génère un bon de cuisine à la vente",
+      "activa": "Active",
+      "activaAyuda": "Visible dans le POS et la boutique en ligne",
+      "aviso": "L'image, le SEO et l'ordre se complètent ensuite dans <enlace>Catégories</enlace>.",
+      "cancelar": "Annuler",
+      "guardando": "Enregistrement…",
+      "crear": "Créer et sélectionner",
+      "slugOcupadoTitulo": "Modifiez le slug : il existe déjà"
     }
   },
   "arranque": {

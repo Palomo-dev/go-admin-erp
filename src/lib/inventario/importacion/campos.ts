@@ -5,6 +5,11 @@
  * anterior (26 columnas), así que un archivo exportado desde GO Admin o
  * descargado como plantilla antes del rediseño se sigue leyendo igual. Los
  * alias cubren Siigo, listados caseros y cabeceras en inglés.
+ *
+ * La exportación y la plantilla salen con las cabeceras en el idioma de la
+ * interfaz (`productosImportar.cabeceras` de messages/*.json): los alias
+ * incluyen esas cabeceras en es/en/fr/pt para que el archivo se vuelva a
+ * importar en cualquier idioma (lo comprueba importacion.test.ts).
  */
 
 import { normalizarCabecera } from './texto';
@@ -56,25 +61,25 @@ export const CAMPOS: DefinicionCampo[] = [
   { campo: 'description', cabecera: 'Descripción', tipo: 'texto', alias: ['descripcion', 'description', 'descripcionlarga', 'detalle', 'detalles', 'descricao'] },
   { campo: 'category', cabecera: 'Categoría', tipo: 'texto', alias: ['categoria', 'category', 'categorias', 'linea', 'familia', 'grupo', 'categorie'] },
   { campo: 'unit', cabecera: 'Unidad', tipo: 'texto', alias: ['unidad', 'unit', 'unidaddemedida', 'um', 'medida', 'unite', 'unidade'] },
-  { campo: 'barcode', cabecera: 'Código de Barras', tipo: 'texto', alias: ['codigodebarras', 'codigobarras', 'barcode', 'ean', 'upc', 'gtin', 'codbarras', 'barras', 'codigodebarra'] },
+  { campo: 'barcode', cabecera: 'Código de Barras', tipo: 'texto', alias: ['codigodebarras', 'codigobarras', 'barcode', 'ean', 'upc', 'gtin', 'codbarras', 'barras', 'codigodebarra', 'codebarres'] },
   { campo: 'brand', cabecera: 'Marca', tipo: 'texto', alias: ['marca', 'brand', 'fabricante', 'marque'] },
   { campo: 'reference', cabecera: 'Referencia', tipo: 'texto', alias: ['referencia', 'reference', 'ref', 'referencie'] },
   { campo: 'supplier', cabecera: 'Proveedor', tipo: 'texto', alias: ['proveedor', 'supplier', 'proveedorprincipal', 'proveedores', 'vendor', 'fornecedor', 'fournisseur'] },
-  { campo: 'price', cabecera: 'Precio de Venta', tipo: 'numero', alias: ['preciodeventa', 'precio', 'precios', 'price', 'precioventa', 'pventa', 'pvp', 'valorventa', 'preciounitario', 'precioalpublico', 'saleprice', 'prix', 'preco'] },
-  { campo: 'comparePrice', cabecera: 'Precio de Comparación', tipo: 'numero', alias: ['preciodecomparacion', 'preciocomparacion', 'compareprice', 'compareatprice', 'precioanterior', 'precioantes', 'precioregular', 'regularprice'] },
+  { campo: 'price', cabecera: 'Precio de Venta', tipo: 'numero', alias: ['preciodeventa', 'precio', 'precios', 'price', 'precioventa', 'pventa', 'pvp', 'valorventa', 'preciounitario', 'precioalpublico', 'saleprice', 'prix', 'preco', 'prixdevente', 'precodevenda'] },
+  { campo: 'comparePrice', cabecera: 'Precio de Comparación', tipo: 'numero', alias: ['preciodecomparacion', 'preciocomparacion', 'compareprice', 'compareatprice', 'precioanterior', 'precioantes', 'precioregular', 'regularprice', 'prixbarre', 'precodecomparacao'] },
   { campo: 'cost', cabecera: 'Costo', tipo: 'numero', alias: ['costo', 'cost', 'costodeadquisicion', 'preciocosto', 'preciocompra', 'costounitario', 'valorcompra', 'custo', 'cout'] },
-  { campo: 'tax', cabecera: 'Impuesto', tipo: 'texto', alias: ['impuesto', 'impuestos', 'tax', 'iva', 'taxes', 'imposto'] },
-  { campo: 'trackStock', cabecera: 'Rastrear Inventario', tipo: 'booleano', alias: ['rastrearinventario', 'trackstock', 'rastrearstock', 'controlainventario', 'inventariable', 'trackinventory'] },
-  { campo: 'stock', cabecera: 'Stock Total', tipo: 'numero', alias: ['stocktotal', 'stock', 'cantidad', 'existencias', 'inventario', 'qty', 'quantity', 'unidades', 'saldo', 'quantidade', 'quantite'] },
-  { campo: 'minLevel', cabecera: 'Stock Mínimo', tipo: 'numero', alias: ['stockminimo', 'minlevel', 'minimo', 'nivelminimo', 'minstock', 'estoqueminimo'] },
-  { campo: 'tags', cabecera: 'Etiquetas', tipo: 'texto', alias: ['etiquetas', 'etiqueta', 'tags', 'tag'] },
+  { campo: 'tax', cabecera: 'Impuesto', tipo: 'texto', alias: ['impuesto', 'impuestos', 'tax', 'iva', 'taxes', 'imposto', 'taxe'] },
+  { campo: 'trackStock', cabecera: 'Rastrear Inventario', tipo: 'booleano', alias: ['rastrearinventario', 'trackstock', 'rastrearstock', 'controlainventario', 'inventariable', 'trackinventory', 'suivrelestock', 'controlarestoque'] },
+  { campo: 'stock', cabecera: 'Stock Total', tipo: 'numero', alias: ['stocktotal', 'stock', 'cantidad', 'existencias', 'inventario', 'qty', 'quantity', 'unidades', 'saldo', 'quantidade', 'quantite', 'totalstock', 'estoquetotal'] },
+  { campo: 'minLevel', cabecera: 'Stock Mínimo', tipo: 'numero', alias: ['stockminimo', 'minlevel', 'minimo', 'nivelminimo', 'minstock', 'estoqueminimo', 'minimumstock', 'stockminimum'] },
+  { campo: 'tags', cabecera: 'Etiquetas', tipo: 'texto', alias: ['etiquetas', 'etiqueta', 'tags', 'tag', 'etiquettes'] },
   { campo: 'notes', cabecera: 'Notas', tipo: 'texto', alias: ['notas', 'nota', 'notes', 'observaciones', 'observacion'] },
-  { campo: 'imageUrls', cabecera: 'URLs de Imágenes', tipo: 'texto', alias: ['urlsdeimagenes', 'urldeimagenes', 'urlsimagenes', 'imagenes', 'images', 'imagen', 'image', 'imageurl', 'imageurls', 'fotos', 'foto', 'imagelink'] },
-  { campo: 'parentSku', cabecera: 'SKU Padre', tipo: 'texto', alias: ['skupadre', 'parentsku', 'codigopadre', 'skudelpadre'] },
-  { campo: 'variantData', cabecera: 'Datos de Variante', tipo: 'texto', alias: ['datosdevariante', 'variantdata', 'variante', 'atributos', 'attributes'] },
-  { campo: 'isParent', cabecera: 'Es Producto Padre', tipo: 'booleano', alias: ['esproductopadre', 'isparent', 'espadre'] },
-  { campo: 'station', cabecera: 'Estación', tipo: 'texto', alias: ['estacion', 'station'] },
-  { campo: 'modifiers', cabecera: 'Modificadores', tipo: 'texto', alias: ['modificadores', 'modifiers', 'modificador'] },
+  { campo: 'imageUrls', cabecera: 'URLs de Imágenes', tipo: 'texto', alias: ['urlsdeimagenes', 'urldeimagenes', 'urlsimagenes', 'imagenes', 'images', 'imagen', 'image', 'imageurl', 'imageurls', 'fotos', 'foto', 'imagelink', 'urldesimages', 'urlsdasimagens'] },
+  { campo: 'parentSku', cabecera: 'SKU Padre', tipo: 'texto', alias: ['skupadre', 'parentsku', 'codigopadre', 'skudelpadre', 'skuparent', 'skupai'] },
+  { campo: 'variantData', cabecera: 'Datos de Variante', tipo: 'texto', alias: ['datosdevariante', 'variantdata', 'variante', 'atributos', 'attributes', 'donneesdevariante', 'dadosdavariante'] },
+  { campo: 'isParent', cabecera: 'Es Producto Padre', tipo: 'booleano', alias: ['esproductopadre', 'isparent', 'espadre', 'isparentproduct', 'produitparent', 'eprodutopai'] },
+  { campo: 'station', cabecera: 'Estación', tipo: 'texto', alias: ['estacion', 'station', 'estacao'] },
+  { campo: 'modifiers', cabecera: 'Modificadores', tipo: 'texto', alias: ['modificadores', 'modifiers', 'modificador', 'modificateurs'] },
   { campo: 'status', cabecera: 'Estado', tipo: 'texto', alias: ['estado', 'status', 'state', 'statut'] },
 ];
 

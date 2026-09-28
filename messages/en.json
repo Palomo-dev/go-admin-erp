@@ -3606,6 +3606,30 @@
       "obtenidosCache": "Data retrieved from {proveedor} (cache)",
       "errorConexion": "Connection error while querying DIAN/RUES",
       "habeasData": "I authorize looking up my information in DIAN and RUES for electronic invoicing and tax compliance purposes (Colombian Law 1581 of 2012)."
+    },
+    "selectorIcono": {
+      "etiqueta": "Icon",
+      "seleccionar": "Select icon",
+      "titulo": "Select icon",
+      "buscar": "Search icon...",
+      "vacio": "No icons found"
+    },
+    "selectorColor": {
+      "etiqueta": "Color",
+      "personalizado": "Custom color:",
+      "vistaPrevia": "Preview"
+    },
+    "editorTexto": {
+      "negrita": "Bold",
+      "cursiva": "Italic",
+      "subrayado": "Underline",
+      "vinetas": "Bulleted list",
+      "numeracion": "Numbered list",
+      "alinearIzquierda": "Align left",
+      "centrar": "Center",
+      "alinearDerecha": "Align right",
+      "verMas": "Show more",
+      "verMenos": "Show less"
     }
   },
   "inventarioEtiquetas": {
@@ -6543,6 +6567,21 @@
       "eliminar": {
         "titulo": "{count, plural, one {Delete the product?} other {Delete {n} products?}}",
         "descripcion": "{count, plural, one {{n} product will be deleted. This action cannot be undone.} other {{n} products will be deleted. This action cannot be undone.}}"
+      },
+      "errores": {
+        "expandir": "The variants of the selected products couldn't be read. Try again in a few seconds.",
+        "sinProductos": "The selected products weren't found",
+        "sinCostoPrevio": "{count, plural, one {{n} product has no previous cost (use “Set fixed value” mode to assign one)} other {{n} products have no previous cost (use “Set fixed value” mode to assign one)}}",
+        "cerrarCostos": "Error closing costs: {detalle}",
+        "insertarCostos": "Error saving costs: {detalle}",
+        "cerrarPrecios": "Error closing prices: {detalle}",
+        "insertarPrecios": "Error saving prices: {detalle}",
+        "lote": "Batch {desde}-{hasta}: {detalle}",
+        "sinPrecio": "Product {producto}: no sale price",
+        "sinCosto": "Product {producto}: no cost",
+        "sinPermisoProducto": "Product {producto}: not allowed",
+        "producto": "Product {producto}: {detalle}",
+        "detalle": "{detalle}"
       }
     },
     "tabla": {
@@ -6574,6 +6613,50 @@
       "error": {
         "titulo": "Couldn't load the catalog",
         "descripcion": "Check your connection and try again."
+      }
+    },
+    "catalogo": {
+      "errorTitulo": "Error",
+      "errorCarga": "Products couldn't be loaded. Please try again later.",
+      "sucursalN": "Branch #{id}",
+      "consolidado": "{count, plural, one {Consolidated · {n} branch} other {Consolidated · {n} branches}}",
+      "productos": "{count, plural, one {{n} product} other {{n} products}}",
+      "cargandoDe": "loading {cargados} of {total}",
+      "sinStock": "{n} out of stock",
+      "stockBajo": "{n} low on stock",
+      "cargandoCatalogo": "Loading catalog…",
+      "cargando": "Loading…",
+      "eliminado": "Product deleted",
+      "eliminadoDetalle": "The product was deleted successfully.",
+      "errorEliminar": "The product couldn't be deleted. Please try again later.",
+      "sinPermisoEliminar": "The product couldn't be deleted. Check your permissions.",
+      "idCopiado": "ID copied",
+      "idCopiadoDetalle": "The product ID is now on your clipboard.",
+      "noCopiar": "Couldn't copy",
+      "noCopiarDetalle": "The browser didn't allow access to the clipboard.",
+      "acciones": {
+        "ver": "View details",
+        "editar": "Edit",
+        "duplicar": "Duplicate",
+        "copiarId": "Copy ID",
+        "eliminar": "Delete"
+      },
+      "exportar": {
+        "sinProductos": "No products",
+        "sinProductosDetalle": "There are no products to export.",
+        "sinOrganizacion": "No organization is selected.",
+        "exito": "Export complete",
+        "exitoDetalle": "{count, plural, one {{n} product exported.} other {{n} products exported.}}"
+      },
+      "vacio": {
+        "titulo": "You don't have any products yet",
+        "descripcion": "Create your first product or import it from a file.",
+        "nuevo": "New product"
+      },
+      "eliminarDialogo": {
+        "titulo": "Delete product?",
+        "descripcion": "“{nombre}” will no longer appear in the catalog. This action can’t be undone.",
+        "confirmar": "Delete"
       }
     }
   },
@@ -7018,6 +7101,38 @@
       "DATO_NO_VALIDO": "Some value is not valid for the database",
       "LOTE": "The whole batch failed",
       "ERROR": "Error saving the row"
+    },
+    "cabeceras": {
+      "sku": "SKU",
+      "name": "Name",
+      "type": "Type",
+      "description": "Description",
+      "category": "Category",
+      "unit": "Unit",
+      "barcode": "Barcode",
+      "brand": "Brand",
+      "reference": "Reference",
+      "supplier": "Supplier",
+      "price": "Sale Price",
+      "comparePrice": "Compare-at Price",
+      "cost": "Cost",
+      "tax": "Tax",
+      "trackStock": "Track Inventory",
+      "stock": "Total Stock",
+      "minLevel": "Minimum Stock",
+      "tags": "Tags",
+      "notes": "Notes",
+      "imageUrls": "Image URLs",
+      "parentSku": "Parent SKU",
+      "variantData": "Variant Data",
+      "isParent": "Is Parent Product",
+      "station": "Station",
+      "modifiers": "Modifiers",
+      "status": "Status"
+    },
+    "valores": {
+      "producto": "Product",
+      "servicio": "Service"
     }
   },
   "productosFacebook": {
@@ -8508,6 +8623,39 @@
           "garantia": "Warranty",
           "meses": "Warranty months"
         }
+      },
+      "reclamo": {
+        "titulo": "New warranty claim",
+        "descripcion": "Record a warranty claim for a sold serial number.",
+        "errorTitulo": "Error",
+        "errorCargar": "The selected serial number couldn't be loaded",
+        "seleccionaSerial": "Select a serial number",
+        "motivoObligatorio": "The claim reason is required",
+        "creado": "Claim created",
+        "creadoDetalle": "Claim #{id} recorded successfully",
+        "errorCrear": "The claim couldn't be created",
+        "buscar": "Search serial number",
+        "buscarPlaceholder": "Enter the serial number (min. 3 characters)...",
+        "buscando": "Searching...",
+        "sinResultados": "No serial numbers found.",
+        "sku": "SKU: {sku}",
+        "sinDato": "N/A",
+        "serial": "Serial number",
+        "cambiar": "Change",
+        "sinContacto": "No contact info",
+        "sinCliente": "This serial number has no linked customer (it hasn’t been sold)",
+        "garantia": "Warranty",
+        "vigente": "{count, plural, one {Active (# day)} other {Active (# days)}}",
+        "vencida": "Expired",
+        "sinGarantia": "No warranty",
+        "fechaVenta": "Sale date: {fecha}",
+        "motivo": "Claim reason",
+        "motivoPlaceholder": "E.g.: Defective product, won't turn on...",
+        "descripcionCampo": "Description (optional)",
+        "descripcionPlaceholder": "Describe the problem in detail...",
+        "cancelar": "Cancel",
+        "creando": "Creating...",
+        "crear": "Create claim"
       }
     },
     "variantes": {
@@ -9158,6 +9306,45 @@
       "atras": "Back",
       "continuar": "Continue",
       "guardarProducto": "Save product"
+    },
+    "categoriaRapida": {
+      "creada": "Category created",
+      "creadaDetalle": "“{nombre}” is now selected.",
+      "errores": {
+        "nombreObligatorio": "Name is required",
+        "sinOrganizacion": "The active organization wasn't found.",
+        "noCrear": "The category couldn't be created.",
+        "slugOcupado": "A category already uses /{slug}."
+      },
+      "slugValidando": "Checking that it’s available…",
+      "slugLibre": "Available · it will be the address in the online store",
+      "slugError": "We couldn't check it right now; it will be validated on create.",
+      "slugAyuda": "It's built from the name. It's the public address in the online store.",
+      "nombre": "Name",
+      "nombrePlaceholder": "E.g.: Hot drinks",
+      "padre": "Parent category",
+      "padreError": "We couldn't load the categories: it will be created as a main category.",
+      "sinPadre": "No parent category (main)",
+      "buscarCategoria": "Search category",
+      "slug": "Slug",
+      "slugPlaceholder": "hot-drinks",
+      "sugerencia": "Use this one, which is available:",
+      "color": "Color",
+      "icono": "Icon",
+      "masOpciones": "More options",
+      "masOpcionesDetalle": "Description, kitchen and status",
+      "descripcion": "Description",
+      "descripcionPlaceholder": "What this category groups (optional)",
+      "estacion": "Kitchen station",
+      "preparacion": "Requires preparation",
+      "preparacionAyuda": "Creates a kitchen ticket when sold",
+      "activa": "Active",
+      "activaAyuda": "Visible in the POS and the online store",
+      "aviso": "The image, SEO and order are completed later in <enlace>Categories</enlace>.",
+      "cancelar": "Cancel",
+      "guardando": "Saving…",
+      "crear": "Create and select",
+      "slugOcupadoTitulo": "Change the slug: it already exists"
     }
   },
   "arranque": {

@@ -33,8 +33,13 @@ export const EJEMPLOS_PLANTILLA: string[][] = [
   ['PROD-002', 'Café Premium 500g', 'Producto', 'Café 100% arábica', 'Bebidas', 'GR', '7701234567890', 'Café del Valle', 'CAFE-500', 'Distribuidor Café', '35000', '45000', '20000', 'IVA 5%', 'true', '100', '10', 'orgánico;premium', 'Café de origen', 'https://ejemplo.com/cafe1.jpg;https://ejemplo.com/cafe2.jpg', '', '', 'false', 'hot_kitchen', 'Tamaños|single|1|1|true|Pequeño=0,Mediano=5000,Grande=10000; Leche|multiple|0|2|false|Entera=0,Deslactosada=0,Almendras=1000', 'active'],
 ];
 
-export function plantillaCsv(): string {
-  return BOM + aCsv([CABECERAS_PLANTILLA, ...EJEMPLOS_PLANTILLA]);
+/**
+ * Plantilla descargable. `cabeceras` = las del idioma de la interfaz
+ * (`productosImportar.cabeceras`); el importador las reconoce en es/en/fr/pt.
+ * Las filas de ejemplo son datos de muestra y no se traducen.
+ */
+export function plantillaCsv(cabeceras: readonly string[] = CABECERAS_PLANTILLA): string {
+  return BOM + aCsv([[...cabeceras], ...EJEMPLOS_PLANTILLA]);
 }
 
 export interface FilaReporte {

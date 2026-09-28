@@ -164,7 +164,7 @@ export function PasoOrigen({ a, orgId, onError, onInfo }: Props) {
               <ul className="mt-2 grid gap-x-6 gap-y-1 text-xs text-fg-secondary sm:grid-cols-2">
                 {CAMPOS.map((c) => (
                   <li key={c.campo}>
-                    <span className="font-medium text-fg">{c.cabecera}</span> — {t(`campos.${c.campo}.ayuda`)}
+                    <span className="font-medium text-fg">{t(`cabeceras.${c.campo}`)}</span> — {t(`campos.${c.campo}.ayuda`)}
                   </li>
                 ))}
               </ul>

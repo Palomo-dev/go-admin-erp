@@ -12,6 +12,7 @@ import {
   AlignRight,
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useKitT } from '@/components/kit/useIdiomaKit';
 
 /**
  * Editor de texto enriquecido ligero basado en contentEditable.
@@ -32,22 +33,33 @@ export interface RichTextEditorProps {
   minHeight?: number;
 }
 
+/** Botón de la barra; `titulo` = clave de `kit.editorTexto`. */
 interface ToolbarButton {
   command: string;
   icon: React.ReactNode;
-  title: string;
+  titulo: ClaveTitulo;
   arg?: string;
 }
 
+type ClaveTitulo =
+  | 'negrita'
+  | 'cursiva'
+  | 'subrayado'
+  | 'vinetas'
+  | 'numeracion'
+  | 'alinearIzquierda'
+  | 'centrar'
+  | 'alinearDerecha';
+
 const TOOLBAR: ToolbarButton[] = [
-  { command: 'bold', icon: <Bold className="h-3.5 w-3.5" />, title: 'Negrita' },
-  { command: 'italic', icon: <Italic className="h-3.5 w-3.5" />, title: 'Cursiva' },
-  { command: 'underline', icon: <Underline className="h-3.5 w-3.5" />, title: 'Subrayado' },
-  { command: 'insertUnorderedList', icon: <List className="h-3.5 w-3.5" />, title: 'Viñetas' },
-  { command: 'insertOrderedList', icon: <ListOrdered className="h-3.5 w-3.5" />, title: 'Numeración' },
-  { command: 'justifyLeft', icon: <AlignLeft className="h-3.5 w-3.5" />, title: 'Alinear izquierda' },
-  { command: 'justifyCenter', icon: <AlignCenter className="h-3.5 w-3.5" />, title: 'Centrar' },
-  { command: 'justifyRight', icon: <AlignRight className="h-3.5 w-3.5" />, title: 'Alinear derecha' },
+  { command: 'bold', icon: <Bold className="h-3.5 w-3.5" />, titulo: 'negrita' },
+  { command: 'italic', icon: <Italic className="h-3.5 w-3.5" />, titulo: 'cursiva' },
+  { command: 'underline', icon: <Underline className="h-3.5 w-3.5" />, titulo: 'subrayado' },
+  { command: 'insertUnorderedList', icon: <List className="h-3.5 w-3.5" />, titulo: 'vinetas' },
+  { command: 'insertOrderedList', icon: <ListOrdered className="h-3.5 w-3.5" />, titulo: 'numeracion' },
+  { command: 'justifyLeft', icon: <AlignLeft className="h-3.5 w-3.5" />, titulo: 'alinearIzquierda' },
+  { command: 'justifyCenter', icon: <AlignCenter className="h-3.5 w-3.5" />, titulo: 'centrar' },
+  { command: 'justifyRight', icon: <AlignRight className="h-3.5 w-3.5" />, titulo: 'alinearDerecha' },
 ];
 
 export function RichTextEditor({
@@ -57,6 +69,7 @@ export function RichTextEditor({
   className,
   minHeight = 80,
 }: RichTextEditorProps) {
+  const t = useKitT();
   const editorRef = useRef<HTMLDivElement>(null);
 
   // Sincroniza el contenido inicial/externo sin perder el cursor durante la edición
@@ -88,7 +101,7 @@ export function RichTextEditor({
             {(i === 3 || i === 5) && <span className="mx-1 h-4 w-px bg-gray-200 dark:bg-gray-700" />}
             <button
               type="button"
-              title={btn.title}
+              title={t(`editorTexto.${btn.titulo}`)}
               onMouseDown={(e) => { e.preventDefault(); exec(btn.command, btn.arg); }}
               className="p-1.5 rounded text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100 transition-colors"
             >

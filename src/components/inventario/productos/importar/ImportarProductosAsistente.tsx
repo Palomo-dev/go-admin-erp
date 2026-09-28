@@ -19,7 +19,7 @@ import { PasoSeleccionWeb } from './PasoSeleccionWeb';
 import { PasoValidacion } from './PasoValidacion';
 import { PasoVistaPrevia } from './PasoVistaPrevia';
 import { PasoResultado } from './PasoResultado';
-import { descargarTexto, exportarCatalogoCsv } from './exportarCatalogoCsv';
+import { descargarTexto, exportarCatalogoCsv, textosExportacion } from './exportarCatalogoCsv';
 
 const RUTA_PRODUCTOS = '/app/inventario/productos';
 
@@ -61,7 +61,7 @@ export function ImportarProductosAsistente() {
   const info = (m: string) => toast({ title: m });
 
   const descargarPlantilla = () => {
-    descargarTexto(plantillaCsv(), 'plantilla_productos.csv');
+    descargarTexto(plantillaCsv(textosExportacion(t).cabeceras), 'plantilla_productos.csv');
     info(t('toast.plantilla'));
   };
 
@@ -69,7 +69,7 @@ export function ImportarProductosAsistente() {
     if (!orgId) return;
     setExportando(true);
     try {
-      const { csv, total } = await exportarCatalogoCsv(orgId);
+      const { csv, total } = await exportarCatalogoCsv(orgId, textosExportacion(t));
       if (total === 0) return info(t('toast.sinProductos'));
       descargarTexto(csv, `productos_${new Date().getTime()}.csv`);
       info(t('toast.exportado', { n: total }));

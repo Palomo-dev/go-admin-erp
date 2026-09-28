@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Check, ChevronDown, Info, Loader2, TriangleAlert } from 'lucide-react';
 import { FormField } from '@/components/kit';
@@ -20,7 +21,8 @@ import categoryService, {
   type CategoryFormData,
 } from '@/lib/services/categoryService';
 import type { PrinterStation } from '@/components/pos/configuracion/printersService';
-import { iconoCategoria, OPCIONES_ESTACION } from '@/components/inventario/categorias/iconoCategoria';
+import { etiquetaEstacion, iconoCategoria, OPCIONES_ESTACION } from '@/components/inventario/categorias/iconoCategoria';
+import { mensajeErrorCategoria } from '@/components/inventario/categorias/accionesCategoria';
 import { cn } from '@/utils/Utils';
 
 interface QuickCategoryFormProps {
@@ -44,6 +46,8 @@ type EstadoSlug = 'vacio' | 'validando' | 'libre' | 'duplicado' | 'error';
  * Contrato sin cambios: `onSuccess(categoria)` / `onCancel()`.
  */
 export function QuickCategoryForm({ onSuccess, onCancel, nombreInicial }: QuickCategoryFormProps) {
+  const t = useTranslations('productoForm.categoriaRapida');
+  const tCat = useTranslations('categorias');
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id ?? null;
@@ -132,11 +136,11 @@ export function QuickCategoryForm({ onSuccess, onCancel, nombreInicial }: QuickC
 
   const crear = async () => {
     if (!datos.name.trim()) {
-      setErrorNombre('El nombre es obligatorio');
+      setErrorNombre(t('errores.nombreObligatorio'));
       return;
     }
     if (!organizationId) {
-      setErrorGuardar('No se encontró la organización activa.');
+      setErrorGuardar(t('errores.sinOrganizacion'));
       return;
     }
     if (estadoSlug === 'duplicado') return;
@@ -152,14 +156,14 @@ export function QuickCategoryForm({ onSuccess, onCancel, nombreInicial }: QuickC
         rank: maximo + 1,
         display_order: maximo + 1,
       });
-      toast({ title: 'Categoría creada', description: `«${creada.name}» quedó seleccionada.` });
+      toast({ title: t('creada'), description: t('creadaDetalle', { nombre: creada.name }) });
       onSuccess(creada);
     } catch (e) {
       if (e instanceof ErrorCategoria && e.slugDuplicado && organizationId) {
         setEstadoSlug('duplicado');
         setSugerencia(await categoryService.sugerirSlug(organizationId, slug).catch(() => null));
       } else {
-        setErrorGuardar(e instanceof Error ? e.message : 'No se pudo crear la categoría.');
+        setErrorGuardar(mensajeErrorCategoria(e, tCat, t('errores.noCrear')) ?? t('errores.noCrear'));
       }
     } finally {
       setGuardando(false);
@@ -169,16 +173,16 @@ export function QuickCategoryForm({ onSuccess, onCancel, nombreInicial }: QuickC
   const ayudaSlug =
     estadoSlug === 'validando' ? (
       <span className="inline-flex items-center gap-1">
-        <Loader2 aria-hidden="true" className="size-3 animate-spin" /> Comprobando que esté libre…
+        <Loader2 aria-hidden="true" className="size-3 animate-spin" /> {t('slugValidando')}
       </span>
     ) : estadoSlug === 'libre' ? (
       <span className="inline-flex items-center gap-1 text-success-text">
-        <Check aria-hidden="true" className="size-3" strokeWidth={2} /> Libre · será la dirección en la tienda web
+        <Check aria-hidden="true" className="size-3" strokeWidth={2} /> {t('slugLibre')}
       </span>
     ) : estadoSlug === 'error' ? (
-      'No pudimos comprobarla ahora; se validará al crear.'
+      t('slugError')
     ) : (
-      'Se forma con el nombre. Es la dirección pública en la tienda web.'
+      t('slugAyuda')
     );
 
   return (
@@ -197,11 +201,11 @@ export function QuickCategoryForm({ onSuccess, onCancel, nombreInicial }: QuickC
         </p>
       )}
 
-      <FormField etiqueta="Nombre" obligatorio error={errorNombre}>
+      <FormField etiqueta={t('nombre')} obligatorio error={errorNombre}>
         <Input
           value={datos.name}
           onChange={(e) => cambiarNombre(e.target.value)}
-          placeholder="Ej.: Bebidas calientes"
+          placeholder={t('nombrePlaceholder')}
           autoFocus
           maxLength={120}
           className="h-10"
@@ -209,8 +213,8 @@ export function QuickCategoryForm({ onSuccess, onCancel, nombreInicial }: QuickC
       </FormField>
 
       <FormField
-        etiqueta="Categoría padre"
-        ayuda={errorCategorias ? 'No pudimos cargar las categorías: se creará como principal.' : undefined}
+        etiqueta={t('padre')}
+        ayuda={errorCategorias ? t('padreError') : undefined}
       >
         {(c) => (
           <TreeSelect
@@ -219,17 +223,17 @@ export function QuickCategoryForm({ onSuccess, onCancel, nombreInicial }: QuickC
             opciones={opciones}
             valor={datos.parent_id}
             onValorChange={(v) => cambiar('parent_id', v)}
-            opcionRaiz={{ etiqueta: 'Sin categoría padre (principal)' }}
-            etiquetaLista="Categoría padre"
-            placeholderBusqueda="Buscar categoría"
+            opcionRaiz={{ etiqueta: t('sinPadre') }}
+            etiquetaLista={t('padre')}
+            placeholderBusqueda={t('buscarCategoria')}
           />
         )}
       </FormField>
 
       <FormField
-        etiqueta="Slug"
+        etiqueta={t('slug')}
         obligatorio
-        error={estadoSlug === 'duplicado' ? `Ya hay una categoría con /${slug}.` : null}
+        error={estadoSlug === 'duplicado' ? t('errores.slugOcupado', { slug }) : null}
         ayuda={estadoSlug === 'duplicado' ? undefined : ayudaSlug}
       >
         <Input
@@ -239,13 +243,13 @@ export function QuickCategoryForm({ onSuccess, onCancel, nombreInicial }: QuickC
             cambiar('slug', e.target.value.toLowerCase().replace(/\s+/g, '-'));
           }}
           onBlur={() => cambiar('slug', generateSlug(datos.slug))}
-          placeholder="bebidas-calientes"
+          placeholder={t('slugPlaceholder')}
           className="h-10 font-mono text-sm"
         />
       </FormField>
       {estadoSlug === 'duplicado' && sugerencia && (
         <p className="-mt-2 flex flex-wrap items-center gap-2 text-xs text-fg-secondary">
-          Usa esta, que está libre:
+          {t('sugerencia')}
           <button
             type="button"
             onClick={() => {
@@ -260,8 +264,8 @@ export function QuickCategoryForm({ onSuccess, onCancel, nombreInicial }: QuickC
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <ColorPicker value={datos.color} onChange={(v) => cambiar('color', v)} label="Color" />
-        <IconSelector value={datos.icon} onChange={(v) => cambiar('icon', v)} label="Icono" color={datos.color} />
+        <ColorPicker value={datos.color} onChange={(v) => cambiar('color', v)} label={t('color')} />
+        <IconSelector value={datos.icon} onChange={(v) => cambiar('icon', v)} label={t('icono')} color={datos.color} />
       </div>
 
       <div className="rounded-lg border border-line">
@@ -271,26 +275,26 @@ export function QuickCategoryForm({ onSuccess, onCancel, nombreInicial }: QuickC
           onClick={() => setMasOpciones((v) => !v)}
           className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
-          Más opciones
+          {t('masOpciones')}
           <span className="flex items-center gap-2 text-xs font-normal text-fg-secondary">
-            Descripción, cocina y estado
+            {t('masOpcionesDetalle')}
             <ChevronDown aria-hidden="true" className={cn('size-4 transition-transform', masOpciones && 'rotate-180')} strokeWidth={1.5} />
           </span>
         </button>
         {masOpciones && (
           <div className="flex flex-col gap-4 border-t border-line p-3">
-            <FormField etiqueta="Descripción">
+            <FormField etiqueta={t('descripcion')}>
               <Input
                 value={datos.description}
                 onChange={(e) => {
                   const description = e.target.value;
                   setDatos((d) => ({ ...d, description, meta_description: description || (d.name ? `Categoría: ${d.name}` : '') }));
                 }}
-                placeholder="Qué agrupa esta categoría (opcional)"
+                placeholder={t('descripcionPlaceholder')}
                 className="h-10"
               />
             </FormField>
-            <FormField etiqueta="Estación de cocina">
+            <FormField etiqueta={t('estacion')}>
               {(c) => (
                 <Select
                   value={datos.station || 'ninguna'}
@@ -300,10 +304,10 @@ export function QuickCategoryForm({ onSuccess, onCancel, nombreInicial }: QuickC
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ninguna">Sin estación</SelectItem>
+                    <SelectItem value="ninguna">{tCat('estaciones.ninguna')}</SelectItem>
                     {OPCIONES_ESTACION.map((o) => (
                       <SelectItem key={o.valor} value={o.valor}>
-                        {o.etiqueta}
+                        {etiquetaEstacion(o.valor, tCat)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -312,15 +316,15 @@ export function QuickCategoryForm({ onSuccess, onCancel, nombreInicial }: QuickC
             </FormField>
             <label className="flex items-center justify-between gap-3 text-sm text-fg">
               <span className="flex flex-col">
-                Requiere preparación
-                <span className="text-xs text-fg-muted">Genera comanda de cocina al vender</span>
+                {t('preparacion')}
+                <span className="text-xs text-fg-muted">{t('preparacionAyuda')}</span>
               </span>
               <Switch checked={datos.requires_preparation} onCheckedChange={(v) => cambiar('requires_preparation', v)} />
             </label>
             <label className="flex items-center justify-between gap-3 text-sm text-fg">
               <span className="flex flex-col">
-                Activa
-                <span className="text-xs text-fg-muted">Visible en el POS y la tienda web</span>
+                {t('activa')}
+                <span className="text-xs text-fg-muted">{t('activaAyuda')}</span>
               </span>
               <Switch checked={datos.is_active} onCheckedChange={(v) => cambiar('is_active', v)} />
             </label>
@@ -331,11 +335,13 @@ export function QuickCategoryForm({ onSuccess, onCancel, nombreInicial }: QuickC
       <p className="flex items-start gap-2 rounded-lg bg-info-subtle px-3 py-2.5 text-[13px] leading-[18px] text-info-text">
         <Info aria-hidden="true" className="mt-px size-4 shrink-0" strokeWidth={1.5} />
         <span>
-          La imagen, el SEO y el orden se completan después en{' '}
-          <Link href="/app/inventario/categorias" target="_blank" className="font-medium underline">
-            Categorías
-          </Link>
-          .
+          {t.rich('aviso', {
+            enlace: (texto) => (
+              <Link href="/app/inventario/categorias" target="_blank" className="font-medium underline">
+                {texto}
+              </Link>
+            ),
+          })}
         </span>
       </p>
 
@@ -346,16 +352,16 @@ export function QuickCategoryForm({ onSuccess, onCancel, nombreInicial }: QuickC
           disabled={guardando}
           className="flex h-10 items-center justify-center rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
         >
-          Cancelar
+          {t('cancelar')}
         </button>
         <button
           type="submit"
           disabled={guardando || estadoSlug === 'duplicado'}
-          title={estadoSlug === 'duplicado' ? 'Cambia el slug: ya existe' : undefined}
+          title={estadoSlug === 'duplicado' ? t('slugOcupadoTitulo') : undefined}
           className="flex h-10 items-center justify-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {guardando && <Loader2 aria-hidden="true" className="size-4 animate-spin" />}
-          {guardando ? 'Guardando…' : 'Crear y seleccionar'}
+          {guardando ? t('guardando') : t('crear')}
         </button>
       </div>
     </form>

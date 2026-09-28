@@ -25,6 +25,8 @@ import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { toast } from '@/components/ui/use-toast';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { BranchBadgeActiva, Pagination, calcularRango, useListadoServidor, type AccionFila } from '@/components/kit';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
+import { textosExportacion } from './importar/exportarCatalogoCsv';
 
 import ProductosPageHeader from './ProductosPageHeader';
 import FiltrosProductosComponent from './FiltrosProductos';
@@ -59,7 +61,6 @@ interface GrupoModificadoresCsv {
 type ProductoCsv = Producto & { variant_data?: unknown; station?: string | null };
 
 const mensajeDe = (e: unknown): string | undefined => (e instanceof Error ? e.message : undefined);
-const fmt = (n: number) => n.toLocaleString('es-CO');
 
 /** Tope de productos para etiquetas/códigos desde la cabecera sin selección. */
 const MAX_PRODUCTOS_ETIQUETAS = 1000;
@@ -107,6 +108,9 @@ const CatalogoProductos: React.FC = () => {
   const [idsEtiquetas, setIdsEtiquetas] = useState<number[] | null>(null);
   const [idsCodigos, setIdsCodigos] = useState<number[] | null>(null);
   const tEtq = useTranslations('inventarioEtiquetas.catalogo');
+  const t = useTranslations('productos');
+  const tImp = useTranslations('productosImportar');
+  const fmt = useFormatoEntero();
   // Lo que se lleva escrito en el buscador: filtra al instante lo cargado
   // mientras el debounce (400 ms) confirma la búsqueda en el servidor.
   const [busquedaRapida, setBusquedaRapida] = useState<string>(busquedaServidor);
@@ -195,8 +199,8 @@ const CatalogoProductos: React.FC = () => {
         setErrorCarga(true);
         toast({
           variant: "destructive",
-          title: "Error",
-          description: "No se pudieron cargar los productos. Intente de nuevo más tarde."
+          title: t('catalogo.errorTitulo'),
+          description: t('catalogo.errorCarga')
         });
       }
     } finally {
@@ -207,7 +211,7 @@ const CatalogoProductos: React.FC = () => {
       }
       resolveDone(); // liberar a handleExportar si está esperando
     }
-  }, [parametros]);
+  }, [parametros, t]);
 
   // Refs para el canal de tiempo real (se suscribe una vez por organización).
   const fetchProductosRef = useRef(fetchProductos);
@@ -361,17 +365,19 @@ const CatalogoProductos: React.FC = () => {
 
   // Subtítulo: «Consolidado · 3 sucursales · 4.368 productos · 12 sin stock · 3 con stock bajo».
   const nombreSucursal =
-    branchFilter !== null ? branches.find((b) => b.id === branchFilter)?.name ?? `Sucursal #${branchFilter}` : null;
+    branchFilter !== null ? branches.find((b) => b.id === branchFilter)?.name ?? t('catalogo.sucursalN', { id: branchFilter }) : null;
+  const textoProductos = t('catalogo.productos', { count: totalCatalogo, n: fmt(totalCatalogo) });
   const partesSubtitulo = [
-    nombreSucursal ?? (branches.length > 1 ? `Consolidado · ${fmt(branches.length)} sucursales` : null),
-    `${fmt(totalCatalogo)} ${totalCatalogo === 1 ? 'producto' : 'productos'}`,
-    cargandoLotes && progresoCarga ? `cargando ${fmt(progresoCarga.cargados)} de ${fmt(progresoCarga.total)}` : null,
-    !cargandoLotes && resumen.sinStock > 0 ? `${fmt(resumen.sinStock)} sin stock` : null,
-    !cargandoLotes && resumen.bajo > 0 ? `${fmt(resumen.bajo)} con stock bajo` : null,
+    nombreSucursal ?? (branches.length > 1 ? t('catalogo.consolidado', { count: branches.length, n: fmt(branches.length) }) : null),
+    textoProductos,
+    cargandoLotes && progresoCarga
+      ? t('catalogo.cargandoDe', { cargados: fmt(progresoCarga.cargados), total: fmt(progresoCarga.total) })
+      : null,
+    !cargandoLotes && resumen.sinStock > 0 ? t('catalogo.sinStock', { n: fmt(resumen.sinStock) }) : null,
+    !cargandoLotes && resumen.bajo > 0 ? t('catalogo.stockBajo', { n: fmt(resumen.bajo) }) : null,
   ].filter(Boolean);
-  const subtitulo = loading && productos.length === 0 ? 'Cargando catálogo…' : partesSubtitulo.join(' · ');
-  const subtituloMovil =
-    loading && productos.length === 0 ? 'Cargando…' : `${fmt(totalCatalogo)} ${totalCatalogo === 1 ? 'producto' : 'productos'}`;
+  const subtitulo = loading && productos.length === 0 ? t('catalogo.cargandoCatalogo') : partesSubtitulo.join(' · ');
+  const subtituloMovil = loading && productos.length === 0 ? t('catalogo.cargando') : textoProductos;
 
   // ─── Acciones por producto ────────────────────────────────────────────────
   const handleVer = useCallback((p: Producto) => router.push(`/app/inventario/productos/${p.uuid || p.id}`), [router]);
@@ -384,10 +390,10 @@ const CatalogoProductos: React.FC = () => {
       setActionLoading(true);
       // Función RPC con SECURITY DEFINER para evitar problemas de RLS
       const { data: rpcResult, error: rpcError } = await supabase.rpc('soft_delete_product', { p_product_id: id });
-      if (rpcError) throw new Error(rpcError.message || 'Error al eliminar el producto');
-      if (!rpcResult) throw new Error('No se pudo eliminar el producto. Verifique permisos.');
+      if (rpcError) throw new Error(rpcError.message || t('catalogo.errorEliminar'));
+      if (!rpcResult) throw new Error(t('catalogo.sinPermisoEliminar'));
 
-      toast({ title: "Producto eliminado", description: "El producto ha sido eliminado correctamente." });
+      toast({ title: t('catalogo.eliminado'), description: t('catalogo.eliminadoDetalle') });
       // Quitarlo de la vista y de la selección
       setProductos((prev) => prev.filter((p) => Number(p.id) !== id));
       setSeleccion((prev) => {
@@ -400,8 +406,8 @@ const CatalogoProductos: React.FC = () => {
       console.error('Error al eliminar producto:', error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: mensajeDe(error) || "No se pudo eliminar el producto. Intente de nuevo más tarde."
+        title: t('catalogo.errorTitulo'),
+        description: mensajeDe(error) || t('catalogo.errorEliminar')
       });
     } finally {
       setProductoAEliminar(null);
@@ -412,27 +418,27 @@ const CatalogoProductos: React.FC = () => {
   const copiarId = useCallback(async (p: Producto) => {
     try {
       await navigator.clipboard.writeText(String(p.uuid || p.id));
-      toast({ title: 'ID copiado', description: 'El identificador del producto quedó en el portapapeles.' });
+      toast({ title: t('catalogo.idCopiado'), description: t('catalogo.idCopiadoDetalle') });
     } catch {
-      toast({ variant: 'destructive', title: 'No se pudo copiar', description: 'El navegador no permitió usar el portapapeles.' });
+      toast({ variant: 'destructive', title: t('catalogo.noCopiar'), description: t('catalogo.noCopiarDetalle') });
     }
-  }, []);
+  }, [t]);
 
   const accionesProducto = useCallback(
     (p: Producto): AccionFila[] => {
       const base = `/app/inventario/productos/${p.uuid || p.id}`;
       const id = Number(p.id);
       return [
-        { id: 'ver', etiqueta: 'Ver detalle', icono: Eye, onSelect: () => handleVer(p) },
-        { id: 'editar', etiqueta: 'Editar', icono: Pencil, onSelect: () => router.push(`${base}/editar`) },
-        { id: 'duplicar', etiqueta: 'Duplicar', icono: Copy, onSelect: () => router.push(`${base}/duplicar`) },
+        { id: 'ver', etiqueta: t('catalogo.acciones.ver'), icono: Eye, onSelect: () => handleVer(p) },
+        { id: 'editar', etiqueta: t('catalogo.acciones.editar'), icono: Pencil, onSelect: () => router.push(`${base}/editar`) },
+        { id: 'duplicar', etiqueta: t('catalogo.acciones.duplicar'), icono: Copy, onSelect: () => router.push(`${base}/duplicar`) },
         { id: 'imprimir-etiquetas', etiqueta: tEtq('imprimirEtiquetas'), icono: Printer, onSelect: () => setIdsEtiquetas([id]), separadorAntes: true },
         { id: 'codigos-barras', etiqueta: tEtq('codigosBarras'), icono: Barcode, onSelect: () => setIdsCodigos([id]) },
-        { id: 'copiar-id', etiqueta: 'Copiar ID', icono: Copy, onSelect: () => void copiarId(p), separadorAntes: true },
-        { id: 'eliminar', etiqueta: 'Eliminar', icono: Trash, destructiva: true, onSelect: () => setProductoAEliminar(p) },
+        { id: 'copiar-id', etiqueta: t('catalogo.acciones.copiarId'), icono: Copy, onSelect: () => void copiarId(p), separadorAntes: true },
+        { id: 'eliminar', etiqueta: t('catalogo.acciones.eliminar'), icono: Trash, destructiva: true, onSelect: () => setProductoAEliminar(p) },
       ];
     },
-    [copiarId, handleVer, router, tEtq],
+    [copiarId, handleVer, router, t, tEtq],
   );
 
   // ─── Exportar ─────────────────────────────────────────────────────────────
@@ -450,12 +456,12 @@ const CatalogoProductos: React.FC = () => {
     const productosActuales = productosRef.current;
 
     if (productosActuales.length === 0) {
-      toast({ title: 'Sin productos', description: 'No hay productos para exportar.' });
+      toast({ title: t('catalogo.exportar.sinProductos'), description: t('catalogo.exportar.sinProductosDetalle') });
       return;
     }
 
     if (!organization?.id) {
-      toast({ title: 'Error', description: 'No hay organización seleccionada.' });
+      toast({ title: t('catalogo.errorTitulo'), description: t('catalogo.exportar.sinOrganizacion') });
       return;
     }
 
@@ -479,13 +485,11 @@ const CatalogoProductos: React.FC = () => {
       }
     }
 
-    const headers = [
-      'SKU', 'Nombre', 'Tipo', 'Descripción', 'Categoría', 'Unidad', 'Código de Barras',
-      'Marca', 'Referencia', 'Proveedor', 'Precio de Venta', 'Precio de Comparación',
-      'Costo', 'Impuesto', 'Rastrear Inventario', 'Stock Total', 'Stock Mínimo',
-      'Etiquetas', 'Notas', 'URLs de Imágenes', 'SKU Padre', 'Datos de Variante',
-      'Es Producto Padre', 'Estación', 'Modificadores', 'Estado'
-    ];
+    // Mismas 26 columnas y orden que la plantilla del importador, con las
+    // cabeceras en el idioma de la interfaz: el importador las reconoce en
+    // es/en/fr/pt (alias de `importacion/campos.ts`).
+    const textosCsv = textosExportacion(tImp);
+    const headers = textosCsv.cabeceras;
 
     const formatProductRow = (p: ProductoCsv, parentSku: string, isParent: boolean): string[] => {
       const pid = Number(p.id);
@@ -520,7 +524,7 @@ const CatalogoProductos: React.FC = () => {
       return [
         p.sku || '',
         p.name || '',
-        p.product_type === 'service' ? 'Servicio' : 'Producto',
+        p.product_type === 'service' ? textosCsv.servicio : textosCsv.producto,
         p.description || '',
         p.category?.name || '',
         p.unit_code || 'UN',
@@ -581,7 +585,10 @@ const CatalogoProductos: React.FC = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    toast({ title: 'Exportación exitosa', description: `Se exportaron ${productosActuales.length} productos.` });
+    toast({
+      title: t('catalogo.exportar.exito'),
+      description: t('catalogo.exportar.exitoDetalle', { count: productosActuales.length, n: fmt(productosActuales.length) }),
+    });
   };
 
   // «Exportar a Facebook» y «URL del feed» abren el mismo diálogo de Meta
@@ -677,9 +684,9 @@ const CatalogoProductos: React.FC = () => {
         }}
         termino={busquedaRapida.trim() || undefined}
         vacio={{
-          titulo: 'Aún no tienes productos',
-          descripcion: 'Crea tu primer producto o impórtalo desde un archivo.',
-          accion: { etiqueta: 'Nuevo producto', href: '/app/inventario/productos/nuevo', icono: Plus },
+          titulo: t('catalogo.vacio.titulo'),
+          descripcion: t('catalogo.vacio.descripcion'),
+          accion: { etiqueta: t('catalogo.vacio.nuevo'), href: '/app/inventario/productos/nuevo', icono: Plus },
         }}
         pie={
           <Pagination
@@ -689,7 +696,7 @@ const CatalogoProductos: React.FC = () => {
             onPaginaChange={listado.setPagina}
             onTamanoChange={listado.setTamano}
             opcionesTamano={TAMANOS_CATALOGO}
-            sustantivo={{ singular: 'producto', plural: 'productos' }}
+            sustantivo={{ singular: t('masivas.sustantivo.singular'), plural: t('masivas.sustantivo.plural') }}
             cargando={estadoTabla === 'cargando'}
           />
         }
@@ -724,13 +731,9 @@ const CatalogoProductos: React.FC = () => {
         onOpenChange={(abierto) => {
           if (!abierto && !actionLoading) setProductoAEliminar(null);
         }}
-        title="¿Eliminar producto?"
-        description={
-          productoAEliminar
-            ? `«${productoAEliminar.name}» dejará de verse en el catálogo. Esta acción no se puede deshacer.`
-            : ''
-        }
-        confirmLabel="Eliminar"
+        title={t('catalogo.eliminarDialogo.titulo')}
+        description={productoAEliminar ? t('catalogo.eliminarDialogo.descripcion', { nombre: productoAEliminar.name }) : ''}
+        confirmLabel={t('catalogo.eliminarDialogo.confirmar')}
         variant="destructive"
         loading={actionLoading}
         onConfirm={handleConfirmDelete}

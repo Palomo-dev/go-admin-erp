@@ -10,7 +10,8 @@
  */
 
 import { supabase } from '@/lib/supabase/config';
-import { CABECERAS_PLANTILLA, BOM, aCsv } from '@/lib/inventario/importacion/reporte';
+import { BOM, aCsv } from '@/lib/inventario/importacion/reporte';
+import { CAMPOS } from '@/lib/inventario/importacion/campos';
 
 const PAGINA = 500;
 
@@ -51,7 +52,27 @@ function vigente<T extends { effective_from: string; effective_to: string | null
     .sort((a, b) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime())[0] ?? null;
 }
 
-function filaCsv(p: FilaExport): unknown[] {
+/**
+ * Textos visibles del archivo en el idioma de la interfaz: cabeceras
+ * (`productosImportar.cabeceras`, que el importador reconoce en es/en/fr/pt) y
+ * el valor de la columna «Tipo» (el importador lo lee por la raíz «serv»).
+ */
+export interface TextosExportacion {
+  cabeceras: readonly string[];
+  producto: string;
+  servicio: string;
+}
+
+/** Textos del archivo con el `t` de `useTranslations('productosImportar')`. */
+export function textosExportacion(t: (clave: string) => string): TextosExportacion {
+  return {
+    cabeceras: CAMPOS.map((c) => t(`cabeceras.${c.campo}`)),
+    producto: t('valores.producto'),
+    servicio: t('valores.servicio'),
+  };
+}
+
+function filaCsv(p: FilaExport, textos: TextosExportacion): unknown[] {
   const precio = vigente(p.product_prices);
   const costo = vigente(p.product_costs);
   const niveles = p.stock_levels ?? [];
@@ -84,7 +105,7 @@ function filaCsv(p: FilaExport): unknown[] {
   return [
     p.sku,
     p.name,
-    p.product_type === 'service' ? 'Servicio' : 'Producto',
+    p.product_type === 'service' ? textos.servicio : textos.producto,
     p.description ?? '',
     primero(p.categories)?.name ?? '',
     p.unit_code?.trim() ?? '',
@@ -112,7 +133,11 @@ function filaCsv(p: FilaExport): unknown[] {
 }
 
 /** Devuelve el CSV (con BOM) y cuántos productos lleva. */
-export async function exportarCatalogoCsv(organizationId: number, alAvanzar?: (leidos: number) => void): Promise<{ csv: string; total: number }> {
+export async function exportarCatalogoCsv(
+  organizationId: number,
+  textos: TextosExportacion,
+  alAvanzar?: (leidos: number) => void,
+): Promise<{ csv: string; total: number }> {
   const filas: unknown[][] = [];
   for (let desde = 0; ; desde += PAGINA) {
     const { data, error } = await supabase
@@ -135,11 +160,11 @@ export async function exportarCatalogoCsv(organizationId: number, alAvanzar?: (l
       .range(desde, desde + PAGINA - 1);
     if (error) throw new Error(error.message);
     const pagina = (data ?? []) as unknown as FilaExport[];
-    filas.push(...pagina.map(filaCsv));
+    filas.push(...pagina.map((p) => filaCsv(p, textos)));
     alAvanzar?.(filas.length);
     if (pagina.length < PAGINA) break;
   }
-  return { csv: BOM + aCsv([CABECERAS_PLANTILLA, ...filas]), total: filas.length };
+  return { csv: BOM + aCsv([[...textos.cabeceras], ...filas]), total: filas.length };
 }
 
 export function descargarTexto(contenido: string, nombre: string, tipo = 'text/csv;charset=utf-8;'): void {

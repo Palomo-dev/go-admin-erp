@@ -27,10 +27,41 @@ const mensajeDe = (e: unknown, porDefecto: string): string => {
 
 type FilaJerarquia = { id: number; is_parent: boolean | null; parent_product_id: number | null };
 
-export interface ResultadoMasivo {
+interface ConteoMasivo {
   exitosos: number;
   fallidos: number;
-  errores: string[];
+}
+
+/**
+ * Motivo de un fallo de una acción masiva. El texto se arma en pantalla con
+ * `productos.masivas.errores.<codigo>` (4 idiomas); `detalle` es el mensaje
+ * crudo de la base cuando lo hay.
+ */
+export type CodigoErrorMasivo =
+  | 'expandir'
+  | 'sinProductos'
+  | 'sinCostoPrevio'
+  | 'cerrarCostos'
+  | 'insertarCostos'
+  | 'cerrarPrecios'
+  | 'insertarPrecios'
+  | 'lote'
+  | 'sinPrecio'
+  | 'sinCosto'
+  | 'sinPermisoProducto'
+  | 'producto'
+  | 'detalle';
+
+export interface ErrorMasivo {
+  codigo: CodigoErrorMasivo;
+  valores?: Record<string, string | number>;
+}
+
+const errorMasivo = (codigo: CodigoErrorMasivo, valores?: Record<string, string | number>): ErrorMasivo =>
+  valores ? { codigo, valores } : { codigo };
+
+export interface ResultadoMasivo extends ConteoMasivo {
+  errores: ErrorMasivo[];
 }
 
 /**
@@ -185,12 +216,13 @@ export async function bulkUpdatePrices(
     allIds = await expandProductIds(productIds);
   } catch (e) {
     resultado.fallidos = productIds.length;
-    resultado.errores.push(mensajeDe(e, 'Error al expandir productos padre → variantes'));
+    console.error('[bulk] expandir padres → variantes:', mensajeDe(e, String(e)));
+    resultado.errores.push(errorMasivo('expandir'));
     return resultado;
   }
   if (allIds.length === 0) {
     resultado.fallidos = productIds.length;
-    resultado.errores.push('No se encontraron los productos seleccionados');
+    resultado.errores.push(errorMasivo('sinProductos'));
     return resultado;
   }
 
@@ -251,7 +283,7 @@ export async function bulkUpdatePrices(
 
         if (sinCostoPrevio > 0) {
           resultado.fallidos += sinCostoPrevio;
-          resultado.errores.push(`${sinCostoPrevio} productos sin costo previo (use modo "fijo" para asignar costo)`);
+          resultado.errores.push(errorMasivo('sinCostoPrevio', { count: sinCostoPrevio, n: sinCostoPrevio }));
         }
 
         if (idsACerrar.length > 0) {
@@ -262,7 +294,7 @@ export async function bulkUpdatePrices(
             .is('effective_to', null);
           if (closeErr) {
             resultado.fallidos += nuevosCostos.length;
-            resultado.errores.push(`Error al cerrar costos: ${closeErr.message}`);
+            resultado.errores.push(errorMasivo('cerrarCostos', { detalle: closeErr.message }));
             continue;
           }
         }
@@ -274,7 +306,7 @@ export async function bulkUpdatePrices(
             const { error: insErr } = await supabase.from('product_costs').insert(chunk);
             if (insErr) {
               resultado.fallidos += chunk.length;
-              resultado.errores.push(`Error al insertar costos: ${insErr.message}`);
+              resultado.errores.push(errorMasivo('insertarCostos', { detalle: insErr.message }));
             } else {
               resultado.exitosos += chunk.length;
             }
@@ -362,7 +394,7 @@ export async function bulkUpdatePrices(
             .is('effective_to', null);
           if (closeErr) {
             resultado.fallidos += nuevosPrecios.length;
-            resultado.errores.push(`Error al cerrar precios: ${closeErr.message}`);
+            resultado.errores.push(errorMasivo('cerrarPrecios', { detalle: closeErr.message }));
             continue;
           }
         }
@@ -374,7 +406,7 @@ export async function bulkUpdatePrices(
             const { error: insErr } = await supabase.from('product_prices').insert(chunk);
             if (insErr) {
               resultado.fallidos += chunk.length;
-              resultado.errores.push(`Error al insertar precios: ${insErr.message}`);
+              resultado.errores.push(errorMasivo('insertarPrecios', { detalle: insErr.message }));
             } else {
               resultado.exitosos += chunk.length;
             }
@@ -383,13 +415,15 @@ export async function bulkUpdatePrices(
       }
     } catch (e) {
       resultado.fallidos += batchIds.length;
-      resultado.errores.push(`Lote ${i}-${i + batchIds.length}: ${mensajeDe(e, 'error')}`);
+      resultado.errores.push(errorMasivo('lote', { desde: i, hasta: i + batchIds.length, detalle: mensajeDe(e, 'error') }));
     }
   }
   return resultado;
 }
 
-export interface ResultadoAjusteStock extends ResultadoMasivo {
+export interface ResultadoAjusteStock extends ConteoMasivo {
+  /** Códigos de validación (`sucursal`, `sin_permiso`…) o el mensaje de la base. */
+  errores: string[];
   /** Suma de los resúmenes de la RPC (entradas, salidas, sin costo…). */
   resumen: ResumenAjusteStock;
 }
@@ -477,7 +511,7 @@ export async function bulkUpdateStatus(
 
     if (error) {
       resultado.fallidos += batch.length;
-      resultado.errores.push(error.message);
+      resultado.errores.push(errorMasivo('detalle', { detalle: error.message }));
     } else {
       resultado.exitosos += batch.length;
     }
@@ -497,11 +531,15 @@ export async function bulkDelete(productIds: number[]): Promise<ResultadoMasivo>
         p_product_id: productId,
       });
       if (error) throw error;
-      if (!data) throw new Error('Sin permisos');
+      if (!data) {
+        resultado.fallidos++;
+        resultado.errores.push(errorMasivo('sinPermisoProducto', { producto: productId }));
+        continue;
+      }
       resultado.exitosos++;
     } catch (e) {
       resultado.fallidos++;
-      resultado.errores.push(`Producto ${productId}: ${mensajeDe(e, 'error')}`);
+      resultado.errores.push(errorMasivo('producto', { producto: productId, detalle: mensajeDe(e, 'error') }));
     }
   }
   return resultado;
@@ -528,12 +566,13 @@ export async function bulkCopyPriceToCompare(
     allIds = await expandProductIds(productIds);
   } catch (e) {
     resultado.fallidos = productIds.length;
-    resultado.errores.push(mensajeDe(e, 'Error al expandir productos padre → variantes'));
+    console.error('[bulk] expandir padres → variantes:', mensajeDe(e, String(e)));
+    resultado.errores.push(errorMasivo('expandir'));
     return resultado;
   }
   if (allIds.length === 0) {
     resultado.fallidos = productIds.length;
-    resultado.errores.push('No se encontraron los productos seleccionados');
+    resultado.errores.push(errorMasivo('sinProductos'));
     return resultado;
   }
 
@@ -573,7 +612,7 @@ export async function bulkCopyPriceToCompare(
         const precio = precioPorProducto.get(productId);
         if (!precio || precio.price <= 0) {
           resultado.fallidos++;
-          resultado.errores.push(`Producto ${productId}: sin precio de venta`);
+          resultado.errores.push(errorMasivo('sinPrecio', { producto: productId }));
           continue;
         }
 
@@ -601,7 +640,7 @@ export async function bulkCopyPriceToCompare(
           .is('effective_to', null);
         if (closeError) {
           resultado.fallidos += nuevosPrecios.length;
-          resultado.errores.push(`Error al cerrar precios: ${closeError.message}`);
+          resultado.errores.push(errorMasivo('cerrarPrecios', { detalle: closeError.message }));
           continue;
         }
       }
@@ -615,7 +654,7 @@ export async function bulkCopyPriceToCompare(
             .insert(chunk);
           if (insertError) {
             resultado.fallidos += chunk.length;
-            resultado.errores.push(`Error al insertar: ${insertError.message}`);
+            resultado.errores.push(errorMasivo('insertarPrecios', { detalle: insertError.message }));
           } else {
             resultado.exitosos += chunk.length;
           }
@@ -623,7 +662,7 @@ export async function bulkCopyPriceToCompare(
       }
     } catch (e) {
       resultado.fallidos += batchIds.length;
-      resultado.errores.push(`Lote ${i}-${i + batchIds.length}: ${mensajeDe(e, 'error')}`);
+      resultado.errores.push(errorMasivo('lote', { desde: i, hasta: i + batchIds.length, detalle: mensajeDe(e, 'error') }));
     }
   }
   return resultado;
@@ -684,12 +723,13 @@ export async function bulkRoundPrices(
     allIds = await expandProductIds(productIds);
   } catch (e) {
     resultado.fallidos = productIds.length;
-    resultado.errores.push(mensajeDe(e, 'Error al expandir productos padre → variantes'));
+    console.error('[bulk] expandir padres → variantes:', mensajeDe(e, String(e)));
+    resultado.errores.push(errorMasivo('expandir'));
     return resultado;
   }
   if (allIds.length === 0) {
     resultado.fallidos = productIds.length;
-    resultado.errores.push('No se encontraron los productos seleccionados');
+    resultado.errores.push(errorMasivo('sinProductos'));
     return resultado;
   }
 
@@ -728,7 +768,7 @@ export async function bulkRoundPrices(
           const costoActual = costo?.cost || 0;
           if (costoActual <= 0) {
             resultado.fallidos++;
-            resultado.errores.push(`Producto ${productId}: sin costo`);
+            resultado.errores.push(errorMasivo('sinCosto', { producto: productId }));
             continue;
           }
           const nuevoCosto = calcularRedondeo(costoActual, modo, multiplo, digitosCount, digitosValor);
@@ -749,7 +789,7 @@ export async function bulkRoundPrices(
             .is('effective_to', null);
           if (closeErr) {
             resultado.fallidos += nuevosCostos.length;
-            resultado.errores.push(`Error al cerrar costos: ${closeErr.message}`);
+            resultado.errores.push(errorMasivo('cerrarCostos', { detalle: closeErr.message }));
             continue;
           }
         }
@@ -760,7 +800,7 @@ export async function bulkRoundPrices(
             const { error: insErr } = await supabase.from('product_costs').insert(chunk);
             if (insErr) {
               resultado.fallidos += chunk.length;
-              resultado.errores.push(`Error al insertar costos: ${insErr.message}`);
+              resultado.errores.push(errorMasivo('insertarCostos', { detalle: insErr.message }));
             } else {
               resultado.exitosos += chunk.length;
             }
@@ -803,7 +843,7 @@ export async function bulkRoundPrices(
           if (tipo === 'venta') {
             if (precioActual <= 0) {
               resultado.fallidos++;
-              resultado.errores.push(`Producto ${productId}: sin precio de venta`);
+              resultado.errores.push(errorMasivo('sinPrecio', { producto: productId }));
               continue;
             }
             nuevoPrecio = calcularRedondeo(precioActual, modo, multiplo, digitosCount, digitosValor);
@@ -832,7 +872,7 @@ export async function bulkRoundPrices(
             .is('effective_to', null);
           if (closeErr) {
             resultado.fallidos += nuevosPrecios.length;
-            resultado.errores.push(`Error al cerrar precios: ${closeErr.message}`);
+            resultado.errores.push(errorMasivo('cerrarPrecios', { detalle: closeErr.message }));
             continue;
           }
         }
@@ -843,7 +883,7 @@ export async function bulkRoundPrices(
             const { error: insErr } = await supabase.from('product_prices').insert(chunk);
             if (insErr) {
               resultado.fallidos += chunk.length;
-              resultado.errores.push(`Error al insertar precios: ${insErr.message}`);
+              resultado.errores.push(errorMasivo('insertarPrecios', { detalle: insErr.message }));
             } else {
               resultado.exitosos += chunk.length;
             }
@@ -852,7 +892,7 @@ export async function bulkRoundPrices(
       }
     } catch (e) {
       resultado.fallidos += batchIds.length;
-      resultado.errores.push(`Lote ${i}-${i + batchIds.length}: ${mensajeDe(e, 'error')}`);
+      resultado.errores.push(errorMasivo('lote', { desde: i, hasta: i + batchIds.length, detalle: mensajeDe(e, 'error') }));
     }
   }
   return resultado;
@@ -878,7 +918,7 @@ export async function bulkAssignCategory(
 
     if (error) {
       resultado.fallidos += batch.length;
-      resultado.errores.push(error.message);
+      resultado.errores.push(errorMasivo('detalle', { detalle: error.message }));
     } else {
       resultado.exitosos += batch.length;
     }

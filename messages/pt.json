@@ -3501,6 +3501,30 @@
       "obtenidosCache": "Dados obtidos de {proveedor} (cache)",
       "errorConexion": "Erro de conexão ao consultar DIAN/RUES",
       "habeasData": "Autorizo a consulta das minhas informações na DIAN e no RUES para fins de faturamento eletrônico e cumprimento tributário (Lei colombiana 1581 de 2012)."
+    },
+    "selectorIcono": {
+      "etiqueta": "Ícone",
+      "seleccionar": "Selecionar ícone",
+      "titulo": "Selecionar ícone",
+      "buscar": "Buscar ícone...",
+      "vacio": "Nenhum ícone encontrado"
+    },
+    "selectorColor": {
+      "etiqueta": "Cor",
+      "personalizado": "Cor personalizada:",
+      "vistaPrevia": "Pré-visualização"
+    },
+    "editorTexto": {
+      "negrita": "Negrito",
+      "cursiva": "Itálico",
+      "subrayado": "Sublinhado",
+      "vinetas": "Marcadores",
+      "numeracion": "Numeração",
+      "alinearIzquierda": "Alinhar à esquerda",
+      "centrar": "Centralizar",
+      "alinearDerecha": "Alinhar à direita",
+      "verMas": "Ver mais",
+      "verMenos": "Ver menos"
     }
   },
   "inventarioEtiquetas": {
@@ -6438,6 +6462,21 @@
       "eliminar": {
         "titulo": "{count, plural, one {Excluir o produto?} other {Excluir {n} produtos?}}",
         "descripcion": "{count, plural, one {{n} produto será excluído. Esta ação não pode ser desfeita.} other {{n} produtos serão excluídos. Esta ação não pode ser desfeita.}}"
+      },
+      "errores": {
+        "expandir": "Não foi possível ler as variantes dos produtos selecionados. Tente novamente em alguns segundos.",
+        "sinProductos": "Os produtos selecionados não foram encontrados",
+        "sinCostoPrevio": "{count, plural, one {{n} produto sem custo anterior (use o modo “Definir valor fixo” para atribuir um custo)} other {{n} produtos sem custo anterior (use o modo “Definir valor fixo” para atribuir um custo)}}",
+        "cerrarCostos": "Erro ao encerrar custos: {detalle}",
+        "insertarCostos": "Erro ao salvar custos: {detalle}",
+        "cerrarPrecios": "Erro ao encerrar preços: {detalle}",
+        "insertarPrecios": "Erro ao salvar preços: {detalle}",
+        "lote": "Lote {desde}-{hasta}: {detalle}",
+        "sinPrecio": "Produto {producto}: sem preço de venda",
+        "sinCosto": "Produto {producto}: sem custo",
+        "sinPermisoProducto": "Produto {producto}: sem permissão",
+        "producto": "Produto {producto}: {detalle}",
+        "detalle": "{detalle}"
       }
     },
     "tabla": {
@@ -6469,6 +6508,50 @@
       "error": {
         "titulo": "Não foi possível carregar o catálogo",
         "descripcion": "Verifique a conexão e tente novamente."
+      }
+    },
+    "catalogo": {
+      "errorTitulo": "Erro",
+      "errorCarga": "Não foi possível carregar os produtos. Tente novamente mais tarde.",
+      "sucursalN": "Filial #{id}",
+      "consolidado": "{count, plural, one {Consolidado · {n} filial} other {Consolidado · {n} filiais}}",
+      "productos": "{count, plural, one {{n} produto} other {{n} produtos}}",
+      "cargandoDe": "carregando {cargados} de {total}",
+      "sinStock": "{n} sem estoque",
+      "stockBajo": "{n} com estoque baixo",
+      "cargandoCatalogo": "Carregando catálogo…",
+      "cargando": "Carregando…",
+      "eliminado": "Produto excluído",
+      "eliminadoDetalle": "O produto foi excluído com sucesso.",
+      "errorEliminar": "Não foi possível excluir o produto. Tente novamente mais tarde.",
+      "sinPermisoEliminar": "Não foi possível excluir o produto. Verifique as permissões.",
+      "idCopiado": "ID copiado",
+      "idCopiadoDetalle": "O identificador do produto foi copiado para a área de transferência.",
+      "noCopiar": "Não foi possível copiar",
+      "noCopiarDetalle": "O navegador não permitiu usar a área de transferência.",
+      "acciones": {
+        "ver": "Ver detalhes",
+        "editar": "Editar",
+        "duplicar": "Duplicar",
+        "copiarId": "Copiar ID",
+        "eliminar": "Excluir"
+      },
+      "exportar": {
+        "sinProductos": "Sem produtos",
+        "sinProductosDetalle": "Não há produtos para exportar.",
+        "sinOrganizacion": "Nenhuma organização selecionada.",
+        "exito": "Exportação concluída",
+        "exitoDetalle": "{count, plural, one {{n} produto exportado.} other {{n} produtos exportados.}}"
+      },
+      "vacio": {
+        "titulo": "Você ainda não tem produtos",
+        "descripcion": "Crie seu primeiro produto ou importe-o de um arquivo.",
+        "nuevo": "Novo produto"
+      },
+      "eliminarDialogo": {
+        "titulo": "Excluir produto?",
+        "descripcion": "“{nombre}” deixará de aparecer no catálogo. Esta ação não pode ser desfeita.",
+        "confirmar": "Excluir"
       }
     }
   },
@@ -6913,6 +6996,38 @@
       "DATO_NO_VALIDO": "Algum dado não é válido para o banco",
       "LOTE": "O lote inteiro falhou",
       "ERROR": "Erro ao salvar a linha"
+    },
+    "cabeceras": {
+      "sku": "SKU",
+      "name": "Nome",
+      "type": "Tipo",
+      "description": "Descrição",
+      "category": "Categoria",
+      "unit": "Unidade",
+      "barcode": "Código de barras",
+      "brand": "Marca",
+      "reference": "Referência",
+      "supplier": "Fornecedor",
+      "price": "Preço de venda",
+      "comparePrice": "Preço de comparação",
+      "cost": "Custo",
+      "tax": "Imposto",
+      "trackStock": "Controlar estoque",
+      "stock": "Estoque total",
+      "minLevel": "Estoque mínimo",
+      "tags": "Etiquetas",
+      "notes": "Notas",
+      "imageUrls": "URLs das imagens",
+      "parentSku": "SKU pai",
+      "variantData": "Dados da variante",
+      "isParent": "É produto pai",
+      "station": "Estação",
+      "modifiers": "Modificadores",
+      "status": "Status"
+    },
+    "valores": {
+      "producto": "Produto",
+      "servicio": "Serviço"
     }
   },
   "productosFacebook": {
@@ -8403,6 +8518,39 @@
           "garantia": "Garantia",
           "meses": "Meses de garantia"
         }
+      },
+      "reclamo": {
+        "titulo": "Nova reclamação de garantia",
+        "descripcion": "Registre uma reclamação de garantia para um número de série vendido.",
+        "errorTitulo": "Erro",
+        "errorCargar": "Não foi possível carregar o número de série selecionado",
+        "seleccionaSerial": "Selecione um número de série",
+        "motivoObligatorio": "O motivo da reclamação é obrigatório",
+        "creado": "Reclamação criada",
+        "creadoDetalle": "Reclamação #{id} registrada com sucesso",
+        "errorCrear": "Não foi possível criar a reclamação",
+        "buscar": "Buscar número de série",
+        "buscarPlaceholder": "Digite o número de série (mín. 3 caracteres)...",
+        "buscando": "Buscando...",
+        "sinResultados": "Nenhum número de série encontrado.",
+        "sku": "SKU: {sku}",
+        "sinDato": "N/D",
+        "serial": "Número de série",
+        "cambiar": "Alterar",
+        "sinContacto": "Sem contato",
+        "sinCliente": "Este número de série não tem cliente associado (não foi vendido)",
+        "garantia": "Garantia",
+        "vigente": "{count, plural, one {Vigente (# dia)} other {Vigente (# dias)}}",
+        "vencida": "Vencida",
+        "sinGarantia": "Sem garantia",
+        "fechaVenta": "Data da venda: {fecha}",
+        "motivo": "Motivo da reclamação",
+        "motivoPlaceholder": "Ex.: Produto com defeito, não liga...",
+        "descripcionCampo": "Descrição (opcional)",
+        "descripcionPlaceholder": "Descreva o problema em detalhes...",
+        "cancelar": "Cancelar",
+        "creando": "Criando...",
+        "crear": "Criar reclamação"
       }
     },
     "variantes": {
@@ -9053,6 +9201,45 @@
       "atras": "Voltar",
       "continuar": "Continuar",
       "guardarProducto": "Salvar produto"
+    },
+    "categoriaRapida": {
+      "creada": "Categoria criada",
+      "creadaDetalle": "“{nombre}” foi selecionada.",
+      "errores": {
+        "nombreObligatorio": "O nome é obrigatório",
+        "sinOrganizacion": "A organização ativa não foi encontrada.",
+        "noCrear": "Não foi possível criar a categoria.",
+        "slugOcupado": "Já existe uma categoria com /{slug}."
+      },
+      "slugValidando": "Verificando se está disponível…",
+      "slugLibre": "Disponível · será o endereço na loja virtual",
+      "slugError": "Não foi possível verificar agora; será validado ao criar.",
+      "slugAyuda": "É formado a partir do nome. É o endereço público na loja virtual.",
+      "nombre": "Nome",
+      "nombrePlaceholder": "Ex.: Bebidas quentes",
+      "padre": "Categoria pai",
+      "padreError": "Não foi possível carregar as categorias: ela será criada como principal.",
+      "sinPadre": "Sem categoria pai (principal)",
+      "buscarCategoria": "Buscar categoria",
+      "slug": "Slug",
+      "slugPlaceholder": "bebidas-quentes",
+      "sugerencia": "Use este, que está disponível:",
+      "color": "Cor",
+      "icono": "Ícone",
+      "masOpciones": "Mais opções",
+      "masOpcionesDetalle": "Descrição, cozinha e status",
+      "descripcion": "Descrição",
+      "descripcionPlaceholder": "O que esta categoria agrupa (opcional)",
+      "estacion": "Estação de cozinha",
+      "preparacion": "Requer preparo",
+      "preparacionAyuda": "Gera comanda de cozinha ao vender",
+      "activa": "Ativa",
+      "activaAyuda": "Visível no PDV e na loja virtual",
+      "aviso": "A imagem, o SEO e a ordem são completados depois em <enlace>Categorias</enlace>.",
+      "cancelar": "Cancelar",
+      "guardando": "Salvando…",
+      "crear": "Criar e selecionar",
+      "slugOcupadoTitulo": "Altere o slug: ele já existe"
     }
   },
   "arranque": {

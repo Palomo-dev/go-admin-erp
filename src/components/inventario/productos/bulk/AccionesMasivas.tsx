@@ -52,6 +52,7 @@ import {
   ModoAjuste,
   ModoStock,
   ModoRedondeo,
+  type ErrorMasivo,
 } from './bulkService';
 
 /**
@@ -161,7 +162,10 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     if (!abierto && !processing) setActiveDialog(null);
   };
 
-  const mostrarResultado = (accion: string, exitosos: number, fallidos: number, errores: string[]) => {
+  // Los fallos del servicio llegan como código (`productos.masivas.errores`) o como texto ya listo.
+  const textoError = (e: string | ErrorMasivo) => (typeof e === 'string' ? e : t(`errores.${e.codigo}`, e.valores));
+
+  const mostrarResultado = (accion: string, exitosos: number, fallidos: number, errores: readonly (string | ErrorMasivo)[]) => {
     // La tienda web cachea el catálogo 30 s: avisarle para que refleje ya
     // los precios, el stock o el estado que acaban de cambiar.
     if (exitosos > 0) avisarCambioCatalogo();
@@ -171,7 +175,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
       toast({
         variant: 'destructive',
         title: t('resultado.parcialTitulo', { accion }),
-        description: t('resultado.parcial', { exitosos: entero(exitosos), fallidos: entero(fallidos), error: errores[0] || '' }),
+        description: t('resultado.parcial', { exitosos: entero(exitosos), fallidos: entero(fallidos), error: errores[0] ? textoError(errores[0]) : '' }),
       });
     }
     onActionComplete();

@@ -5,7 +5,9 @@
  * reporte. Todo puro: sin red ni base.
  */
 import * as XLSX from 'xlsx';
-import { autoMapear, camposObligatoriosFaltantes, encontrarFilaCabecera, reasignarColumna } from '../campos';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { autoMapear, CAMPOS, camposObligatoriosFaltantes, encontrarFilaCabecera, reasignarColumna } from '../campos';
 import { aplicarSaldos, decodificarCsv, detectarFormato, detectarTamano, detectarVariantesPorSku, extensionAdmitida, leerFilas, leerMatriz, leerSaldos, leerSegunFormato, numeroSistema, parsearFormatoSistema, parsearFormatoSpace } from '../lector';
 import { estacionDesdeTexto, estadoDesdeTexto, parsearModificadores, parsearVariante, separarLista, separarUrls, unidadDesdeTexto } from '../normalizacion';
 import { dividirEnLotes, filaARpc, filaParaRpc, filasAImportar, TAMANO_LOTE } from '../payload';
@@ -56,6 +58,15 @@ describe('mapeo de columnas', () => {
   it('reconoce cabeceras de Siigo e inglés', () => {
     expect(autoMapear(['Tipo', 'Código', 'Nombre', 'Unidad', 'Precios', 'Impuestos', 'Stock', 'Estado'])).toEqual(['type', 'sku', 'name', 'unit', 'price', 'tax', 'stock', 'status']);
     expect(autoMapear(['Product Code', 'Name', 'Price', 'Cost', 'Quantity'])).toEqual(['sku', 'name', 'price', 'cost', 'stock']);
+  });
+  it.each(['es', 'en', 'fr', 'pt'])('reconoce las cabeceras traducidas de la exportación (%s)', (idioma) => {
+    // Exportación y plantilla salen con `productosImportar.cabeceras` del idioma
+    // de la interfaz: el archivo tiene que volver a importarse igual.
+    const ruta = join(process.cwd(), 'messages', `${idioma}.json`);
+    const cabeceras = (JSON.parse(readFileSync(ruta, 'utf-8')) as { productosImportar: { cabeceras: Record<string, string> } })
+      .productosImportar.cabeceras;
+    expect(autoMapear(CAMPOS.map((c) => cabeceras[c.campo]))).toEqual(CAMPOS.map((c) => c.campo));
+    if (idioma === 'es') expect(CAMPOS.map((c) => cabeceras[c.campo])).toEqual(CABECERAS_PLANTILLA);
   });
   it('un campo en una sola columna: la segunda repetida queda sin importar', () => {
     expect(autoMapear(['Nombre', 'Producto'])).toEqual(['name', null]);

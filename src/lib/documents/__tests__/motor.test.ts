@@ -323,6 +323,34 @@ describe('cierre y arqueo de caja', () => {
     expect(admin.payload.totales.find((t) => t.clave === 'caja.esperado')?.oculto).toBe(false);
   });
 
+  it('cierre ciego: pos.cajas.ver_esperado (sin administración) ve el esperado y la diferencia, también en el arqueo', async () => {
+    const tablas = datos();
+    tablas.organization_settings.push({ organization_id: ORG, key: 'pos_blind_cash_count', settings: { blind_cash_count: true } });
+    permisos.add('pos.cajas.ver_esperado');
+    const cierre = await pedir(sesion(tablas, 'supervisora'), 'cierre-caja', '10');
+    expect(cierre.payload.totales.find((t) => t.clave === 'caja.esperado')).toMatchObject({ valor: 500, oculto: false });
+    expect(cierre.payload.totales.find((t) => t.clave === 'caja.diferencia')?.oculto).toBe(false);
+    expect(cierre.payload.bandas).toEqual([]);
+    const arqueo = await pedir(sesion(tablas, 'supervisora'), 'arqueo-caja', '3');
+    expect(arqueo.payload.totales.find((t) => t.clave === 'caja.esperado')).toMatchObject({ valor: 320, oculto: false });
+  });
+
+  it('cierre ciego: con finance.view pero sin pos.cajas.ver_esperado ve el reporte con el esperado oculto', async () => {
+    const tablas = datos();
+    tablas.organization_settings.push({ organization_id: ORG, key: 'pos_blind_cash_count', settings: { blind_cash_count: true } });
+    permisos.add('finance.view');
+    const { payload, html } = await pedir(sesion(tablas, 'contadora'), 'arqueo-caja', '3');
+    expect(payload.totales.find((t) => t.clave === 'caja.esperado')?.oculto).toBe(true);
+    expect(payload.totales.find((t) => t.clave === 'caja.diferencia')?.oculto).toBe(true);
+    expect(payload.secciones[1].filas[0][1]).toEqual({ oculto: true });
+    expect(html).not.toContain('$ 320');
+  });
+
+  it('sin cierre ciego todos los que pueden ver el reporte ven el esperado', async () => {
+    const { payload } = await pedir(sesion(datos(), 'cajero-1'), 'cierre-caja', '10');
+    expect(payload.totales.find((t) => t.clave === 'caja.esperado')?.oculto).toBe(false);
+  });
+
   it('arqueo: denominaciones y por método; finanzas puede verlo', async () => {
     permisos.add('finance.view');
     const { payload } = await pedir(sesion(datos(), 'otro'), 'arqueo-caja', '3');

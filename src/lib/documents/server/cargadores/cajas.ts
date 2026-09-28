@@ -4,15 +4,17 @@
  * - El esperado NO se calcula aquí: sale de `pos_caja_esperado` (la misma
  *   función que usa el cierre en el servidor), con el cliente de la sesión.
  * - Quién puede verlo: quien abrió la caja (o contó el arqueo), un
- *   administrador (`admin.full_access` por rol o cargo) o quien tenga
+ *   administrador (`admin.full_access` por rol o cargo), quien tenga
+ *   `pos.cajas.ver_esperado` o quien tenga
  *   `finance.view`. Resuelto en el servidor; nunca por el nombre del rol.
  * - Cierre ciego (`pos_blind_cash_count`): si la organización lo usa y quien
- *   pide el reporte no es administrador, el esperado y la diferencia salen
+ *   pide el reporte no tiene `pos.cajas.ver_esperado` (ni administración), el esperado y la diferencia salen
  *   como «***» — igual que en la pantalla (`useBlindCloseMode`).
  */
 
 import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
 import { hasOrgAdminOrPermission } from '@/lib/utils/orgContext';
+import { organizacionUsaCierreCiego, resolverPermisosCaja } from '@/lib/pos/cajas/permisosCaja';
 import { OrgContextError } from '@/lib/utils/orgContextError';
 import type { Traductor } from '../../textos';
 import type { CeldaTabla, Campo, DocumentoPayload, FilaTotal, SeccionTabla } from '../../tipos';
@@ -57,19 +59,24 @@ export interface AccesoCaja {
   verEsperado: boolean;
 }
 
-/** ¿Puede ver el reporte? ¿Puede ver el esperado aunque haya cierre ciego? */
+/**
+ * ¿Puede ver el reporte? ¿Puede ver el esperado aunque haya cierre ciego?
+ *
+ * Mismas reglas que las pantallas y las rutas de cajas (`src/lib/pos/cajas/
+ * permisosCaja.ts`, sin duplicarlas): el esperado y la diferencia con cierre
+ * ciego los ve quien tenga `pos.cajas.ver_esperado` (o administración), y si
+ * no se puede leer si la organización usa cierre ciego, se oculta (fail-closed).
+ */
 export async function accesoACaja(sesion: SesionDocumento, responsables: Array<string | null>): Promise<AccesoCaja> {
-  const admin = await hasOrgAdminOrPermission(sesion);
+  const [admin, permisos, ciego] = await Promise.all([
+    hasOrgAdminOrPermission(sesion),
+    resolverPermisosCaja(sesion),
+    organizacionUsaCierreCiego(sesion),
+  ]);
   const propio = responsables.some((r) => r && r === sesion.userId);
-  const finanzas = admin || propio ? false : await hasOrgAdminOrPermission(sesion, 'finance.view');
-  const { data } = await sesion.supabase
-    .from('organization_settings')
-    .select('settings')
-    .eq('organization_id', sesion.organizationId)
-    .eq('key', 'pos_blind_cash_count')
-    .maybeSingle();
-  const ciego = (data as { settings?: { blind_cash_count?: unknown } } | null)?.settings?.blind_cash_count === true;
-  return { permitido: admin || propio || finanzas, verEsperado: admin || !ciego };
+  const supervisa = admin || permisos.verEsperadoEnCierreCiego;
+  const finanzas = supervisa || propio ? false : await hasOrgAdminOrPermission(sesion, 'finance.view');
+  return { permitido: supervisa || propio || finanzas, verEsperado: permisos.verEsperadoEnCierreCiego || !ciego };
 }
 
 function sinPermiso(): OrgContextError {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Search, Calendar, User, CreditCard, RefreshCw, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ import { DevolucionesService } from './devolucionesService';
 import { SaleForReturn, SaleSearchFilters } from './types';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { cn } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface TicketSearchProps {
   onSaleSelect: (sale: SaleForReturn) => void;
@@ -22,6 +24,13 @@ interface TicketSearchProps {
 
 export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) {
   const { formatear } = useMonedaOrganizacion();
+  const t = useTranslations('posDevoluciones.busqueda');
+  const tComun = useTranslations('posDevoluciones.comun');
+  const tFormulario = useTranslations('posDevoluciones.formulario');
+  const { formatDate, formatDateTime } = useFormatDate();
+  // Métodos de pago conocidos se traducen; uno desconocido se muestra tal cual (es un dato).
+  const nombreMetodoPago = (metodo: string): string =>
+    tFormulario.has(`metodosPago.${metodo}`) ? tFormulario(`metodosPago.${metodo}`) : metodo;
   const [sales, setSales] = useState<SaleForReturn[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedSale, setSelectedSale] = useState<SaleForReturn | null>(null);
@@ -37,6 +46,8 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
 
   useEffect(() => {
     buscarVentas();
+    // Se busca al cambiar de página o de sucursal; el texto se aplica con «Buscar».
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.page, branchFilter]);
 
   const buscarVentas = async () => {
@@ -85,12 +96,12 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
 
   const getStatusBadge = (status: string, paymentStatus: string) => {
     if (status === 'paid' && paymentStatus === 'paid') {
-      return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Pagado</Badge>;
+      return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">{t('estados.pagado')}</Badge>;
     }
     if (paymentStatus === 'partial') {
-      return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Parcial</Badge>;
+      return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">{t('estados.parcial')}</Badge>;
     }
-    return <Badge variant="secondary">Pendiente</Badge>;
+    return <Badge variant="secondary">{t('estados.pendiente')}</Badge>;
   };
 
   return (
@@ -100,7 +111,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center space-x-2 text-lg dark:text-white">
             <Search className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            <span>Buscar Ticket Original</span>
+            <span>{tComun('buscarTicketOriginal')}</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -109,7 +120,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Buscar por # venta, cliente, teléfono..."
+                  placeholder={t('placeholder')}
                   value={filters.search}
                   onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                   onKeyPress={handleKeyPress}
@@ -120,7 +131,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
             <div>
               <Input
                 type="date"
-                placeholder="Fecha desde"
+                placeholder={tComun('fechaDesde')}
                 value={filters.dateFrom || ''}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
                 className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
@@ -137,7 +148,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                 ) : (
                   <Search className="h-4 w-4 mr-2" />
                 )}
-                Buscar
+                {t('buscar')}
               </Button>
             </div>
           </div>
@@ -150,10 +161,10 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
           <CardTitle className="flex items-center justify-between dark:text-white">
             <div className="flex items-center space-x-2">
               <CreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <span>Ventas Encontradas</span>
+              <span>{t('ventasEncontradas')}</span>
             </div>
             <Badge variant="outline" className="dark:border-blue-500 dark:text-blue-400">
-              {total} resultados
+              {t('resultados', { n: total })}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -176,12 +187,12 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                 <Table>
                   <TableHeader>
                     <TableRow className="dark:border-gray-700">
-                      <TableHead className="dark:text-gray-300">Fecha</TableHead>
-                      <TableHead className="dark:text-gray-300">Cliente</TableHead>
-                      <TableHead className="dark:text-gray-300">Total</TableHead>
-                      <TableHead className="dark:text-gray-300">Estado</TableHead>
-                      <TableHead className="dark:text-gray-300">Items</TableHead>
-                      <TableHead className="dark:text-gray-300">Acciones</TableHead>
+                      <TableHead className="dark:text-gray-300">{tComun('fecha')}</TableHead>
+                      <TableHead className="dark:text-gray-300">{tComun('cliente')}</TableHead>
+                      <TableHead className="dark:text-gray-300">{tComun('total')}</TableHead>
+                      <TableHead className="dark:text-gray-300">{tComun('estado')}</TableHead>
+                      <TableHead className="dark:text-gray-300">{tComun('items')}</TableHead>
+                      <TableHead className="dark:text-gray-300">{tComun('acciones')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -193,7 +204,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                         <TableCell className="dark:text-gray-300">
                           <div className="flex items-center space-x-2">
                             <Calendar className="h-4 w-4 text-gray-400" />
-                            <span>{new Date(sale.sale_date).toLocaleDateString()}</span>
+                            <span>{formatDate(sale.sale_date)}</span>
                           </div>
                         </TableCell>
                         <TableCell className="dark:text-gray-300">
@@ -201,7 +212,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                             <User className="h-4 w-4 text-gray-400" />
                             <div>
                               <div className="font-medium">
-                                {sale.customer?.full_name || 'Cliente General'}
+                                {sale.customer?.full_name || tComun('clienteGeneral')}
                               </div>
                               {sale.customer?.phone && (
                                 <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -221,7 +232,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                         </TableCell>
                         <TableCell className="dark:text-gray-300">
                           <Badge variant="outline" className="dark:border-gray-500">
-                            {sale.items.length} items
+                            {tComun('conteoItems', { n: sale.items.length })}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -230,6 +241,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                               size="sm"
                               variant="outline"
                               onClick={() => verDetalles(sale)}
+                              aria-label={t('verDetalles')}
                               className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                             >
                               <Eye className="h-4 w-4" />
@@ -239,7 +251,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                               onClick={() => seleccionarVenta(sale)}
                               className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
                             >
-                              Seleccionar
+                              {t('seleccionar')}
                             </Button>
                           </div>
                         </TableCell>
@@ -253,7 +265,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Página {filters.page} de {totalPages}
+                    {t('paginacion', { actual: filters.page ?? 1, total: totalPages })}
                   </div>
                   <div className="flex space-x-2">
                     <Button
@@ -263,7 +275,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                       disabled={filters.page === 1}
                       className="dark:border-gray-600 dark:text-gray-300"
                     >
-                      Anterior
+                      {t('anterior')}
                     </Button>
                     <Button
                       size="sm"
@@ -272,7 +284,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                       disabled={filters.page === totalPages}
                       className="dark:border-gray-600 dark:text-gray-300"
                     >
-                      Siguiente
+                      {t('siguiente')}
                     </Button>
                   </div>
                 </div>
@@ -288,10 +300,10 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
           <div className="flex flex-col h-full">
             {/* Header fijo */}
             <DialogHeader className="px-8 py-6 pb-4 border-b dark:border-gray-700">
-              <DialogTitle className="dark:text-white text-xl">Detalles de la Venta</DialogTitle>
+              <DialogTitle className="dark:text-white text-xl">{t('detalle.titulo')}</DialogTitle>
               {selectedSale && (
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  ID: {selectedSale.id.slice(-8).toUpperCase()} • {new Date(selectedSale.sale_date).toLocaleString()}
+                  {t('detalle.subtitulo', { id: selectedSale.id.slice(-8).toUpperCase(), fecha: formatDateTime(selectedSale.sale_date) })}
                 </div>
               )}
             </DialogHeader>
@@ -305,14 +317,14 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                     <Card className="dark:bg-gray-700 dark:border-gray-600">
                       <CardContent className="p-4">
                         <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">
-                          Cliente
+                          {tComun('cliente')}
                         </div>
                         <div className="text-sm font-medium dark:text-gray-200 break-words whitespace-normal">
-                          {selectedSale.customer?.full_name || 'Cliente General'}
+                          {selectedSale.customer?.full_name || tComun('clienteGeneral')}
                         </div>
                         {selectedSale.customer?.phone && (
                           <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Tel: {selectedSale.customer.phone}
+                            {t('detalle.telefono', { telefono: selectedSale.customer.phone })}
                           </div>
                         )}
                       </CardContent>
@@ -321,7 +333,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                     <Card className="dark:bg-gray-700 dark:border-gray-600">
                       <CardContent className="p-4">
                         <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">
-                          Subtotal
+                          {tComun('subtotal')}
                         </div>
                         <div className="text-lg font-bold dark:text-gray-200">
                           {formatear(selectedSale.subtotal)}
@@ -332,7 +344,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                     <Card className="dark:bg-gray-700 dark:border-gray-600">
                       <CardContent className="p-4">
                         <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">
-                          Total
+                          {tComun('total')}
                         </div>
                         <div className="text-lg font-bold text-green-600 dark:text-green-400">
                           {formatear(selectedSale.total)}
@@ -343,7 +355,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                     <Card className="dark:bg-gray-700 dark:border-gray-600">
                       <CardContent className="p-4">
                         <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">
-                          Estado
+                          {tComun('estado')}
                         </div>
                         <div className="mt-1">
                           {getStatusBadge(selectedSale.status, selectedSale.payment_status)}
@@ -355,14 +367,14 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                   {/* Información de pago */}
                   {selectedSale.payments && selectedSale.payments.length > 0 && (
                     <div>
-                      <h4 className="font-semibold text-lg dark:text-white mb-3">Información de Pago</h4>
+                      <h4 className="font-semibold text-lg dark:text-white mb-3">{t('detalle.infoPago')}</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {selectedSale.payments.map((payment, index) => (
                           <Card key={payment.id || index} className="dark:bg-gray-700 dark:border-gray-600">
                             <CardContent className="p-3">
                               <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium dark:text-gray-300">
-                                  {payment.method}
+                                  {nombreMetodoPago(payment.method)}
                                 </span>
                                 <span className="text-sm font-bold dark:text-gray-200">
                                   {formatear(payment.amount)}
@@ -370,7 +382,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                               </div>
                               {payment.reference && (
                                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                  Ref: {payment.reference}
+                                  {t('detalle.referencia', { referencia: payment.reference })}
                                 </div>
                               )}
                             </CardContent>
@@ -383,18 +395,18 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                   {/* Tabla de productos mejorada */}
                   <div>
                     <h4 className="font-semibold text-lg dark:text-white mb-3">
-                      Items de la Venta ({selectedSale.items.length})
+                      {t('detalle.itemsVenta', { n: selectedSale.items.length })}
                     </h4>
                     <div className="border dark:border-gray-700 rounded-lg overflow-hidden">
                       <Table>
                         <TableHeader>
                           <TableRow className="dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                            <TableHead className="dark:text-gray-300 font-semibold">Producto</TableHead>
-                            <TableHead className="dark:text-gray-300 font-semibold text-center">Cantidad</TableHead>
-                            <TableHead className="dark:text-gray-300 font-semibold text-right">Precio Unit.</TableHead>
-                            <TableHead className="dark:text-gray-300 font-semibold text-right">Total</TableHead>
-                            <TableHead className="dark:text-gray-300 font-semibold text-center">Devuelto</TableHead>
-                            <TableHead className="dark:text-gray-300 font-semibold text-center">Disponible</TableHead>
+                            <TableHead className="dark:text-gray-300 font-semibold">{tComun('producto')}</TableHead>
+                            <TableHead className="dark:text-gray-300 font-semibold text-center">{tComun('cantidad')}</TableHead>
+                            <TableHead className="dark:text-gray-300 font-semibold text-right">{tComun('precioUnitario')}</TableHead>
+                            <TableHead className="dark:text-gray-300 font-semibold text-right">{tComun('total')}</TableHead>
+                            <TableHead className="dark:text-gray-300 font-semibold text-center">{t('detalle.devuelto')}</TableHead>
+                            <TableHead className="dark:text-gray-300 font-semibold text-center">{tComun('disponible')}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -405,6 +417,8 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                                 <TableCell className="dark:text-gray-300">
                                   <div className="flex items-center space-x-3">
                                     {item.product.image && (
+                                      // URL firmada de Storage, sin dominio fijo para next/image.
+                                      // eslint-disable-next-line @next/next/no-img-element
                                       <img 
                                         src={item.product.image} 
                                         alt={item.product.name}
@@ -415,9 +429,9 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                                       />
                                     )}
                                     <div>
-                                      <div className="font-medium text-sm">{item.product.name}</div>
+                                      <div className="font-medium text-sm">{item.product.name || tComun('productoNoEncontrado')}</div>
                                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                                        SKU: {item.product.sku}
+                                        {t('detalle.sku', { sku: item.product.sku })}
                                       </div>
                                     </div>
                                   </div>
@@ -473,7 +487,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
               <div className="flex justify-between items-center">
                 <div className="text-sm text-gray-600 dark:text-gray-400">
                   {selectedSale && (
-                    <span>{selectedSale.items.length} productos • Total: {formatear(selectedSale.total)}</span>
+                    <span>{t('detalle.pie', { n: selectedSale.items.length, total: formatear(selectedSale.total) })}</span>
                   )}
                 </div>
                 <div className="flex space-x-3">
@@ -482,13 +496,13 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                     onClick={() => setShowDetails(false)}
                     className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                   >
-                    Cerrar
+                    {tComun('cerrar')}
                   </Button>
                   <Button 
                     onClick={() => seleccionarVenta(selectedSale!)}
                     className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
                   >
-                    Procesar Devolución
+                    {tComun('procesarDevolucion')}
                   </Button>
                 </div>
               </div>

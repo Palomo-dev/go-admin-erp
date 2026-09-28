@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Save, X, Camera, Package, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +16,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { ReturnReason, CreateReturnReasonData, UpdateReturnReasonData } from '../types';
-import { ReturnReasonsService } from './returnReasonsService';
+import { ReturnReasonsService, claveErrorMotivo } from './returnReasonsService';
 import { toast } from 'sonner';
 
 interface ReturnReasonFormProps {
@@ -32,6 +33,9 @@ export function ReturnReasonForm({
   onSuccess 
 }: ReturnReasonFormProps) {
   const [loading, setLoading] = useState(false);
+  const t = useTranslations('posDevoluciones.motivos.formulario');
+  const tErrores = useTranslations('posDevoluciones.motivos.errores');
+  const tComun = useTranslations('posDevoluciones.comun');
   const [formData, setFormData] = useState<CreateReturnReasonData>({
     code: '',
     name: '',
@@ -76,21 +80,21 @@ export function ReturnReasonForm({
     const newErrors: Record<string, string> = {};
 
     if (!formData.code.trim()) {
-      newErrors.code = 'El código es requerido';
+      newErrors.code = t('validacion.codigoRequerido');
     } else if (formData.code.length > 20) {
-      newErrors.code = 'El código no puede exceder 20 caracteres';
+      newErrors.code = t('validacion.codigoLargo');
     } else if (!/^[A-Za-z0-9_-]+$/.test(formData.code)) {
-      newErrors.code = 'El código solo puede contener letras, números, guiones y guiones bajos';
+      newErrors.code = t('validacion.codigoFormato');
     }
 
     if (!formData.name.trim()) {
-      newErrors.name = 'El nombre es requerido';
+      newErrors.name = t('validacion.nombreRequerido');
     } else if (formData.name.length > 100) {
-      newErrors.name = 'El nombre no puede exceder 100 caracteres';
+      newErrors.name = t('validacion.nombreLargo');
     }
 
     if (formData.description && formData.description.length > 500) {
-      newErrors.description = 'La descripción no puede exceder 500 caracteres';
+      newErrors.description = t('validacion.descripcionLarga');
     }
 
     setErrors(newErrors);
@@ -106,21 +110,22 @@ export function ReturnReasonForm({
     try {
       if (isEditing && reason) {
         await ReturnReasonsService.update(reason.id, formData as UpdateReturnReasonData);
-        toast.success('Motivo actualizado correctamente');
+        toast.success(t('actualizado'));
       } else {
         await ReturnReasonsService.create(formData);
-        toast.success('Motivo creado correctamente');
+        toast.success(t('creado'));
       }
       onSuccess();
       onOpenChange(false);
-    } catch (error: any) {
-      toast.error(error.message || 'Error al guardar el motivo');
+    } catch (error) {
+      const { clave, valores } = claveErrorMotivo(error, 'guardar');
+      toast.error(tErrores(clave, valores));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (field: keyof CreateReturnReasonData, value: any) => {
+  const handleChange = <K extends keyof CreateReturnReasonData>(field: K, value: CreateReturnReasonData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -132,7 +137,7 @@ export function ReturnReasonForm({
       <DialogContent className="sm:max-w-[500px] dark:bg-gray-800 dark:border-gray-700">
         <DialogHeader>
           <DialogTitle className="dark:text-white">
-            {isEditing ? 'Editar Motivo de Devolución' : 'Nuevo Motivo de Devolución'}
+            {isEditing ? t('tituloEditar') : t('tituloNuevo')}
           </DialogTitle>
         </DialogHeader>
 
@@ -140,13 +145,13 @@ export function ReturnReasonForm({
           {/* Código */}
           <div className="space-y-2">
             <Label htmlFor="code" className="dark:text-gray-200">
-              Código <span className="text-red-500">*</span>
+              {t('codigo')} <span className="text-red-500">*</span>
             </Label>
             <Input
               id="code"
               value={formData.code}
               onChange={(e) => handleChange('code', e.target.value.toUpperCase())}
-              placeholder="ej: DEFECTO, CAMBIO_TALLA"
+              placeholder={t('codigoPlaceholder')}
               className={`dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
                 errors.code ? 'border-red-500' : ''
               }`}
@@ -160,13 +165,13 @@ export function ReturnReasonForm({
           {/* Nombre */}
           <div className="space-y-2">
             <Label htmlFor="name" className="dark:text-gray-200">
-              Nombre <span className="text-red-500">*</span>
+              {t('nombre')} <span className="text-red-500">*</span>
             </Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) => handleChange('name', e.target.value)}
-              placeholder="ej: Producto defectuoso"
+              placeholder={t('nombrePlaceholder')}
               className={`dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
                 errors.name ? 'border-red-500' : ''
               }`}
@@ -180,13 +185,13 @@ export function ReturnReasonForm({
           {/* Descripción */}
           <div className="space-y-2">
             <Label htmlFor="description" className="dark:text-gray-200">
-              Descripción
+              {t('descripcion')}
             </Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => handleChange('description', e.target.value)}
-              placeholder="Descripción del motivo de devolución..."
+              placeholder={t('descripcionPlaceholder')}
               rows={3}
               className={`dark:bg-gray-700 dark:border-gray-600 dark:text-white resize-none ${
                 errors.description ? 'border-red-500' : ''
@@ -207,9 +212,9 @@ export function ReturnReasonForm({
                   <Camera className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <Label className="dark:text-white font-medium">Requiere Foto</Label>
+                  <Label className="dark:text-white font-medium">{t('requiereFoto')}</Label>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Solicitar evidencia fotográfica del producto
+                    {t('requiereFotoAyuda')}
                   </p>
                 </div>
               </div>
@@ -228,9 +233,9 @@ export function ReturnReasonForm({
                   <Package className="h-4 w-4 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <Label className="dark:text-white font-medium">Afecta Inventario</Label>
+                  <Label className="dark:text-white font-medium">{t('afectaInventario')}</Label>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Reingresar productos al inventario automáticamente
+                    {t('afectaInventarioAyuda')}
                   </p>
                 </div>
               </div>
@@ -249,9 +254,9 @@ export function ReturnReasonForm({
                   <Info className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <Label className="dark:text-white font-medium">Activo</Label>
+                  <Label className="dark:text-white font-medium">{t('activo')}</Label>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Disponible para seleccionar en nuevas devoluciones
+                    {t('activoAyuda')}
                   </p>
                 </div>
               </div>
@@ -273,7 +278,7 @@ export function ReturnReasonForm({
               className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600"
             >
               <X className="h-4 w-4 mr-2" />
-              Cancelar
+              {tComun('cancelar')}
             </Button>
             <Button 
               type="submit" 
@@ -281,7 +286,7 @@ export function ReturnReasonForm({
               className="bg-blue-600 hover:bg-blue-700"
             >
               <Save className="h-4 w-4 mr-2" />
-              {loading ? 'Guardando...' : isEditing ? 'Actualizar' : 'Crear'}
+              {loading ? t('guardando') : isEditing ? t('actualizar') : t('crear')}
             </Button>
           </DialogFooter>
         </form>

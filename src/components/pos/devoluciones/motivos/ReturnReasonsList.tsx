@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { 
   Edit, 
   Trash2, 
@@ -8,9 +9,6 @@ import {
   MoreHorizontal, 
   Camera, 
   Package, 
-  CheckCircle, 
-  XCircle,
-  GripVertical
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,7 +40,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ReturnReason } from '../types';
-import { ReturnReasonsService } from './returnReasonsService';
+import { ReturnReasonsService, claveErrorMotivo } from './returnReasonsService';
 import { cn } from '@/utils/Utils';
 import { toast } from 'sonner';
 
@@ -61,16 +59,20 @@ export function ReturnReasonsList({
 }: ReturnReasonsListProps) {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
+  const t = useTranslations('posDevoluciones.motivos.lista');
+  const tErrores = useTranslations('posDevoluciones.motivos.errores');
+  const tComun = useTranslations('posDevoluciones.comun');
 
   const handleDelete = async () => {
     if (!deleteId) return;
     
     try {
       await ReturnReasonsService.delete(deleteId);
-      toast.success('Motivo eliminado correctamente');
+      toast.success(t('eliminado'));
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al eliminar el motivo');
+    } catch (error) {
+      const { clave, valores } = claveErrorMotivo(error, 'eliminar');
+      toast.error(tErrores(clave, valores));
     } finally {
       setDeleteId(null);
     }
@@ -79,10 +81,11 @@ export function ReturnReasonsList({
   const handleDuplicate = async (reason: ReturnReason) => {
     try {
       await ReturnReasonsService.duplicate(reason.id);
-      toast.success('Motivo duplicado correctamente');
+      toast.success(t('duplicado'));
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al duplicar el motivo');
+    } catch (error) {
+      const { clave, valores } = claveErrorMotivo(error, 'duplicar');
+      toast.error(tErrores(clave, valores));
     }
   };
 
@@ -90,10 +93,11 @@ export function ReturnReasonsList({
     setTogglingId(reason.id);
     try {
       await ReturnReasonsService.toggleActive(reason.id);
-      toast.success(reason.is_active ? 'Motivo desactivado' : 'Motivo activado');
+      toast.success(reason.is_active ? t('desactivado') : t('activado'));
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al cambiar estado');
+    } catch (error) {
+      const { clave, valores } = claveErrorMotivo(error, 'cambiarEstado');
+      toast.error(tErrores(clave, valores));
     } finally {
       setTogglingId(null);
     }
@@ -114,10 +118,10 @@ export function ReturnReasonsList({
       <div className="text-center py-12">
         <Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
         <h3 className="text-lg font-medium text-gray-600 dark:text-gray-400 mb-2">
-          No hay motivos registrados
+          {t('sinRegistros')}
         </h3>
         <p className="text-gray-500 dark:text-gray-500">
-          Crea tu primer motivo de devolución para comenzar
+          {t('sinRegistrosDescripcion')}
         </p>
       </div>
     );
@@ -129,23 +133,23 @@ export function ReturnReasonsList({
         <Table>
           <TableHeader>
             <TableRow className="dark:border-gray-700 hover:bg-transparent">
-              <TableHead className="w-[80px]">Código</TableHead>
-              <TableHead>Nombre</TableHead>
-              <TableHead className="hidden md:table-cell">Descripción</TableHead>
+              <TableHead className="w-[80px]">{t('codigo')}</TableHead>
+              <TableHead>{t('nombre')}</TableHead>
+              <TableHead className="hidden md:table-cell">{t('descripcion')}</TableHead>
               <TableHead className="text-center w-[100px]">
                 <div className="flex items-center justify-center gap-1">
                   <Camera className="h-4 w-4" />
-                  <span className="hidden lg:inline">Foto</span>
+                  <span className="hidden lg:inline">{t('foto')}</span>
                 </div>
               </TableHead>
               <TableHead className="text-center w-[100px]">
                 <div className="flex items-center justify-center gap-1">
                   <Package className="h-4 w-4" />
-                  <span className="hidden lg:inline">Inventario</span>
+                  <span className="hidden lg:inline">{t('inventario')}</span>
                 </div>
               </TableHead>
-              <TableHead className="text-center w-[100px]">Estado</TableHead>
-              <TableHead className="text-right w-[100px]">Acciones</TableHead>
+              <TableHead className="text-center w-[100px]">{t('estado')}</TableHead>
+              <TableHead className="text-right w-[100px]">{t('acciones')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -175,20 +179,20 @@ export function ReturnReasonsList({
                   {reason.requires_photo ? (
                     <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                       <Camera className="h-3 w-3 mr-1" />
-                      Sí
+                      {t('si')}
                     </Badge>
                   ) : (
-                    <span className="text-gray-400">No</span>
+                    <span className="text-gray-400">{t('no')}</span>
                   )}
                 </TableCell>
                 <TableCell className="text-center">
                   {reason.affects_inventory ? (
                     <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                       <Package className="h-3 w-3 mr-1" />
-                      Sí
+                      {t('si')}
                     </Badge>
                   ) : (
-                    <span className="text-gray-400">No</span>
+                    <span className="text-gray-400">{t('no')}</span>
                   )}
                 </TableCell>
                 <TableCell className="text-center">
@@ -202,7 +206,7 @@ export function ReturnReasonsList({
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('acciones')}>
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -212,14 +216,14 @@ export function ReturnReasonsList({
                         className="dark:hover:bg-gray-700"
                       >
                         <Edit className="h-4 w-4 mr-2" />
-                        Editar
+                        {t('editar')}
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => handleDuplicate(reason)}
                         className="dark:hover:bg-gray-700"
                       >
                         <Copy className="h-4 w-4 mr-2" />
-                        Duplicar
+                        {t('duplicar')}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator className="dark:bg-gray-700" />
                       <DropdownMenuItem 
@@ -227,7 +231,7 @@ export function ReturnReasonsList({
                         className="text-red-600 dark:text-red-400 dark:hover:bg-gray-700"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Eliminar
+                        {t('eliminar')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -243,22 +247,21 @@ export function ReturnReasonsList({
         <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
           <AlertDialogHeader>
             <AlertDialogTitle className="dark:text-white">
-              ¿Eliminar motivo de devolución?
+              {t('confirmarTitulo')}
             </AlertDialogTitle>
             <AlertDialogDescription className="dark:text-gray-400">
-              Esta acción no se puede deshacer. Si el motivo está siendo usado en 
-              devoluciones existentes, no podrá ser eliminado.
+              {t('confirmarDescripcion')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600">
-              Cancelar
+              {tComun('cancelar')}
             </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700"
             >
-              Eliminar
+              {t('eliminar')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

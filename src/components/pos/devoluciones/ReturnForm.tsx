@@ -19,22 +19,8 @@ import { ReturnReasonsService } from './motivos/returnReasonsService';
 import { SaleForReturn, RefundData, ReturnReason, SoldSerialInfo } from './types';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { claveErrorDevolucion, codigoErrorDevolucion } from '@/lib/pos/devoluciones/procesarDevolucion';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { toast } from 'sonner';
-
-// Función para traducir métodos de pago
-const translatePaymentMethod = (method: string): string => {
-  const translations: Record<string, string> = {
-    'cash': 'Efectivo',
-    'card': 'Tarjeta',
-    'credit': 'Crédito',
-    'debit': 'Débito',
-    'transfer': 'Transferencia',
-    'check': 'Cheque',
-    'credit_note': 'Nota de Crédito',
-    'original_method': 'Método original'
-  };
-  return translations[method] || method;
-};
 
 interface ReturnFormProps {
   sale: SaleForReturn;
@@ -61,6 +47,12 @@ interface ReturnItemData {
 export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
   const { formatear } = useMonedaOrganizacion();
   const tErrores = useTranslations('posDevoluciones.errores');
+  const t = useTranslations('posDevoluciones.formulario');
+  const tComun = useTranslations('posDevoluciones.comun');
+  const { formatDate } = useFormatDate();
+  // Métodos de pago conocidos se traducen; uno desconocido se muestra tal cual (es un dato).
+  const nombreMetodoPago = (metodo: string): string =>
+    t.has(`metodosPago.${metodo}`) ? t(`metodosPago.${metodo}`) : metodo;
   // Una clave por intento: si la red corta y se vuelve a enviar, el servidor
   // devuelve la misma devolución en vez de duplicarla. Se renueva al terminar bien.
   const claveIntento = useRef<string>(crypto.randomUUID());
@@ -179,19 +171,19 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
     const selectedItems = returnItems.filter(item => item.selected && item.return_quantity > 0);
     
     if (selectedItems.length === 0) {
-      toast.error('Debe seleccionar al menos un item para devolver');
+      toast.error(t('validacion.sinItems'));
       return false;
     }
 
     if (!reason.trim()) {
-      toast.error('Debe especificar el motivo general de la devolución');
+      toast.error(t('validacion.sinMotivoGeneral'));
       return false;
     }
 
     // Validar que cada item seleccionado tenga motivo
     const itemsWithoutReason = selectedItems.filter(item => !item.reason.trim());
     if (itemsWithoutReason.length > 0) {
-      toast.error('Todos los items seleccionados deben tener un motivo específico');
+      toast.error(t('validacion.itemsSinMotivo'));
       return false;
     }
 
@@ -200,7 +192,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
       item => item.track_serial && item.selected_serial_ids.length === 0
     );
     if (serialItemsWithoutSerials.length > 0) {
-      toast.error('Los productos serializados deben tener al menos un serial seleccionado');
+      toast.error(t('validacion.serializadosSinSerial'));
       return false;
     }
 
@@ -209,7 +201,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
       item => item.track_serial && item.selected_serial_ids.length !== item.return_quantity
     );
     if (serialQtyMismatch.length > 0) {
-      toast.error('La cantidad a devolver debe coincidir con los seriales seleccionados');
+      toast.error(t('validacion.serialesNoCoinciden'));
       return false;
     }
 
@@ -244,7 +236,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
 
       // El monto lo calcula el servidor con lo cobrado en la venta.
       toast.success(
-        `Devolución procesada exitosamente. Reembolso: ${formatear(Number(resultado.total_refund ?? totalRefund))}`
+        t('exito', { monto: formatear(Number(resultado.total_refund ?? totalRefund)) })
       );
 
       onSuccess();
@@ -271,17 +263,18 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                 variant="outline"
                 size="sm"
                 onClick={onBack}
+                aria-label={t('volver')}
                 className="dark:border-gray-600 dark:text-gray-300"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <CardTitle className="flex items-center space-x-2 dark:text-white">
                 <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                <span>Procesar Devolución</span>
+                <span>{tComun('procesarDevolucion')}</span>
               </CardTitle>
             </div>
             <Badge variant="outline" className="dark:border-blue-500 dark:text-blue-400">
-              Venta: {sale.id.slice(-8)}
+              {t('venta', { id: sale.id.slice(-8) })}
             </Badge>
           </div>
         </CardHeader>
@@ -291,7 +284,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            No hay items disponibles para devolución en esta venta. Todos los productos ya fueron devueltos previamente.
+            {t('sinItems')}
           </AlertDescription>
         </Alert>
       )}
@@ -301,28 +294,28 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
           {/* Información de la venta */}
           <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg dark:text-white">Información de la Venta</CardTitle>
+              <CardTitle className="text-lg dark:text-white">{t('infoVenta')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <Label className="text-sm text-gray-600 dark:text-gray-400">Cliente</Label>
-                  <div className="dark:text-gray-200">{sale.customer?.full_name || 'Cliente General'}</div>
+                  <Label className="text-sm text-gray-600 dark:text-gray-400">{tComun('cliente')}</Label>
+                  <div className="dark:text-gray-200">{sale.customer?.full_name || tComun('clienteGeneral')}</div>
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-600 dark:text-gray-400">Fecha</Label>
-                  <div className="dark:text-gray-200">{new Date(sale.sale_date).toLocaleDateString()}</div>
+                  <Label className="text-sm text-gray-600 dark:text-gray-400">{tComun('fecha')}</Label>
+                  <div className="dark:text-gray-200">{formatDate(sale.sale_date)}</div>
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-600 dark:text-gray-400">Total Original</Label>
+                  <Label className="text-sm text-gray-600 dark:text-gray-400">{t('totalOriginal')}</Label>
                   <div className="text-lg font-bold text-green-600 dark:text-green-400">
                     {formatear(sale.total)}
                   </div>
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-600 dark:text-gray-400">Método de Pago</Label>
+                  <Label className="text-sm text-gray-600 dark:text-gray-400">{t('metodoPago')}</Label>
                   <div className="dark:text-gray-200">
-                    {sale.payment_method ? translatePaymentMethod(sale.payment_method) : 'No especificado'}
+                    {sale.payment_method ? nombreMetodoPago(sale.payment_method) : t('noEspecificado')}
                   </div>
                 </div>
               </div>
@@ -333,9 +326,9 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
           <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center justify-between dark:text-white">
-                <span>Items para Devolución</span>
+                <span>{t('itemsParaDevolucion')}</span>
                 <Badge variant="outline" className="dark:border-green-500 dark:text-green-400">
-                  {selectedItemsCount} seleccionados
+                  {t('seleccionados', { n: selectedItemsCount })}
                 </Badge>
               </CardTitle>
             </CardHeader>
@@ -344,12 +337,12 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                 <TableHeader>
                   <TableRow className="dark:border-gray-700">
                     <TableHead className="w-12 dark:text-gray-300"></TableHead>
-                    <TableHead className="dark:text-gray-300">Producto</TableHead>
-                    <TableHead className="dark:text-gray-300">Precio Unit.</TableHead>
-                    <TableHead className="dark:text-gray-300">Disponible</TableHead>
-                    <TableHead className="dark:text-gray-300">A Devolver</TableHead>
-                    <TableHead className="dark:text-gray-300">Reembolso</TableHead>
-                    <TableHead className="dark:text-gray-300">Motivo</TableHead>
+                    <TableHead className="dark:text-gray-300">{tComun('producto')}</TableHead>
+                    <TableHead className="dark:text-gray-300">{tComun('precioUnitario')}</TableHead>
+                    <TableHead className="dark:text-gray-300">{tComun('disponible')}</TableHead>
+                    <TableHead className="dark:text-gray-300">{t('aDevolver')}</TableHead>
+                    <TableHead className="dark:text-gray-300">{tComun('reembolso')}</TableHead>
+                    <TableHead className="dark:text-gray-300">{tComun('motivo')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -365,13 +358,13 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                       </TableCell>
                       <TableCell className="dark:text-gray-300">
                         <div>
-                          <div className="font-medium">{item.product_name}</div>
+                          <div className="font-medium">{item.product_name || tComun('productoNoEncontrado')}</div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
-                            Cantidad original: {item.original_quantity}
+                            {t('cantidadOriginal', { n: item.original_quantity })}
                           </div>
                           {item.track_serial && item.available_serials.length > 0 && (
                             <Badge variant="secondary" className="mt-1 text-xs">
-                              Serializado
+                              {t('serializado')}
                             </Badge>
                           )}
                         </div>
@@ -424,7 +417,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                           disabled={!item.selected || loadingReasons}
                         >
                           <SelectTrigger className="w-44 dark:bg-gray-700 dark:border-gray-600">
-                            <SelectValue placeholder="Seleccionar" />
+                            <SelectValue placeholder={t('seleccionarMotivo')} />
                           </SelectTrigger>
                           <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                             {returnReasons.length > 0 ? (
@@ -440,12 +433,12 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                               ))
                             ) : (
                               <>
-                                <SelectItem value="defectuoso">Producto defectuoso</SelectItem>
-                                <SelectItem value="incorrecto">Producto incorrecto</SelectItem>
-                                <SelectItem value="dañado">Producto dañado</SelectItem>
-                                <SelectItem value="no_conforme">No conforme</SelectItem>
-                                <SelectItem value="garantia">Garantía</SelectItem>
-                                <SelectItem value="otro">Otro motivo</SelectItem>
+                                <SelectItem value="defectuoso">{t('motivosRespaldo.defectuoso')}</SelectItem>
+                                <SelectItem value="incorrecto">{t('motivosRespaldo.incorrecto')}</SelectItem>
+                                <SelectItem value="dañado">{t('motivosRespaldo.danado')}</SelectItem>
+                                <SelectItem value="no_conforme">{t('motivosRespaldo.noConforme')}</SelectItem>
+                                <SelectItem value="garantia">{t('motivosRespaldo.garantia')}</SelectItem>
+                                <SelectItem value="otro">{t('motivosRespaldo.otro')}</SelectItem>
                               </>
                             )}
                           </SelectContent>
@@ -463,14 +456,14 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center space-x-2 dark:text-white">
                 <CreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                <span>Configuración del Reembolso</span>
+                <span>{t('configuracionReembolso')}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <Label className="dark:text-gray-300">Método de Reembolso</Label>
+                    <Label className="dark:text-gray-300">{t('metodoReembolso')}</Label>
                     <Select value={refundMethod} onValueChange={(value) => setRefundMethod(value as 'cash' | 'credit_note' | 'original_method')}>
                       <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600">
                         <SelectValue />
@@ -479,19 +472,19 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                         <SelectItem value="cash">
                           <div className="flex items-center space-x-2">
                             <DollarSign className="h-4 w-4" />
-                            <span>Reembolso en Efectivo</span>
+                            <span>{t('reembolsoEfectivo')}</span>
                           </div>
                         </SelectItem>
                         <SelectItem value="credit_note">
                           <div className="flex items-center space-x-2">
                             <CreditCard className="h-4 w-4" />
-                            <span>Nota de Crédito</span>
+                            <span>{t('notaCredito')}</span>
                           </div>
                         </SelectItem>
                         <SelectItem value="original_method">
                           <div className="flex items-center space-x-2">
                             <Calculator className="h-4 w-4" />
-                            <span>Método Original</span>
+                            <span>{t('metodoOriginal')}</span>
                           </div>
                         </SelectItem>
                       </SelectContent>
@@ -499,9 +492,9 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                   </div>
 
                   <div>
-                    <Label className="dark:text-gray-300">Motivo General *</Label>
+                    <Label className="dark:text-gray-300">{t('motivoGeneral')}</Label>
                     <RichTextEditor
-                      placeholder="Describir el motivo general de la devolución..."
+                      placeholder={t('motivoGeneralPlaceholder')}
                       value={reason}
                       onChange={(html) => setReason(html)}
                       className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -509,9 +502,9 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                   </div>
 
                   <div>
-                    <Label className="dark:text-gray-300">Notas Adicionales</Label>
+                    <Label className="dark:text-gray-300">{t('notasAdicionales')}</Label>
                     <RichTextEditor
-                      placeholder="Notas adicionales (opcional)..."
+                      placeholder={t('notasPlaceholder')}
                       value={notes}
                       onChange={(html) => setNotes(html)}
                       className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -523,22 +516,22 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                 <div className="space-y-4">
                   <Card className="dark:bg-gray-900 dark:border-gray-600">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-lg dark:text-white">Resumen</CardTitle>
+                      <CardTitle className="text-lg dark:text-white">{t('resumen')}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="flex justify-between">
-                        <span className="dark:text-gray-300">Items seleccionados:</span>
+                        <span className="dark:text-gray-300">{t('itemsSeleccionados')}</span>
                         <span className="font-medium dark:text-white">{selectedItemsCount}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="dark:text-gray-300">Cantidad total:</span>
+                        <span className="dark:text-gray-300">{t('cantidadTotal')}</span>
                         <span className="font-medium dark:text-white">
                           {returnItems.filter(item => item.selected).reduce((sum, item) => sum + item.return_quantity, 0)}
                         </span>
                       </div>
                       <Separator className="dark:bg-gray-700" />
                       <div className="flex justify-between text-lg">
-                        <span className="font-medium dark:text-white">Total Reembolso:</span>
+                        <span className="font-medium dark:text-white">{t('totalReembolso')}</span>
                         <span className="font-bold text-red-600 dark:text-red-400">
                           {formatear(totalRefund)}
                         </span>
@@ -552,14 +545,14 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                       onClick={onBack}
                       className="flex-1 dark:border-gray-600 dark:text-gray-300"
                     >
-                      Cancelar
+                      {tComun('cancelar')}
                     </Button>
                     <Button
                       onClick={handleSubmit}
                       disabled={loading || selectedItemsCount === 0}
                       className="flex-1 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
                     >
-                      {loading ? 'Procesando...' : 'Procesar Devolución'}
+                      {loading ? t('procesando') : tComun('procesarDevolucion')}
                     </Button>
                   </div>
                 </div>

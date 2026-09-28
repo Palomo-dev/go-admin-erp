@@ -280,7 +280,7 @@ export class DevolucionesService {
               track_serial: product.track_serial || false
             } : {
               id: 0,
-              name: 'Producto no encontrado',
+              name: '', // la pantalla muestra «producto no encontrado» traducido
               sku: '',
               image: null,
               track_serial: false
@@ -307,7 +307,7 @@ export class DevolucionesService {
           tax_total: parseFloat(sale.tax_total || '0'),
           status: sale.status,
           payment_status: sale.payment_status,
-          payment_method: invoice?.payment_method || 'No especificado',
+          payment_method: invoice?.payment_method || undefined, // sin método: la pantalla lo traduce
           invoice_number: invoice?.number || null,
           sale_date: sale.sale_date,
           customer: customer ? {
@@ -496,7 +496,7 @@ export class DevolucionesService {
         tax_total: Number(saleData.tax_total),
         status: saleData.status,
         payment_status: saleData.payment_status,
-        payment_method: invoice?.payment_method || 'No especificado',
+        payment_method: invoice?.payment_method || undefined, // sin método: la pantalla lo traduce
         invoice_number: invoice?.number || null,
         sale_date: saleData.sale_date,
         items: (saleItems || []).map((item) => {
@@ -513,7 +513,7 @@ export class DevolucionesService {
               track_serial: product.track_serial || false
             } : {
               id: 0,
-              name: 'Producto no encontrado',
+              name: '', // la pantalla muestra «producto no encontrado» traducido
               sku: '',
               image: null,
               track_serial: false

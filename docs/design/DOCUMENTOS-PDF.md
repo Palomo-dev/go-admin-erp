@@ -678,3 +678,24 @@ Lo que queda fuera del motor y por qué:
   parqueadero, reserva de PMS, guía de envío, propuesta del CRM y etiquetas de producto (§9).
 - El PDF/XML de Factus de la factura electrónica (`/app/finanzas/facturacion-electronica`) es el
   archivo del proveedor tecnológico, no una plantilla nuestra: se deja.
+
+## 12. Datos del PDF de factura y recibo de caja (2026-09-28)
+
+Errores que el dueño vio en el PDF de una factura del POS y su recibo de caja (organización de
+prueba). Se corrigen en los cargadores y en la presentación, sin cambiar la maqueta:
+
+| # | Antes | Ahora |
+|---|---|---|
+| 1 | «Medio de pago: cash»: el código crudo en los metadatos de la factura | Nombre del método en todos los cargadores (factura, recibo, egreso, cotización, compra, cierre y arqueo), de la misma fuente que el resto de la aplicación: el nombre propio de la organización (`organization_payment_methods.settings.display_name`, vía `nombreVisibleMetodo`); si no, el traducido al idioma del documento (`documentos.metodosPago`); si no, el del catálogo global `payment_methods.name`; el código solo si no hay nada (`cargarNombresMetodos` + `rotuloMetodo` en `server/base.ts`) |
+| 2 | La sucursal salía dos veces: en su tarjeta y otra vez en la fila de metadatos | Una sola vez, en la tarjeta. Se quitó el metadato `sucursal` de factura, nota, recibo, egreso, cotización, documento soporte y cierre de caja (la factura de compra conserva «Sucursal que recibe», que dice otra cosa) |
+| 3 | «Responsabilidades fiscales: R-99-PN» y sin documento del cliente | Documento con sigla y número legibles («CC 1.234.567», «NIT 900.123.456-7»; puntos de miles solo en tipos colombianos). Sin número no se pinta el tipo (ni en carta ni en el ticket de 80 mm). R-99-PN se omite en personas naturales; las demás responsabilidades salen con su nombre (`documentos.responsabilidades`, nombres del catálogo `dian_fiscal_responsibilities`), también las del emisor |
+| 4 | Bajo el nombre de la empresa solo el correo | La plantilla ya pintaba NIT con DV, dirección, ciudad y teléfono cuando la organización los tiene; la organización de prueba no los tiene (verificado con el MCP: `nit`, `tax_id`, `address`, `city` y `phone` vacíos, igual que su sucursal). Nuevo: la ciudad cae al municipio DIAN (`organizations.municipality_id`) si `city` está vacía, y el NIT sale con puntos de miles. Sin NIT no aparece nada |
+| 5 | «Factura generada automáticamente desde POS - Venta #<uuid>»: el UUID interno | «Venta registrada en el punto de venta (POS).» (y «…desde una mesa» para el patrón de mesas). `sales` no tiene consecutivo propio (el número visible de la venta ES el de su factura), así que otra mención «Venta #<uuid>» pasa a «Venta del POS». Solo cambia la presentación (`notasPresentables`): la nota guardada no se toca |
+| 6 | Firma «Entrega» del recibo en blanco | Nombre y documento del cliente pre-impresos sobre la raya de «Entrega» (`payload.firmante`); en el comprobante de egreso, el proveedor sobre «Recibe». El rollo de 80 mm no cambia |
+
+**Pendiente de decisión del dueño — número del recibo de caja.** Hoy el recibo sale como
+`RC-<primeros 8 caracteres del id del pago>` (p. ej. «RC-1A2B3C4D») y el comprobante de egreso como
+`CE-…`: no es un consecutivo, es un derivado del UUID. `payments` no tiene columna de consecutivo.
+Un consecutivo real por organización (y quizá por sucursal) necesita una decisión de producto
+(¿numeración propia para recibos? ¿resolución? ¿qué pasa con los pagos ya emitidos?) y una
+migración; no se cambió en esta entrega.

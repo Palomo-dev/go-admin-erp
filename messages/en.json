@@ -11596,6 +11596,40 @@
       "sinPermiso": "You don’t have permission to view this document.",
       "papelNoDisponible": "This document can’t be printed on 80 mm roll paper.",
       "pdfNoDisponible": "We can’t generate the PDF right now. Please try again in a few minutes."
+    },
+    "tiposDocumento": {
+      "cc": "CC",
+      "ce": "CE",
+      "ti": "TI",
+      "rc": "RC",
+      "te": "TE",
+      "pep": "PEP",
+      "nuip": "NUIP",
+      "die": "DIE",
+      "nit": "NIT",
+      "rut": "RUT",
+      "dni": "DNI",
+      "nit_ext": "Foreign NIT",
+      "passport": "Passport",
+      "national_id": "National ID",
+      "foreign_id": "Foreign ID",
+      "tax_id": "Tax ID",
+      "company_reg": "Company reg.",
+      "other": "ID"
+    },
+    "responsabilidades": {
+      "O-13": "Large taxpayer",
+      "O-15": "Self-withholding agent",
+      "O-23": "VAT withholding agent",
+      "O-47": "Simple tax regime",
+      "O-48": "VAT registered",
+      "O-49": "Not VAT registered",
+      "R-99-PN": "Not responsible (individual)"
+    },
+    "notasAutomaticas": {
+      "pos": "Sale recorded at the point of sale (POS).",
+      "mesa": "Sale recorded from a table.",
+      "ventaPos": "POS sale"
     }
   },
   "posVentas": {

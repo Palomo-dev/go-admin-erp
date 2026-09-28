@@ -11596,6 +11596,40 @@
       "sinPermiso": "No tienes permiso para ver este documento.",
       "papelNoDisponible": "Este documento no se puede imprimir en rollo de 80 mm.",
       "pdfNoDisponible": "En este momento no podemos generar el PDF. Inténtalo de nuevo en unos minutos."
+    },
+    "tiposDocumento": {
+      "cc": "CC",
+      "ce": "CE",
+      "ti": "TI",
+      "rc": "RC",
+      "te": "TE",
+      "pep": "PEP",
+      "nuip": "NUIP",
+      "die": "DIE",
+      "nit": "NIT",
+      "rut": "RUT",
+      "dni": "DNI",
+      "nit_ext": "NIT ext.",
+      "passport": "Pasaporte",
+      "national_id": "Doc. nacional",
+      "foreign_id": "Doc. extranjero",
+      "tax_id": "ID tributario",
+      "company_reg": "Reg. mercantil",
+      "other": "Doc."
+    },
+    "responsabilidades": {
+      "O-13": "Gran contribuyente",
+      "O-15": "Autorretenedor",
+      "O-23": "Agente de retención IVA",
+      "O-47": "Régimen simple de tributación",
+      "O-48": "Responsable de IVA",
+      "O-49": "No responsable de IVA",
+      "R-99-PN": "No responsable (persona natural)"
+    },
+    "notasAutomaticas": {
+      "pos": "Venta registrada en el punto de venta (POS).",
+      "mesa": "Venta registrada desde una mesa.",
+      "ventaPos": "Venta del POS"
     }
   },
   "posVentas": {

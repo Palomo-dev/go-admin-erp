@@ -26,6 +26,8 @@ jest.mock('@/lib/services/monedaOrganizacion', () => ({
 }));
 
 import { armarDocumento } from '../server/motor';
+import { payloadTicketVenta } from '../render/termico';
+import { cargarTextos } from '../textos';
 
 const ORG = 7;
 const AJENA = 99;
@@ -137,8 +139,10 @@ describe('factura de venta', () => {
     permisos.add('finance.view');
     const s = sesion();
     await pedir(s, 'factura-venta', F1);
+    // Catálogos globales sin `organization_id`: impuestos, perfiles y `payment_methods` (el nombre propio
+    // del método, `organization_payment_methods`, sí va con la organización).
     const sinOrganizacion = s.supabase.consultas
-      .filter((c) => !['organizations', 'tax_templates', 'profiles'].includes(c.tabla))
+      .filter((c) => !['organizations', 'tax_templates', 'profiles', 'payment_methods'].includes(c.tabla))
       .filter((c) => !c.filtros.some(([col, , v]) => col === 'organization_id' && v === ORG));
     expect(sinOrganizacion).toEqual([]);
   });
@@ -512,6 +516,145 @@ describe('cotización, nota crédito y documento soporte: aislamiento, permisos 
     const s = sesion(tablasExtendidas());
     expect(await codigoDe(pedir(s, 'documento-soporte', DS1))).toBe('403 PERMISSION_REQUIRED');
     expect(s.supabase.consultas.some((c) => c.tabla === 'support_documents')).toBe(false);
+  });
+});
+
+/**
+ * Datos del PDF que el dueño vio mal en una factura del POS y su recibo de
+ * caja (2026-09-28): método de pago crudo, sucursal repetida, documento del
+ * cliente ausente con «R-99-PN» a la vista, emisor incompleto, UUID interno en
+ * las notas y la firma «Entrega» en blanco.
+ */
+describe('datos del PDF de factura y recibo', () => {
+  const F_POS = '13131313-1313-4131-8131-131313131313';
+  const P_POS = '14141414-1414-4141-8141-141414141414';
+  const P_QR = '15151515-1515-4151-8151-151515151515';
+  const UUID_VENTA = 'a0a0a0a0-3237-4f70-9bcb-0000000000a1';
+
+  type Tablas = ReturnType<typeof datos> & Record<string, Array<Record<string, unknown>>>;
+
+  function tablasPos(clientePos: Record<string, unknown> = { first_name: 'Ana', last_name: 'Ruiz', full_name: 'Ana Ruiz', identification_type: 'cc', doc_type: 'cc', identification_number: '1234567', doc_number: '1234567', dv: null, customer_type: 'person', fiscal_responsibilities: ['R-99-PN'] }): Tablas {
+    const t = datos() as Tablas;
+    (t.organizations[0] as Record<string, unknown>).address = 'Calle 1 # 2-3';
+    (t.organizations[0] as Record<string, unknown>).city = 'Medellín';
+    (t.organizations[0] as Record<string, unknown>).phone = '6040000000';
+    (t.organizations[0] as Record<string, unknown>).email = 'hola@example.com';
+    t.invoice_sales.push({
+      id: F_POS, organization_id: ORG, branch_id: 1, sale_id: UUID_VENTA, number: 'FACT-0007', issue_date: '2026-09-28T15:00:00Z', due_date: null,
+      currency: 'COP', subtotal: 100, tax_total: 0, total: 100, balance: 0, status: 'paid', xml_uuid: null, payment_method: 'cash',
+      notes: `Factura generada automáticamente desde POS - Venta #${UUID_VENTA}`, document_type: 'invoice', customer: clientePos, items: [item],
+    } as never);
+    t.payments.push(
+      { id: P_POS, organization_id: ORG, branch_id: 1, source: 'invoice_sales', source_id: F_POS, status: 'completed', method: 'cash', amount: 100, change_amount: 0, discount_amount: 0, currency: 'COP', reference: null, payment_date: '2026-09-28T15:00:00Z' },
+      { id: P_QR, organization_id: ORG, branch_id: 1, source: 'invoice_sales', source_id: F_POS, status: 'completed', method: '002', amount: 0, change_amount: 0, discount_amount: 0, currency: 'COP', reference: null, payment_date: '2026-09-28T15:00:00Z' },
+    );
+    t.payment_methods = [{ code: 'cash', name: 'Efectivo' }, { code: '002', name: 'p. QR' }, { code: 'nequi', name: 'Nequi' }];
+    t.organization_payment_methods = [
+      { organization_id: ORG, payment_method_code: 'nequi', settings: { display_name: 'Nequi del local' } },
+      { organization_id: AJENA, payment_method_code: 'cash', settings: { display_name: 'Nombre de otra organización' } },
+    ];
+    return t;
+  }
+
+  it('1. el medio de pago sale con su nombre en el idioma del documento, nunca el código crudo', async () => {
+    permisos.add('finance.view');
+    const es = await pedir(sesion(tablasPos()), 'factura-venta', F_POS);
+    expect(es.payload.metadatos.find((c) => c.clave === 'medioPago')?.valor).toEqual({ tipo: 'texto', v: 'Efectivo' });
+    // Código propio sin traducción: el nombre del catálogo global. El nombre de otra organización no se usa.
+    const pagos = es.payload.secciones.find((s) => s.titulo === 'pagos');
+    expect(pagos?.filas.map((f) => f[1])).toEqual(['Efectivo', 'p. QR']);
+    expect(es.html).not.toMatch(/>cash</);
+    const en = await pedir(sesion(tablasPos()), 'factura-venta', F_POS, { idioma: 'en' });
+    expect(en.payload.metadatos.find((c) => c.clave === 'medioPago')?.valor).toEqual({ tipo: 'texto', v: 'Cash' });
+    // El nombre propio que fijó la organización manda sobre el traducido.
+    const t = tablasPos();
+    (t.invoice_sales.find((f) => f.id === F_POS) as Record<string, unknown>).payment_method = 'nequi';
+    const propio = await pedir(sesion(t), 'factura-venta', F_POS);
+    expect(propio.payload.metadatos.find((c) => c.clave === 'medioPago')?.valor).toEqual({ tipo: 'texto', v: 'Nequi del local' });
+    // Recibo de caja: igual.
+    const recibo = await pedir(sesion(tablasPos()), 'recibo-caja', P_POS);
+    expect(recibo.payload.metadatos.find((c) => c.clave === 'medioPago')?.valor).toEqual({ tipo: 'texto', v: 'Efectivo' });
+  });
+
+  it('2. la sucursal sale una sola vez (su tarjeta), en la factura y en el recibo', async () => {
+    permisos.add('finance.view');
+    for (const [tipo, id] of [['factura-venta', F_POS], ['recibo-caja', P_POS]] as const) {
+      const { payload, html } = await pedir(sesion(tablasPos()), tipo, id);
+      expect(payload.metadatos.some((c) => c.clave === 'sucursal')).toBe(false);
+      expect(payload.sucursal?.nombre).toBe('Sucursal Norte');
+      expect(html.split('Sucursal Norte').length - 1).toBe(1);
+    }
+  });
+
+  it('3. cliente: documento con tipo y número legibles; R-99-PN no se muestra en persona natural; sin número no hay «CC» suelto', async () => {
+    permisos.add('finance.view');
+    const persona = await pedir(sesion(tablasPos()), 'factura-venta', F_POS);
+    expect(persona.html).toContain('CC 1.234.567');
+    expect(persona.payload.contraparte?.responsabilidades).toEqual([]);
+    expect(persona.html).not.toContain('R-99-PN');
+    expect(persona.html).not.toContain('No responsable');
+
+    const empresa = await pedir(sesion(tablasPos({ company_name: 'Compradora S.A.S.', identification_type: 'NIT', doc_type: 'NIT', identification_number: '900123456', doc_number: '900123456', dv: 7, customer_type: 'company', fiscal_responsibilities: ['O-13'] })), 'factura-venta', F_POS);
+    expect(empresa.html).toContain('NIT 900.123.456-7');
+    // Responsabilidad con su nombre, no el código.
+    expect(empresa.html).toContain('Responsabilidades fiscales: Gran contribuyente');
+
+    const sinNumero = await pedir(sesion(tablasPos({ full_name: 'Consumidor', identification_type: 'cc', doc_type: 'cc', identification_number: null, doc_number: null, customer_type: 'person', fiscal_responsibilities: ['R-99-PN'] })), 'factura-venta', F_POS);
+    expect(sinNumero.payload.contraparte).toMatchObject({ tipoDocumento: null, numeroDocumento: null });
+    expect(sinNumero.html).not.toMatch(/<p>\s*CC/i);
+    // El ticket de 80 mm tampoco recibe un tipo sin número.
+    const t = await cargarTextos('es');
+    expect(payloadTicketVenta(sinNumero.payload, t).customerDocType).toBeUndefined();
+    expect(payloadTicketVenta(persona.payload, t)).toMatchObject({ customerDocType: 'CC', customerDocNumber: '1.234.567' });
+  });
+
+  it('4. emisor: NIT con DV, dirección, ciudad y teléfono cuando existen; sin NIT no se inventa', async () => {
+    permisos.add('finance.view');
+    const { html } = await pedir(sesion(tablasPos()), 'factura-venta', F_POS);
+    expect(html).toContain('NIT 900.123.456-7');
+    expect(html).toContain('Calle 1 # 2-3 · Medellín');
+    expect(html).toContain('6040000000 · hola@example.com');
+    // Responsabilidad del emisor con nombre legible.
+    expect(html).toContain('Gran contribuyente');
+    expect(html).not.toContain('O-13');
+
+    const t = tablasPos();
+    Object.assign(t.organizations[0], { nit: '', tax_id: null, address: '', city: '', phone: '', municipality_id: 'mun-1' });
+    t.municipalities = [{ id: 'mun-1', name: 'Envigado', state_name: 'Antioquia' }];
+    const sinNit = await pedir(sesion(t), 'factura-venta', F_POS);
+    expect(sinNit.payload.emisor).toMatchObject({ nit: null, direccion: null, telefono: null, ciudad: 'Envigado, Antioquia' });
+    expect(sinNit.html).not.toMatch(/NIT\s*-?\d/);
+  });
+
+  it('5. las notas no exponen el UUID interno de la venta (sin tocar lo guardado)', async () => {
+    permisos.add('finance.view');
+    const t = tablasPos();
+    const { payload, html } = await pedir(sesion(t), 'factura-venta', F_POS);
+    expect(payload.notas).toBe('Venta registrada en el punto de venta (POS).');
+    expect(html).not.toContain(UUID_VENTA);
+    expect((t.invoice_sales.find((f) => f.id === F_POS) as Record<string, unknown>).notes).toContain(UUID_VENTA);
+
+    const mesa = tablasPos();
+    (mesa.invoice_sales.find((f) => f.id === F_POS) as Record<string, unknown>).notes = `Factura generada desde Mesa - Venta #${UUID_VENTA}`;
+    expect((await pedir(sesion(mesa), 'factura-venta', F_POS)).payload.notas).toBe('Venta registrada desde una mesa.');
+
+    const libre = tablasPos();
+    (libre.invoice_sales.find((f) => f.id === F_POS) as Record<string, unknown>).notes = `Cambio de talla. Venta #${UUID_VENTA.toUpperCase()} revisada`;
+    const en = await pedir(sesion(libre), 'factura-venta', F_POS, { idioma: 'en' });
+    expect(en.payload.notas).toBe('Cambio de talla. POS sale revisada');
+  });
+
+  it('6. recibo de caja: nombre y documento del cliente pre-impresos sobre la raya de «Entrega»; en el egreso, el proveedor en «Recibe»', async () => {
+    permisos.add('finance.view');
+    const { payload, html } = await pedir(sesion(tablasPos()), 'recibo-caja', P_POS);
+    expect(payload.firmante).toMatchObject({ caja: 'entrega', parte: { nombre: 'Ana Ruiz', numeroDocumento: '1234567' } });
+    expect(html).toMatch(/<div class="preimpreso">Ana Ruiz · CC 1\.234\.567<\/div><div class="linea">Entrega<\/div>/);
+    // Número del recibo: sigue derivado del id (el consecutivo real es una decisión pendiente).
+    expect(payload.numero).toBe(`RC-${P_POS.slice(0, 8).toUpperCase()}`);
+
+    const egreso = await pedir(sesion(tablasPos()), 'comprobante-egreso', P2);
+    expect(egreso.payload.firmante).toMatchObject({ caja: 'recibe', parte: { nombre: 'Proveedor Uno' } });
+    expect(egreso.html).toMatch(/<div class="preimpreso">Proveedor Uno[^<]*<\/div><div class="linea">Recibe<\/div>/);
   });
 });
 

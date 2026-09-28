@@ -81,6 +81,74 @@ export function nitConDv(nit: string | null, dv: string | null): string | null {
   return dv !== null && dv !== '' ? `${nit}-${dv}` : nit;
 }
 
+/**
+ * Tipos de documento colombianos cuyo número se escribe con puntos de miles
+ * («1.234.567», «900.123.456-7»): los códigos de `country_identification_types`
+ * (COL) y los numéricos de la DIAN. Un RFC, un DNI o un pasaporte se dejan
+ * como vienen.
+ */
+const TIPOS_CON_MILES = new Set(['cc', 'ce', 'ti', 'rc', 'te', 'nuip', 'nit', '11', '12', '13', '21', '22', '31', '91']);
+
+/** «1234567» → «1.234.567». Si no son solo dígitos, igual que vino. */
+export function agruparMiles(numero: string): string {
+  const limpio = numero.trim();
+  return /^\d{4,}$/.test(limpio) ? limpio.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : limpio;
+}
+
+/** Sigla del tipo de documento en el idioma del documento (`documentos.tiposDocumento`), o el código en mayúsculas. */
+export function siglaDocumento(tipo: string, t: Traductor): string {
+  const codigo = tipo.trim().toLowerCase();
+  const clave = `tiposDocumento.${codigo}`;
+  const traducida = t(clave);
+  return traducida && traducida !== clave ? traducida : tipo.trim().toUpperCase();
+}
+
+/**
+ * Documento de una persona o empresa: «CC 1.234.567», «NIT 900.123.456-7».
+ * Sin número no hay documento (null): nunca un tipo suelto.
+ */
+export function documentoLegible(
+  tipo: string | null | undefined,
+  numero: string | null | undefined,
+  dv: string | null | undefined,
+  t: Traductor,
+): string | null {
+  const conDv = numeroDocumentoLegible(tipo, numero, dv);
+  if (!conDv) return null;
+  const codigo = (tipo ?? '').trim();
+  return [codigo ? siglaDocumento(codigo, t) : null, conDv].filter(Boolean).join(' ');
+}
+
+/** Solo el número (con puntos de miles si el tipo es colombiano, o sin tipo) y el DV. */
+export function numeroDocumentoLegible(
+  tipo: string | null | undefined,
+  numero: string | null | undefined,
+  dv: string | null | undefined,
+): string | null {
+  const n = (numero ?? '').trim();
+  if (!n) return null;
+  const codigo = (tipo ?? '').trim().toLowerCase();
+  const cifras = !codigo || TIPOS_CON_MILES.has(codigo) ? agruparMiles(n) : n;
+  return nitConDv(cifras, dv ?? null) ?? cifras;
+}
+
+/** NIT del emisor con puntos de miles y DV (`900.123.456-7`); null sin NIT. */
+export function nitEmisor(nit: string | null, dv: string | null): string | null {
+  return nit ? nitConDv(agruparMiles(nit), dv) : null;
+}
+
+/**
+ * Responsabilidades fiscales con su nombre legible (`documentos.responsabilidades.<código>`,
+ * nombres del catálogo `dian_fiscal_responsibilities`); un código sin nombre se deja tal cual.
+ */
+export function nombresResponsabilidades(codigos: string[], t: Traductor): string[] {
+  return codigos.map((codigo) => {
+    const clave = `responsabilidades.${codigo.trim().toUpperCase()}`;
+    const nombre = t(clave);
+    return nombre && nombre !== clave ? nombre : codigo;
+  });
+}
+
 export function claseTono(tono: Tono): string {
   return `tono-${tono}`;
 }

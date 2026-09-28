@@ -25,6 +25,7 @@ import {
   noEncontrado,
   num,
   rotuloMetodo,
+  cargarNombresMetodos,
   textoLegal,
   texto,
   uno,
@@ -129,10 +130,11 @@ export async function cargarComprobantePago(
   const esEgreso = ORIGENES_EGRESO.has(pago.source ?? '');
   if ((tipo === 'comprobante-egreso') !== esEgreso) throw noEncontrado();
 
-  const [base, moneda, abonado] = await Promise.all([
+  const [base, moneda, abonado, nombresMetodos] = await Promise.all([
     cargarBase(sesion, pago.branch_id),
     resolverContextoMoneda(sesion.supabase, sesion.organizationId, pago.currency),
     documentoAbonado(sesion, pago),
+    cargarNombresMetodos(sesion, [pago.method]),
   ]);
 
   const aplicado = valorAplicado(pago);
@@ -141,11 +143,11 @@ export async function cargarComprobantePago(
 
   const metadatos: Campo[] = [
     { clave: 'fechaPago', valor: { tipo: 'instanteHora', v: pago.payment_date ?? pago.created_at } },
-    { clave: 'medioPago', valor: { tipo: 'texto', v: rotuloMetodo(pago.method, t) } },
+    { clave: 'medioPago', valor: { tipo: 'texto', v: rotuloMetodo(pago.method, t, nombresMetodos) } },
     { clave: 'moneda', valor: { tipo: 'texto', v: moneda.code } },
   ];
   if (texto(pago.reference)) metadatos.push({ clave: 'referencia', valor: { tipo: 'texto', v: texto(pago.reference) } });
-  if (base.sucursal) metadatos.push({ clave: 'sucursal', valor: { tipo: 'texto', v: base.sucursal.nombre } });
+  // La sucursal va una sola vez: en su tarjeta (`payload.sucursal`), no repetida en los metadatos.
 
   const referencia: Campo[] = [];
   if (abonado) {
@@ -165,6 +167,7 @@ export async function cargarComprobantePago(
 
   const anulado = pago.status !== 'completed';
   const contraparte = abonado?.contraparte ?? null;
+  const parte = contraparte ? { ...contraparte, rol: esEgreso ? 'proveedor' as const : 'cliente' as const } : null;
 
   return {
     tipo,
@@ -176,7 +179,7 @@ export async function cargarComprobantePago(
     bandas: [],
     emisor: base.emisor,
     sucursal: base.sucursal,
-    contraparte: contraparte ? { ...contraparte, rol: esEgreso ? 'proveedor' : 'cliente' } : null,
+    contraparte: parte,
     referencia,
     metadatos,
     resumen: [],
@@ -186,6 +189,8 @@ export async function cargarComprobantePago(
     notas: null,
     terminos: null,
     firma: 'entregaRecibe',
+    // Recibo: el cliente ENTREGA el dinero; egreso: el proveedor lo RECIBE. Su nombre y documento van pre-impresos.
+    firmante: parte ? { caja: esEgreso ? 'recibe' : 'entrega', parte } : null,
     pieLegal: { textos: textoLegal(base, tipo, t), resolucion: null, codigoUnico: null, qr: null },
     sobrio: false,
     moneda,

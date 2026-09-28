@@ -23,7 +23,7 @@ import { qrSvg } from '../qr';
 import { temaDocumento, type TemaDocumento } from '../tema';
 import type { Traductor } from '../textos';
 import type { Campo, DocumentoPayload, FilaTotal, LineaDocumento, SeccionTabla } from '../tipos';
-import { claseTono, htmlDeValor, nitConDv, textoDeCelda, textoDeTotal, titulo } from './comun';
+import { claseTono, documentoLegible, htmlDeValor, nitEmisor, nombresResponsabilidades, textoDeCelda, textoDeTotal, titulo } from './comun';
 
 export interface OpcionesCarta {
   papel: 'carta' | 'a4';
@@ -124,6 +124,7 @@ tfoot td { font-weight: 700; border-top: 2px solid ${tema.bordeFuerte}; }
 .firma { flex: 1; }
 .firma .linea { border-top: 1px solid ${tema.texto}; padding-top: 4px; font-size: 7.5pt; color: ${tema.textoSecundario}; }
 .firma .datos { font-size: 7pt; color: ${tema.textoTenue}; margin-top: 2px; }
+.firma .preimpreso { font-size: 8pt; font-weight: 500; color: ${tema.texto}; margin-bottom: 3px; }
 .pie-legal { margin-top: 16px; padding-top: 8px; border-top: 1px solid ${tema.borde}; font-size: 7pt; color: ${tema.textoSecundario}; break-inside: avoid; }
 .pie-legal p { margin-bottom: 3px; }
 .pie-legal .codigo-unico { font-family: 'Consolas', 'Courier New', monospace; word-break: break-all; }
@@ -138,7 +139,7 @@ function campoHtml(campo: Campo, f: Formateador, t: Traductor): string {
 function cabecera(doc: DocumentoPayload, f: Formateador, t: Traductor): string {
   const em = doc.emisor;
   const logo = dataUriImagenSeguro(em.logoDataUri);
-  const nit = nitConDv(em.nit, em.dv);
+  const nit = nitEmisor(em.nit, em.dv);
   const ubicacion = [em.direccion, em.ciudad].filter(Boolean).join(' · ');
   const contacto = [em.telefono, em.email, em.web].filter(Boolean).join(' · ');
   const razon = em.razonSocial && em.razonSocial.trim() !== em.nombre.trim() ? em.razonSocial : null;
@@ -155,7 +156,7 @@ function cabecera(doc: DocumentoPayload, f: Formateador, t: Traductor): string {
     ${ubicacion ? `<div class="emisor-dato">${e(ubicacion)}</div>` : ''}
     ${contacto ? `<div class="emisor-dato">${e(contacto)}</div>` : ''}
     ${em.actividadEconomica ? `<div class="emisor-dato">${e(t('emisor.actividad', { codigo: em.actividadEconomica }))}</div>` : ''}
-    ${em.responsabilidades.length > 0 ? `<div class="emisor-dato">${e(t('emisor.responsabilidades', { lista: em.responsabilidades.join(', ') }))}</div>` : ''}
+    ${em.responsabilidades.length > 0 ? `<div class="emisor-dato">${e(t('emisor.responsabilidades', { lista: nombresResponsabilidades(em.responsabilidades, t).join(', ') }))}</div>` : ''}
   </div>
   <div class="caja-doc">
     ${doc.sobrio ? `<div class="etiqueta-tercero">${e(t('bandas.documentoTercero'))}</div>` : ''}
@@ -177,14 +178,12 @@ function partes(doc: DocumentoPayload, t: Traductor): string {
   }
   if (doc.contraparte) {
     const c = doc.contraparte;
-    const documento = c.numeroDocumento
-      ? [c.tipoDocumento ? c.tipoDocumento.toUpperCase() : null, nitConDv(c.numeroDocumento, c.dv)].filter(Boolean).join(' ')
-      : null;
+    const documento = documentoLegible(c.tipoDocumento, c.numeroDocumento, c.dv, t);
     bloques.push(`<div class="parte"><div class="rotulo">${e(t(`partes.${c.rol}`))}</div><div class="nombre">${e(c.nombre)}</div>
       ${documento ? `<p>${e(documento)}</p>` : ''}
       ${[c.direccion, c.ciudad].filter(Boolean).length ? `<p>${e([c.direccion, c.ciudad].filter(Boolean).join(' · '))}</p>` : ''}
       ${[c.telefono, c.email].filter(Boolean).length ? `<p>${e([c.telefono, c.email].filter(Boolean).join(' · '))}</p>` : ''}
-      ${c.responsabilidades.length > 0 ? `<p>${e(t('emisor.responsabilidades', { lista: c.responsabilidades.join(', ') }))}</p>` : ''}</div>`);
+      ${c.responsabilidades.length > 0 ? `<p>${e(t('emisor.responsabilidades', { lista: nombresResponsabilidades(c.responsabilidades, t).join(', ') }))}</p>` : ''}</div>`);
   }
   return bloques.length > 0 ? `<section class="partes">${bloques.join('')}</section>` : '';
 }
@@ -242,8 +241,15 @@ function totalesHtml(totales: FilaTotal[], f: Formateador, t: Traductor): string
 function firmasHtml(doc: DocumentoPayload, t: Traductor): string {
   if (!doc.firma) return '';
   const cajas: string[] = [];
-  const caja = (rotulo: string, datos: string) =>
-    `<div class="firma"><div class="linea">${e(rotulo)}</div><div class="datos">${e(datos)}</div></div>`;
+  // Quien firma y ya se conoce (el cliente que entrega en un recibo de caja) va pre-impreso sobre la raya.
+  const f = doc.firmante ?? null;
+  const preimpreso = (lado: 'entrega' | 'recibe') => {
+    if (!f || f.caja !== lado) return '';
+    const documento = documentoLegible(f.parte.tipoDocumento, f.parte.numeroDocumento, f.parte.dv, t);
+    return `<div class="preimpreso">${e(f.parte.nombre)}${documento ? ` · ${e(documento)}` : ''}</div>`;
+  };
+  const caja = (rotulo: string, datos: string, lado?: 'entrega' | 'recibe') =>
+    `<div class="firma">${lado ? preimpreso(lado) : ''}<div class="linea">${e(rotulo)}</div><div class="datos">${e(datos)}</div></div>`;
   switch (doc.firma) {
     case 'recibido':
       cajas.push(caja(t('firmas.recibido'), t('firmas.datosRecibe')));
@@ -255,7 +261,7 @@ function firmasHtml(doc: DocumentoPayload, t: Traductor): string {
       cajas.push(caja(t('firmas.cajero'), t('firmas.datosNombre')), caja(t('firmas.supervisor'), t('firmas.datosNombre')));
       break;
     case 'entregaRecibe':
-      cajas.push(caja(t('firmas.entrega'), t('firmas.datosNombre')), caja(t('firmas.recibe'), t('firmas.datosRecibe')));
+      cajas.push(caja(t('firmas.entrega'), t('firmas.datosNombre'), 'entrega'), caja(t('firmas.recibe'), t('firmas.datosRecibe'), 'recibe'));
       break;
   }
   return `<section class="firmas">${cajas.join('')}</section>`;

@@ -250,6 +250,12 @@ export interface DocumentoPayload {
   notas: string | null;
   terminos: string | null;
   firma: Firma | null;
+  /**
+   * Quien firma y ya se conoce, pre-impreso sobre la raya de su casilla
+   * (el cliente que entrega en un recibo de caja, el proveedor que recibe en
+   * un comprobante de egreso). Opcional: sin él, la casilla va en blanco.
+   */
+  firmante?: { caja: 'entrega' | 'recibe'; parte: Contraparte } | null;
   pieLegal: PieLegal;
   /** Documento de un tercero (compra): paleta sobria en gris, no la marca. */
   sobrio: boolean;

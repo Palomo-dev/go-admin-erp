@@ -28,6 +28,7 @@ import type {
 } from '../tipos';
 import { colorHexSeguro } from '../escape';
 import { logoComoDataUri } from './logo';
+import { nombreVisibleMetodo } from '@/lib/finanzas/metodosPagoOrganizacion';
 
 /** Lo que el motor necesita de la sesión (subconjunto de `ServerOrgContext`). */
 export interface SesionDocumento {
@@ -126,6 +127,7 @@ interface FilaOrganizacion {
   fiscal_responsibilities: string[] | null;
   economic_activity: string | null;
   timezone: string | null;
+  municipality_id?: string | null;
 }
 
 /** Emisor, sucursal, zona horaria y textos legales de la organización de la sesión. */
@@ -134,7 +136,7 @@ export async function cargarBase(sesion: SesionDocumento, branchId: number | nul
   const [{ data: org, error: errorOrg }, sucursalRes, ajustesRes] = await Promise.all([
     db
       .from('organizations')
-      .select('name, legal_name, nit, tax_id, dv, address, city, state, phone, email, website, logo_url, primary_color, fiscal_responsibilities, economic_activity, timezone')
+      .select('name, legal_name, nit, tax_id, dv, address, city, state, phone, email, website, logo_url, primary_color, fiscal_responsibilities, economic_activity, timezone, municipality_id')
       .eq('id', sesion.organizationId)
       .maybeSingle(),
     branchId
@@ -148,7 +150,14 @@ export async function cargarBase(sesion: SesionDocumento, branchId: number | nul
   const s = (sucursalRes.data ?? null) as { name: string | null; address: string | null; city: string | null; phone: string | null; timezone: string | null } | null;
 
   const zona = resolveTimezoneCascade({ branchTimezone: s?.timezone ?? null, organizationTimezone: o.timezone }).timezone;
-  const ciudad = [o.city, o.state].map(texto).filter(Boolean).join(', ') || null;
+  // Ciudad del emisor: `city`/`state`; si están vacías, el municipio DIAN que eligió la organización
+  // (`municipality_id` → `municipalities`, catálogo global). Si no hay nada, no se inventa.
+  let ciudad = [o.city, o.state].map(texto).filter(Boolean).join(', ') || null;
+  if (!ciudad && texto(o.municipality_id)) {
+    const { data: municipio } = await db.from('municipalities').select('name, state_name').eq('id', o.municipality_id).maybeSingle();
+    const m = municipio as { name: string | null; state_name: string | null } | null;
+    ciudad = m ? [m.name, m.state_name].map(texto).filter(Boolean).join(', ') || null : null;
+  }
 
   const emisor: Emisor = {
     nombre: texto(o.name) ?? texto(o.legal_name) ?? '',
@@ -210,25 +219,44 @@ export interface FilaCliente {
   phone?: string | null;
   email?: string | null;
   fiscal_responsibilities?: string[] | null;
+  customer_type?: string | null;
 }
 
 export const SELECT_CLIENTE =
-  'full_name, company_name, identification_type, identification_number, doc_type, doc_number, dv, address, city, phone, email, fiscal_responsibilities';
+  'full_name, company_name, identification_type, identification_number, doc_type, doc_number, dv, address, city, phone, email, fiscal_responsibilities, customer_type';
+
+/**
+ * «R-99-PN» es «no responsable (persona natural)»: en el documento de una
+ * persona natural no aporta nada y se omite. Las demás responsabilidades se
+ * conservan (el renderizador las nombra con `documentos.responsabilidades`).
+ */
+export const NO_RESPONSABLE_PN = 'R-99-PN';
+
+function responsabilidadesVisibles(codigos: Array<string | null> | null | undefined, esPersona: boolean): string[] {
+  return (codigos ?? [])
+    .map(texto)
+    .filter((x): x is string => !!x)
+    .filter((c) => !(esPersona && c.toUpperCase() === NO_RESPONSABLE_PN));
+}
 
 export function contraparteCliente(c: FilaCliente | null, rol: Contraparte['rol'] = 'cliente'): Contraparte | null {
   if (!c) return null;
   const nombre = texto(c.company_name) ?? texto(c.full_name) ?? [texto(c.first_name), texto(c.last_name)].filter(Boolean).join(' ');
+  // `doc_type`/`doc_number` son columnas GENERATED de `identification_*`: se leen ambas por si una fila vieja no las tiene.
+  const numeroDocumento = texto(c.doc_number) ?? texto(c.identification_number);
+  const esPersona = texto(c.customer_type)?.toLowerCase() !== 'company' && !texto(c.company_name);
   return {
     rol,
     nombre: nombre || '—',
-    tipoDocumento: texto(c.doc_type) ?? texto(c.identification_type),
-    numeroDocumento: texto(c.doc_number) ?? texto(c.identification_number),
-    dv: c.dv === null || c.dv === undefined ? null : String(c.dv),
+    // Sin número no hay documento que mostrar: nada de un «CC» suelto.
+    tipoDocumento: numeroDocumento ? texto(c.doc_type) ?? texto(c.identification_type) : null,
+    numeroDocumento,
+    dv: numeroDocumento && c.dv !== null && c.dv !== undefined ? String(c.dv) : null,
     direccion: texto(c.address),
     ciudad: texto(c.city),
     telefono: texto(c.phone),
     email: texto(c.email),
-    responsabilidades: (c.fiscal_responsibilities ?? []).map(texto).filter((x): x is string => !!x),
+    responsabilidades: responsabilidadesVisibles(c.fiscal_responsibilities, esPersona),
   };
 }
 
@@ -337,10 +365,57 @@ export function claveMetodo(metodo: string | null | undefined): string {
   return METODOS_CONOCIDOS.has(m) ? `metodosPago.${m}` : '';
 }
 
-/** Rótulo del método: traducido si es conocido; si no, el código tal cual. */
-export function rotuloMetodo(metodo: string | null | undefined, t: Traductor): string {
-  const clave = claveMetodo(metodo);
-  return clave ? t(clave) : texto(metodo) ?? '—';
+/**
+ * Nombres de los métodos de pago de la organización, de la fuente única que
+ * usa el resto de la aplicación (`paymentMethodHelper`): el nombre propio que
+ * la organización fijó (`organization_payment_methods.settings.display_name`,
+ * vía `nombreVisibleMetodo`) y el del catálogo global `payment_methods.name`.
+ */
+export interface NombresMetodos {
+  propios: Map<string, string>;
+  catalogo: Map<string, string>;
+}
+
+export const SIN_NOMBRES_METODOS: NombresMetodos = { propios: new Map(), catalogo: new Map() };
+
+/** Lee los nombres de los códigos pedidos (dos consultas pequeñas; la de la organización, con su filtro). */
+export async function cargarNombresMetodos(sesion: SesionDocumento, codigos: Array<string | null | undefined>): Promise<NombresMetodos> {
+  const lista = [...new Set(codigos.map(texto).filter((c): c is string => !!c))];
+  if (lista.length === 0) return SIN_NOMBRES_METODOS;
+  const [propiosRes, catalogoRes] = await Promise.all([
+    sesion.supabase
+      .from('organization_payment_methods')
+      .select('payment_method_code, settings')
+      .eq('organization_id', sesion.organizationId)
+      .in('payment_method_code', lista),
+    sesion.supabase.from('payment_methods').select('code, name').in('code', lista),
+  ]);
+  const propios = new Map<string, string>();
+  for (const f of (propiosRes.data ?? []) as Array<{ payment_method_code: string; settings: unknown }>) {
+    const nombre = nombreVisibleMetodo(f.settings, null, '');
+    if (nombre) propios.set(f.payment_method_code, nombre);
+  }
+  const catalogo = new Map<string, string>();
+  for (const f of (catalogoRes.data ?? []) as Array<{ code: string; name: string | null }>) {
+    const nombre = texto(f.name);
+    if (nombre) catalogo.set(f.code, nombre);
+  }
+  return { propios, catalogo };
+}
+
+/**
+ * Rótulo del método (nunca el código crudo si hay nombre): el nombre propio de
+ * la organización; si no, el traducido al idioma del documento
+ * (`documentos.metodosPago`); si no, el del catálogo global; si no, el código.
+ */
+export function rotuloMetodo(metodo: string | null | undefined, t: Traductor, nombres: NombresMetodos = SIN_NOMBRES_METODOS): string {
+  const codigo = texto(metodo);
+  if (!codigo) return t('metodosPago.other');
+  const propio = nombres.propios.get(codigo);
+  if (propio) return propio;
+  const clave = claveMetodo(codigo);
+  if (clave) return t(clave);
+  return nombres.catalogo.get(codigo) ?? codigo;
 }
 
 export interface FilaPago {
@@ -358,7 +433,7 @@ export function valorAplicado(p: FilaPago): number {
   return num(p.amount) - num(p.change_amount);
 }
 
-export function seccionPagos(pagos: FilaPago[], t: Traductor): SeccionTabla {
+export function seccionPagos(pagos: FilaPago[], t: Traductor, nombres: NombresMetodos = SIN_NOMBRES_METODOS): SeccionTabla {
   return {
     titulo: 'pagos',
     columnas: [
@@ -367,7 +442,7 @@ export function seccionPagos(pagos: FilaPago[], t: Traductor): SeccionTabla {
       { clave: 'referencia', tipo: 'texto' },
       { clave: 'valor', tipo: 'dinero' },
     ],
-    filas: pagos.map((p) => [p.payment_date ?? p.created_at ?? null, rotuloMetodo(p.method, t), texto(p.reference), valorAplicado(p)]),
+    filas: pagos.map((p) => [p.payment_date ?? p.created_at ?? null, rotuloMetodo(p.method, t, nombres), texto(p.reference), valorAplicado(p)]),
   };
 }
 
@@ -415,6 +490,26 @@ export async function entornoFacturacion(sesion: SesionDocumento): Promise<'prod
     .maybeSingle();
   const entorno = String((data as { environment?: string } | null)?.environment ?? '').toLowerCase();
   return entorno === 'test' || entorno === 'sandbox' || entorno === 'pruebas' ? 'pruebas' : 'produccion';
+}
+
+const UUID_EN_TEXTO = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const NOTA_AUTOMATICA_POS = new RegExp(`^Factura generada automáticamente desde POS - Venta #${UUID_EN_TEXTO}$`, 'i');
+const NOTA_AUTOMATICA_MESA = new RegExp(`^Factura generada desde Mesa - Venta #${UUID_EN_TEXTO}$`, 'i');
+const VENTA_CON_UUID = new RegExp(`Venta\\s*#\\s*${UUID_EN_TEXTO}`, 'gi');
+
+/**
+ * Notas de una factura tal como se presentan en el documento. El POS guarda
+ * «Factura generada automáticamente desde POS - Venta #<uuid>»: el id interno
+ * no se imprime. `sales` no tiene consecutivo propio (el número visible de la
+ * venta ES el de su factura), así que la referencia pasa a «Venta del POS».
+ * Solo cambia la presentación: la nota guardada no se toca.
+ */
+export function notasPresentables(notas: string | null | undefined, t: Traductor): string | null {
+  const limpio = texto(notas);
+  if (!limpio) return null;
+  if (NOTA_AUTOMATICA_POS.test(limpio)) return t('notasAutomaticas.pos');
+  if (NOTA_AUTOMATICA_MESA.test(limpio)) return t('notasAutomaticas.mesa');
+  return limpio.replace(VENTA_CON_UUID, t('notasAutomaticas.ventaPos'));
 }
 
 /** Nombre de archivo base: `<Tipo>_<numero>`. */

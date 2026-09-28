@@ -17,7 +17,7 @@ import { escaparHtml as e, dataUriImagenSeguro } from '../escape';
 import { crearFormateador } from '../formato';
 import type { Traductor } from '../textos';
 import type { DocumentoPayload } from '../tipos';
-import { htmlDeValor, nitConDv, textoDeCelda, textoDeTotal, titulo } from './comun';
+import { htmlDeValor, nitEmisor, nombresResponsabilidades, numeroDocumentoLegible, siglaDocumento, textoDeCelda, textoDeTotal, titulo } from './comun';
 
 const PAPEL = getPaperSpec('80mm');
 
@@ -43,11 +43,12 @@ export function payloadTicketVenta(doc: DocumentoPayload, t: Traductor): SaleTic
     locale: doc.moneda.locale,
     currencyDecimals: doc.moneda.decimals,
     customerName: c ? e(c.nombre) : undefined,
-    customerDocType: c?.tipoDocumento ? e(c.tipoDocumento.toUpperCase()) : undefined,
-    customerDocNumber: c?.numeroDocumento ? e(nitConDv(c.numeroDocumento, c.dv)) : undefined,
+    // Sin número no hay tipo: nada de un «CC» suelto en el ticket.
+    customerDocType: c?.numeroDocumento && c.tipoDocumento ? e(siglaDocumento(c.tipoDocumento, t)) : undefined,
+    customerDocNumber: c?.numeroDocumento ? e(numeroDocumentoLegible(c.tipoDocumento, c.numeroDocumento, c.dv) ?? '') : undefined,
     customerPhone: c?.telefono ? e(c.telefono) : undefined,
     customerAddress: c?.direccion ? e(c.direccion) : undefined,
-    customerFiscalResponsibilities: c?.responsabilidades.map((r) => e(r)) ?? null,
+    customerFiscalResponsibilities: c ? nombresResponsabilidades(c.responsabilidades, t).map((r) => e(r)) : null,
     items: (doc.lineas ?? []).map((l) => ({
       productName: e(l.descripcion),
       quantity: l.cantidad,
@@ -69,12 +70,12 @@ export function payloadTicketVenta(doc: DocumentoPayload, t: Traductor): SaleTic
       : undefined,
     balance: saldo ?? undefined,
     businessName: e(em.nombre),
-    businessNit: em.nit ? e(nitConDv(em.nit, em.dv)) : undefined,
+    businessNit: em.nit ? e(nitEmisor(em.nit, em.dv) ?? '') : undefined,
     businessPhone: em.telefono ? e(em.telefono) : undefined,
     businessAddress: em.direccion ? e(em.direccion) : undefined,
     businessEmail: em.email ? e(em.email) : undefined,
     businessCity: em.ciudad ? e(em.ciudad) : undefined,
-    businessFiscalResponsibilities: em.responsabilidades.map((r) => e(r)),
+    businessFiscalResponsibilities: nombresResponsabilidades(em.responsabilidades, t).map((r) => e(r)),
     businessLogoUrl: dataUriImagenSeguro(em.logoDataUri) ?? undefined,
     branchName: doc.sucursal ? e(doc.sucursal.nombre) : undefined,
     branchAddress: doc.sucursal?.direccion ? e(doc.sucursal.direccion) : undefined,
@@ -115,7 +116,7 @@ export function renderizarTermico(doc: DocumentoPayload, t: Traductor, opciones:
   const f = crearFormateador({ moneda: doc.moneda, zonaHoraria: doc.zonaHoraria, idioma: doc.idioma });
   const em = doc.emisor;
   const logo = dataUriImagenSeguro(em.logoDataUri);
-  const nit = nitConDv(em.nit, em.dv);
+  const nit = nitEmisor(em.nit, em.dv);
   const fila = (rotulo: string, valor: string) => `<div class="fila"><span>${e(rotulo)}</span><span>${valor}</span></div>`;
 
   const partesHtml: string[] = [];
@@ -135,7 +136,9 @@ export function renderizarTermico(doc: DocumentoPayload, t: Traductor, opciones:
     const c = doc.contraparte;
     partesHtml.push(`<div class="separador"></div>`);
     partesHtml.push(fila(t(`partes.${c.rol}`), e(c.nombre)));
-    if (c.numeroDocumento) partesHtml.push(fila(c.tipoDocumento ? c.tipoDocumento.toUpperCase() : t('partes.documento'), e(nitConDv(c.numeroDocumento, c.dv))));
+    if (c.numeroDocumento) {
+      partesHtml.push(fila(c.tipoDocumento ? siglaDocumento(c.tipoDocumento, t) : t('partes.documento'), e(numeroDocumentoLegible(c.tipoDocumento, c.numeroDocumento, c.dv) ?? '')));
+    }
   }
   if (doc.resumen.length > 0) {
     partesHtml.push(`<div class="separador"></div>`);

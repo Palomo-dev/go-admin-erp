@@ -13,6 +13,7 @@ import {
   SELECT_ITEM,
   SELECT_PROVEEDOR,
   cargarBase,
+  cargarNombresMetodos,
   contraparteProveedor,
   cuentaEnmascarada,
   entornoFacturacion,
@@ -157,6 +158,7 @@ export async function cargarFacturaCompra(
     retencionesDeCompra(sesion, f.id),
   ]);
   const proveedor = uno(f.supplier);
+  const nombresMetodos = await cargarNombresMetodos(sesion, [f.payment_method, ...pagos.map((p) => p.method)]);
   const lineas = ordenarItems(f.items);
   const totales = totalesCompra(f.subtotal, f.tax_total, f.total, lineas);
 
@@ -187,7 +189,7 @@ export async function cargarFacturaCompra(
     { clave: 'fechaVencimiento', valor: { tipo: 'instante', v: f.due_date } },
     { clave: 'moneda', valor: { tipo: 'texto', v: moneda.code } },
   ];
-  if (texto(f.payment_method)) metadatos.push({ clave: 'medioPago', valor: { tipo: 'texto', v: rotuloMetodo(f.payment_method, t) } });
+  if (texto(f.payment_method)) metadatos.push({ clave: 'medioPago', valor: { tipo: 'texto', v: rotuloMetodo(f.payment_method, t, nombresMetodos) } });
   if (f.po_id) metadatos.push({ clave: 'ordenCompra', valor: { tipo: 'texto', v: `#${f.po_id}` } });
   if (base.sucursal) metadatos.push({ clave: 'sucursalRecibe', valor: { tipo: 'texto', v: base.sucursal.nombre } });
 
@@ -205,7 +207,7 @@ export async function cargarFacturaCompra(
       pie: [null, null, null, totalRetenido],
     });
   }
-  if (pagos.length > 0) secciones.push(seccionPagos(pagos, t));
+  if (pagos.length > 0) secciones.push(seccionPagos(pagos, t, nombresMetodos));
 
   return {
     tipo: 'factura-compra',
@@ -358,7 +360,7 @@ export async function cargarDocumentoSoporte(
     { clave: 'referencia', valor: { tipo: 'texto', v: d.reference_code } },
     { clave: 'moneda', valor: { tipo: 'texto', v: moneda.code } },
   ];
-  if (base.sucursal) metadatos.push({ clave: 'sucursal', valor: { tipo: 'texto', v: base.sucursal.nombre } });
+  // La sucursal va una sola vez: en su tarjeta (`payload.sucursal`).
   const compra = texto((compraRes.data as { number_ext?: string | null } | null)?.number_ext);
   const referencia: Campo[] = compra ? [{ clave: 'facturaCompraAsociada', valor: { tipo: 'texto', v: compra } }] : [];
 

@@ -11491,6 +11491,40 @@
       "sinPermiso": "Vous n’avez pas l’autorisation de consulter ce document.",
       "papelNoDisponible": "Ce document ne peut pas être imprimé sur un rouleau de 80 mm.",
       "pdfNoDisponible": "Impossible de générer le PDF pour le moment. Réessayez dans quelques minutes."
+    },
+    "tiposDocumento": {
+      "cc": "CC",
+      "ce": "CE",
+      "ti": "TI",
+      "rc": "RC",
+      "te": "TE",
+      "pep": "PEP",
+      "nuip": "NUIP",
+      "die": "DIE",
+      "nit": "NIT",
+      "rut": "RUT",
+      "dni": "DNI",
+      "nit_ext": "NIT étranger",
+      "passport": "Passeport",
+      "national_id": "Pièce d'identité",
+      "foreign_id": "Pièce étrangère",
+      "tax_id": "N° fiscal",
+      "company_reg": "Reg. du commerce",
+      "other": "Doc."
+    },
+    "responsabilidades": {
+      "O-13": "Grand contribuable",
+      "O-15": "Autoretenue à la source",
+      "O-23": "Agent de retenue de TVA",
+      "O-47": "Régime simple d'imposition",
+      "O-48": "Assujetti à la TVA",
+      "O-49": "Non assujetti à la TVA",
+      "R-99-PN": "Non assujetti (personne physique)"
+    },
+    "notasAutomaticas": {
+      "pos": "Vente enregistrée au point de vente (POS).",
+      "mesa": "Vente enregistrée depuis une table.",
+      "ventaPos": "Vente POS"
     }
   },
   "posVentas": {

@@ -11,6 +11,7 @@ import {
   SELECT_CLIENTE,
   SELECT_ITEM,
   cargarBase,
+  cargarNombresMetodos,
   contraparteCliente,
   entornoFacturacion,
   esUuid,
@@ -20,7 +21,9 @@ import {
   nombreArchivoBase,
   nombreImpuestoUnico,
   noEncontrado,
+  notasPresentables,
   num,
+  rotuloMetodo,
   seccionPagos,
   textoLegal,
   texto,
@@ -184,6 +187,9 @@ export async function cargarVenta(
     texto(factura.xml_uuid) ? entornoFacturacion(sesion) : Promise.resolve('produccion' as const),
   ]);
 
+  // Nombres de los métodos (la factura y sus pagos) de la fuente única: nunca «cash» crudo.
+  const nombresMetodos = await cargarNombresMetodos(sesion, [factura.payment_method, ...pagos.map((p) => p.method)]);
+
   const lineas = [...(factura.items ?? [])]
     .sort((a, b) => String((a as { created_at?: string }).created_at ?? '').localeCompare(String((b as { created_at?: string }).created_at ?? '')))
     .map(lineaDeItem);
@@ -216,8 +222,8 @@ export async function cargarVenta(
   metadatos.push({ clave: 'moneda', valor: { tipo: 'texto', v: moneda.code } });
   const forma = formaPago(factura.payment_form);
   if (forma) metadatos.push(forma);
-  if (texto(factura.payment_method)) metadatos.push({ clave: 'medioPago', valor: { tipo: 'texto', v: texto(factura.payment_method) } });
-  if (base.sucursal) metadatos.push({ clave: 'sucursal', valor: { tipo: 'texto', v: base.sucursal.nombre } });
+  if (texto(factura.payment_method)) metadatos.push({ clave: 'medioPago', valor: { tipo: 'texto', v: rotuloMetodo(factura.payment_method, t, nombresMetodos) } });
+  // La sucursal va una sola vez: en su tarjeta (`payload.sucursal`), no repetida en los metadatos.
 
   const referencia: Campo[] = [];
   if (esNota && esUuid(factura.related_invoice_id)) {
@@ -247,7 +253,7 @@ export async function cargarVenta(
 
   const cufe = texto(factura.xml_uuid);
   const secciones: SeccionTabla[] = [];
-  if (pagos.length > 0) secciones.push(seccionPagos(pagos, t));
+  if (pagos.length > 0) secciones.push(seccionPagos(pagos, t, nombresMetodos));
 
   // Con CUDE (nota aceptada por la DIAN vía Factus, `xml_uuid`) la nota es electrónica.
   const tituloClave = esNota
@@ -283,7 +289,7 @@ export async function cargarVenta(
     lineas,
     secciones,
     totales,
-    notas: esNota ? null : texto(factura.notes),
+    notas: esNota ? null : notasPresentables(factura.notes, t),
     terminos: null,
     firma: esNota ? null : 'recibido',
     pieLegal: {

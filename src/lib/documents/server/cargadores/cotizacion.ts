@@ -13,6 +13,7 @@ import type { Banda, Campo, DocumentoPayload, FilaTotal } from '../../tipos';
 import {
   SELECT_CLIENTE,
   cargarBase,
+  cargarNombresMetodos,
   contraparteCliente,
   exigirUuid,
   fallaLectura,
@@ -76,12 +77,13 @@ export async function cargarCotizacion(
 
   // Nombre real de cada impuesto: `quotation_items.tax_code` no tiene FK, se busca en tax_templates.
   const codigos = [...new Set((cot.items ?? []).map((i) => texto(i.tax_code)).filter((c): c is string => !!c))];
-  const [base, moneda, plantillas] = await Promise.all([
+  const [base, moneda, plantillas, nombresMetodos] = await Promise.all([
     cargarBase(sesion, cot.branch_id),
     resolverContextoMoneda(sesion.supabase, sesion.organizationId, cot.currency),
     codigos.length > 0
       ? sesion.supabase.from('tax_templates').select('code, name').in('code', codigos)
       : Promise.resolve({ data: [] as Array<{ code: string; name: string | null }> }),
+    cargarNombresMetodos(sesion, [cot.payment_method]),
   ]);
   const nombres = new Map(((plantillas.data ?? []) as Array<{ code: string; name: string | null }>).map((p) => [p.code, p.name]));
 
@@ -110,8 +112,8 @@ export async function cargarCotizacion(
   ];
   const plazo = numONull(cot.payment_terms);
   if (plazo !== null) metadatos.push({ clave: 'condicionesPago', valor: { tipo: 'clave', v: plazo > 0 ? 'condiciones.dias' : 'condiciones.contado', vars: { dias: plazo } } });
-  if (texto(cot.payment_method)) metadatos.push({ clave: 'medioPago', valor: { tipo: 'texto', v: rotuloMetodo(cot.payment_method, t) } });
-  if (base.sucursal) metadatos.push({ clave: 'sucursal', valor: { tipo: 'texto', v: base.sucursal.nombre } });
+  if (texto(cot.payment_method)) metadatos.push({ clave: 'medioPago', valor: { tipo: 'texto', v: rotuloMetodo(cot.payment_method, t, nombresMetodos) } });
+  // La sucursal va una sola vez: en su tarjeta (`payload.sucursal`).
 
   const bandas: Banda[] = [{ clave: 'noEsFactura', tono: 'aviso' }];
   const enlace = texto(cot.payment_link_url);

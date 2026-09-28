@@ -11491,6 +11491,40 @@
       "sinPermiso": "Você não tem permissão para ver este documento.",
       "papelNoDisponible": "Este documento não pode ser impresso em bobina de 80 mm.",
       "pdfNoDisponible": "Não é possível gerar o PDF agora. Tente novamente em alguns minutos."
+    },
+    "tiposDocumento": {
+      "cc": "CC",
+      "ce": "CE",
+      "ti": "TI",
+      "rc": "RC",
+      "te": "TE",
+      "pep": "PEP",
+      "nuip": "NUIP",
+      "die": "DIE",
+      "nit": "NIT",
+      "rut": "RUT",
+      "dni": "DNI",
+      "nit_ext": "NIT estrangeiro",
+      "passport": "Passaporte",
+      "national_id": "Doc. nacional",
+      "foreign_id": "Doc. estrangeiro",
+      "tax_id": "ID fiscal",
+      "company_reg": "Reg. comercial",
+      "other": "Doc."
+    },
+    "responsabilidades": {
+      "O-13": "Grande contribuinte",
+      "O-15": "Autorretentor",
+      "O-23": "Agente de retenção de IVA",
+      "O-47": "Regime simples de tributação",
+      "O-48": "Responsável pelo IVA",
+      "O-49": "Não responsável pelo IVA",
+      "R-99-PN": "Não responsável (pessoa física)"
+    },
+    "notasAutomaticas": {
+      "pos": "Venda registrada no ponto de venda (PDV).",
+      "mesa": "Venda registrada a partir de uma mesa.",
+      "ventaPos": "Venda do PDV"
     }
   },
   "posVentas": {

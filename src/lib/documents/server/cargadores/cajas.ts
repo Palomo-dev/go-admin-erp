@@ -20,6 +20,7 @@ import type { Traductor } from '../../textos';
 import type { CeldaTabla, Campo, DocumentoPayload, FilaTotal, SeccionTabla } from '../../tipos';
 import {
   cargarBase,
+  cargarNombresMetodos,
   exigirEntero,
   fallaLectura,
   nombreArchivoBase,
@@ -169,7 +170,8 @@ export async function cargarCierreCaja(
     totales.push({ clave: 'caja.diferencia', valor: num(caja.difference), estilo: num(caja.difference) < 0 ? 'saldo' : 'pagado', oculto: !ver });
   }
 
-  const porMetodo = Object.entries(esperado.por_metodo ?? {}).map(([metodo, valor]) => [rotuloMetodo(metodo, t), ver ? num(valor) : oculto] as CeldaTabla[]);
+  const nombresMetodos = await cargarNombresMetodos(sesion, Object.keys(esperado.por_metodo ?? {}));
+  const porMetodo = Object.entries(esperado.por_metodo ?? {}).map(([metodo, valor]) => [rotuloMetodo(metodo, t, nombresMetodos), ver ? num(valor) : oculto] as CeldaTabla[]);
   const movimientos = ((movimientosRes.data ?? []) as Array<{ type: string; concept: string; amount: number; notes: string | null; created_at: string }>).map(
     (m) => [m.created_at, m.type === 'out' ? 'caja.tipoSalida' : 'caja.tipoEntrada', texto(m.concept), texto(m.notes), m.type === 'out' ? -num(m.amount) : num(m.amount)] as CeldaTabla[],
   );
@@ -222,7 +224,6 @@ export async function cargarCierreCaja(
       { clave: 'cierre', valor: { tipo: 'instanteHora', v: caja.closed_at } },
       { clave: 'cerradaPor', valor: { tipo: 'texto', v: caja.closed_by ? gente.get(caja.closed_by) ?? null : null } },
       { clave: 'moneda', valor: { tipo: 'texto', v: moneda.code } },
-      ...(base.sucursal ? [{ clave: 'sucursal', valor: { tipo: 'texto' as const, v: base.sucursal.nombre } }] : []),
     ],
     resumen,
     lineas: null,
@@ -290,8 +291,9 @@ export async function cargarArqueoCaja(
       denominaciones.push([`caja.${grupo === 'bills' ? 'billete' : 'moneda'}`, num(valor), n, num(valor) * n]);
     }
   }
+  const nombresMetodos = await cargarNombresMetodos(sesion, Object.keys(arqueo.method_breakdown ?? {}));
   const metodos = Object.entries(arqueo.method_breakdown ?? {}).map(([metodo, linea]) => [
-    rotuloMetodo(metodo, t),
+    rotuloMetodo(metodo, t, nombresMetodos),
     ver ? numONull(linea?.esperado) : oculto,
     numONull(linea?.contado),
     ver ? numONull(linea?.diferencia) : oculto,

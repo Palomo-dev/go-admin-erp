@@ -19,8 +19,9 @@ export async function POST(request: NextRequest) {
     // Leer payload crudo (para verificacion de firma)
     const rawBody = await request.text();
 
-    // Log del payload recibido
-    console.log('[Bold Webhook] Payload recibido:', rawBody);
+    // GO-sec (2026-09-28): el body crudo ya no va a los logs (datos del
+    // pagador y del cobro); solo su tamaño.
+    console.info('[Bold Webhook] evento recibido', { bytes: rawBody.length });
 
     // Parsear el body como JSON
     const event: BoldWebhookEvent = JSON.parse(rawBody);

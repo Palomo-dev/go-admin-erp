@@ -3,6 +3,17 @@
 // ============================================================
 
 import crypto from 'crypto';
+
+/**
+ * Compara firmas en tiempo constante (GO-sec 2026-09-28): con `===` el tiempo
+ * de respuesta revela cuántos caracteres del HMAC coinciden. No importa
+ * `safeEqual` de webhookSignatures para no arrastrar `svix` (ESM) a Jest.
+ */
+function igualEnTiempoConstante(a: string, b: string): boolean {
+  const ba = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  return ba.length === bb.length && crypto.timingSafeEqual(ba, bb);
+}
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getMonoBaseUrl, type MonoEnvironment } from './monoConfig';
 import { confirmQrPayment } from '@/lib/services/integrations/qrShared/paymentConfirmation';
@@ -297,7 +308,7 @@ class MonoService {
         .update(payload)
         .digest('hex');
 
-      if (calculatedHex === signature) {
+      if (igualEnTiempoConstante(calculatedHex, signature)) {
         return true;
       }
 
@@ -307,7 +318,7 @@ class MonoService {
         .update(payload)
         .digest('base64');
 
-      return calculatedBase64 === signature;
+      return igualEnTiempoConstante(calculatedBase64, signature);
     } catch (err) {
       console.error('[Mono] Error verificando firma webhook:', err);
       return false;

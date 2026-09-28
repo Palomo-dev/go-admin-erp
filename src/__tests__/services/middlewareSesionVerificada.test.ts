@@ -220,6 +220,11 @@ describe('middleware · webhooks y crons que se autentican solos llegan sin cook
     // 2026-09-28: el proceso principal de Go Admin Desktop pide el código de
     // vinculación sin cookies (Bearer); el handler es fail-closed (withOrg).
     '/api/desktop/agent-session',
+    // 2026-09-28: Meta por canal (verify_token / X-Hub-Signature-256) y el cron
+    // de sesiones QR (withCron), fail-closed en el handler.
+    '/api/webhooks/facebook/1',
+    '/api/webhooks/instagram/9',
+    '/api/integrations/qr/expire-sessions',
   ];
 
   it.each(EXCLUIDAS)('%s: el middleware no la toca (ni redirige ni 401)', async (ruta) => {
@@ -234,12 +239,15 @@ describe('middleware · webhooks y crons que se autentican solos llegan sin cook
     const matcher = /matcher:\s*\[[\s\S]*?'([^']+)'/.exec(src)?.[1] ?? '';
     const re = new RegExp(`^/${matcher.replace(/^\/\((.*)\)$/, '$1')}$`);
     for (const ruta of EXCLUIDAS.slice(0, 15)) expect(re.test(ruta)).toBe(false);
+    for (const ruta of ['/api/webhooks/facebook/1', '/api/webhooks/instagram/9', '/api/integrations/qr/expire-sessions', '/api/desktop/agent-session']) {
+      expect(re.test(ruta)).toBe(false);
+    }
     for (const ruta of [
       '/app/inicio',
       '/app/pos',
       '/api/organization/members',
       '/api/integrations/mercadopago/create-payment',
-      '/api/webhooks/facebook/1',
+      '/api/pms/ical/sync',
       // GO-sec 2026-09-24: ya no se excluyen (rutas borradas o que ahora exigen sesión).
       '/api/super-admin-cleanup',
       '/api/sessions',
@@ -257,7 +265,7 @@ describe('middleware · webhooks y crons que se autentican solos llegan sin cook
   });
 
   it('los webhooks que NO se han revisado como fail-closed siguen pasando por el middleware (no se excluyen)', async () => {
-    for (const ruta of ['/api/webhooks/instagram/9', '/api/integrations/mercadopago/create-payment']) {
+    for (const ruta of ['/api/webhooks/whatsapp/9', '/api/integrations/mercadopago/create-payment']) {
       const res = await middleware(peticion(ruta, { method: 'POST' }), evento);
       expect(res.status).toBe(401);
     }

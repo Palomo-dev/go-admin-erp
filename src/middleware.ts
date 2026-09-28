@@ -182,6 +182,15 @@ function shouldSkipRoute(pathname: string): boolean {
     '/u/', // <-- F7: página pública de baja de correo (token HMAC firmado)
     '/api/pos/display/', // <-- Pantalla remota del POS (PLAN pos-doble-pantalla §7): fail-closed por token Bearer (displayAuth) o, en /revoke, por getServerOrgContext → 401 JSON, no redirect
     '/api/web-orders/', // <-- Tienda web → ERP: cada handler exige x-webhook-secret (verifyWebOrdersSecret, fail-closed)
+    // GO-sec (2026-09-28): revisados uno por uno. Meta (Facebook/Instagram por
+    // canal): GET exige el verify_token del canal o META_WEBHOOK_VERIFY_TOKEN
+    // (403, sin literal de respaldo); POST exige X-Hub-Signature-256 con el
+    // appSecret del canal (401 y nada se procesa). El cron de sesiones QR usa
+    // withCron (Bearer CRON_SECRET, 401). Antes el middleware les respondía 401
+    // por falta de cookie y nunca funcionaban.
+    '/api/webhooks/facebook/',
+    '/api/webhooks/instagram/',
+    '/api/integrations/qr/expire-sessions',
     '/api/desktop/agent-session', // <-- Código de vinculación del agente de Go Admin Desktop: withOrg({ bearer }) → sesión por cookie o Authorization: Bearer (Auth valida el token) + membresía activa; 401/403 JSON. El proceso principal del Desktop llega sin cookies
     // GO-sec (2026-09-24): webhooks de cobro y crons que se autentican SOLOS,
     // revisados uno por uno antes de excluirlos (401/403 sin firma, sin secreto
@@ -1055,6 +1064,6 @@ export const config = {
      * está también en shouldSkipRoute con el motivo por el que es fail-closed.
      * Solo se añade aquí lo que verifica firma o CRON_SECRET por sí mismo.
      */
-    '/((?!_next/static|_next/image|favicon.ico|favicon-16x16.png|favicon-32x32.png|apple-touch-icon.png|icon.svg|icon-192x192.png|icon-512x512.png|icon-maskable-192x192.png|icon-maskable-512x512.png|badge-96x96.png|placeholder-image.png|placeholder.svg|manifest.json|sw.js|api/stripe|api/integrations/twilio|api/integrations/whatsapp/webhook|api/integrations/whatsapp/qr/dispatch-pending|api/voice|api/super-admin-access|api/factus|api/facebook-feed|api/cron|api/crm/jobs/run|api/email/webhook|api/crm/webhooks|u/|api/pos/display/|api/web-orders|api/desktop/agent-session|api/auth|api/integrations/bancolombia/webhook|api/integrations/bold/webhook|api/integrations/breb/webhook|api/integrations/wompi/webhook|api/integrations/redeban/webhook|api/integrations/sendgrid/webhook|api/integrations/mercadopago/webhook|api/integrations/payu/webhook|api/integrations/paypal/webhook|api/integrations/stripe/webhook|api/integrations/meta/webhook|api/integrations/tiktok/webhook|api/crm/contracts/webhook|api/crm/voice-agents/campaigns/run).*)',
+    '/((?!_next/static|_next/image|favicon.ico|favicon-16x16.png|favicon-32x32.png|apple-touch-icon.png|icon.svg|icon-192x192.png|icon-512x512.png|icon-maskable-192x192.png|icon-maskable-512x512.png|badge-96x96.png|placeholder-image.png|placeholder.svg|manifest.json|sw.js|api/stripe|api/integrations/twilio|api/integrations/whatsapp/webhook|api/integrations/whatsapp/qr/dispatch-pending|api/voice|api/super-admin-access|api/factus|api/facebook-feed|api/cron|api/crm/jobs/run|api/email/webhook|api/crm/webhooks|u/|api/pos/display/|api/web-orders|api/desktop/agent-session|api/webhooks/facebook/|api/webhooks/instagram/|api/integrations/qr/expire-sessions|api/auth|api/integrations/bancolombia/webhook|api/integrations/bold/webhook|api/integrations/breb/webhook|api/integrations/wompi/webhook|api/integrations/redeban/webhook|api/integrations/sendgrid/webhook|api/integrations/mercadopago/webhook|api/integrations/payu/webhook|api/integrations/paypal/webhook|api/integrations/stripe/webhook|api/integrations/meta/webhook|api/integrations/tiktok/webhook|api/crm/contracts/webhook|api/crm/voice-agents/campaigns/run).*)',
   ],
 };

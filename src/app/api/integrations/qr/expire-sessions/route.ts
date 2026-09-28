@@ -1,27 +1,20 @@
 // ============================================================
-// POST /api/integrations/qr/expire-sessions
+// GET|POST /api/integrations/qr/expire-sessions
 // Cron job: marca sesiones QR expiradas como 'expired'.
-// Protegido por OPEN_FINANCE_CRON_SECRET o CRON_SECRET (Bearer).
+//
+// GO-sec (2026-09-28): withCron (Bearer CRON_SECRET real, tiempo constante,
+// fail-closed). Antes solo exportaba POST —Vercel Cron llama GET: 405 y el cron
+// nunca corría—, comparaba con `===`, aceptaba OPEN_FINANCE_CRON_SECRET antes
+// que CRON_SECRET y no estaba excluida del middleware (401 sin cookie).
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getExpiredQrSessions } from '@/lib/services/integrations/qrShared/qrSessionService';
+import { withCron } from '@/lib/utils/orgContext';
 
-/** Verifica el secret de autorizacion del cron job (Bearer token). */
-function verifyCronSecret(request: NextRequest): boolean {
-  const expectedSecret = process.env.OPEN_FINANCE_CRON_SECRET || process.env.CRON_SECRET;
-  if (!expectedSecret) return false;
-  const authHeader = request.headers.get('authorization');
-  return authHeader === `Bearer ${expectedSecret}`;
-}
-
-export async function POST(request: NextRequest) {
+async function expirarSesiones(): Promise<Response> {
   try {
-    if (!verifyCronSecret(request)) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
     // Obtener sesiones expiradas usando el servicio compartido
     const expiredSessions = await getExpiredQrSessions();
 
@@ -70,3 +63,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Error interno' }, { status: 500 });
   }
 }
+
+export const GET = withCron(() => expirarSesiones());
+export const POST = withCron(() => expirarSesiones());

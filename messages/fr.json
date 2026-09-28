@@ -11746,6 +11746,20 @@
       "contacto": "Contact : {nombre}",
       "espaciosOcupados": "Chambres occupées ({n})",
       "crear": "Créer un client"
+    },
+    "panel": {
+      "sinSucursalTitulo": "Choisissez la succursale pour vendre",
+      "sinSucursalDescripcion": "Vous consultez « Toutes les succursales ». Choisissez une succursale dans le sélecteur de l’en-tête pour ouvrir un panier.",
+      "elegirSucursal": "Choisir la succursale"
+    },
+    "barraMovil": {
+      "etiqueta": "Panier et encaissement",
+      "total": "Total",
+      "verCarrito": "Voir le panier : {n, plural, one {# unité} other {# unités}}, {total}",
+      "cobrar": "Encaisser",
+      "abrirCaja": "Ouvrir la caisse pour encaisser",
+      "hojaCarrito": "Panier",
+      "seguirComprando": "Continuer les achats"
     }
   }
 }

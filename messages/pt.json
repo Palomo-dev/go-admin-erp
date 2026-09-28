@@ -11746,6 +11746,20 @@
       "contacto": "Contato: {nombre}",
       "espaciosOcupados": "Espaços ocupados ({n})",
       "crear": "Criar cliente"
+    },
+    "panel": {
+      "sinSucursalTitulo": "Escolha a filial para vender",
+      "sinSucursalDescripcion": "Você está vendo «Todas as filiais». Escolha uma filial no seletor do cabeçalho para abrir um carrinho.",
+      "elegirSucursal": "Escolher filial"
+    },
+    "barraMovil": {
+      "etiqueta": "Carrinho e cobrança",
+      "total": "Total",
+      "verCarrito": "Ver carrinho: {n, plural, one {# unidade} other {# unidades}}, {total}",
+      "cobrar": "Cobrar",
+      "abrirCaja": "Abrir caixa para cobrar",
+      "hojaCarrito": "Carrinho",
+      "seguirComprando": "Continuar comprando"
     }
   }
 }

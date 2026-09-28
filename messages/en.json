@@ -11851,6 +11851,20 @@
       "contacto": "Contact: {nombre}",
       "espaciosOcupados": "Occupied rooms ({n})",
       "crear": "Create customer"
+    },
+    "panel": {
+      "sinSucursalTitulo": "Choose the branch to sell from",
+      "sinSucursalDescripcion": "You are viewing «All branches». Choose a branch in the header selector to open a cart.",
+      "elegirSucursal": "Choose branch"
+    },
+    "barraMovil": {
+      "etiqueta": "Cart and checkout",
+      "total": "Total",
+      "verCarrito": "View cart: {n, plural, one {# unit} other {# units}}, {total}",
+      "cobrar": "Charge",
+      "abrirCaja": "Open register to charge",
+      "hojaCarrito": "Cart",
+      "seguirComprando": "Keep shopping"
     }
   }
 }

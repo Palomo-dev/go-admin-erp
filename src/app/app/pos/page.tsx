@@ -2,17 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle, useDefaultLayout } from 'react-resizable-panels';
-import { ShoppingCart, Users, Settings, ArrowLeft, MoreHorizontal } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { ShoppingCart, Settings, ArrowLeft, MoreHorizontal } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { useAtajos } from '@/components/kit/useAtajos';
 import { ProductSearch } from '@/components/pos/ProductSearch';
-import { CustomerSelector } from '@/components/pos/CustomerSelector';
-import { CartView } from '@/components/pos/CartView';
-import { CartTabs } from '@/components/pos/CartTabs';
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
+import { PanelCarrito } from '@/components/pos/venta/PanelCarrito';
 import { CabeceraPos, abrirMenuPantallaCliente } from '@/components/pos/venta/CabeceraPos';
 import { HojaCajaDispositivo } from '@/components/pos/venta/HojaCajaDispositivo';
 import { MapaAtajos } from '@/components/pos/venta/MapaAtajos';
@@ -59,8 +55,12 @@ import {
 } from '@/lib/pos/venta/carritos';
 import { enviarACocina } from '@/lib/pos/venta/enviarCocina';
 
-/** Clave de localStorage con el ancho elegido para el panel de carrito/pago. */
-const POS_LAYOUT_ID = 'pos-layout-productos-carrito';
+/**
+ * Clave de localStorage con el ancho elegido para el panel del carrito. «-v2»
+ * (paso 9, D1): el carrito arranca en 560 px; el reparto 75/25 guardado con
+ * la versión anterior no se reutiliza.
+ */
+const POS_LAYOUT_ID = 'pos-layout-productos-carrito-v2';
 
 export default function POSPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
@@ -100,6 +100,7 @@ export default function POSPage() {
   const tCabecera = useTranslations('posVenta.cabecera');
   const tAtajos = useTranslations('posVenta.atajos');
   const tPagina = useTranslations('posVenta.pagina');
+  const tBarra = useTranslations('posVenta.barraMovil');
   // Quién puede cerrar la caja lo decide el servidor (`usePermisosCaja`),
   // nunca el nombre del rol (regla dura 6).
   const canClose = cashSession ? puedeCerrarCaja(cashSession, permisosCaja.userId ?? currentUserId, permisosCaja.cerrarCajasAjenas) : false;
@@ -555,7 +556,7 @@ export default function POSPage() {
         />
         <MapaAtajos abierto={mapaAtajos} onAbiertoChange={setMapaAtajos} />
 
-        {/* Contenido principal - Layout Responsive */}
+        {/* Contenido principal: productos | carrito (paso 9) */}
         {(() => {
           const productsPane = (
             <ProductSearch
@@ -567,71 +568,33 @@ export default function POSPage() {
           );
 
           const cartPane = (
-            <>
-              {/* Botón volver a productos - solo móvil */}
-              <div className="lg:hidden shrink-0">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setMobileView('products')}
-                  className="text-xs dark:text-gray-400 dark:hover:text-white"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-1" />
-                  Seguir comprando
-                </Button>
-              </div>
-
-              {/* Selector de cliente */}
-              <Card className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200 shadow-sm shrink-0">
-                <CardHeader className="p-2 sm:p-3 pb-1.5 sm:pb-2">
-                  <CardTitle className="flex items-center space-x-1.5 sm:space-x-2 text-xs sm:text-sm dark:text-white text-gray-900">
-                    <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    <span>Cliente</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-2 sm:p-3 pt-0">
-                  <CustomerSelector
-                    selectedCustomer={activeCart?.customer}
-                    onCustomerSelect={handleCustomerSelect}
-                    open={clienteAbierto}
-                    onOpenChange={setClienteAbierto}
-                    atajo={teclaAtajo('cliente')}
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Pestañas de carritos */}
-              <div className="shrink-0">
-                <CartTabs
-                  carts={carts}
-                  activeCartId={activeCartId}
-                  onCartSelect={setActiveCartId}
-                  onNewCart={createNewCart}
-                  onRemoveCart={removeCart}
-                  atajosActivos={!showCheckout}
-                />
-              </div>
-
-              {/* Vista del carrito activo */}
-              {activeCart && (
-                <div className="shrink-0">
-                  <CartView
-                    cart={activeCart}
-                    onCartUpdate={handleCartUpdate}
-                    onCheckout={handleCheckout}
-                    onHold={handleHoldCart}
-                    onSendComanda={handleSendComanda}
-                    cashSessionActive={!!cashSession}
-                    requiereCaja={requiereCaja}
-                    onAbrirCaja={abrirDialogoCaja}
-                    atajosActivos={!showCheckout}
-                  />
-                </div>
-              )}
-            </>
+            <PanelCarrito
+              carts={carts}
+              activeCart={activeCart}
+              activeCartId={activeCartId}
+              onCartSelect={setActiveCartId}
+              onNewCart={createNewCart}
+              onRemoveCart={removeCart}
+              sinSucursal={!selectedBranchId}
+              onClienteSelect={handleCustomerSelect}
+              clienteAbierto={clienteAbierto}
+              onClienteAbiertoChange={setClienteAbierto}
+              atajosActivos={!showCheckout}
+              carrito={{
+                onCartUpdate: handleCartUpdate,
+                onCheckout: handleCheckout,
+                onHold: handleHoldCart,
+                onSendComanda: handleSendComanda,
+                cashSessionActive: !!cashSession,
+                requiereCaja,
+                onAbrirCaja: abrirDialogoCaja,
+              }}
+            />
           );
 
           if (isDesktopLayout) {
+            // D1: divisor arrastrable con el carrito a 560 px por defecto
+            // (mínimo 400); el ancho elegido se recuerda en el navegador.
             return (
               <PanelGroup
                 id={POS_LAYOUT_ID}
@@ -640,22 +603,16 @@ export default function POSPage() {
                 onLayoutChanged={onLayoutChanged}
                 className="flex-1 min-h-0"
               >
-                <Panel id="productos" defaultSize="75%" minSize="35%" className="h-full overflow-y-auto">
+                <Panel id="productos" minSize="35%" className="h-full min-h-0">
                   {productsPane}
                 </Panel>
                 <PanelResizeHandle
-                  title="Arrastra para ampliar el carrito · doble clic para restablecer"
-                  className="group relative mx-1.5 w-1.5 shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 dark:hover:bg-blue-500 active:bg-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-ew-resize"
+                  title={tPagina('divisor')}
+                  className="group relative mx-2 w-1.5 shrink-0 cursor-ew-resize rounded-full bg-line transition-colors hover:bg-brand-action focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand active:bg-brand-action"
                 >
-                  <span className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-1 rounded-full bg-gray-400/60 dark:bg-gray-500/60 group-hover:bg-white/80" />
+                  <span className="pointer-events-none absolute left-1/2 top-1/2 h-10 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-line-strong group-hover:bg-surface" />
                 </PanelResizeHandle>
-                <Panel
-                  id="carrito"
-                  defaultSize="25%"
-                  minSize="20%"
-                  maxSize="60%"
-                  className="h-full flex flex-col space-y-2 overflow-y-auto pb-2 min-h-0"
-                >
+                <Panel id="carrito" defaultSize="560px" minSize="400px" maxSize="60%" className="h-full min-h-0">
                   {cartPane}
                 </Panel>
               </PanelGroup>
@@ -670,37 +627,37 @@ export default function POSPage() {
               </div>
 
               {/* === MÓVIL: Vista Carrito (pantalla completa) === */}
-              <div className={cn(
-                'flex flex-col space-y-2 overflow-y-auto pb-20 min-h-0',
-                mobileView === 'cart' ? 'flex-1' : 'hidden',
-              )}>
+              <div className={cn('flex min-h-0 flex-col gap-2 pb-20', mobileView === 'cart' ? 'flex-1' : 'hidden')}>
+                <button
+                  type="button"
+                  onClick={() => setMobileView('products')}
+                  className="flex h-8 w-fit items-center gap-1 rounded-md px-2 text-xs font-medium text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <ArrowLeft aria-hidden="true" className="size-4" />
+                  {tBarra('seguirComprando')}
+                </button>
                 {cartPane}
               </div>
             </div>
           );
         })()}
 
-        {/* === BOTÓN FLOTANTE CARRITO - Solo móvil === */}
+        {/* === BOTÓN FLOTANTE CARRITO - Solo móvil (lo sustituye la barra fija del paso 15) === */}
         {mobileView === 'products' && (
           <button
             onClick={() => setMobileView('cart')}
-            className={cn(
-              'lg:hidden fixed bottom-[calc(var(--shell-barra-inferior,0px)+1.5rem)] right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-xl text-white font-semibold text-sm transition-all active:scale-95',
-              activeCart && activeCart.items.length > 0
-                ? 'bg-blue-600 hover:bg-blue-700'
-                : 'bg-gray-600 hover:bg-gray-700',
-            )}
+            className="lg:hidden fixed bottom-[calc(var(--shell-barra-inferior,0px)+1.5rem)] right-6 z-50 flex items-center gap-2 rounded-full bg-brand-action px-4 py-3 text-sm font-semibold text-fg-on-brand shadow-xl transition-all active:scale-95"
           >
             <ShoppingCart className="h-5 w-5" />
             {activeCart && activeCart.items.length > 0 ? (
               <>
-                <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">
+                <span className="rounded-full bg-fg-on-brand/20 px-2 py-0.5 text-xs">
                   {activeCart.items.reduce((sum, i) => sum + i.quantity, 0)}
                 </span>
                 <span>{formatear(activeCart.total)}</span>
               </>
             ) : (
-              <span>Carrito</span>
+              <span>{tBarra('hojaCarrito')}</span>
             )}
           </button>
         )}

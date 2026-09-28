@@ -46,3 +46,67 @@ describe('1 · la regla única del saldo de la factura cuenta las aplicaciones (
     expect(rollback).toMatch(/UPDATE public\.invoice_sales\s+SET balance = v_new_inv_balance/);
   });
 });
+
+describe('2 · aplicar un saldo a favor, validado en la base (20260928140100)', () => {
+  const sql = leer('supabase/migrations/20260928140100_saldo_favor_2_aplicar_validado.sql');
+  const rollback = leer('supabase/rollbacks/20260928140100_saldo_favor_2_aplicar_validado_rollback.sql');
+
+  /**
+   * Dry-run 2026-09-28 (org 144, factura emitida de 7.400, saldo de 1.000 del
+   * mismo cliente, transacción deshecha):
+   *   aplicar 300 (clave k1)          → saldo 700 · factura 7.100/partial · asiento Cr 1305 (cuenta de la org)
+   *   misma clave                     → repetida=true, 1 sola aplicación; created_by = auth.uid()
+   *   misma clave, otro monto         → clave_idempotencia_reutilizada
+   *   factura de otro cliente         → cliente_distinto
+   *   800 con 700 disponibles         → monto_excede_saldo_a_favor
+   *   p_organization_id de otra org   → saldo_no_encontrado
+   *   monto 0                         → monto_invalido
+   *   vencido ayer (zona de la org)   → saldo_vencido;  vence hoy → se aplica
+   *   factura en borrador / anulada   → documento_borrador / documento_anulado
+   *   miembro sin finance.create      → sin_permiso (42501)
+   *   sin sesión                      → no_autenticado
+   */
+  test('autor de la sesión, permiso finance.create e idempotencia en la base', () => {
+    expect(sql).toMatch(/v_uid uuid := auth\.uid\(\)/);
+    expect(sql).toMatch(/fn_finanzas_exigir_permiso\(v_org, array\['finance\.create'\]\)/);
+    expect(sql).toMatch(/pg_advisory_xact_lock\(hashtextextended\('saldo_favor_aplicar:'/);
+    expect(sql).toMatch(/values \(v_org, p_credit_id, p_invoice_id, v_monto, v_uid, p_clave_idempotencia\)/);
+    expect(sql).not.toMatch(/p_created_by uuid/);
+  });
+
+  test('valida cliente, tipo, estado, sucursal, moneda, vencimiento y saldos', () => {
+    for (const codigo of [
+      'cliente_distinto',
+      'documento_invalido',
+      'documento_borrador',
+      'documento_anulado',
+      'sin_acceso_sucursal',
+      'moneda_distinta',
+      'saldo_vencido',
+      'monto_excede_saldo_a_favor',
+      'monto_excede_saldo',
+      'saldo_no_encontrado',
+    ]) {
+      expect(sql).toMatch(new RegExp(`raise exception '${codigo}'`));
+    }
+    expect(sql).toMatch(/\(p_expiry at time zone public\.fn_timezone_for\(p_org, p_branch\)\)::date < public\.fn_today_for\(p_org, p_branch\)/);
+  });
+
+  test('asiento contra la cuenta por cobrar de la organización, con fact_key y verificado', () => {
+    expect(sql).toMatch(/select debit_account_code into v_cxc from public\.fn_regla_devengo_venta\(v_org\)/);
+    expect(sql).toMatch(/p_credit_account := v_cxc/);
+    expect(sql).not.toMatch(/p_credit_account := '1305'/);
+    expect(sql).toMatch(/p_fact_key := 'customer_credit_application:' \|\| v_app\.id::text/);
+    expect(sql).toMatch(/if v_entry is null then\s+raise exception 'asiento_no_creado'/);
+  });
+
+  test('no escribe el saldo de la factura y cierra anon', () => {
+    expect(sql).not.toMatch(/update public\.invoice_sales/i);
+    expect(sql).toMatch(/revoke all on function public\.fn_apply_customer_credit\(uuid, uuid, numeric, text, integer\) from public, anon/);
+  });
+
+  test('el rollback vuelve a la firma anterior', () => {
+    expect(rollback).toMatch(/drop function if exists public\.fn_apply_customer_credit\(uuid, uuid, numeric, text, integer\)/);
+    expect(rollback).toMatch(/create or replace function public\.fn_apply_customer_credit\(p_credit_id uuid, p_invoice_id uuid, p_amount numeric, p_created_by uuid/);
+  });
+});

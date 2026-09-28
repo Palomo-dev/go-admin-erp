@@ -1,5 +1,61 @@
 import { supabase } from '@/lib/supabase/config';
-import { getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { getCurrentBranchId, getCurrentUserId, getOrganizationId } from '@/lib/hooks/useOrganization';
+import type { ErrorSaldoFavor, ResultadoAplicarSaldo } from '@/lib/finanzas/saldosAFavor/contrato';
+
+/**
+ * Error de una petición a `/api/saldos-a-favor/**` con su `codigo` estable
+ * (`saldosAFavor.errores.<codigo>`), para que la pantalla lo muestre.
+ */
+export class ErrorPeticionSaldoFavor extends Error {
+  constructor(
+    public readonly codigo: ErrorSaldoFavor | string,
+    public readonly estado: number,
+  ) {
+    super(codigo);
+  }
+}
+
+function cabeceras(json = false): HeadersInit {
+  const org = getOrganizationId();
+  return {
+    ...(json ? { 'Content-Type': 'application/json' } : {}),
+    ...(org > 0 ? { 'x-organization-id': String(org) } : {}),
+  };
+}
+
+async function leer<T>(r: Response): Promise<T> {
+  let cuerpo: unknown = null;
+  try {
+    cuerpo = await r.json();
+  } catch {
+    cuerpo = null;
+  }
+  if (!r.ok) {
+    const c = (cuerpo ?? {}) as { codigo?: string; code?: string };
+    const codigo = c.codigo ?? (c.code === 'FOREIGN_ORGANIZATION' ? 'organizacion_no_permitida' : 'error_desconocido');
+    throw new ErrorPeticionSaldoFavor(codigo, r.status);
+  }
+  return cuerpo as T;
+}
+
+async function enviar<T>(url: string, cuerpo: unknown): Promise<T> {
+  const r = await fetch(url, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: cabeceras(true),
+    body: JSON.stringify(cuerpo),
+  });
+  return (await leer<{ resultado: T }>(r)).resultado;
+}
+
+/** Clave de idempotencia de un intento (una por apertura del diálogo). */
+export function nuevaClaveIdempotencia(prefijo: string): string {
+  const aleatorio =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${prefijo}:${aleatorio}`;
+}
 
 export interface SaldoAFavor {
   id: string;
@@ -41,6 +97,8 @@ export interface AplicarSaldoInput {
   creditId: string;
   invoiceId: string;
   amount: number;
+  /** Una por apertura del diálogo (`nuevaClaveIdempotencia('aplicar')`). */
+  claveIdempotencia: string;
 }
 
 export const saldosAFavorService = {
@@ -133,16 +191,15 @@ export const saldosAFavorService = {
     return data as string;
   },
 
-  /** Aplica un saldo a favor a una factura. */
-  async aplicar(input: AplicarSaldoInput): Promise<string> {
-    const userId = await getCurrentUserId();
-    const { data, error } = await supabase.rpc('fn_apply_customer_credit', {
-      p_credit_id: input.creditId,
-      p_invoice_id: input.invoiceId,
-      p_amount: input.amount,
-      p_created_by: userId,
+  /**
+   * Aplica un saldo a favor a una factura en el servidor
+   * (`POST /api/saldos-a-favor/[id]/aplicar` → `fn_apply_customer_credit`).
+   */
+  async aplicar(input: AplicarSaldoInput): Promise<ResultadoAplicarSaldo> {
+    return enviar<ResultadoAplicarSaldo>(`/api/saldos-a-favor/${encodeURIComponent(input.creditId)}/aplicar`, {
+      factura_id: input.invoiceId,
+      monto: input.amount,
+      clave_idempotencia: input.claveIdempotencia,
     });
-    if (error) throw error;
-    return data as string;
   },
 };

@@ -226,7 +226,7 @@ export async function detalleFactura(ctx: Ctx, id: string): Promise<DetalleFactu
   if (cartera) fuentes.push(`and(source.eq.account_receivable,source_id.eq.${cartera.id})`);
   const { data: pagosData } = await db
     .from('payments')
-    .select('id, payment_date, created_at, method, amount, change_amount, reference, status, source, voided_at, void_reason, payment_groups:payment_group_id (receipt_number), payment_methods:method (name)')
+    .select('id, payment_date, created_at, method, amount, change_amount, reference, status, source, voided_at, void_reason, receipt_number, payment_groups:payment_group_id (receipt_number), payment_methods:method (name)')
     .eq('organization_id', org)
     .or(fuentes.join(','))
     .order('payment_date', { ascending: true });
@@ -260,6 +260,8 @@ export async function detalleFactura(ctx: Ctx, id: string): Promise<DetalleFactu
     source: string | null;
     voided_at: string | null;
     void_reason: string | null;
+    /** Consecutivo propio del pago suelto (RC-0001 / CE-0001); en un pago único manda el del grupo. */
+    receipt_number: string | null;
     payment_groups: { receipt_number: string | null } | null;
     payment_methods: { name: string | null } | null;
   };
@@ -343,7 +345,7 @@ export async function detalleFactura(ctx: Ctx, id: string): Promise<DetalleFactu
       cambio: num(p.change_amount),
       referencia: p.reference,
       estado: p.status ?? 'completed',
-      recibo: p.payment_groups?.receipt_number ?? null,
+      recibo: p.payment_groups?.receipt_number ?? p.receipt_number ?? null,
       origen: p.source,
       anuladoEn: p.voided_at,
       motivoAnulacion: p.void_reason,

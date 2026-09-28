@@ -26,6 +26,7 @@ jest.mock('@/lib/services/monedaOrganizacion', () => ({
 }));
 
 import { armarDocumento } from '../server/motor';
+import { numeroComprobantePago } from '../server/cargadores/pagos';
 import { payloadTicketVenta } from '../render/termico';
 import { cargarTextos } from '../textos';
 
@@ -300,6 +301,68 @@ describe('recibo de caja y comprobante de egreso', () => {
     permisos.add('finance.view');
     const { payload } = await pedir(sesion(), 'comprobante-egreso', P2);
     expect(payload.contraparte).toMatchObject({ rol: 'proveedor', nombre: 'Proveedor Uno' });
+  });
+});
+
+/**
+ * Consecutivo propio de recibos y comprobantes de egreso (decisión del dueño
+ * 2026-09-28): `payments.receipt_number` lo asigna la base (RC-0001 / CE-0001
+ * por organización); un pago de un pago único usa el número de su grupo.
+ */
+describe('consecutivo del recibo de caja y del comprobante de egreso', () => {
+  const P_GRUPO = '16161616-1616-4161-8161-161616161616';
+  const P_ANULADO = '17171717-1717-4171-8171-171717171717';
+
+  function tablasConNumero() {
+    const t = datos();
+    (t.payments[0] as Record<string, unknown>).receipt_number = 'RC-0042';
+    (t.payments[1] as Record<string, unknown>).receipt_number = 'CE-0007';
+    t.payments.push(
+      { id: P_GRUPO, organization_id: ORG, branch_id: 1, source: 'account_receivable', source_id: null, status: 'completed', method: 'cash', amount: 50, change_amount: 0, discount_amount: 0, currency: 'COP', reference: null, payment_date: '2026-09-26T15:00:00Z', receipt_number: null, payment_groups: { receipt_number: 'RC-0043' } } as never,
+      { id: P_ANULADO, organization_id: ORG, branch_id: 1, source: 'invoice_sales', source_id: F1, status: 'cancelled', method: 'cash', amount: 20, change_amount: 0, discount_amount: 0, currency: 'COP', reference: null, payment_date: '2026-09-26T15:00:00Z', receipt_number: 'RC-0040' } as never,
+    );
+    return t;
+  }
+
+  it('el recibo muestra el consecutivo de la organización, también en el título del archivo y el HTML', async () => {
+    permisos.add('finance.view');
+    const s = sesion(tablasConNumero());
+    const { payload, html } = await pedir(s, 'recibo-caja', P1);
+    expect(payload.numero).toBe('RC-0042');
+    expect(payload.nombreArchivo).toContain('RC-0042');
+    expect(html).toContain('RC-0042');
+    expect(html).not.toContain(P1.slice(0, 8).toUpperCase());
+    // Se pide el número propio y el del grupo, siempre dentro de la organización de la sesión.
+    const consulta = s.supabase.consultas.find((c) => c.tabla === 'payments');
+    expect(consulta?.columnas).toMatch(/receipt_number, payment_groups:payment_group_id \(receipt_number\)/);
+    expect(consulta?.filtros).toContainEqual(['organization_id', 'eq', ORG]);
+  });
+
+  it('el comprobante de egreso muestra su serie CE', async () => {
+    permisos.add('finance.view');
+    const { payload } = await pedir(sesion(tablasConNumero()), 'comprobante-egreso', P2);
+    expect(payload.numero).toBe('CE-0007');
+  });
+
+  it('un pago de un pago único usa el número de su grupo', async () => {
+    permisos.add('finance.view');
+    const { payload } = await pedir(sesion(tablasConNumero()), 'recibo-caja', P_GRUPO);
+    expect(payload.numero).toBe('RC-0043');
+  });
+
+  it('anular el pago no cambia su número: sale con marca de agua y el mismo consecutivo', async () => {
+    permisos.add('finance.view');
+    const { payload } = await pedir(sesion(tablasConNumero()), 'recibo-caja', P_ANULADO);
+    expect(payload.numero).toBe('RC-0040');
+    expect(payload.marcaAgua).toBe('anulada');
+  });
+
+  it('numeroComprobantePago: propio › grupo › derivado del id', () => {
+    const id = 'abcdef12-0000-4000-8000-000000000000';
+    expect(numeroComprobantePago({ id, receipt_number: 'RC-0001', payment_groups: { receipt_number: 'RC-0009' } }, false)).toBe('RC-0001');
+    expect(numeroComprobantePago({ id, receipt_number: null, payment_groups: [{ receipt_number: 'CE-0003' }] }, true)).toBe('CE-0003');
+    expect(numeroComprobantePago({ id, receipt_number: '  ', payment_groups: null }, false)).toBe('RC-ABCDEF12');
+    expect(numeroComprobantePago({ id }, true)).toBe('CE-ABCDEF12');
   });
 });
 
@@ -649,7 +712,7 @@ describe('datos del PDF de factura y recibo', () => {
     const { payload, html } = await pedir(sesion(tablasPos()), 'recibo-caja', P_POS);
     expect(payload.firmante).toMatchObject({ caja: 'entrega', parte: { nombre: 'Ana Ruiz', numeroDocumento: '1234567' } });
     expect(html).toMatch(/<div class="preimpreso">Ana Ruiz · CC 1\.234\.567<\/div><div class="linea">Entrega<\/div>/);
-    // Número del recibo: sigue derivado del id (el consecutivo real es una decisión pendiente).
+    // Pago sin consecutivo (no debería quedar ninguno tras el backfill): cae al derivado del id.
     expect(payload.numero).toBe(`RC-${P_POS.slice(0, 8).toUpperCase()}`);
 
     const egreso = await pedir(sesion(tablasPos()), 'comprobante-egreso', P2);

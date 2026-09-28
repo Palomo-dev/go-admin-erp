@@ -699,3 +699,41 @@ prueba). Se corrigen en los cargadores y en la presentación, sin cambiar la maq
 Un consecutivo real por organización (y quizá por sucursal) necesita una decisión de producto
 (¿numeración propia para recibos? ¿resolución? ¿qué pasa con los pagos ya emitidos?) y una
 migración; no se cambió en esta entrega.
+
+## 13. Consecutivo propio del recibo de caja y del comprobante de egreso (2026-09-28)
+
+Decisión del dueño sobre el pendiente de la sección 12: **sí**, consecutivo real por organización.
+Migración `20260928222823_recibos_consecutivo_por_organizacion` (rollback en `supabase/rollbacks/`).
+
+- **Número**: `RC-0001, RC-0002…` para el recibo de caja y `CE-0001…` para el comprobante de egreso,
+  una serie por organización y tipo, sin reinicio anual. Mínimo 4 dígitos; crece sin truncar
+  (`RC-12345`). Por organización y no por sucursal: los demás documentos sin resolución DIAN
+  (nota crédito sin resolución, cotización de respaldo, compra, recibo del pago único) ya numeran
+  así, y `sale_sequences` exige sucursal y reinicia cada año.
+- **Un solo mecanismo**: ya existía la numeración de recibos del pago único
+  (`payment_groups.receipt_number`, `fn_registrar_pago`, `fn_saldo_favor_crear`: candado de
+  transacción por organización + máximo + 1). Se convirtió en el generador único
+  `fn_recibo_siguiente_numero(org, serie)`, que mira `payments` y `payment_groups`; las dos funciones
+  del pago único lo llaman (y el pago único a proveedores pasa de `RC-` a `CE-`; había 0 grupos).
+- **Dónde vive**: `payments.receipt_number` (NULL-able, único por organización y serie). Lo asigna
+  solo el trigger `trg_recibo_numero_pago` (BEFORE INSERT/UPDATE) cuando el pago queda `completed`,
+  suelto (sin `payment_group_id`) y con importe positivo; un pago que entra `pending` se numera al
+  completarse. Un número escrito a mano se ignora. El número es inmutable: **anular el pago no lo
+  libera ni lo reutiliza** (el máximo lo sigue contando).
+- **Sin número**: intentos fallidos o pendientes (722 intentos fallidos de pedidos web) y devoluciones
+  con importe negativo (notas crédito, devolución de saldo a favor). Los pagos de un pago único
+  muestran el número del grupo.
+- **Backfill**: 3 361 pagos en 20 organizaciones (3 352 RC y 9 CE en 3 organizaciones), en orden
+  `(created_at, id)`, sin tocar importes ni disparar los triggers de saldo
+  (`session_replication_role = replica`). Verificado después de aplicar: cada serie va de 0001 al
+  total sin huecos ni duplicados. Mayor serie: org 144, `RC-0001…RC-1439`.
+- **Motor**: `cargarComprobantePago` pide `receipt_number` y el del grupo;
+  `numeroComprobantePago` elige propio › grupo › el derivado del id de antes (solo si faltara).
+  El detalle de la factura de venta y el de la cuenta por cobrar muestran el mismo número en su
+  lista de pagos y en la cadena de documentos (antes solo lo tenían los pagos únicos).
+- **Concurrencia**: dos cobros simultáneos de la misma organización se serializan desde la inserción
+  del pago hasta el commit (como la numeración de facturas). Borrar físicamente el último pago de una
+  serie (no hay flujo que lo haga; solo el `ON DELETE CASCADE` de sucursal u organización) sí
+  permitiría reutilizar su número.
+- Tests: `src/lib/documents/__tests__/motor.test.ts` («consecutivo del recibo…») y
+  `consecutivoReciboSql.test.ts` (migración + doble del generador).

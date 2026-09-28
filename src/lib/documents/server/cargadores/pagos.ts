@@ -5,7 +5,9 @@
  * - `comprobante-egreso`: dinero que SALE hacia un proveedor (factura de
  *   compra o cuenta por pagar).
  * El valor es `amount - change_amount` (en el POS `amount` guarda lo recibido
- * y el cambio va aparte). El documento que el pago abona y su contraparte se
+ * y el cambio va aparte). El número es el consecutivo de la organización
+ * (`payments.receipt_number`, RC-0001 / CE-0001, asignado por la base); en un
+ * pago único, el del grupo (`payment_groups.receipt_number`). El documento que el pago abona y su contraparte se
  * resuelven en el servidor, siempre dentro de la organización de la sesión.
  */
 
@@ -54,6 +56,25 @@ interface FilaPagoCompleta {
   status: string | null;
   payment_date: string | null;
   created_at: string | null;
+  receipt_number?: string | null;
+  payment_groups?: { receipt_number: string | null } | Array<{ receipt_number: string | null }> | null;
+}
+
+/**
+ * Número visible del comprobante: el consecutivo que asignó la base al pago
+ * (RC-0001 / CE-0001); si el pago es parte de un pago único, el del grupo; y
+ * solo si no hay ninguno (no debería pasar tras el backfill), el derivado del
+ * id de antes.
+ */
+export function numeroComprobantePago(
+  pago: Pick<FilaPagoCompleta, 'id' | 'receipt_number' | 'payment_groups'>,
+  esEgreso: boolean,
+): string {
+  return (
+    texto(pago.receipt_number) ||
+    texto(uno(pago.payment_groups ?? null)?.receipt_number) ||
+    `${esEgreso ? 'CE' : 'RC'}-${pago.id.slice(0, 8).toUpperCase()}`
+  );
 }
 
 interface DocumentoAbonado {
@@ -120,7 +141,7 @@ export async function cargarComprobantePago(
   const id = exigirUuid(idCrudo);
   const { data, error } = await sesion.supabase
     .from('payments')
-    .select('id, organization_id, branch_id, source, source_id, method, amount, change_amount, discount_amount, currency, reference, status, payment_date, created_at')
+    .select('id, organization_id, branch_id, source, source_id, method, amount, change_amount, discount_amount, currency, reference, status, payment_date, created_at, receipt_number, payment_groups:payment_group_id (receipt_number)')
     .eq('id', id)
     .eq('organization_id', sesion.organizationId)
     .maybeSingle();
@@ -139,7 +160,7 @@ export async function cargarComprobantePago(
 
   const aplicado = valorAplicado(pago);
   const cambio = num(pago.change_amount);
-  const numero = `${esEgreso ? 'CE' : 'RC'}-${pago.id.slice(0, 8).toUpperCase()}`;
+  const numero = numeroComprobantePago(pago, esEgreso);
 
   const metadatos: Campo[] = [
     { clave: 'fechaPago', valor: { tipo: 'instanteHora', v: pago.payment_date ?? pago.created_at } },

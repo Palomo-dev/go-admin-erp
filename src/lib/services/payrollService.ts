@@ -110,7 +110,7 @@ export interface PayrollSlip {
   updated_at: string;
   // Joined fields
   employee_name?: string;
-  employee_code?: string;
+  employee_code?: string | null;
   run_number?: number;
   period_name?: string;
 }

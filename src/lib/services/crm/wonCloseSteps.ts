@@ -230,6 +230,9 @@ export async function executeCommission(opp: OpportunityData, deps: WonCloseDeps
   if (result.already_accrued && result.existing_status === 'cancelled') {
     return 'Comisión existente cancelada por un gestor (rechazo o clawback): no se devenga otra automáticamente; si procede, hazlo desde Comisiones';
   }
+  if (result.already_accrued && result.existing_source_type && result.existing_source_type !== 'opportunity') {
+    return `Comisión ya devengada por la factura de la oportunidad: ${result.commission_amount} — no se duplicó`;
+  }
   if (result.already_accrued) return `Comisión ya devengada por el sistema al ganar: ${result.commission_amount} (tasa ${result.commission_rate}%) — no se duplicó`;
   return `Comisión devengada: ${result.commission_amount} (tasa ${result.commission_rate}%)`;
 }

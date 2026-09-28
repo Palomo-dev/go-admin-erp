@@ -12,7 +12,7 @@
 import { createFakeSupabase, type FakeDb } from '@/lib/services/crm/__tests__/f10FakeSupabase';
 
 let db: FakeDb;
-jest.mock('@/lib/supabase/config', () => ({ supabase: { from: (t: string) => createFakeSupabase(db).from(t) } }));
+jest.mock('@/lib/supabase/config', () => ({ supabase: { from: (t: string) => createFakeSupabase(db).from(t), rpc: (fn: string, args: Record<string, unknown>) => createFakeSupabase(db).rpc(fn, args) } }));
 jest.mock('@/lib/utils/orgId', () => ({ getOrganizationId: () => 120, obtenerOrganizacionActiva: () => ({ id: 120 }) }));
 
 import { registerCrmPayment, isStripeReferenceDuplicate } from '@/lib/services/crm/paymentService';
@@ -30,7 +30,7 @@ function seed(): FakeDb {
       payments: [{ id: 'pay-seed', organization_id: 120, source: 'invoice_sales', source_id: 'inv-1', status: 'completed', amount: 1800000, currency: 'COP', reference: 'anticipo-seed', method: 'cash' }],
       accounts_receivable: [{ id: 'ar-1', organization_id: 120, invoice_id: 'inv-1', balance: 5000000, status: 'partial' }],
       commissions: [],
-      opportunities: [{ id: 'op-1', organization_id: 120, salesperson_id: 'u-1', commission_rate: 10, amount: 1000, currency: 'COP' }],
+      opportunities: [{ id: 'op-1', organization_id: 120, status: 'won', salesperson_id: 'u-1', commission_rate: 10, amount: 1000, currency: 'COP' }],
       vendor_commission_rates: [],
       activities: [],
     },

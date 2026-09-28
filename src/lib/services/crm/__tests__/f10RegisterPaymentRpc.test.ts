@@ -22,7 +22,8 @@ function seed(): FakeDb {
     writes: [],
     rows: {
       invoice_sales: [
-        { id: 'inv-1', organization_id: 120, number: 'FACT-0001', total: 6800000, balance: 5000000, status: 'partial', currency: 'COP', customer_id: 'c-1', opportunity_id: 'op-1', salesperson_id: 'u-1', commission_rate: 10, commission_type: 'salesperson' },
+        // subtotal = total sin el IVA del 19 %: la comisión de la oportunidad se calcula sobre él (20260928212000).
+        { id: 'inv-1', organization_id: 120, number: 'FACT-0001', subtotal: 5714285.71, total: 6800000, balance: 5000000, status: 'partial', currency: 'COP', customer_id: 'c-1', opportunity_id: 'op-1', salesperson_id: 'u-1', commission_rate: 10, commission_type: 'salesperson' },
         { id: 'inv-9', organization_id: 121, number: 'FACT-0009', total: 5, balance: 5, status: 'issued', currency: 'COP', customer_id: 'c-9', opportunity_id: null, salesperson_id: null, commission_rate: null, commission_type: null },
       ],
       // Pago previo de 1.800.000: el fake recalcula como el trigger real (total − Σ pagos completed).
@@ -32,6 +33,7 @@ function seed(): FakeDb {
         { id: 'ar-9', organization_id: 121, invoice_id: 'inv-9', balance: 5, status: 'pending' },
       ],
       commissions: [],
+      opportunities: [{ id: 'op-1', organization_id: 120, name: 'Op', status: 'won', salesperson_id: 'u-1', commission_rate: 0, amount: 6800000, currency: 'COP' }],
     },
   };
 }
@@ -126,13 +128,14 @@ describe('A4-2 el servicio delega en la RPC y deja de leer/escribir factura y ca
     expect(tables).toEqual(['payments']);
   });
 
-  it('pago completo: Node lee invoice_sales SOLO para la comisión (después de la RPC) y nunca toca accounts_receivable', async () => {
+  it('pago completo: Node lee invoice_sales SOLO para saber la oportunidad (después de la RPC); la comisión va por su RPC y nunca toca accounts_receivable', async () => {
     const { tables, client: c } = instrumented();
     const r = await registerCrmPayment(120, manual(5000000, 'solo-rpc-paid'), c);
     expect(r).toMatchObject({ success: true, commission_created: true });
-    expect(tables).toEqual(['payments', 'invoice_sales', 'commissions', 'commissions']);
+    expect(tables).toEqual(['payments', 'invoice_sales']);
+    expect((db.rpcCalls ?? []).map((c) => c.fn)).toEqual(['fn_register_crm_payment', 'fn_comision_oportunidad_devengar']);
     expect(tables).not.toContain('accounts_receivable');
-    // la única escritura de Node es la comisión; payments/invoice_sales/accounts_receivable las escribió la RPC
+    // ninguna escritura es de Node: payments/invoice_sales/accounts_receivable las escribió la RPC de pago y la comisión la suya
     expect(db.writes.map((w) => w.table)).toEqual(['payments', 'invoice_sales', 'accounts_receivable', 'commissions']);
   });
 
@@ -267,13 +270,13 @@ describe('A4-6 estados y comisión', () => {
     expect(writesTo('commissions')).toEqual([]);
   });
 
-  it('pago completo → paid/paid con saldo 0 y la comisión se devenga (10 % del total = 680.000) con el payment_id en metadata', async () => {
+  it('pago completo → paid/paid con saldo 0 y la comisión se devenga sobre el subtotal SIN impuestos (10 % de 5.714.285,71 = 571.428,57, no 680.000) con el payment_id en metadata', async () => {
     const r = await registerCrmPayment(120, manual(5000000, 'completo'), client());
     expect(r).toMatchObject({ success: true, invoice_status: 'paid', commission_created: true });
     expect(invoice()).toMatchObject({ balance: 0, status: 'paid' });
     expect(ar()).toMatchObject({ balance: 0, status: 'paid' });
     const comm = writesTo('commissions').find((w) => w.op === 'insert');
-    expect(comm?.row).toMatchObject({ organization_id: 120, source_type: 'opportunity', source_id: 'op-1', payee_id: 'u-1', commission_amount: 680000, status: 'accrued' });
+    expect(comm?.row).toMatchObject({ organization_id: 120, source_type: 'opportunity', source_id: 'op-1', payee_id: 'u-1', base_amount: 5714285.71, commission_amount: 571428.57, status: 'accrued' });
     expect((comm?.row?.metadata as Record<string, unknown>).payment_id).toBe(r.payment_id);
   });
 

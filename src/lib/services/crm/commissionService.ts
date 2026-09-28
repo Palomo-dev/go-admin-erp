@@ -70,6 +70,8 @@ export interface CommissionAccrualResult {
   already_accrued?: boolean;
   /** Estado de la comisión existente cuando `already_accrued` (accrued | paid | cancelled). */
   existing_status?: string;
+  /** De dónde es la comisión existente: 'opportunity', o 'invoice_sale' / 'sale' si la devengó su factura. */
+  existing_source_type?: string;
 }
 
 export interface SimulationResult {
@@ -153,80 +155,39 @@ class CommissionService {
   }
 
   /**
-   * Registra el devengo de comisión al ganar una oportunidad.
-   * INSERT en commissions con source_type='opportunity', commission_type='salesperson', status='accrued'.
+   * Registra el devengo de comisión al ganar una oportunidad (paso «comisión»
+   * del cierre). Lo hace la RPC `fn_comision_oportunidad_devengar`
+   * (migración 20260928212000), la única escritura de la comisión de
+   * oportunidad: vendedor, monto base, tasa (la de la oportunidad o la vigente
+   * del vendedor/general en el día de la organización) y moneda salen de la
+   * base, nunca del navegador; la oportunidad debe estar ganada.
+   *
+   * - Ya existía una comisión de la oportunidad (p. ej. la del disparador al
+   *   ganar), en CUALQUIER estado → la devuelve con `already_accrued` (una
+   *   cancelada es un rechazo o clawback de un gestor y no se vuelve a devengar).
+   * - Una factura de la oportunidad (o su venta) ya devengó su comisión → no
+   *   se devenga otra (una sola fuente); se devuelve esa con `already_accrued`.
+   * - Sin tasa o sin vendedor → null.
+   * La RPC bloquea la oportunidad: dos clics simultáneos ya no se cuelan.
    *
    * @param opportunityId - ID de la oportunidad ganada
-   * @param salespersonId - ID del vendedor
-   * @param baseAmount - Monto base (amount de la oportunidad)
-   * @returns Registro de comisión creado
    */
-  async accrueCommission(
-    opportunityId: string,
-    salespersonId: string,
-    baseAmount: number
-  ): Promise<CommissionAccrualResult | null> {
+  async accrueCommission(opportunityId: string): Promise<CommissionAccrualResult | null> {
     try {
-      const orgId = this.getOrgId();
-
-      // F10 r2/r3: el trigger fn_create_commission_on_opportunity_won ya inserta
-      // commissions(source_type='opportunity', source_id) al pasar a ganada, y
-      // el modal de cierre corre DESPUÉS del cambio de etapa. Deduplicar por
-      // (organization_id, source_type, source_id) en CUALQUIER estado, igual
-      // que el trigger (COUNT(*) sin filtrar status, leído por MCP): una
-      // comisión `cancelled` es un rechazo o clawback de un gestor y no se
-      // vuelve a devengar sola; si procede, se hace desde Comisiones (F13).
-      // Carrera residual: lectura + inserción sin índice único en commissions;
-      // dos clics simultáneos podrían colarse (documentado, sin migración).
-      const { data: existing } = await supabase
-        .from('commissions')
-        .select('id, base_amount, commission_rate, commission_amount, status')
-        .eq('organization_id', orgId)
-        .eq('source_type', 'opportunity')
-        .eq('source_id', opportunityId)
-        .limit(1)
-        .maybeSingle();
-      if (existing) {
-        const row = existing as CommissionAccrualResult;
-        return { ...row, already_accrued: true, existing_status: row.status };
-      }
-
-      const rate = await this.getRate(opportunityId, salespersonId);
-      const amount = (baseAmount * rate) / 100;
-
-      // Obtener moneda de la oportunidad
-      const { data: opp } = await supabase
-        .from('opportunities')
-        .select('currency')
-        .eq('id', opportunityId)
-        .single();
-
-      // Moneda de la oportunidad; sin ella, NULL y el trigger
-      // `trg_00_moneda_base_por_defecto` pone la base de la organización.
-      const currency = (opp as { currency?: string } | null)?.currency || null;
-
-      const { data, error } = await supabase
-        .from('commissions')
-        .insert({
-          organization_id: orgId,
-          commission_type: 'salesperson',
-          source_type: 'opportunity',
-          source_id: opportunityId,
-          payee_type: 'employee',
-          payee_id: salespersonId,
-          base_amount: baseAmount,
-          commission_rate: rate,
-          commission_amount: amount,
-          currency,
-          status: 'accrued',
-          accrued_at: new Date().toISOString(),
-          metadata: { opportunity_id: opportunityId },
-        })
-        .select('id, base_amount, commission_rate, commission_amount, status')
-        .single();
-
+      const { data, error } = await supabase.rpc('fn_comision_oportunidad_devengar', {
+        p_org: this.getOrgId(),
+        p_opportunity_id: opportunityId,
+        p_invoice_id: null,
+        p_payment_id: null,
+      });
       if (error) throw error;
-      return data as CommissionAccrualResult;
+      const r = (data ?? null) as { created: boolean; already_accrued: boolean; reason: string | null; commission?: CommissionAccrualResult & { source_type?: string } } | null;
+      if (!r?.commission) return null;
+      const { source_type: sourceType, ...row } = r.commission;
+      if (r.already_accrued) {
+        return { ...row, already_accrued: true, existing_status: row.status, existing_source_type: sourceType ?? 'opportunity' };
+      }
+      return row;
     } catch (err) {
       console.error('Error en commissionService.accrueCommission:', err);
       throw err;

@@ -102,7 +102,8 @@ export function WonCloseModal({ open, onOpenChange, opportunityId, opportunityNa
         return p ? { id: p.id, branch_id: p.branch_id ?? null } : null;
       },
       convertToInvoice: (quotationId, branchId, oppId) => CotizacionesService.convertToInvoice(quotationId, { branchId, opportunityId: oppId }),
-      accrueCommission: (id, salespersonId, baseAmount) => commissionService.accrueCommission(id, salespersonId, baseAmount),
+      // Vendedor, base y tasa los resuelve la RPC desde la base (no el navegador).
+      accrueCommission: (id) => commissionService.accrueCommission(id),
     };
 
     for (const step of steps) {

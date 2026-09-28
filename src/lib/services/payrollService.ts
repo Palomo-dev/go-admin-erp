@@ -40,12 +40,6 @@ interface RawEmployment {
   organization_members?: { organization_id?: number; profiles?: RawProfile | null } | null;
 }
 
-/** Metadata de una comisión pagada por nómina: la previa + la colilla que la pagó. */
-export function metadataPagadaPorNomina(previa: Record<string, unknown> | null | undefined, slipId: string): Record<string, unknown> {
-  const base = previa && typeof previa === 'object' && !Array.isArray(previa) ? previa : {};
-  return { ...base, payroll_slip_id: slipId };
-}
-
 export interface PayrollRun {
   id: string;
   payroll_period_id: string;
@@ -485,32 +479,20 @@ class PayrollService {
 
     if (error) throw error;
 
-    // Si se marca como pagado, marcar comisiones vinculadas como pagadas.
-    // Metadata FUSIONADA (antes se reemplazaba por {payroll_slip_id} y se perdían
-    // sale_id, commission_method…) y acotada a la organización. payroll_slip_id
-    // va en la misma escritura: fn_auto_journal_commission no asienta el pago
-    // de una comisión pagada por nómina (lo asienta la nómina).
+    // Si se marca como pagado, marcar comisiones vinculadas como pagadas. La
+    // tabla commissions ya no admite escritura desde el navegador: lo hace la
+    // RPC fn_comisiones_pagar_por_nomina (20260928213000), que exige la colilla
+    // pagada, gestión o hr.payroll.process / finance.approve, y solo toca las
+    // comisiones devengadas del empleado de la colilla, de su organización.
+    // Metadata FUSIONADA (se conserva sale_id, commission_method…) con
+    // payroll_slip_id en la misma escritura: fn_auto_journal_commission no
+    // asienta el pago de una comisión pagada por nómina (lo asienta la nómina).
     const commissionIds = Array.isArray(data?.metadata?.commission_ids)
       ? (data.metadata.commission_ids as unknown[]).filter((x): x is string => typeof x === 'string')
       : [];
     if (status === 'paid' && commissionIds.length > 0) {
-      const now = new Date().toISOString();
-      const { data: pending, error: readError } = await supabase
-        .from('commissions')
-        .select('id, metadata')
-        .eq('organization_id', this.organizationId)
-        .in('id', commissionIds)
-        .eq('status', 'accrued');
-      if (readError) throw readError;
-      for (const c of (pending || []) as Array<{ id: string; metadata: Record<string, unknown> | null }>) {
-        const { error: commError } = await supabase
-          .from('commissions')
-          .update({ status: 'paid', paid_at: now, updated_at: now, metadata: metadataPagadaPorNomina(c.metadata, id) })
-          .eq('id', c.id)
-          .eq('organization_id', this.organizationId)
-          .eq('status', 'accrued');
-        if (commError) throw commError;
-      }
+      const { error: commError } = await supabase.rpc('fn_comisiones_pagar_por_nomina', { p_slip_id: id });
+      if (commError) throw commError;
     }
 
     return this.getSlipById(data.id) as Promise<PayrollSlip>;

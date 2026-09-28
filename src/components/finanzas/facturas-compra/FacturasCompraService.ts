@@ -419,51 +419,11 @@ export class FacturasCompraService {
       // mediante el trigger trg_auto_journal_purchase (fn_auto_journal_purchase)
       // cuando la factura pasa a status='received', usando accounting_rules.
 
-      // Crear registro de comisión si aplica
-      if (formData.salesperson_id && formData.commission_rate && formData.commission_rate > 0 && formData.commission_type !== 'none') {
-        try {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', formData.salesperson_id!)
-            .single();
-
-          let salespersonName = 'N/A';
-          if (profileData) {
-            salespersonName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'N/A';
-          }
-
-          const baseAmount = subtotal > 0 ? subtotal : total;
-          const commissionAmount = formData.commission_amount || 0;
-
-          const { error: commissionInsertError } = await supabase
-            .from('commissions')
-            .insert({
-              organization_id: this.organizationId,
-              branch_id: branchId,
-              commission_type: formData.commission_type,
-              source_type: 'invoice_purchase',
-              source_id: factura.id,
-              payee_type: 'employee',
-              payee_id: formData.salesperson_id,
-              payee_name: salespersonName,
-              base_amount: baseAmount,
-              commission_rate: formData.commission_rate,
-              commission_amount: commissionAmount,
-              // La comisión va en la moneda de la factura.
-              currency: formData.currency || factura.currency || null,
-              status: 'accrued',
-              accrued_at: new Date().toISOString(),
-              created_by: currentUserId,
-              metadata: { invoice_number: formData.number_ext, commission_method: formData.commission_method || 'percentage' },
-            });
-          if (commissionInsertError) {
-            console.error('Error al crear registro de comisión:', commissionInsertError);
-          }
-        } catch (commissionErr) {
-          console.error('Error al crear registro de comisión (catch):', commissionErr);
-        }
-      }
+      // Comisión de compra: NO se escribe desde el navegador. La tabla
+      // commissions solo admite SELECT para la sesión (20260928213000); la factura
+      // de compra devenga su comisión en la base, dentro de fn_fc_guardar_int
+      // (POST /api/facturas-compra → fn_factura_compra_guardar). Este formulario
+      // viejo no tiene importadores.
 
       return factura;
     } catch (error) {

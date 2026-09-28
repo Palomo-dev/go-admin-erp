@@ -8,8 +8,10 @@
  * se separa para que los route handlers no arrastren el cliente browser.
  *
  * Dinero: cada transición lee la fila (acotada por organización), valida el
- * estado de partida con `buildTransitionPatch` y escribe exigiendo
- * `.eq('status', from)` — la concurrencia no puede pagar dos veces.
+ * estado de partida con `buildTransitionPatch` y escribe por la RPC
+ * `fn_comision_aplicar_transicion`, que exige `status = from` — la
+ * concurrencia no puede pagar dos veces. La tabla `commissions` solo admite
+ * SELECT para la sesión (20260928213000).
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -118,6 +120,24 @@ export async function listCommissionSummaryRows(
 }
 
 /**
+ * Rechazos propios de `fn_comision_aplicar_transicion` → el mismo contrato
+ * HTTP que las validaciones del servidor (403/400/409). Otro error sigue
+ * siendo un error de base de datos (502 en la ruta).
+ */
+const RECHAZOS_TRANSICION: Record<string, [string, number, string]> = {
+  sin_permiso: ['Requiere rol de administrador o manager de la organización', 403, 'MANAGER_REQUIRED'],
+  no_autenticado: ['Sesión requerida', 403, 'MANAGER_REQUIRED'],
+  transicion_invalida: ['La transición no es válida para el estado actual de la comisión.', 409, 'INVALID_TRANSITION'],
+  motivo_obligatorio: ['El motivo es obligatorio.', 400, 'REASON_REQUIRED'],
+  cuenta_bancaria_invalida: ['La cuenta bancaria no existe en esta organización o está inactiva.', 400, 'BANK_ACCOUNT_INVALID'],
+};
+
+function rechazoDeLaBase(error: { message?: string }): unknown {
+  const r = error.message ? RECHAZOS_TRANSICION[error.message] : undefined;
+  return r ? new CommissionTransitionError(r[0], r[1], r[2]) : error;
+}
+
+/**
  * Aplica una transición a una comisión de la organización.
  * - `null` → no existe en esta organización (404).
  * - lanza `CommissionTransitionError` (409/400) si el estado no lo permite o falta motivo.
@@ -146,16 +166,16 @@ export async function transitionCommission(
     payment: action === 'pay' ? opts.payment : undefined,
   });
 
+  // La tabla ya no admite escritura desde la sesión: la transición va por
+  // fn_comision_aplicar_transicion (20260928213000), que exige gestor, la
+  // transición válida, solo status/paid_at/notes/metadata y la cuenta de la
+  // organización, y escribe con `status = from` (la concurrencia no paga dos veces).
   const { from } = transitionFor(action);
   const { data, error } = await supabase
-    .from('commissions')
-    .update(patch)
-    .eq('id', commissionId)
-    .eq('organization_id', orgId)
-    .eq('status', from)
+    .rpc('fn_comision_aplicar_transicion', { p_org: orgId, p_id: commissionId, p_desde: from, p_cambios: patch })
     .select(COMMISSION_COLUMNS)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw rechazoDeLaBase(error);
   if (!data) {
     // Alguien cambió el estado entre la lectura y la escritura.
     throw new CommissionTransitionError('La comisión cambió de estado mientras se procesaba; recarga la lista.');

@@ -143,3 +143,44 @@ bastan para generar el movimiento cuando tesorería defina el egreso a terceros.
   `fn_impuesto_fijar_por_defecto` (una transacción); authenticated solo lee.
   Los creadores de organización son rol 2 (86 de 86): el alta sigue pudiendo
   fijar la tarifa por defecto.
+
+## C. Pendientes cerrados (segunda sesión, 2026-09-28)
+
+Cada uno con su commit, su prueba y, si toca la base, su migración + rollback
+probados antes en un `DO … RAISE` que se deshace.
+
+1. **`commissions` escrita por cualquier miembro** →
+   `20260928213000_comisiones_escritura_solo_servidor`. Lectura por
+   pertenencia; sin gestión (roles 1, 2, 5 o superadmin; o `hr.payroll.*` /
+   `finance.approve`), solo las propias, como `GET /api/crm/commissions`.
+   authenticated solo SELECT, anon nada. Transiciones por
+   `fn_comision_aplicar_transicion`, nómina por `fn_comisiones_pagar_por_nomina`;
+   el formulario viejo de compra (sin importadores) deja de insertar.
+   Medido: 231 comisiones, todas devengadas; 1 modificada tras su alta
+   (organización 132, sigue devengada); 0 colillas con comisiones.
+2. **Anular factura no cancelaba la comisión** →
+   `20260928211000_factura_venta_anular_cancela_comision`: cancela las
+   devengadas de la factura y de su venta (contra-asiento por el disparador) y
+   avisa `comision_ya_pagada`. Las 2 facturas anuladas de la organización 115
+   con comisión devengada (60.000 y 8.400 COP) **siguen sin tocar**.
+3. **Comisión de oportunidad con impuestos, por porcentaje y duplicada** →
+   `20260928212000_comision_oportunidad_una_sola_fuente`: RPC única
+   (`fn_comision_oportunidad_devengar`) con base subtotal, método de la factura
+   y una sola fuente; el disparador de «ganada» tampoco duplica la de la
+   factura. Medido: 0 comisiones de oportunidad, 0 duplicados; 1 oportunidad
+   abierta (organización 125) habría duplicado 400.000 al ganarse.
+   Queda abierto: si la oportunidad se gana ANTES de emitir su factura con
+   vendedor, `fn_factura_venta_guardar` devenga la de la factura igual (el
+   orden inverso sí quedó cubierto).
+4. **`initialize_organization_taxes` con 'CO'** →
+   `20260928210000_impuestos_iniciales_pais_de_la_organizacion`. Medido: 0
+   organizaciones afectadas (la función no tiene llamadores; el alta usa
+   `setup_organization_defaults` con 'COL'). 13 organizaciones de 2025 sin
+   ningún impuesto (12 con país NULL, 1 COL, 0 líneas facturadas): solo se
+   reporta.
+5. **Retención relacionada sumada como impuesto** → `esCodigoRetencion` /
+   `sinRetenciones` en el resolver y en `getProductTaxes` del POS (en línea y
+   sin conexión). 76 organizaciones tienen RETE_4 y RETE_11 activos; 0
+   relaciones con productos.
+6. **Vigencia de la tasa contra el día UTC** → `resolverTasaComision` usa
+   `fn_tasa_comision_vigente` (día de la organización). 0 tasas guardadas.

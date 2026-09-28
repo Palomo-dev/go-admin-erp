@@ -153,3 +153,33 @@ export interface ContextoSaldoFavor {
   caja: { abierta: boolean; id: number | null };
   hoy: string;
 }
+
+/** Anular un anticipo sin usar: reversa pago, saldo y asiento (fn_anular_pago). */
+export const anularSaldoSchema = z.object({ motivo: z.string().trim().min(3).max(500) }).strict();
+export type SolicitudAnularSaldo = z.infer<typeof anularSaldoSchema>;
+
+/** Devolver en dinero todo o parte del saldo (caja abierta o cuenta bancaria). */
+export const devolverSaldoSchema = z
+  .object({
+    monto: IMPORTE,
+    metodo: z.string().min(1).max(40),
+    motivo: z.string().trim().min(3).max(500),
+    cuenta_bancaria: z.number().int().positive().nullable().optional(),
+    referencia: z.string().max(200).nullable().optional(),
+    clave_idempotencia: CLAVE,
+  })
+  .strict();
+export type SolicitudDevolverSaldo = z.infer<typeof devolverSaldoSchema>;
+
+export interface ResultadoAnularSaldo {
+  payment_id: string;
+  credito_id: string;
+  contra_asiento: number | null;
+}
+
+export interface ResultadoDevolverSaldo {
+  payment_id: string;
+  repetida: boolean;
+  monto: number;
+  saldo_disponible: number;
+}

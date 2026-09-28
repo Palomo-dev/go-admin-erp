@@ -3,8 +3,10 @@ import { getCurrentBranchId, getOrganizationId } from '@/lib/hooks/useOrganizati
 import type {
   ContextoSaldoFavor,
   ErrorSaldoFavor,
+  ResultadoAnularSaldo,
   ResultadoAplicarSaldo,
   ResultadoCrearSaldo,
+  ResultadoDevolverSaldo,
 } from '@/lib/finanzas/saldosAFavor/contrato';
 
 export type { ContextoSaldoFavor };
@@ -210,6 +212,32 @@ export const saldosAFavorService = {
       referencia: input.referencia?.trim() || null,
       vence: input.expiry || null,
       notas: input.notes?.trim() || null,
+      clave_idempotencia: input.claveIdempotencia,
+    });
+  },
+
+  /**
+   * Anula un anticipo que no se ha usado (`POST /api/saldos-a-favor/[id]/anular`).
+   * Sin botón todavía: el rediseño de la pantalla decide dónde va.
+   */
+  async anular(creditId: string, motivo: string): Promise<ResultadoAnularSaldo> {
+    return enviar<ResultadoAnularSaldo>(`/api/saldos-a-favor/${encodeURIComponent(creditId)}/anular`, { motivo });
+  },
+
+  /**
+   * Devuelve en dinero todo o parte del saldo (`POST /api/saldos-a-favor/[id]/devolver`).
+   * Sin botón todavía: el rediseño de la pantalla decide dónde va.
+   */
+  async devolver(
+    creditId: string,
+    input: { monto: number; metodo: string; motivo: string; cuentaBancaria?: number | null; referencia?: string; claveIdempotencia: string },
+  ): Promise<ResultadoDevolverSaldo> {
+    return enviar<ResultadoDevolverSaldo>(`/api/saldos-a-favor/${encodeURIComponent(creditId)}/devolver`, {
+      monto: input.monto,
+      metodo: input.metodo,
+      motivo: input.motivo,
+      cuenta_bancaria: input.cuentaBancaria ?? null,
+      referencia: input.referencia?.trim() || null,
       clave_idempotencia: input.claveIdempotencia,
     });
   },

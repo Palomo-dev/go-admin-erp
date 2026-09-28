@@ -197,3 +197,59 @@ describe('4 · RLS y grants: lectura por pertenencia, escritura solo por RPC (20
     expect(rollback).toMatch(/create policy credit_note_applications_organization_insert/);
   });
 });
+
+describe('5 · anular el anticipo, devolver en dinero y vencer al leer (20260928140400)', () => {
+  const sql = leer('supabase/migrations/20260928140400_saldo_favor_5_anular_devolver_vencer.sql');
+  const rollback = leer('supabase/rollbacks/20260928140400_saldo_favor_5_anular_devolver_vencer_rollback.sql');
+
+  /**
+   * Dry-run 2026-09-28 con `role = authenticated` (org 144, caja propia abierta, transacción deshecha):
+   *   A. anticipo 500 en efectivo → arqueo +500; anular → arqueo 0, saldo cancelled/0, pago void,
+   *      recibo void, contra-asiento (2805 neto 0); anular otra vez → saldo_no_disponible
+   *   B. anticipo 300 con 100 aplicados → fn_saldo_favor_anular y fn_anular_pago → saldo_usado
+   *   C. saldo sin pago de origen (como el excedente de una nota) → saldo_no_anulable
+   *   D. devolver 150 de 400 en efectivo → saldo 250, arqueo −150, asiento 2805 D / 1105 C;
+   *      misma clave → repetida; 300 → monto_excede_saldo_a_favor; transferencia sin
+   *      referencia → referencia_obligatoria; motivo corto → motivo_obligatorio; otra
+   *      organización → saldo_no_encontrado; anular tras devolver → saldo_usado;
+   *      devolver el resto → used/0
+   *   F. vencido ayer → estado vivo 'expired' (sin escribir); agotado → 'used';
+   *      aplicar el vencido → saldo_vencido; devolverlo en dinero → se permite
+   *   miembro sin finance.void → sin_permiso (anular y devolver)
+   */
+  test('fn_anular_pago admite el anticipo solo si el saldo no se usó y revierte saldo y asiento', () => {
+    expect(sql).toMatch(/'account_payable', 'credit_note', 'customer_credit'\)/);
+    expect(sql).toMatch(/raise exception 'saldo_usado'/);
+    expect(sql).toMatch(/set status = 'cancelled', balance = 0/);
+    expect(sql).toMatch(/v_p\.source = 'customer_credit' and je\.fact_key = 'customer_credit:' \|\| v_p\.source_id/);
+    // La rama de notas crédito de la otra sesión se conserva.
+    expect(sql).toMatch(/je\.fact_key = 'refund:credit_note:' \|\| v_p\.source_id/);
+  });
+
+  test('anular por saldo delega en fn_anular_pago (una sola anulación)', () => {
+    expect(sql).toMatch(/return public\.fn_anular_pago\(v_pago, p_motivo\)/);
+    expect(sql).toMatch(/raise exception 'saldo_no_anulable'/);
+    expect(sql).toMatch(/fn_finanzas_exigir_permiso\(v_credito\.organization_id, array\['finance\.void'\]\)/);
+  });
+
+  test('devolver: finance.void, idempotencia, caja, pago negativo y asiento verificado', () => {
+    expect(sql).toMatch(/fn_finanzas_exigir_permiso\(v_org, array\['finance\.void'\]\)/);
+    expect(sql).toMatch(/pg_advisory_xact_lock\(hashtextextended\('saldo_favor_devolver:'/);
+    expect(sql).toMatch(/'customer_credit_refund', v_credito\.id::text, p_metodo, -v_monto/);
+    expect(sql).toMatch(/p_fact_key := 'customer_credit_refund:' \|\| v_pago\.id::text/);
+    expect(sql).toMatch(/if v_entry is null then\s+raise exception 'asiento_no_creado'/);
+    expect(sql).toMatch(/v_caja := public\.fn_caja_abierta_para\(v_org, v_credito\.branch_id, v_uid\)/);
+  });
+
+  test('vencido es un estado vivo al leer, sin cron', () => {
+    expect(sql).toMatch(/create or replace function public\.fn_saldo_favor_estado/);
+    expect(sql).toMatch(/fn_saldo_favor_vencido\(p_org, p_branch, p_expiry\) then 'expired'/);
+    expect(sql).not.toMatch(/cron\.schedule/i);
+    expect(sql).not.toMatch(/set status = 'expired'/);
+  });
+
+  test('el rollback devuelve fn_anular_pago a la versión que rechaza el anticipo', () => {
+    expect(rollback).toMatch(/'account_payable', 'credit_note'\) then/);
+    expect(rollback).toMatch(/drop function if exists public\.fn_saldo_favor_devolver/);
+  });
+});

@@ -14,10 +14,13 @@ import {
   estadoHttpErrorSaldoFavor,
   type ContextoSaldoFavor,
   type ErrorSaldoFavor,
+  type ResultadoAnularSaldo,
   type ResultadoAplicarSaldo,
   type ResultadoCrearSaldo,
+  type ResultadoDevolverSaldo,
   type SolicitudAplicarSaldo,
   type SolicitudCrearSaldo,
+  type SolicitudDevolverSaldo,
 } from '@/lib/finanzas/saldosAFavor/contrato';
 import { contextoPago, ErrorPagoServidor } from '@/lib/services/pagos/pagos.server';
 
@@ -113,4 +116,35 @@ export async function contextoSaldo(ctx: Ctx, branchId: number | null): Promise<
     if (err instanceof ErrorPagoServidor) throw new ErrorSaldoFavorServidor('error_desconocido');
     throw err;
   }
+}
+
+/**
+ * Anula un anticipo sin usar (`fn_saldo_favor_anular` → `fn_anular_pago`):
+ * pago void, saldo cancelado y contra-asiento en una transacción. Si el saldo
+ * ya se usó, la base responde `saldo_usado`.
+ */
+export async function anularSaldo(ctx: Ctx, creditId: string, motivo: string): Promise<ResultadoAnularSaldo> {
+  const { data, error } = await ctx.supabase.rpc('fn_saldo_favor_anular', {
+    p_credit_id: creditId,
+    p_motivo: motivo,
+    p_organization_id: ctx.organizationId,
+  });
+  if (error) throw errorDeRpc('fn_saldo_favor_anular', ctx, error);
+  return data as ResultadoAnularSaldo;
+}
+
+/** Devuelve en dinero todo o parte del saldo (`fn_saldo_favor_devolver`). */
+export async function devolverSaldo(ctx: Ctx, creditId: string, s: SolicitudDevolverSaldo): Promise<ResultadoDevolverSaldo> {
+  const { data, error } = await ctx.supabase.rpc('fn_saldo_favor_devolver', {
+    p_credit_id: creditId,
+    p_monto: s.monto,
+    p_metodo: s.metodo,
+    p_motivo: s.motivo,
+    p_clave_idempotencia: s.clave_idempotencia,
+    p_organization_id: ctx.organizationId,
+    p_cuenta_bancaria: s.cuenta_bancaria ?? null,
+    p_referencia: s.referencia ?? null,
+  });
+  if (error) throw errorDeRpc('fn_saldo_favor_devolver', ctx, error);
+  return data as ResultadoDevolverSaldo;
 }

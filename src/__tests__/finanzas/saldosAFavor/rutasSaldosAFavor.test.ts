@@ -67,6 +67,8 @@ jest.mock('@/lib/services/pagos/pagos.server', () => {
 import { POST as aplicar } from '@/app/api/saldos-a-favor/[id]/aplicar/route';
 import { POST as crear } from '@/app/api/saldos-a-favor/route';
 import { GET as contexto } from '@/app/api/saldos-a-favor/contexto/route';
+import { POST as anular } from '@/app/api/saldos-a-favor/[id]/anular/route';
+import { POST as devolver } from '@/app/api/saldos-a-favor/[id]/devolver/route';
 
 const peticion = (url: string, body: unknown) =>
   new Request(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -78,6 +80,8 @@ beforeEach(() => {
   guion.errorRpc = null;
   guion.datos = {
     fn_apply_customer_credit: { aplicacion_id: 'a1', repetida: false, monto: 100, saldo_disponible: 900, saldo_factura: 0 },
+    fn_saldo_favor_anular: { payment_id: 'p1', credito_id: SALDO, contra_asiento: 9 },
+    fn_saldo_favor_devolver: { payment_id: 'p2', repetida: false, monto: 50, saldo_disponible: 450 },
     fn_saldo_favor_crear: { credito_id: 'c1', grupo_id: 'g1', recibo: 'RC-000009', repetida: false, caja_id: 3, monto: 500 },
   };
   rpcs.length = 0;
@@ -245,5 +249,69 @@ describe('GET /api/saldos-a-favor/contexto', () => {
     guion.permisos = new Set();
     const r2 = await contexto(new Request('http://x/api/saldos-a-favor/contexto?sucursal=7'), params);
     expect(r2.status).toBe(403);
+  });
+});
+
+describe('POST /api/saldos-a-favor/[id]/anular', () => {
+  const url = `http://x/api/saldos-a-favor/${SALDO}/anular`;
+
+  test('anula con la organización de la sesión y finance.void', async () => {
+    const r = await anular(peticion(url, { motivo: 'cliente desistió' }), params);
+    expect(r.status).toBe(200);
+    expect(rpcs[0]).toEqual({
+      nombre: 'fn_saldo_favor_anular',
+      args: { p_credit_id: SALDO, p_motivo: 'cliente desistió', p_organization_id: ORG },
+    });
+  });
+
+  test('sin motivo → motivo_obligatorio; sin finance.void → 403; organización ajena → 403', async () => {
+    const r1 = await anular(peticion(url, { motivo: 'x' }), params);
+    expect((await r1.json()).codigo).toBe('motivo_obligatorio');
+    guion.permisos = new Set(['finance.create']);
+    const r2 = await anular(peticion(url, { motivo: 'cliente desistió' }), params);
+    expect(r2.status).toBe(403);
+    guion.permisos = new Set(['finance.void']);
+    const r3 = await anular(peticion(url, { motivo: 'cliente desistió', org_id: 999 }), params);
+    expect(r3.status).toBe(403);
+    expect(rpcs).toHaveLength(0);
+  });
+
+  test('saldo usado → 409 saldo_usado; sin pago de origen → 409 saldo_no_anulable', async () => {
+    guion.errorRpc = { message: 'saldo_usado' };
+    const r1 = await anular(peticion(url, { motivo: 'cliente desistió' }), params);
+    expect(r1.status).toBe(409);
+    expect((await r1.json()).codigo).toBe('saldo_usado');
+    guion.errorRpc = { message: 'saldo_no_anulable' };
+    const r2 = await anular(peticion(url, { motivo: 'cliente desistió' }), params);
+    expect(r2.status).toBe(409);
+  });
+});
+
+describe('POST /api/saldos-a-favor/[id]/devolver', () => {
+  const url = `http://x/api/saldos-a-favor/${SALDO}/devolver`;
+  const cuerpo = (extra: Record<string, unknown> = {}) => ({
+    monto: 50,
+    metodo: 'cash',
+    motivo: 'devolución al cliente',
+    clave_idempotencia: 'devolver:prueba-0001',
+    ...extra,
+  });
+
+  test('devuelve con la organización de la sesión y finance.void', async () => {
+    const r = await devolver(peticion(url, cuerpo()), params);
+    expect(r.status).toBe(201);
+    expect(rpcs[0].nombre).toBe('fn_saldo_favor_devolver');
+    expect(rpcs[0].args).toMatchObject({ p_credit_id: SALDO, p_monto: 50, p_metodo: 'cash', p_organization_id: ORG });
+  });
+
+  test('sin finance.void → 403 sin RPC; efectivo sin caja → 409', async () => {
+    guion.permisos = new Set(['finance.create']);
+    const r1 = await devolver(peticion(url, cuerpo()), params);
+    expect(r1.status).toBe(403);
+    expect(rpcs).toHaveLength(0);
+    guion.permisos = new Set(['finance.void']);
+    guion.errorRpc = { message: 'sin_caja_abierta' };
+    const r2 = await devolver(peticion(url, cuerpo()), params);
+    expect(r2.status).toBe(409);
   });
 });

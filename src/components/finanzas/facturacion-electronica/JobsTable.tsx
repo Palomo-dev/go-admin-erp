@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Table,
   TableBody,
@@ -23,7 +24,8 @@ import {MoreVertical,
   Eye,
   FileDown,
   FileText} from 'lucide-react';
-import { formatDate, cn } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { TableSkeleton } from '@/components/common/PageSkeletons';
 
 export interface ElectronicInvoicingJob {
@@ -40,8 +42,18 @@ export interface ElectronicInvoicingJob {
   error_code?: string;
   error_message?: string;
   processed_at?: string;
-  request_payload?: any;
-  response_payload?: any;
+  request_payload?: Record<string, unknown>;
+  /** Respuesta de Factus; `data` trae lo que devuelve la DIAN al validar. */
+  response_payload?: {
+    data?: {
+      number?: string;
+      validated_at?: string;
+      prefix?: string;
+      status?: string;
+      errors?: unknown[] | Record<string, unknown> | null;
+    };
+    [clave: string]: unknown;
+  };
   created_at: string;
   updated_at: string;
   invoice?: {
@@ -66,22 +78,19 @@ interface JobsTableProps {
   onDownloadXML: (job: ElectronicInvoicingJob) => void;
 }
 
-const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className: string }> = {
-  pending: { label: 'Pendiente', variant: 'secondary', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
-  processing: { label: 'Procesando', variant: 'secondary', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
-  sent: { label: 'Enviado', variant: 'secondary', className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400' },
-  accepted: { label: 'Aceptado', variant: 'default', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
-  rejected: { label: 'Rechazado', variant: 'destructive', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
-  failed: { label: 'Fallido', variant: 'destructive', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
-  cancelled: { label: 'Cancelado', variant: 'outline', className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400' },
+/** Estilo por estado del job; la etiqueta sale de `facturacionElectronica.estados`. */
+const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; className: string }> = {
+  pending: { variant: 'secondary', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
+  processing: { variant: 'secondary', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
+  sent: { variant: 'secondary', className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400' },
+  accepted: { variant: 'default', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+  rejected: { variant: 'destructive', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+  failed: { variant: 'destructive', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+  cancelled: { variant: 'outline', className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400' },
 };
 
-const documentTypeLabels: Record<string, string> = {
-  invoice: 'Factura',
-  credit_note: 'Nota Crédito',
-  debit_note: 'Nota Débito',
-  support_document: 'Doc. Soporte',
-};
+/** Tipos de documento con etiqueta en `facturacionElectronica.tiposDocumento`; otros se muestran tal cual. */
+export const TIPOS_DOCUMENTO_FE = new Set<string>(['invoice', 'credit_note', 'debit_note', 'support_document']);
 
 export function JobsTable({
   jobs,
@@ -92,11 +101,13 @@ export function JobsTable({
   onDownloadPDF,
   onDownloadXML,
 }: JobsTableProps) {
+  const t = useTranslations('facturacionElectronica');
+  const { formatDate } = useFormatDate();
   const getCustomerName = (job: ElectronicInvoicingJob): string => {
-    if (!job.invoice?.customer) return 'N/A';
+    if (!job.invoice?.customer) return t('trabajos.noDisponible');
     const { first_name, last_name, company_name } = job.invoice.customer;
     if (company_name) return company_name;
-    return `${first_name || ''} ${last_name || ''}`.trim() || 'N/A';
+    return `${first_name || ''} ${last_name || ''}`.trim() || t('trabajos.noDisponible');
   };
 
   if (isLoading) {
@@ -109,8 +120,8 @@ export function JobsTable({
     return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
         <FileText className="h-12 w-12 mb-4 opacity-50" />
-        <p className="text-lg font-medium">No hay jobs de facturación electrónica</p>
-        <p className="text-sm">Los jobs aparecerán aquí cuando envíes facturas a la DIAN</p>
+        <p className="text-lg font-medium">{t('trabajos.vacioTitulo')}</p>
+        <p className="text-sm">{t('trabajos.vacioDescripcion')}</p>
       </div>
     );
   }
@@ -120,19 +131,20 @@ export function JobsTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-gray-50 dark:bg-gray-800/50">
-            <TableHead className="font-semibold">Factura</TableHead>
-            <TableHead className="font-semibold">Cliente</TableHead>
-            <TableHead className="font-semibold">Tipo</TableHead>
-            <TableHead className="font-semibold">Estado</TableHead>
-            <TableHead className="font-semibold">CUFE</TableHead>
-            <TableHead className="font-semibold">Intentos</TableHead>
-            <TableHead className="font-semibold">Fecha</TableHead>
-            <TableHead className="text-right font-semibold">Acciones</TableHead>
+            <TableHead className="font-semibold">{t('trabajos.columnas.factura')}</TableHead>
+            <TableHead className="font-semibold">{t('trabajos.columnas.cliente')}</TableHead>
+            <TableHead className="font-semibold">{t('trabajos.columnas.tipo')}</TableHead>
+            <TableHead className="font-semibold">{t('trabajos.columnas.estado')}</TableHead>
+            <TableHead className="font-semibold">{t('trabajos.columnas.cufe')}</TableHead>
+            <TableHead className="font-semibold">{t('trabajos.columnas.intentos')}</TableHead>
+            <TableHead className="font-semibold">{t('trabajos.columnas.fecha')}</TableHead>
+            <TableHead className="text-right font-semibold">{t('trabajos.columnas.acciones')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {jobs.map((job) => {
-            const status = statusConfig[job.status] || statusConfig.pending;
+            const estado = statusConfig[job.status] ? job.status : 'pending';
+            const status = statusConfig[estado];
             const canRetry = ['failed', 'rejected'].includes(job.status) && job.attempt_count < job.max_attempts;
             const canCancel = ['pending', 'processing'].includes(job.status);
             const canDownload = job.status === 'accepted' && job.cufe;
@@ -150,12 +162,12 @@ export function JobsTable({
                 </TableCell>
                 <TableCell>
                   <span className="text-sm">
-                    {documentTypeLabels[job.document_type] || job.document_type}
+                    {TIPOS_DOCUMENTO_FE.has(job.document_type) ? t(`tiposDocumento.${job.document_type}` as never) : job.document_type}
                   </span>
                 </TableCell>
                 <TableCell>
                   <Badge className={cn('font-medium', status.className)}>
-                    {status.label}
+                    {t(`estados.${estado}`)}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -181,31 +193,31 @@ export function JobsTable({
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('trabajos.acciones.menu')}>
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
                       <DropdownMenuItem onClick={() => onViewDetails(job)}>
                         <Eye className="h-4 w-4 mr-2" />
-                        Ver detalles
+                        {t('trabajos.acciones.ver')}
                       </DropdownMenuItem>
                       {canDownload && (
                         <>
                           <DropdownMenuItem onClick={() => onDownloadPDF(job)}>
                             <FileDown className="h-4 w-4 mr-2" />
-                            Descargar PDF
+                            {t('trabajos.acciones.pdf')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onDownloadXML(job)}>
                             <FileText className="h-4 w-4 mr-2" />
-                            Descargar XML
+                            {t('trabajos.acciones.xml')}
                           </DropdownMenuItem>
                         </>
                       )}
                       {canRetry && (
                         <DropdownMenuItem onClick={() => onRetry(job.id)}>
                           <RefreshCw className="h-4 w-4 mr-2" />
-                          Reintentar
+                          {t('trabajos.acciones.reintentar')}
                         </DropdownMenuItem>
                       )}
                       {canCancel && (
@@ -214,7 +226,7 @@ export function JobsTable({
                           className="text-red-600 dark:text-red-400"
                         >
                           <XCircle className="h-4 w-4 mr-2" />
-                          Cancelar
+                          {t('trabajos.acciones.cancelar')}
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>

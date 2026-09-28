@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Zap, Info } from 'lucide-react';
@@ -31,6 +32,7 @@ export function ElectronicInvoiceToggle({
   size = 'md',
   className,
 }: ElectronicInvoiceToggleProps) {
+  const t = useTranslations('facturacionElectronica.interruptor');
   const sizeClasses = {
     sm: 'text-xs',
     md: 'text-sm',
@@ -62,7 +64,7 @@ export function ElectronicInvoiceToggle({
             checked ? 'text-blue-500' : 'text-gray-400'
           )} />
           <span className={checked ? 'text-blue-600 dark:text-blue-400 font-medium' : ''}>
-            Factura Electrónica
+            {t('etiqueta')}
           </span>
           {showTooltip && (
             <TooltipProvider>
@@ -72,8 +74,7 @@ export function ElectronicInvoiceToggle({
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs">
                   <p className="text-xs">
-                    Al activar esta opción, la factura será enviada automáticamente
-                    a la DIAN para su validación electrónica.
+                    {t('ayuda')}
                   </p>
                 </TooltipContent>
               </Tooltip>

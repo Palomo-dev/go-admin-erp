@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Zap, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
@@ -48,6 +49,7 @@ export function SendToFactusButton({
   onError,
 }: SendToFactusButtonProps) {
   const { toast } = useToast();
+  const t = useTranslations('facturacionElectronica.enviar');
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -83,25 +85,26 @@ export function SendToFactusButton({
 
       if (result.success) {
         toast({
-          title: 'Factura enviada a DIAN',
-          description: `La factura ${invoiceNumber} ha sido enviada para validación`,
+          title: t('toast.enviadaTitulo'),
+          description: t('toast.enviadaDescripcion', { numero: invoiceNumber }),
         });
         onSuccess?.();
       } else {
         toast({
-          title: 'Error al enviar',
-          description: result.error || 'No se pudo enviar la factura a DIAN',
+          title: t('toast.errorEnvioTitulo'),
+          description: result.error || t('toast.errorEnvioDescripcion'),
           variant: 'destructive',
         });
-        onError?.(result.error || 'Error desconocido');
+        onError?.(result.error || t('toast.errorDesconocido'));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const mensaje = error instanceof Error ? error.message : '';
       toast({
-        title: 'Error',
-        description: error.message || 'Error al procesar la solicitud',
+        title: t('toast.errorTitulo'),
+        description: mensaje || t('toast.errorSolicitud'),
         variant: 'destructive',
       });
-      onError?.(error.message);
+      onError?.(mensaje);
     } finally {
       setIsLoading(false);
     }
@@ -109,12 +112,12 @@ export function SendToFactusButton({
 
   // Texto del botón según estado
   const getButtonText = () => {
-    if (isLoading || isValidating) return 'Enviando...';
-    if (isAlreadyAccepted) return 'Enviada a DIAN';
-    if (isProcessing) return 'Procesando...';
-    if (isPending) return 'Pendiente DIAN';
-    if (currentStatus === 'rejected' || currentStatus === 'failed') return 'Reintentar DIAN';
-    return 'Enviar a DIAN';
+    if (isLoading || isValidating) return t('enviando');
+    if (isAlreadyAccepted) return t('enviada');
+    if (isProcessing) return t('procesando');
+    if (isPending) return t('pendiente');
+    if (currentStatus === 'rejected' || currentStatus === 'failed') return t('reintentar');
+    return t('enviar');
   };
 
   // Deshabilitado si está procesando o ya aceptada
@@ -144,17 +147,17 @@ export function SendToFactusButton({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Zap className="h-5 w-5 text-blue-500" />
-              Enviar Factura Electrónica
+              {t('dialogoTitulo')}
             </DialogTitle>
             <DialogDescription>
-              Se enviará la factura <strong>{invoiceNumber}</strong> a la DIAN para su validación.
+              {t.rich('dialogoDescripcion', { numero: invoiceNumber, strong: (partes) => <strong>{partes}</strong> })}
             </DialogDescription>
           </DialogHeader>
 
           {validationErrors.length > 0 && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Errores de validación</AlertTitle>
+              <AlertTitle>{t('erroresValidacion')}</AlertTitle>
               <AlertDescription>
                 <ul className="list-disc list-inside mt-2 space-y-1">
                   {validationErrors.map((error, index) => (
@@ -168,22 +171,21 @@ export function SendToFactusButton({
           {validationErrors.length === 0 && (
             <div className="py-4">
               <p className="text-sm text-muted-foreground">
-                Una vez enviada, la factura será procesada por el proveedor de facturación electrónica
-                y validada ante la DIAN. Este proceso puede tomar unos minutos.
+                {t('explicacion')}
               </p>
             </div>
           )}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
-              Cancelar
+              {t('cancelar')}
             </Button>
             <Button
               onClick={handleConfirmSend}
               disabled={validationErrors.length > 0}
             >
               <Zap className="h-4 w-4 mr-2" />
-              Confirmar envío
+              {t('confirmar')}
             </Button>
           </DialogFooter>
         </DialogContent>

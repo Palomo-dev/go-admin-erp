@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { ProviderSelector, type ProviderData } from './ProviderSelector';
 import { ItemsFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ItemsFactura';
 import { ImpuestosFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ImpuestosFactura';
@@ -37,10 +39,11 @@ import type { InvoiceItem } from '@/components/finanzas/facturas-venta/nueva-fac
 // Re-exportar InvoiceItem para compatibilidad
 export type { InvoiceItem };
 
+/** Formas de pago DIAN (1 = contado, 2 = crédito); la etiqueta sale de `documentosSoporte.formulario.formasPago`. */
 const PAYMENT_FORMS = [
-  { value: '1', label: 'Contado' },
-  { value: '2', label: 'Crédito' },
-];
+  { value: '1', clave: 'contado' },
+  { value: '2', clave: 'credito' },
+] as const;
 
 /**
  * Genera el siguiente código de referencia secuencial para documentos soporte.
@@ -119,13 +122,16 @@ interface InvoicePurchaseOption {
 export function SupportDocumentForm() {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useTranslations('documentosSoporte.formulario');
+  const { formatDate, getToday } = useFormatDate();
   const [organizationId, setOrganizationId] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
   // Datos generales
   const [referenceCode, setReferenceCode] = useState('');
-  const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
+  // Día de la organización, no el día UTC.
+  const [issueDate, setIssueDate] = useState(() => getToday());
   const [createdTime, setCreatedTime] = useState(new Date().toTimeString().substring(0, 8));
   const [observation, setObservation] = useState('');
   const [paymentForm, setPaymentForm] = useState('1');
@@ -276,9 +282,9 @@ export function SupportDocumentForm() {
       invoicePurchaseOptions.map((inv) => ({
         value: inv.id,
         label: `${inv.number_ext}${inv.supplier?.name ? ` — ${inv.supplier.name}` : ''}`,
-        sublabel: `${inv.issue_date ? new Date(inv.issue_date).toLocaleDateString() : 'S/F'} · ${formatMoneda(Number(inv.total || 0), paraDocumento(inv.currency))}`,
+        sublabel: `${inv.issue_date ? formatDate(inv.issue_date) : t('sinFecha')} · ${formatMoneda(Number(inv.total || 0), paraDocumento(inv.currency))}`,
       })),
-    [invoicePurchaseOptions, paraDocumento]
+    [invoicePurchaseOptions, paraDocumento, formatDate, t]
   );
 
   const handleItemsChange = useCallback((newItems: InvoiceItem[]) => {
@@ -291,24 +297,24 @@ export function SupportDocumentForm() {
   }, []);
 
   const validate = (): string | null => {
-    if (!provider.identification) return 'Debe seleccionar un proveedor';
-    if (!provider.names) return 'Debe seleccionar un proveedor';
-    if (!provider.address) return 'El proveedor debe tener dirección (requerido por DIAN)';
-    if (items.length === 0) return 'Debe agregar al menos un item';
+    if (!provider.identification) return t('validacion.proveedor');
+    if (!provider.names) return t('validacion.proveedor');
+    if (!provider.address) return t('validacion.direccion');
+    if (items.length === 0) return t('validacion.sinItems');
     for (const item of items) {
-      if (!item.description) return 'Todos los items deben tener una descripción';
-      if (Number(item.qty) <= 0) return 'Las cantidades deben ser mayores a 0';
-      if (Number(item.unit_price) < 0) return 'Los precios no pueden ser negativos';
+      if (!item.description) return t('validacion.descripcion');
+      if (Number(item.qty) <= 0) return t('validacion.cantidades');
+      if (Number(item.unit_price) < 0) return t('validacion.precios');
     }
-    if (paymentForm === '2' && !dueDate) return 'Debe ingresar fecha de vencimiento para pago a crédito';
-    if (!paymentMethodCode) return 'Debe seleccionar un método de pago';
+    if (paymentForm === '2' && !dueDate) return t('validacion.vencimiento');
+    if (!paymentMethodCode) return t('validacion.metodoPago');
     return null;
   };
 
   const saveDraft = async (sendToDian = false) => {
     const validationError = validate();
     if (validationError) {
-      toast({ title: 'Validación', description: validationError, variant: 'destructive' });
+      toast({ title: t('validacion.titulo'), description: validationError, variant: 'destructive' });
       return;
     }
 
@@ -357,7 +363,7 @@ export function SupportDocumentForm() {
         .single();
 
       if (sdError || !sd) {
-        throw new Error(sdError?.message || 'Error guardando documento soporte');
+        throw new Error(sdError?.message || t('errores.guardar'));
       }
 
       // 2. Guardar items en invoice_items (mapear InvoiceItem → campos de BD)
@@ -387,7 +393,7 @@ export function SupportDocumentForm() {
         .insert(itemsToInsert);
 
       if (itemsError) {
-        throw new Error(`Error guardando items: ${itemsError.message}`);
+        throw new Error(t('errores.items', { detalle: itemsError.message }));
       }
 
       if (sendToDian) {
@@ -403,17 +409,20 @@ export function SupportDocumentForm() {
 
         const result = await res.json();
         if (!res.ok) {
-          throw new Error(result.error || 'Error enviando a Factus');
+          throw new Error(result.error || t('errores.enviar'));
         }
 
         toast({
-          title: 'Documento enviado a DIAN',
-          description: `Ref: ${sd.reference_code} — ${result.data?.is_validated ? 'Validado' : 'En proceso'}`,
+          title: t('toast.enviadoTitulo'),
+          description: t('toast.enviadoDescripcion', {
+            referencia: sd.reference_code,
+            estado: result.data?.is_validated ? t('toast.validado') : t('toast.enProceso'),
+          }),
         });
       } else {
         toast({
-          title: 'Borrador guardado',
-          description: `Documento soporte ${sd.reference_code} guardado correctamente`,
+          title: t('toast.borradorTitulo'),
+          description: t('toast.borradorDescripcion', { referencia: sd.reference_code }),
         });
       }
 
@@ -421,8 +430,8 @@ export function SupportDocumentForm() {
     } catch (error) {
       console.error('Error:', error);
       toast({
-        title: 'Error',
-        description: (error as { message?: string } | null)?.message || 'Error inesperado',
+        title: t('toast.errorTitulo'),
+        description: (error as { message?: string } | null)?.message || t('toast.errorInesperado'),
         variant: 'destructive',
       });
     } finally {
@@ -438,15 +447,16 @@ export function SupportDocumentForm() {
         <Link
           href="/app/finanzas/documentos-soporte"
           className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          aria-label={t('volver')}
         >
           <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Nuevo Documento Soporte
+            {t('titulo')}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Para compras a proveedores no responsables de IVA
+            {t('subtitulo')}
           </p>
         </div>
       </div>
@@ -454,22 +464,22 @@ export function SupportDocumentForm() {
       {/* Datos generales */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="text-lg">Datos Generales</CardTitle>
+          <CardTitle className="text-lg">{t('datosGenerales')}</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">Código de referencia *</Label>
+            <Label className="text-xs">{t('referencia')}</Label>
             <Input
               value={referenceCode}
               onChange={(e) => setReferenceCode(e.target.value)}
               placeholder="DS-0001"
             />
             <p className="text-[10px] text-gray-500 dark:text-gray-400">
-              Auto-generado secuencial por organización
+              {t('referenciaAyuda')}
             </p>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Fecha de emisión *</Label>
+            <Label className="text-xs">{t('fechaEmision')}</Label>
             <Input
               type="date"
               value={issueDate}
@@ -477,7 +487,7 @@ export function SupportDocumentForm() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Hora de creación</Label>
+            <Label className="text-xs">{t('horaCreacion')}</Label>
             <Input
               type="time"
               step="1"
@@ -486,21 +496,21 @@ export function SupportDocumentForm() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Moneda *</Label>
+            <Label className="text-xs">{t('moneda')}</Label>
             <Select value={currency} onValueChange={setCurrency} disabled={loadingCurrencies}>
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar moneda" />
+                <SelectValue placeholder={t('monedaPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
                 {orgCurrencies.length === 0 ? (
                   <SelectItem value="_empty" disabled>
-                    {loadingCurrencies ? 'Cargando...' : 'Sin monedas configuradas'}
+                    {loadingCurrencies ? t('cargando') : t('sinMonedas')}
                   </SelectItem>
                 ) : (
                   orgCurrencies.map((oc) => (
                     <SelectItem key={oc.currency_code} value={oc.currency_code}>
                       {oc.currencies?.name || oc.currency_code}
-                      {oc.is_base && ' (base)'}
+                      {oc.is_base && t('base')}
                     </SelectItem>
                   ))
                 )}
@@ -508,7 +518,7 @@ export function SupportDocumentForm() {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Forma de pago *</Label>
+            <Label className="text-xs">{t('formaPago')}</Label>
             <Select value={paymentForm} onValueChange={setPaymentForm}>
               <SelectTrigger>
                 <SelectValue />
@@ -516,7 +526,7 @@ export function SupportDocumentForm() {
               <SelectContent>
                 {PAYMENT_FORMS.map((f) => (
                   <SelectItem key={f.value} value={f.value}>
-                    {f.label}
+                    {t(`formasPago.${f.clave}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -524,7 +534,7 @@ export function SupportDocumentForm() {
           </div>
           {paymentForm === '2' && (
             <div className="space-y-1.5">
-              <Label className="text-xs">Fecha de vencimiento *</Label>
+              <Label className="text-xs">{t('vencimiento')}</Label>
               <Input
                 type="date"
                 value={dueDate}
@@ -533,29 +543,29 @@ export function SupportDocumentForm() {
             </div>
           )}
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
-            <Label className="text-xs">Método de pago *</Label>
+            <Label className="text-xs">{t('metodoPago')}</Label>
             <FormaPagoSelector formaPago={paymentMethodCode} onChange={setPaymentMethodCode} />
           </div>
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
-            <Label className="text-xs">Observaciones</Label>
+            <Label className="text-xs">{t('observaciones')}</Label>
             <Textarea
               value={observation}
               onChange={(e) => setObservation(e.target.value)}
-              placeholder="Observaciones del documento (máx 500 caracteres)"
+              placeholder={t('observacionesPlaceholder')}
               maxLength={500}
               rows={2}
             />
           </div>
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
-            <Label className="text-xs">Factura de compra relacionada (opcional)</Label>
+            <Label className="text-xs">{t('facturaCompra')}</Label>
             <SearchSelect
               options={invoicePurchaseSearchOptions}
               value={invoicePurchaseId}
               onValueChange={(v) => setInvoicePurchaseId(v === 'none' ? '' : v)}
-              placeholder="Seleccionar factura de compra..."
-              searchPlaceholder="Buscar por número o proveedor..."
-              emptyText={loadingInvoices ? 'Cargando facturas...' : 'No se encontraron facturas'}
-              noneLabel="Sin factura de compra"
+              placeholder={t('facturaCompraPlaceholder')}
+              searchPlaceholder={t('facturaCompraBuscar')}
+              emptyText={loadingInvoices ? t('cargandoFacturas') : t('sinFacturas')}
+              noneLabel={t('sinFacturaCompra')}
             />
           </div>
         </CardContent>
@@ -564,7 +574,7 @@ export function SupportDocumentForm() {
       {/* Proveedor */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="text-lg">Proveedor</CardTitle>
+          <CardTitle className="text-lg">{t('proveedor')}</CardTitle>
         </CardHeader>
         <CardContent>
           <ProviderSelector value={provider} onChange={setProvider} />
@@ -580,7 +590,7 @@ export function SupportDocumentForm() {
         space-y-3
       ">
         <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
-          Items del Documento Soporte
+          {t('items')}
         </h3>
         <ItemsFactura
           items={items}
@@ -610,7 +620,7 @@ export function SupportDocumentForm() {
       <div className="flex flex-col sm:flex-row gap-3 justify-end">
         <Link href="/app/finanzas/documentos-soporte">
           <Button variant="outline" className="w-full sm:w-auto">
-            Cancelar
+            {t('cancelar')}
           </Button>
         </Link>
         <Button
@@ -624,7 +634,7 @@ export function SupportDocumentForm() {
           ) : (
             <Save className="h-4 w-4 mr-2" />
           )}
-          Guardar borrador
+          {t('guardarBorrador')}
         </Button>
         <Button
           onClick={() => saveDraft(true)}
@@ -636,7 +646,7 @@ export function SupportDocumentForm() {
           ) : (
             <Send className="h-4 w-4 mr-2" />
           )}
-          Guardar y enviar a DIAN
+          {t('guardarEnviar')}
         </Button>
       </div>
     </div>

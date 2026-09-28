@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,19 +28,11 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { SupportDocumentsTable, type SupportDocumentRow } from './SupportDocumentsTable';
 
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'Todos los estados' },
-  { value: 'draft', label: 'Borrador' },
-  { value: 'pending', label: 'Pendiente' },
-  { value: 'processing', label: 'Procesando' },
-  { value: 'sent', label: 'Enviado' },
-  { value: 'accepted', label: 'Aceptado' },
-  { value: 'rejected', label: 'Rechazado' },
-  { value: 'failed', label: 'Fallido' },
-  { value: 'cancelled', label: 'Cancelado' },
-];
+/** Estados de `support_documents.status` (claves técnicas; la etiqueta sale de `documentosSoporte.estados`). */
+const STATUS_OPTIONS = ['draft', 'pending', 'processing', 'sent', 'accepted', 'rejected', 'failed', 'cancelled'] as const;
 
 export function SupportDocumentsPage() {
+  const t = useTranslations('documentosSoporte');
   const [organizationId, setOrganizationId] = useState<number>(0);
   const [documents, setDocuments] = useState<SupportDocumentRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -143,6 +136,7 @@ export function SupportDocumentsPage() {
           <Link
             href="/app/finanzas"
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label={t('listado.volver')}
           >
             <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           </Link>
@@ -151,10 +145,10 @@ export function SupportDocumentsPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Documentos Soporte
+              {t('listado.titulo')}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Finanzas / Documentos Soporte Electrónicos DIAN
+              {t('listado.subtitulo')}
             </p>
           </div>
         </div>
@@ -168,12 +162,12 @@ export function SupportDocumentsPage() {
             className="h-9"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Actualizar
+            {t('listado.actualizar')}
           </Button>
           <Link href="/app/finanzas/documentos-soporte/nuevo">
             <Button size="sm" className="h-9 bg-purple-600 hover:bg-purple-700">
               <Plus className="h-4 w-4 mr-2" />
-              Nuevo Documento
+              {t('listado.nuevo')}
             </Button>
           </Link>
         </div>
@@ -182,25 +176,25 @@ export function SupportDocumentsPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
-          label="Total"
+          label={t('listado.stats.total')}
           value={stats.total}
           icon={<FileText className="h-5 w-5 text-blue-600" />}
           color="blue"
         />
         <StatCard
-          label="Borradores"
+          label={t('listado.stats.borradores')}
           value={stats.draft}
           icon={<Clock className="h-5 w-5 text-yellow-600" />}
           color="yellow"
         />
         <StatCard
-          label="Aceptados DIAN"
+          label={t('listado.stats.aceptados')}
           value={stats.accepted}
           icon={<CheckCircle2 className="h-5 w-5 text-green-600" />}
           color="green"
         />
         <StatCard
-          label="Fallidos"
+          label={t('listado.stats.fallidos')}
           value={stats.failed}
           icon={<XCircle className="h-5 w-5 text-red-600" />}
           color="red"
@@ -214,7 +208,7 @@ export function SupportDocumentsPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Buscar por referencia, número o proveedor..."
+                placeholder={t('listado.buscar')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -222,19 +216,20 @@ export function SupportDocumentsPage() {
             </div>
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
               <SelectTrigger className="w-full sm:w-56">
-                <SelectValue placeholder="Estado" />
+                <SelectValue placeholder={t('listado.estadoPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
-                {STATUS_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
+                <SelectItem value="all">{t('listado.todosEstados')}</SelectItem>
+                {STATUS_OPTIONS.map((estado) => (
+                  <SelectItem key={estado} value={estado}>
+                    {t(`estados.${estado}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {(statusFilter !== 'all' || searchTerm) && (
               <Button variant="ghost" size="sm" onClick={handleClearFilters}>
-                Limpiar
+                {t('listado.limpiar')}
               </Button>
             )}
           </div>
@@ -253,7 +248,7 @@ export function SupportDocumentsPage() {
           {total > pageSize && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t dark:border-gray-700">
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Mostrando {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} de {total}
+                {t('listado.mostrando', { desde: (page - 1) * pageSize + 1, hasta: Math.min(page * pageSize, total), total })}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -262,7 +257,7 @@ export function SupportDocumentsPage() {
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
                 >
-                  Anterior
+                  {t('listado.anterior')}
                 </Button>
                 <Button
                   variant="outline"
@@ -270,7 +265,7 @@ export function SupportDocumentsPage() {
                   onClick={() => setPage((p) => p + 1)}
                   disabled={page * pageSize >= total}
                 >
-                  Siguiente
+                  {t('listado.siguiente')}
                 </Button>
               </div>
             </div>

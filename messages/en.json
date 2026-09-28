@@ -4553,6 +4553,11 @@
         "conErroresDescripcion": "{count, plural, one {# supplier could not be imported} other {# suppliers could not be imported}}",
         "errorImportar": "Couldn't complete the import"
       }
+    },
+    "dialogo": {
+      "titulo": "New Supplier",
+      "descripcion": "Register a new supplier in the system.",
+      "cerrar": "Close"
     }
   },
   "categorias": {
@@ -9860,6 +9865,178 @@
         "siempreElectronicaAyuda": "Turns on e-invoicing by default in the POS, the pre-bill and new invoices.",
         "verDetalle": "See resolution, ranges and submissions"
       }
+    },
+    "estados": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "sent": "Sent",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "estadosDetalle": {
+      "accepted": "Accepted by DIAN",
+      "rejected": "Rejected",
+      "failed": "Failed",
+      "pending": "Pending",
+      "processing": "Processing",
+      "sent": "Sent"
+    },
+    "estadosBadge": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "sent": "Sent",
+      "accepted": "Accepted by DIAN",
+      "rejected": "Rejected by DIAN",
+      "failed": "Error",
+      "cancelled": "Cancelled",
+      "sinFe": "No e-invoice"
+    },
+    "tiposDocumento": {
+      "invoice": "Invoice",
+      "credit_note": "Credit Note",
+      "debit_note": "Debit Note",
+      "support_document": "Support Doc."
+    },
+    "eventos": {
+      "vacio": "No events recorded",
+      "tipos": {
+        "validated": "Validated",
+        "sent": "Sent",
+        "accepted": "Accepted",
+        "rejected": "Rejected",
+        "error": "Error",
+        "retry_scheduled": "Retry scheduled",
+        "cancelled": "Cancelled",
+        "created": "Created"
+      }
+    },
+    "envios": {
+      "titulo": "Electronic Invoicing",
+      "subtitulo": "Monitoring and management of DIAN electronic invoices",
+      "volver": "Back to finance",
+      "actualizar": "Refresh",
+      "configuracion": "Settings",
+      "docsApi": "API docs",
+      "cola": "Electronic Invoicing Queue",
+      "mostrando": "Showing {desde} - {hasta} of {total}",
+      "anterior": "Previous",
+      "siguiente": "Next",
+      "toast": {
+        "errorTitulo": "Error",
+        "errorCarga": "Could not load the invoicing jobs",
+        "actualizadoTitulo": "Refreshed",
+        "actualizadoDescripcion": "The data has been refreshed",
+        "reintentoTitulo": "Retry scheduled",
+        "reintentoDescripcion": "The job has been marked for retry",
+        "errorReintento": "Could not schedule the retry",
+        "canceladoTitulo": "Job cancelled",
+        "canceladoDescripcion": "The job has been cancelled",
+        "errorCancelar": "Could not cancel the job",
+        "sinFactura": "There is no invoice linked to this document",
+        "errorDescarga": "Error downloading {tipo}",
+        "descargaTitulo": "Download complete",
+        "descargaDescripcion": "The {tipo} file has been downloaded",
+        "noDescargado": "Could not download the {tipo}"
+      }
+    },
+    "estadisticas": {
+      "total": "Total Sent",
+      "aceptados": "Accepted",
+      "rechazados": "Rejected",
+      "pendientes": "Pending",
+      "fallidos": "Failed",
+      "tasaExito": "Success Rate"
+    },
+    "filtros": {
+      "buscar": "Search by invoice number...",
+      "estadoPlaceholder": "Filter by status",
+      "todos": "All statuses",
+      "limpiar": "Clear"
+    },
+    "trabajos": {
+      "vacioTitulo": "No electronic invoicing jobs",
+      "vacioDescripcion": "Jobs will appear here when you send invoices to the DIAN",
+      "noDisponible": "N/A",
+      "columnas": {
+        "factura": "Invoice",
+        "cliente": "Customer",
+        "tipo": "Type",
+        "estado": "Status",
+        "cufe": "CUFE",
+        "intentos": "Attempts",
+        "fecha": "Date",
+        "acciones": "Actions"
+      },
+      "acciones": {
+        "menu": "Actions",
+        "ver": "View details",
+        "pdf": "Download PDF",
+        "xml": "Download XML",
+        "reintentar": "Retry",
+        "cancelar": "Cancel"
+      },
+      "detalle": {
+        "titulo": "Electronic Invoice",
+        "facturaNo": "Invoice No.",
+        "noDian": "DIAN No.",
+        "cliente": "Customer",
+        "fechaEnvio": "Sent on",
+        "tipoDocumento": "Document type",
+        "proveedor": "Provider",
+        "intentos": "Attempts",
+        "intentosDe": "{intentos} of {maximo}",
+        "total": "Total",
+        "cufe": "CUFE",
+        "copiar": "Copy CUFE",
+        "copiadoTitulo": "Copied",
+        "copiadoDescripcion": "{elemento} copied to clipboard",
+        "qr": "QR code",
+        "qrAlt": "DIAN QR code",
+        "errorValidacion": "Validation error",
+        "codigo": "Code: {codigo}",
+        "datosValidada": "Validated invoice data",
+        "numeroDian": "DIAN number",
+        "fechaValidacion": "Validation date",
+        "prefijo": "Prefix",
+        "consecutivo": "Sequence number",
+        "estadoDian": "DIAN status",
+        "erroresDian": "DIAN errors",
+        "historial": "Event history",
+        "enviados": "Data sent to Factus (JSON)",
+        "respuesta": "Factus response (JSON)",
+        "descargarPdf": "Download PDF",
+        "descargarXml": "Download XML",
+        "cerrar": "Close"
+      }
+    },
+    "enviar": {
+      "enviando": "Sending...",
+      "enviada": "Sent to DIAN",
+      "procesando": "Processing...",
+      "pendiente": "Pending at DIAN",
+      "reintentar": "Retry DIAN",
+      "enviar": "Send to DIAN",
+      "dialogoTitulo": "Send Electronic Invoice",
+      "dialogoDescripcion": "Invoice <strong>{numero}</strong> will be sent to the DIAN for validation.",
+      "erroresValidacion": "Validation errors",
+      "explicacion": "Once sent, the invoice will be processed by the electronic invoicing provider and validated with the DIAN. This may take a few minutes.",
+      "cancelar": "Cancel",
+      "confirmar": "Confirm sending",
+      "toast": {
+        "enviadaTitulo": "Invoice sent to DIAN",
+        "enviadaDescripcion": "Invoice {numero} has been sent for validation",
+        "errorEnvioTitulo": "Sending failed",
+        "errorEnvioDescripcion": "Could not send the invoice to the DIAN",
+        "errorDesconocido": "Unknown error",
+        "errorTitulo": "Error",
+        "errorSolicitud": "Error processing the request"
+      }
+    },
+    "interruptor": {
+      "etiqueta": "Electronic Invoice",
+      "ayuda": "When enabled, the invoice will be sent automatically to the DIAN for electronic validation."
     }
   },
   "posPropinas": {
@@ -13490,6 +13667,195 @@
       "errorEnviarDian": "Couldn't send to DIAN",
       "descargaTitulo": "Download",
       "generandoPdf": "Generating PDF…"
+    }
+  },
+  "documentosSoporte": {
+    "estados": {
+      "draft": "Draft",
+      "pending": "Pending",
+      "processing": "Processing",
+      "sent": "Sent",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "listado": {
+      "titulo": "Support Documents",
+      "subtitulo": "Finance / DIAN Electronic Support Documents",
+      "volver": "Back to finance",
+      "actualizar": "Refresh",
+      "nuevo": "New Document",
+      "stats": {
+        "total": "Total",
+        "borradores": "Drafts",
+        "aceptados": "Accepted by DIAN",
+        "fallidos": "Failed"
+      },
+      "buscar": "Search by reference, number or supplier...",
+      "estadoPlaceholder": "Status",
+      "todosEstados": "All statuses",
+      "limpiar": "Clear",
+      "mostrando": "Showing {desde} - {hasta} of {total}",
+      "anterior": "Previous",
+      "siguiente": "Next"
+    },
+    "tabla": {
+      "vacioTitulo": "No support documents",
+      "vacioDescripcion": "Create your first support document to send it to the DIAN",
+      "crear": "Create Support Document",
+      "numero": "No. {numero}",
+      "noDisponible": "N/A",
+      "verDetalle": "View details",
+      "columnas": {
+        "referencia": "Reference",
+        "proveedor": "Supplier",
+        "fecha": "Date",
+        "total": "Total",
+        "estado": "Status",
+        "cufe": "CUFE",
+        "acciones": "Actions"
+      }
+    },
+    "formulario": {
+      "titulo": "New Support Document",
+      "subtitulo": "For purchases from suppliers not registered for VAT",
+      "volver": "Back to support documents",
+      "datosGenerales": "General Information",
+      "referencia": "Reference code *",
+      "referenciaAyuda": "Sequentially auto-generated per organization",
+      "fechaEmision": "Issue date *",
+      "horaCreacion": "Creation time",
+      "moneda": "Currency *",
+      "monedaPlaceholder": "Select currency",
+      "cargando": "Loading...",
+      "sinMonedas": "No currencies configured",
+      "base": " (base)",
+      "formaPago": "Payment terms *",
+      "formasPago": {
+        "contado": "Cash",
+        "credito": "Credit"
+      },
+      "vencimiento": "Due date *",
+      "metodoPago": "Payment method *",
+      "observaciones": "Notes",
+      "observacionesPlaceholder": "Document notes (max. 500 characters)",
+      "facturaCompra": "Related purchase invoice (optional)",
+      "facturaCompraPlaceholder": "Select purchase invoice...",
+      "facturaCompraBuscar": "Search by number or supplier...",
+      "cargandoFacturas": "Loading invoices...",
+      "sinFacturas": "No invoices found",
+      "sinFacturaCompra": "No purchase invoice",
+      "sinFecha": "No date",
+      "proveedor": "Supplier",
+      "items": "Support Document Items",
+      "cancelar": "Cancel",
+      "guardarBorrador": "Save draft",
+      "guardarEnviar": "Save and send to DIAN",
+      "validacion": {
+        "titulo": "Validation",
+        "proveedor": "You must select a supplier",
+        "direccion": "The supplier must have an address (required by the DIAN)",
+        "sinItems": "You must add at least one item",
+        "descripcion": "All items must have a description",
+        "cantidades": "Quantities must be greater than 0",
+        "precios": "Prices cannot be negative",
+        "vencimiento": "Enter a due date for credit payments",
+        "metodoPago": "You must select a payment method"
+      },
+      "toast": {
+        "enviadoTitulo": "Document sent to DIAN",
+        "enviadoDescripcion": "Ref: {referencia} — {estado}",
+        "validado": "Validated",
+        "enProceso": "In progress",
+        "borradorTitulo": "Draft saved",
+        "borradorDescripcion": "Support document {referencia} saved successfully",
+        "errorTitulo": "Error",
+        "errorInesperado": "Unexpected error"
+      },
+      "errores": {
+        "guardar": "Error saving the support document",
+        "items": "Error saving items: {detalle}",
+        "enviar": "Error sending to Factus"
+      }
+    },
+    "detalle": {
+      "titulo": "Support Document",
+      "volver": "Back to support documents",
+      "referencia": "Ref: {referencia}",
+      "numero": " — No. {numero}",
+      "error": "Error:",
+      "infoGeneral": "General Information",
+      "fechaEmision": "Issue date",
+      "horaCreacion": "Creation time",
+      "validadoDian": "Validated by DIAN",
+      "cufe": "CUFE",
+      "observacion": "Notes",
+      "proveedor": "Supplier",
+      "nombre": "Name",
+      "identificacion": "ID number",
+      "dv": "Check digit",
+      "direccion": "Address",
+      "email": "Email",
+      "telefono": "Phone",
+      "pais": "Country",
+      "noDisponible": "N/A",
+      "items": "Items",
+      "columnas": {
+        "codigo": "Code",
+        "descripcion": "Description",
+        "cantidad": "Qty",
+        "precio": "Price",
+        "descuento": "Disc.",
+        "iva": "VAT",
+        "total": "Total"
+      },
+      "excluido": "Excl.",
+      "subtotal": "Subtotal:",
+      "ivaTotal": "VAT:",
+      "total": "Total:",
+      "actualizar": "Refresh",
+      "eliminar": "Delete",
+      "confirmarEliminar": "Delete this support document? This action cannot be undone.",
+      "toast": {
+        "errorTitulo": "Error",
+        "noEncontrado": "Document not found",
+        "sinNumeroTitulo": "No number",
+        "sinNumeroDescripcion": "The DIAN has not assigned a number to this document yet",
+        "errorDescarga": "Download error",
+        "noDescargado": "Could not download",
+        "descargaTitulo": "Download complete",
+        "descargaDescripcion": "{tipo} file downloaded",
+        "noEliminableTitulo": "Cannot delete",
+        "noEliminableDescripcion": "Only draft, failed or rejected documents can be deleted",
+        "eliminado": "Document deleted",
+        "noEliminado": "Could not delete"
+      }
+    },
+    "enviar": {
+      "boton": "Send to DIAN",
+      "validado": "Document validated by DIAN",
+      "enviado": "Document sent to DIAN",
+      "referencia": "Ref: {referencia}",
+      "errorTitulo": "Error",
+      "errorEnvio": "Error sending the document to Factus",
+      "errorDescripcion": "Could not send the document to the DIAN"
+    },
+    "proveedor": {
+      "seleccionar": "Select supplier...",
+      "buscar": "Search supplier...",
+      "buscando": "Searching...",
+      "cargando": "Loading suppliers...",
+      "sinResultados": "No suppliers found",
+      "nit": "NIT: {nit}",
+      "dv": " - Check digit: {dv}",
+      "crear": "Create new supplier",
+      "nombreComercial": "Trade name:",
+      "contacto": "Contact:",
+      "telefono": "Phone:",
+      "email": "Email:",
+      "direccion": "Address:",
+      "municipio": "DIAN municipality:"
     }
   }
 }

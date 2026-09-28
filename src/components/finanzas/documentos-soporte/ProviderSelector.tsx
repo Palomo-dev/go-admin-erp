@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -15,6 +16,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { ProveedorFormDialog } from '@/components/shared/form-dialogs';
 import { mapearTipoDocADian } from '@/lib/utils/nitDv';
+import type { Supplier } from '@/lib/services/supplierService';
 
 export interface ProviderData {
   identification_document_code: string;
@@ -58,6 +60,7 @@ interface ProviderSelectorProps {
 }
 
 export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
+  const t = useTranslations('documentosSoporte.proveedor');
   const [showNewSupplierDialog, setShowNewSupplierDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -160,15 +163,18 @@ export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
     []
   );
 
-  const handleSelectSupplier = (supplierId: string) => {
-    const supplier = suppliers.find((s) => s.id === Number(supplierId));
-    if (!supplier) return;
-    setSelectedSupplierId(supplier.id);
-    onChange(mapSupplierToProvider(supplier));
-  };
+  const handleSelectSupplier = useCallback(
+    (supplierId: string) => {
+      const supplier = suppliers.find((s) => s.id === Number(supplierId));
+      if (!supplier) return;
+      setSelectedSupplierId(supplier.id);
+      onChange(mapSupplierToProvider(supplier));
+    },
+    [suppliers, onChange, mapSupplierToProvider]
+  );
 
   // Cuando el diálogo crea un proveedor, refrescar lista, seleccionarlo y mapearlo
-  const handleProveedorCreado = (supplier: any) => {
+  const handleProveedorCreado = (supplier: Supplier) => {
     if (!supplier) return;
     const nuevo: SupplierOption = {
       id: supplier.id,
@@ -225,7 +231,7 @@ export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
         <div className="flex-1">
           <Select value={selectValue} onValueChange={handleSelectChange}>
             <SelectTrigger className="h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
-              <SelectValue placeholder="Seleccionar proveedor..." />
+              <SelectValue placeholder={t('seleccionar')} />
             </SelectTrigger>
             <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
               {/* Campo de búsqueda integrado */}
@@ -233,7 +239,7 @@ export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
                 <div className="relative">
                   <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
                   <Input
-                    placeholder="Buscar proveedor..."
+                    placeholder={t('buscar')}
                     value={searchTerm}
                     onChange={handleSearchChange}
                     className="pl-8 h-8 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500"
@@ -241,7 +247,7 @@ export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
                   {isSearching && (
                     <div className="flex items-center justify-center py-1">
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-600 dark:border-purple-400 border-t-transparent"></div>
-                      <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">Buscando...</span>
+                      <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">{t('buscando')}</span>
                     </div>
                   )}
                 </div>
@@ -250,7 +256,7 @@ export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
               <div className="max-h-[200px] overflow-y-auto">
                 {suppliers.length === 0 ? (
                   <div className="px-2 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                    {isSearching ? 'Cargando proveedores...' : 'No se encontraron proveedores'}
+                    {isSearching ? t('cargando') : t('sinResultados')}
                   </div>
                 ) : (
                   suppliers.map((supplier) => (
@@ -265,7 +271,7 @@ export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
                         </div>
                         <div className="flex gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                           {supplier.nit && (
-                            <span className="shrink-0">NIT: {supplier.nit}</span>
+                            <span className="shrink-0">{t('nit', { nit: supplier.nit })}</span>
                           )}
                           {supplier.contact && (
                             <span className="break-words whitespace-normal min-w-0">
@@ -288,8 +294,8 @@ export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
           size="icon"
           onClick={() => setShowNewSupplierDialog(true)}
           className="h-9 w-9 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300"
-          title="Crear nuevo proveedor"
-          aria-label="Crear nuevo proveedor"
+          title={t('crear')}
+          aria-label={t('crear')}
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -319,13 +325,13 @@ export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
                   </h4>
                   {selectedSupplier.nit && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      NIT: {selectedSupplier.nit}
-                      {selectedSupplier.dv ? ` - DV: ${selectedSupplier.dv}` : ''}
+                      {t('nit', { nit: selectedSupplier.nit })}
+                      {selectedSupplier.dv ? t('dv', { dv: selectedSupplier.dv }) : ''}
                     </p>
                   )}
                   {selectedSupplier.trade_name && (
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Nombre comercial: {selectedSupplier.trade_name}
+                      {t('nombreComercial')} {selectedSupplier.trade_name}
                     </p>
                   )}
                 </div>
@@ -336,7 +342,7 @@ export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
                     <div className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
                       <span className="text-gray-600 dark:text-gray-300">
-                        <span className="font-medium">Contacto:</span> {selectedSupplier.contact}
+                        <span className="font-medium">{t('contacto')}</span> {selectedSupplier.contact}
                       </span>
                     </div>
                   )}
@@ -345,7 +351,7 @@ export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
                     <div className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                       <span className="text-gray-600 dark:text-gray-300">
-                        <span className="font-medium">Teléfono:</span> {selectedSupplier.phone}
+                        <span className="font-medium">{t('telefono')}</span> {selectedSupplier.phone}
                       </span>
                     </div>
                   )}
@@ -354,7 +360,7 @@ export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
                     <div className="flex items-center gap-1.5 sm:col-span-2">
                       <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
                       <span className="text-gray-600 dark:text-gray-300 break-all">
-                        <span className="font-medium">Email:</span> {selectedSupplier.email}
+                        <span className="font-medium">{t('email')}</span> {selectedSupplier.email}
                       </span>
                     </div>
                   )}
@@ -363,7 +369,7 @@ export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
                     <div className="flex items-center gap-1.5 sm:col-span-2">
                       <div className="w-1.5 h-1.5 bg-amber-500 rounded-full"></div>
                       <span className="text-gray-600 dark:text-gray-300">
-                        <span className="font-medium">Dirección:</span> {selectedSupplier.address}
+                        <span className="font-medium">{t('direccion')}</span> {selectedSupplier.address}
                       </span>
                     </div>
                   )}
@@ -372,7 +378,7 @@ export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
                     <div className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 bg-rose-500 rounded-full"></div>
                       <span className="text-gray-600 dark:text-gray-300">
-                        <span className="font-medium">Municipio DIAN:</span> {selectedSupplier.municipality_code}
+                        <span className="font-medium">{t('municipio')}</span> {selectedSupplier.municipality_code}
                       </span>
                     </div>
                   )}

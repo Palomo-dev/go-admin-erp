@@ -4448,6 +4448,11 @@
         "conErroresDescripcion": "{count, plural, one {# fornecedor não pôde ser importado} other {# fornecedores não puderam ser importados}}",
         "errorImportar": "Não foi possível concluir a importação"
       }
+    },
+    "dialogo": {
+      "titulo": "Novo fornecedor",
+      "descripcion": "Cadastre um novo fornecedor no sistema.",
+      "cerrar": "Fechar"
     }
   },
   "categorias": {
@@ -9755,6 +9760,178 @@
         "siempreElectronicaAyuda": "Ativa a fatura eletrônica por padrão no PDV, na pré-conta e nas novas faturas.",
         "verDetalle": "Ver resolução, faixas e envios"
       }
+    },
+    "estados": {
+      "pending": "Pendente",
+      "processing": "Processando",
+      "sent": "Enviado",
+      "accepted": "Aceito",
+      "rejected": "Rejeitado",
+      "failed": "Com falha",
+      "cancelled": "Cancelado"
+    },
+    "estadosDetalle": {
+      "accepted": "Aceita pela DIAN",
+      "rejected": "Rejeitada",
+      "failed": "Com falha",
+      "pending": "Pendente",
+      "processing": "Processando",
+      "sent": "Enviada"
+    },
+    "estadosBadge": {
+      "pending": "Pendente",
+      "processing": "Processando",
+      "sent": "Enviado",
+      "accepted": "Aceita DIAN",
+      "rejected": "Rejeitada DIAN",
+      "failed": "Erro",
+      "cancelled": "Cancelada",
+      "sinFe": "Sem FE"
+    },
+    "tiposDocumento": {
+      "invoice": "Fatura",
+      "credit_note": "Nota de crédito",
+      "debit_note": "Nota de débito",
+      "support_document": "Doc. de suporte"
+    },
+    "eventos": {
+      "vacio": "Nenhum evento registrado",
+      "tipos": {
+        "validated": "Validado",
+        "sent": "Enviado",
+        "accepted": "Aceito",
+        "rejected": "Rejeitado",
+        "error": "Erro",
+        "retry_scheduled": "Nova tentativa agendada",
+        "cancelled": "Cancelado",
+        "created": "Criado"
+      }
+    },
+    "envios": {
+      "titulo": "Faturamento eletrônico",
+      "subtitulo": "Monitoramento e gestão de faturas eletrônicas DIAN",
+      "volver": "Voltar para finanças",
+      "actualizar": "Atualizar",
+      "configuracion": "Configuração",
+      "docsApi": "Docs da API",
+      "cola": "Fila de faturamento eletrônico",
+      "mostrando": "Mostrando {desde} - {hasta} de {total}",
+      "anterior": "Anterior",
+      "siguiente": "Próxima",
+      "toast": {
+        "errorTitulo": "Erro",
+        "errorCarga": "Não foi possível carregar os jobs de faturamento",
+        "actualizadoTitulo": "Atualizado",
+        "actualizadoDescripcion": "Os dados foram atualizados",
+        "reintentoTitulo": "Nova tentativa agendada",
+        "reintentoDescripcion": "O job foi marcado para nova tentativa",
+        "errorReintento": "Não foi possível agendar a nova tentativa",
+        "canceladoTitulo": "Job cancelado",
+        "canceladoDescripcion": "O job foi cancelado",
+        "errorCancelar": "Não foi possível cancelar o job",
+        "sinFactura": "Não há fatura associada a este documento",
+        "errorDescarga": "Erro ao baixar o {tipo}",
+        "descargaTitulo": "Download concluído",
+        "descargaDescripcion": "O arquivo {tipo} foi baixado",
+        "noDescargado": "Não foi possível baixar o {tipo}"
+      }
+    },
+    "estadisticas": {
+      "total": "Total enviados",
+      "aceptados": "Aceitos",
+      "rechazados": "Rejeitados",
+      "pendientes": "Pendentes",
+      "fallidos": "Com falha",
+      "tasaExito": "Taxa de sucesso"
+    },
+    "filtros": {
+      "buscar": "Buscar por número da fatura...",
+      "estadoPlaceholder": "Filtrar por status",
+      "todos": "Todos os status",
+      "limpiar": "Limpar"
+    },
+    "trabajos": {
+      "vacioTitulo": "Nenhum job de faturamento eletrônico",
+      "vacioDescripcion": "Os jobs aparecerão aqui quando você enviar faturas à DIAN",
+      "noDisponible": "N/D",
+      "columnas": {
+        "factura": "Fatura",
+        "cliente": "Cliente",
+        "tipo": "Tipo",
+        "estado": "Status",
+        "cufe": "CUFE",
+        "intentos": "Tentativas",
+        "fecha": "Data",
+        "acciones": "Ações"
+      },
+      "acciones": {
+        "menu": "Ações",
+        "ver": "Ver detalhes",
+        "pdf": "Baixar PDF",
+        "xml": "Baixar XML",
+        "reintentar": "Tentar novamente",
+        "cancelar": "Cancelar"
+      },
+      "detalle": {
+        "titulo": "Fatura eletrônica",
+        "facturaNo": "Fatura nº",
+        "noDian": "Nº DIAN",
+        "cliente": "Cliente",
+        "fechaEnvio": "Data de envio",
+        "tipoDocumento": "Tipo de documento",
+        "proveedor": "Provedor",
+        "intentos": "Tentativas",
+        "intentosDe": "{intentos} de {maximo}",
+        "total": "Total",
+        "cufe": "CUFE",
+        "copiar": "Copiar CUFE",
+        "copiadoTitulo": "Copiado",
+        "copiadoDescripcion": "{elemento} copiado para a área de transferência",
+        "qr": "Código QR",
+        "qrAlt": "Código QR DIAN",
+        "errorValidacion": "Erro de validação",
+        "codigo": "Código: {codigo}",
+        "datosValidada": "Dados da fatura validada",
+        "numeroDian": "Número DIAN",
+        "fechaValidacion": "Data de validação",
+        "prefijo": "Prefixo",
+        "consecutivo": "Número sequencial",
+        "estadoDian": "Status DIAN",
+        "erroresDian": "Erros DIAN",
+        "historial": "Histórico de eventos",
+        "enviados": "Dados enviados à Factus (JSON)",
+        "respuesta": "Resposta da Factus (JSON)",
+        "descargarPdf": "Baixar PDF",
+        "descargarXml": "Baixar XML",
+        "cerrar": "Fechar"
+      }
+    },
+    "enviar": {
+      "enviando": "Enviando...",
+      "enviada": "Enviada à DIAN",
+      "procesando": "Processando...",
+      "pendiente": "Pendente na DIAN",
+      "reintentar": "Reenviar à DIAN",
+      "enviar": "Enviar à DIAN",
+      "dialogoTitulo": "Enviar fatura eletrônica",
+      "dialogoDescripcion": "A fatura <strong>{numero}</strong> será enviada à DIAN para validação.",
+      "erroresValidacion": "Erros de validação",
+      "explicacion": "Depois de enviada, a fatura será processada pelo provedor de faturamento eletrônico e validada junto à DIAN. Esse processo pode levar alguns minutos.",
+      "cancelar": "Cancelar",
+      "confirmar": "Confirmar envio",
+      "toast": {
+        "enviadaTitulo": "Fatura enviada à DIAN",
+        "enviadaDescripcion": "A fatura {numero} foi enviada para validação",
+        "errorEnvioTitulo": "Erro ao enviar",
+        "errorEnvioDescripcion": "Não foi possível enviar a fatura à DIAN",
+        "errorDesconocido": "Erro desconhecido",
+        "errorTitulo": "Erro",
+        "errorSolicitud": "Erro ao processar a solicitação"
+      }
+    },
+    "interruptor": {
+      "etiqueta": "Fatura eletrônica",
+      "ayuda": "Ao ativar esta opção, a fatura será enviada automaticamente à DIAN para validação eletrônica."
     }
   },
   "posPropinas": {
@@ -13385,6 +13562,195 @@
       "errorEnviarDian": "Não foi possível enviar à DIAN",
       "descargaTitulo": "Download",
       "generandoPdf": "Gerando PDF…"
+    }
+  },
+  "documentosSoporte": {
+    "estados": {
+      "draft": "Rascunho",
+      "pending": "Pendente",
+      "processing": "Processando",
+      "sent": "Enviado",
+      "accepted": "Aceito",
+      "rejected": "Rejeitado",
+      "failed": "Com falha",
+      "cancelled": "Cancelado"
+    },
+    "listado": {
+      "titulo": "Documentos de suporte",
+      "subtitulo": "Finanças / Documentos de suporte eletrônicos DIAN",
+      "volver": "Voltar para finanças",
+      "actualizar": "Atualizar",
+      "nuevo": "Novo documento",
+      "stats": {
+        "total": "Total",
+        "borradores": "Rascunhos",
+        "aceptados": "Aceitos pela DIAN",
+        "fallidos": "Com falha"
+      },
+      "buscar": "Buscar por referência, número ou fornecedor...",
+      "estadoPlaceholder": "Status",
+      "todosEstados": "Todos os status",
+      "limpiar": "Limpar",
+      "mostrando": "Mostrando {desde} - {hasta} de {total}",
+      "anterior": "Anterior",
+      "siguiente": "Próxima"
+    },
+    "tabla": {
+      "vacioTitulo": "Nenhum documento de suporte",
+      "vacioDescripcion": "Crie seu primeiro documento de suporte para enviá-lo à DIAN",
+      "crear": "Criar documento de suporte",
+      "numero": "Nº {numero}",
+      "noDisponible": "N/D",
+      "verDetalle": "Ver detalhes",
+      "columnas": {
+        "referencia": "Referência",
+        "proveedor": "Fornecedor",
+        "fecha": "Data",
+        "total": "Total",
+        "estado": "Status",
+        "cufe": "CUFE",
+        "acciones": "Ações"
+      }
+    },
+    "formulario": {
+      "titulo": "Novo documento de suporte",
+      "subtitulo": "Para compras de fornecedores não contribuintes de IVA",
+      "volver": "Voltar para documentos de suporte",
+      "datosGenerales": "Dados gerais",
+      "referencia": "Código de referência *",
+      "referenciaAyuda": "Gerado automaticamente em sequência por organização",
+      "fechaEmision": "Data de emissão *",
+      "horaCreacion": "Hora de criação",
+      "moneda": "Moeda *",
+      "monedaPlaceholder": "Selecionar moeda",
+      "cargando": "Carregando...",
+      "sinMonedas": "Nenhuma moeda configurada",
+      "base": " (base)",
+      "formaPago": "Forma de pagamento *",
+      "formasPago": {
+        "contado": "À vista",
+        "credito": "A prazo"
+      },
+      "vencimiento": "Data de vencimento *",
+      "metodoPago": "Meio de pagamento *",
+      "observaciones": "Observações",
+      "observacionesPlaceholder": "Observações do documento (máx. 500 caracteres)",
+      "facturaCompra": "Fatura de compra relacionada (opcional)",
+      "facturaCompraPlaceholder": "Selecionar fatura de compra...",
+      "facturaCompraBuscar": "Buscar por número ou fornecedor...",
+      "cargandoFacturas": "Carregando faturas...",
+      "sinFacturas": "Nenhuma fatura encontrada",
+      "sinFacturaCompra": "Sem fatura de compra",
+      "sinFecha": "Sem data",
+      "proveedor": "Fornecedor",
+      "items": "Itens do documento de suporte",
+      "cancelar": "Cancelar",
+      "guardarBorrador": "Salvar rascunho",
+      "guardarEnviar": "Salvar e enviar à DIAN",
+      "validacion": {
+        "titulo": "Validação",
+        "proveedor": "Selecione um fornecedor",
+        "direccion": "O fornecedor deve ter endereço (exigido pela DIAN)",
+        "sinItems": "Adicione pelo menos um item",
+        "descripcion": "Todos os itens devem ter uma descrição",
+        "cantidades": "As quantidades devem ser maiores que 0",
+        "precios": "Os preços não podem ser negativos",
+        "vencimiento": "Informe a data de vencimento para pagamento a prazo",
+        "metodoPago": "Selecione um meio de pagamento"
+      },
+      "toast": {
+        "enviadoTitulo": "Documento enviado à DIAN",
+        "enviadoDescripcion": "Ref.: {referencia} — {estado}",
+        "validado": "Validado",
+        "enProceso": "Em processamento",
+        "borradorTitulo": "Rascunho salvo",
+        "borradorDescripcion": "Documento de suporte {referencia} salvo com sucesso",
+        "errorTitulo": "Erro",
+        "errorInesperado": "Erro inesperado"
+      },
+      "errores": {
+        "guardar": "Erro ao salvar o documento de suporte",
+        "items": "Erro ao salvar os itens: {detalle}",
+        "enviar": "Erro ao enviar à Factus"
+      }
+    },
+    "detalle": {
+      "titulo": "Documento de suporte",
+      "volver": "Voltar para documentos de suporte",
+      "referencia": "Ref.: {referencia}",
+      "numero": " — Nº {numero}",
+      "error": "Erro:",
+      "infoGeneral": "Informações gerais",
+      "fechaEmision": "Data de emissão",
+      "horaCreacion": "Hora de criação",
+      "validadoDian": "Validado pela DIAN",
+      "cufe": "CUFE",
+      "observacion": "Observação",
+      "proveedor": "Fornecedor",
+      "nombre": "Nome",
+      "identificacion": "Identificação",
+      "dv": "Dígito verificador",
+      "direccion": "Endereço",
+      "email": "E-mail",
+      "telefono": "Telefone",
+      "pais": "País",
+      "noDisponible": "N/D",
+      "items": "Itens",
+      "columnas": {
+        "codigo": "Código",
+        "descripcion": "Descrição",
+        "cantidad": "Qtd.",
+        "precio": "Preço",
+        "descuento": "Desc.",
+        "iva": "IVA",
+        "total": "Total"
+      },
+      "excluido": "Isento",
+      "subtotal": "Subtotal:",
+      "ivaTotal": "IVA:",
+      "total": "Total:",
+      "actualizar": "Atualizar",
+      "eliminar": "Excluir",
+      "confirmarEliminar": "Excluir este documento de suporte? Esta ação não pode ser desfeita.",
+      "toast": {
+        "errorTitulo": "Erro",
+        "noEncontrado": "Documento não encontrado",
+        "sinNumeroTitulo": "Sem número",
+        "sinNumeroDescripcion": "A DIAN ainda não atribuiu um número a este documento",
+        "errorDescarga": "Erro ao baixar",
+        "noDescargado": "Não foi possível baixar",
+        "descargaTitulo": "Download concluído",
+        "descargaDescripcion": "Arquivo {tipo} baixado",
+        "noEliminableTitulo": "Não é possível excluir",
+        "noEliminableDescripcion": "Só é possível excluir documentos em rascunho, com falha ou rejeitados",
+        "eliminado": "Documento excluído",
+        "noEliminado": "Não foi possível excluir"
+      }
+    },
+    "enviar": {
+      "boton": "Enviar à DIAN",
+      "validado": "Documento validado pela DIAN",
+      "enviado": "Documento enviado à DIAN",
+      "referencia": "Ref.: {referencia}",
+      "errorTitulo": "Erro",
+      "errorEnvio": "Erro ao enviar o documento à Factus",
+      "errorDescripcion": "Não foi possível enviar o documento à DIAN"
+    },
+    "proveedor": {
+      "seleccionar": "Selecionar fornecedor...",
+      "buscar": "Buscar fornecedor...",
+      "buscando": "Buscando...",
+      "cargando": "Carregando fornecedores...",
+      "sinResultados": "Nenhum fornecedor encontrado",
+      "nit": "NIT: {nit}",
+      "dv": " - DV: {dv}",
+      "crear": "Criar novo fornecedor",
+      "nombreComercial": "Nome fantasia:",
+      "contacto": "Contato:",
+      "telefono": "Telefone:",
+      "email": "E-mail:",
+      "direccion": "Endereço:",
+      "municipio": "Município DIAN:"
     }
   }
 }

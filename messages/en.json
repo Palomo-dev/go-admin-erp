@@ -11096,7 +11096,8 @@
         "sin_permiso": "You don't have permission for this action.",
         "datos_invalidos": "Check the data.",
         "error_desconocido": "It could not be completed. Try again."
-      }
+      },
+      "archivo": "account_statement"
     },
     "cliente": {
       "titulo": "Customer receivables",

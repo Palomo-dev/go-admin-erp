@@ -20,7 +20,7 @@ import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
 import type { FilaCartera, RespuestaListadoCartera } from '@/lib/finanzas/cartera/listadoCartera';
 import { pedirListadoCartera } from '@/lib/finanzas/cartera/clienteCartera';
 import { RegistrarPagoConectado } from '@/components/finanzas/pagos/RegistrarPagoConectado';
-import { BandaAntiguedad } from '@/components/finanzas/cartera/BandaAntiguedad';
+import { BandaAntiguedad } from '@/components/kit';
 import { EstadoCuentaDialog } from '@/components/finanzas/cartera/EstadoCuentaDialog';
 import { rutasCartera } from '../listado/ListadoCartera';
 

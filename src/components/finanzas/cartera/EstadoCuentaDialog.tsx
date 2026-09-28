@@ -1,18 +1,22 @@
 'use client';
 
 /**
- * Estado de cuenta del cliente (Figma X3 `740:52422`): periodo (días de la
- * organización), ver o descargar el PDF del motor de documentos
- * (`estado-cuenta`, con el texto legal configurable) y enviarlo por correo
- * (`POST /api/clientes/[id]/estado-cuenta/enviar`). Reemplaza el `.txt`.
+ * Estado de cuenta del cliente (Figma X3 `740:52422`) sobre la pieza del kit
+ * (`kit/documento/EstadoCuentaDialog`, compartida con CxP). Aquí queda lo del
+ * dominio: los datos salen de `GET /api/clientes/[id]/estado-cuenta` (el mismo
+ * cargador que el PDF del motor de documentos), el PDF se descarga o imprime
+ * con el motor (tipo `estado-cuenta`, mismo rango) y el envío por correo va a
+ * `POST /api/clientes/[id]/estado-cuenta/enviar` con el PDF adjunto.
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Download, FileText, Mail } from 'lucide-react';
-import { DateRangeButton, Dialogo, FormField, inicioDeMes } from '@/components/kit';
+import { Mail } from 'lucide-react';
+import { EstadoCuentaDialog as EstadoCuentaKit, FormField, inicioDeMes, type EstadoCuentaVista, type RangoFechas } from '@/components/kit';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
-import { abrirDocumento, descargarDocumento } from '@/lib/documents/cliente';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { descargarDocumento, imprimirDocumento } from '@/lib/documents/cliente';
+import { ErrorPeticionCartera, enviarEstadoCuenta, pedirEstadoCuenta } from '@/lib/finanzas/cartera/clienteCartera';
 
 export interface EstadoCuentaDialogProps {
   abierto: boolean;
@@ -29,9 +33,13 @@ const CLASES_CAMPO =
 
 export function EstadoCuentaDialog({ abierto, onAbiertoChange, clienteId, clienteNombre, correo, hoy, origen = 'finanzas' }: EstadoCuentaDialogProps) {
   const t = useTranslations('cartera.estadoCuenta');
-  const [rango, setRango] = useState({ desde: inicioDeMes(hoy), hasta: hoy });
+  const moneda = useMonedaOrganizacion();
+  const { formatPlain } = useFormatDate();
+  const [rango, setRango] = useState<RangoFechas>({ desde: inicioDeMes(hoy), hasta: hoy });
+  const [datos, setDatos] = useState<EstadoCuentaVista | null>(null);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [para, setPara] = useState(correo ?? '');
-  const [mensaje, setMensaje] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [descargando, setDescargando] = useState(false);
 
@@ -39,36 +47,38 @@ export function EstadoCuentaDialog({ abierto, onAbiertoChange, clienteId, client
     if (!abierto) return;
     setRango({ desde: inicioDeMes(hoy), hasta: hoy });
     setPara(correo ?? '');
-    setMensaje('');
   }, [abierto, hoy, correo]);
 
-  const enviar = async () => {
-    setEnviando(true);
-    try {
-      const org = getOrganizationId();
-      const r = await fetch(`/api/clientes/${encodeURIComponent(clienteId)}/estado-cuenta/enviar`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', ...(org > 0 ? { 'x-organization-id': String(org) } : {}) },
-        body: JSON.stringify({ para: para.trim() || undefined, desde: rango.desde, hasta: rango.hasta, mensaje: mensaje.trim() || null, origen }),
-      });
-      const c = (await r.json().catch(() => ({}))) as { codigo?: string; resultado?: { destino: string; adjunto: boolean } };
-      if (!r.ok) {
-        const clave = `errores.${c.codigo ?? 'error_desconocido'}`;
-        toastError(t('noEnviado'), t.has(clave) ? t(clave as never) : t('errores.error_desconocido'));
-        return;
-      }
-      toastSuccess(t('enviado'), c.resultado?.adjunto ? t('enviadoA', { destino: c.resultado.destino }) : t('enviadoSinAdjunto', { destino: c.resultado?.destino ?? para }));
-      onAbiertoChange(false);
-    } finally {
-      setEnviando(false);
-    }
-  };
+  const textoError = useCallback(
+    (codigo: string) => {
+      const k = `errores.${codigo}`;
+      return t.has(k) ? t(k as never) : t('errores.error_desconocido');
+    },
+    [t],
+  );
 
-  const descargar = async () => {
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    setError(null);
+    try {
+      setDatos(await pedirEstadoCuenta(clienteId, { desde: rango.desde || null, hasta: rango.hasta || null }));
+    } catch (e) {
+      setError(textoError(e instanceof ErrorPeticionCartera ? e.codigo : 'error_desconocido'));
+    } finally {
+      setCargando(false);
+    }
+  }, [clienteId, rango.desde, rango.hasta, textoError]);
+
+  useEffect(() => {
+    if (abierto) void cargar();
+  }, [abierto, cargar]);
+
+  const rangoDocumento = { desde: rango.desde || undefined, hasta: rango.hasta || undefined };
+
+  const descargarPdf = async () => {
     setDescargando(true);
     try {
-      await descargarDocumento('estado-cuenta', clienteId, { desde: rango.desde, hasta: rango.hasta });
+      await descargarDocumento('estado-cuenta', clienteId, rangoDocumento);
     } catch {
       toastError(t('errorPdf'));
     } finally {
@@ -76,49 +86,62 @@ export function EstadoCuentaDialog({ abierto, onAbiertoChange, clienteId, client
     }
   };
 
+  const enviar = async () => {
+    setEnviando(true);
+    try {
+      const r = await enviarEstadoCuenta(clienteId, {
+        para: para.trim() || undefined,
+        desde: rango.desde || null,
+        hasta: rango.hasta || null,
+        origen,
+      });
+      toastSuccess(t('enviado'), r.adjunto ? t('enviadoA', { destino: r.destino }) : t('enviadoSinAdjunto', { destino: r.destino }));
+    } catch (e) {
+      toastError(t('noEnviado'), textoError(e instanceof ErrorPeticionCartera ? e.codigo : 'error_desconocido'));
+    } finally {
+      setEnviando(false);
+    }
+  };
+
   return (
-    <Dialogo
+    <EstadoCuentaKit
       abierto={abierto}
       onAbiertoChange={(v) => !enviando && onAbiertoChange(v)}
-      titulo={t('titulo')}
-      descripcion={clienteNombre ?? undefined}
-      icono={FileText}
-      ancho={560}
-      secundarios={[
-        { etiqueta: t('ver'), onClick: () => abrirDocumento('estado-cuenta', clienteId, { desde: rango.desde, hasta: rango.hasta }) },
-        { etiqueta: t('descargar'), onClick: () => void descargar(), cargando: descargando },
-      ]}
-      primario={{ etiqueta: t('enviarCorreo'), onClick: () => void enviar(), cargando: enviando, deshabilitada: !para.trim(), motivo: t('sinCorreo') }}
-    >
-      <div className="flex flex-col gap-4">
-        <FormField etiqueta={t('periodo')}>
-          <DateRangeButton valor={rango} hoy={hoy} max={hoy} onValorChange={setRango} etiqueta={t('periodo')} />
-        </FormField>
+      tercero={{ tipo: 'cliente', nombre: clienteNombre ?? '' }}
+      datos={datos}
+      cargando={cargando}
+      error={error}
+      onReintentar={() => void cargar()}
+      rango={rango}
+      onRangoChange={(r) => setRango({ desde: r.desde || '', hasta: r.hasta || '' })}
+      hoy={hoy}
+      moneda={moneda.paraDocumento(null)}
+      formatearDia={formatPlain}
+      nombreArchivo={`${t('archivo')}_${hoy}`}
+      onErrorDescarga={() => toastError(t('errorPdf'))}
+      pdf={{
+        onDescargar: () => void descargarPdf(),
+        onImprimir: () => imprimirDocumento('estado-cuenta', clienteId, rangoDocumento),
+        cargando: descargando,
+      }}
+      secundarios={[{ etiqueta: t('enviarCorreo'), onClick: () => void enviar(), cargando: enviando, deshabilitada: !para.trim(), motivo: t('sinCorreo') }]}
+      opciones={
         <FormField etiqueta={t('para')}>
           {(c) => (
             <div className="relative">
               <Mail aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" strokeWidth={1.5} />
-              <input id={c.id} type="email" value={para} onChange={(e) => setPara(e.target.value)} placeholder={t('paraPlaceholder')} className={`${CLASES_CAMPO} pl-9`} />
+              <input
+                id={c.id}
+                type="email"
+                value={para}
+                onChange={(e) => setPara(e.target.value)}
+                placeholder={t('paraPlaceholder')}
+                className={`${CLASES_CAMPO} pl-9`}
+              />
             </div>
           )}
         </FormField>
-        <FormField etiqueta={t('mensaje')}>
-          {(c) => (
-            <textarea
-              id={c.id}
-              rows={3}
-              maxLength={2000}
-              value={mensaje}
-              onChange={(e) => setMensaje(e.target.value)}
-              className="w-full resize-y rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            />
-          )}
-        </FormField>
-        <p className="flex items-start gap-2 text-xs text-fg-muted">
-          <Download aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" strokeWidth={1.5} />
-          {t('nota')}
-        </p>
-      </div>
-    </Dialogo>
+      }
+    />
   );
 }

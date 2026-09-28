@@ -51,7 +51,7 @@ import {
 import { enviarRecordatorio, pedirListadoCartera } from '@/lib/finanzas/cartera/clienteCartera';
 import { aCsv, descargarCsv } from '@/lib/finanzas/csv';
 import { RegistrarPagoConectado } from '@/components/finanzas/pagos/RegistrarPagoConectado';
-import { BandaAntiguedad } from '@/components/finanzas/cartera/BandaAntiguedad';
+import { BandaAntiguedad } from '@/components/kit';
 
 export interface ListadoCarteraProps {
   origen: 'finanzas' | 'pos';

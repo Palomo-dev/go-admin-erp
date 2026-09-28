@@ -7,6 +7,40 @@ import { consultaCarteraDesde, ordenCarteraRpc } from '@/lib/finanzas/cartera/li
 import { consultaFacturasDesde, ordenFacturasRpc } from '@/lib/finanzas/ventas/listadoFacturas';
 import { generarPlanCuotas } from '@/lib/finanzas/cartera/cuotas';
 import { proximaCuota, type CuotaCartera } from '@/lib/finanzas/cartera/contratoCartera';
+import { vistaDesdePayload } from '@/lib/finanzas/cartera/estadoCuentaVista';
+import type { DocumentoPayload } from '@/lib/documents/tipos';
+
+describe('estado de cuenta: payload del motor → vista del kit (mismo cálculo que el PDF)', () => {
+  test('movimientos con día de la organización, tipo y saldo; vencido y por vencer desde la antigüedad', () => {
+    const payload = {
+      zonaHoraria: 'America/Bogota',
+      resumen: [
+        { clave: 'saldoInicial', valor: { tipo: 'dinero', v: 100 } },
+        { clave: 'cargos', valor: { tipo: 'dinero', v: 500 } },
+        { clave: 'abonos', valor: { tipo: 'dinero', v: 200 } },
+        { clave: 'saldoFinal', valor: { tipo: 'dinero', v: 400 } },
+      ],
+      secciones: [
+        {
+          titulo: 'movimientos',
+          columnas: [],
+          filas: [
+            // 02:00 UTC del día 2 = día 1 en Bogotá.
+            ['2026-09-02T02:00:00.000Z', 'movimientos.factura', 'FACT-1', 500, null, 600],
+            ['2026-09-10T15:00:00.000Z', 'movimientos.pago', null, null, 200, 400],
+          ],
+        },
+        { titulo: 'antiguedad', columnas: [], filas: [[150, 100, 50, 60, 40]] },
+      ],
+    } as unknown as DocumentoPayload;
+    const v = vistaDesdePayload(payload);
+    expect(v).toMatchObject({ saldoInicial: 100, saldoFinal: 400, totalCargos: 500, totalAbonos: 200, porVencer: 150, vencido: 250 });
+    expect(v.movimientos.map((m) => [m.dia, m.tipo, m.documento, m.cargo, m.abono, m.saldo])).toEqual([
+      ['2026-09-01', 'factura', 'FACT-1', 500, 0, 600],
+      ['2026-09-10', 'pago', null, 0, 200, 400],
+    ]);
+  });
+});
 
 describe('consultaCarteraDesde', () => {
   test('solo pasan filtros conocidos y con forma válida', () => {

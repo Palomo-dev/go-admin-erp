@@ -361,9 +361,9 @@ export function DetalleCuentaCartera({ id, origen }: { id: string; origen: 'fina
             onAbiertoChange={setCrearPlan}
             cuentaId={c.id}
             saldo={c.saldo}
+            moneda={ctxMoneda}
             decimales={ctxMoneda.decimals}
             hoy={getToday()}
-            formatear={fmt}
             formatearDia={(d) => formatPlain(d)}
             onCreado={() => void cargar()}
           />

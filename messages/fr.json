@@ -10991,7 +10991,8 @@
         "sin_permiso": "Vous n'avez pas l'autorisation pour cette action.",
         "datos_invalidos": "Vérifiez les données.",
         "error_desconocido": "L'opération n'a pas abouti. Réessayez."
-      }
+      },
+      "archivo": "releve_de_compte"
     },
     "cliente": {
       "titulo": "Créances du client",

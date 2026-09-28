@@ -11096,7 +11096,8 @@
         "sin_permiso": "No tienes permiso para esta acción.",
         "datos_invalidos": "Revisa los datos.",
         "error_desconocido": "No se pudo completar. Inténtalo de nuevo."
-      }
+      },
+      "archivo": "estado_de_cuenta"
     },
     "cliente": {
       "titulo": "Cartera del cliente",

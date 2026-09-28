@@ -10991,7 +10991,8 @@
         "sin_permiso": "Você não tem permissão para esta ação.",
         "datos_invalidos": "Revise os dados.",
         "error_desconocido": "Não foi possível concluir. Tente novamente."
-      }
+      },
+      "archivo": "extrato_de_conta"
     },
     "cliente": {
       "titulo": "Carteira do cliente",

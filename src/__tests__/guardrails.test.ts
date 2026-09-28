@@ -2866,3 +2866,81 @@ describe('31. Toda ruta de src/app/api pasa por una puerta del servidor', () => 
     expect(webhook).toMatch(/constructWebhookEvent\(/);
   });
 });
+
+// ===========================================================================
+// 32. GO-sec 2026-09-28 — La clave de OpenExchangeRates es de servidor y el
+//     catálogo GLOBAL de tasas (`currency_rates`) solo lo escribe la plataforma.
+//
+// La clave con prefijo público iba en el bundle del navegador y en el
+// instalador del escritorio, y con ella el navegador escribía el catálogo que
+// leen todas las organizaciones (RLS abierta a cualquier admin de cualquier
+// organización). Migración 20260928150534_gosec_catalogo_tasas_solo_plataforma.
+describe('32. Tasas de cambio: clave de servidor y catálogo solo de plataforma', () => {
+  // Partida en dos para que este archivo no se delate a sí mismo.
+  const PROHIBIDA = 'NEXT_PUBLIC_' + 'OPENEXCHANGERATES';
+  const SERVIDOR = path.join(SRC_ROOT, 'lib', 'services', 'tasasCambio.server.ts');
+
+  test('nadie usa la clave pública de OpenExchangeRates (src, escritorio, .env.example)', () => {
+    const archivos = [
+      ...walkDir(SRC_ROOT).filter((f) => !f.replace(/\\/g, '/').endsWith('__tests__/guardrails.test.ts')),
+      path.join(REPO_ROOT, 'electron', 'scripts', 'build-web.js'),
+      path.join(REPO_ROOT, '.env.example'),
+    ];
+    const conClave = archivos.filter((f) => fs.existsSync(f) && readFile(f).includes(PROHIBIDA)).map(rel);
+    expect(conClave).toEqual([]);
+    expect(readFile(path.join(REPO_ROOT, '.env.example'))).toMatch(/^OPENEXCHANGERATES_API_KEY=/m);
+  });
+
+  test('solo el módulo de servidor habla con openexchangerates.org, y no se puede cargar en el navegador', () => {
+    const llaman = walkDir(SRC_ROOT)
+      .filter((f) => !isExcluded(f))
+      .filter((f) => /https:\/\/openexchangerates\.org/.test(readFile(f)))
+      .map(rel);
+    expect(llaman).toEqual(['lib/services/tasasCambio.server.ts']);
+    const servidor = readFile(SERVIDOR);
+    expect(servidor).toMatch(/process\.env\.OPENEXCHANGERATES_API_KEY/);
+    expect(servidor).toMatch(/assertServerOnly\(\)/);
+  });
+
+  test('ningún archivo de cliente escribe currency_rates', () => {
+    // `guardarTasasDeCambio` (openexchangerates.ts) recibe el cliente del
+    // servidor: el cron y la ruta de plataforma le pasan service role. Con la
+    // RLS cerrada, desde el navegador fallaría igual.
+    const PERMITIDOS = new Set(['lib/services/openexchangerates.ts']);
+    const escriben = walkDir(SRC_ROOT)
+      .filter((f) => !isExcluded(f) && !/[\\/]app[\\/]api[\\/]/.test(f) && !/\.server\.ts$/.test(f))
+      .filter((f) => /from\(\s*['"]currency_rates['"]\s*\)[\s\S]{0,200}?\.(insert|upsert|update|delete)\(/.test(stripAllComments(readFile(f))))
+      .map(rel)
+      .filter((r) => !PERMITIDOS.has(r));
+    expect(escriben).toEqual([]);
+  });
+
+  test('el cron y la ruta manual escriben con service role detrás de su puerta', () => {
+    const cron = stripAllComments(readFile(path.join(SRC_ROOT, 'app', 'api', 'cron', 'update-exchange-rates', 'route.ts')));
+    expect(cron.match(/verifyCronSecret\(request\)/g)).toHaveLength(2);
+    expect(cron.match(/actualizarTasasDeCambioGlobal\(getServiceClient\(\)\)/g)).toHaveLength(2);
+    expect(cron).not.toMatch(/actualizarTasasDeCambioGlobal\(\s*\)/);
+    const manual = stripAllComments(readFile(path.join(SRC_ROOT, 'app', 'api', 'finanzas', 'tasas-cambio', 'sincronizar', 'route.ts')));
+    expect(manual).toMatch(/export const POST = withPlatformAdmin\(/);
+    expect(manual).toMatch(/getServiceClient\(\)/);
+    // Las pantallas piden la sincronización al servidor, no la hacen.
+    for (const pantalla of ['ExchangeRatesTable.tsx', 'ExchangeRatesChart.tsx', 'ExchangeRateHistory.tsx']) {
+      const src = readFile(path.join(SRC_ROOT, 'components', 'finanzas', 'monedas', pantalla));
+      expect(src).toMatch(/sincronizarTasasDeCambio/);
+      expect(src).not.toMatch(/actualizarTasasDeCambioGlobal|obtenerTasasDeCambio|llenarFechasFaltantesConDatosReales/);
+    }
+  });
+
+  test('la migración quita las políticas de escritura y el EXECUTE de las funciones del catálogo', () => {
+    const base = '20260928150534_gosec_catalogo_tasas_solo_plataforma';
+    const sql = readFile(path.join(REPO_ROOT, 'supabase', 'migrations', `${base}.sql`));
+    expect(fs.existsSync(path.join(REPO_ROOT, 'supabase', 'rollbacks', `${base}_rollback.sql`))).toBe(true);
+    expect(sql).toMatch(/drop policy if exists currency_rates_insert_policy/);
+    expect(sql).toMatch(/drop policy if exists currency_rates_update_policy/);
+    expect(sql).toMatch(/revoke insert, update, delete, truncate on table public\.currency_rates from anon, authenticated/);
+    expect(sql).toMatch(/revoke all on function %s from public, anon, authenticated/);
+    for (const f of ['update_global_exchange_rates', 'insert_fallback_rates', 'fill_missing_currency_dates', 'save_global_exchange_rates', 'update_exchange_rates(integer)']) {
+      expect(sql).toContain(f);
+    }
+  });
+});

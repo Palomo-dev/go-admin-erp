@@ -32,7 +32,7 @@ import {TrendingUp,
   Globe} from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { useToast } from '@/components/ui/use-toast';
-import { actualizarTasasDeCambioGlobal } from '@/lib/services/openexchangerates';
+import { sincronizarTasasDeCambio } from '@/lib/services/tasasCambioCliente';
 import { ExchangeRateHistoryPagination } from './ExchangeRateHistoryPagination';
 import { TableSkeleton } from '@/components/common/PageSkeletons';
 
@@ -51,7 +51,9 @@ interface ExchangeRateHistoryProps {
   organizationId?: number;
 }
 
-export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateHistoryProps) {
+// `organizationId` no se usa: el catálogo de tasas es global.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function ExchangeRateHistory({ organizationId: _organizationId }: ExchangeRateHistoryProps) {
   // Solo para el nombre del archivo exportado; aun asi sale del dia de la
   // organizacion, para que dos usuarios que exportan a la vez desde husos
   // distintos no se manden ficheros con nombres de dias distintos.
@@ -114,7 +116,7 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
   const handleUpdateRates = async () => {
     setIsUpdating(true);
     try {
-      const result = await actualizarTasasDeCambioGlobal();
+      const result = await sincronizarTasasDeCambio();
       
       if (result.success) {
         toast({
@@ -129,11 +131,11 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
           variant: 'destructive',
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error actualizando tasas:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Error al actualizar tasas de cambio',
+        description: (error instanceof Error ? error.message : '') || 'Error al actualizar tasas de cambio',
         variant: 'destructive',
       });
     } finally {

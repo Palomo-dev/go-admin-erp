@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyCronSecret, webhookErrorResponse } from '@/lib/security/webhookSignatures';
-import { actualizarTasasDeCambioGlobal } from '@/lib/services/openexchangerates';
+import { actualizarTasasDeCambioGlobal } from '@/lib/services/tasasCambio.server';
 import { getServiceClient } from '@/lib/supabase/server-service';
 
 /**
@@ -100,21 +100,13 @@ export async function POST(request: NextRequest) {
       return webhookErrorResponse(err);
     }
 
-    // Leer opciones del body (si las hay)
-    let options = {};
-    try {
-      const body = await request.json();
-      options = body;
-    } catch {
-      // Si no hay body o no es JSON válido, usar opciones por defecto
-    }
-
     console.log('🔄 Iniciando actualización manual de tasas de cambio...');
     console.log('📅 Fecha/Hora:', new Date().toISOString());
-    console.log('⚙️ Opciones:', options);
-    
-    // Ejecutar actualización
-    const result = await actualizarTasasDeCambioGlobal();
+
+    // GO-sec (2026-09-28): igual que el GET, con service role. Antes usaba el
+    // cliente del navegador sin sesión y fallaba por RLS; desde
+    // 20260928150534 solo service role escribe `currency_rates`.
+    const result = await actualizarTasasDeCambioGlobal(getServiceClient());
     
     const executionTime = Date.now() - startTime;
     

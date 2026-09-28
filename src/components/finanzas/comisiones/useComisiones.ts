@@ -10,9 +10,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchJson } from '@/lib/utils/fetchJson';
 import { describeError } from '@/lib/utils/errorMessage';
-import type { CommissionRow } from '@/lib/services/crm/commissionAdminService';
+import type { CommissionRow, MoneyAccountOption } from '@/lib/services/crm/commissionAdminService';
 import type { CurrencySummary } from '@/lib/services/crm/commissionTransitions';
-import { actionsForSelection, buildCommissionsQuery, commissionActionMessage, emptyFilters, type ComisionesFiltersState } from './comisionesModel';
+import { actionsForSelection, buildCommissionsQuery, commissionActionMessage, cuentaPagoABody, emptyFilters, type ComisionesFiltersState, type CuentaPagoValor } from './comisionesModel';
 
 interface ListResponse {
   success: boolean;
@@ -61,6 +61,8 @@ export function useComisiones() {
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  // Cuentas bancarias para elegir de dónde sale el pago (solo quien puede pagar).
+  const [moneyAccounts, setMoneyAccounts] = useState<MoneyAccountOption[]>([]);
 
   const reload = useCallback(async () => {
     abortRef.current?.abort();
@@ -90,6 +92,20 @@ export function useComisiones() {
     reload();
     return () => abortRef.current?.abort();
   }, [reload]);
+
+  useEffect(() => {
+    if (!canManage) return;
+    let alive = true;
+    fetchJson<{ success: boolean; data: MoneyAccountOption[] }>('/api/crm/commissions/money-accounts')
+      .then((res) => {
+        if (alive) setMoneyAccounts(res.data ?? []);
+      })
+      // Sin la lista se puede pagar igual con la regla contable o en efectivo.
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [canManage]);
 
   const selectedRows = useMemo(() => rows.filter((r) => selected.has(r.id)), [rows, selected]);
   const actions = useMemo(() => actionsForSelection(selectedRows), [selectedRows]);
@@ -126,9 +142,9 @@ export function useComisiones() {
   );
 
   const payMany = useCallback(
-    (ids: string[]) =>
+    (ids: string[], cuenta: CuentaPagoValor = 'rule') =>
       run(async () => {
-        const res = await post<BulkResponse>('/api/crm/commissions/bulk-pay', { commission_ids: ids });
+        const res = await post<BulkResponse>('/api/crm/commissions/bulk-pay', { commission_ids: ids, ...cuentaPagoABody(cuenta) });
         const { paid, failed } = res.data;
         return commissionActionMessage('pagar', paid.length, failed.length, failed[0]?.reason);
       }),
@@ -181,6 +197,7 @@ export function useComisiones() {
     toggleAll,
     clearSelection,
     busy,
+    moneyAccounts,
     payMany,
     rejectMany,
     clawbackOne,

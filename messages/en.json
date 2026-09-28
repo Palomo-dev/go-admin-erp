@@ -12102,5 +12102,11 @@
       "confirmar": "Confirm serial numbers",
       "lista": "Serial numbers of {producto}"
     }
+  },
+  "comisionesPago": {
+    "cuentaLabel": "Where does the money come from?",
+    "opcionRegla": "As set in the accounting rule",
+    "opcionEfectivo": "Cash (open register)",
+    "cuentaAyuda": "The payment entry credits this account. Who paid is recorded."
   }
 }

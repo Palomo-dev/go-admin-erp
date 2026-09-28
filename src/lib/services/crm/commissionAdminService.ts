@@ -19,6 +19,7 @@ import {
   buildTransitionPatch,
   transitionFor,
   type CommissionAction,
+  type CommissionPayment,
 } from './commissionTransitions';
 
 export interface CommissionRow {
@@ -126,7 +127,7 @@ export async function transitionCommission(
   commissionId: string,
   orgId: number,
   supabase: SupabaseClient,
-  opts: { reason?: string; actorId?: string; now?: string } = {}
+  opts: { reason?: string; actorId?: string; now?: string; payment?: CommissionPayment } = {}
 ): Promise<CommissionRow | null> {
   const { data: row, error: readError } = await supabase
     .from('commissions')
@@ -142,6 +143,7 @@ export async function transitionCommission(
     now,
     reason: opts.reason,
     actorId: opts.actorId,
+    payment: action === 'pay' ? opts.payment : undefined,
   });
 
   const { from } = transitionFor(action);
@@ -161,8 +163,26 @@ export async function transitionCommission(
   return data as unknown as CommissionRow;
 }
 
-export function payCommission(commissionId: string, orgId: number, supabase: SupabaseClient, actorId?: string) {
-  return transitionCommission('pay', commissionId, orgId, supabase, { actorId });
+/**
+ * La cuenta bancaria elegida debe ser de ESTA organización y estar activa: el
+ * asiento del pago la usa como cuenta de dinero. En lote se valida una vez.
+ */
+export async function assertBankAccountOfOrg(bankAccountId: number | null | undefined, orgId: number, supabase: SupabaseClient): Promise<void> {
+  if (!bankAccountId) return;
+  const { data, error } = await supabase
+    .from('bank_accounts')
+    .select('id')
+    .eq('id', bankAccountId)
+    .eq('organization_id', orgId)
+    .eq('is_active', true)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new CommissionTransitionError('La cuenta bancaria no existe en esta organización o está inactiva.', 400, 'BANK_ACCOUNT_INVALID');
+}
+
+export async function payCommission(commissionId: string, orgId: number, supabase: SupabaseClient, actorId?: string, payment?: CommissionPayment) {
+  await assertBankAccountOfOrg(payment?.bankAccountId, orgId, supabase);
+  return transitionCommission('pay', commissionId, orgId, supabase, { actorId, payment });
 }
 
 export function rejectCommission(commissionId: string, orgId: number, reason: string, supabase: SupabaseClient, actorId?: string) {
@@ -183,13 +203,16 @@ export async function bulkPayCommissions(
   commissionIds: string[],
   orgId: number,
   supabase: SupabaseClient,
-  actorId?: string
+  actorId?: string,
+  payment?: CommissionPayment
 ): Promise<BulkPayResult> {
   const result: BulkPayResult = { paid: [], failed: [] };
   const unique = Array.from(new Set(commissionIds));
+  // Una cuenta ajena o inactiva aborta el lote (400) antes de pagar nada.
+  await assertBankAccountOfOrg(payment?.bankAccountId, orgId, supabase);
   for (const id of unique) {
     try {
-      const row = await payCommission(id, orgId, supabase, actorId);
+      const row = await transitionCommission('pay', id, orgId, supabase, { actorId, payment });
       if (row) result.paid.push(id);
       else result.failed.push({ id, reason: 'No existe en esta organización' });
     } catch (err) {
@@ -198,4 +221,31 @@ export async function bulkPayCommissions(
     }
   }
   return result;
+}
+
+export interface MoneyAccountOption {
+  id: number;
+  name: string;
+  bank_name: string | null;
+  /** Solo los 4 últimos dígitos: la lista viaja al navegador. */
+  last4: string | null;
+  currency: string | null;
+}
+
+/** Cuentas bancarias activas de la organización para elegir de dónde sale el pago. */
+export async function listMoneyAccounts(orgId: number, supabase: SupabaseClient): Promise<MoneyAccountOption[]> {
+  const { data, error } = await supabase
+    .from('bank_accounts')
+    .select('id, name, bank_name, account_number, currency')
+    .eq('organization_id', orgId)
+    .eq('is_active', true)
+    .order('name', { ascending: true });
+  if (error) throw error;
+  return ((data || []) as Array<{ id: number; name: string | null; bank_name: string | null; account_number: string | null; currency: string | null }>).map((a) => ({
+    id: a.id,
+    name: a.name || `#${a.id}`,
+    bank_name: a.bank_name,
+    last4: a.account_number ? a.account_number.replace(/\s+/g, '').slice(-4) : null,
+    currency: a.currency ? a.currency.trim() : null,
+  }));
 }

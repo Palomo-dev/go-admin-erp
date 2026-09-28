@@ -29,7 +29,8 @@ import {
   ComisionesToolbar,
   useComisiones,
 } from '@/components/finanzas/comisiones';
-import { activeFilterCount } from '@/components/finanzas/comisiones/comisionesModel';
+import { activeFilterCount, type CuentaPagoValor } from '@/components/finanzas/comisiones/comisionesModel';
+import { CuentaPagoComision } from '@/components/finanzas/comisiones/CuentaPagoComision';
 import { REFRESH_BUTTON_ID, commissionFocusFallback } from '@/components/finanzas/comisiones/comisionesFocus';
 
 export default function ComisionesPage() {
@@ -39,6 +40,7 @@ export default function ComisionesPage() {
   const { members } = useOrgMembers();
   const [clawbackRow, setClawbackRow] = useState<CommissionRow | null>(null);
   const [payRow, setPayRow] = useState<CommissionRow | null>(null);
+  const [cuentaPago, setCuentaPago] = useState<CuentaPagoValor>('rule');
   // Foco tras confirmar (brief §4): el botón «Pagar» de la fila desaparece al pagarla;
   // el fallback va a la fila siguiente → «Actualizar» → «Seleccionar todas».
   const actedRef = useRef<string[]>([]);
@@ -48,7 +50,7 @@ export default function ComisionesPage() {
   const payOne = async (row: CommissionRow) => {
     actedRef.current = [row.id];
     try {
-      toast({ title: await state.payMany([row.id]) });
+      toast({ title: await state.payMany([row.id], cuentaPago) });
     } catch (err) {
       toast({ title: 'No se pudo pagar', description: describeError(err), variant: 'destructive' });
     }
@@ -113,7 +115,9 @@ export default function ComisionesPage() {
         onConfirm={async () => {
           if (payRow) await payOne(payRow);
         }}
-      />
+      >
+        <CuentaPagoComision value={cuentaPago} onChange={setCuentaPago} accounts={state.moneyAccounts} disabled={state.busy} />
+      </ConfirmDialog>
 
       <ClawbackDialog
         open={clawbackRow !== null}

@@ -11997,5 +11997,11 @@
       "confirmar": "Confirmar números de série",
       "lista": "Números de série de {producto}"
     }
+  },
+  "comisionesPago": {
+    "cuentaLabel": "De onde sai o dinheiro?",
+    "opcionRegla": "Conforme a regra contábil",
+    "opcionEfectivo": "Dinheiro (caixa aberto)",
+    "cuentaAyuda": "O lançamento do pagamento credita esta conta. Quem pagou fica registrado."
   }
 }

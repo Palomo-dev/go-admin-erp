@@ -23,7 +23,8 @@ import type { CommissionRow } from '@/lib/services/crm/commissionAdminService';
 import { ClawbackDialog } from './ClawbackDialog';
 import { ReasonDialog } from './ReasonDialog';
 import { commissionFocusFallback } from './comisionesFocus';
-import { describeSelection, pluralComisiones } from './comisionesModel';
+import { describeSelection, pluralComisiones, type CuentaPagoValor } from './comisionesModel';
+import { CuentaPagoComision } from './CuentaPagoComision';
 import type { UseComisiones } from './useComisiones';
 
 interface Props {
@@ -34,8 +35,9 @@ interface Props {
 type Dialog = 'pay' | 'reject' | 'clawback' | null;
 
 export function ComisionesToolbar({ state, currency }: Props) {
-  const { selectedRows, actions, busy, clearSelection, payMany, rejectMany, clawbackOne } = state;
+  const { selectedRows, actions, busy, clearSelection, payMany, rejectMany, clawbackOne, moneyAccounts } = state;
   const [dialog, setDialog] = useState<Dialog>(null);
+  const [cuentaPago, setCuentaPago] = useState<CuentaPagoValor>('rule');
   // Instantánea de la selección al abrir el diálogo: los textos no cambian
   // mientras se confirma (la selección real se limpia al terminar).
   const [snapshot, setSnapshot] = useState<CommissionRow[]>([]);
@@ -113,8 +115,10 @@ export function ComisionesToolbar({ state, currency }: Props) {
         } con la fecha de hoy. Solo se pagan las que sigan pendientes.`}
         confirmLabel="Sí, pagar"
         loading={busy}
-        onConfirm={() => report(() => payMany(ids))}
-      />
+        onConfirm={() => report(() => payMany(ids, cuentaPago))}
+      >
+        <CuentaPagoComision value={cuentaPago} onChange={setCuentaPago} accounts={moneyAccounts} disabled={busy} />
+      </ConfirmDialog>
       <ReasonDialog
         open={dialog === 'reject'}
         onOpenChange={(o) => !o && setDialog(null)}

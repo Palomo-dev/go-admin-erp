@@ -61,6 +61,31 @@ export interface TransitionOptions {
   reason?: string;
   /** `ctx.userId`, para dejar rastro de quién lo hizo. */
   actorId?: string;
+  /**
+   * Solo `pay`: de dónde sale el dinero. El asiento del pago
+   * (`fn_auto_journal_commission`) acredita la cuenta que resuelve
+   * `fn_money_account_code_pago(método, cuenta bancaria)`; sin elección, la de
+   * la regla contable. La cuenta bancaria ya viene validada contra la organización.
+   */
+  payment?: CommissionPayment;
+}
+
+export interface CommissionPayment {
+  method?: string | null;
+  bankAccountId?: number | null;
+  reference?: string | null;
+}
+
+/** Normaliza lo que llega del cliente: método corto, cuenta entera positiva, referencia recortada. */
+export function normalizeCommissionPayment(input: { payment_method?: unknown; bank_account_id?: unknown; reference?: unknown }): CommissionPayment {
+  const method = typeof input.payment_method === 'string' ? input.payment_method.trim().slice(0, 40) : '';
+  const rawAccount = typeof input.bank_account_id === 'number' ? input.bank_account_id : typeof input.bank_account_id === 'string' ? Number(input.bank_account_id) : NaN;
+  const reference = typeof input.reference === 'string' ? input.reference.trim().slice(0, 120) : '';
+  return {
+    method: method || null,
+    bankAccountId: Number.isInteger(rawAccount) && rawAccount > 0 ? rawAccount : null,
+    reference: reference || null,
+  };
 }
 
 export interface TransitionPatch {
@@ -82,14 +107,23 @@ export function buildTransitionPatch(action: CommissionAction, row: TransitionRo
       `No se puede aplicar «${action}» a una comisión en estado «${row.status}» (se requiere «${t.from}»).`
     );
   }
+  const previous = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
   if (action === 'pay') {
-    return { status: 'paid', paid_at: opts.now, updated_at: opts.now };
+    // Metadata FUSIONADA (nunca reemplazada): quién pagó y de qué cuenta salió.
+    const p = opts.payment ?? {};
+    const extra: Record<string, unknown> = {
+      ...(opts.actorId ? { paid_by: opts.actorId } : {}),
+      ...(p.method ? { payment_method: p.method } : {}),
+      ...(p.bankAccountId ? { bank_account_id: p.bankAccountId } : {}),
+      ...(p.reference ? { payment_reference: p.reference } : {}),
+    };
+    if (Object.keys(extra).length === 0) return { status: 'paid', paid_at: opts.now, updated_at: opts.now };
+    return { status: 'paid', paid_at: opts.now, updated_at: opts.now, metadata: { ...previous, ...extra } };
   }
   const reason = (opts.reason ?? '').trim();
   if (!reason) {
     throw new CommissionTransitionError('El motivo es obligatorio.', 400, 'REASON_REQUIRED');
   }
-  const previous = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
   if (action === 'reject') {
     return {
       status: 'cancelled',

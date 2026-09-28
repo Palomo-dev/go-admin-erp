@@ -30,6 +30,8 @@ interface ConfirmDialogProps {
    * para devolverlo al botón que abrió la confirmación.
    */
   onCloseAutoFocus?: (event: Event) => void;
+  /** Contenido opcional entre la descripción y los botones (p. ej. un campo que la confirmación necesita). */
+  children?: React.ReactNode;
 }
 
 const variantClass: Record<ConfirmVariant, string> = {
@@ -52,6 +54,7 @@ export function ConfirmDialog({
   loading = false,
   onConfirm,
   onCloseAutoFocus,
+  children,
 }: ConfirmDialogProps) {
   const handleConfirm = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -70,6 +73,7 @@ export function ConfirmDialog({
             {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {children}
         <AlertDialogFooter>
           <AlertDialogCancel
             disabled={loading}

@@ -148,3 +148,20 @@ export function focusAfterCommissionAction<T extends { isConnected: boolean }>(
   for (const c of candidates) if (c && c.isConnected) return c;
   return null;
 }
+
+/** Elección de la cuenta de dinero en la confirmación de pago. */
+export type CuentaPagoValor = 'rule' | 'cash' | `bank:${number}`;
+
+/**
+ * Cuerpo que esperan las rutas de pago. `rule` no manda nada: el asiento usa
+ * la cuenta de la regla contable, como antes. `cash` sale de la caja abierta
+ * (o la cuenta de caja del plan); `bank:<id>` de esa cuenta bancaria.
+ */
+export function cuentaPagoABody(v: CuentaPagoValor): { payment_method?: string; bank_account_id?: number } {
+  if (v === 'cash') return { payment_method: 'cash' };
+  if (v.startsWith('bank:')) {
+    const id = Number(v.slice(5));
+    if (Number.isInteger(id) && id > 0) return { payment_method: 'transfer', bank_account_id: id };
+  }
+  return {};
+}

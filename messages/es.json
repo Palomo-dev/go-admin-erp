@@ -12102,5 +12102,11 @@
       "confirmar": "Confirmar seriales",
       "lista": "Seriales de {producto}"
     }
+  },
+  "comisionesPago": {
+    "cuentaLabel": "¿De dónde sale el dinero?",
+    "opcionRegla": "Según la regla contable",
+    "opcionEfectivo": "Efectivo (caja abierta)",
+    "cuentaAyuda": "El asiento del pago acredita esta cuenta. Quién paga queda registrado."
   }
 }

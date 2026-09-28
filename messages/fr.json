@@ -11997,5 +11997,11 @@
       "confirmar": "Confirmer les numéros de série",
       "lista": "Numéros de série de {producto}"
     }
+  },
+  "comisionesPago": {
+    "cuentaLabel": "D'où sort l'argent ?",
+    "opcionRegla": "Selon la règle comptable",
+    "opcionEfectivo": "Espèces (caisse ouverte)",
+    "cuentaAyuda": "L'écriture du paiement crédite ce compte. La personne qui paie est enregistrée."
   }
 }

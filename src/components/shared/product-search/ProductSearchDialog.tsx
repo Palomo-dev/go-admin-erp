@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supplierService } from '@/lib/services/supplierService';
@@ -22,9 +22,47 @@ import { VariantSelectorDialog, type SelectedModifier } from '@/components/pos/V
 import { formatCurrency } from '@/utils/Utils';
 import { resolveVariantDisplayName } from '@/utils/variantUtils';
 import { recipeService, type ProductRecipe } from '@/lib/services/recipeService';
+import { useKitT } from '@/components/kit/useIdiomaKit';
 import type { UnifiedProduct, ProductSearchMode } from './types';
 
 export type { UnifiedProduct, ProductSearchMode, SelectedModifier } from './types';
+
+/** Fila de `get_products_with_latest_prices` / `get_products_with_latest_costs`. */
+interface FilaProductoRpc {
+  id: number;
+  name: string;
+  sku: string;
+  description?: string;
+  price?: number | string | null;
+  cost?: number | string | null;
+  tax_code?: string | null;
+  tax_name?: string | null;
+  tax_rate?: number | string | null;
+  is_parent?: boolean;
+  parent_product_id?: number | null;
+  track_stock?: boolean | null;
+  track_serial?: boolean | null;
+}
+
+interface FilaVariante { id: number; parent_product_id: number; sku: string | null; name: string | null }
+interface FilaGrupoModificador { id: number; product_id: number; name: string | null }
+interface FilaModificador { group_id: number; name: string | null }
+interface FilaStock { id: number; product_id: number; qty_on_hand: number | string | null }
+interface FilaReceta { id: number; product_id: number; name: string | null }
+
+/** Variante que devuelve el selector, con lo que pueda heredar del padre. */
+interface VarianteElegida {
+  id: number;
+  sku: string;
+  name: string;
+  price: number | null;
+  variant_data: Record<string, string>;
+  cost?: number;
+  tax_code?: string;
+  tax_rate?: number;
+  tax_name?: string;
+  track_serial?: boolean;
+}
 
 interface ProductSearchDialogProps {
   mode: ProductSearchMode;
@@ -57,12 +95,13 @@ export function ProductSearchDialog({
   const [showVariantDialog, setShowVariantDialog] = useState(false);
   const [selectedParent, setSelectedParent] = useState<UnifiedProduct | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize] = useState(20);
   const [supplierProductIds, setSupplierProductIds] = useState<Set<number>>(new Set());
   const [supplierCosts, setSupplierCosts] = useState<Map<number, number>>(new Map());
   const [showAllProducts, setShowAllProducts] = useState(false);
   const [togglingFavorites, setTogglingFavorites] = useState<Set<number>>(new Set());
   const organizationId = getOrganizationId();
+  const t = useKitT();
   // Diálogo de detalle de receta vinculada a un producto
   const [recipeView, setRecipeView] = useState<ProductRecipe | null>(null);
   const [recipeViewLoading, setRecipeViewLoading] = useState(false);
@@ -96,6 +135,8 @@ export function ProductSearchDialog({
       setSearchTerm('');
       cargarProductos();
     }
+    // Solo al abrir el diálogo o cambiar de organización: cargarProductos se redefine en cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDialogOpen, organizationId]);
 
   // Filtrar productos con debounce
@@ -139,7 +180,7 @@ export function ProductSearchDialog({
       }
 
       // Filtrar variantes hijas
-      const products = (rpcData as any[]).filter((p: any) => !p.parent_product_id);
+      const products = (rpcData as FilaProductoRpc[]).filter((p) => !p.parent_product_id);
       if (products.length === 0) {
         setProducts([]);
         setFilteredProducts([]);
@@ -147,7 +188,7 @@ export function ProductSearchDialog({
       }
 
       const productIds = products.map(p => p.id);
-      const parentIds = products.filter((p: any) => p.is_parent).map((p: any) => p.id);
+      const parentIds = products.filter((p) => p.is_parent).map((p) => p.id);
 
       // 2. Queries auxiliares en paralelo (variantes, modificadores, stock, favoritos, ventas)
       const [variantsResult, modifiersResult, stockResult, favoritesResult, salesResult] = await Promise.all([
@@ -158,7 +199,7 @@ export function ProductSearchDialog({
               .select('id, parent_product_id, sku, name')
               .in('parent_product_id', parentIds)
               .eq('status', 'active')
-          : Promise.resolve({ data: [] as any[], error: null }),
+          : Promise.resolve({ data: [] as FilaVariante[], error: null }),
 
         // Modificadores (grupos - para detectar qué productos tienen modificadores)
         supabase
@@ -176,7 +217,7 @@ export function ProductSearchDialog({
               .eq('branch_id', branchId)
               .in('product_id', productIds)
               .order('id', { ascending: false })
-          : Promise.resolve({ data: [] as any[], error: null }),
+          : Promise.resolve({ data: [] as FilaStock[], error: null }),
 
         // Favoritos de la organización
         supabase
@@ -195,7 +236,7 @@ export function ProductSearchDialog({
 
       // Queries dependientes de modifiersResult (nombres de opciones) y recetas,
       // ejecutadas en paralelo después del Promise.all principal.
-      const groupIds = (modifiersResult.data || []).map((g: any) => g.id);
+      const groupIds = (modifiersResult.data || []).map((g: FilaGrupoModificador) => g.id);
       const [modifierNamesResult, recipesResult] = await Promise.all([
         // Opciones de modificadores (nombres) para enriquecer search_terms
         groupIds.length > 0
@@ -204,7 +245,7 @@ export function ProductSearchDialog({
               .select('group_id, name')
               .eq('is_active', true)
               .in('group_id', groupIds)
-          : Promise.resolve({ data: [] as any[], error: null as any }),
+          : Promise.resolve({ data: [] as FilaModificador[], error: null }),
         // Recetas activas vinculadas (para mostrar badge/botón de "ver receta")
         productIds.length > 0
           ? supabase
@@ -212,20 +253,20 @@ export function ProductSearchDialog({
               .select('id, product_id, name')
               .in('product_id', productIds)
               .eq('is_active', true)
-          : Promise.resolve({ data: [] as any[], error: null as any }),
+          : Promise.resolve({ data: [] as FilaReceta[], error: null }),
       ]);
 
       // Variant count map
       const variantCountMap: Record<number, number> = {};
       const variantIds: number[] = [];
-      (variantsResult.data || []).forEach((v: any) => {
+      (variantsResult.data || []).forEach((v: FilaVariante) => {
         variantCountMap[v.parent_product_id] = (variantCountMap[v.parent_product_id] || 0) + 1;
         variantIds.push(v.id);
       });
 
       // Modifiers set
       const productsWithModifiers = new Set<number>();
-      (modifiersResult.data || []).forEach((g: any) => productsWithModifiers.add(g.product_id));
+      (modifiersResult.data || []).forEach((g: FilaGrupoModificador) => productsWithModifiers.add(g.product_id));
 
       // Stock map (productos padre)
       // Tomar solo el registro mas reciente por producto (id mas alto)
@@ -263,7 +304,7 @@ export function ProductSearchDialog({
 
       // Mapa de favoritos: product_id -> true
       const favoriteSet = new Set<number>();
-      (favoritesResult.data || []).forEach((f: any) => favoriteSet.add(f.product_id));
+      (favoritesResult.data || []).forEach((f: { product_id: number }) => favoriteSet.add(f.product_id));
 
       // Mapa de ventas de los últimos 90 días: product_id -> total_quantity
       const salesCountMap = new Map<number, number>();
@@ -278,7 +319,7 @@ export function ProductSearchDialog({
       // o un modificador por nombre/SKU.
       const searchTermsMap = new Map<number, string[]>();
       const groupIdToProductId = new Map<number, number>();
-      (modifiersResult.data || []).forEach((g: any) => {
+      (modifiersResult.data || []).forEach((g: FilaGrupoModificador) => {
         groupIdToProductId.set(g.id, g.product_id);
         if (g.name) {
           const arr = searchTermsMap.get(g.product_id) || [];
@@ -286,7 +327,7 @@ export function ProductSearchDialog({
           searchTermsMap.set(g.product_id, arr);
         }
       });
-      (modifierNamesResult.data || []).forEach((m: any) => {
+      (modifierNamesResult.data || []).forEach((m: FilaModificador) => {
         const pid = groupIdToProductId.get(m.group_id);
         if (pid && m.name) {
           const arr = searchTermsMap.get(pid) || [];
@@ -294,7 +335,7 @@ export function ProductSearchDialog({
           searchTermsMap.set(pid, arr);
         }
       });
-      (variantsResult.data || []).forEach((v: any) => {
+      (variantsResult.data || []).forEach((v: FilaVariante) => {
         const arr = searchTermsMap.get(v.parent_product_id) || [];
         if (v.sku) arr.push(String(v.sku).toLowerCase());
         if (v.name) arr.push(String(v.name).toLowerCase());
@@ -303,14 +344,14 @@ export function ProductSearchDialog({
 
       // Recetas activas: product_id -> { id, name }
       const recipeMap = new Map<number, { id: number; name: string | null }>();
-      (recipesResult.data || []).forEach((r: any) => {
+      (recipesResult.data || []).forEach((r: FilaReceta) => {
         if (!recipeMap.has(r.product_id)) {
           recipeMap.set(r.product_id, { id: r.id, name: r.name ?? null });
         }
       });
 
       // Construir productos finales
-      const formattedProducts: UnifiedProduct[] = products.map((product: any) => {
+      const formattedProducts: UnifiedProduct[] = products.map((product) => {
         const variantCount = variantCountMap[product.id] || 0;
         const track = product.track_stock === true;
         const qty = (stockMap.get(product.id) || 0) + (stockDeVariantes.get(product.id) || 0);
@@ -357,8 +398,8 @@ export function ProductSearchDialog({
     } catch (err) {
       console.error('Error al cargar productos:', err);
       toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los productos. Intente nuevamente.',
+        title: t('buscadorProductos.avisos.error'),
+        description: t('buscadorProductos.avisos.errorCarga'),
         variant: 'destructive',
       });
     } finally {
@@ -371,8 +412,8 @@ export function ProductSearchDialog({
     // Bloquear productos agotados (solo modo sale con control de inventario)
     if (mode === 'sale' && product.is_out_of_stock) {
       toast({
-        title: 'Producto agotado',
-        description: `"${product.name}" no tiene existencias disponibles.`,
+        title: t('buscadorProductos.avisos.agotadoTitulo'),
+        description: t('buscadorProductos.avisos.agotado', { nombre: product.name }),
         variant: 'destructive',
       });
       return;
@@ -397,14 +438,14 @@ export function ProductSearchDialog({
     setSearchTerm('');
 
     toast({
-      title: 'Producto seleccionado',
-      description: `${product.name} agregado.`,
+      title: t('buscadorProductos.avisos.seleccionadoTitulo'),
+      description: t('buscadorProductos.avisos.seleccionado', { nombre: product.name }),
     });
-  }, [onProductSelect, mode]);
+  }, [onProductSelect, mode, supplierCosts, t]);
 
   // Manejar selección de variante desde el diálogo
-  const handleVariantSelect = (variant: any, modifiers: SelectedModifier[] = []) => {
-    const parent = selectedParent as any;
+  const handleVariantSelect = (variant: VarianteElegida, modifiers: SelectedModifier[] = []) => {
+    const parent = selectedParent;
     // Construir nombre legible desde variant_data: "iPhone 16 Pro Max (256 GB)"
     // en vez del nombre interno "iPhone 16 Pro Max - Variante 1"
     const displayName = resolveVariantDisplayName(
@@ -446,8 +487,8 @@ export function ProductSearchDialog({
     } catch (error) {
       console.error('Error cargando receta:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo cargar la receta del producto',
+        title: t('buscadorProductos.avisos.error'),
+        description: t('buscadorProductos.avisos.errorReceta'),
         variant: 'destructive',
       });
     } finally {
@@ -475,18 +516,20 @@ export function ProductSearchDialog({
       setProducts(prev => updateProduct(prev, isNowFavorite));
       setFilteredProducts(prev => updateProduct(prev, isNowFavorite));
       toast({
-        title: isNowFavorite ? 'Agregado a favoritos' : 'Quitado de favoritos',
+        title: isNowFavorite
+          ? t('buscadorProductos.avisos.favoritoAgregado')
+          : t('buscadorProductos.avisos.favoritoQuitado'),
         description: isNowFavorite
-          ? 'El producto aparecerá primero.'
-          : 'El producto ya no se priorizará.',
+          ? t('buscadorProductos.avisos.favoritoAgregadoDetalle')
+          : t('buscadorProductos.avisos.favoritoQuitadoDetalle'),
         duration: 1800,
       });
-    } catch (error) {
+    } catch {
       setProducts(prev => updateProduct(prev, wasFavorite));
       setFilteredProducts(prev => updateProduct(prev, wasFavorite));
       toast({
-        title: 'Error',
-        description: 'No se pudo actualizar el favorito.',
+        title: t('buscadorProductos.avisos.error'),
+        description: t('buscadorProductos.avisos.errorFavorito'),
         variant: 'destructive',
       });
     } finally {
@@ -511,10 +554,10 @@ export function ProductSearchDialog({
   };
 
   // Etiqueta del precio principal según el modo
-  const priceLabel = mode === 'sale' ? 'Precio' : 'Costo';
+  const priceLabel = mode === 'sale' ? t('buscadorProductos.precio') : t('buscadorProductos.costo');
   const priceValue = (p: UnifiedProduct) => mode === 'sale' ? p.price : p.cost;
   const refValue = (p: UnifiedProduct) => mode === 'sale' ? null : p.price;
-  const refLabel = mode === 'sale' ? null : 'P.V. ref.';
+  const refLabel = mode === 'sale' ? null : t('buscadorProductos.precioVentaRef');
 
   // Paginación con useMemo
   const totalPages = Math.ceil(filteredProducts.length / pageSize);
@@ -527,7 +570,7 @@ export function ProductSearchDialog({
     const pages: number[] = [];
     const maxButtons = 5;
     let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
-    let end = Math.min(totalPages, start + maxButtons - 1);
+    const end = Math.min(totalPages, start + maxButtons - 1);
     start = Math.max(1, end - maxButtons + 1);
     for (let i = start; i <= end; i++) pages.push(i);
     return pages;
@@ -544,8 +587,8 @@ export function ProductSearchDialog({
           onClick={() => setIsDialogOpen(true)}
         >
           <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-          <span className="hidden sm:inline">Buscar Productos</span>
-          <span className="sm:hidden">Productos</span>
+          <span className="hidden sm:inline">{t('buscadorProductos.buscar')}</span>
+          <span className="sm:hidden">{t('buscadorProductos.buscarCorto')}</span>
         </Button>
 
         {isDialogOpen && (
@@ -557,13 +600,14 @@ export function ProductSearchDialog({
                   <div className="flex flex-wrap items-center gap-2">
                     <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-gray-900 dark:text-white" />
                     <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-50 truncate">
-                      Catálogo de Productos
+                      {t('buscadorProductos.titulo')}
                     </h2>
                     <Badge variant="outline" className="ml-2 text-xs dark:border-gray-600 dark:text-gray-300">
-                      {mode === 'sale' ? 'Venta' : 'Compra'}
+                      {mode === 'sale' ? t('buscadorProductos.modoVenta') : t('buscadorProductos.modoCompra')}
                     </Badge>
                   </div>
                   <button
+                    aria-label={t('comun.cerrar')}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700"
                     onClick={() => setIsDialogOpen(false)}
                   >
@@ -580,7 +624,7 @@ export function ProductSearchDialog({
               <div className="relative flex-1">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 dark:text-gray-500" />
                 <Input
-                  placeholder="Buscar por nombre, SKU, variantes o modificadores..."
+                  placeholder={t('buscadorProductos.placeholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-8 h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500"
@@ -596,8 +640,8 @@ export function ProductSearchDialog({
                 className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 whitespace-nowrap"
               >
                 <PackagePlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
-                <span className="hidden sm:inline">Crear Producto</span>
-                <span className="sm:hidden">Crear</span>
+                <span className="hidden sm:inline">{t('buscadorProductos.crearProducto')}</span>
+                <span className="sm:hidden">{t('buscadorProductos.crear')}</span>
               </Button>
 
               <Button
@@ -607,7 +651,7 @@ export function ProductSearchDialog({
                 size="sm"
                 className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 whitespace-nowrap"
               >
-                {isLoading ? 'Cargando...' : 'Actualizar'}
+                {isLoading ? t('buscadorProductos.cargando') : t('buscadorProductos.actualizar')}
               </Button>
             </div>
 
@@ -615,8 +659,12 @@ export function ProductSearchDialog({
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
               <div className="flex items-center gap-3">
                 <span className="truncate">
-                  <span className="font-medium text-gray-900 dark:text-gray-100">{filteredProducts.length}</span> de {products.length} productos
-                  <span className="hidden md:inline">{debouncedSearch && ` - Filtrando por "${debouncedSearch}"`}</span>
+                  {t.rich('buscadorProductos.conteo', {
+                    filtrados: filteredProducts.length,
+                    total: products.length,
+                    resaltado: (trozo) => <span className="font-medium text-gray-900 dark:text-gray-100">{trozo}</span>,
+                  })}
+                  <span className="hidden md:inline">{debouncedSearch && t('buscadorProductos.filtrando', { termino: debouncedSearch })}</span>
                 </span>
                 {supplierProductIds.size > 0 && (
                   <button
@@ -625,14 +673,14 @@ export function ProductSearchDialog({
                     className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
                   >
                     {showAllProducts
-                      ? `Solo del proveedor (${supplierProductIds.size})`
-                      : `Ver todos (${products.length})`}
+                      ? t('buscadorProductos.soloProveedor', { n: supplierProductIds.size })
+                      : t('buscadorProductos.verTodos', { n: products.length })}
                   </button>
                 )}
               </div>
               {selectedProductIds.length > 0 && (
                 <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:bg-gray-700 dark:text-gray-300">
-                  {selectedProductIds.length} seleccionados
+                  {t('buscadorProductos.seleccionados', { n: selectedProductIds.length })}
                 </Badge>
               )}
             </div>
@@ -682,28 +730,28 @@ export function ProductSearchDialog({
                                 </h4>
                                 {isOutOfStock && (
                                   <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                                    Agotado
+                                    {t('buscadorProductos.agotado')}
                                   </span>
                                 )}
                                 {product.has_variants && (
                                   <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 flex items-center gap-0.5">
                                     <Layers className="w-2.5 h-2.5" />
-                                    {product.variant_count} variantes
+                                    {t('buscadorProductos.variantes', { n: product.variant_count ?? 0 })}
                                   </span>
                                 )}
                                 {product.has_modifiers && !product.has_variants && (
                                   <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 flex items-center gap-0.5">
                                     <SlidersHorizontal className="w-2.5 h-2.5" />
-                                    Modificable
+                                    {t('buscadorProductos.modificable')}
                                   </span>
                                 )}
                                 {Number(product.sales_count_90d) > 0 && (
                                   <span
                                     className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 flex items-center gap-0.5"
-                                    title={`${Math.round(Number(product.sales_count_90d))} unidades vendidas en los últimos 90 días`}
+                                    title={t('buscadorProductos.vendidas90', { n: Math.round(Number(product.sales_count_90d)) })}
                                   >
                                     <Flame className="w-2.5 h-2.5" />
-                                    Top
+                                    {t('buscadorProductos.top')}
                                   </span>
                                 )}
                               </div>
@@ -720,8 +768,8 @@ export function ProductSearchDialog({
                                   <button
                                     type="button"
                                     onClick={(e) => handleViewRecipe(product, e)}
-                                    aria-label="Ver receta de producción"
-                                    title="Ver receta de producción"
+                                    aria-label={t('buscadorProductos.verReceta')}
+                                    title={t('buscadorProductos.verReceta')}
                                     className="rounded-full p-1 text-orange-600 hover:bg-orange-100 dark:text-orange-400 dark:hover:bg-orange-900/40 transition-colors"
                                   >
                                     <ChefHat className="h-3.5 w-3.5" />
@@ -731,8 +779,8 @@ export function ProductSearchDialog({
                                   type="button"
                                   onClick={(e) => handleToggleFavorite(product.id, e)}
                                   disabled={togglingFavorites.has(product.id)}
-                                  aria-label={product.is_favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-                                  title={product.is_favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                                  aria-label={product.is_favorite ? t('buscadorProductos.quitarFavorito') : t('buscadorProductos.agregarFavorito')}
+                                  title={product.is_favorite ? t('buscadorProductos.quitarFavorito') : t('buscadorProductos.agregarFavorito')}
                                   className={`rounded-full p-1 transition-all duration-150 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${
                                     product.is_favorite
                                       ? 'bg-amber-400 text-white hover:bg-amber-500'
@@ -782,7 +830,7 @@ export function ProductSearchDialog({
                                       {product.stock_qty ?? 0}
                                     </div>
                                     <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                                      Disponible
+                                      {t('buscadorProductos.disponible')}
                                     </div>
                                   </div>
                                 )}
@@ -799,7 +847,7 @@ export function ProductSearchDialog({
                                 variant="secondary"
                                 className="w-full sm:w-auto h-8 text-xs sm:text-sm bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
                               >
-                                ✓ Seleccionado
+                                {t('buscadorProductos.seleccionado')}
                               </Button>
                             ) : (
                               <Button
@@ -812,7 +860,7 @@ export function ProductSearchDialog({
                                 className="w-full sm:w-auto h-8 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white"
                               >
                                 <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
-                                {product.has_variants ? 'Elegir' : 'Agregar'}
+                                {product.has_variants ? t('buscadorProductos.elegir') : t('buscadorProductos.agregar')}
                               </Button>
                             )}
                           </div>
@@ -826,11 +874,11 @@ export function ProductSearchDialog({
                   <div className="text-center">
                     <Package className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 opacity-50 text-gray-400 dark:text-gray-600" />
                     <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
-                      {debouncedSearch ? 'No se encontraron productos' : 'No hay productos disponibles'}
+                      {debouncedSearch ? t('buscadorProductos.sinResultados') : t('buscadorProductos.sinProductos')}
                     </p>
                     {debouncedSearch && (
                       <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 mt-1">
-                        Intenta con otros términos de búsqueda
+                        {t('buscadorProductos.otrosTerminos')}
                       </p>
                     )}
                   </div>
@@ -842,9 +890,9 @@ export function ProductSearchDialog({
             {totalPages > 1 && (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                  <span>Página {currentPage} de {totalPages}</span>
+                  <span>{t('buscadorProductos.pagina', { actual: currentPage, total: totalPages })}</span>
                   <span className="hidden sm:inline">·</span>
-                  <span className="hidden sm:inline">{filteredProducts.length} productos</span>
+                  <span className="hidden sm:inline">{t('buscadorProductos.totalProductos', { n: filteredProducts.length })}</span>
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-1.5">
                   <Button
@@ -854,6 +902,7 @@ export function ProductSearchDialog({
                     className="h-7 px-2 text-xs"
                     onClick={() => setCurrentPage(1)}
                     disabled={currentPage === 1}
+                    aria-label={t('paginacion.primera')}
                   >
                     «
                   </Button>
@@ -864,6 +913,7 @@ export function ProductSearchDialog({
                     className="h-7 px-2 text-xs"
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
+                    aria-label={t('paginacion.anterior')}
                   >
                     ‹
                   </Button>
@@ -886,6 +936,7 @@ export function ProductSearchDialog({
                     className="h-7 px-2 text-xs"
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
+                    aria-label={t('paginacion.siguiente')}
                   >
                     ›
                   </Button>
@@ -896,6 +947,7 @@ export function ProductSearchDialog({
                     className="h-7 px-2 text-xs"
                     onClick={() => setCurrentPage(totalPages)}
                     disabled={currentPage === totalPages}
+                    aria-label={t('paginacion.ultima')}
                   >
                     »
                   </Button>
@@ -917,8 +969,8 @@ export function ProductSearchDialog({
             className="h-8 sm:h-9 text-xs sm:text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 whitespace-nowrap"
           >
             <PackagePlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
-            <span className="hidden sm:inline">Crear Producto</span>
-            <span className="sm:hidden">Crear</span>
+            <span className="hidden sm:inline">{t('buscadorProductos.crearProducto')}</span>
+            <span className="sm:hidden">{t('buscadorProductos.crear')}</span>
           </Button>
         )}
       </div>
@@ -951,7 +1003,7 @@ export function ProductSearchDialog({
           <DialogHeader>
             <DialogTitle className="dark:text-white flex items-center gap-2">
               <ChefHat className="h-5 w-5 text-orange-600" />
-              Receta de producción
+              {t('buscadorProductos.receta.titulo')}
             </DialogTitle>
             <DialogDescription className="dark:text-gray-400">
               {recipeView?.product?.name ?? recipeView?.name ?? ''}
@@ -967,22 +1019,22 @@ export function ProductSearchDialog({
               {/* Info general */}
               <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800/40 rounded-lg">
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Producto</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('buscadorProductos.receta.producto')}</p>
                   <p className="font-medium dark:text-white">
                     {recipeView.product?.name ?? `#${recipeView.product_id}`}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                    SKU: {recipeView.product?.sku ?? 'N/A'}
+                    {t('buscadorProductos.receta.sku', { sku: recipeView.product?.sku ?? t('buscadorProductos.receta.noAplica') })}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Rendimiento</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('buscadorProductos.receta.rendimiento')}</p>
                   <p className="font-medium dark:text-white font-mono">
                     {recipeView.yield_qty} {recipeView.yield_unit_code ?? ''}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Estado</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('buscadorProductos.receta.estado')}</p>
                   <Badge
                     className={
                       recipeView.is_active
@@ -991,11 +1043,11 @@ export function ProductSearchDialog({
                     }
                     variant={recipeView.is_active ? 'default' : 'secondary'}
                   >
-                    {recipeView.is_active ? 'Activa' : 'Inactiva'}
+                    {recipeView.is_active ? t('buscadorProductos.receta.activa') : t('buscadorProductos.receta.inactiva')}
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Versión</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('buscadorProductos.receta.version')}</p>
                   <p className="font-medium dark:text-white font-mono">v{recipeView.version}</p>
                 </div>
               </div>
@@ -1003,7 +1055,7 @@ export function ProductSearchDialog({
               {/* Notas */}
               {recipeView.notes && (
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Notas</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('buscadorProductos.receta.notas')}</p>
                   <p className="text-sm dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-lg whitespace-pre-wrap">
                     {recipeView.notes}
                   </p>
@@ -1013,7 +1065,7 @@ export function ProductSearchDialog({
               {/* Ingredientes */}
               <div>
                 <p className="text-sm font-medium dark:text-gray-300 mb-2">
-                  Ingredientes ({recipeView.ingredients?.length ?? 0})
+                  {t('buscadorProductos.receta.ingredientes', { n: recipeView.ingredients?.length ?? 0 })}
                 </p>
                 <div className="space-y-2">
                   {recipeView.ingredients?.length ? (
@@ -1029,7 +1081,7 @@ export function ProductSearchDialog({
                               {ing.ingredient_product?.name ?? `#${ing.ingredient_product_id}`}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                              {ing.ingredient_product?.sku ?? 'N/A'}
+                              {ing.ingredient_product?.sku ?? t('buscadorProductos.receta.noAplica')}
                             </p>
                           </div>
                         </div>
@@ -1038,14 +1090,14 @@ export function ProductSearchDialog({
                             {ing.quantity} {ing.unit_code}
                           </span>
                           {ing.is_optional && (
-                            <Badge variant="secondary" className="text-[0.6rem]">Opcional</Badge>
+                            <Badge variant="secondary" className="text-[0.6rem]">{t('buscadorProductos.receta.opcional')}</Badge>
                           )}
                         </div>
                       </div>
                     ))
                   ) : (
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Esta receta no tiene ingredientes definidos.
+                      {t('buscadorProductos.receta.sinIngredientes')}
                     </p>
                   )}
                 </div>

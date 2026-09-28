@@ -2,6 +2,8 @@
 
 import React, { useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { useEtiquetaEstado } from '@/components/kit/useIdiomaKit';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,13 +20,22 @@ interface EditarFacturaVentaProps {
   facturaId: string;
 }
 
+/** Por qué no se pudo abrir la factura para editar (el texto sale del idioma activo). */
+type ErrorCargaFactura =
+  | { tipo: 'faltanDatos' }
+  | { tipo: 'noEncontrada' }
+  | { tipo: 'noEditable'; estado: string }
+  | { tipo: 'carga' };
+
 export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [factura, setFactura] = useState<(FacturaInicialVenta & { id: string }) | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorCargaFactura | null>(null);
   const organizationId = getOrganizationId();
+  const t = useTranslations('facturasVenta');
+  const etiquetaEstado = useEtiquetaEstado();
 
   const cargarFactura = useCallback(async () => {
     try {
@@ -32,7 +43,7 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
       setError(null);
 
       if (!organizationId || !facturaId) {
-        setError('Faltan datos para cargar la factura.');
+        setError({ tipo: 'faltanDatos' });
         return;
       }
 
@@ -44,10 +55,13 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
         .single();
 
       if (facturaError) throw facturaError;
-      if (!facturaData) throw new Error('Factura no encontrada');
+      if (!facturaData) {
+        setError({ tipo: 'noEncontrada' });
+        return;
+      }
 
       if (facturaData.status !== 'draft') {
-        setError(`No se puede editar una factura en estado "${facturaData.status}". Solo las facturas en borrador pueden editarse.`);
+        setError({ tipo: 'noEditable', estado: String(facturaData.status) });
         return;
       }
 
@@ -74,7 +88,7 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
       });
     } catch (error: unknown) {
       console.error('Error cargando factura:', error);
-      setError((error as { message?: string } | null)?.message || 'Error al cargar la factura');
+      setError({ tipo: 'carga' });
     } finally {
       setLoading(false);
     }
@@ -151,19 +165,19 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
         items: lineas,
       });
 
-      toastSuccess('Factura actualizada', 'La factura de venta se ha actualizado correctamente.');
+      toastSuccess(t('editar.actualizadaTitulo'), t('editar.actualizada'));
 
       router.push(`/app/finanzas/facturas-venta/${factura.id}`);
     } catch (error: unknown) {
       console.error('Error actualizando factura:', error);
       const codigo = error instanceof ErrorPeticionFactura ? error.codigo : null;
       toastError(
-        'Error al actualizar',
+        t('editar.errorActualizarTitulo'),
         codigo === 'factura_no_borrador'
-          ? 'La factura ya no está en borrador.'
+          ? t('errores.factura_no_borrador')
           : codigo === 'numero_duplicado'
-            ? 'Ya existe una factura con ese número.'
-            : 'No se pudo actualizar la factura. Revisa los datos e inténtalo de nuevo.',
+            ? t('formulario.avisos.numeroYaExiste')
+            : t('editar.errorActualizar'),
       );
     } finally {
       setSaving(false);
@@ -203,6 +217,14 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
   }
 
   if (error) {
+    const mensajeError =
+      error.tipo === 'faltanDatos'
+        ? t('editar.faltanDatos')
+        : error.tipo === 'noEncontrada'
+          ? t('errores.factura_no_encontrada')
+          : error.tipo === 'noEditable'
+            ? t('editar.noEditable', { estado: etiquetaEstado(error.estado) })
+            : t('editar.errorCarga');
     return (
       <div className="w-full max-w-7xl mx-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -211,6 +233,7 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
               variant="ghost"
               size="sm"
               onClick={() => router.back()}
+              aria-label={t('editar.volver')}
               className="p-2 h-auto min-w-[36px] sm:min-w-[40px] hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
@@ -219,26 +242,24 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
               <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-              Editar Factura
+              {t('editar.titulo')}
             </h1>
           </div>
         </div>
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{mensajeError}</AlertDescription>
         </Alert>
         <div className="text-center">
           <p className="text-gray-500 dark:text-gray-400 mb-4">
-            {error.includes('No se puede editar') ?
-              'La factura no puede ser editada en su estado actual.' :
-              'No se pudo cargar la información de la factura.'}
+            {error.tipo === 'noEditable' ? t('editar.noEditableAyuda') : t('editar.cargaAyuda')}
           </p>
           <div className="flex justify-center gap-2">
             <Button variant="default" onClick={cargarFactura}>
-              Intentar de nuevo
+              {t('editar.reintentar')}
             </Button>
             <Button variant="outline" onClick={() => router.push(`/app/finanzas/facturas-venta/${facturaId}`)}>
-              Volver al detalle
+              {t('editar.volverDetalle')}
             </Button>
           </div>
         </div>
@@ -255,6 +276,7 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
               variant="ghost"
               size="sm"
               onClick={() => router.back()}
+              aria-label={t('editar.volver')}
               className="
                 p-2 h-auto min-w-[36px] sm:min-w-[40px]
                 hover:bg-gray-100 dark:hover:bg-gray-700
@@ -268,7 +290,7 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
               <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-              Editar Factura de Venta
+              {t('editar.tituloVenta')}
             </h1>
           </div>
         </div>

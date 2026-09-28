@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -151,6 +152,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const searchParams = useSearchParams() ?? new URLSearchParams();
   const organizationId = getOrganizationId();
   const { toDate, toInstant } = useFormatDate();
+  const t = useTranslations('facturasVenta');
+  const tk = useTranslations('kit.comun');
   
   // Parámetros de duplicación
   const duplicarId = searchParams.get('duplicar');
@@ -365,7 +368,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
             const p = profileMap.get(m.user_id);
             return {
               id: m.user_id,
-              name: `${p?.first_name || ''} ${p?.last_name || ''}`.trim() || 'Usuario'
+              name: `${p?.first_name || ''} ${p?.last_name || ''}`.trim() || t('formulario.usuario')
             };
           });
           setOrganizationMembers(formatted);
@@ -375,7 +378,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       }
     };
     loadMembers();
-  }, [organizationId]);
+  }, [organizationId, t]);
 
   // Cargar oportunidades abiertas de la organización
   useEffect(() => {
@@ -529,15 +532,17 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         if (metodoPagoParam) setPaymentMethodCode(metodoPagoParam);
         if (notasParam) setNotes(notasParam);
         
-        toastSuccess("Factura duplicada", "Se han cargado los datos de la factura original. Modifique según necesite.");
+        toastSuccess(t('formulario.avisos.duplicadaTitulo'), t('formulario.avisos.duplicada'));
         
       } catch (error) {
         console.error('Error al cargar datos de duplicación:', error);
-        toastError("Error", "No se pudieron cargar los datos de la factura a duplicar.");
+        toastError(t('comun.error'), t('formulario.avisos.errorDuplicar'));
       }
     };
     
     cargarDatosDuplicacion();
+    // Carga inicial (edición o duplicación): solo al cambiar los parámetros de la URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [duplicarId, organizationId, clienteParam, monedaParam, terminosParam, metodoPagoParam, notasParam]);
 
   // Función para verificar si el número de factura ya existe
@@ -566,7 +571,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       setIsDuplicateNumber(isDuplicate);
       
       if (isDuplicate) {
-        toastError("Número duplicado", "Este número de factura ya existe. Por favor, utilice otro número.");
+        toastError(t('formulario.avisos.numeroDuplicadoTitulo'), t('formulario.avisos.numeroDuplicado'));
       }
       
       return isDuplicate;
@@ -576,12 +581,14 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
     } finally {
       setIsValidatingNumber(false);
     }
-  }, [organizationId]);
+  }, [organizationId, esEdicion, facturaInicial?.id, t]);
 
   useEffect(() => {
     if (organizationId && !esEdicion) {
       generateInvoiceNumber();
     }
+    // Solo al abrir el formulario: generateInvoiceNumber se redefine en cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, esEdicion]);
 
   // Efecto para validar el número de factura cuando cambia
@@ -607,7 +614,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       setIsDuplicateNumber(false); // Resetear el estado de duplicado al generar un nuevo número
     } catch (error) {
       console.error('Error al generar número de factura:', error);
-      toastError("Error", "No se pudo generar el número de factura automáticamente.");
+      toastError(t('comun.error'), t('formulario.avisos.errorGenerarNumero'));
     }
   };
 
@@ -659,7 +666,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const handleSaveInvoice = async () => {
     // Validar que se tenga el número de factura
     if (!invoiceNumber) {
-      toastError("Error", "Debe ingresar un número de factura.");
+      toastError(t('comun.error'), t('formulario.avisos.faltaNumero'));
       return;
     }
     
@@ -667,27 +674,27 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
     const currentUserId = await getCurrentUserId();
     
     if (!currentUserId) {
-      toastError("Error", "No se pudo obtener la información del usuario actual.");
+      toastError(t('comun.error'), t('formulario.avisos.sinUsuario'));
       return;
     }
     
     if (!organizationId) {
-      toastError("Error", "No se pudo determinar la organización activa.");
+      toastError(t('comun.error'), t('formulario.avisos.sinOrganizacion'));
       return;
     }
 
     if (!branchId) {
-      toastError("Error", "No se pudo determinar la sucursal activa. Seleccione una sucursal.");
+      toastError(t('comun.error'), t('formulario.avisos.sinSucursal'));
       return;
     }
     
     if (!selectedCustomerId) {
-      toastError("Error", "Debe seleccionar un cliente para la factura.");
+      toastError(t('comun.error'), t('formulario.avisos.sinCliente'));
       return;
     }
     
     if (items.length === 0) {
-      toastError("Error", "Debe agregar al menos un ítem a la factura.");
+      toastError(t('comun.error'), t('formulario.avisos.sinItems'));
       return;
     }
 
@@ -699,10 +706,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       (it) => (serialSelections[it.product_id as number]?.length ?? 0) === it.qty
     );
     if (serializedItems.length > 0 && !serialSelectionsComplete) {
-      toastError(
-        "Seriales requeridos",
-        "Hay productos que requieren captura de seriales. Selecciónalos antes de guardar la factura."
-      );
+      toastError(t('formulario.avisos.serialesTitulo'), t('formulario.avisos.seriales'));
       return;
     }
 
@@ -901,9 +905,9 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       // emisión. Aquí solo se avisa para evitar la sorpresa al final.
       if (guardada.faltantes.length > 0) {
         const detalle = guardada.faltantes
-          .map((f) => `${f.producto}: necesita ${f.requerido}, hay ${f.disponible}`)
+          .map((f) => t('emitir.faltante', { producto: f.producto, requerido: f.requerido, disponible: f.disponible }))
           .join(' | ');
-        toastError('Guardada, pero sin existencias para emitir', `${detalle}. Repon el inventario antes de emitirla.`);
+        toastError(t('formulario.avisos.faltantesTitulo'), t('formulario.avisos.faltantes', { detalle }));
       }
 
       // Si está activada la opción de factura electrónica, enviar a DIAN
@@ -911,16 +915,16 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         try {
           const result = await electronicInvoicingService.sendToFactus(guardada.id, Number(organizationId));
           if (result.success) {
-            toastSuccess("Factura creada y enviada a DIAN", `La factura ${invoiceNumber} se ha creado y enviado para validación electrónica.`);
+            toastSuccess(t('formulario.avisos.creadaDianTitulo'), t('formulario.avisos.creadaDian', { numero: invoiceNumber }));
           } else {
-            toastError("Factura creada", `La factura se creó pero hubo un error al enviar a DIAN: ${result.error}`);
+            toastError(t('formulario.avisos.creadaTitulo'), t('formulario.avisos.creadaErrorDian', { error: String(result.error ?? '') }));
           }
         } catch (eInvoiceError) {
           console.error('Error al enviar a Factus:', eInvoiceError);
-          toastSuccess("Factura creada", "La factura se creó correctamente pero no se pudo enviar a DIAN. Puede intentarlo desde el detalle de la factura.");
+          toastSuccess(t('formulario.avisos.creadaTitulo'), t('formulario.avisos.creadaSinDian'));
         }
       } else {
-        toastSuccess("Éxito", "La factura se ha creado correctamente.");
+        toastSuccess(t('comun.exito'), t('formulario.avisos.creada'));
       }
 
       router.push(`/app/finanzas/facturas-venta/${guardada.id}`);
@@ -928,12 +932,12 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       console.error('Error al guardar la factura:', error);
       const codigo = error instanceof ErrorPeticionFactura ? error.codigo : null;
       toastError(
-        "Error",
+        t('comun.error'),
         codigo === 'numero_duplicado'
-          ? 'Ya existe una factura con ese número.'
+          ? t('formulario.avisos.numeroYaExiste')
           : codigo === 'sin_permiso'
-            ? 'No tienes permiso para crear facturas.'
-            : 'Ocurrió un error al guardar la factura. Revisa los datos e inténtalo de nuevo.',
+            ? t('formulario.avisos.sinPermisoCrear')
+            : t('formulario.avisos.errorGuardar'),
       );
     } finally {
       setIsLoading(false);
@@ -946,7 +950,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="invoice-number" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Número de Factura
+            {t('formulario.numero')}
           </Label>
           <div className="flex items-center gap-2">
             <Input
@@ -963,7 +967,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                 }
                 // En modo edición, resetear isDuplicateNumber si la validación pasa
               }}
-              placeholder="Ej: FACT-00001"
+              placeholder={t('formulario.numeroEjemplo')}
               required
               className={`
                 flex-1 text-sm
@@ -980,7 +984,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
               size="sm"
               onClick={generateInvoiceNumber}
               disabled={isLoading}
-              title="Generar número automático"
+              title={t('formulario.generarNumero')}
+              aria-label={t('formulario.generarNumero')}
               className="
                 flex-shrink-0 h-9 w-9 p-0
                 bg-white dark:bg-gray-800
@@ -993,13 +998,13 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
             </Button>
           </div>
           {isDuplicateNumber && (
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1">Este número de factura ya existe.</p>
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1">{t('formulario.numeroDuplicado')}</p>
           )}
         </div>
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="issue-date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Fecha de Emisión
+            {t('formulario.fechaEmision')}
           </Label>
           <DatePicker
             date={issueDate}
@@ -1017,7 +1022,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="due-date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Fecha de Vencimiento
+            {t('formulario.fechaVencimiento')}
           </Label>
           <DatePicker
             date={dueDate}
@@ -1029,7 +1034,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           <Label htmlFor="currency" className="text-sm font-medium text-gray-700 dark:text-gray-300">
             <span className="flex items-center gap-1.5">
               <Coins className="h-3.5 w-3.5" />
-              Moneda
+              {t('formulario.moneda')}
             </span>
           </Label>
           <Select 
@@ -1043,7 +1048,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
               border-gray-300 dark:border-gray-600
               text-gray-900 dark:text-gray-100
             ">
-              <SelectValue placeholder={loadingCurrencies ? "Cargando..." : "Seleccionar moneda"} />
+              <SelectValue placeholder={loadingCurrencies ? t('formulario.cargando') : t('formulario.seleccionarMoneda')} />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               {currencies.map((curr) => (
@@ -1069,7 +1074,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         rounded-lg
       ">
         <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
-          Datos del Cliente
+          {t('formulario.datosCliente')}
         </h3>
         <div className="mb-3">
           <BranchSelectorField
@@ -1093,7 +1098,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           rounded-lg
         ">
           <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
-            Oportunidad (opcional)
+            {t('formulario.oportunidad')}
           </h3>
           <div className="flex flex-col gap-1.5">
             <Select value={selectedOpportunityId} onValueChange={handleOpportunityChange}>
@@ -1103,10 +1108,10 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                 border-gray-300 dark:border-gray-600
                 text-gray-900 dark:text-gray-100
               ">
-                <SelectValue placeholder="Sin oportunidad asociada" />
+                <SelectValue placeholder={t('formulario.sinOportunidad')} />
               </SelectTrigger>
               <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                <SelectItem value="none" className="text-gray-900 dark:text-gray-100">Sin oportunidad asociada</SelectItem>
+                <SelectItem value="none" className="text-gray-900 dark:text-gray-100">{t('formulario.sinOportunidad')}</SelectItem>
                 {opportunities.map((opp) => (
                   <SelectItem key={opp.id} value={opp.id} className="text-gray-900 dark:text-gray-100">
                     {opp.name}
@@ -1116,7 +1121,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
             </Select>
             {selectedOpportunityId !== 'none' && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Al seleccionar una oportunidad, se cargan sus productos y se asocia la factura a ella.
+                {t('formulario.oportunidadAyuda')}
               </p>
             )}
           </div>
@@ -1131,7 +1136,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         rounded-lg
       ">
         <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
-          Items de la Factura
+          {t('formulario.items')}
         </h3>
         <ItemsFactura
           items={items}
@@ -1156,12 +1161,12 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         rounded-lg
       ">
         <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
-          Condiciones de Pago
+          {t('formulario.condicionesPago')}
         </h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
           <div>
             <Label htmlFor="payment-terms" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-              Términos de Pago
+              {t('formulario.terminosPago')}
             </Label>
             <div className="flex flex-col space-y-2">
               <Select 
@@ -1189,20 +1194,20 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                   border-gray-300 dark:border-gray-600
                   text-gray-900 dark:text-gray-100
                 ">
-                  <SelectValue placeholder="Seleccionar términos">
+                  <SelectValue placeholder={t('formulario.seleccionarTerminos')}>
                     {isCustomPaymentTerm 
-                      ? `Personalizado: ${paymentTerms} días` 
-                      : (paymentTerms === 0 ? 'Contado' : `${paymentTerms} días`)}
+                      ? t('formulario.terminoPersonalizado', { dias: paymentTerms })
+                      : (paymentTerms === 0 ? t('formulario.contado') : t('formulario.dias', { dias: paymentTerms }))}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                  <SelectItem value="0" className="text-gray-900 dark:text-gray-100">Contado</SelectItem>
-                  <SelectItem value="15" className="text-gray-900 dark:text-gray-100">15 días</SelectItem>
-                  <SelectItem value="30" className="text-gray-900 dark:text-gray-100">30 días</SelectItem>
-                  <SelectItem value="45" className="text-gray-900 dark:text-gray-100">45 días</SelectItem>
-                  <SelectItem value="60" className="text-gray-900 dark:text-gray-100">60 días</SelectItem>
-                  <SelectItem value="90" className="text-gray-900 dark:text-gray-100">90 días</SelectItem>
-                  <SelectItem value="custom" className="text-gray-900 dark:text-gray-100">Personalizado</SelectItem>
+                  <SelectItem value="0" className="text-gray-900 dark:text-gray-100">{t('formulario.contado')}</SelectItem>
+                  <SelectItem value="15" className="text-gray-900 dark:text-gray-100">{t('formulario.dias', { dias: 15 })}</SelectItem>
+                  <SelectItem value="30" className="text-gray-900 dark:text-gray-100">{t('formulario.dias', { dias: 30 })}</SelectItem>
+                  <SelectItem value="45" className="text-gray-900 dark:text-gray-100">{t('formulario.dias', { dias: 45 })}</SelectItem>
+                  <SelectItem value="60" className="text-gray-900 dark:text-gray-100">{t('formulario.dias', { dias: 60 })}</SelectItem>
+                  <SelectItem value="90" className="text-gray-900 dark:text-gray-100">{t('formulario.dias', { dias: 90 })}</SelectItem>
+                  <SelectItem value="custom" className="text-gray-900 dark:text-gray-100">{t('formulario.personalizado')}</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -1229,7 +1234,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                       text-gray-900 dark:text-gray-100
                     "
                   />
-                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">días</span>
+                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{t('formulario.diasUnidad')}</span>
                 </div>
               )}
             </div>
@@ -1242,13 +1247,13 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           </div>
           <div className="lg:col-span-2">
             <Label htmlFor="notes" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-              Notas
+              {t('formulario.notas')}
             </Label>
             <Input
               id="notes"
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder="Notas adicionales"
+              placeholder={t('formulario.notasPlaceholder')}
               className="
                 text-sm
                 bg-white dark:bg-gray-900
@@ -1265,10 +1270,10 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
               onCheckedChange={(checked) => setIncludeInCashRegister(checked === true)}
             />
             <Label htmlFor="include_in_cash_register" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-              Incluir en arqueo de caja
+              {t('formulario.incluirArqueo')}
             </Label>
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              (Marca si esta factura debe aparecer en el cuadre de caja POS)
+              {t('formulario.incluirArqueoAyuda')}
             </span>
           </div>
           <div className="lg:col-span-2 pt-2">
@@ -1282,7 +1287,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                 size="md"
               />
               {eInvoiceAlwaysEnabled && (
-                <span className="text-xs text-blue-600 dark:text-blue-400 font-medium ml-2">Global</span>
+                <span className="text-xs text-blue-600 dark:text-blue-400 font-medium ml-2">{t('formulario.global')}</span>
               )}
             </div>
           </div>
@@ -1311,6 +1316,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         onSubtotalCalculated={setSubtotal}
         onTaxTotalCalculated={setTaxTotal}
         onTotalCalculated={setTotal}
+        currency={monedaFactura}
       />
 
       {/* Sección de Comisión de Vendedor */}
@@ -1322,27 +1328,27 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       ">
         <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <User className="h-4 w-4 text-blue-500" />
-          Comisión de Vendedor (opcional)
+          {t('formulario.comision.titulo')}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div>
             <Label htmlFor="salesperson" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-              Vendedor
+              {t('formulario.comision.vendedor')}
             </Label>
             <SearchSelect
               options={organizationMembers.map((m) => ({ value: m.id, label: m.name }))}
               value={salespersonId}
               onValueChange={handleSalespersonChange}
-              placeholder="Seleccionar vendedor"
-              searchPlaceholder="Buscar vendedor..."
-              noneLabel="Sin asignar"
+              placeholder={t('formulario.comision.seleccionarVendedor')}
+              searchPlaceholder={t('formulario.comision.buscarVendedor')}
+              noneLabel={t('formulario.comision.sinAsignar')}
               noneValue="__none__"
               className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-300 dark:border-gray-600"
             />
           </div>
           <div>
             <Label htmlFor="commission-rate" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-              Comisión
+              {t('formulario.comision.comision')}
             </Label>
             <div className="relative">
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none">
@@ -1385,7 +1391,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                 onClick={() => setCommissionMethod('percentage')}
                 className="h-7 px-2 text-xs"
               >
-                <Percent className="h-3 w-3 mr-1" /> Porcentaje
+                <Percent className="h-3 w-3 mr-1" /> {t('formulario.comision.porcentaje')}
               </Button>
               <Button
                 type="button"
@@ -1394,19 +1400,19 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                 onClick={() => setCommissionMethod('fixed_amount')}
                 className="h-7 px-2 text-xs"
               >
-                <DollarSign className="h-3 w-3 mr-1" /> Monto Fijo
+                <DollarSign className="h-3 w-3 mr-1" /> {t('formulario.comision.montoFijo')}
               </Button>
             </div>
             {commissionMethod === 'percentage' && commissionRate > 100 && (
               <p className="text-xs text-red-500 dark:text-red-400 mt-1 flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" />
-                El porcentaje no puede superar 100%
+                {t('formulario.comision.porcentajeExcede')}
               </p>
             )}
             {commissionMethod === 'fixed_amount' && commissionRate > (subtotal > 0 ? subtotal : total) && commissionRate > 0 && (
               <p className="text-xs text-red-500 dark:text-red-400 mt-1 flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" />
-                El monto supera el total de la factura
+                {t('formulario.comision.montoExcede')}
               </p>
             )}
           </div>
@@ -1415,7 +1421,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <div className="flex justify-between items-center text-sm">
               <span className="text-blue-700 dark:text-blue-400">
-                Comisión estimada ({commissionMethod === 'percentage' ? `${commissionRate}%` : formatMoneda(commissionRate, paraDocumento(monedaFactura))}):
+                {t('formulario.comision.estimada', { valor: commissionMethod === 'percentage' ? `${commissionRate}%` : formatMoneda(commissionRate, paraDocumento(monedaFactura)) })}
               </span>
               <span className="font-semibold text-blue-700 dark:text-blue-400">
                 {formatMoneda(
@@ -1450,7 +1456,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           "
         >
           <ArrowLeft className="w-4 h-4 mr-2 flex-shrink-0" />
-          <span className="text-sm">Cancelar</span>
+          <span className="text-sm">{tk('cancelar')}</span>
         </Button>
         <Button
           size="sm"
@@ -1465,7 +1471,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           "
         >
           <Save className="w-4 h-4 mr-2 flex-shrink-0" />
-          <span className="text-sm">{(isLoading || saving) ? 'Guardando...' : esEdicion ? 'Guardar Cambios' : 'Guardar Factura'}</span>
+          <span className="text-sm">{(isLoading || saving) ? t('formulario.guardando') : esEdicion ? t('formulario.guardarCambios') : t('formulario.guardarFactura')}</span>
         </Button>
       </div>
     </div>

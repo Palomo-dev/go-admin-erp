@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   ArrowLeft,
   FileText,
@@ -24,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ItemsDetalle } from '@/components/finanzas/facturas-venta/id/ItemsDetalle';
 import { toast } from '@/components/ui/use-toast';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import {
@@ -53,15 +54,8 @@ const statusColors: Record<string, string> = {
   paid: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
 };
 
-const statusLabels: Record<string, string> = {
-  draft: 'Borrador',
-  pending: 'Pendiente',
-  sent: 'Enviada',
-  accepted: 'Aceptada DIAN',
-  rejected: 'Rechazada',
-  void: 'Anulada',
-  paid: 'Pagada',
-};
+/** Estados con etiqueta en `notasCredito.estados`. */
+const ESTADOS_CONOCIDOS = new Set(['draft', 'pending', 'sent', 'accepted', 'rejected', 'void', 'paid']);
 
 const eInvoiceStatusColors: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
@@ -72,14 +66,8 @@ const eInvoiceStatusColors: Record<string, string> = {
   failed: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 };
 
-const eInvoiceStatusLabels: Record<string, string> = {
-  pending: 'Pendiente',
-  processing: 'Procesando',
-  sent: 'Enviada',
-  accepted: 'Aceptada',
-  rejected: 'Rechazada',
-  failed: 'Fallida',
-};
+/** Estados del envío electrónico con etiqueta en `notasCredito.estadosFe`. */
+const ESTADOS_FE_CONOCIDOS = new Set(['pending', 'processing', 'sent', 'accepted', 'rejected', 'failed']);
 
 export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
   const router = useRouter();
@@ -94,6 +82,9 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
   const { paraDocumento } = useMonedaOrganizacion();
   const monedaNota = (nota as NotaConMoneda | null)?.currency ?? null;
   const formatCurrency = crearFormateadorMoneda(paraDocumento(monedaNota));
+  const t = useTranslations('notasCredito');
+  // issue_date y created_at son timestamptz: el día sale en la zona de la organización.
+  const { formatDate } = useFormatDate();
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -124,14 +115,14 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
     } catch (error) {
       console.error('Error loading data:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo cargar el detalle',
+        title: t('comun.error'),
+        description: t('detalle.errorCarga'),
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     loadData();
@@ -139,19 +130,19 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
 
   const handleAnular = async () => {
     if (!nota) return;
-    if (!confirm('¿Está seguro de anular esta nota de crédito?')) return;
+    if (!confirm(t('anular.confirmar'))) return;
 
-    const reason = prompt('Motivo de la anulación:');
+    const reason = prompt(t('anular.motivo'));
     try {
       const result = await notasCreditoService.anularNotaCredito(nota.id, reason || undefined);
       if (result.success) {
-        toast({ title: 'Éxito', description: 'Nota de crédito anulada correctamente' });
+        toast({ title: t('comun.exito'), description: t('anular.hecho') });
         router.push('/app/finanzas/notas-credito');
       } else {
-        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        toast({ title: t('comun.error'), description: result.error, variant: 'destructive' });
       }
     } catch {
-      toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
+      toast({ title: t('comun.error'), description: t('anular.error'), variant: 'destructive' });
     }
   };
 
@@ -161,13 +152,13 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
     try {
       const result = await notasCreditoService.retryDianSubmission(nota.id);
       if (result.success) {
-        toast({ title: 'Éxito', description: 'Reintento de envío programado' });
+        toast({ title: t('comun.exito'), description: t('detalle.reintentoProgramado') });
         loadData();
       } else {
-        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        toast({ title: t('comun.error'), description: result.error, variant: 'destructive' });
       }
     } catch {
-      toast({ title: 'Error', description: 'Error al reintentar', variant: 'destructive' });
+      toast({ title: t('comun.error'), description: t('detalle.errorReintentar'), variant: 'destructive' });
     } finally {
       setIsRetrying(false);
     }
@@ -177,7 +168,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
     if (!nota) return;
     const orgId = getOrganizationId();
     if (!orgId) {
-      toast({ title: 'Error', description: 'No se pudo determinar la organización', variant: 'destructive' });
+      toast({ title: t('comun.error'), description: t('detalle.sinOrganizacion'), variant: 'destructive' });
       return;
     }
     setIsSendingDian(true);
@@ -186,22 +177,22 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
       const result = await notasCreditoService.sendToFactus(nota.id, Number(orgId), reason);
       if (result.success) {
         toast({
-          title: 'Nota de crédito enviada a DIAN',
-          description: `CUFE: ${result.data?.cufe?.substring(0, 16) || ''}...`,
+          title: t('detalle.enviadaDian'),
+          description: t('detalle.cufeCorto', { cufe: result.data?.cufe?.substring(0, 16) || '' }),
         });
         loadData();
       } else {
-        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        toast({ title: t('comun.error'), description: result.error, variant: 'destructive' });
       }
     } catch (error: unknown) {
-      toast({ title: 'Error', description: (error as { message?: string }).message || 'Error al enviar a DIAN', variant: 'destructive' });
+      toast({ title: t('comun.error'), description: (error as { message?: string }).message || t('detalle.errorEnviarDian'), variant: 'destructive' });
     } finally {
       setIsSendingDian(false);
     }
   };
 
   const handleDownloadPDF = () => {
-    toast({ title: 'Descarga', description: 'Generando PDF...' });
+    toast({ title: t('detalle.descargaTitulo'), description: t('detalle.generandoPdf') });
     // Aquí iría la lógica de descarga de PDF
   };
 
@@ -217,10 +208,10 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
     return (
       <div className="p-6 text-center">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-          Nota de crédito no encontrada
+          {t('detalle.noEncontrada')}
         </h2>
         <Link href="/app/finanzas/notas-credito">
-          <Button className="mt-4">Volver al listado</Button>
+          <Button className="mt-4">{t('detalle.volverListado')}</Button>
         </Link>
       </div>
     );
@@ -232,7 +223,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link href="/app/finanzas/notas-credito">
-            <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800">
+            <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800" aria-label={t('detalle.volverListado')}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
@@ -242,21 +233,21 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                NC {nota.number}
+                {t('detalle.titulo', { numero: nota.number })}
               </h1>
               <Badge className={statusColors[nota.status]}>
-                {statusLabels[nota.status] || nota.status}
+                {ESTADOS_CONOCIDOS.has(nota.status) ? t(`estados.${nota.status}`) : nota.status}
               </Badge>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Emitida el {formatDate(nota.issue_date)}
+              {t('detalle.emitidaEl', { fecha: formatDate(nota.issue_date) })}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={handleDownloadPDF} className="dark:border-gray-700">
             <Download className="h-4 w-4 mr-2" />
-            Descargar PDF
+            {t('detalle.descargarPdf')}
           </Button>
           {/* Botón Enviar a DIAN: visible cuando no hay job o el job falló */}
           {nota.status !== 'void' && nota.status !== 'accepted' && (!eInvoiceJob || eInvoiceJob.status === 'failed' || eInvoiceJob.status === 'rejected') && (
@@ -271,7 +262,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
               ) : (
                 <FileCheck className="h-4 w-4 mr-2" />
               )}
-              Enviar a DIAN
+              {t('detalle.enviarDian')}
             </Button>
           )}
           {/* Botón Reintentar: visible cuando hay job que falló */}
@@ -287,13 +278,13 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
               ) : (
                 <RefreshCw className="h-4 w-4 mr-2" />
               )}
-              Reintentar DIAN
+              {t('detalle.reintentarDian')}
             </Button>
           )}
           {nota.status !== 'void' && nota.status !== 'accepted' && (
             <Button variant="destructive" onClick={handleAnular}>
               <XCircle className="h-4 w-4 mr-2" />
-              Anular
+              {t('detalle.anular')}
             </Button>
           )}
         </div>
@@ -308,19 +299,19 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
                   <FileCheck className="h-5 w-5" />
-                  Factura de Origen
+                  {t('detalle.facturaOrigen')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                   <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Número de Factura</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('detalle.numeroFactura')}</p>
                     <p className="font-semibold text-gray-900 dark:text-white">
                       {nota.related_invoice.number}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Total Factura</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('detalle.totalFactura')}</p>
                     <p className="font-semibold text-gray-900 dark:text-white">
                       {formatCurrency(Number(nota.related_invoice.total))}
                     </p>
@@ -328,7 +319,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
                   <Link href={`/app/finanzas/facturas-venta/${nota.related_invoice_id}`}>
                     <Button variant="outline" size="sm" className="dark:border-gray-600">
                       <ExternalLink className="h-4 w-4 mr-2" />
-                      Ver Factura
+                      {t('detalle.verFactura')}
                     </Button>
                   </Link>
                 </div>
@@ -341,7 +332,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
                 <FileText className="h-5 w-5" />
-                Detalle de Items
+                {t('detalle.items')}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
@@ -350,7 +341,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
               {/* Totals */}
               <div className="border-t dark:border-gray-700 p-4 space-y-2 mt-4">
                 <div className="flex justify-between text-gray-600 dark:text-gray-300">
-                  <span>Subtotal</span>
+                  <span>{t('detalle.subtotal')}</span>
                   <span>{formatCurrency(Number(nota.subtotal))}</span>
                 </div>
                 {(() => {
@@ -365,7 +356,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
                     const key = rate.toString();
                     if (!taxGroups[key]) {
                       const orgTax = organizationTaxes.find(t => Number(t.rate) === rate);
-                      taxGroups[key] = { rate, amount: 0, name: orgTax?.name || `Impuesto ${rate}%` };
+                      taxGroups[key] = { rate, amount: 0, name: orgTax?.name || t('detalle.impuestoTasa', { tasa: rate }) };
                     }
                     // Calcular monto del impuesto de este item
                     const lineTotal = Math.abs(Number(item.total_line) || 0);
@@ -381,7 +372,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
                   if (groups.length === 0) {
                     return (
                       <div className="flex justify-between text-gray-600 dark:text-gray-300">
-                        <span>Impuestos {nota.tax_included ? '(incluidos)' : '(adicionales)'}</span>
+                        <span>{nota.tax_included ? t('detalle.impuestosIncluidos') : t('detalle.impuestosAdicionales')}</span>
                         <span>{formatCurrency(taxTotal)}</span>
                       </div>
                     );
@@ -391,7 +382,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
                     <div className="space-y-1">
                       {groups.map(g => (
                         <div key={g.rate} className="flex justify-between text-gray-600 dark:text-gray-300">
-                          <span>{g.name} {nota.tax_included ? '(incl.)' : '(+imp.)'}</span>
+                          <span>{g.name} {nota.tax_included ? t('detalle.incluido') : t('detalle.adicional')}</span>
                           <span>-{formatCurrency(g.amount)}</span>
                         </div>
                       ))}
@@ -400,7 +391,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
                 })()}
                 <Separator className="dark:bg-gray-700" />
                 <div className="flex justify-between text-lg font-bold text-red-600 dark:text-red-400">
-                  <span>Total Nota Crédito</span>
+                  <span>{t('detalle.totalNota')}</span>
                   <span>{formatCurrency(Number(nota.total))}</span>
                 </div>
               </div>
@@ -413,20 +404,20 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
                   <FileCheck className="h-5 w-5" />
-                  Estado Facturación Electrónica
+                  {t('detalle.estadoFe')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                   <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Estado DIAN</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('detalle.estadoDian')}</p>
                     <Badge className={eInvoiceStatusColors[eInvoiceJob.status]}>
-                      {eInvoiceStatusLabels[eInvoiceJob.status] || eInvoiceJob.status}
+                      {ESTADOS_FE_CONOCIDOS.has(eInvoiceJob.status) ? t(`estadosFe.${eInvoiceJob.status}`) : eInvoiceJob.status}
                     </Badge>
                   </div>
                   {eInvoiceJob.cufe && (
                     <div className="text-right">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">CUFE</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{t('detalle.cufe')}</p>
                       <p className="font-mono text-xs text-gray-900 dark:text-white break-words whitespace-normal min-w-0">
                         {eInvoiceJob.cufe}
                       </p>
@@ -437,7 +428,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
                 {eInvoiceEvents.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Historial de Eventos
+                      {t('detalle.historial')}
                     </p>
                     <div className="space-y-2 max-h-[200px] overflow-y-auto">
                       {eInvoiceEvents.map((event) => (
@@ -474,7 +465,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
                 <User className="h-5 w-5" />
-                Cliente
+                {t('detalle.cliente')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -482,7 +473,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
                 <>
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      {`${nota.customer.first_name || ''} ${nota.customer.last_name || ''}`.trim() || 'Sin nombre'}
+                      {`${nota.customer.first_name || ''} ${nota.customer.last_name || ''}`.trim() || t('detalle.sinNombre')}
                     </p>
                   </div>
                   {nota.customer.identification_number && (
@@ -499,7 +490,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
                   )}
                 </>
               ) : (
-                <p className="text-gray-500 dark:text-gray-400">Sin cliente asignado</p>
+                <p className="text-gray-500 dark:text-gray-400">{t('detalle.sinCliente')}</p>
               )}
             </CardContent>
           </Card>
@@ -509,27 +500,27 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
                 <FileText className="h-5 w-5" />
-                Información
+                {t('detalle.informacion')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Número</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('detalle.numero')}</p>
                 <p className="font-medium text-gray-900 dark:text-white">{nota.number}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Fecha Emisión</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('detalle.fechaEmision')}</p>
                 <p className="text-gray-900 dark:text-white">{formatDate(nota.issue_date)}</p>
               </div>
               {nota.reference_code && (
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Código Referencia</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('detalle.codigoReferencia')}</p>
                   <p className="text-gray-900 dark:text-white">{nota.reference_code}</p>
                 </div>
               )}
               {(nota.description || nota.notes) && (
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Notas</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('detalle.notas')}</p>
                   <p className="text-gray-900 dark:text-white whitespace-pre-wrap text-sm">
                     {nota.description || nota.notes}
                   </p>
@@ -541,7 +532,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
           {/* Total Card */}
           <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white">
             <CardContent className="pt-6">
-              <p className="text-red-100 text-sm">Total Nota Crédito</p>
+              <p className="text-red-100 text-sm">{t('detalle.totalNota')}</p>
               <p className="text-3xl font-bold mt-1">
                 {formatCurrency(Number(nota.total))}
               </p>

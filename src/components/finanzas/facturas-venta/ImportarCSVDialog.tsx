@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import Papa from 'papaparse';
 import {
   Dialog,
@@ -31,6 +32,8 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
 import { plainDateToInstant } from '@/lib/utils/timezone';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 /** Un dia calendario exacto, no una fecha con hora ni un texto cualquiera. */
 const DIA_CALENDARIO = /^\d{4}-\d{2}-\d{2}$/;
@@ -92,6 +95,10 @@ interface ParsedInvoice {
 export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: ImportarCSVDialogProps) {
   const { selectedBranchId } = useBranch();
   const { getToday, timezone } = useFormatDate(selectedBranchId);
+  const t = useTranslations('facturasVenta.importarCsv');
+  const tk = useTranslations('kit.comun');
+  // Vista previa: cada factura en su moneda (sin columna, la base de la organización).
+  const { paraDocumento } = useMonedaOrganizacion();
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ParsedInvoice[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
@@ -103,13 +110,15 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       if (!selectedFile.name.endsWith('.csv')) {
-        toastError('Archivo inválido', 'Por favor seleccione un archivo CSV');
+        toastError(t('errores.archivoInvalidoTitulo'), t('errores.archivoInvalido'));
         return;
       }
       setFile(selectedFile);
       parseCSV(selectedFile);
     }
-  }, []);
+    // parseCSV se redefine en cada render y solo usa setters y getToday.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t]);
 
   const parseCSV = (csvFile: File) => {
     setIsParsing(true);
@@ -127,7 +136,7 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
           try {
             const invoiceNumber = row.numero_factura?.trim();
             if (!invoiceNumber) {
-              parseErrors.push(`Fila ${index + 2}: Número de factura vacío`);
+              parseErrors.push(t('errores.filaSinNumero', { fila: index + 2 }));
               return;
             }
 
@@ -164,7 +173,7 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
               });
             }
           } catch {
-            parseErrors.push(`Fila ${index + 2}: Error al procesar datos`);
+            parseErrors.push(t('errores.filaError', { fila: index + 2 }));
           }
         });
 
@@ -173,7 +182,7 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
         setIsParsing(false);
       },
       error: (error) => {
-        setErrors([`Error al leer archivo: ${error.message}`]);
+        setErrors([t('errores.leerArchivo', { detalle: error.message })]);
         setIsParsing(false);
       }
     });
@@ -181,7 +190,7 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
 
   const handleImport = async () => {
     if (parsedData.length === 0) {
-      toastError('Sin datos', 'No hay facturas válidas para importar');
+      toastError(t('errores.sinDatosTitulo'), t('errores.sinDatos'));
       return;
     }
 
@@ -191,7 +200,7 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
     const organizationId = getOrganizationId();
     const branchId = selectedBranchId;
     if (!branchId) {
-      toastError('Sin sucursal', 'No hay sucursal seleccionada para asignar las facturas');
+      toastError(t('errores.sinSucursalTitulo'), t('errores.sinSucursal'));
       setIsLoading(false);
       return;
     }
@@ -262,11 +271,13 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
 
     setIsLoading(false);
 
-    const description = `${imported} facturas importadas${failed > 0 ? `, ${failed} con errores` : ''}`;
+    const description = failed > 0
+      ? t('resultadoConErrores', { importadas: imported, fallidas: failed })
+      : t('resultado', { importadas: imported });
     if (failed > 0) {
-      toastError('Importación completada', description);
+      toastError(t('completadaTitulo'), description);
     } else {
-      toastSuccess('Importación completada', description);
+      toastSuccess(t('completadaTitulo'), description);
     }
 
     if (imported > 0) {
@@ -300,10 +311,10 @@ FACT-002,,2024-01-16,2024-02-16,COP,50000,9500,59500,Segunda factura,Producto 2,
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-blue-600" />
-            Importar Facturas desde CSV
+            {t('titulo')}
           </DialogTitle>
           <DialogDescription>
-            Suba un archivo CSV con los datos de las facturas a importar
+            {t('descripcion')}
           </DialogDescription>
         </DialogHeader>
 
@@ -312,13 +323,13 @@ FACT-002,,2024-01-16,2024-02-16,COP,50000,9500,59500,Segunda factura,Producto 2,
           <div className="flex justify-end">
             <Button variant="outline" size="sm" onClick={downloadTemplate}>
               <Download className="h-4 w-4 mr-2" />
-              Descargar Plantilla
+              {t('descargarPlantilla')}
             </Button>
           </div>
 
           {/* Selector de archivo */}
           <div className="space-y-2">
-            <Label>Archivo CSV</Label>
+            <Label>{t('archivo')}</Label>
             <div className="flex items-center gap-2">
               <Input
                 type="file"
@@ -327,7 +338,7 @@ FACT-002,,2024-01-16,2024-02-16,COP,50000,9500,59500,Segunda factura,Producto 2,
                 className="dark:bg-gray-700 dark:border-gray-600"
               />
               {file && (
-                <Button variant="ghost" size="icon" onClick={resetDialog}>
+                <Button variant="ghost" size="icon" onClick={resetDialog} aria-label={t('quitarArchivo')}>
                   <X className="h-4 w-4" />
                 </Button>
               )}
@@ -338,7 +349,7 @@ FACT-002,,2024-01-16,2024-02-16,COP,50000,9500,59500,Segunda factura,Producto 2,
           {isParsing && (
             <div className="flex items-center gap-2 text-blue-600">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Procesando archivo...
+              {t('procesando')}
             </div>
           )}
 
@@ -347,13 +358,13 @@ FACT-002,,2024-01-16,2024-02-16,COP,50000,9500,59500,Segunda factura,Producto 2,
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                <div className="font-medium mb-1">Errores encontrados:</div>
+                <div className="font-medium mb-1">{t('erroresTitulo')}</div>
                 <ul className="list-disc list-inside text-sm max-h-32 overflow-y-auto">
                   {errors.slice(0, 10).map((error, i) => (
                     <li key={i}>{error}</li>
                   ))}
                   {errors.length > 10 && (
-                    <li>... y {errors.length - 10} errores más</li>
+                    <li>{t('erroresMas', { n: errors.length - 10 })}</li>
                   )}
                 </ul>
               </AlertDescription>
@@ -364,20 +375,20 @@ FACT-002,,2024-01-16,2024-02-16,COP,50000,9500,59500,Segunda factura,Producto 2,
           {parsedData.length > 0 && (
             <div className="space-y-2">
               <div className="flex flex-wrap items-center justify-between">
-                <Label>Vista previa ({parsedData.length} facturas)</Label>
+                <Label>{t('vistaPrevia', { n: parsedData.length })}</Label>
                 <Badge variant="outline" className="text-green-600">
                   <CheckCircle className="h-3 w-3 mr-1" />
-                  Listo para importar
+                  {t('listo')}
                 </Badge>
               </div>
               <div className="border rounded-lg overflow-hidden dark:border-gray-700">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-100 dark:bg-gray-700">
                     <tr>
-                      <th className="px-3 py-2 text-left">Número</th>
-                      <th className="px-3 py-2 text-left">Fecha</th>
-                      <th className="px-3 py-2 text-left">Items</th>
-                      <th className="px-3 py-2 text-right">Total</th>
+                      <th className="px-3 py-2 text-left">{t('columnas.numero')}</th>
+                      <th className="px-3 py-2 text-left">{t('columnas.fecha')}</th>
+                      <th className="px-3 py-2 text-left">{t('columnas.items')}</th>
+                      <th className="px-3 py-2 text-right">{t('columnas.total')}</th>
                     </tr>
                   </thead>
                   <tbody className="dark:bg-gray-800">
@@ -386,13 +397,13 @@ FACT-002,,2024-01-16,2024-02-16,COP,50000,9500,59500,Segunda factura,Producto 2,
                         <td className="px-3 py-2">{invoice.number}</td>
                         <td className="px-3 py-2">{invoice.issue_date}</td>
                         <td className="px-3 py-2">{invoice.items.length}</td>
-                        <td className="px-3 py-2 text-right">${invoice.total.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-right">{formatMoneda(invoice.total, paraDocumento(invoice.currency))}</td>
                       </tr>
                     ))}
                     {parsedData.length > 5 && (
                       <tr className="border-t dark:border-gray-700">
                         <td colSpan={4} className="px-3 py-2 text-center text-gray-500">
-                          ... y {parsedData.length - 5} facturas más
+                          {t('facturasMas', { n: parsedData.length - 5 })}
                         </td>
                       </tr>
                     )}
@@ -406,7 +417,7 @@ FACT-002,,2024-01-16,2024-02-16,COP,50000,9500,59500,Segunda factura,Producto 2,
           {isLoading && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span>Importando facturas...</span>
+                <span>{t('importando')}</span>
                 <span>{importProgress}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
@@ -421,7 +432,7 @@ FACT-002,,2024-01-16,2024-02-16,COP,50000,9500,59500,Segunda factura,Producto 2,
 
         <DialogFooter>
           <Button variant="outline" onClick={() => { resetDialog(); onClose(); }} disabled={isLoading}>
-            Cancelar
+            {tk('cancelar')}
           </Button>
           <Button 
             onClick={handleImport} 
@@ -430,12 +441,12 @@ FACT-002,,2024-01-16,2024-02-16,COP,50000,9500,59500,Segunda factura,Producto 2,
             {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Importando...
+                {t('importandoBoton')}
               </>
             ) : (
               <>
                 <Upload className="h-4 w-4 mr-2" />
-                Importar {parsedData.length > 0 ? `(${parsedData.length})` : ''}
+                {parsedData.length > 0 ? t('importarN', { n: parsedData.length }) : t('importar')}
               </>
             )}
           </Button>

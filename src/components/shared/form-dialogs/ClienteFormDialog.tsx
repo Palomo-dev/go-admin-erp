@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { ClientForm } from '@/components/clientes/new/ClientForm';
 
 interface ClienteFormDialogProps {
@@ -9,6 +10,8 @@ interface ClienteFormDialogProps {
   organizationId: number;
   branchId?: number;
   /** Se llama con el cliente creado; el diálogo se cierra automáticamente */
+  // Cada consumidor tipa el cliente a su manera (POS, facturas): se deja abierto a propósito.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onCreated: (customer: any) => void;
 }
 
@@ -18,6 +21,8 @@ interface ClienteFormDialogProps {
  * Usa el mismo patrón visual y funcional del modal de "Nueva Sucursal" (div custom).
  */
 export function ClienteFormDialog({ open, onOpenChange, organizationId, branchId, onCreated }: ClienteFormDialogProps) {
+  const t = useTranslations('clientes.formulario.paginas.nuevo');
+  const tk = useTranslations('kit.comun');
   if (!open) return null;
 
   return (
@@ -28,13 +33,14 @@ export function ClienteFormDialog({ open, onOpenChange, organizationId, branchId
           <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
             <div>
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-50">
-                Nuevo Cliente
+                {t('titulo')}
               </h2>
               <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">
-                Completa la información para registrar un nuevo cliente.
+                {t('subtitulo')}
               </p>
             </div>
             <button
+              aria-label={tk('cerrar')}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700"
               onClick={() => onOpenChange(false)}
             >

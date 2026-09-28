@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +40,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
   // Importes en la moneda del documento (la base si no la trae).
   const { paraDocumento } = useMonedaOrganizacion();
   const monedaDocumento = paraDocumento(currency);
+  const t = useTranslations('facturasVenta.items');
   const [showSerialSelector, setShowSerialSelector] = useState(false);
 
   // Items que requieren captura de seriales
@@ -218,7 +220,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
           "
         >
           <Plus className="h-4 w-4 mr-2" />
-          <span className="text-sm">Agregar Ítem Manual</span>
+          <span className="text-sm">{t('agregarManual')}</span>
         </Button>
 
         {hasSerialItems && (
@@ -235,7 +237,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
             "
           >
             <Package className="h-4 w-4 mr-2" />
-            <span className="text-sm">Capturar Seriales</span>
+            <span className="text-sm">{t('capturarSeriales')}</span>
             {serializedItems.length > 0 && (
               <Badge className="ml-2 bg-blue-600 text-white">{serializedItems.length}</Badge>
             )}
@@ -249,12 +251,12 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50 dark:bg-gray-900/50">
-                <TableHead className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Descripción</TableHead>
-                <TableHead className="text-center text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Cantidad</TableHead>
-                <TableHead className="text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Precio Unit.</TableHead>
-                <TableHead className="text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Descuento</TableHead>
-                <TableHead className="text-center text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Impuesto</TableHead>
-                <TableHead className="text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Total</TableHead>
+                <TableHead className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">{t('columnas.descripcion')}</TableHead>
+                <TableHead className="text-center text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">{t('columnas.cantidad')}</TableHead>
+                <TableHead className="text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">{t('columnas.precioUnitario')}</TableHead>
+                <TableHead className="text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">{t('columnas.descuento')}</TableHead>
+                <TableHead className="text-center text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">{t('columnas.impuesto')}</TableHead>
+                <TableHead className="text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">{t('columnas.total')}</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
@@ -262,7 +264,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
             {items.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  No hay ítems en la factura
+                  {t('vacio')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -283,7 +285,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                       <div className="flex items-center gap-1.5 mt-1">
                         <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-[10px]">
                           <Package className="h-3 w-3 mr-1" />
-                          Serial
+                          {t('serial')}
                         </Badge>
                         {item.product_id != null && (() => {
                           const selectedCount = serialSelections[item.product_id as number]?.length ?? 0;
@@ -296,7 +298,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                                   : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
                               }`}
                             >
-                              {selectedCount}/{item.qty} seriales
+                              {t('seriales', { seleccionados: selectedCount, cantidad: item.qty })}
                             </Badge>
                           );
                         })()}
@@ -324,7 +326,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                     </div>
                     {item.track_stock && item.stock_qty != null && item.qty > item.stock_qty && (
                       <p className="text-[10px] text-red-500 dark:text-red-400 mt-0.5 text-center">
-                        Stock: {item.stock_qty}
+                        {t('stock', { cantidad: item.stock_qty })}
                       </p>
                     )}
                   </TableCell>
@@ -364,7 +366,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                       {item.tax_code ? (
                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{item.tax_rate}%</span>
                       ) : (
-                        <span className="text-sm text-gray-500 dark:text-gray-400">N/A</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">{t('noAplica')}</span>
                       )}
                       {lineasSinImpuesto?.has(index) && (
                         <EtiquetaSinImpuesto className="mt-1" />
@@ -384,7 +386,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                             "
                           />
                           <label htmlFor={`tax-included-${index}`} className="text-xs text-gray-700 dark:text-gray-300 cursor-pointer">
-                            Incluido
+                            {t('incluido')}
                           </label>
                         </div>
                       )}
@@ -398,6 +400,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                       variant="ghost" 
                       size="icon"
                       onClick={() => eliminarItem(index)}
+                      aria-label={t('quitar')}
                       className="
                         h-8 w-8
                         hover:bg-red-50 dark:hover:bg-red-900/20

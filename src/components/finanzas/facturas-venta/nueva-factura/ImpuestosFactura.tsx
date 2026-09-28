@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { InvoiceItem } from './NuevaFacturaForm';
 
 // Tipo para un impuesto de la organización
@@ -34,6 +37,8 @@ interface ImpuestosFacturaProps {
   onTaxTotalCalculated: (taxTotal: number) => void;
   onTotalCalculated: (total: number) => void;
   initialAppliedTaxCodes?: string[];
+  /** Moneda del documento; sin ella, la base de la organización. */
+  currency?: string | null;
 }
 
 export function ImpuestosFactura({
@@ -46,11 +51,15 @@ export function ImpuestosFactura({
   onSubtotalCalculated,
   onTaxTotalCalculated,
   onTotalCalculated,
-  initialAppliedTaxCodes
+  initialAppliedTaxCodes,
+  currency,
 }: ImpuestosFacturaProps) {
+  const t = useTranslations('facturasVenta.impuestos');
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatear = crearFormateadorMoneda(paraDocumento(currency));
   // Estados para impuestos
   const [organizationTaxes, setOrganizationTaxes] = useState<OrganizationTax[]>([]);
-  const [defaultTax, setDefaultTax] = useState<OrganizationTax | null>(null);
+  const [, setDefaultTax] = useState<OrganizationTax | null>(null);
   const [applyDefaultTax, setApplyDefaultTax] = useState<boolean>(true);
   const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({});
   
@@ -124,7 +133,7 @@ export function ImpuestosFactura({
       const taxKey = itemTaxCode || `TAX_${itemTaxRate}`;
       // Buscar el nombre del impuesto en organizationTaxes
       const orgTax = organizationTaxes.find(t => t.code === itemTaxCode);
-      const taxName = orgTax?.name || itemTaxCode || `Impuesto ${itemTaxRate}%`;
+      const taxName = orgTax?.name || itemTaxCode || t('impuestoTasa', { tasa: itemTaxRate });
 
       if (!appliedTaxTotals[taxKey]) {
         appliedTaxTotals[taxKey] = {
@@ -307,6 +316,8 @@ export function ImpuestosFactura({
     }, 50);
     
     return () => clearTimeout(timer);
+    // Solo al cambiar «impuestos incluidos»: el efecto de abajo sincroniza el resto de cambios.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taxIncluded]);
 
   // Efecto para actualizar totales y subtotales en el componente padre
@@ -332,11 +343,7 @@ export function ImpuestosFactura({
       };
       
       // Notificamos al padre
-      const detalleCalculo = taxIncluded ? 
-        "(impuestos incluidos en el precio original)" : 
-        "(impuestos añadidos al precio base)";
-        
-      console.log(`Actualizando valores en el padre ${detalleCalculo}`, { 
+      console.log(`Actualizando valores en el padre (impuestos ${taxIncluded ? 'incluidos en el precio original' : 'añadidos al precio base'})`, { 
         subtotal, 
         taxTotal, 
         total 
@@ -355,6 +362,8 @@ export function ImpuestosFactura({
     if (organizationId) {
       loadOrganizationTaxes();
     }
+    // Solo al cambiar de organización: loadOrganizationTaxes se redefine en cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId]);
   
   // Función para cargar los impuestos de la organización
@@ -414,17 +423,17 @@ export function ImpuestosFactura({
       space-y-3
     ">
       <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
-        Resumen e Impuestos
+        {t('titulo')}
       </h3>
       
       <div className="flex flex-col gap-3 items-end">
         {/* Subtotal */}
         <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:min-w-[280px] text-sm sm:text-base">
-          <span className="text-right text-gray-700 dark:text-gray-300">Subtotal:</span>
+          <span className="text-right text-gray-700 dark:text-gray-300">{t('subtotal')}</span>
           <span className="text-right font-semibold text-gray-900 dark:text-gray-100">
-            ${subtotal.toFixed(2)}
+            {formatear(subtotal)}
             {taxIncluded && (
-              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">(imp. incluidos)</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">{t('impIncluidos')}</span>
             )}
           </span>
         </div>
@@ -433,7 +442,7 @@ export function ImpuestosFactura({
         <div className="flex flex-col gap-2 sm:gap-3 w-full sm:min-w-[320px]">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
             <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
-              Impuestos aplicables:
+              {t('aplicables')}
             </span>
             <div className="flex items-center gap-2">
               <input 
@@ -453,7 +462,7 @@ export function ImpuestosFactura({
                 htmlFor="taxIncluded" 
                 className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
               >
-                Impuestos incluidos en precios
+                {t('incluidosEnPrecios')}
               </label>
             </div>
           </div>
@@ -503,7 +512,7 @@ export function ImpuestosFactura({
                         whitespace-nowrap
                         flex-shrink-0
                       ">
-                        Predeterminado
+                        {t('predeterminado')}
                       </span>
                     )}
                   </div>
@@ -511,7 +520,7 @@ export function ImpuestosFactura({
               })
             ) : (
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center py-2">
-                No hay impuestos configurados
+                {t('sinConfigurar')}
               </p>
             )}
           </div>
@@ -530,11 +539,11 @@ export function ImpuestosFactura({
                 <span className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                   {taxInfo.name} ({taxInfo.rate}%):
                   {taxInfo.included && (
-                    <span className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 ml-1">(incluido)</span>
+                    <span className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 ml-1">{t('incluido')}</span>
                   )}
                 </span>
                 <span className="text-right text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">
-                  ${taxInfo.amount.toFixed(2)}
+                  {formatear(taxInfo.amount)}
                 </span>
               </React.Fragment>
             ))}
@@ -543,9 +552,9 @@ export function ImpuestosFactura({
         
         {/* Total de impuestos */}
         <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:min-w-[280px] text-sm sm:text-base">
-          <span className="text-right text-gray-700 dark:text-gray-300">Total Impuestos:</span>
+          <span className="text-right text-gray-700 dark:text-gray-300">{t('totalImpuestos')}</span>
           <span className="text-right font-semibold text-gray-900 dark:text-gray-100">
-            ${taxTotal.toFixed(2)}
+            {formatear(taxTotal)}
           </span>
         </div>
         
@@ -557,12 +566,12 @@ export function ImpuestosFactura({
           border-t-2 border-gray-300 dark:border-gray-600
           text-base sm:text-lg
         ">
-          <span className="text-right font-bold text-gray-900 dark:text-gray-100">Total:</span>
+          <span className="text-right font-bold text-gray-900 dark:text-gray-100">{t('total')}</span>
           <span className="text-right font-bold text-blue-600 dark:text-blue-400">
-            ${total.toFixed(2)}
+            {formatear(total)}
             {noIncluidos > 0 && taxIncluded && (
               <span className="block text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 font-normal mt-0.5">
-                (incluye ${subtotal.toFixed(2)} + impuestos)
+                {t('incluyeBase', { subtotal: formatear(subtotal) })}
               </span>
             )}
           </span>

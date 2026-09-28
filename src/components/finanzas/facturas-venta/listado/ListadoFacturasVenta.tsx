@@ -204,7 +204,7 @@ export function ListadoFacturasVenta() {
           f.sucursal,
         ]),
       ]);
-      descargarCsv(`facturas-venta_${hoy}.csv`, csv);
+      descargarCsv(`${t('listado.archivoExportacion')}_${hoy}.csv`, csv);
     } catch {
       toastError(t('listado.exportarError'));
     } finally {

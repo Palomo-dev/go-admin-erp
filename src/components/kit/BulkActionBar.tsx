@@ -182,10 +182,12 @@ export function BulkActionBar({
     };
   }, [visible]);
 
+  const genero = sustantivo.genero ?? 'masculino';
   const texto = t('masivas.seleccionados', {
     count: seleccionados,
     n: entero(seleccionados),
     sustantivo: sustantivoPara(seleccionados, sustantivo),
+    genero,
   });
   const puedeSeleccionarTodos = !!onSeleccionarTodos && total !== undefined && total > seleccionados;
 
@@ -219,7 +221,7 @@ export function BulkActionBar({
                   onClick={onSeleccionarTodos}
                   className="whitespace-nowrap rounded-md px-1 text-[13px] font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
-                  {t('masivas.seleccionarTodos', { n: entero(total ?? 0) })}
+                  {t('masivas.seleccionarTodos', { n: entero(total ?? 0), genero })}
                 </button>
               )}
               <span aria-hidden="true" className="mx-1 h-6 w-px bg-line" />
@@ -249,7 +251,7 @@ export function BulkActionBar({
                     onClick={onSeleccionarTodos}
                     className="self-start text-[13px] font-medium text-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
-                    {t('masivas.seleccionarTodos', { n: entero(total ?? 0) })}
+                    {t('masivas.seleccionarTodos', { n: entero(total ?? 0), genero })}
                   </button>
                 )}
               </div>

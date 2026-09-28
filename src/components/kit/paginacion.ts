@@ -6,6 +6,12 @@
 export interface Sustantivo {
   singular: string;
   plural: string;
+  /**
+   * Concordancia de «seleccionadas», «Seleccionar las 32» (es, fr, pt). Por
+   * defecto masculino. Va en los mensajes de la pantalla, porque cambia con el
+   * idioma («factura» y «facture» son femeninos; en inglés no aplica).
+   */
+  genero?: 'masculino' | 'femenino';
 }
 
 export const SUSTANTIVO_POR_DEFECTO: Sustantivo = { singular: 'registro', plural: 'registros' };

@@ -25,6 +25,7 @@ export { CalendarioMes, type CalendarioMesProps } from './CalendarioMes';
 export { primerDiaDeSemana, grillaMes, etiquetaDiaTrigger, type CeldaDia } from './calendarioLogica';
 export {
   etiquetaRango,
+  etiquetaRangoLarga,
   presetsRango,
   presetDe,
   normalizarRango,

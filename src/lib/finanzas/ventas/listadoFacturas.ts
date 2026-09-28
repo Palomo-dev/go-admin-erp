@@ -7,6 +7,13 @@
 export const FILTROS_FACTURAS = ['estado_doc', 'estado_pago', 'moneda', 'desde', 'hasta', 'cliente', 'fe', 'monto_min', 'monto_max'] as const;
 export type FiltroFacturas = (typeof FILTROS_FACTURAS)[number];
 
+/**
+ * Claves que solo viven en la URL de la pantalla (no llegan a la RPC):
+ * `periodo=todo` quita el límite de emisión del listado (lo pone el KPI
+ * «Vencido» o «Por cobrar», que miran toda la cartera).
+ */
+export const FILTROS_PANTALLA_FACTURAS = [...FILTROS_FACTURAS, 'periodo'] as const;
+
 export const CAMPOS_ORDEN_FACTURAS = ['emision', 'numero', 'cliente', 'total', 'saldo', 'vencimiento'] as const;
 
 const ORDENES_RPC = new Set([
@@ -63,6 +70,13 @@ export function consultaFacturasDesde(params: URLSearchParams): ConsultaFacturas
     if ((clave === 'monto_min' || clave === 'monto_max') && !Number.isFinite(Number(valor))) continue;
     filtros[clave] = clave === 'monto_min' || clave === 'monto_max' ? Number(valor) : valor;
   }
+  // Periodo de los KPIs («Facturado en el periodo»), independiente del filtro de
+  // emisión del listado: al tocar «Vencido» el listado deja de limitar por
+  // emisión y el KPI sigue siendo el del periodo elegido.
+  for (const clave of ['kpi_desde', 'kpi_hasta'] as const) {
+    const valor = (params.get(clave) ?? '').trim();
+    if (DIA_RE.test(valor)) filtros[clave] = valor;
+  }
   const sucursal = Number(params.get('sucursal'));
   if (Number.isInteger(sucursal) && sucursal > 0) filtros.sucursal = sucursal;
   if (params.get('incluir_nc') === '1') filtros.incluir_nc = true;
@@ -83,6 +97,8 @@ export interface FilaFacturaListado {
   total: number;
   saldo: number;
   metodo: string | null;
+  /** Nombre del método en el catálogo `payment_methods` (respaldo si no hay traducción). */
+  metodo_nombre?: string | null;
   branch_id: number | null;
   sucursal: string | null;
   fe: string | null;
@@ -97,11 +113,16 @@ export interface FilaFacturaListado {
 
 export interface KpiFacturas {
   moneda: string;
+  /** Emitidas en el periodo de los KPIs (`kpi_desde`/`kpi_hasta`). */
   facturado: number;
+  facturas_emitidas: number;
+  /** Cartera abierta, sin límite de emisión. */
   por_cobrar: number;
+  facturas_con_saldo: number;
   vencido: number;
   facturas_vencidas: number;
   vence_15: number;
+  facturas_vence_15: number;
 }
 
 export interface RespuestaListadoFacturas {

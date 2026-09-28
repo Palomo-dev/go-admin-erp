@@ -396,6 +396,9 @@ export async function listadoFacturas(ctx: Ctx, consulta: ConsultaFacturas): Pro
       vencido: num(k.vencido),
       facturas_vencidas: num(k.facturas_vencidas),
       vence_15: num(k.vence_15),
+      facturas_emitidas: num(k.facturas_emitidas),
+      facturas_con_saldo: num(k.facturas_con_saldo),
+      facturas_vence_15: num(k.facturas_vence_15),
     })),
   };
 }

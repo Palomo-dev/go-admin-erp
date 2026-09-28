@@ -203,6 +203,8 @@ const TABLA: Record<string, Fila> = {
   transferencia: C('neutro'),
   tarjeta: C('neutro'),
   cheque: C('neutro'),
+  // Documento sin factura electrónica: atributo, no estado (Figma 421:167503, «Sin FE»)
+  'sin fe': C('neutro'),
 };
 
 /**

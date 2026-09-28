@@ -2994,8 +2994,8 @@
     },
     "masivas": {
       "region": "Ações em massa",
-      "seleccionados": "{count, plural, one {{n} {sustantivo} selecionado} other {{n} {sustantivo} selecionados}}",
-      "seleccionarTodos": "Selecionar os {n}",
+      "seleccionados": "{count, plural, one {{n} {sustantivo} {genero, select, femenino {selecionada} other {selecionado}}} other {{n} {sustantivo} {genero, select, femenino {selecionadas} other {selecionados}}}}",
+      "seleccionarTodos": "{genero, select, femenino {Selecionar as {n}} other {Selecionar os {n}}}",
       "limpiar": "Limpar seleção"
     },
     "sustantivos": {
@@ -12291,7 +12291,8 @@
     "listado": {
       "sustantivo": {
         "singular": "fatura",
-        "plural": "faturas"
+        "plural": "faturas",
+        "genero": "femenino"
       },
       "subtitulo": "{count, plural, one {{n} fatura} other {{n} faturas}}",
       "importar": "Importar CSV",
@@ -12306,10 +12307,14 @@
         "porCobrar": "A receber",
         "vencido": "Vencido",
         "vencidasDetalle": "{count, plural, one {{n} fatura vencida} other {{n} faturas vencidas}}",
-        "vence15": "Vence em 15 dias"
+        "vence15": "Vence em 15 dias",
+        "emitidas": "{count, plural, one {{n} fatura emitida} other {{n} faturas emitidas}}",
+        "conSaldo": "{n} com saldo",
+        "vencidasFiltrar": "{count, plural, one {{n} fatura} other {{n} faturas}} · toque para filtrar →",
+        "nFacturas": "{count, plural, one {{n} fatura} other {{n} faturas}}"
       },
       "buscar": {
-        "placeholder": "Buscar por número, cliente ou documento",
+        "placeholder": "Buscar por número, cliente ou referência",
         "etiqueta": "Buscar faturas"
       },
       "filtros": {
@@ -12329,7 +12334,15 @@
         "montoMin": "Total a partir de",
         "montoMax": "Total até",
         "montoMinChip": "A partir de {monto}",
-        "montoMaxChip": "Até {monto}"
+        "montoMaxChip": "Até {monto}",
+        "limpiar": "Limpar filtros",
+        "estadoChip": "Status: {estado}",
+        "pagoChip": "Pagamento: {estado}",
+        "periodoChip": "Emitidas: {rango}",
+        "todasFechasChip": "Emitidas: todas as datas",
+        "todasLasFechas": "Todas as datas de emissão",
+        "cliente": "Cliente",
+        "clienteChipNombre": "Cliente: {nombre}"
       },
       "estadoPago": {
         "borrador": "Rascunho",
@@ -12350,7 +12363,9 @@
         "saldo": "Saldo",
         "estado": "Status",
         "sucursal": "Filial",
-        "fe": "Fat. eletrônica"
+        "fe": "Fat. eletrônica",
+        "metodo": "Método",
+        "pms": "PMS"
       },
       "acciones": {
         "ver": "Ver fatura"
@@ -12365,7 +12380,44 @@
       },
       "sinResultados": "Tente outro período, outra busca ou outros filtros.",
       "errorCarga": "Não foi possível carregar as faturas",
-      "archivoExportacion": "faturas-venda"
+      "archivoExportacion": "faturas-venda",
+      "todasLasSucursales": "Todas as filiais",
+      "todasLasFechas": "Todas as datas",
+      "metodoSinDefinir": "Não definido",
+      "sinPms": "Sem reserva",
+      "pagoNoDisponible": "Sem saldo a receber",
+      "fe": {
+        "sin": "Sem FE",
+        "pending": "Na fila",
+        "processing": "Processando",
+        "sent": "Enviado",
+        "accepted": "Aceita DIAN",
+        "rejected": "Rejeitada DIAN",
+        "failed": "Erro DIAN",
+        "cancelled": "Cancelada"
+      },
+      "lote": {
+        "exportar": "Exportar",
+        "anular": "Anular",
+        "errorSeleccionarTodas": "Não foi possível selecionar todas as faturas.",
+        "impresionAbierta": "{count, plural, one {{n} aba de impressão aberta} other {{n} abas de impressão abertas}}",
+        "impresionAyuda": "Se o navegador bloquear pop-ups, permita-os para este site.",
+        "maximoImpresion": "Imprima ou baixe até {max} faturas por vez",
+        "sinPermisoAnular": "Você não tem permissão para anular faturas",
+        "motivosPago": {
+          "sin_permiso": "Você não tem permissão para registrar pagamentos",
+          "sin_saldo": "Há faturas sem saldo, em rascunho ou anuladas",
+          "sin_cliente": "Há faturas sem cliente",
+          "varios_clientes": "As faturas são de clientes diferentes: registre um cliente por vez"
+        },
+        "anularTitulo": "{count, plural, one {Anular {n} fatura} other {Anular {n} faturas}}",
+        "anularDescripcion": "As faturas são anuladas com o mesmo motivo. Não é possível desfazer.",
+        "anularConfirmar": "{count, plural, one {Anular {n} fatura} other {Anular {n} faturas}}",
+        "ningunaAnulable": "Nenhuma das faturas escolhidas pode ser anulada diretamente.",
+        "excluidasTitulo": "{count, plural, one {{n} fatura não é anulada} other {{n} faturas não são anuladas}}",
+        "anuladas": "{count, plural, one {{n} fatura anulada} other {{n} faturas anuladas}}",
+        "anularFallidas": "{count, plural, one {{n} fatura não pôde ser anulada} other {{n} faturas não puderam ser anuladas}}: {detalle}"
+      }
     },
     "enviar": {
       "titulo": "Enviar a fatura {numero}",

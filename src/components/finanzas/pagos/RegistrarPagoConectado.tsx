@@ -28,7 +28,12 @@ import { RepartoTercero } from './RepartoTercero';
 export type DestinoPagoConectado =
   | { tipo: 'factura'; id: string }
   | { tipo: 'cuenta'; id: string; cuotaId?: string | null }
-  | { tipo: 'tercero'; customerId: string };
+  /**
+   * Todas las cuentas abiertas del cliente con reparto FIFO. `facturaIds`
+   * preselecciona solo esas facturas (selección en lote del listado de
+   * facturas de venta); el usuario puede cambiar la selección en el diálogo.
+   */
+  | { tipo: 'tercero'; customerId: string; facturaIds?: readonly string[] };
 
 export interface RegistrarPagoConectadoProps {
   abierto: boolean;
@@ -70,6 +75,7 @@ export function RegistrarPagoConectado({
   const idConsulta = destino.tipo === 'tercero' ? undefined : destino.id;
   const clienteConsulta = destino.tipo === 'tercero' ? destino.customerId : undefined;
   const cuotaInicial = destino.tipo === 'cuenta' ? destino.cuotaId ?? '' : '';
+  const facturasIniciales = destino.tipo === 'tercero' ? destino.facturaIds : undefined;
 
   const cargar = useCallback(async () => {
     setCargandoContexto(true);
@@ -77,7 +83,11 @@ export function RegistrarPagoConectado({
     try {
       const c = await pedirContextoPago({ direccion: 'cobro', documento: documentoConsulta, id: idConsulta, cliente: clienteConsulta });
       setContexto(c);
-      setSeleccion(new Set(c.documentos.map((d) => d.cuenta_id)));
+      const preseleccion =
+        facturasIniciales && facturasIniciales.length > 0
+          ? c.documentos.filter((d) => !!d.factura_id && facturasIniciales.includes(d.factura_id))
+          : c.documentos;
+      setSeleccion(new Set(preseleccion.map((d) => d.cuenta_id)));
     } catch (e) {
       const clave = `errores.${e instanceof ErrorPeticionPago ? e.codigo : 'error_desconocido'}`;
       setErrorCarga(t.has(clave) ? t(clave as never) : t('errorCarga'));
@@ -85,7 +95,7 @@ export function RegistrarPagoConectado({
     } finally {
       setCargandoContexto(false);
     }
-  }, [documentoConsulta, idConsulta, clienteConsulta, t]);
+  }, [documentoConsulta, idConsulta, clienteConsulta, facturasIniciales, t]);
 
   useEffect(() => {
     if (!abierto) return;

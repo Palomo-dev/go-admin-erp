@@ -112,6 +112,8 @@ desplaza en horizontal).
 | `etiqueta`, `valor`, `detalle` | `string` / `ReactNode` |
 | `tono` | `'neutro' \| 'exito' \| 'advertencia' \| 'peligro' \| 'informacion' \| 'marca'` |
 | `tendencia` | `'sube' \| 'baja'` |
+| `iconoDetalle` | `LucideIcon` delante del detalle en lugar de la flecha («⚠ 18 con saldo») |
+| `resaltada` | `boolean`: borde del color del `tono` («Vencido» que filtra, facturas de venta `421:167503`) |
 | `icono` | `LucideIcon` |
 | `cargando` | `boolean` (esqueleto solo del valor) |
 | `href` / `onClick` | la tarjeta entera navega (listado filtrado) |
@@ -134,6 +136,7 @@ Buscador único, 40 px, `onChange` con debounce (400 ms), Enter lo dispara ya, E
 | `value`, `onChange` | `string`, `(v) => void` (con debounce) |
 | `onValueChange` | inmediato, para filtrar lo ya cargado |
 | `debounceMs`, `placeholder`, `etiqueta`, `atajo` (`'/'` o `false`), `cargando`, `accesorio`, `tamano` | |
+| `pistaAtajo` | `false` oculta la pastilla «/» sin quitar la tecla (donde el Figma no la dibuja: facturas de venta) |
 
 ### `FilterButton` · `FilterPanel` · `FilterChip` · `FilterChips` · `ListToolbar`
 
@@ -243,7 +246,7 @@ con selección; en móvil tapa el `MobileTabBar`. Contador · «Seleccionar los 
 | Prop | Tipo |
 |---|---|
 | `seleccionados`, `total`, `onSeleccionarTodos` | `number`, `number`, `() => void` |
-| `sustantivo` | `{ singular, plural }` del dominio |
+| `sustantivo` | `{ singular, plural, genero? }` del dominio; `genero: 'femenino'` concuerda «3 facturas seleccionadas · Seleccionar las 32» (va en los mensajes de la pantalla porque cambia con el idioma) |
 | `acciones` | `AccionMasiva[]` = `{ id, etiqueta, icono, onClick, destructiva?, cargando?, deshabilitada?, motivo? }` |
 | `accionesSecundarias` | `AccionFila[]` (en «⋯», abre hacia arriba) |
 | `onLimpiar` | `() => void` |
@@ -358,7 +361,8 @@ Botón de 40 px de la barra del listado, junto al buscador: icono de calendario,
 | `hoy` | día de la organización |
 | `etiqueta`, `max` (por defecto `hoy`), `deshabilitado` | |
 
-`rangoFechas.ts`: `etiquetaRango`, `presetsRango(hoy)`, `presetDe`, `normalizarRango`,
+`rangoFechas.ts`: `etiquetaRango`, `etiquetaRangoLarga` («1 al 30 de septiembre de 2026», subtítulo del
+`PageHeader`), `presetsRango(hoy)`, `presetDe`, `normalizarRango`,
 `esFechaPlana`, `inicioDeMes`. Con `useListadoServidor` el rango va como dos filtros
 (`desde`, `hasta`) en la URL.
 

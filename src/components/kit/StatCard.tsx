@@ -21,6 +21,15 @@ const COLOR_DETALLE: Record<TonoStat, string> = {
   marca: 'text-brand-deep',
 };
 
+const BORDE_RESALTADO: Record<TonoStat, string> = {
+  neutro: 'border-line-strong',
+  exito: 'border-line-success',
+  advertencia: 'border-line-warning',
+  peligro: 'border-line-danger',
+  informacion: 'border-line-info',
+  marca: 'border-line-brand',
+};
+
 export interface StatCardProps {
   etiqueta: string;
   valor: ReactNode;
@@ -28,6 +37,13 @@ export interface StatCardProps {
   tono?: TonoStat;
   /** Flecha delante del detalle. */
   tendencia?: 'sube' | 'baja';
+  /** Icono delante del detalle en lugar de la flecha («⚠ 18 con saldo»). */
+  iconoDetalle?: LucideIcon;
+  /**
+   * Borde del color del `tono`: la tarjeta que pide atención y filtra al
+   * tocarla («Vencido» en facturas de venta, Figma 421:167503).
+   */
+  resaltada?: boolean;
   icono?: LucideIcon;
   cargando?: boolean;
   /** La tarjeta entera navega (p. ej. al listado filtrado). */
@@ -42,6 +58,8 @@ export function StatCard({
   detalle,
   tono = 'neutro',
   tendencia,
+  iconoDetalle,
+  resaltada,
   icono: Icono,
   cargando,
   href,
@@ -49,11 +67,16 @@ export function StatCard({
   className,
 }: StatCardProps) {
   const t = useTranslations('kit.comun');
-  const Flecha = tendencia === 'sube' ? ArrowUp : tendencia === 'baja' ? ArrowDown : null;
+  const Flecha = iconoDetalle ?? (tendencia === 'sube' ? ArrowUp : tendencia === 'baja' ? ArrowDown : null);
   const interactiva = !!href || !!onClick;
   const clases = cn(
-    'flex min-w-0 flex-col gap-2 rounded-xl border border-line bg-surface p-4 text-left',
-    interactiva && 'transition-colors hover:border-line-strong hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+    'flex min-w-0 flex-col gap-2 rounded-xl border bg-surface p-4 text-left',
+    resaltada ? BORDE_RESALTADO[tono] : 'border-line',
+    interactiva &&
+      cn(
+        'transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+        !resaltada && 'hover:border-line-strong',
+      ),
     className,
   );
 

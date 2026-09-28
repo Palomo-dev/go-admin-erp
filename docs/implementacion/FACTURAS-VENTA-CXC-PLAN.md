@@ -677,3 +677,70 @@ con una clave de idempotencia por intento.
 - **Formulario de factura con el kit** (P8 visual): el comportamiento ya es del servidor; la pantalla sigue
   con los componentes viejos.
 - **WhatsApp (D6)**: el enlace firmado del motor aún no existe; el envío es por correo.
+
+## 9. Listado de facturas de venta igualado al Figma aprobado (2026-09-28)
+
+Pedido del dueño: el listado en código no coincidía con B.1 «Listado de facturas de venta» (`421:167503`,
+74 controles, LISTO) ni con «Escritorio / Facturas de venta — selección y acciones en lote». Referencias:
+`55-coherencia-facturas-venta-listo.png`, `22-patrones-bulkactionbar-finanzas.png`, `20-facturas-movil-listado.png`.
+
+### 9.1 Figma frente a código
+
+| Zona | Figma | Código antes | Código ahora |
+|---|---|---|---|
+| Subtítulo | «Mi empresa S.A.S. · Sucursal Principal · 1 al 30 de septiembre de 2026» | «N facturas» | organización · sucursal activa (o «Todas las sucursales») · periodo en texto corrido (`etiquetaRangoLarga`, días de la organización); «Todas las fechas» con `periodo=todo` |
+| Barra | buscador único «Buscar por número, cliente o referencia» + «Filtros (n)» | buscador con `DateRangeButton` «1 – 28 sep 2026» dentro y pastilla «/» | buscador único sin rango ni pastilla (`SearchInput pistaAtajo={false}`: la tecla «/» sigue enfocando) + `FilterPanel` con el contador de chips |
+| Periodo | se elige dentro de «Filtros» (plan §3.2) | en la barra | en `FilterPanel`: `DateRangeButton` + «Todas las fechas de emisión»; por defecto el mes en curso |
+| Chips | «Estado: Emitida ×», «Vence: este mes ×», «× Limpiar filtros» | «Emitida», «Limpiar todo» | «Estado: …», «Pago: …», «Emitidas: 1 – 15 sep 2026», «Emitidas: todas las fechas», «Cliente: …», «DIAN: …», montos; «Limpiar filtros» |
+| KPI Facturado | «32 facturas emitidas» | «Según el periodo elegido» | conteo del servidor (`facturas_emitidas`) |
+| KPI Por cobrar | «⚠ 18 con saldo» | sin subtexto | `facturas_con_saldo` con icono de advertencia; toca → «Con saldo» sin límite de emisión |
+| KPI Vencido | borde rojo, «↓ 5 facturas · toca para filtrar →» | «0 facturas vencidas» | `StatCard resaltada` (borde `line-danger`) + flecha; toca → `estado_pago=vencida` y `periodo=todo`: el listado muestra las mismas N facturas que dice la tarjeta |
+| KPI Vence en 15 días | «↑ 9 facturas» | sin subtexto | `facturas_vence_15` en verde |
+| Iconos KPI | «$» en las cuatro | recibo, billetera, alerta, calendario | «$» en las cuatro |
+| Columnas | casilla · Número (enlace azul) · Cliente + NIT/CC con DV · Emitida · Vencimiento (rojo si vencida) · Total · Saldo (rojo > 0, verde $ 0) · Método · Estado · Fact. electrónica · PMS · pagar · imprimir · «⋯» | sin Método ni PMS; número en mono sin enlace; fila vencida teñida; FE «—» | igual al Figma; «Sin FE» en contorno neutro (fila nueva en SISTEMA-BADGES); PMS con cama azul o «—»; sin tinte de fila; la acción rápida de pagar se ve siempre y queda deshabilitada sin saldo |
+| Paginación | completa del kit | completa del kit | sin cambio (ya era `Pagination`) |
+| Selección | filas resaltadas + barra flotante abajo al centro: «N facturas seleccionadas · Seleccionar las 32 · Registrar pago · Imprimir · Exportar · ⋯ · Anular · ×» | solo «Exportar CSV»; «2 facturas seleccionados» | las cinco acciones del Figma; «⋯» con Descargar PDF; concordancia de género en el kit (`Sustantivo.genero`) |
+
+### 9.2 Acciones en lote: sobre qué corren
+
+Ninguna lógica nueva de pagos ni de anulación (`src/lib/finanzas/ventas/loteFacturas.ts` solo decide qué se
+puede hacer con la selección):
+
+- **Registrar pago**: el único flujo que existe para varias facturas es el reparto FIFO del cliente
+  (`RegistrarPagoConectado destino=tercero` → `POST /api/pagos`). Solo se habilita con facturas cobrables de
+  UN mismo cliente; `facturaIds` preselecciona esas facturas en el reparto (antes preseleccionaba todas las
+  del cliente). Con clientes distintos, borradores, anuladas o sin saldo queda deshabilitado con el motivo.
+- **Anular**: `DialogoMotivo` con el motivo común; la regla L4 (`puedeAnular`) se evalúa por factura y el
+  diálogo lista las que no se anulan (con pagos, FE aceptada, ya anulada) con su motivo. Las anulables van
+  una a una por `POST /api/facturas-venta/[id]/anular` (permiso `finance.void` en la ruta y en la base); si
+  una falla, las demás siguen y el diálogo dice cuáles y por qué.
+- **Imprimir** y **Descargar PDF**: el motor de documentos, una pestaña o descarga por factura, hasta 10.
+- **Exportar**: el CSV de siempre, ahora con Método y Fact. electrónica.
+- **Seleccionar las N**: trae todas las filas del filtro (páginas de 200, tope 5.000) para que las reglas se
+  apliquen a lo seleccionado aunque no esté en la página.
+
+### 9.3 Servidor
+
+Migración `20260928212308_facturas_venta_listado_figma_kpis` (rollback en `supabase/rollbacks/`), aditiva
+sobre `fn_facturas_venta_listado` (misma firma y claves): conteos `facturas_emitidas`,
+`facturas_con_saldo`, `facturas_vence_15`; `kpi_desde`/`kpi_hasta` separan el periodo del KPI «Facturado»
+del filtro de emisión del listado; `metodo_nombre` desde `payment_methods`; `cliente_doc` con el DV cuando
+es NIT (`customers.dv`). Guarda de organización, permiso `finance.view`, `app_branch_access` y revoke a
+`anon` sin cambios. Dry-run con un miembro real: el conteo de vencidas del KPI coincide con el total del
+listado filtrado por «Vencido».
+
+### 9.4 Lo que quedó distinto y por qué
+
+- **Chip «Vence: este mes»**: no hay filtro por vencimiento en la RPC; no se añadió para no inventar un
+  criterio que el plan no define. Pendiente si el dueño lo quiere (filtro `vence_desde`/`vence_hasta`).
+- **Periodo por defecto**: «1 al 28 de septiembre» (hasta hoy, como el atajo «Este mes» del kit), no «1 al
+  30»: no hay facturas con emisión futura.
+- **Imprimir en lote**: una pestaña por factura (máx. 10) porque el motor no tiene un documento de varias
+  facturas; el navegador puede pedir permiso de ventanas emergentes. Pendiente: impresión en lote en un solo
+  documento (sesión del motor de documentos).
+- **Registrar pago de varios clientes**: no existe un pago múltiple entre terceros; queda deshabilitado con
+  motivo, como pidió el dueño.
+- **Móvil (`421:171523`)**: sigue con `ListCard`; los chips rápidos «Con saldo · Vencidas» y el paginador
+  «Ir a» del frame móvil no se tocaron en esta ronda.
+- Verificación en el navegador: el servidor de desarrollo no estaba arriba y no se arrancó (instrucción del
+  dueño); la pantalla quedó cubierta con pruebas de render (`listado/__tests__/ListadoFacturasVenta.test.tsx`).

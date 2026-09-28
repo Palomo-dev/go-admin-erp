@@ -12396,7 +12396,8 @@
     "listado": {
       "sustantivo": {
         "singular": "invoice",
-        "plural": "invoices"
+        "plural": "invoices",
+        "genero": "femenino"
       },
       "subtitulo": "{count, plural, one {{n} invoice} other {{n} invoices}}",
       "importar": "Import CSV",
@@ -12411,10 +12412,14 @@
         "porCobrar": "Receivable",
         "vencido": "Overdue",
         "vencidasDetalle": "{count, plural, one {{n} overdue invoice} other {{n} overdue invoices}}",
-        "vence15": "Due in 15 days"
+        "vence15": "Due in 15 days",
+        "emitidas": "{count, plural, one {{n} invoice issued} other {{n} invoices issued}}",
+        "conSaldo": "{n} with balance",
+        "vencidasFiltrar": "{count, plural, one {{n} invoice} other {{n} invoices}} · tap to filter →",
+        "nFacturas": "{count, plural, one {{n} invoice} other {{n} invoices}}"
       },
       "buscar": {
-        "placeholder": "Search by number, customer or ID",
+        "placeholder": "Search by number, customer or reference",
         "etiqueta": "Search invoices"
       },
       "filtros": {
@@ -12434,7 +12439,15 @@
         "montoMin": "Total from",
         "montoMax": "Total up to",
         "montoMinChip": "From {monto}",
-        "montoMaxChip": "Up to {monto}"
+        "montoMaxChip": "Up to {monto}",
+        "limpiar": "Clear filters",
+        "estadoChip": "Status: {estado}",
+        "pagoChip": "Payment: {estado}",
+        "periodoChip": "Issued: {rango}",
+        "todasFechasChip": "Issued: all dates",
+        "todasLasFechas": "All issue dates",
+        "cliente": "Customer",
+        "clienteChipNombre": "Customer: {nombre}"
       },
       "estadoPago": {
         "borrador": "Draft",
@@ -12455,7 +12468,9 @@
         "saldo": "Balance",
         "estado": "Status",
         "sucursal": "Branch",
-        "fe": "E-invoice"
+        "fe": "E-invoice",
+        "metodo": "Method",
+        "pms": "PMS"
       },
       "acciones": {
         "ver": "View invoice"
@@ -12470,7 +12485,44 @@
       },
       "sinResultados": "Try another period, search or filters.",
       "errorCarga": "The invoices could not be loaded",
-      "archivoExportacion": "sales-invoices"
+      "archivoExportacion": "sales-invoices",
+      "todasLasSucursales": "All branches",
+      "todasLasFechas": "All dates",
+      "metodoSinDefinir": "Not set",
+      "sinPms": "No reservation",
+      "pagoNoDisponible": "No balance to collect",
+      "fe": {
+        "sin": "No e-invoice",
+        "pending": "Queued",
+        "processing": "Processing",
+        "sent": "Sent",
+        "accepted": "Accepted by DIAN",
+        "rejected": "Rejected by DIAN",
+        "failed": "DIAN error",
+        "cancelled": "Cancelled"
+      },
+      "lote": {
+        "exportar": "Export",
+        "anular": "Void",
+        "errorSeleccionarTodas": "Could not select all invoices.",
+        "impresionAbierta": "{count, plural, one {{n} print tab opened} other {{n} print tabs opened}}",
+        "impresionAyuda": "If your browser blocks pop-ups, allow them for this site.",
+        "maximoImpresion": "Print or download up to {max} invoices at a time",
+        "sinPermisoAnular": "You do not have permission to void invoices",
+        "motivosPago": {
+          "sin_permiso": "You do not have permission to record payments",
+          "sin_saldo": "Some invoices have no balance, are drafts or are void",
+          "sin_cliente": "Some invoices have no customer",
+          "varios_clientes": "The invoices belong to different customers: record one customer at a time"
+        },
+        "anularTitulo": "{count, plural, one {Void {n} invoice} other {Void {n} invoices}}",
+        "anularDescripcion": "The invoices are voided with the same reason. This cannot be undone.",
+        "anularConfirmar": "{count, plural, one {Void {n} invoice} other {Void {n} invoices}}",
+        "ningunaAnulable": "None of the selected invoices can be voided directly.",
+        "excluidasTitulo": "{count, plural, one {{n} invoice will not be voided} other {{n} invoices will not be voided}}",
+        "anuladas": "{count, plural, one {{n} invoice voided} other {{n} invoices voided}}",
+        "anularFallidas": "{count, plural, one {{n} invoice could not be voided} other {{n} invoices could not be voided}}: {detalle}"
+      }
     },
     "enviar": {
       "titulo": "Send invoice {numero}",

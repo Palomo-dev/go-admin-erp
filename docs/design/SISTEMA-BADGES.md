@@ -174,6 +174,7 @@ Ordenada por frecuencia. La columna «Hoy» resume lo que encontraron las audito
 | Devuelta · Devuelta parcial (`returned`, `partially returned`) | información · contorno | Ventas con devolución | Añadido 2026-09-24: mismo tono que «Reembolsado»; la parcialidad va en la etiqueta, no en otro color |
 | No aplica · Castigada (`written off`) | neutro · suave | Recepción de una factura sin productos; cuota o cartera dada de baja | Añadido 2026-09-24: son cierres sin éxito ni error, como «Cancelado» |
 | Efectivo · Transferencia · Tarjeta · Cheque | neutro · contorno | Historial de pagos | Verde/azul/**morado**/naranja: son categorías, no estados, y no deben competir con el estado de la fila |
+| Sin FE (`sin fe`) | neutro · contorno | Columna «Fact. electrónica» del listado de facturas de venta | Añadido 2026-09-28 (Figma 421:167503): es la ausencia de documento electrónico, no un estado; el contorno la separa de «Borrador» en la misma fila |
 | «Confirmado» de ingresos y egresos | éxito · suave | `IngresoDetalle.tsx:148` · `EgresoDetalle.tsx:147` | Mismo literal, **verde en ingresos y rojo en egresos** |
 
 ### Regla dura

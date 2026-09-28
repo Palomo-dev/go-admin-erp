@@ -29,6 +29,11 @@ export interface SearchInputProps {
   etiqueta?: string;
   /** Tecla que enfoca el buscador; `false` para desactivarla. */
   atajo?: string | false;
+  /**
+   * Pinta la pista del atajo («/») dentro del campo. `false` la oculta sin
+   * desactivar la tecla: donde el Figma aprobado no la dibuja (facturas de venta).
+   */
+  pistaAtajo?: boolean;
   /** Puntito de actividad mientras el servidor responde (no esqueleto). */
   cargando?: boolean;
   /** Ranura a la derecha (lector de códigos en POS). */
@@ -53,6 +58,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
     placeholder: placeholderProp,
     etiqueta,
     atajo = '/',
+    pistaAtajo = true,
     cargando,
     accesorio,
     tamano = 'md',
@@ -175,7 +181,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
             <X aria-hidden="true" className="size-4" strokeWidth={1.5} />
           </button>
         ) : (
-          atajo && <Kbd tecla={atajo} className="hidden lg:inline-flex" />
+          atajo && pistaAtajo && <Kbd tecla={atajo} className="hidden lg:inline-flex" />
         )}
         {accesorio}
       </div>

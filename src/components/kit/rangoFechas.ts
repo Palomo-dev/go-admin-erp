@@ -78,6 +78,34 @@ export function etiquetaRango(rango: RangoFechas, locale?: string): string {
   return `${i.d} ${mesI} ${i.a} – ${f.d} ${mesF} ${f.a}`;
 }
 
+const MESES_LARGOS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+/**
+ * Periodo en texto corrido para subtítulos de cabecera: «1 al 30 de septiembre
+ * de 2026» · «28 de agosto al 3 de septiembre de 2026» · «28 de diciembre de
+ * 2025 al 3 de enero de 2026» · «22 de septiembre de 2026» (Figma 421:167503,
+ * subtítulo del PageHeader). En otro idioma lo arma `Intl` con el mes largo.
+ */
+export function etiquetaRangoLarga(rango: RangoFechas, locale?: string): string {
+  const { desde, hasta } = normalizarRango(rango);
+  if (locale && !/^es(-|$)/i.test(locale)) {
+    try {
+      const formato = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+      return desde === hasta ? formato.format(aFechaUtc(desde)) : formato.formatRange(aFechaUtc(desde), aFechaUtc(hasta));
+    } catch {
+      // Locale que `Intl` no conoce: se cae al formato en español.
+    }
+  }
+  const i = partes(desde);
+  const f = partes(hasta);
+  const mesI = MESES_LARGOS[i.m - 1];
+  const mesF = MESES_LARGOS[f.m - 1];
+  if (desde === hasta) return `${f.d} de ${mesF} de ${f.a}`;
+  if (i.a === f.a && i.m === f.m) return `${i.d} al ${f.d} de ${mesF} de ${f.a}`;
+  if (i.a === f.a) return `${i.d} de ${mesI} al ${f.d} de ${mesF} de ${f.a}`;
+  return `${i.d} de ${mesI} de ${i.a} al ${f.d} de ${mesF} de ${f.a}`;
+}
+
 /** Primer día del mes de `fecha`. */
 export function inicioDeMes(fecha: string): string {
   return `${fecha.slice(0, 7)}-01`;

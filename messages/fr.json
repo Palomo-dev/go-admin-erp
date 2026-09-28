@@ -2994,7 +2994,7 @@
     },
     "masivas": {
       "region": "Actions groupées",
-      "seleccionados": "{count, plural, one {{n} {sustantivo} sélectionné} other {{n} {sustantivo} sélectionnés}}",
+      "seleccionados": "{count, plural, one {{n} {sustantivo} {genero, select, femenino {sélectionnée} other {sélectionné}}} other {{n} {sustantivo} {genero, select, femenino {sélectionnées} other {sélectionnés}}}}",
       "seleccionarTodos": "Sélectionner les {n}",
       "limpiar": "Effacer la sélection"
     },
@@ -12291,7 +12291,8 @@
     "listado": {
       "sustantivo": {
         "singular": "facture",
-        "plural": "factures"
+        "plural": "factures",
+        "genero": "femenino"
       },
       "subtitulo": "{count, plural, one {{n} facture} other {{n} factures}}",
       "importar": "Importer un CSV",
@@ -12306,10 +12307,14 @@
         "porCobrar": "À encaisser",
         "vencido": "En retard",
         "vencidasDetalle": "{count, plural, one {{n} facture en retard} other {{n} factures en retard}}",
-        "vence15": "Échéance sous 15 jours"
+        "vence15": "Échéance sous 15 jours",
+        "emitidas": "{count, plural, one {{n} facture émise} other {{n} factures émises}}",
+        "conSaldo": "{n} avec solde",
+        "vencidasFiltrar": "{count, plural, one {{n} facture} other {{n} factures}} · touchez pour filtrer →",
+        "nFacturas": "{count, plural, one {{n} facture} other {{n} factures}}"
       },
       "buscar": {
-        "placeholder": "Rechercher par numéro, client ou identifiant",
+        "placeholder": "Rechercher par numéro, client ou référence",
         "etiqueta": "Rechercher des factures"
       },
       "filtros": {
@@ -12329,7 +12334,15 @@
         "montoMin": "Total à partir de",
         "montoMax": "Total jusqu'à",
         "montoMinChip": "À partir de {monto}",
-        "montoMaxChip": "Jusqu'à {monto}"
+        "montoMaxChip": "Jusqu'à {monto}",
+        "limpiar": "Effacer les filtres",
+        "estadoChip": "Statut : {estado}",
+        "pagoChip": "Paiement : {estado}",
+        "periodoChip": "Émises : {rango}",
+        "todasFechasChip": "Émises : toutes les dates",
+        "todasLasFechas": "Toutes les dates d'émission",
+        "cliente": "Client",
+        "clienteChipNombre": "Client : {nombre}"
       },
       "estadoPago": {
         "borrador": "Brouillon",
@@ -12350,7 +12363,9 @@
         "saldo": "Solde",
         "estado": "Statut",
         "sucursal": "Succursale",
-        "fe": "Fact. électronique"
+        "fe": "Fact. électronique",
+        "metodo": "Moyen",
+        "pms": "PMS"
       },
       "acciones": {
         "ver": "Voir la facture"
@@ -12365,7 +12380,44 @@
       },
       "sinResultados": "Essayez une autre période, recherche ou d'autres filtres.",
       "errorCarga": "Les factures n'ont pas pu être chargées",
-      "archivoExportacion": "factures-vente"
+      "archivoExportacion": "factures-vente",
+      "todasLasSucursales": "Toutes les succursales",
+      "todasLasFechas": "Toutes les dates",
+      "metodoSinDefinir": "Non défini",
+      "sinPms": "Sans réservation",
+      "pagoNoDisponible": "Aucun solde à encaisser",
+      "fe": {
+        "sin": "Sans FE",
+        "pending": "En file d'attente",
+        "processing": "En cours",
+        "sent": "Envoyée",
+        "accepted": "Acceptée DIAN",
+        "rejected": "Rejetée DIAN",
+        "failed": "Erreur DIAN",
+        "cancelled": "Annulée"
+      },
+      "lote": {
+        "exportar": "Exporter",
+        "anular": "Annuler",
+        "errorSeleccionarTodas": "Impossible de sélectionner toutes les factures.",
+        "impresionAbierta": "{count, plural, one {{n} onglet d'impression ouvert} other {{n} onglets d'impression ouverts}}",
+        "impresionAyuda": "Si le navigateur bloque les fenêtres contextuelles, autorisez-les pour ce site.",
+        "maximoImpresion": "Imprimez ou téléchargez jusqu'à {max} factures à la fois",
+        "sinPermisoAnular": "Vous n'avez pas l'autorisation d'annuler des factures",
+        "motivosPago": {
+          "sin_permiso": "Vous n'avez pas l'autorisation d'enregistrer des paiements",
+          "sin_saldo": "Certaines factures sont sans solde, en brouillon ou annulées",
+          "sin_cliente": "Certaines factures sont sans client",
+          "varios_clientes": "Les factures appartiennent à des clients différents : enregistrez un client à la fois"
+        },
+        "anularTitulo": "{count, plural, one {Annuler {n} facture} other {Annuler {n} factures}}",
+        "anularDescripcion": "Les factures sont annulées avec le même motif. Action irréversible.",
+        "anularConfirmar": "{count, plural, one {Annuler {n} facture} other {Annuler {n} factures}}",
+        "ningunaAnulable": "Aucune des factures choisies ne peut être annulée directement.",
+        "excluidasTitulo": "{count, plural, one {{n} facture n'est pas annulée} other {{n} factures ne sont pas annulées}}",
+        "anuladas": "{count, plural, one {{n} facture annulée} other {{n} factures annulées}}",
+        "anularFallidas": "{count, plural, one {{n} facture n'a pas pu être annulée} other {{n} factures n'ont pas pu être annulées}} : {detalle}"
+      }
     },
     "enviar": {
       "titulo": "Envoyer la facture {numero}",

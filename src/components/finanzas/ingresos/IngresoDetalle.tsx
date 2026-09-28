@@ -6,19 +6,19 @@ import { useRouter } from 'next/navigation';
 import {ArrowLeft,
   DollarSign,
   Calendar,
-  User,
   FileText,
   Wallet,
   Download,
   XCircle,
-  Edit,
   Copy} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/use-toast';
-import { formatDate } from '@/utils/Utils';
+import { ToastAction } from '@/components/ui/toast';
+import { useTranslations } from 'next-intl';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { movimientosService, UnifiedMovement } from '@/lib/services/movimientosService';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
@@ -32,25 +32,34 @@ export function IngresoDetalle({ id }: IngresoDetalleProps) {
   // monedaOrganizacion.ts), también en el documento exportado. Nunca pesos fijos.
   const { formatear: formatCurrency } = useMonedaOrganizacion();
   const router = useRouter();
+  const t = useTranslations('tesoreria');
+  // Fechas en la zona de la organización (no la del navegador).
+  const { formatDate } = useFormatDate();
   const [movement, setMovement] = useState<UnifiedMovement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadMovement = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await movimientosService.getMovementByUuid(id);
+      // El tipo va en la consulta: un egreso abierto aquí responde «no encontrado».
+      const data = await movimientosService.getMovementByUuid(id, 'income');
       setMovement(data);
     } catch (error) {
       console.error('Error loading movement:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo cargar el detalle del ingreso',
+        title: t('errorTitulo'),
+        description: t('errorCarga.ingreso'),
         variant: 'destructive',
+        action: (
+          <ToastAction altText={t('reintentar')} onClick={() => void loadMovement()}>
+            {t('reintentar')}
+          </ToastAction>
+        ),
       });
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     loadMovement();
@@ -62,14 +71,18 @@ export function IngresoDetalle({ id }: IngresoDetalleProps) {
 
     const reason = prompt('Motivo de la anulación:');
     try {
-      const result = await movimientosService.cancelMovement(movement.id, reason || undefined);
+      // Id + fuente: un movimiento de banco se anula por su vía y nunca toca la caja.
+      const result = await movimientosService.cancelMovement(
+        { id: movement.id, source: movement.source },
+        reason || undefined,
+      );
       if (result.success) {
         toast({ title: 'Éxito', description: 'Ingreso anulado correctamente' });
         router.push('/app/finanzas/ingresos');
       } else {
-        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        toast({ title: t('errorTitulo'), description: t(`errores.${result.codigo ?? 'desconocido'}`), variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
     }
   };
@@ -77,14 +90,15 @@ export function IngresoDetalle({ id }: IngresoDetalleProps) {
   const handleDuplicate = async () => {
     if (!movement) return;
     try {
-      const result = await movimientosService.duplicateMovement(movement.id, '');
-      if (result.success) {
+      const result = await movimientosService.duplicateMovement({ id: movement.id, source: movement.source }, '');
+      if (result.success && result.uuid) {
         toast({ title: 'Éxito', description: 'Ingreso duplicado correctamente' });
-        router.push(`/app/finanzas/ingresos/${result.id}`);
+        // La ruta de detalle espera el uuid, no el id numérico.
+        router.push(`/app/finanzas/ingresos/${result.uuid}`);
       } else {
-        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        toast({ title: t('errorTitulo'), description: t(`errores.${result.codigo ?? 'desconocido'}`), variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al duplicar', variant: 'destructive' });
     }
   };
@@ -214,7 +228,7 @@ Notas: ${movement.notes || 'N/A'}
                   <p className="text-sm text-gray-500 dark:text-gray-400">Origen</p>
                   <p className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
                     <Wallet className="h-4 w-4" />
-                    Caja
+                    {movement.source === 'cash' ? 'Caja' : 'Banco'}
                   </p>
                 </div>
               </div>

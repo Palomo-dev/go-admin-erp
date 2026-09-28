@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import {ArrowLeft,
   MinusCircle,
   Calendar,
-  User,
   FileText,
   Wallet,
   Download,
@@ -17,7 +16,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/use-toast';
-import { formatDate } from '@/utils/Utils';
+import { ToastAction } from '@/components/ui/toast';
+import { useTranslations } from 'next-intl';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { movimientosService, UnifiedMovement } from '@/lib/services/movimientosService';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
@@ -31,25 +32,34 @@ export function EgresoDetalle({ id }: EgresoDetalleProps) {
   // monedaOrganizacion.ts), también en el documento exportado. Nunca pesos fijos.
   const { formatear: formatCurrency } = useMonedaOrganizacion();
   const router = useRouter();
+  const t = useTranslations('tesoreria');
+  // Fechas en la zona de la organización (no la del navegador).
+  const { formatDate } = useFormatDate();
   const [movement, setMovement] = useState<UnifiedMovement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadMovement = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await movimientosService.getMovementByUuid(id);
+      // El tipo va en la consulta: un ingreso abierto aquí responde «no encontrado».
+      const data = await movimientosService.getMovementByUuid(id, 'expense');
       setMovement(data);
     } catch (error) {
       console.error('Error loading movement:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo cargar el detalle del egreso',
+        title: t('errorTitulo'),
+        description: t('errorCarga.egreso'),
         variant: 'destructive',
+        action: (
+          <ToastAction altText={t('reintentar')} onClick={() => void loadMovement()}>
+            {t('reintentar')}
+          </ToastAction>
+        ),
       });
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     loadMovement();
@@ -61,14 +71,18 @@ export function EgresoDetalle({ id }: EgresoDetalleProps) {
 
     const reason = prompt('Motivo de la anulación:');
     try {
-      const result = await movimientosService.cancelMovement(movement.id, reason || undefined);
+      // Id + fuente: un movimiento de banco se anula por su vía y nunca toca la caja.
+      const result = await movimientosService.cancelMovement(
+        { id: movement.id, source: movement.source },
+        reason || undefined,
+      );
       if (result.success) {
         toast({ title: 'Éxito', description: 'Egreso anulado correctamente' });
         router.push('/app/finanzas/egresos');
       } else {
-        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        toast({ title: t('errorTitulo'), description: t(`errores.${result.codigo ?? 'desconocido'}`), variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
     }
   };
@@ -76,14 +90,15 @@ export function EgresoDetalle({ id }: EgresoDetalleProps) {
   const handleDuplicate = async () => {
     if (!movement) return;
     try {
-      const result = await movimientosService.duplicateMovement(movement.id, '');
-      if (result.success) {
+      const result = await movimientosService.duplicateMovement({ id: movement.id, source: movement.source }, '');
+      if (result.success && result.uuid) {
         toast({ title: 'Éxito', description: 'Egreso duplicado correctamente' });
-        router.push(`/app/finanzas/egresos/${result.id}`);
+        // La ruta de detalle espera el uuid, no el id numérico.
+        router.push(`/app/finanzas/egresos/${result.uuid}`);
       } else {
-        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        toast({ title: t('errorTitulo'), description: t(`errores.${result.codigo ?? 'desconocido'}`), variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al duplicar', variant: 'destructive' });
     }
   };

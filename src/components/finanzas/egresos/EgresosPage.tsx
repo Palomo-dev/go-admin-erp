@@ -34,9 +34,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
+import { useTranslations } from 'next-intl';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { movimientosService, UnifiedMovement } from '@/lib/services/movimientosService';
+import { movimientosService, UnifiedMovement, type MovementRef } from '@/lib/services/movimientosService';
 import { NuevoEgresoDialog } from './NuevoEgresoDialog';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { CopyableId } from '@/components/common/CopyableId';
@@ -49,6 +51,7 @@ export function EgresosPage() {
   // Los movimientos no traen moneda propia: importes y totales en la moneda base.
   const { formatear: formatCurrency } = useMonedaOrganizacion();
   const { formatDate, getToday } = useFormatDate();
+  const t = useTranslations('tesoreria');
   const [movements, setMovements] = useState<UnifiedMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -70,46 +73,52 @@ export function EgresosPage() {
       setMovements(movementsData);
       setStats(statsData);
     } catch (error) {
+      // El servicio ya no devuelve [] cuando falla: la lista no finge estar vacía.
       console.error('Error loading data:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los egresos',
+        title: t('errorTitulo'),
+        description: t('errorCarga.egresos'),
         variant: 'destructive',
+        action: (
+          <ToastAction altText={t('reintentar')} onClick={() => void loadData()}>
+            {t('reintentar')}
+          </ToastAction>
+        ),
       });
     } finally {
       setIsLoading(false);
     }
-  }, [branchFilter]);
+  }, [branchFilter, t]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const handleDuplicate = async (id: number) => {
+  const handleDuplicate = async (ref: MovementRef) => {
     try {
-      const result = await movimientosService.duplicateMovement(id, '');
+      const result = await movimientosService.duplicateMovement(ref, '');
       if (result.success) {
         toast({ title: 'Éxito', description: 'Egreso duplicado correctamente' });
         loadData();
       } else {
-        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        toast({ title: t('errorTitulo'), description: t(`errores.${result.codigo ?? 'desconocido'}`), variant: 'destructive' });
       }
     } catch {
       toast({ title: 'Error', description: 'Error al duplicar', variant: 'destructive' });
     }
   };
 
-  const handleCancel = async (id: number) => {
+  const handleCancel = async (ref: MovementRef) => {
     if (!confirm('¿Está seguro de anular este egreso?')) return;
     
     const reason = prompt('Motivo de la anulación:');
     try {
-      const result = await movimientosService.cancelMovement(id, reason || undefined);
+      const result = await movimientosService.cancelMovement(ref, reason || undefined);
       if (result.success) {
         toast({ title: 'Éxito', description: 'Egreso anulado correctamente' });
         loadData();
       } else {
-        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        toast({ title: t('errorTitulo'), description: t(`errores.${result.codigo ?? 'desconocido'}`), variant: 'destructive' });
       }
     } catch {
       toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
@@ -335,7 +344,7 @@ export function EgresosPage() {
                                 Editar
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => handleDuplicate(movement.id)}
+                                onClick={() => handleDuplicate({ id: movement.id, source: movement.source })}
                                 className="cursor-pointer"
                               >
                                 <Copy className="h-4 w-4 mr-2" />
@@ -343,7 +352,7 @@ export function EgresosPage() {
                               </DropdownMenuItem>
                               <DropdownMenuSeparator className="dark:bg-gray-700" />
                               <DropdownMenuItem
-                                onClick={() => handleCancel(movement.id)}
+                                onClick={() => handleCancel({ id: movement.id, source: movement.source })}
                                 className="cursor-pointer text-red-600 dark:text-red-400"
                               >
                                 <XCircle className="h-4 w-4 mr-2" />

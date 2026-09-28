@@ -2912,7 +2912,8 @@
       "cerrar": "Fermer",
       "acciones": "Actions",
       "ver": "Voir",
-      "resumen": "Résumé"
+      "resumen": "Résumé",
+      "cargandoDe": "Chargement de {etiqueta}"
     },
     "cabecera": {
       "volver": "Retour",
@@ -3397,7 +3398,8 @@
         "vacio": "Saisissez le nom ou le n° fiscal du fournisseur.",
         "crear": "Créer le fournisseur « {texto} »",
         "saldo": "À payer {saldo}"
-      }
+      },
+      "quitarDe": "Retirer {etiqueta}"
     },
     "carrito": {
       "incluido": "Incluse",
@@ -10489,6 +10491,12 @@
       "factura": "Facture (net à payer)",
       "cuenta": "Dette fournisseur",
       "pago": "Paiement"
+    },
+    "errores": {
+      "noEncontrado": "Nous n’avons pas trouvé ce document.",
+      "sinPermiso": "Vous n’avez pas l’autorisation de consulter ce document.",
+      "papelNoDisponible": "Ce document ne peut pas être imprimé sur un rouleau de 80 mm.",
+      "pdfNoDisponible": "Impossible de générer le PDF pour le moment. Réessayez dans quelques minutes."
     }
   },
   "posVentas": {

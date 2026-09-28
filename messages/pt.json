@@ -2912,7 +2912,8 @@
       "cerrar": "Fechar",
       "acciones": "Ações",
       "ver": "Ver",
-      "resumen": "Resumo"
+      "resumen": "Resumo",
+      "cargandoDe": "Carregando {etiqueta}"
     },
     "cabecera": {
       "volver": "Voltar",
@@ -3397,7 +3398,8 @@
         "vacio": "Digite o nome ou o CNPJ do fornecedor.",
         "crear": "Criar fornecedor “{texto}”",
         "saldo": "A pagar {saldo}"
-      }
+      },
+      "quitarDe": "Remover {etiqueta}"
     },
     "carrito": {
       "incluido": "Incluído",
@@ -10489,6 +10491,12 @@
       "factura": "Fatura (líquido a pagar)",
       "cuenta": "Conta a pagar",
       "pago": "Pagamento"
+    },
+    "errores": {
+      "noEncontrado": "Não encontramos este documento.",
+      "sinPermiso": "Você não tem permissão para ver este documento.",
+      "papelNoDisponible": "Este documento não pode ser impresso em bobina de 80 mm.",
+      "pdfNoDisponible": "Não é possível gerar o PDF agora. Tente novamente em alguns minutos."
     }
   },
   "posVentas": {

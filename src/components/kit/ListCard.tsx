@@ -144,6 +144,7 @@ function usePulsacionLarga(onMantenerPulsado?: () => void) {
 
 /** Inicio=imagen: 48×48 con marcador si no hay foto o si la foto falla. */
 function ImagenInicio({ src, alt = '', onError }: NonNullable<ListCardProps['imagen']>) {
+  const t = useKitT();
   const [fallo, setFallo] = useState(false);
   useEffect(() => setFallo(false), [src]);
   return (
@@ -163,7 +164,7 @@ function ImagenInicio({ src, alt = '', onError }: NonNullable<ListCardProps['ima
       ) : (
         <>
           <ImageIcon aria-hidden="true" className="size-[18px]" strokeWidth={1.5} />
-          <span className="sr-only">Sin imagen</span>
+          <span className="sr-only">{t('producto.sinFoto')}</span>
         </>
       )}
     </div>

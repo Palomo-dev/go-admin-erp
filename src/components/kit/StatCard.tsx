@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ArrowDown, ArrowUp, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useTranslations } from 'next-intl';
 
 /**
  * Tarjeta de cifra (Figma `StatCard` 109:4684): etiqueta Caption 12 en
@@ -47,6 +48,7 @@ export function StatCard({
   onClick,
   className,
 }: StatCardProps) {
+  const t = useTranslations('kit.comun');
   const Flecha = tendencia === 'sube' ? ArrowUp : tendencia === 'baja' ? ArrowDown : null;
   const interactiva = !!href || !!onClick;
   const clases = cn(
@@ -64,7 +66,7 @@ export function StatCard({
       {cargando ? (
         <>
           <Skeleton className="h-9 w-24" />
-          <span className="sr-only">Cargando {etiqueta}</span>
+          <span className="sr-only">{t('cargandoDe', { etiqueta })}</span>
         </>
       ) : (
         <span className="truncate text-[28px] font-semibold leading-9 tracking-[-0.4px] text-fg tabular-nums">{valor}</span>

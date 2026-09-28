@@ -3017,7 +3017,8 @@
       "cerrar": "Cerrar",
       "acciones": "Acciones",
       "ver": "Ver",
-      "resumen": "Resumen"
+      "resumen": "Resumen",
+      "cargandoDe": "Cargando {etiqueta}"
     },
     "cabecera": {
       "volver": "Volver",
@@ -3502,7 +3503,8 @@
         "vacio": "Escribe el nombre o el NIT del proveedor.",
         "crear": "Crear proveedor «{texto}»",
         "saldo": "Por pagar {saldo}"
-      }
+      },
+      "quitarDe": "Quitar {etiqueta}"
     },
     "carrito": {
       "incluido": "Incluido",
@@ -10594,6 +10596,12 @@
       "factura": "Factura (neto a pagar)",
       "cuenta": "Cuenta por pagar",
       "pago": "Pago"
+    },
+    "errores": {
+      "noEncontrado": "No encontramos este documento.",
+      "sinPermiso": "No tienes permiso para ver este documento.",
+      "papelNoDisponible": "Este documento no se puede imprimir en rollo de 80 mm.",
+      "pdfNoDisponible": "En este momento no podemos generar el PDF. Inténtalo de nuevo en unos minutos."
     }
   },
   "posVentas": {

@@ -5,6 +5,7 @@ import { Check, ChevronsUpDown, Plus, Search, X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { filtrarOpcionesMulti, alternarValorMulti } from './multiSelectLogica';
+import { useKitT } from './useIdiomaKit';
 
 /**
  * Selección múltiple con chips (Figma `MultiSelect` / `TaxMultiSelect`,
@@ -49,17 +50,23 @@ export function MultiSelect({
   opciones,
   valores,
   onValoresChange,
-  placeholder = 'Seleccionar…',
-  placeholderBusqueda = 'Buscar…',
-  textoVacio = 'Sin resultados',
+  placeholder: placeholderProp,
+  placeholderBusqueda: placeholderBusquedaProp,
+  textoVacio: textoVacioProp,
   onCrear,
-  textoCrear = (t) => `Crear “${t}”`,
-  etiquetaQuitar = (e) => `Quitar ${e}`,
+  textoCrear: textoCrearProp,
+  etiquetaQuitar: etiquetaQuitarProp,
   deshabilitado,
   id,
   className,
   ...aria
 }: MultiSelectProps) {
+  const t = useKitT();
+  const placeholder = placeholderProp ?? t('picker.placeholder');
+  const placeholderBusqueda = placeholderBusquedaProp ?? t('picker.buscar');
+  const textoVacio = textoVacioProp ?? t('picker.sinResultados');
+  const textoCrear = textoCrearProp ?? ((texto: string) => t('picker.crear', { texto }));
+  const etiquetaQuitar = etiquetaQuitarProp ?? ((etiqueta: string) => t('picker.quitarDe', { etiqueta }));
   const [abierto, setAbierto] = React.useState(false);
   const [busqueda, setBusqueda] = React.useState('');
   const [activo, setActivo] = React.useState(0);

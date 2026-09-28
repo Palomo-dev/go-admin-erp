@@ -32,6 +32,8 @@ import { routeErrorResponse } from '@/lib/security/orgGuards';
 import { nombreArchivoSeguro } from '@/lib/documents/escape';
 import { armarDocumento } from '@/lib/documents/server/motor';
 import { ErrorPdfNoDisponible, generarPdf } from '@/lib/documents/server/pdf';
+import { cargarTextos } from '@/lib/documents/textos';
+import { OrgContextError } from '@/lib/utils/orgContextError';
 import {
   esFormatoDocumento,
   esIdiomaDocumento,
@@ -53,6 +55,29 @@ function json(status: number, cuerpo: Record<string, unknown>): Response {
   });
 }
 
+/**
+ * Errores que el usuario puede ver (la pantalla de caja muestra el mensaje):
+ * se responden en su idioma desde `documentos.errores`. El código no cambia.
+ */
+const CLAVE_ERROR: Record<string, string> = {
+  NOT_FOUND: 'noEncontrado',
+  PERMISSION_REQUIRED: 'sinPermiso',
+  PAPEL_NO_DISPONIBLE: 'papelNoDisponible',
+  PDF_NO_DISPONIBLE: 'pdfNoDisponible',
+};
+
+async function mensajeError(idioma: IdiomaDocumento, codigo: string, respaldo: string): Promise<string> {
+  const clave = CLAVE_ERROR[codigo];
+  if (!clave) return respaldo;
+  try {
+    const t = await cargarTextos(idioma);
+    const texto = t(`errores.${clave}`);
+    return texto === `errores.${clave}` ? respaldo : texto;
+  } catch {
+    return respaldo;
+  }
+}
+
 async function idiomaDelUsuario(pedido: string | null, ctx: ServerOrgContext): Promise<IdiomaDocumento> {
   if (esIdiomaDocumento(pedido)) return pedido;
   try {
@@ -66,6 +91,7 @@ async function idiomaDelUsuario(pedido: string | null, ctx: ServerOrgContext): P
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ tipo: string; id: string }> }): Promise<Response> {
+  let idioma: IdiomaDocumento | null = null;
   try {
     const ctx = await getServerOrgContext(request);
     readOrgBody(ctx, {}, { request, route: RUTA });
@@ -78,7 +104,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ tipo
     const papel = url.searchParams.get('papel') ?? 'carta';
     if (!esFormatoDocumento(formato)) return json(400, { error: 'Formato no soportado', code: 'FORMATO_INVALIDO' });
     if (!esPapelDocumento(papel)) return json(400, { error: 'Papel no soportado', code: 'PAPEL_INVALIDO' });
-    const idioma = await idiomaDelUsuario(url.searchParams.get('idioma'), ctx);
+    idioma = await idiomaDelUsuario(url.searchParams.get('idioma'), ctx);
     const imprimir = formato === 'html' && url.searchParams.get('imprimir') === '1';
     const nonce = randomBytes(16).toString('base64');
 
@@ -121,7 +147,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ tipo
   } catch (err) {
     if (err instanceof ErrorPdfNoDisponible) {
       console.error('[documentos] PDF no disponible', { motivo: err.message });
-      return json(503, { error: 'La generación de PDF no está disponible en este momento', code: 'PDF_NO_DISPONIBLE' });
+      const error = await mensajeError(idioma ?? 'es', 'PDF_NO_DISPONIBLE', 'La generación de PDF no está disponible en este momento');
+      return json(503, { error, code: 'PDF_NO_DISPONIBLE' });
+    }
+    if (idioma && err instanceof OrgContextError && CLAVE_ERROR[err.code]) {
+      return json(err.statusCode, { error: await mensajeError(idioma, err.code, err.message), code: err.code });
     }
     return routeErrorResponse('documentos', err);
   }

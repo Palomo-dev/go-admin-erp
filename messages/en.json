@@ -3017,7 +3017,8 @@
       "cerrar": "Close",
       "acciones": "Actions",
       "ver": "View",
-      "resumen": "Summary"
+      "resumen": "Summary",
+      "cargandoDe": "Loading {etiqueta}"
     },
     "cabecera": {
       "volver": "Back",
@@ -3502,7 +3503,8 @@
         "vacio": "Type the supplier's name or tax ID.",
         "crear": "Create supplier “{texto}”",
         "saldo": "Payable {saldo}"
-      }
+      },
+      "quitarDe": "Remove {etiqueta}"
     },
     "carrito": {
       "incluido": "Included",
@@ -10594,6 +10596,12 @@
       "factura": "Invoice (net payable)",
       "cuenta": "Account payable",
       "pago": "Payment"
+    },
+    "errores": {
+      "noEncontrado": "We couldn’t find this document.",
+      "sinPermiso": "You don’t have permission to view this document.",
+      "papelNoDisponible": "This document can’t be printed on 80 mm roll paper.",
+      "pdfNoDisponible": "We can’t generate the PDF right now. Please try again in a few minutes."
     }
   },
   "posVentas": {

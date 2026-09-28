@@ -93,6 +93,7 @@ export default function POSPage() {
   const tCobro = useTranslations('posCobroServidor');
   const tCabecera = useTranslations('posVenta.cabecera');
   const tAtajos = useTranslations('posVenta.atajos');
+  const tPagina = useTranslations('posVenta.pagina');
   // Quién puede cerrar la caja lo decide el servidor (`usePermisosCaja`),
   // nunca el nombre del rol (regla dura 6).
   const canClose = cashSession ? puedeCerrarCaja(cashSession, permisosCaja.userId ?? currentUserId, permisosCaja.cerrarCajasAjenas) : false;
@@ -340,14 +341,14 @@ export default function POSPage() {
     crearCarrito({
       servicio: POSService,
       branchId: selectedBranchId,
-      avisarSinSucursal: () => toast.error('Seleccione una sucursal antes de crear un carrito'),
+      avisarSinSucursal: () => toast.error(tPagina('seleccioneSucursal')),
       agregar: (newCart) => {
         setCarts(prevCarts => [...prevCarts, newCart]);
         setActiveCartId(newCart.id);
         setSelectedCustomer(undefined);
         setLastUpdate(new Date());
       },
-      avisarError: () => alert('Error al crear nuevo carrito'),
+      avisarError: () => toast.error(tPagina('errorCrearCarrito')),
     });
 
   const removeCart = (cartId: string) =>
@@ -362,21 +363,22 @@ export default function POSPage() {
       crearCarrito: createNewCart,
     });
 
-  const handleProductSelect = async (product: Product, modifiers?: CartItemModifier[]) => {
+  // `cantidad` llega con la cantidad rápida «3*» del buscador (una unidad si no).
+  const handleProductSelect = async (product: Product, modifiers?: CartItemModifier[], cantidad = 1) => {
     if (!activeCartId) {
-      alert('No hay carrito activo');
+      toast.error(tPagina('sinCarritoActivo'));
       return;
     }
 
     try {
-      const updatedCart = await POSService.addItemToCart(activeCartId, product, 1, modifiers);
+      const updatedCart = await POSService.addItemToCart(activeCartId, product, cantidad, modifiers);
       updateCartInState(updatedCart);
     } catch (error) {
       console.error('Error adding product to cart:', error);
       // Sin precio vigente el producto ya no entra gratis: se dice por qué.
-      alert(error instanceof ProductoSinPrecioError
+      toast.error(error instanceof ProductoSinPrecioError
         ? tCobro(error.causa === 'sin_precio' ? 'productoSinPrecio' : 'precioNoConsultado', { producto: product.name ?? String(product.id) })
-        : 'Error al agregar producto al carrito');
+        : tPagina('errorAgregar'));
     }
   };
 
@@ -390,7 +392,7 @@ export default function POSPage() {
         updateCartInState(updatedCart);
         setSelectedCustomer(customer);
       },
-      avisarError: () => alert('Error al asignar cliente al carrito'),
+      avisarError: () => toast.error(tPagina('errorAsignarCliente')),
     });
 
   const updateCartInState = (updatedCart: Cart) => {
@@ -427,7 +429,7 @@ export default function POSPage() {
 
   const handleHoldCart = (cart: Cart, reason?: string) => {
     updateCartInState(cart);
-    alert(`Carrito puesto en espera${reason ? ': ' + reason : ''}`);
+    toast.success(reason ? tPagina('enEsperaConMotivo', { motivo: reason }) : tPagina('enEspera'));
   };
 
   // L58: la lógica de «Enviar a cocina» vive en src/lib/pos/venta/enviarCocina.ts.
@@ -537,9 +539,10 @@ export default function POSPage() {
         {(() => {
           const productsPane = (
             <ProductSearch
-              onProductSelect={(product, modifiers) => {
-                handleProductSelect(product, modifiers);
+              onProductSelect={(product, modifiers, cantidad) => {
+                handleProductSelect(product, modifiers, cantidad);
               }}
+              bloqueado={showCheckout}
             />
           );
 

@@ -55,6 +55,17 @@ export interface ProductCardProps {
   /** Imagen ya resuelta (`CachedProductImage`). Usa `MarcadorSinFoto` como respaldo. */
   imagen?: React.ReactNode;
   onElegir: () => void;
+  /**
+   * Se toca una tarjeta que no se puede elegir (agotado, sin precio): la
+   * pantalla avisa por qué (el POS muestra su toast «Producto agotado»). Sin
+   * él, el toque no hace nada.
+   */
+  onNoDisponible?: (motivo: 'agotado' | 'sinPrecio') => void;
+  /**
+   * Sin precio también se elige y no se pinta «Sin precio»: el precio lo pone
+   * la variante o el diálogo (padre con variantes o modificadores en el POS).
+   */
+  elegibleSinPrecio?: boolean;
   /** Marca o desmarca favorito. Sin él, la estrella solo se ve si ya es favorito. */
   onFavorito?: () => void;
   /** Mientras se guarda el favorito: estrella deshabilitada. */
@@ -121,6 +132,8 @@ export const ProductCard = React.forwardRef<HTMLButtonElement, ProductCardProps>
     tamano = 'md',
     imagen,
     onElegir,
+    onNoDisponible,
+    elegibleSinPrecio,
     onFavorito,
     favoritoCargando,
     onReceta,
@@ -142,7 +155,9 @@ export const ProductCard = React.forwardRef<HTMLButtonElement, ProductCardProps>
   const idPrecio = `${base}-precio`;
   const idMeta = `${base}-meta`;
 
-  const { elegible, motivo } = eleccion(producto);
+  const eleccionBase = eleccion(producto);
+  const precioLibre = !!elegibleSinPrecio && eleccionBase.motivo === 'sinPrecio';
+  const { elegible, motivo } = precioLibre ? { elegible: true, motivo: null } : eleccionBase;
   const insignias = insigniasTarjeta(producto, { variante, tamano, conFavorito: !!onFavorito });
   const tiene = (id: string) => insignias.some((i) => i.id === id);
   const pct = porcentajeDescuento(producto.precio, producto.precioComparacion);
@@ -157,14 +172,17 @@ export const ProductCard = React.forwardRef<HTMLButtonElement, ProductCardProps>
 
   const elegir = () => {
     if (elegible) onElegir();
+    else if (motivo) onNoDisponible?.(motivo);
   };
   const alternarFavorito = (e: React.MouseEvent) => {
     e.stopPropagation();
     onFavorito?.();
   };
 
-  const precio =
-    producto.precio === null || !Number.isFinite(Number(producto.precio)) ? (
+  const precio = precioLibre ? (
+    // Sin precio propio pero elegible: como hoy en el POS, no se pinta el precio.
+    <span id={idPrecio} className="sr-only" />
+  ) : producto.precio === null || !Number.isFinite(Number(producto.precio)) ? (
       <span id={idPrecio} className="text-sm font-medium text-fg-muted">
         {t('producto.sinPrecio')}
       </span>

@@ -1,33 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Product, Category, PaginatedResponse } from './types';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
+import { Product, Category } from './types';
 import { POSService } from '@/lib/services/posService';
-import {
-  Search,
-  Package,
-  ShoppingCart,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Image as ImageIcon,
-  Grid3X3,
-  ChevronUp,
-  ChevronDown,
-  Scan,
-  Star,
-  Flame,
-  ChefHat
-} from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from '@/components/ui/use-toast';
-import { cn } from '@/utils/Utils';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { CachedProductImage } from './CachedProductImage';
 import { BarcodeScanner } from '@/components/ui/barcode-scanner';
 import { VariantSelectorDialog, type SelectedModifier } from './VariantSelectorDialog';
 import {
@@ -35,48 +13,62 @@ import {
   conFavorito,
   decidirAccionProducto,
   enriquecerVariante,
-  insigniasDe,
-  programarBusqueda,
   resolverCodigo,
   type PosGridProduct,
   type SelectedVariant,
 } from '@/lib/pos/venta/catalogo';
-import { CategoryFilterBar } from './CategoryFilterBar';
-import { ConfiguracionService, PosCategoriesDisplayConfig, defaultCategoriesDisplayConfig } from './configuracion/configuracionService';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  categoriasParaBarra,
+  guardarVista,
+  interpretarBuscador,
+  leerVista,
+  modoBarraCategorias,
+  TAMANO_PAGINA,
+  type VistaCatalogo,
+} from '@/lib/pos/venta/catalogoGrilla';
+import { ConfiguracionService, PosCategoriesDisplayConfig, defaultCategoriesDisplayConfig } from './configuracion/configuracionService';
 import { recipeService, type ProductRecipe } from '@/lib/services/recipeService';
 import { useBranch } from '@/lib/context/BranchContext';
-import { LocalCatalogNotice } from './LocalCatalogNotice';
-import { isCatalogNotReplicatedError } from '@/lib/offline/posOfflineReads';
 import { useHardwareBarcodeScanner } from '@/hooks/useHardwareBarcodeScanner';
+import { GrillaProductos } from './venta/GrillaProductos';
+import { RecetaDialogo } from './venta/catalogo/RecetaDialogo';
+import { useCatalogoGrilla, type ErrorCatalogo } from './venta/catalogo/useCatalogoGrilla';
 
 interface ProductSearchProps {
-  onProductSelect: (product: Product, modifiers?: SelectedModifier[]) => void;
+  /**
+   * Producto elegido (tarjeta, lista, lector o variante del diálogo). `cantidad`
+   * llega con la cantidad rápida «3*» (aditivo: quien no la use recibe una
+   * unidad como siempre).
+   */
+  onProductSelect: (product: Product, modifiers?: SelectedModifier[], cantidad?: number) => void;
   selectedProducts?: Product[];
+  /**
+   * La pantalla tiene abierto algo que no es un diálogo Radix (el cobro de
+   * hoy): el escaneo no se agrega y se avisa (D10). Con el cobro sobre
+   * `PanelAdaptable` el lector ya lo descarta solo (`onDescartado`).
+   */
+  bloqueado?: boolean;
 }
 
 // `PosGridProduct`, `SelectedVariant` y las decisiones del catálogo (tarjeta,
 // variante, escáner, insignias, espera de la búsqueda, favorito) viven en
-// src/lib/pos/venta/catalogo.ts (L14-L23 de docs/implementacion/POS-PLAN.md).
+// src/lib/pos/venta/catalogo.ts (L14-L23 de docs/implementacion/POS-PLAN.md);
+// la grilla (vista, «3*», foco, páginas) en src/lib/pos/venta/catalogoGrilla.ts.
+// Aquí: estado y efectos; el dibujo es `venta/GrillaProductos`.
 
-export function ProductSearch({ onProductSelect }: ProductSearchProps) {
+function almacenLocal(): Storage | null {
+  try {
+    return typeof window === 'undefined' ? null : window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSearchProps) {
+  const t = useTranslations('posVenta.catalogo');
   const { branchFilter } = useBranch();
-  const { formatear } = useMonedaOrganizacion();
-  const [productsData, setProductsData] = useState<PaginatedResponse<Product>>({
-    data: [],
-    total: 0,
-    page: 1,
-    limit: 16,
-    totalPages: 0
-  });
-  const [loading, setLoading] = useState(true);
-  
+  const moneda = useMonedaOrganizacion();
+
   // Estado para selector de variantes
   const [showVariantDialog, setShowVariantDialog] = useState(false);
   const [selectedParentProduct, setSelectedParentProduct] = useState<Product | null>(null);
@@ -84,60 +76,42 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesDisplay, setCategoriesDisplay] = useState<PosCategoriesDisplayConfig>(defaultCategoriesDisplayConfig);
-  const [error, setError] = useState<string | null>(null);
-  const [gridSize, setGridSize] = useState<'small' | 'large'>('large');
+  // Vista recordada por dispositivo (`pos_vista_productos`); se lee al montar para no romper la hidratación.
+  const [vista, setVista] = useState<VistaCatalogo>('tarjetas');
   const [showScanner, setShowScanner] = useState(false);
   // Productos cuyo toggle de favorito está en curso (para deshabilitar el botón)
   const [togglingFavorites, setTogglingFavorites] = useState<Set<number>>(new Set());
   // Diálogo de detalle de receta vinculada a un producto
   const [recipeView, setRecipeView] = useState<ProductRecipe | null>(null);
   const [recipeViewLoading, setRecipeViewLoading] = useState(false);
-  
-  // Límites dinámicos por tipo de grid
-  const smallGridLimits = [12, 18, 24];
-  const largeGridLimits = [8, 12, 16];
-  const [smallGridLimitIndex, setSmallGridLimitIndex] = useState(1); // Inicia con 12
-  const [largeGridLimitIndex, setLargeGridLimitIndex] = useState(0); // Inicia con 12
-  
-  // Función para obtener el límite actual según el gridSize
-  const getCurrentLimit = () => {
-    if (gridSize === 'small') {
-      return smallGridLimits[smallGridLimitIndex];
-    } else {
-      return largeGridLimits[largeGridLimitIndex];
-    }
+
+  useEffect(() => {
+    setVista(leerVista(almacenLocal()));
+  }, []);
+  const cambiarVista = (v: VistaCatalogo) => {
+    setVista(v);
+    guardarVista(almacenLocal(), v);
   };
 
-  const loadProducts = useCallback(async (page: number = 1) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const currentLimit = getCurrentLimit();
-      const result = await POSService.getProductsPaginated({
-        page,
-        limit: currentLimit,
-        search: searchTerm,
-        category_id: selectedCategory,
-        status: 'active',
-        branchFilter
-      });
-      
-      setProductsData(result);
-    } catch (error) {
-      console.error('Error loading products:', error);
+  // «3*coca»: 3 unidades de lo que se elija; se busca «coca».
+  const { cantidad: cantidadRapida, termino } = interpretarBuscador(searchTerm);
+
+  const avisarErrorCarga = useCallback(
+    (e: ErrorCatalogo) => {
       // Desktop sin red y sin catálogo replicado: el mensaje útil, no el genérico.
-      const sinCatalogo = isCatalogNotReplicatedError(error);
-      setError(sinCatalogo ? (error as Error).message : 'Error al cargar productos');
-      toast({
-        title: sinCatalogo ? 'Sin catálogo local' : 'Error',
-        description: sinCatalogo ? (error as Error).message : 'No se pudieron cargar los productos',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [searchTerm, selectedCategory, gridSize, smallGridLimitIndex, largeGridLimitIndex, branchFilter]);
+      if (e.sinCatalogo) toast.error(t('sinCatalogoTitulo'), { description: (e.error as Error)?.message });
+      else toast.error(t('errorTitulo'), { description: t('errorDescripcion') });
+    },
+    [t],
+  );
+
+  const catalogo = useCatalogoGrilla({
+    busqueda: termino,
+    categoria: selectedCategory,
+    branchFilter,
+    limite: TAMANO_PAGINA[vista],
+    onError: avisarErrorCarga,
+  });
 
   const loadCategories = useCallback(async () => {
     try {
@@ -180,44 +154,33 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
       .catch((error) => console.error('Error loading categories display config:', error));
   }, [loadCategories]);
 
-  // L14: vuelve a la página 1 y consulta a los 300 ms (src/lib/pos/venta/catalogo.ts).
-  useEffect(() => programarBusqueda({
-    paginaActual: productsData.page,
-    volverAPaginaUno: () => setProductsData(prev => ({ ...prev, page: 1 })),
-    cargarPaginaUno: () => loadProducts(1),
-  }), [searchTerm, selectedCategory, branchFilter]);
-
-  useEffect(() => {
-    loadProducts();
-  }, []);
-
-  // Recargar productos cuando cambien los límites de paginación
-  useEffect(() => {
-    setProductsData(prev => ({ ...prev, page: 1 }));
-    loadProducts(1);
-  }, [gridSize, smallGridLimitIndex, largeGridLimitIndex]);
-
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= productsData.totalPages) {
-      setProductsData(prev => ({ ...prev, page }));
-      loadProducts(page);
-    }
-  };
+  const categoriasBarra = useMemo(
+    () => categoriasParaBarra(categories, categoriesDisplay.orderBy),
+    [categories, categoriesDisplay.orderBy],
+  );
 
   const clearFilters = () => {
     setSearchTerm('');
     setSelectedCategory(null);
   };
 
-  // Función para manejar el escaneo de código de barras
+  // Entrega al carrito con la cantidad rápida (si la hay) y la consume.
+  const entregar = (product: Product, modifiers?: SelectedModifier[]) => {
+    if (cantidadRapida && cantidadRapida > 1) {
+      onProductSelect(product, modifiers, cantidadRapida);
+    } else if (modifiers !== undefined) {
+      onProductSelect(product, modifiers);
+    } else {
+      onProductSelect(product);
+    }
+    if (cantidadRapida !== null) setSearchTerm(termino);
+  };
+
+  // Función para manejar el escaneo de código de barras (cámara)
   const handleBarcodeScan = (barcode: string) => {
     setSearchTerm(barcode);
     setShowScanner(false);
-    toast({
-      title: 'Código escaneado',
-      description: `Buscando producto con código: ${barcode}`,
-      duration: 2000
-    });
+    toast.info(t('codigoEscaneado'), { description: t('buscandoCodigo', { codigo: barcode }), duration: 2000 });
   };
 
   // Función para cerrar el scanner
@@ -230,11 +193,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     const accion = decidirAccionProducto(product);
     // Si el producto está agotado, no permitir agregarlo
     if (accion === 'agotado') {
-      toast({
-        title: 'Producto agotado',
-        description: `${product.name} no tiene stock disponible.`,
-        variant: 'destructive',
-      });
+      toast.error(t('agotadoTitulo'), { description: t('agotadoDescripcion', { producto: product.name }) });
       return;
     }
     // Si el producto tiene variantes o modificadores configurados, abrir el selector
@@ -243,8 +202,14 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
       setShowVariantDialog(true);
     } else {
       // Producto simple sin modificadores, agregar directamente
-      onProductSelect(product);
+      entregar(product);
     }
+  };
+
+  // Toque sobre una tarjeta que no se puede elegir: se dice por qué.
+  const handleNoDisponible = (product: PosGridProduct, motivo: 'agotado' | 'sinPrecio') => {
+    if (motivo === 'agotado') toast.error(t('agotadoTitulo'), { description: t('agotadoDescripcion', { producto: product.name }) });
+    else toast.error(t('sinPrecioTitulo'), { description: t('sinPrecioDescripcion', { producto: product.name }) });
   };
 
   // Manejar selección de variante (y sus modificadores) desde el diálogo
@@ -252,7 +217,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     // Hereda categoría y estación del padre y toma su nombre legible (L17).
     const enrichedVariant = enriquecerVariante(variant, selectedParentProduct as PosGridProduct | null);
     // La variante lleva la fila completa del producto (ver SelectedVariant).
-    onProductSelect(enrichedVariant as unknown as Product, modifiers);
+    entregar(enrichedVariant as unknown as Product, modifiers);
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
   };
@@ -266,6 +231,11 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
   // el de las variantes). Así la decisión —agregar, pedir variante o avisar
   // de agotado— es la misma que al tocar la tarjeta.
   const handleHardwareScan = useCallback(async (code: string) => {
+    // Con el cobro abierto el escaneo no va al carrito de fondo (D10).
+    if (bloqueado) {
+      toast.info(t('cierraElCobro'));
+      return;
+    }
     try {
       const [row, page] = await Promise.all([
         POSService.getProductByBarcode(code).catch(() => null),
@@ -281,21 +251,11 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
       // L18: la decisión vive en src/lib/pos/venta/catalogo.ts (resolverCodigo).
       const decision = resolverCodigo(row, page.data as PosGridProduct[]);
       if (decision.tipo === 'no_encontrado') {
-        toast({
-          title: 'Código no encontrado',
-          description: `Ningún producto activo tiene el código ${code}.`,
-          variant: 'destructive',
-          duration: 3000,
-        });
+        toast.error(t('codigoNoEncontrado'), { description: t('codigoNoEncontradoDescripcion', { codigo: code }), duration: 3000 });
         return;
       }
       if (decision.tipo === 'agotado') {
-        toast({
-          title: 'Producto agotado',
-          description: `${decision.producto.name} no tiene stock disponible.`,
-          variant: 'destructive',
-          duration: 3000,
-        });
+        toast.error(t('agotadoTitulo'), { description: t('agotadoDescripcion', { producto: decision.producto.name }), duration: 3000 });
         return;
       }
       if (decision.tipo === 'dialogo_padre') {
@@ -306,28 +266,27 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
         return;
       }
       if (decision.tipo === 'agregar_variante') {
-        onProductSelect(decision.producto);
+        entregar(decision.producto);
         return;
       }
       // Simple: al carrito. Padre con variantes o modificadores: el diálogo.
       handleProductClick(decision.producto);
     } catch (error) {
       console.error('Error al resolver el código escaneado:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo buscar el producto escaneado',
-        variant: 'destructive',
-      });
+      toast.error(t('errorEscaneo'));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branchFilter, onProductSelect]);
+  }, [branchFilter, onProductSelect, bloqueado, t]);
 
-  useHardwareBarcodeScanner({ onScan: handleHardwareScan });
+  useHardwareBarcodeScanner({
+    onScan: handleHardwareScan,
+    // Un diálogo abierto (cobro, variantes, caja) se tragó el escaneo: se avisa.
+    onDescartado: () => toast.info(t('cierraElDialogo')),
+  });
 
   // Ver la receta vinculada a un producto (abre un diálogo con ingredientes y rendimiento).
   // No agrega el producto al carrito: es solo consulta desde el grid del POS.
-  const handleViewRecipe = async (product: PosGridProduct, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleViewRecipe = async (product: PosGridProduct) => {
     if (!product.recipe_id) return;
     try {
       setRecipeViewLoading(true);
@@ -336,11 +295,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
       setRecipeView(recipe);
     } catch (error) {
       console.error('Error cargando receta:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo cargar la receta del producto',
-        variant: 'destructive',
-      });
+      toast.error(t('errorReceta'));
     } finally {
       setRecipeViewLoading(false);
     }
@@ -348,38 +303,29 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 
   // Toggle de favorito: marca/desmarca el producto como favorito de la organización.
   // Optimistic update en el estado local para feedback inmediato; si falla, revierte.
-  const handleToggleFavorite = async (productId: number, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleToggleFavorite = async (productId: number) => {
     if (togglingFavorites.has(productId)) return;
 
     // Optimistic: invertir is_favorite en el estado local; se sincroniza con
     // el valor real del servicio o se revierte si falla (L21, alternarFavorito).
-    const prevData = productsData.data;
-    const product = prevData.find((p: Product) => p.id === productId);
+    const product = catalogo.productos.find((p) => p.id === productId);
     const wasFavorite = product?.is_favorite ?? false;
     setTogglingFavorites(prev => new Set(prev).add(productId));
 
     try {
       const resultado = await alternarFavorito({
         antes: wasFavorite,
-        aplicar: (valor) => setProductsData(prev => ({ ...prev, data: conFavorito(prev.data, productId, valor) })),
+        aplicar: (valor) => catalogo.actualizarProductos((prev) => conFavorito(prev, productId, valor)),
         alternar: () => POSService.toggleProductFavorite(productId),
       });
       if (resultado.ok) {
         const isNowFavorite = resultado.valor;
-        toast({
-          title: isNowFavorite ? 'Agregado a favoritos' : 'Quitado de favoritos',
-          description: isNowFavorite
-            ? 'El producto aparecerá primero en el POS.'
-            : 'El producto ya no se priorizará.',
+        toast.success(isNowFavorite ? t('favoritoAgregado') : t('favoritoQuitado'), {
+          description: isNowFavorite ? t('favoritoAgregadoDescripcion') : t('favoritoQuitadoDescripcion'),
           duration: 1800,
         });
       } else {
-        toast({
-          title: 'Error',
-          description: 'No se pudo actualizar el favorito.',
-          variant: 'destructive',
-        });
+        toast.error(t('errorFavorito'));
       }
     } finally {
       setTogglingFavorites(prev => {
@@ -390,502 +336,33 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     }
   };
 
-  const hasFilters = searchTerm || selectedCategory;
+  const mensajeError = catalogo.error?.sinCatalogo ? (catalogo.error.error as Error)?.message ?? null : null;
 
   return (
-    <div className="h-full flex flex-col space-y-2 sm:space-y-3">
-      {/* Header con filtros mejorado - RESPONSIVE */}
-      <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-950 dark:to-gray-900 shrink-0">
-        <CardHeader className="p-3 sm:p-4 pb-3">
-          {/* Desktop: estado del catálogo local (solo renderiza en Go Admin Desktop) */}
-          <LocalCatalogNotice className="mb-2" />
-          {/* Buscador prominente - siempre primero en móvil */}
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-500 dark:text-blue-400 h-4 w-4 sm:h-5 sm:w-5" />
-            <Input
-              type="text"
-              placeholder="Buscar por nombre, SKU, código de barras, variantes o modificadores..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 sm:pl-11 pr-20 sm:pr-24 h-11 sm:h-10 bg-white dark:bg-gray-900 border-blue-200 dark:border-blue-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 text-sm sm:text-sm ring-1 ring-blue-100 dark:ring-blue-900/50 focus:ring-2 focus:ring-blue-400 rounded-xl"
-            />
-            <div className="absolute right-1.5 top-1/2 transform -translate-y-1/2 flex gap-0.5 sm:gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowScanner(true)}
-                className="h-8 w-8 sm:h-8 sm:w-8 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                title="Escanear código de barras"
-              >
-                <Scan className="h-4 w-4 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
-              </Button>
-              {searchTerm && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSearchTerm('')}
-                  className="h-8 w-8 sm:h-8 sm:w-8 p-0 hover:bg-red-100 dark:hover:bg-red-900/50"
-                  title="Limpiar búsqueda"
-                >
-                  <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                </Button>
-              )}
-            </div>
-          </div>
+    <>
+      <GrillaProductos
+        busqueda={searchTerm}
+        onBusqueda={setSearchTerm}
+        cantidadRapida={cantidadRapida}
+        vista={vista}
+        onVista={cambiarVista}
+        categorias={categoriasBarra}
+        categoria={selectedCategory}
+        onCategoria={setSelectedCategory}
+        modoCategorias={modoBarraCategorias(categoriesDisplay.mode)}
+        onFavoritaCategoria={handleToggleCategoryFavorite}
+        catalogo={catalogo}
+        moneda={moneda}
+        onElegir={handleProductClick}
+        onNoDisponible={handleNoDisponible}
+        onFavorito={(p) => void handleToggleFavorite(Number(p.id))}
+        favoritosEnCurso={togglingFavorites}
+        onReceta={(p) => void handleViewRecipe(p)}
+        onEscanerCamara={() => setShowScanner(true)}
+        onLimpiarFiltros={clearFilters}
+        mensajeError={mensajeError}
+      />
 
-          {/* Categorías + Vista + Controles - segunda fila */}
-          <div className="flex items-center gap-2 mt-2 sm:mt-3">
-            <CategoryFilterBar
-              categories={categories}
-              selectedCategory={selectedCategory?.toString() || 'all'}
-              onSelectCategory={(value) => setSelectedCategory(value === 'all' ? null : parseInt(value))}
-              mode={categoriesDisplay.mode}
-              orderBy={categoriesDisplay.orderBy}
-              onToggleFavorite={handleToggleCategoryFavorite}
-              className={categoriesDisplay.mode === 'searchselect' ? 'flex-1 sm:w-[180px] sm:flex-none h-9 sm:h-10 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 text-sm shrink-0' : 'flex-1'}
-            />
-
-            {hasFilters && (
-              <Button 
-                variant="outline" 
-                onClick={clearFilters} 
-                size="sm" 
-                className="shrink-0 h-9 sm:h-10 px-2 sm:px-3 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white border-gray-300 text-gray-700 hover:bg-gray-100"
-              >
-                <X className="h-3.5 w-3.5 sm:mr-1" />
-                <span className="hidden sm:inline">Limpiar</span>
-              </Button>
-            )}
-
-            {/* Control de límites - Oculto en móvil */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 ml-auto bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-lg shadow-sm">
-              <div className="flex items-center gap-1">
-                <span className="text-xs font-medium text-blue-600 dark:text-blue-400 hidden md:inline">Mostrar:</span>
-                <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white dark:bg-gray-800 text-xs sm:text-sm font-bold text-blue-700 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-600 min-w-[28px] sm:min-w-[32px] text-center">
-                  {getCurrentLimit()}
-                </span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-3.5 sm:h-4 w-4 sm:w-5 p-0 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-                  title="Aumentar productos por página"
-                  onClick={() => {
-                    if (gridSize === 'small') {
-                      setSmallGridLimitIndex((prev) => 
-                        prev < smallGridLimits.length - 1 ? prev + 1 : 0
-                      );
-                    } else {
-                      setLargeGridLimitIndex((prev) => 
-                        prev < largeGridLimits.length - 1 ? prev + 1 : 0
-                      );
-                    }
-                  }}
-                >
-                  <ChevronUp className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-blue-600 dark:text-blue-400" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-3.5 sm:h-4 w-4 sm:w-5 p-0 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-                  title="Disminuir productos por página"
-                  onClick={() => {
-                    if (gridSize === 'small') {
-                      setSmallGridLimitIndex((prev) => 
-                        prev > 0 ? prev - 1 : smallGridLimits.length - 1
-                      );
-                    } else {
-                      setLargeGridLimitIndex((prev) => 
-                        prev > 0 ? prev - 1 : largeGridLimits.length - 1
-                      );
-                    }
-                  }}
-                >
-                  <ChevronDown className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-blue-600 dark:text-blue-400" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Botones de vista */}
-            <Button
-              variant={gridSize === 'small' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setGridSize('small')}
-              className="h-8 w-8 sm:h-9 sm:w-9 p-0 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white border-gray-300 text-gray-600 hover:text-gray-900"
-              title="Vista compacta"
-            >
-              <Grid3X3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            </Button>
-            <Button
-              variant={gridSize === 'large' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setGridSize('large')}
-              className="h-8 w-8 sm:h-9 sm:w-9 p-0 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white border-gray-300 text-gray-600 hover:text-gray-900"
-              title="Vista amplia"
-            >
-              <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            </Button>
-
-            {/* Contador de productos - solo desktop */}
-            <span className="hidden md:inline text-xs text-gray-500 dark:text-gray-400 ml-1">
-              {productsData.total} prod.
-            </span>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Grid de productos mejorado - RESPONSIVE */}
-      <Card className="flex-1 lg:flex-none shadow-lg dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200 overflow-hidden flex flex-col">
-        <CardContent className="p-2 sm:p-3 md:p-4 flex-1 overflow-y-auto lg:overflow-visible lg:flex-none flex flex-col min-h-0">
-          {loading ? (
-            <div className={cn(
-              "grid gap-2 sm:gap-4 lg:content-start lg:overflow-y-auto",
-              gridSize === 'large' ? "grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
-            )}>
-              {[...Array(12)].map((_, i) => (
-                <Card key={i} className="overflow-hidden">
-                  <div className={cn(
-                    "bg-gray-100 dark:bg-gray-800 flex items-center justify-center",
-                    gridSize === 'large' ? "h-28 sm:h-36 md:h-48 lg:h-40" : "h-24 sm:h-32 lg:h-32"
-                  )}>
-                    <Skeleton className={cn(
-                      "rounded",
-                      gridSize === 'large' ? "w-24 h-24" : "w-16 h-16"
-                    )} />
-                  </div>
-                  <div className="p-3 space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                    <Skeleton className="h-8 w-full" />
-                  </div>
-                </Card>
-              ))}
-            </div>
-          ) : error ? (
-            <div className="text-center py-12">
-              <Package className="mx-auto h-16 w-16 text-red-400 mb-4" />
-              <h3 className="text-lg font-medium text-red-600 mb-2">Error al cargar productos</h3>
-              <p className="text-red-500">{error}</p>
-              <Button 
-                variant="outline" 
-                onClick={() => loadProducts()} 
-                className="mt-4"
-              >
-                Reintentar
-              </Button>
-            </div>
-          ) : productsData.data.length === 0 ? (
-            <div className="text-center py-16 lg:flex-1 lg:flex lg:flex-col lg:items-center lg:justify-center">
-              <Package className="mx-auto h-20 w-20 text-gray-400 mb-6" />
-              <h3 className="text-xl font-medium text-gray-600 dark:text-gray-400 mb-2">
-                No se encontraron productos
-              </h3>
-              <p className="text-gray-500 mb-4">
-                {hasFilters 
-                  ? 'Intenta ajustar los filtros de búsqueda'
-                  : 'No hay productos disponibles en este momento'
-                }
-              </p>
-              {hasFilters && (
-                <Button variant="outline" onClick={clearFilters}>
-                  <X className="h-4 w-4 mr-2" />
-                  Limpiar filtros
-                </Button>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className={cn(
-                "grid gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6 lg:mb-0 lg:content-start lg:overflow-y-auto",
-                gridSize === 'large' ? "grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
-              )}>
-                {productsData.data.map((product: PosGridProduct) => (
-                  <Card 
-                    key={product.id}
-                    className={cn(
-                      "group overflow-hidden hover:shadow-xl transition-all duration-200 border-gray-200 dark:border-gray-700 dark:bg-gray-800/50 bg-white",
-                      product.is_out_of_stock
-                        ? "opacity-60 cursor-not-allowed"
-                        : "cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
-                    )}
-                    onClick={() => handleProductClick(product)}
-                  >
-                    {/* Imagen del producto */}
-                    <div className={cn(
-                      "relative bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center overflow-hidden",
-                      gridSize === 'large' ? "h-28 sm:h-36 md:h-48 lg:h-40" : "h-24 sm:h-32 lg:h-32"
-                    )}>
-                      <CachedProductImage
-                        src={product.image}
-                        alt={product.name}
-                        mode="card"
-                        className="object-cover group-hover:scale-105 transition-transform duration-200"
-                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-                        fallback={
-                          <div className="flex flex-col items-center justify-center text-gray-400 dark:text-gray-600">
-                            <ImageIcon className={cn(
-                              "mb-2",
-                              gridSize === 'large' ? "h-12 w-12" : "h-8 w-8"
-                            )} />
-                            {gridSize === 'large' && (
-                              <span className="text-xs text-center px-2">
-                                Sin imagen
-                              </span>
-                            )}
-                          </div>
-                        }
-                      />
-                      
-                      {/* Badge de categoría */}
-                      {product.category && (
-                        <Badge 
-                          className="absolute top-2 left-2 bg-white/90 text-gray-700 hover:bg-white text-[0.6rem] sm:text-xs z-10"
-                          variant="secondary"
-                        >
-                          {product.category.name}
-                        </Badge>
-                      )}
-
-                      {/* Badge de agotado (insignias: src/lib/pos/venta/catalogo.ts, L23) */}
-                      {insigniasDe(product).agotado && (
-                        <Badge 
-                          className="absolute inset-0 m-auto w-fit h-fit bg-red-600 text-white hover:bg-red-700 text-xs sm:text-sm z-20 pointer-events-none"
-                        >
-                          Agotado
-                        </Badge>
-                      )}
-
-                      {/* Badge de descuento % sobre la imagen (esquina derecha) */}
-                      {/* `product.compare_price &&` se conserva: con 0 React pinta «0» y la UI no cambia en este paso. */}
-                      {product.compare_price && insigniasDe(product).descuento !== null && (
-                        <Badge className="absolute top-2 right-2 bg-red-500 text-white hover:bg-red-600 text-[0.65rem] sm:text-xs px-1.5 py-0.5 rounded-full z-10">
-                          -{insigniasDe(product).descuento}%
-                        </Badge>
-                      )}
-
-                      {/* Badge de variantes (debajo del descuento si existe) */}
-                      {insigniasDe(product).variantes !== null && (
-                        <Badge
-                          className={cn(
-                            "absolute right-2 bg-purple-600 text-white hover:bg-purple-700 text-[0.6rem] sm:text-xs z-10",
-                            insigniasDe(product).descuento !== null ? "top-8 sm:top-9" : "top-2"
-                          )}
-                        >
-                          {insigniasDe(product).variantes} var.
-                        </Badge>
-                      )}
-
-                      {/* Badge de personalización (producto simple con modificadores) */}
-                      {insigniasDe(product).personalizable && (
-                        <Badge
-                          className={cn(
-                            "absolute right-2 bg-amber-600 text-white hover:bg-amber-700 text-[0.6rem] sm:text-xs z-10",
-                            insigniasDe(product).descuento !== null ? "top-8 sm:top-9" : "top-2"
-                          )}
-                        >
-                          Personalizable
-                        </Badge>
-                      )}
-
-                      {/* Badge Top: más vendidos en los últimos 90 días (bottom-left) */}
-                      {insigniasDe(product).top !== null && (
-                        <Badge
-                          className="absolute bottom-2 left-2 bg-orange-500 text-white hover:bg-orange-600 text-[0.6rem] sm:text-xs px-1.5 py-0.5 rounded-full z-10 flex items-center gap-0.5"
-                          title={`${insigniasDe(product).top} unidades vendidas en los últimos 90 días`}
-                        >
-                          <Flame className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                          Top
-                        </Badge>
-                      )}
-
-                      {/* Botón estrella favorito (bottom-right) */}
-                      <button
-                        type="button"
-                        onClick={(e) => handleToggleFavorite(product.id, e)}
-                        disabled={togglingFavorites.has(product.id)}
-                        aria-label={product.is_favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-                        title={product.is_favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-                        className={cn(
-                          "absolute bottom-2 right-2 z-20 rounded-full p-1 sm:p-1.5 transition-all duration-150 shadow-md disabled:opacity-50 disabled:cursor-not-allowed",
-                          product.is_favorite
-                            ? "bg-amber-400 text-white hover:bg-amber-500"
-                            : "bg-white/90 text-gray-400 hover:text-amber-500 hover:bg-white"
-                        )}
-                      >
-                        <Star
-                          className={cn(
-                            "h-3.5 w-3.5 sm:h-4 sm:w-4",
-                            product.is_favorite && "fill-current"
-                          )}
-                        />
-                      </button>
-                    </div>
-                    
-                    {/* Información del producto - RESPONSIVE */}
-                    <div className="p-2 sm:p-2.5 md:p-3 space-y-1 sm:space-y-1.5">
-                      <h3 className={cn(
-                        "font-semibold text-gray-900 dark:text-gray-100 line-clamp-1 leading-tight",
-                        gridSize === 'large' ? "text-xs sm:text-sm" : "text-[0.7rem] sm:text-xs"
-                      )}>
-                        {product.name}
-                      </h3>
-                      
-                      {gridSize === 'large' && product.description && (
-                        <p className="text-[0.6rem] sm:text-[0.65rem] text-gray-500 dark:text-gray-400 line-clamp-1 leading-tight">
-                          {product.description}
-                        </p>
-                      )}
-
-                      {/* Precios: compare_price tachado al lado del precio actual */}
-                      {product.price && (
-                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                          {product.compare_price && insigniasDe(product).descuento !== null && (
-                            <span className={cn(
-                              "line-through text-gray-400 dark:text-gray-500",
-                              gridSize === 'large' ? "text-[0.65rem] sm:text-xs" : "text-[0.6rem]"
-                            )}>
-                              {formatear(Number(product.compare_price))}
-                            </span>
-                          )}
-                          <span className={cn(
-                            "font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-1.5 sm:px-2 py-0.5 rounded",
-                            gridSize === 'large' ? "text-xs sm:text-sm" : "text-[0.7rem] sm:text-xs"
-                          )}>
-                            {formatear(Number(product.price))}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between text-[0.6rem] sm:text-[0.65rem] text-gray-500 dark:text-gray-400 gap-1">
-                        <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded truncate">
-                          {product.sku}
-                        </span>
-                        {insigniasDe(product).receta && (
-                          <button
-                            type="button"
-                            onClick={(e) => handleViewRecipe(product, e)}
-                            aria-label="Ver receta de producción"
-                            title="Ver receta de producción"
-                            className="shrink-0 rounded-full p-1 text-orange-600 hover:bg-orange-100 dark:text-orange-400 dark:hover:bg-orange-900/40 transition-colors"
-                          >
-                            <ChefHat className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          </button>
-                        )}
-                      </div>
-                      
-                      <Button 
-                        size="sm" 
-                        className={cn(
-                          "w-full text-white h-7 sm:h-8 text-xs sm:text-sm",
-                          insigniasDe(product).variantes !== null
-                            ? "bg-purple-600 hover:bg-purple-700"
-                            : product.has_modifiers
-                            ? "bg-amber-600 hover:bg-amber-700"
-                            : "bg-blue-600 hover:bg-blue-700"
-                        )}
-                        disabled={product.is_out_of_stock}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleProductClick(product);
-                        }}
-                      >
-                        <ShoppingCart className={cn(
-                          "sm:mr-1",
-                          gridSize === 'large' ? "h-3 w-3 sm:h-4 sm:w-4" : "h-3 w-3"
-                        )} />
-                        <span className="hidden xs:inline">
-                          {insigniasDe(product).elegir ? 'Elegir' : 'Agregar'}
-                        </span>
-                        <span className="inline xs:hidden">+</span>
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-
-              {/* Paginación - RESPONSIVE */}
-              {productsData.totalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 border-t dark:border-gray-800 border-gray-200 pt-3 sm:pt-4 mt-4 lg:shrink-0">
-                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
-                    <span className="hidden sm:inline">
-                      Mostrando {((productsData.page - 1) * getCurrentLimit()) + 1} a{' '}
-                      {Math.min(productsData.page * getCurrentLimit(), productsData.total)} de{' '}
-                      {productsData.total} productos
-                    </span>
-                    <span className="inline sm:hidden">
-                      {((productsData.page - 1) * getCurrentLimit()) + 1}-
-                      {Math.min(productsData.page * getCurrentLimit(), productsData.total)} de {productsData.total}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(productsData.page - 1)}
-                      disabled={productsData.page === 1}
-                      className="h-8 px-2 sm:px-3 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 border-gray-300 text-gray-700 hover:bg-gray-100"
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      <span className="hidden sm:inline ml-1">Anterior</span>
-                    </Button>
-                    
-                    {/* Páginas numeradas - Responsivo */}
-                    <div className="flex gap-0.5 sm:gap-1">
-                      {Array.from({ length: Math.min(5, productsData.totalPages) }, (_, i) => {
-                        const page = i + 1;
-                        return (
-                          <Button
-                            key={page}
-                            variant={page === productsData.page ? 'default' : 'outline'}
-                            size="sm"
-                            className={cn(
-                              "w-7 h-7 sm:w-8 sm:h-8 p-0 text-xs sm:text-sm",
-                              page === productsData.page 
-                                ? "dark:bg-blue-600 dark:text-white bg-blue-600 text-white" 
-                                : "dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 border-gray-300 text-gray-700 hover:bg-gray-100"
-                            )}
-                            onClick={() => handlePageChange(page)}
-                          >
-                            {page}
-                          </Button>
-                        );
-                      })}
-                      
-                      {productsData.totalPages > 5 && (
-                        <>
-                          <span className="px-1 sm:px-2 text-xs sm:text-sm text-gray-500 dark:text-gray-500 flex items-center">...</span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-7 h-7 sm:w-8 sm:h-8 p-0 text-xs sm:text-sm dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 border-gray-300 text-gray-700 hover:bg-gray-100"
-                            onClick={() => handlePageChange(productsData.totalPages)}
-                          >
-                            {productsData.totalPages}
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(productsData.page + 1)}
-                      disabled={productsData.page === productsData.totalPages}
-                      className="h-8 px-2 sm:px-3 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 border-gray-300 text-gray-700 hover:bg-gray-100"
-                    >
-                      <span className="hidden sm:inline mr-1">Siguiente</span>
-                      <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-      
       {/* Scanner de código de barras */}
       {showScanner && (
         <BarcodeScanner
@@ -893,7 +370,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
           onClose={handleCloseScanner}
         />
       )}
-      
+
       {/* Selector de variantes */}
       {selectedParentProduct && (
         <VariantSelectorDialog
@@ -904,115 +381,15 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
         />
       )}
 
-      {/* Diálogo de detalle de receta vinculada */}
-      <Dialog open={!!recipeView || recipeViewLoading} onOpenChange={(open) => { if (!open) { setRecipeView(null); setRecipeViewLoading(false); } }}>
-        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto dark:bg-gray-900 dark:border-gray-700">
-          <DialogHeader>
-            <DialogTitle className="dark:text-white flex items-center gap-2">
-              <ChefHat className="h-5 w-5 text-orange-600" />
-              Receta de producción
-            </DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              {recipeView?.product?.name ?? recipeView?.name ?? ''}
-            </DialogDescription>
-          </DialogHeader>
-
-          {recipeViewLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Skeleton className="h-6 w-8" />
-            </div>
-          ) : recipeView ? (
-            <div className="space-y-4">
-              {/* Info general */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800/40 rounded-lg">
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Producto</p>
-                  <p className="font-medium dark:text-white">
-                    {recipeView.product?.name ?? `#${recipeView.product_id}`}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                    SKU: {recipeView.product?.sku ?? 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Rendimiento</p>
-                  <p className="font-medium dark:text-white font-mono">
-                    {recipeView.yield_qty} {recipeView.yield_unit_code ?? ''}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Estado</p>
-                  <Badge
-                    className={
-                      recipeView.is_active
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                        : ''
-                    }
-                    variant={recipeView.is_active ? 'default' : 'secondary'}
-                  >
-                    {recipeView.is_active ? 'Activa' : 'Inactiva'}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Versión</p>
-                  <p className="font-medium dark:text-white font-mono">v{recipeView.version}</p>
-                </div>
-              </div>
-
-              {/* Notas */}
-              {recipeView.notes && (
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Notas</p>
-                  <p className="text-sm dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-lg whitespace-pre-wrap">
-                    {recipeView.notes}
-                  </p>
-                </div>
-              )}
-
-              {/* Ingredientes */}
-              <div>
-                <p className="text-sm font-medium dark:text-gray-300 mb-2">
-                  Ingredientes ({recipeView.ingredients?.length ?? 0})
-                </p>
-                <div className="space-y-2">
-                  {recipeView.ingredients?.length ? (
-                    recipeView.ingredients.map((ing, i) => (
-                      <div
-                        key={ing.id}
-                        className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-gray-400 font-mono w-6">#{i + 1}</span>
-                          <div>
-                            <p className="font-medium text-sm dark:text-white">
-                              {ing.ingredient_product?.name ?? `#${ing.ingredient_product_id}`}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                              {ing.ingredient_product?.sku ?? 'N/A'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm dark:text-gray-200">
-                            {ing.quantity} {ing.unit_code}
-                          </span>
-                          {ing.is_optional && (
-                            <Badge variant="secondary" className="text-[0.6rem]">Opcional</Badge>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Esta receta no tiene ingredientes definidos.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-    </div>
+      {/* Receta vinculada (solo lectura) */}
+      <RecetaDialogo
+        receta={recipeView}
+        cargando={recipeViewLoading}
+        onCerrar={() => {
+          setRecipeView(null);
+          setRecipeViewLoading(false);
+        }}
+      />
+    </>
   );
 }

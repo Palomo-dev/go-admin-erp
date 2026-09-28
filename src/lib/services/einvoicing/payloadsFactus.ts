@@ -23,6 +23,8 @@ import {
   mapUnitMeasure,
   mapStandardCode,
   mapTaxCode,
+  mapWithholdingCode,
+  CodigoTributoNoAdmitidoError,
   type FactusCustomer,
   type FactusItem,
   type FactusEstablishment,
@@ -92,10 +94,25 @@ export interface LineaFactus {
   total: number;
 }
 
+/**
+ * Código de impuesto/retención de la línea para Factus. Un código que la DIAN no
+ * admite es un dato a corregir (no se reintenta solo): DatosIncompletosError.
+ */
+function codigoTributo<T>(fn: () => T, indice: number): T {
+  try {
+    return fn();
+  } catch (err) {
+    if (err instanceof CodigoTributoNoAdmitidoError) throw new DatosIncompletosError([`línea ${indice + 1}: ${err.message}`]);
+    throw err;
+  }
+}
+
 export function mapearLinea(linea: LineaDocumento, indice: number): LineaFactus {
   const cantidad = Math.abs(num(linea.qty));
   const tasa = Math.max(0, num(linea.tax_rate));
-  const excluido = linea.is_excluded === 1;
+  // Excluido de IVA: la marca de la línea (invoice_items.is_excluded, que pone
+  // la base desde el impuesto del producto) o el código de plantilla IVA_EXCLUIDO.
+  const excluido = linea.is_excluded === 1 || (linea.tax_code ?? '').trim().toUpperCase() === 'IVA_EXCLUIDO';
   const factor = linea.tax_included && tasa > 0 && !excluido ? 1 + tasa / 100 : 1;
   const precio = redondear2(Math.abs(num(linea.unit_price)) / factor);
   const bruto = redondear2(cantidad * precio);
@@ -115,10 +132,10 @@ export function mapearLinea(linea: LineaDocumento, indice: number): LineaFactus 
     price: fijo(precio),
     unit_measure_code: mapUnitMeasure(linea.unit_measure_id ?? null),
     standard_code: mapStandardCode(linea.standard_code_id ?? null),
-    taxes: [{ code: mapTaxCode(linea.tax_code ?? '01'), rate: fijo(tasa), is_excluded: excluido }],
+    taxes: [{ code: codigoTributo(() => mapTaxCode(linea.tax_code), indice), rate: fijo(tasa), is_excluded: excluido }],
     withholding_taxes: (linea.withholding_taxes || [])
       .filter((wt) => !!wt?.code)
-      .map((wt) => ({ code: String(wt.code), rate: fijo(num(wt.rate ?? wt.withholding_tax_rate)) })),
+      .map((wt) => ({ code: codigoTributo(() => mapWithholdingCode(String(wt.code)), indice), rate: fijo(num(wt.rate ?? wt.withholding_tax_rate)) })),
   };
   if (tasaDescuento > 0) item.discount_rate = fijo(tasaDescuento);
   if (linea.note) item.note = linea.note;

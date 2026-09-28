@@ -773,26 +773,63 @@ export function mapStandardCode(standardCodeId: number | null | undefined): stri
 }
 
 /**
- * Mapea el código de impuesto interno a código DIAN (string)
+ * Error de configuración: el código de impuesto o de retención de la línea no
+ * existe en las tablas de Factus/DIAN. El documento NO se envía (antes cualquier
+ * código desconocido salía como '01' IVA: un INC se declaraba como IVA).
  */
-export function mapTaxCode(taxCode: string | undefined): string {
-  const mapping: Record<string, string> = {
-    'IVA_19': '01',
-    'IVA_5': '01',
-    'IVA_0': '01',
-    'IVA': '01',
-    'RETE_4': '09',
-    'RETE_11': '09',
-    'ICA_0.966': '07',
-    '01': '01',
-    '04': '04',
-    '06': '06',
-    '07': '07',
-    '08': '08',
-    '09': '09',
-    '10': '10',
-  };
-  return mapping[taxCode || '01'] || '01';
+export class CodigoTributoNoAdmitidoError extends Error {
+  readonly codigo: string;
+  constructor(codigo: string, tipo: 'impuesto' | 'retención', detalle?: string) {
+    super(
+      `El código de ${tipo} «${codigo}» no es válido para la factura electrónica (Factus/DIAN)` +
+        (detalle ? `: ${detalle}` : '. Revise el impuesto del producto en Finanzas › Impuestos.'),
+    );
+    this.name = 'CodigoTributoNoAdmitidoError';
+    this.codigo = codigo;
+  }
+}
+
+/**
+ * Mapea el código de impuesto interno al código de Factus/DIAN.
+ *
+ * Tabla oficial de Factus «Códigos de impuestos»
+ * (https://developers.factus.com.co/tablas-de-referencia/tablas/, consultada el
+ * 2026-09-28): 01 IVA, 04 Impuesto Nacional al Consumo (INC), 35 impuesto a los
+ * ultraprocesados (IBUA). Nada más. ICA (DIAN 03) y las retenciones NO son
+ * impuestos de la línea en Factus: ICA falla con error claro; las retenciones
+ * van por `mapWithholdingCode`.
+ *
+ * Sin código (línea sin impuesto de plantilla) se declara IVA a la tarifa de la
+ * línea, como antes. Un código DESCONOCIDO falla: nunca se declara como IVA.
+ */
+export function mapTaxCode(taxCode: string | null | undefined): string {
+  const code = (taxCode ?? '').trim().toUpperCase();
+  if (!code) return '01';
+  if (code === '01' || code === 'IVA' || /^IVA_(\d+(\.\d+)?|EXCLUIDO)$/.test(code)) return '01';
+  if (code === '04' || code === 'INC' || /^INC_\d+(\.\d+)?$/.test(code)) return '04';
+  if (code === '35' || code === 'IBUA' || /^IBUA_\d+(\.\d+)?$/.test(code)) return '35';
+  if (code === '03' || code.startsWith('ICA')) {
+    throw new CodigoTributoNoAdmitidoError(taxCode as string, 'impuesto', 'el ICA no se declara como impuesto de la línea en Factus');
+  }
+  if (code.startsWith('RETE') || ['05', '06', '07'].includes(code)) {
+    throw new CodigoTributoNoAdmitidoError(taxCode as string, 'impuesto', 'es una retención; va en withholding_taxes, no en taxes');
+  }
+  throw new CodigoTributoNoAdmitidoError(taxCode as string, 'impuesto');
+}
+
+/**
+ * Mapea el código de retención interno al de Factus («Códigos de retenciones»,
+ * misma tabla oficial): 05 Retención sobre el IVA (ReteIVA), 06 Retención sobre
+ * renta (ReteFuente). ReteICA no está en la tabla de Factus: falla con error.
+ */
+export function mapWithholdingCode(code: string | null | undefined): string {
+  const c = (code ?? '').trim().toUpperCase();
+  if (c === '05' || c.startsWith('RETEIVA') || c.startsWith('RETE_IVA')) return '05';
+  if (c === '06' || c.startsWith('RETEFUENTE') || c.startsWith('RETE_FUENTE') || c.startsWith('RETERENTA') || /^RETE_\d+(\.\d+)?$/.test(c)) return '06';
+  if (c === '07' || c.startsWith('RETEICA') || c.startsWith('RETE_ICA')) {
+    throw new CodigoTributoNoAdmitidoError(code as string, 'retención', 'Factus no admite ReteICA en la factura');
+  }
+  throw new CodigoTributoNoAdmitidoError(String(code ?? ''), 'retención');
 }
 
 /**
@@ -1038,6 +1075,7 @@ const factusService = {
   mapUnitMeasure,
   mapStandardCode,
   mapTaxCode,
+  mapWithholdingCode,
   FACTUS_URLS,
 };
 

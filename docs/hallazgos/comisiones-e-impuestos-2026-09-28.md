@@ -101,3 +101,29 @@ bastan para generar el movimiento cuando tesorería defina el egreso a terceros.
 - Visto al pasar: el paso 3 SUMA todas las tarifas relacionadas; si alguien
   relaciona un producto con RETE_4/RETE_11 o ICA (hoy 0 relaciones), la
   retención se sumaría como impuesto de la línea.
+
+### B8 · Códigos DIAN e `is_excluded`
+
+- `mapTaxCode` mandaba todo código no mapeado como `01` (IVA): un INC (p. ej.
+  `INC_8`) se declaraba como IVA; `RETE_4`/`RETE_11` salían como `09` e
+  `ICA_0.966` como `07`, códigos que Factus no tiene.
+- Tabla oficial de Factus (developers.factus.com.co › Tablas de referencia,
+  consultada 2026-09-28): impuestos **01** IVA, **04** INC, **35** ultraprocesados;
+  retenciones **05** ReteIVA, **06** ReteFuente (renta). ICA y ReteICA no están.
+- Corrección: `IVA*`→01, `INC*`→04, `35`/`IBUA*`→35; retenciones con
+  `mapWithholdingCode` (05/06). Un código desconocido, ICA o ReteICA **falla**
+  con `CodigoTributoNoAdmitidoError`, que el armado de la línea convierte en
+  `DatosIncompletosError` (la cola lo marca como dato a corregir, no reintenta).
+  Sin código se sigue declarando IVA a la tarifa de la línea.
+- `is_excluded`: ningún camino de venta lo escribía (6.754 líneas de venta,
+  6.176 al 0 % con `tax_code` NULL, 0 excluidas). No existía cómo configurar un
+  producto *excluido* (el catálogo solo tenía `IVA_0` «Exento»). Se agrega la
+  plantilla `IVA_EXCLUIDO` y un disparador `BEFORE INSERT` en `invoice_items`
+  que, para líneas de venta al 0 % de un producto relacionado con impuestos
+  activos que suman 0, copia el código (`IVA_0` / `IVA_EXCLUIDO`) y marca
+  `is_excluded = 1` si es excluido. El payload también reconoce `IVA_EXCLUIDO`.
+  No toca los controles del carrito ni reescribe/reenvía documentos emitidos.
+- **Daño en datos: 0 documentos mal declarados por el mapeo** (solo hay
+  `IVA_19`, `IVA_5` y NULL en `invoice_items`; ninguna retención guardada).
+- Visto al pasar: `initialize_organization_taxes` filtra `country = 'CO'`, pero
+  el catálogo usa `'COL'`: no copia ningún impuesto a una organización nueva.

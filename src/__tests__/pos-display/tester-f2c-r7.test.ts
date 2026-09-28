@@ -452,7 +452,8 @@ describe('D · doble pulsación de «Generar QR de pago» (F2C-R7-2, resuelto en
   it('estático: el botón se deshabilita también con isCreatingQr y dice «Generando…» mientras tanto', () => {
     expect(CHECKOUT).toContain('disabled={othersCoverTotal || isCreatingQr}');
     expect(CHECKOUT).not.toContain('disabled={othersCoverTotal}');
-    expect(CHECKOUT).toContain("{isCreatingQr ? 'Generando…' : 'Generar QR de pago'}");
+    // Paso 11 del rediseño del POS: «Generando…» / «Generar QR de pago» salen de next-intl (posCobro.pagos).
+    expect(CHECKOUT).toContain("{isCreatingQr ? tPos('pagos.generandoQr') : tPos('pagos.generarQr')}");
     expect(CHECKOUT).toContain('aria-busy={isCreatingQr}');
   });
 

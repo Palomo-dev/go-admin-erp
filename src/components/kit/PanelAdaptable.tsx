@@ -32,6 +32,17 @@ export interface PanelAdaptableProps {
   ancho?: 520 | 560 | 672 | 800 | 1120;
   /** Bloquea el cierre (operación en curso). */
   ocupado?: boolean;
+  /**
+   * Un clic fuera no cierra (solo «×», Esc o los botones del pie). El cobro
+   * del POS lo pide: un toque en un aviso (sonner) o en el fondo no puede
+   * tirar los pagos ya tecleados.
+   */
+  bloquearClicFuera?: boolean;
+  /**
+   * Foco al abrir (Radix `onOpenAutoFocus`): por defecto el primer control
+   * (la «×»). El cobro lo pone en el monto; `preventDefault()` para usarlo.
+   */
+  onFocoAlAbrir?: (evento: Event) => void;
   className?: string;
 }
 
@@ -71,11 +82,15 @@ function Cabecera({ titulo, descripcion, icono: Icono, onCerrar, ocupado, escrit
   );
 }
 
-export function PanelAdaptable({ abierto, onAbiertoChange, titulo, descripcion, icono, debajoCabecera, children, pie, ancho = 672, ocupado, className }: PanelAdaptableProps) {
+export function PanelAdaptable({ abierto, onAbiertoChange, titulo, descripcion, icono, debajoCabecera, children, pie, ancho = 672, ocupado, bloquearClicFuera, onFocoAlAbrir, className }: PanelAdaptableProps) {
   const escritorio = useEsEscritorio();
   const cambiar = (v: boolean) => {
     if (ocupado && !v) return;
     onAbiertoChange(v);
+  };
+  const propsContenido = {
+    ...(bloquearClicFuera ? { onInteractOutside: (e: Event) => e.preventDefault() } : {}),
+    ...(onFocoAlAbrir ? { onOpenAutoFocus: onFocoAlAbrir } : {}),
   };
   const cuerpo = (
     <>
@@ -91,6 +106,7 @@ export function PanelAdaptable({ abierto, onAbiertoChange, titulo, descripcion, 
       <Dialog open={abierto} onOpenChange={cambiar}>
         <DialogContent
           hideCloseButton
+          {...propsContenido}
           className={cn('flex max-h-[calc(100dvh-48px)] w-[calc(100%-32px)] max-w-none flex-col gap-0 overflow-hidden rounded-xl border-line bg-surface p-0 text-fg sm:rounded-xl', ANCHO[ancho], className)}
         >
           {cuerpo}
@@ -100,7 +116,7 @@ export function PanelAdaptable({ abierto, onAbiertoChange, titulo, descripcion, 
   }
   return (
     <Sheet open={abierto} onOpenChange={cambiar}>
-      <SheetContent side="bottom" hideCloseButton className={cn('flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-2xl border-line bg-surface p-0 text-fg', className)}>
+      <SheetContent side="bottom" hideCloseButton {...propsContenido} className={cn('flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-2xl border-line bg-surface p-0 text-fg', className)}>
         <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-line-strong" aria-hidden="true" />
         {cuerpo}
       </SheetContent>

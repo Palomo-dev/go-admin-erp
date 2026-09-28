@@ -416,7 +416,8 @@ describe('R · corte de handleQrPayment ≡ disabled del botón, con importes ra
     expect(handler.indexOf('await fetch(')).toBeGreaterThan(cutIdx);
     expect(handler.indexOf('resolveQrChargeAmount(')).toBeGreaterThan(cutIdx);
     expect(handler).toMatch(/if \(Math\.max\(0, cartTotal - othersTotal\) <= 0\) \{/);
-    const button = CHECKOUT.slice(CHECKOUT.indexOf('const othersCoverTotal ='), CHECKOUT.indexOf('Generar QR de pago', CHECKOUT.indexOf('const othersCoverTotal =')));
+    // Paso 11 del rediseño del POS: el texto del botón sale de next-intl (posCobro.pagos.generarQr).
+    const button = CHECKOUT.slice(CHECKOUT.indexOf('const othersCoverTotal ='), CHECKOUT.indexOf("tPos('pagos.generarQr')", CHECKOUT.indexOf('const othersCoverTotal =')));
     expect(button).toMatch(/payments\.filter\(\(p\) => p\.id !== payment\.id\)\.reduce\(\(sum, p\) => sum \+ \(Number\(p\.amount\) \|\| 0\), 0\) >= cartTotal/);
     // Ronda 8 (F2C-R7-2): además, deshabilitado mientras hay una generación en vuelo (isCreatingQr).
     expect(button).toContain('disabled={othersCoverTotal || isCreatingQr}');

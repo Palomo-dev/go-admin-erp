@@ -11911,5 +11911,57 @@
       "actualizando": "Actualizando…",
       "actualizar": "Actualizar catálogo ahora"
     }
+  },
+  "posCobro": {
+    "titulo": "Procesar pago",
+    "descripcion": "{productos, plural, one {# producto} other {# productos}} · Productos: {monto}",
+    "postVenta": {
+      "titulo": "Venta completada"
+    },
+    "resumen": {
+      "totalAPagar": "Total a pagar",
+      "verDetalle": "{n, plural, one {# producto} other {# productos}} · ver detalle",
+      "detalle": "Productos del cobro",
+      "cantidad": "×{cantidad}",
+      "descuentos": "Descuentos aplicados",
+      "etiqueta": "Totales del cobro",
+      "subtotal": "Subtotal",
+      "subtotalBase": "Subtotal (base imponible)",
+      "impuestos": "Impuestos",
+      "propina": "Propina",
+      "flete": "Flete",
+      "total": "Total a pagar",
+      "cifras": "Estado del pago",
+      "pagado": "Total pagado",
+      "falta": "Falta",
+      "cambio": "Cambio"
+    },
+    "pagos": {
+      "titulo": "Métodos de pago",
+      "agregar": "Agregar",
+      "metodoDe": "Método del pago {n}",
+      "monto": "Monto del pago {n}",
+      "exacto": "Exacto",
+      "billetes": "Montos rápidos en efectivo",
+      "billete": "Recibir {monto}",
+      "lista": "Pagos del cobro",
+      "pago": "Pago {n}",
+      "editar": "Editar el pago {n}: {metodo}, {monto}",
+      "generarQr": "Generar QR de pago",
+      "generandoQr": "Generando…",
+      "eliminar": "Eliminar",
+      "eliminarAria": "Eliminar el pago {n}",
+      "impuestosIncluidos": "Impuestos incluidos en precios"
+    },
+    "pie": {
+      "cancelar": "Cancelar",
+      "completar": "Completar venta",
+      "falta": "Falta {monto}",
+      "procesando": "Procesando…"
+    },
+    "errores": {
+      "titulo": "No se pudo procesar el pago",
+      "desconocido": "Error desconocido"
+    }
   }
 }

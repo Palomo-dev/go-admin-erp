@@ -29,6 +29,12 @@ export interface SelectorMetodoPagoProps {
   atajos?: boolean;
   etiqueta?: string;
   deshabilitado?: boolean;
+  /**
+   * «Otro» abierto, controlado por la pantalla (el cobro del POS lo abre con
+   * Alt+5). Sin estas props el menú se maneja solo, como siempre.
+   */
+  menuAbierto?: boolean;
+  onMenuAbiertoChange?: (abierto: boolean) => void;
   className?: string;
 }
 
@@ -40,6 +46,8 @@ export function SelectorMetodoPago({
   atajos,
   etiqueta,
   deshabilitado,
+  menuAbierto,
+  onMenuAbiertoChange,
   className,
 }: SelectorMetodoPagoProps) {
   const t = useKitT();
@@ -59,6 +67,8 @@ export function SelectorMetodoPago({
   };
 
   const columnas = visibles.length + (resto.length > 0 ? 1 : 0);
+  // «Otro» sigue la numeración por posición (Alt+5 con cuatro botones).
+  const atajoOtro = atajos && resto.length > 0 ? atajoMetodo(visibles.length) : undefined;
   if (metodos.length === 0) {
     return <p className={cn('rounded-lg border border-dashed border-line-strong px-3 py-3 text-sm text-fg-secondary', className)}>{t('pagos.sinMetodos')}</p>;
   }
@@ -100,12 +110,13 @@ export function SelectorMetodoPago({
         })}
       </div>
       {resto.length > 0 && (
-        <DropdownMenuPrimitive.Root>
+        <DropdownMenuPrimitive.Root open={menuAbierto} onOpenChange={onMenuAbiertoChange}>
           <DropdownMenuPrimitive.Trigger asChild>
             <button
               type="button"
               disabled={deshabilitado}
               aria-label={enResto ? t('pagos.otroElegido', { metodo: enResto.nombre }) : t('pagos.otro')}
+              aria-keyshortcuts={atajoOtro ? ariaAtajo(atajoOtro) : undefined}
               className={cn(
                 'flex h-14 min-w-0 items-center gap-2 rounded-lg border px-3 text-left text-sm font-medium transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50',
@@ -114,6 +125,7 @@ export function SelectorMetodoPago({
             >
               <Ellipsis aria-hidden="true" className="size-5 shrink-0 text-fg-secondary" strokeWidth={1.5} />
               <span className="min-w-0 flex-1 truncate">{enResto ? enResto.nombre : t('pagos.otro')}</span>
+              {atajoOtro && <Kbd tecla={atajoOtro} className="hidden lg:inline-flex" />}
               <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-fg-muted" strokeWidth={1.5} />
             </button>
           </DropdownMenuPrimitive.Trigger>

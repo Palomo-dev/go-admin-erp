@@ -11911,5 +11911,57 @@
       "actualizando": "Updating…",
       "actualizar": "Update catalog now"
     }
+  },
+  "posCobro": {
+    "titulo": "Process payment",
+    "descripcion": "{productos, plural, one {# product} other {# products}} · Products: {monto}",
+    "postVenta": {
+      "titulo": "Sale completed"
+    },
+    "resumen": {
+      "totalAPagar": "Amount due",
+      "verDetalle": "{n, plural, one {# product} other {# products}} · see details",
+      "detalle": "Products in this sale",
+      "cantidad": "×{cantidad}",
+      "descuentos": "Discounts applied",
+      "etiqueta": "Sale totals",
+      "subtotal": "Subtotal",
+      "subtotalBase": "Subtotal (taxable base)",
+      "impuestos": "Taxes",
+      "propina": "Tip",
+      "flete": "Shipping",
+      "total": "Amount due",
+      "cifras": "Payment status",
+      "pagado": "Total paid",
+      "falta": "Remaining",
+      "cambio": "Change"
+    },
+    "pagos": {
+      "titulo": "Payment methods",
+      "agregar": "Add",
+      "metodoDe": "Method for payment {n}",
+      "monto": "Amount of payment {n}",
+      "exacto": "Exact",
+      "billetes": "Quick cash amounts",
+      "billete": "Receive {monto}",
+      "lista": "Payments in this sale",
+      "pago": "Payment {n}",
+      "editar": "Edit payment {n}: {metodo}, {monto}",
+      "generarQr": "Generate payment QR",
+      "generandoQr": "Generating…",
+      "eliminar": "Remove",
+      "eliminarAria": "Remove payment {n}",
+      "impuestosIncluidos": "Prices include taxes"
+    },
+    "pie": {
+      "cancelar": "Cancel",
+      "completar": "Complete sale",
+      "falta": "{monto} remaining",
+      "procesando": "Processing…"
+    },
+    "errores": {
+      "titulo": "The payment could not be processed",
+      "desconocido": "Unknown error"
+    }
   }
 }

@@ -449,7 +449,9 @@ describe('HALLAZGO R (medio) · corregido en r6: con el total ya cubierto por ot
     // (en r5 el slice quedaba vacío y el `not.toContain` pasaba en vano).
     const start = CHECKOUT.indexOf('Boton para pago QR si el metodo es QR');
     expect(start).toBeGreaterThan(0);
-    const button = CHECKOUT.slice(start, CHECKOUT.indexOf('Generar QR de pago', start));
+    // Paso 11 del rediseño del POS: el texto del botón sale de next-intl (posCobro.pagos.generarQr);
+    // el corte termina en esa llamada en vez del literal «Generar QR de pago».
+    const button = CHECKOUT.slice(start, CHECKOUT.indexOf("tPos('pagos.generarQr')", start));
     expect(button.length).toBeGreaterThan(0);
     // Ronda 8 (F2C-R7-2): además, deshabilitado mientras hay una generación en vuelo (isCreatingQr).
     expect(button).toContain('disabled={othersCoverTotal || isCreatingQr}');

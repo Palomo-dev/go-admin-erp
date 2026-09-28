@@ -1,14 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User, ShoppingCart, Wallet, Plus, Trash2, X, Percent, Truck, MapPin, Phone, Navigation, UserCircle, Clock, QrCode, Loader2 } from 'lucide-react';
+import { DollarSign, Printer, CheckCircle, Banknote, User, Wallet, Plus, Trash2, X, Percent, Truck, MapPin, Phone, Navigation, UserCircle, Clock, QrCode, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { createPortal } from 'react-dom';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -20,16 +17,15 @@ import {
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { POSService } from '@/lib/services/posService';
 import { supabase } from '@/lib/supabase/config';
 import { useCommissionRate } from '@/lib/hooks/useCommissionRate';
-import { PrintService, BusinessInfo, CashierInfo, BranchInfo } from '@/lib/services/printService';
+import { PrintService, BusinessInfo, CashierInfo } from '@/lib/services/printService';
 import { PrintJobsService } from '@/lib/services/printJobsService';
 import { CashDrawerService } from '@/lib/services/cashDrawerService';
 import { toast } from 'sonner';
-import { Cart, PaymentMethod, CheckoutData, Sale, Currency, SaleItem } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { Cart, PaymentMethod, CheckoutData, Sale, Currency } from './types';
+import { cn, formatCurrency } from '@/utils/Utils';
 import { 
   calculateCartTaxes, 
   type OrganizationTax as TaxUtilOrganizationTax,
@@ -60,13 +56,27 @@ import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
 // Lógica pura del cobro extraída LITERAL (POS-PLAN §2.6 L41–L52, paso 1):
 import { cuentasDelCobro } from '@/lib/pos/venta/cobro/cuentasCobro';
 import { actualizarEntradaPago, entradaDePagoNueva, pagosDelSobre, pagosParaImpresion, puedeQuitarPagos, quitarEntradaPago } from '@/lib/pos/venta/cobro/pagosCobro';
-import { generateQuickAmounts, muestraMontosRapidos } from '@/lib/pos/venta/cobro/montosRapidos';
+import { faltaParaEntrada, montosDeEntrada, muestraMontosRapidos } from '@/lib/pos/venta/cobro/montosRapidos';
 import { PORCENTAJES_PROPINA, meserosDesdeMiembros } from '@/lib/pos/venta/cobro/propinaCobro';
 import { camposComisionDelSobre, comisionDeTasaResuelta, esPersonaAsignada, montoComision } from '@/lib/pos/venta/cobro/comisionCobro';
 import { camposEntregaDelSobre, fleteDeTarifaElegida, opcionesDeTarifa, tarifaPorDefecto, tarifasVisiblesEnPos } from '@/lib/pos/venta/cobro/entregaCobro';
 import { lineasConSerial, seleccionSerialesCompleta } from '@/lib/pos/venta/cobro/serialesCobro';
 import { comprobarStockReceta, debeConfirmarStock } from '@/lib/pos/venta/cobro/stockRecetaCobro';
 import { lanzarTicketYCajon, planPostVenta } from '@/lib/pos/venta/cobro/postVentaCobro';
+// Presentación del cobro (paso 11): contenedor, zona de totales y monto del pago.
+import { BotonImporte, KbdButton, SelectorMetodoPago, clasesBoton, repartirMetodos, useAtajos, type Atajo } from '@/components/kit';
+import { CobroPanel } from '@/components/pos/venta/CobroPanel';
+import { ResumenCobro } from '@/components/pos/venta/cobro/ResumenCobro';
+import { EditorPagoCobro } from '@/components/pos/venta/cobro/EditorPagoCobro';
+import { accionAtajoMetodo, enterCompletaVenta } from '@/components/pos/venta/cobro/teclasCobro';
+import { teclaAtajo } from '@/lib/pos/venta/atajos';
+import { hayRafagaDelLector } from '@/hooks/useHardwareBarcodeScanner';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
+
+/** Botones de método visibles antes de «Otro» (Alt+1…Alt+5 por posición). */
+const MAX_BOTONES_METODO = 5;
+const ATAJOS_METODO = ['metodo1', 'metodo2', 'metodo3', 'metodo4', 'metodoOtro'] as const;
 
 interface CheckoutDialogProps {
   cart: Cart;
@@ -296,7 +306,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // ya creada en vez de crear otra. Antes el navegador lo generaba dentro de
   // POSService.checkout en cada clic (y el escritorio, en cada clic también).
   const intentoCobroRef = useRef<{ id: string; creadoEn: string } | null>(null);
+  // «Completar venta» en vuelo (corte síncrono de la doble pulsación).
+  const cobroEnVueloRef = useRef(false);
   const tCobro = useTranslations('posCobroServidor');
+  const tPos = useTranslations('posCobro');
+  const tAtajos = useTranslations('posVenta.atajos');
   const [touchedIds, setTouchedIds] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     if (!open || showReceipt) return;
@@ -1064,6 +1078,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       return;
     }
 
+    // Doble pulsación en el mismo instante (doble tap, Enter repetido): el
+    // estado `isProcessing` llega un render tarde; el ref corta de forma
+    // síncrona, igual que `qrRequestInFlightRef` en «Generar QR de pago».
+    if (cobroEnVueloRef.current) return;
+    cobroEnVueloRef.current = true;
     setIsProcessing(true);
     try {
       // Asegurar que los datos del cliente estén disponibles
@@ -1472,9 +1491,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       const codigo = codigoErrorCobro(error);
       const errorMsg = codigo
         ? tCobro(`errores.${codigo}`, { detalle: detalleErrorCobro(error) })
-        : error?.message || error?.details || (typeof error === 'string' ? error : 'Error desconocido');
-      alert('Error al procesar el pago: ' + errorMsg);
+        : error?.message || error?.details || (typeof error === 'string' ? error : tPos('errores.desconocido'));
+      // Antes un alert() nativo; el carrito NO se toca: se puede reintentar
+      // (mismo intento de cobro, intentoCobroRef).
+      toast.error(tPos('errores.titulo'), { description: errorMsg });
     } finally {
+      cobroEnVueloRef.current = false;
       setIsProcessing(false);
     }
   };
@@ -1614,18 +1636,179 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     setCommissionMethod('percentage');
   };
 
-  // «Exacto» y billetes rápidos (L43): HOY sobre el total del cobro, no sobre
-  // lo que falta en la entrada (src/lib/pos/venta/cobro/montosRapidos.ts).
-  const quickAmountButtons = generateQuickAmounts(cartTotal);
+  // Paso 11 del rediseño (POS-PLAN §4): el render pasa a CobroPanel (kit
+  // PanelAdaptable, 1120) con la zona de totales a la izquierda y los pagos a
+  // la derecha. El estado y los handlers de arriba NO cambian.
+  // El pago que se edita (selector de método, monto, «Exacto»): el que el
+  // cajero tocó en la lista o, si no, el último (el que acaba de agregar).
+  const [pagoActivoId, setPagoActivoId] = useState<string | null>(null);
+  const [menuOtroMetodo, setMenuOtroMetodo] = useState(false);
+  const pagoActivo = payments.find((p) => p.id === pagoActivoId) ?? payments[payments.length - 1];
+  const agregarPago = () => {
+    setPagoActivoId(null);
+    addPayment();
+  };
+  const metodosCobro = paymentMethods.map((m) => ({ codigo: m.id, nombre: m.name }));
+  const { visibles: metodosVisibles, resto: metodosOtro } = repartirMetodos(metodosCobro, MAX_BOTONES_METODO);
+  const nombreMetodo = (codigo: string) => paymentMethods.find((m) => m.id === codigo)?.name ?? codigo;
+  const elegirMetodo = (codigo: string) => {
+    if (pagoActivo) updatePayment(pagoActivo.id, 'method', codigo);
+  };
+  // «Exacto» y billetes rápidos (L43, D8): sobre LO QUE FALTA para el pago que
+  // se edita (el total menos las otras entradas), src/lib/pos/venta/cobro/montosRapidos.ts.
+  const montosPagoActivo = montosDeEntrada(pagoActivo ? faltaParaEntrada(payments, pagoActivo.id, cartTotal) : 0);
+  const ponerExacto = () => {
+    if (pagoActivo) updatePayment(pagoActivo.id, 'amount', montosPagoActivo.exacto);
+  };
+  const monedaOrganizacion = useMonedaOrganizacion();
+  const monedaCobro = useMemo(() => monedaOrganizacion.paraDocumento(currency?.code), [monedaOrganizacion, currency?.code]);
+  const formatearCobro = useMemo(() => crearFormateadorMoneda(monedaCobro), [monedaCobro]);
+  const cobroEditable = open && !showReceipt && !showQrDialog && !showSerialSelector && !stockConfirm;
 
-  if (!open || typeof document === 'undefined') return null;
-  return createPortal(
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
-      <div className="min-h-screen px-1 sm:px-4 py-2 sm:py-8 flex items-center justify-center">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[97vh] sm:max-h-[90vh] overflow-hidden relative animate-in fade-in-0 zoom-in-95 duration-300 dark:bg-gray-800">
-        {showReceipt && completedSale ? (
-          /* Vista de recibo - RESPONSIVE */
-          <div className="space-y-3 sm:space-y-4 text-center overflow-y-auto max-h-[90vh]">
+  // Atajos del cobro (mapa canónico src/lib/pos/venta/atajos.ts): solo con el
+  // cobro abierto y sin otro diálogo encima. Esc lo maneja el propio panel.
+  const atajosCobro: Atajo[] = [
+    ...ATAJOS_METODO.map((id, posicion) => ({
+      tecla: teclaAtajo(id),
+      descripcion: tAtajos(id),
+      permitirEnCampo: true,
+      cuando: () => !isProcessing && !!pagoActivo && accionAtajoMetodo(posicion, metodosVisibles, metodosOtro.length > 0) !== null,
+      accion: () => {
+        const accion = accionAtajoMetodo(posicion, metodosVisibles, metodosOtro.length > 0);
+        if (accion?.tipo === 'elegir') elegirMetodo(accion.codigo);
+        if (accion?.tipo === 'otro') setMenuOtroMetodo(true);
+      },
+    })),
+    {
+      tecla: teclaAtajo('exacto'),
+      descripcion: tAtajos('exacto'),
+      permitirEnCampo: true,
+      cuando: () => !isProcessing && !!pagoActivo,
+      accion: ponerExacto,
+    },
+    {
+      // Enter completa SOLO con el pago cubierto y sin un control con foco que use Enter.
+      tecla: teclaAtajo('completarVenta'),
+      descripcion: tAtajos('completarVenta'),
+      permitirEnCampo: true,
+      cuando: () => canComplete && !isProcessing && enterCompletaVenta(typeof document === 'undefined' ? null : document.activeElement),
+      accion: () => {
+        void handleCheckout();
+      },
+    },
+  ];
+  useAtajos(atajosCobro, { activo: cobroEditable, hayRafaga: hayRafagaDelLector });
+
+  // Cerrar el panel (×, Esc): tras la venta pasa por handleCloseReceipt, que
+  // entrega la venta a la pantalla (onCheckoutComplete); sin venta, cancela.
+  const alCerrarPanel = (abierto: boolean) => {
+    if (abierto) return;
+    if (showReceipt) handleCloseReceipt();
+    else onOpenChange(false);
+  };
+  // Al abrir, el foco va al monto (no a la «×»): se teclea el efectivo y
+  // «Enter» completa si está cubierto.
+  const enfocarMonto = (evento: Event) => {
+    const campo = typeof document === 'undefined' ? null : document.querySelector<HTMLInputElement>('input[data-cobro-monto]');
+    if (!campo) return;
+    evento.preventDefault();
+    campo.focus();
+    campo.select();
+  };
+  // El primer pago se agrega en un efecto (al abrir aún no hay campo): el foco
+  // inicial se pone cuando aparece, una vez por apertura.
+  const focoInicialRef = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      focoInicialRef.current = false;
+      return;
+    }
+    if (showReceipt || focoInicialRef.current || payments.length === 0) return;
+    const campo = document.querySelector<HTMLInputElement>('input[data-cobro-monto]');
+    if (!campo) return;
+    focoInicialRef.current = true;
+    campo.focus();
+    campo.select();
+  }, [open, showReceipt, payments.length]);
+
+  // Monto del pago que se edita. Un pago QR no pasa del total (`max`).
+  const editorDePago = (payment: PaymentEntry) => (
+    <EditorPagoCobro
+      id={`amount-${payment.id}`}
+      etiqueta={tPos('pagos.monto', { n: payments.indexOf(payment) + 1 })}
+      valor={payment.amount}
+      max={isQrPaymentCode(payment.method) ? cartTotal : undefined}
+      moneda={monedaCobro}
+      deshabilitado={isProcessing}
+      onValorChange={(value) => updatePayment(payment.id, 'amount', value)}
+      onExacto={ponerExacto}
+      billetes={muestraMontosRapidos(payment.method) ? montosPagoActivo.billetes : []}
+      onBillete={(value) => updatePayment(payment.id, 'amount', value)}
+    />
+  );
+
+  if (!open) return null;
+  const conRecibo = showReceipt && !!completedSale;
+  const impuestosCobro = taxBreakdown.length > 0
+    ? taxBreakdown.map((b) => ({ nombre: b.name, tarifa: organizationTaxes.find((o) => o.name === b.name)?.rate ?? null, importe: b.amount }))
+    : (calculatedTotals.totalTaxAmount || cart.tax_total) > 0
+      ? [{ nombre: tPos('resumen.impuestos'), importe: calculatedTotals.totalTaxAmount || cart.tax_total }]
+      : [];
+  return (
+    <>
+    <CobroPanel
+      abierto={open}
+      onAbiertoChange={alCerrarPanel}
+      titulo={conRecibo ? tPos('postVenta.titulo') : tPos('titulo')}
+      descripcion={conRecibo ? undefined : tPos('descripcion', { productos: cart.items.length, monto: formatearCobro(cart.total) })}
+      ocupado={isProcessing}
+      onFocoAlAbrir={enfocarMonto}
+      resumen={conRecibo ? undefined : (
+        <ResumenCobro
+          moneda={monedaCobro}
+          totalAPagar={cartTotal}
+          lineas={cart.items.map((item) => ({ id: item.id, nombre: item.product?.name ?? '', cantidad: item.quantity, total: item.total }))}
+          descuentos={cart.discount_total}
+          subtotal={calculatedTotals.subtotal || cart.subtotal}
+          impuestosIncluidos={taxIncluded}
+          impuestos={impuestosCobro}
+          propina={tipAmount}
+          flete={shippingFee}
+          pagado={totalPaid}
+          falta={remaining}
+          cambio={change}
+        />
+      )}
+      pie={conRecibo ? undefined : (
+        <>
+          <KbdButton
+            variante="secundario"
+            tamano="lg"
+            icono={X}
+            atajo={teclaAtajo('cancelarCobro')}
+            onClick={() => onOpenChange(false)}
+            disabled={isProcessing}
+            className="w-full sm:w-auto"
+          >
+            {tPos('pie.cancelar')}
+          </KbdButton>
+          <BotonImporte
+            etiqueta={tPos('pie.completar')}
+            importe={formatearCobro(cartTotal)}
+            atajo={teclaAtajo('completarVenta')}
+            estado={isProcessing ? 'procesando' : canComplete ? 'listo' : 'falta'}
+            motivo={tPos('pie.falta', { monto: formatearCobro(remaining) })}
+            etiquetaProcesando={tPos('pie.procesando')}
+            icono={CheckCircle}
+            onClick={handleCheckout}
+            className="sm:flex-1"
+          />
+        </>
+      )}
+    >
+        {conRecibo && completedSale ? (
+          /* Vista de recibo (la rehace el paso 13 con ResultadoOperacion) */
+          <div className="space-y-3 sm:space-y-4 text-center">
             <div className="sr-only">
               <h2>Recibo de venta</h2>
             </div>
@@ -1755,156 +1938,111 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             </div>
           </div>
         ) : (
-          /* Vista de checkout - RESPONSIVE */
           <>
-            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 shrink-0">
-                  <CreditCard className="h-6 w-6 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Procesar Pago</h2>
-                  <p className="text-sm font-normal text-gray-500 dark:text-gray-400 mt-0.5">
-                    {cart.items.length} productos · Total: {formatCurrency(cart.total)}
-                  </p>
-                </div>
+            {/* Arriba de la zona de pagos: advertencia, no bloquea el cobro. */}
+            <AvisoSinImpuesto lineas={lineasSinImpuesto} accion="se cobrará" />
+
+            {/* Pagos: siempre abierto (POS-UX-V2 D4) */}
+            <section aria-labelledby="cobro-pagos-titulo" className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+              <div className="flex items-center justify-between gap-2">
+                <h3 id="cobro-pagos-titulo" className="flex items-center gap-2 text-sm font-semibold text-fg">
+                  <Wallet aria-hidden="true" className="size-4 text-fg-secondary" strokeWidth={1.5} />
+                  {tPos('pagos.titulo')}
+                </h3>
+                <KbdButton variante="secundario" tamano="sm" icono={Plus} onClick={agregarPago} disabled={isProcessing}>
+                  {tPos('pagos.agregar')}
+                </KbdButton>
               </div>
-              <button
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700"
-                onClick={() => onOpenChange(false)}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
 
-            <div className="overflow-y-auto max-h-[calc(90vh-80px)] bg-gray-50 dark:bg-gray-900">
-             <div className="p-5 sm:p-8">
-            {/* Arriba del contenido y no junto al pie: el diálogo tiene alto fijo
-                y un bloque extra fuera del área con scroll recortaría el botón. */}
-            <AvisoSinImpuesto lineas={lineasSinImpuesto} accion="se cobrará" className="mb-4" />
-            <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-4 lg:space-y-0">
-              {/* COLUMNA IZQUIERDA: Resumen + Totales */}
-              <div className="space-y-3">
-              {/* Resumen del carrito - RESPONSIVE */}
-              <Card className="dark:bg-gray-800 dark:border-gray-700 bg-gray-50 border-gray-200">
-                <CardHeader className="p-4 sm:p-5 pb-2 sm:pb-3">
-                  <CardTitle className="text-sm sm:text-base dark:text-white text-gray-900 flex items-center gap-2">
-                    <ShoppingCart className="h-4 w-4 text-blue-500" />
-                    Resumen de Venta
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 sm:p-4 space-y-1.5 sm:space-y-2 max-h-[25vh] lg:max-h-[35vh] overflow-y-auto">
-                  {cart.items.map((item) => (
-                    <div key={item.id} className="flex justify-between items-start gap-2 text-xs sm:text-sm">
-                      <div className="flex-1 min-w-0">
-                        <span className="dark:text-gray-100 text-gray-900 break-words whitespace-normal">{item.product.name}</span>
-                        <span className="dark:text-gray-400 text-gray-600 ml-1">
-                          x{item.quantity}
-                        </span>
-                      </div>
-                      <span className="dark:text-gray-100 text-gray-900 font-medium shrink-0">
-                        {formatCurrency(item.total)}
-                      </span>
-                    </div>
-                  ))}
-                  
-                  <Separator className="dark:border-gray-700 border-gray-200" />
-                  
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="dark:text-gray-400 text-gray-600">Subtotal:</span>
-                      <span className="dark:text-white text-gray-900">
-                        {formatCurrency(cart.subtotal)}
-                      </span>
-                    </div>
-                    
-                    {cart.tax_total > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="dark:text-gray-400 text-gray-600">Impuestos:</span>
-                        <span className="dark:text-white text-gray-900">
-                          {formatCurrency(cart.tax_total)}
-                        </span>
-                      </div>
-                    )}
-                    
-                    {cart.discount_total > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="dark:text-gray-400 text-gray-600">Descuentos:</span>
-                        <span className="dark:text-green-400 text-green-600">
-                          -{formatCurrency(cart.discount_total)}
-                        </span>
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between text-lg font-semibold pt-1">
-                      <span className="dark:text-white text-gray-900">Total:</span>
-                      <span className="dark:text-blue-400 text-blue-600">
-                        {formatCurrency(cart.total)}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <SelectorMetodoPago
+                metodos={metodosCobro}
+                valor={pagoActivo?.method ?? null}
+                onValorChange={elegirMetodo}
+                maxBotones={MAX_BOTONES_METODO}
+                atajos
+                menuAbierto={menuOtroMetodo}
+                onMenuAbiertoChange={setMenuOtroMetodo}
+                deshabilitado={isProcessing || !pagoActivo}
+                etiqueta={pagoActivo ? tPos('pagos.metodoDe', { n: payments.indexOf(pagoActivo) + 1 }) : undefined}
+              />
 
-              {/* Resumen de totales finales - COLUMNA IZQUIERDA */}
-              <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200 border-2 border-blue-200 dark:border-blue-800">
-                <CardContent className="p-4 sm:p-5 space-y-2.5">
-                  <div className="flex justify-between text-sm">
-                    <span className="dark:text-gray-400 text-gray-600">Subtotal:</span>
-                    <div className="text-right">
-                      <span className="dark:text-white text-gray-900">
-                        {formatCurrency(calculatedTotals.subtotal || cart.subtotal)}
-                      </span>
-                      {taxIncluded && (
-                        <div className="text-xs dark:text-gray-500 text-gray-500">(base imponible)</div>
+              {pagoActivo && editorDePago(pagoActivo)}
+
+              <ul aria-label={tPos('pagos.lista')} className="flex flex-col gap-2">
+                {payments.map((payment, index) => {
+                  const activo = payment.id === pagoActivo?.id;
+                  return (
+                    <li
+                      key={payment.id}
+                      className={cn(
+                        'flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2',
+                        activo ? 'border-line-brand bg-brand-tint' : 'border-line bg-subtle',
                       )}
-                    </div>
-                  </div>
-                  {(calculatedTotals.totalTaxAmount > 0 || cart.tax_total > 0) && (
-                    <div className="flex justify-between text-sm">
-                      <span className="dark:text-gray-400 text-gray-600">Impuestos:</span>
-                      <span className="dark:text-blue-400 text-blue-600">{formatCurrency(calculatedTotals.totalTaxAmount || cart.tax_total)}</span>
-                    </div>
-                  )}
-                  {tipAmount > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="dark:text-gray-400 text-gray-600">Propina:</span>
-                      <span className="dark:text-green-400 text-green-600">{formatCurrency(tipAmount)}</span>
-                    </div>
-                  )}
-                  {shippingFee > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="dark:text-gray-400 text-gray-600">Flete:</span>
-                      <span className="dark:text-orange-400 text-orange-600">{formatCurrency(shippingFee)}</span>
-                    </div>
-                  )}
-                  <Separator className="dark:bg-gray-700 bg-gray-200" />
-                  <div className="flex justify-between text-base font-semibold">
-                    <span className="dark:text-gray-300 text-gray-700">Total a pagar:</span>
-                    <span className="dark:text-white text-gray-900">{formatCurrency(cartTotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="dark:text-gray-400 text-gray-600">Total pagado:</span>
-                    <span className={totalPaid >= cartTotal ? 'dark:text-green-400 text-green-600' : 'dark:text-yellow-400 text-yellow-600'}>
-                      {formatCurrency(totalPaid)}
-                    </span>
-                  </div>
-                  {remaining > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="dark:text-gray-400 text-gray-600">Falta:</span>
-                      <span className="dark:text-red-400 text-red-600">{formatCurrency(remaining)}</span>
-                    </div>
-                  )}
-                  {change > 0 && (
-                    <div className="flex justify-between text-lg font-semibold">
-                      <span className="dark:text-white text-gray-900">Cambio:</span>
-                      <span className="dark:text-blue-400 text-blue-600">{formatCurrency(change)}</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                    >
+                      <button
+                        type="button"
+                        aria-pressed={activo}
+                        aria-label={tPos('pagos.editar', { n: index + 1, metodo: nombreMetodo(payment.method), monto: formatearCobro(payment.amount) })}
+                        onClick={() => setPagoActivoId(payment.id)}
+                        className="flex min-w-0 flex-1 items-center gap-3 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                      >
+                        <span className="shrink-0 text-xs text-fg-secondary">{tPos('pagos.pago', { n: index + 1 })}</span>
+                        <span className="min-w-0 truncate text-sm font-medium text-fg">{nombreMetodo(payment.method)}</span>
+                        <span className="shrink-0 text-sm font-semibold tabular-nums text-fg">{formatearCobro(payment.amount)}</span>
+                      </button>
+
+                      {/* Boton para pago QR si el metodo es QR */}
+                      {(() => {
+                        const currentMethod = paymentMethods.find(m => m.id === payment.method);
+                        const qrCodes = ['redeban_qr', 'breb_qr', 'bancolombia_qr_wompi', 'bancolombia_qr'];
+                        if (currentMethod && qrCodes.includes(currentMethod.code)) {
+                          // Ronda 6 (HALLAZGO R): con las OTRAS entradas cubriendo el total no hay nada que cobrar por QR.
+                          const othersCoverTotal = payments.filter((p) => p.id !== payment.id).reduce((sum, p) => sum + (Number(p.amount) || 0), 0) >= cartTotal;
+                          return (
+                            <button
+                              type="button"
+                              className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}
+                              disabled={othersCoverTotal || isCreatingQr}
+                              aria-busy={isCreatingQr}
+                              onClick={() => handleQrPayment(currentMethod.code, payment.id, payment.amount)}
+                            >
+                              {isCreatingQr ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <QrCode aria-hidden="true" className="size-4" strokeWidth={1.5} />}
+                              {isCreatingQr ? tPos('pagos.generandoQr') : tPos('pagos.generarQr')}
+                            </button>
+                          );
+                        }
+                        return null;
+                      })()}
+
+                      {puedeQuitarPagos(payments) && (
+                        <button
+                          type="button"
+                          disabled={isProcessing}
+                          aria-label={tPos('pagos.eliminarAria', { n: index + 1 })}
+                          onClick={() => removePayment(payment.id)}
+                          className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'hover:text-danger-text' })}
+                        >
+                          <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                          <span className="hidden sm:inline">{tPos('pagos.eliminar')}</span>
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+
+              {/* C4 «Impuestos incluidos en precios»: misma semántica de siempre */}
+              <label className="flex w-fit cursor-pointer items-center gap-2 rounded-lg px-1 py-1 text-sm text-fg-secondary hover:text-fg">
+                <input
+                  type="checkbox"
+                  checked={taxIncluded}
+                  onChange={(e) => setTaxIncluded(e.target.checked)}
+                  className="size-4 rounded accent-brand"
+                />
+                <Percent aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
+                {tPos('pagos.impuestosIncluidos')}
+              </label>
+            </section>
 
               {/* Sección de Entrega / Delivery - movida a columna izquierda */}
               <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
@@ -2117,152 +2255,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                   )}
                 </CardContent>
               </Card>
-              </div>
 
-              {/* COLUMNA DERECHA: Métodos de pago + Propina */}
-              <div className="space-y-3">
-              {/* Métodos de pago - RESPONSIVE */}
-              <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
-                <CardHeader className="p-4 sm:p-5 pb-2 sm:pb-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-sm sm:text-base dark:text-white text-gray-900 flex items-center gap-2">
-                      <Wallet className="h-4 w-4 text-purple-500" />
-                      Métodos de Pago
-                    </CardTitle>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={addPayment}
-                      className="h-8 sm:h-9 px-3 text-xs dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300 border-gray-300 hover:bg-gray-50 text-gray-700"
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      Agregar
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-                  {payments.map((payment, index) => (
-                    <div key={payment.id} className="space-y-2 sm:space-y-3 p-2 sm:p-3 border rounded-lg dark:border-gray-700 dark:bg-gray-900/30 border-gray-200 bg-gray-50/50">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs sm:text-sm dark:text-gray-200 text-gray-900 font-medium flex items-center gap-1.5">
-                          <DollarSign className="h-3.5 w-3.5 text-green-500" />
-                          Pago {index + 1}
-                        </Label>
-                        {puedeQuitarPagos(payments) && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => removePayment(payment.id)}
-                            className="h-7 px-2 text-xs dark:text-red-400 dark:hover:bg-red-500/20 text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-1" />
-                            Eliminar
-                          </Button>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                        <div className="space-y-2">
-                          <Label htmlFor={`method-${payment.id}`} className="text-xs dark:text-gray-400 text-gray-600">
-                            Método
-                          </Label>
-                          <Select
-                            value={payment.method}
-                            onValueChange={(value) => updatePayment(payment.id, 'method', value)}
-                          >
-                            <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200">
-                              {paymentMethods.map((method) => (
-                                <SelectItem key={method.id} value={method.id}>
-                                  {method.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor={`amount-${payment.id}`} className="text-xs dark:text-gray-400 text-gray-600">
-                            Monto
-                          </Label>
-                          <div className="relative">
-                            <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
-                            <Input
-                              id={`amount-${payment.id}`}
-                              type="number"
-                              min="0"
-                              max={isQrPaymentCode(payment.method) ? cartTotal : undefined}
-                              step="0.01"
-                              value={payment.amount}
-                              onChange={(e) => updatePayment(payment.id, 'amount', e.target.value)}
-                              className="pl-10 dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                              placeholder="0.00"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Botones de montos rápidos solo para efectivo - RESPONSIVE */}
-                      {muestraMontosRapidos(payment.method) && (
-                        <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-1 sm:gap-2">
-                          {quickAmountButtons.map((button) => (
-                            <Button
-                              key={button.label}
-                              size="sm"
-                              variant="outline"
-                              onClick={() => updatePayment(payment.id, 'amount', button.value)}
-                              className="h-8 sm:h-9 text-[0.7rem] sm:text-xs px-2 sm:px-3 dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300 border-gray-300 hover:bg-gray-100 text-gray-700"
-                            >
-                              {button.label}
-                            </Button>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Boton para pago QR si el metodo es QR */}
-                      {(() => {
-                        const currentMethod = paymentMethods.find(m => m.id === payment.method);
-                        const qrCodes = ['redeban_qr', 'breb_qr', 'bancolombia_qr_wompi', 'bancolombia_qr'];
-                        if (currentMethod && qrCodes.includes(currentMethod.code)) {
-                          // Ronda 6 (HALLAZGO R): con las OTRAS entradas cubriendo el total no hay nada que cobrar por QR.
-                          const othersCoverTotal = payments.filter((p) => p.id !== payment.id).reduce((sum, p) => sum + (Number(p.amount) || 0), 0) >= cartTotal;
-                          return (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="w-full mt-2"
-                              disabled={othersCoverTotal || isCreatingQr}
-                              aria-busy={isCreatingQr}
-                              onClick={() => handleQrPayment(currentMethod.code, payment.id, payment.amount)}
-                            >
-                              {isCreatingQr ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <QrCode className="h-4 w-4 mr-2" />}
-                              {isCreatingQr ? 'Generando…' : 'Generar QR de pago'}
-                            </Button>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
-                  ))}
-
-                  {/* Toggle impuestos incluidos */}
-                  <div className="pt-2 pb-2">
-                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={taxIncluded}
-                        onChange={(e) => setTaxIncluded(e.target.checked)}
-                        className="h-4 w-4 rounded"
-                      />
-                      <Percent className="h-3.5 w-3.5 text-blue-500" />
-                      <span className="text-xs sm:text-sm dark:text-gray-300 text-gray-700">
-                        Impuestos incluidos en precios
-                      </span>
-                    </label>
-                  </div>
-
+            {/* Propina y comisión (el paso 12 las pasa a SeccionPlegable) */}
+            <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
                   {/* Sección de Propina */}
                   <div className="pt-3 border-t dark:border-gray-700 border-gray-200">
                     <div className="flex items-center gap-2 mb-3">
@@ -2450,10 +2445,6 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                       </div>
                     )}
                   </div>
-
-                </CardContent>
-              </Card>
-              </div>
             </div>
 
             {/* Toggle Factura Electrónica */}
@@ -2472,36 +2463,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                 )}
               </div>
             </div>
-
-             </div>
-            </div>
-            <div className="sticky bottom-0 z-10 bg-white border-t border-gray-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-3 sm:gap-4 dark:bg-gray-800 dark:border-gray-700">
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isProcessing}
-                className="w-full sm:w-auto h-11 sm:h-12 dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300 border-gray-300 hover:bg-gray-50 text-gray-700 text-sm sm:text-base"
-              >
-                <X className="h-4 w-4 mr-2" />
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleCheckout}
-                disabled={!canComplete || isProcessing}
-                className={`
-                  w-full sm:flex-1 h-11 sm:h-12 text-sm sm:text-base font-bold shadow-lg
-                  ${canComplete
-                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                    : 'dark:bg-gray-700 dark:text-gray-400 bg-gray-400 text-gray-200'
-                  }
-                `}
-              >
-                <CheckCircle className="h-5 w-5 mr-2" />
-                {isProcessing ? 'Procesando...' : canComplete ? `Completar Venta · ${formatCurrency(cartTotal)}` : 'Falta dinero'}
-              </Button>
-            </div>
           </>
         )}
+    </CobroPanel>
       <QrPaymentDialog
         open={showQrDialog}
         onClose={() => setShowQrDialog(false)}
@@ -2627,9 +2591,6 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-        </div>
-      </div>
-    </div>,
-    document.body
+    </>
   );
 }

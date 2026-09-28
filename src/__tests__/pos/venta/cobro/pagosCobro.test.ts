@@ -17,7 +17,7 @@ import {
   quitarEntradaPago,
   type EntradaPago,
 } from '@/lib/pos/venta/cobro/pagosCobro';
-import { formatQuickLabel, generateQuickAmounts, muestraMontosRapidos } from '@/lib/pos/venta/cobro/montosRapidos';
+import { faltaParaEntrada, formatQuickLabel, generateQuickAmounts, montosDeEntrada, muestraMontosRapidos } from '@/lib/pos/venta/cobro/montosRapidos';
 
 const EFECTIVO: EntradaPago = { id: 'p1', method: 'cash', amount: 10000 };
 const TARJETA: EntradaPago = { id: 'p2', method: 'card', amount: 13800 };
@@ -74,9 +74,21 @@ describe('L43 · «Exacto» y billetes rápidos', () => {
     expect(muestraMontosRapidos('breb_qr')).toBe(false);
   });
 
-  it('HOY se calculan sobre el TOTAL del cobro (E-07): con 23.800 y 10.000 ya en otra entrada, «Exacto» sigue siendo 23.800', () => {
-    // El diálogo llama generateQuickAmounts(cartTotal), no con lo que falta (13.800).
-    // El cambio a «sobre lo que falta» es del paso 12 y trae su propia prueba.
+  it('D8 (paso 11): se calculan sobre LO QUE FALTA para la entrada, no sobre el total: con 23.800 y 10.000 en otra entrada, «Exacto» es 13.800', () => {
+    // Antes del paso 11 esta prueba fijaba «sobre el total» (E-07): el diálogo
+    // llamaba generateQuickAmounts(cartTotal). El dueño decidió D8 (POS-PLAN
+    // §5.3): la base es lo que falta tras las OTRAS entradas (faltaParaEntrada).
+    const pagos: EntradaPago[] = [EFECTIVO, { id: 'p2', method: 'cash', amount: 23800 }];
+    expect(faltaParaEntrada(pagos, 'p2', 23800)).toBe(13800);
+    // La entrada que se edita no cuenta: lo tecleado en ella no reduce su propio «Exacto».
+    expect(faltaParaEntrada([{ id: 'p2', method: 'cash', amount: 99999 }], 'p2', 23800)).toBe(23800);
+    // Las otras ya cubren el total: nada que cobrar (nunca negativo).
+    expect(faltaParaEntrada([{ ...EFECTIVO, amount: 30000 }, TARJETA], 'p2', 23800)).toBe(0);
+    const { exacto, billetes } = montosDeEntrada(13800);
+    expect(exacto).toBe(13800);
+    expect(billetes.map((b) => b.value)).toEqual([15000, 20000, 30000, 40000, 50000]);
+    expect(montosDeEntrada(0)).toEqual({ exacto: 0, billetes: [] });
+    // Con una sola entrada lo que falta ES el total: los mismos botones de siempre.
     expect(generateQuickAmounts(23800)).toEqual([
       { label: 'Exacto', value: 23800 },
       { label: '25k', value: 25000 },

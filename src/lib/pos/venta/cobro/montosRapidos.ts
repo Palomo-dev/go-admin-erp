@@ -3,20 +3,38 @@
  * LITERALMENTE de `CheckoutDialog.tsx` (`generateQuickAmounts` y
  * `formatQuickLabel`).
  *
- * Comportamiento de hoy, fijado por `montosRapidos.test.ts`:
+ * Comportamiento, fijado por `pagosCobro.test.ts`:
  * - Solo se ofrecen en entradas de efectivo.
- * - Se calculan sobre el TOTAL del cobro (`cartTotal`), no sobre lo que falta
- *   en esa entrada (E-07). El cambio a «sobre lo que falta» es del paso 12,
- *   con su propia prueba.
+ * - Desde el paso 11 del rediseño (decisión D8 del dueño, POS-PLAN §5.3) se
+ *   calculan sobre LO QUE FALTA para la entrada que se edita
+ *   (`faltaParaEntrada`: el total menos las OTRAS entradas), no sobre el total
+ *   del cobro (E-07). Con una sola entrada es lo mismo que antes.
  * - «Exacto» primero y luego, ascendentes, redondeos al escalón superior y
  *   múltiplos de ese escalón; seis botones como máximo.
  */
 
-import { METODO_EFECTIVO } from './pagosCobro';
+import { METODO_EFECTIVO, type EntradaPago } from './pagosCobro';
 
 export interface MontoRapido {
   label: string;
   value: number;
+}
+
+/**
+ * Lo que falta por cubrir con UNA entrada: el total del cobro menos lo que
+ * suman las otras entradas (nunca negativo). Es la base de «Exacto» y de los
+ * billetes rápidos (D8). Mismo criterio que `othersTotal` del QR.
+ */
+export function faltaParaEntrada(payments: readonly EntradaPago[], id: string, total: number): number {
+  const otras = payments.filter((p) => p.id !== id).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  return Math.max(0, total - otras);
+}
+
+/** «Exacto» y los billetes (sin el «Exacto») de una entrada, sobre lo que le falta. */
+export function montosDeEntrada(falta: number): { exacto: number; billetes: MontoRapido[] } {
+  const botones = generateQuickAmounts(falta);
+  const exacto = botones.find((b) => b.label === 'Exacto')?.value ?? Math.round(falta);
+  return { exacto, billetes: botones.filter((b) => b.label !== 'Exacto') };
 }
 
 /** Los montos rápidos se pintan solo en una entrada de efectivo. */

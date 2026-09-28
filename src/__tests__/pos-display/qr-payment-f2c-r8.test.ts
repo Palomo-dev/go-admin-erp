@@ -217,7 +217,8 @@ describe('QA-1 · «Generar QR de pago»: dos pulsaciones ⇒ un solo fetch (Rea
     expect(handler).toContain('setIsCreatingQr(true);');
     expect(handler).toMatch(/\} finally \{\s*(\/\/[^\n]*\n\s*)*qrRequestInFlightRef\.current = false;\s*setIsCreatingQr\(false\);\s*\}/);
     expect(CHECKOUT).toContain('disabled={othersCoverTotal || isCreatingQr}');
-    expect(CHECKOUT).toContain("{isCreatingQr ? 'Generando…' : 'Generar QR de pago'}");
+    // Paso 11 del rediseño del POS: «Generando…» / «Generar QR de pago» salen de next-intl (posCobro.pagos).
+    expect(CHECKOUT).toContain("{isCreatingQr ? tPos('pagos.generandoQr') : tPos('pagos.generarQr')}");
   });
 });
 

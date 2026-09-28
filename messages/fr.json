@@ -11806,5 +11806,57 @@
       "actualizando": "Mise à jour…",
       "actualizar": "Mettre à jour le catalogue"
     }
+  },
+  "posCobro": {
+    "titulo": "Encaisser",
+    "descripcion": "{productos, plural, one {# produit} other {# produits}} · Produits : {monto}",
+    "postVenta": {
+      "titulo": "Vente terminée"
+    },
+    "resumen": {
+      "totalAPagar": "Total à payer",
+      "verDetalle": "{n, plural, one {# produit} other {# produits}} · voir le détail",
+      "detalle": "Produits de la vente",
+      "cantidad": "×{cantidad}",
+      "descuentos": "Remises appliquées",
+      "etiqueta": "Totaux de la vente",
+      "subtotal": "Sous-total",
+      "subtotalBase": "Sous-total (base imposable)",
+      "impuestos": "Taxes",
+      "propina": "Pourboire",
+      "flete": "Livraison",
+      "total": "Total à payer",
+      "cifras": "État du paiement",
+      "pagado": "Total payé",
+      "falta": "Reste à payer",
+      "cambio": "Monnaie à rendre"
+    },
+    "pagos": {
+      "titulo": "Moyens de paiement",
+      "agregar": "Ajouter",
+      "metodoDe": "Moyen du paiement {n}",
+      "monto": "Montant du paiement {n}",
+      "exacto": "Exact",
+      "billetes": "Montants rapides en espèces",
+      "billete": "Recevoir {monto}",
+      "lista": "Paiements de la vente",
+      "pago": "Paiement {n}",
+      "editar": "Modifier le paiement {n} : {metodo}, {monto}",
+      "generarQr": "Générer le QR de paiement",
+      "generandoQr": "Génération…",
+      "eliminar": "Supprimer",
+      "eliminarAria": "Supprimer le paiement {n}",
+      "impuestosIncluidos": "Taxes incluses dans les prix"
+    },
+    "pie": {
+      "cancelar": "Annuler",
+      "completar": "Terminer la vente",
+      "falta": "Il manque {monto}",
+      "procesando": "Traitement…"
+    },
+    "errores": {
+      "titulo": "Le paiement n’a pas pu être traité",
+      "desconocido": "Erreur inconnue"
+    }
   }
 }

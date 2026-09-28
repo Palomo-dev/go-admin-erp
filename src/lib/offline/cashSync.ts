@@ -29,6 +29,7 @@
 
 import { isDesktop } from '@/lib/utils/desktop';
 import { parametrosCierre } from '@/lib/pos/cajas/arqueo';
+import { RPC_MOVIMIENTO_CAJA, parametrosMovimiento } from '@/lib/pos/cajas/movimientoRpc';
 import { isAppOnline } from '@/lib/utils/offlineCache';
 import {
   MAX_ATTEMPTS,
@@ -153,26 +154,27 @@ async function replayMovement(client: CashSyncClient, record: CashMovementRecord
   const { data: found, error: findError } = await client.from('cash_movements').select('id').eq('organization_id', org).eq('uuid', record.id).maybeSingle();
   if (findError) throw findError;
   if (found?.id) return Number(found.id);
-  const { data, error } = await client
-    .from('cash_movements')
-    .insert({
-      uuid: record.id,
-      organization_id: org,
-      cash_session_id: sessionId,
-      branch_id: record.branch_id,
-      type: record.payload.type,
-      concept: record.payload.concept,
-      amount: record.payload.amount,
-      user_id: record.payload.user_id,
-      notes: record.payload.notes,
-      created_at: record.payload.created_at,
-      ...(record.payload.concept_code ? { concept_code: record.payload.concept_code } : {}),
-      ...(record.payload.reference ? { reference: record.payload.reference } : {}),
-    })
-    .select('id')
-    .single();
+  // Por la RPC (caja abierta, autor = sesión, idempotente por uuid, hora sin
+  // red respetada si cae dentro de la caja): ya no hay INSERT directo.
+  if (!client.rpc) throw new Error('El cliente de Supabase no permite RPC para registrar el movimiento');
+  const { data, error } = await client.rpc(
+    RPC_MOVIMIENTO_CAJA,
+    parametrosMovimiento(
+      sessionId,
+      {
+        type: record.payload.type,
+        amount: record.payload.amount,
+        concept: record.payload.concept,
+        concept_code: record.payload.concept_code ?? null,
+        reference: record.payload.reference ?? null,
+        notes: record.payload.notes ?? null,
+      },
+      { uuid: record.id, creadoEn: record.payload.created_at },
+    ),
+  );
   if (error && (error as PgError).code !== '23505') throw error;
-  if (data?.id) return Number(data.id);
+  const fila = data as { id?: number | string } | null;
+  if (fila?.id) return Number(fila.id);
   const again = await client.from('cash_movements').select('id').eq('organization_id', org).eq('uuid', record.id).maybeSingle();
   if (again.data?.id) return Number(again.data.id);
   throw error ?? new Error('El movimiento no devolvió id');

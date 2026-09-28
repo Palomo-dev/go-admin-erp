@@ -5980,7 +5980,9 @@
       "cajaNoEncontrada": "The register doesn't exist",
       "cajaYaCerrada": "The register is already closed",
       "sinPermiso": "Only the cashier who opened the register or an administrator can close it",
-      "organizacionNoPermitida": "You don't have access to this organization"
+      "organizacionNoPermitida": "You don't have access to this organization",
+      "datosMovimientoInvalidos": "Check the movement's type, amount and concept.",
+      "movimientoFallido": "The movement could not be recorded. Try again."
     },
     "detalle": {
       "metodosPago": {

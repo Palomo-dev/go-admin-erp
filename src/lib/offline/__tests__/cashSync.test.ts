@@ -114,6 +114,14 @@ function makeServer() {
       Object.assign(row, { status: 'closed', final_amount: p.p_efectivo_contado, closed_at: p.p_cerrada_en });
       return { data: { ya_cerrada: false, session_id: row.id, status: 'closed' } };
     }
+    if (op.table === 'rpc:pos_caja_registrar_movimiento') {
+      const p = op.payload as { p_uuid: string; p_session_id: number; p_tipo: string; p_concepto: string; p_monto: number; p_notas: string | null };
+      const existente = movements.get(p.p_uuid);
+      if (existente) return { data: { ...existente, ya_registrado: true } };
+      const row = { uuid: p.p_uuid, cash_session_id: p.p_session_id, type: p.p_tipo, concept: p.p_concepto, amount: p.p_monto, notes: p.p_notas, id: nextMovement++ };
+      movements.set(p.p_uuid, row);
+      return { data: { ...row, ya_registrado: false } };
+    }
     if (op.table === 'cash_movements') {
       if (op.action === 'select') {
         const row = movements.get(String(op.filters.uuid));
@@ -209,7 +217,7 @@ describe('movimientos y cierre', () => {
     expect(early).toEqual({ synced: 0, failed: 0, needsReview: 0, skipped: 2 });
     const waiting = await getCashOutboxRecord(mov.uuid as string);
     expect(waiting).toMatchObject({ status: 'pending', attempts: 0, last_error: WAITING_FOR_OPENING_MESSAGE });
-    expect(writesTo(fake.ops, 'cash_movements')).toHaveLength(0);
+    expect(fake.ops.filter((o) => o.table === 'rpc:pos_caja_registrar_movimiento')).toHaveLength(0);
     expect(writesTo(fake.ops, 'cash_sessions')).toHaveLength(0);
 
     await syncCashOpenings({ client: fake.client });
@@ -219,8 +227,12 @@ describe('movimientos y cierre', () => {
     const later = await syncCashMovementsAndClosings({ client: fake.client });
     expect(later).toEqual({ synced: 2, failed: 0, needsReview: 0, skipped: 0 });
 
-    const movInsert = writesTo(fake.ops, 'cash_movements')[0];
-    expect(movInsert.payload).toMatchObject({ uuid: mov.uuid, cash_session_id: serverId, type: 'in', concept: 'Cambio', amount: 200, user_id: 'user-cajero', branch_id: BRANCH });
+    // El movimiento va por la RPC: caja abierta, autor = quien sincroniza, idempotente por uuid.
+    expect(writesTo(fake.ops, 'cash_movements')).toHaveLength(0);
+    const movRpc = fake.ops.find((o) => o.table === 'rpc:pos_caja_registrar_movimiento')!;
+    expect(movRpc.payload).toMatchObject({ p_uuid: mov.uuid, p_session_id: serverId, p_tipo: 'in', p_concepto: 'Cambio', p_monto: 200 });
+    expect((movRpc.payload as { p_creado_en: string }).p_creado_en).toEqual(expect.any(String));
+    expect(movRpc.payload).not.toHaveProperty('p_user_id');
     expect(movements.get(mov.uuid as string)?.id).toBe(500);
 
     // El cierre va por la RPC transaccional, sin la diferencia calculada sin red.
@@ -233,7 +245,7 @@ describe('movimientos y cierre', () => {
 
     // Orden de escritura: apertura → movimiento → cierre.
     const order = fake.ops.filter((o) => o.action === 'insert' || o.action === 'update' || o.action === 'rpc').map((o) => `${o.action}:${o.table}`);
-    expect(order).toEqual(['insert:cash_sessions', 'insert:cash_movements', 'rpc:rpc:pos_caja_cerrar']);
+    expect(order).toEqual(['insert:cash_sessions', 'rpc:rpc:pos_caja_registrar_movimiento', 'rpc:rpc:pos_caja_cerrar']);
 
     // Estado local retirado tras el cierre; todo synced con su id real.
     expect(await getLocalCashSessionByUuid(ORG, session.uuid)).toBeNull();
@@ -270,7 +282,7 @@ describe('movimientos y cierre', () => {
     const session = { id: 77, uuid: 'srv-uuid', organization_id: ORG, branch_id: BRANCH };
     const mov = await enqueueCashMovement({ session, type: 'out', concept: 'Retiro', amount: 50, userId: 'u', notes: 'x' });
     expect(await syncCashMovementsAndClosings({ client: fake.client })).toMatchObject({ synced: 1 });
-    expect(writesTo(fake.ops, 'cash_movements')[0].payload).toMatchObject({ uuid: mov.uuid, cash_session_id: 77 });
+    expect(fake.ops.find((o) => o.table === 'rpc:pos_caja_registrar_movimiento')!.payload).toMatchObject({ p_uuid: mov.uuid, p_session_id: 77 });
   });
 });
 
@@ -330,6 +342,8 @@ describe('fallos, revisión y reintento', () => {
     await seedFullDay();
     const [a, b] = await Promise.all([syncPendingCash({ client: fake.client }), syncPendingCash({ client: fake.client })]);
     expect(a).toBe(b);
-    expect(fake.ops.filter((o) => o.action === 'insert')).toHaveLength(2);
+    // Una apertura (INSERT) y un movimiento (RPC): sin duplicados.
+    expect(fake.ops.filter((o) => o.action === 'insert')).toHaveLength(1);
+    expect(fake.ops.filter((o) => o.table === 'rpc:pos_caja_registrar_movimiento')).toHaveLength(1);
   });
 });

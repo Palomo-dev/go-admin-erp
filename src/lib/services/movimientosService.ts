@@ -2,6 +2,7 @@
 
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { RPC_MOVIMIENTO_CAJA, parametrosMovimiento } from '@/lib/pos/cajas/movimientoRpc';
 
 export type MovementType = 'income' | 'expense';
 export type MovementSource = 'cash' | 'bank';
@@ -274,27 +275,21 @@ class MovimientosService {
     // Mapear tipo a valores válidos del check constraint: 'in', 'out'
     const mappedType = data.type === 'income' ? 'in' : 'out';
 
-    const { data: result, error } = await supabase
-      .from('cash_movements')
-      .insert({
-        organization_id: organizationId,
-        cash_session_id: session.id,
-        branch_id: data.branch_id ?? undefined,
-        type: mappedType,
-        concept: data.concept,
-        amount: data.amount,
-        notes: data.notes,
-        user_id: userId,
-      })
-      .select()
-      .single();
+    // Por la RPC de cajas (caja abierta, autor = la sesión, sucursal de la
+    // caja): ya no hay INSERT directo en cash_movements. `userId` queda por
+    // compatibilidad de la firma; el autor lo pone el servidor.
+    void userId;
+    const { data: result, error } = await supabase.rpc(
+      RPC_MOVIMIENTO_CAJA,
+      parametrosMovimiento(session.id, { type: mappedType, amount: data.amount, concept: data.concept, notes: data.notes ?? null }),
+    );
 
     if (error) {
       console.error('Error creating movement:', JSON.stringify(error));
       return { success: false, error: error.message || 'Error de permisos o datos inválidos. Verifique que tiene una sesión de caja abierta.' };
     }
 
-    return { success: true, id: result.id };
+    return { success: true, id: Number((result as { id?: number } | null)?.id) };
   }
 
   /**
@@ -393,17 +388,19 @@ class MovimientosService {
       return { success: false, error: 'No hay una sesión de caja abierta' };
     }
 
-    const { error } = await supabase
-      .from('cash_movements')
-      .insert({
-        organization_id: organizationId,
-        cash_session_id: session.id,
-        type: original.type === 'income' ? 'expense' : 'income',
+    // Movimiento inverso por la RPC de cajas. En la base `type` es 'in'/'out'
+    // (antes se escribía 'income'/'expense', que el CHECK rechaza: anular nunca
+    // funcionó) y el autor es quien anula, no el autor del original.
+    const tipoOriginal = String(original.type);
+    const { error } = await supabase.rpc(
+      RPC_MOVIMIENTO_CAJA,
+      parametrosMovimiento(session.id, {
+        type: tipoOriginal === 'in' || tipoOriginal === 'income' ? 'out' : 'in',
         concept: `ANULACIÓN: ${original.concept}`,
-        amount: original.amount,
+        amount: Math.abs(Number(original.amount)),
         notes: reason || `Anulación del movimiento #${id}`,
-        user_id: original.user_id,
-      });
+      }),
+    );
 
     if (error) {
       console.error('Error canceling movement:', error);

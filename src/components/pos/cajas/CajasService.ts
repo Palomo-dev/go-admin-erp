@@ -29,9 +29,10 @@ import type {
   SessionMovementType,
   CashHistoryFilters
 } from './types';
-import { nombreContieneTodas, numeroDeCaja, sanitizarBusqueda } from './historialCajas';
+import { diferenciasHistorial, enriquecerSesiones, exportacionHistorial, paginaHistorial } from '@/lib/pos/cajas/historialConsulta';
 import { parametrosArqueo } from '@/lib/pos/cajas/arqueo';
 import { claveDeConcepto } from '@/lib/pos/cajas/conceptos';
+import { RPC_MOVIMIENTO_CAJA, codigoErrorMovimiento, movimientoDeRpc, parametrosMovimiento, type DatosMovimientoCaja } from '@/lib/pos/cajas/movimientoRpc';
 import type { ResumenCaja, ResumenCompacto } from '@/lib/pos/cajas/resumenServidor';
 import {
   alcanceApertura,
@@ -343,98 +344,42 @@ export class CajasService {
     }
   }
 
-  /**
-   * Nombres de quien abrió, de quien cerró y de la sucursal, en dos consultas
-   * para toda la lista (no una por sesión).
-   */
+  /** Nombres de quien abrió, de quien cerró y de la sucursal (módulo compartido con el servidor). */
   private static async enrichSessions(sessions: CashSession[]): Promise<CashSession[]> {
-    const nombre = (p?: { first_name: string | null; last_name: string | null }) =>
-      p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Usuario' : 'Usuario';
-
-    const userIds = [...new Set(sessions.flatMap(s => [s.opened_by, s.closed_by]).filter((id): id is string => !!id))];
-    if (userIds.length > 0) {
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name')
-        .in('id', userIds);
-      const profileMap = new Map((profilesData || []).map(p => [p.id as string, p]));
-      for (const session of sessions) {
-        session.opened_by_name = nombre(profileMap.get(session.opened_by));
-        if (session.closed_by) session.closed_by_name = nombre(profileMap.get(session.closed_by));
-      }
-    }
-
-    const branchIds = [...new Set(sessions.map(s => s.branch_id).filter((id): id is number => !!id))];
-    const branchMap = new Map<number, string>();
-    if (branchIds.length > 0) {
-      const { data: branchesData } = await supabase
-        .from('branches')
-        .select('id, name')
-        .in('id', branchIds);
-      for (const b of branchesData || []) branchMap.set(b.id as number, b.name as string);
-    }
-    for (const session of sessions) {
-      session.branch_name = session.branch_id
-        ? branchMap.get(session.branch_id) || `#${session.branch_id}`
-        : 'Todas las sucursales';
-    }
-    return sessions;
+    return enriquecerSesiones(supabase, sessions);
   }
 
   /**
-   * Consulta base del historial con sus filtros. Devuelve `null` cuando la
-   * búsqueda por cajero no encuentra a nadie: no hay nada que consultar.
-   * Va envuelta en `{ query }`: el builder de PostgREST es «thenable» y una
-   * función async que lo devolviera suelto lo ejecutaría al hacer `await`.
-   *
-   * La sucursal sale del selector del header (como hasta ahora): la sucursal
-   * activa más las cajas globales; «Todas las sucursales» no filtra.
+   * Historial de cajas. Con red lo lee el SERVIDOR (`GET /api/pos/cajas/historial`),
+   * que aplica la máscara del cierre ciego: sin `pos.cajas.ver_esperado` no
+   * llegan `final_amount` ni `difference`, ni se filtra u ordena por ellos.
+   * Sin red (Desktop) se consulta la réplica local con el mismo módulo; ahí la
+   * pantalla oculta las cifras como antes (los datos ya están en el equipo).
    */
-  private static async historyQuery(select: string, filters: CashHistoryFilters, withCount: boolean) {
-    const branchId = filters.branchId ?? getBranchFilter();
-
-    let query = supabase
-      .from('cash_sessions')
-      .select(select, withCount ? { count: 'exact' } : undefined)
-      .eq('organization_id', this.organizationId);
-
-    if (branchId) {
-      query = query.or(`branch_id.eq.${Number(branchId)},branch_id.is.null`);
+  private static async historialServidor<T>(vista: 'pagina' | 'diferencias' | 'exportar', filters: CashHistoryFilters, page = 1, pageSize = 10): Promise<T> {
+    const q = new URLSearchParams({ vista, pagina: String(page), tamano: String(pageSize) });
+    const sucursal = filters.branchId ?? getBranchFilter();
+    if (sucursal) q.set('sucursal', String(sucursal));
+    if (filters.status) q.set('status', filters.status);
+    if (filters.desde) q.set('desde', filters.desde);
+    if (filters.hasta) q.set('hasta', filters.hasta);
+    if (filters.busqueda) q.set('busqueda', filters.busqueda);
+    if (filters.resultado) q.set('resultado', filters.resultado);
+    if (filters.orden) {
+      q.set('orden', filters.orden.campo);
+      q.set('dir', filters.orden.direccion);
     }
-    if (filters.status && filters.status !== 'all') {
-      query = query.eq('status', filters.status);
-    }
-    if (filters.desde) query = query.gte('opened_at', filters.desde);
-    if (filters.hasta) query = query.lt('opened_at', filters.hasta);
+    const headers: Record<string, string> = {};
+    if (this.organizationId) headers['x-organization-id'] = String(this.organizationId);
+    const response = await fetch(`/api/pos/cajas/historial?${q.toString()}`, { credentials: 'same-origin', cache: 'no-store', headers });
+    const body = (await response.json().catch(() => null)) as (T & { codigo?: string; error?: string }) | null;
+    if (!response.ok || !body) throw new ErrorCaja(body?.codigo || 'lectura_fallida', body?.error || 'No se pudo leer el historial de cajas');
+    return body;
+  }
 
-    if (filters.resultado === 'faltante') query = query.lte('difference', -0.5);
-    else if (filters.resultado === 'sobrante') query = query.gte('difference', 0.5);
-    else if (filters.resultado === 'cuadrada') query = query.gt('difference', -0.5).lt('difference', 0.5);
-
-    const termino = sanitizarBusqueda(filters.busqueda);
-    if (termino) {
-      const numero = numeroDeCaja(termino);
-      if (numero !== null) {
-        query = query.eq('id', numero);
-      } else {
-        // Cajero por nombre: primero los perfiles que coinciden (RLS de profiles).
-        // «Ana Gómez» busca cada palabra en nombre o apellido y exige todas.
-        const palabras = termino.split(' ').filter(Boolean).slice(0, 3);
-        const condiciones = palabras.flatMap(p => [`first_name.ilike.%${p}%`, `last_name.ilike.%${p}%`]).join(',');
-        const { data: perfiles, error } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name')
-          .or(condiciones)
-          .limit(200);
-        if (error) throw error;
-        const ids = (perfiles || [])
-          .filter(p => nombreContieneTodas(`${p.first_name ?? ''} ${p.last_name ?? ''}`, palabras))
-          .map(p => p.id as string);
-        if (ids.length === 0) return null;
-        query = query.in('opened_by', ids);
-      }
-    }
-    return { query };
+  /** Opciones del módulo compartido para la réplica local (sin red). */
+  private static opcionesLocales(filters: CashHistoryFilters) {
+    return { organizationId: Number(this.organizationId), sucursalId: filters.branchId ?? getBranchFilter() ?? null, verImportes: true };
   }
 
   /**
@@ -447,22 +392,9 @@ export class CajasService {
   ): Promise<{ data: CashSession[]; total: number }> {
     try {
       if (!this.organizationId) return { data: [], total: 0 };
-      const base = await this.historyQuery('*', filters, true);
-      if (!base) return { data: [], total: 0 };
-
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-      const orden = filters.orden ?? { campo: 'opened_at', direccion: 'desc' };
-
-      const { data, count, error } = await base.query
-        .order(orden.campo, { ascending: orden.direccion === 'asc', nullsFirst: false })
-        .order('id', { ascending: false })
-        .range(from, to);
-
-      if (error) throw error;
-
-      const sessions = await this.enrichSessions((data || []) as unknown as CashSession[]);
-      return { data: sessions, total: count || 0 };
+      if (shouldOperateCashOffline()) return await paginaHistorial(supabase, filters, this.opcionesLocales(filters), page, pageSize);
+      const r = await this.historialServidor<{ data: CashSession[]; total: number }>('pagina', filters, page, pageSize);
+      return { data: r.data, total: r.total };
     } catch (error) {
       console.error('Error getting paginated session history:', error);
       throw error;
@@ -471,30 +403,21 @@ export class CajasService {
 
   /**
    * Diferencias de todas las sesiones que cumplen los filtros (para la franja
-   * de cifras del historial). Solo trae la columna `difference`.
+   * de cifras del historial). Con cierre ciego sin permiso, lista vacía.
    */
   static async getSessionHistoryDifferences(filters: CashHistoryFilters = {}): Promise<Array<number | null>> {
     if (!this.organizationId) return [];
-    const base = await this.historyQuery('difference', filters, false);
-    if (!base) return [];
-    const { data, error } = await base.query.limit(10000);
-    if (error) throw error;
-    return ((data || []) as unknown as Array<{ difference: number | string | null }>).map(r =>
-      r.difference === null ? null : Number(r.difference)
-    );
+    if (shouldOperateCashOffline()) return diferenciasHistorial(supabase, filters, this.opcionesLocales(filters));
+    const r = await this.historialServidor<{ diferencias: Array<number | null> }>('diferencias', filters);
+    return r.diferencias;
   }
 
   /** Todas las sesiones que cumplen los filtros, con nombres (para «Exportar»). Tope: 5.000. */
   static async getSessionHistoryForExport(filters: CashHistoryFilters = {}): Promise<CashSession[]> {
     if (!this.organizationId) return [];
-    const base = await this.historyQuery('*', filters, false);
-    if (!base) return [];
-    const orden = filters.orden ?? { campo: 'opened_at', direccion: 'desc' };
-    const { data, error } = await base.query
-      .order(orden.campo, { ascending: orden.direccion === 'asc', nullsFirst: false })
-      .limit(5000);
-    if (error) throw error;
-    return this.enrichSessions((data || []) as unknown as CashSession[]);
+    if (shouldOperateCashOffline()) return exportacionHistorial(supabase, filters, this.opcionesLocales(filters));
+    const r = await this.historialServidor<{ data: CashSession[] }>('exportar', filters);
+    return r.data;
   }
 
   /**
@@ -734,24 +657,7 @@ export class CajasService {
         return movement;
       }
 
-      const { data: movement, error } = await supabase
-        .from('cash_movements')
-        .insert({
-          organization_id: this.organizationId,
-          cash_session_id: activeSession.id,
-          type: data.type,
-          concept: data.concept,
-          concept_code: data.concept_code ?? null,
-          reference: data.reference ?? null,
-          amount: data.amount,
-          user_id: userId,
-          notes: data.notes
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
+      const movement = await this.registrarMovimiento(activeSession.id, data);
       console.log('Movimiento registrado:', movement.id);
       return movement;
     } catch (error) {
@@ -1300,40 +1206,28 @@ export class CajasService {
         throw new ErrorCaja('no_autenticado', 'Usuario no autenticado');
       }
 
-      // Un movimiento es de una caja abierta (antes solo lo comprobaba la pantalla).
-      const { data: caja, error: errorCaja } = await supabase
-        .from('cash_sessions')
-        .select('status')
-        .eq('id', sessionId)
-        .maybeSingle();
-      if (errorCaja) throw errorCaja;
-      if (!caja) throw new ErrorCaja('caja_no_encontrada', 'La caja no existe');
-      if (caja.status !== 'open') throw new ErrorCaja('caja_ya_cerrada', 'La caja ya está cerrada');
-
-      const { data: movement, error } = await supabase
-        .from('cash_movements')
-        .insert({
-          organization_id: this.organizationId,
-          cash_session_id: sessionId,
-          type: data.type,
-          concept: data.concept,
-          concept_code: data.concept_code ?? null,
-          reference: data.reference ?? null,
-          amount: data.amount,
-          user_id: userId,
-          notes: data.notes
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
+      // La RPC exige caja abierta de la organización (antes solo lo comprobaba la pantalla).
+      const movement = await this.registrarMovimiento(sessionId, data);
       console.log('Movimiento registrado en sesión:', movement.id);
       return movement;
     } catch (error) {
       console.error('Error adding movement to session:', error);
       throw error;
     }
+  }
+
+  /**
+   * Escribe el movimiento por `pos_caja_registrar_movimiento` (caja abierta,
+   * autor = sesión, idempotente por uuid). Ya no hay INSERT directo en
+   * `cash_movements` desde el navegador (fase 2 de la RLS de cajas).
+   */
+  private static async registrarMovimiento(sessionId: number, data: CreateCashMovementData | CashMovementData): Promise<CashMovement> {
+    const { data: fila, error } = await supabase.rpc(RPC_MOVIMIENTO_CAJA, parametrosMovimiento(sessionId, data as DatosMovimientoCaja));
+    if (error) {
+      const codigo = codigoErrorMovimiento(error);
+      throw new ErrorCaja(codigo, (error as { message?: string }).message || 'No se pudo registrar el movimiento');
+    }
+    return movimientoDeRpc<CashMovement>(fila);
   }
 
   /**

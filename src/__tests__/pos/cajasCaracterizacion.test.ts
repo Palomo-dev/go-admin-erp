@@ -42,6 +42,8 @@ import {
   totalDenominaciones,
 } from '@/lib/pos/cajas/denominaciones';
 import { diferenciasPorMetodo, observacionObligatoria, parametrosCierre, totalesConteo } from '@/lib/pos/cajas/arqueo';
+import { codigoErrorMovimiento, parametrosMovimiento } from '@/lib/pos/cajas/movimientoRpc';
+import { consultaHistorialDeUrl, enmascararHistorial, filtrosEfectivos } from '@/lib/pos/cajas/historialConsulta';
 import {
   claveDeConcepto,
   conceptoParaGuardar,
@@ -319,5 +321,82 @@ describe('K10 · catálogo único de conceptos', () => {
     expect(efectoEnCaja(1000, 'in', 250)).toBe(1250);
     expect(efectoEnCaja(1000, 'out', 250)).toBe(750);
     expect(efectoEnCaja(1000, 'out', -5)).toBe(1000);
+  });
+});
+
+describe('Seguridad de cajas, fase 1 (migración 20260928100000)', () => {
+  const RAIZ = path.resolve(__dirname, '..', '..', '..');
+  const leer = (r: string) => fs.readFileSync(path.join(RAIZ, r), 'utf8');
+  const sql = leer('supabase/migrations/20260928100000_pos_cajas_aviso_ciego_y_escritura_de_movimientos.sql');
+
+  test('el aviso de cierre no lleva cifras cuando la organización usa cierre ciego', () => {
+    const fn = sql.slice(sql.indexOf('create or replace function public.fn_notify_cash_session_closed'), sql.indexOf('drop policy'));
+    expect(fn).toMatch(/pos_blind_cash_count/);
+    const ciego = fn.slice(fn.indexOf('if coalesce(v_ciego, false) then'), fn.indexOf('else'));
+    expect(ciego).not.toMatch(/final_amount|difference/);
+  });
+
+  test('cash_movements: sin política ALL, INSERT/UPDATE solo en caja abierta y sin DELETE', () => {
+    expect(sql).toMatch(/drop policy if exists cash_movements_insert_update_delete_policy/);
+    expect(sql).not.toMatch(/for all/);
+    expect(sql).not.toMatch(/for delete/);
+    expect((sql.match(/cs\.status = 'open'/g) ?? []).length).toBeGreaterThanOrEqual(3);
+  });
+
+  test('ningún código escribe cash_movements con INSERT directo: todo pasa por la RPC', () => {
+    const archivos = (d: string): string[] =>
+      fs.readdirSync(d, { withFileTypes: true }).flatMap((e) =>
+        e.name === '__tests__' ? [] : e.isDirectory() ? archivos(path.join(d, e.name)) : /\.tsx?$/.test(e.name) ? [path.join(d, e.name)] : [],
+      );
+    for (const f of archivos(path.join(RAIZ, 'src'))) {
+      const src = fs.readFileSync(f, 'utf8');
+      expect({ f, hit: /from\(['"]cash_movements['"]\)\s*\.(insert|upsert|delete)\(/.test(src) }).toEqual({ f, hit: false });
+    }
+    for (const r of ['components/pos/cajas/CajasService.ts', 'lib/offline/cashSync.ts', 'lib/services/movimientosService.ts']) {
+      expect(leer(`src/${r}`)).toMatch(/RPC_MOVIMIENTO_CAJA/);
+    }
+  });
+
+  test('parámetros y errores de la RPC de movimientos', () => {
+    expect(parametrosMovimiento(7, { type: 'out', amount: 50, concept: 'Retiro' }, { uuid: 'u-1', creadoEn: '2026-09-28T10:00:00Z' })).toEqual({
+      p_session_id: 7,
+      p_tipo: 'out',
+      p_monto: 50,
+      p_concepto: 'Retiro',
+      p_concept_code: null,
+      p_referencia: null,
+      p_notas: null,
+      p_uuid: 'u-1',
+      p_creado_en: '2026-09-28T10:00:00Z',
+    });
+    expect(codigoErrorMovimiento({ code: '55000', message: 'caja_cerrada' })).toBe('caja_ya_cerrada');
+    expect(codigoErrorMovimiento({ code: '42501', message: 'Acceso denegado' })).toBe('sin_permiso');
+    expect(codigoErrorMovimiento({ code: '22023', message: 'monto_invalido' })).toBe('datos_movimiento_invalidos');
+  });
+
+  test('historial con cierre ciego: sin cifras, sin filtro ni orden por diferencia', () => {
+    const sesion = { id: 1, final_amount: 480, difference: -20 };
+    expect(enmascararHistorial(sesion, false)).toEqual({ id: 1, final_amount: null, difference: null });
+    expect(enmascararHistorial(sesion, true)).toBe(sesion);
+    const f = filtrosEfectivos({ resultado: 'faltante', orden: { campo: 'difference', direccion: 'asc' }, busqueda: 'Ana' }, false);
+    expect(f).toEqual({ busqueda: 'Ana', orden: undefined });
+    expect(filtrosEfectivos({ resultado: 'faltante' }, true)).toEqual({ resultado: 'faltante' });
+  });
+
+  test('la URL del historial pasa por lista blanca', () => {
+    const c = consultaHistorialDeUrl(
+      new URL('http://x/api/pos/cajas/historial?vista=exportar&status=hack&resultado=cuadrada&orden=id;drop&desde=2026-09-01T05:00:00.000Z&hasta=ayer&tamano=999&sucursal=-3'),
+    );
+    expect(c.vista).toBe('exportar');
+    expect(c.filtros).toMatchObject({ status: undefined, resultado: 'cuadrada', orden: undefined, desde: '2026-09-01T05:00:00.000Z', hasta: undefined });
+    expect(c.tamano).toBe(10);
+    expect(c.sucursalId).toBeNull();
+  });
+
+  test('el historial ya no se consulta desde el navegador con red: lo sirve el servidor enmascarado', () => {
+    const svc = leer('src/components/pos/cajas/CajasService.ts');
+    expect(svc).toMatch(/\/api\/pos\/cajas\/historial/);
+    expect(svc).not.toMatch(/private static async historyQuery/);
+    expect(leer('src/app/api/pos/cajas/historial/route.ts')).toMatch(/verImportesHistorial\(ctx\)/);
   });
 });

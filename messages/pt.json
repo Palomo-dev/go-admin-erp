@@ -5875,7 +5875,9 @@
       "cajaNoEncontrada": "O caixa não existe",
       "cajaYaCerrada": "O caixa já está fechado",
       "sinPermiso": "Somente o operador que abriu o caixa ou um administrador pode fechá-lo",
-      "organizacionNoPermitida": "Você não tem acesso a esta organização"
+      "organizacionNoPermitida": "Você não tem acesso a esta organização",
+      "datosMovimientoInvalidos": "Verifique o tipo, o valor e o conceito do movimento.",
+      "movimientoFallido": "Não foi possível registrar o movimento. Tente novamente."
     },
     "detalle": {
       "metodosPago": {

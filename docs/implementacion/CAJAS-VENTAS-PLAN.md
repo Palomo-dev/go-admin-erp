@@ -744,3 +744,54 @@ responsable, abierta_desde, saldo, href }`. `saldo` es el efectivo esperado de
 - `parametrosArqueo` descarta los métodos contados en 0.
 - Las versiones `20260926130000` y `20260926140000` coinciden con dos migraciones de compras; son copias documentales (la política ya admite versiones repetidas) y la base las registró con su propia versión.
 - Verificación visual en navegador: el preview pide iniciar sesión y no se escriben contraseñas.
+
+### Seguridad de cajas, fase 1 (2026-09-28) — tres huecos del cierre ciego cerrados
+
+Migración `20260928100000_pos_cajas_aviso_ciego_y_escritura_de_movimientos` (aplicada por MCP,
+con rollback; probada en una transacción que se deshace con un cajero y un administrador reales
+de una organización de pruebas):
+
+1. **Aviso de cierre.** `fn_notify_cash_session_closed` ya no publica monto final ni diferencia
+   cuando la organización usa cierre ciego: el aviso dice «Cierre ciego: el resultado se
+   consulta en el detalle de la caja» y el `payload` lleva `cierre_ciego: true` en lugar de
+   `difference`. Sin cierre ciego sigue igual. No se dirigió por permiso: el aviso es de
+   organización y duplicarlo para quien tiene `pos.cajas.ver_esperado` no aporta; esa persona
+   ve las cifras en el detalle (máscara del servidor).
+2. **`cash_movements`.** Fuera la política ALL por pertenencia. Quedan: SELECT por pertenencia;
+   INSERT solo en una caja ABIERTA de la misma organización y con `user_id` de un miembro
+   activo; UPDATE solo en caja abierta y del autor o con `pos.cajas.cerrar_ajenas`; sin DELETE.
+   Prueba en seco: insertar en caja cerrada, con autor ajeno a la organización, editar un
+   movimiento de caja cerrada o de otro, y borrar → bloqueado; lo propio en caja abierta → sí.
+   Nueva RPC `pos_caja_registrar_movimiento` (caja abierta, acceso a la sucursal, autor = quien
+   llama, idempotente por `uuid`, hora sin red respetada si cae dentro de la caja); ya la usan
+   los tres escritores: `CajasService` (POS), `cashSync` (outbox del Desktop) y
+   `movimientosService` (Finanzas; su «anular movimiento» escribía `type` `income`/`expense`,
+   que el CHECK rechaza: nunca funcionó y ahora sí). `procesar_devolucion` es SECURITY DEFINER
+   de `postgres` y no depende de la RLS; el cobro no escribe movimientos. En la base había 5
+   movimientos, ninguno escrito tras el cierre ni editado.
+3. **Historial de cajas.** `GET /api/pos/cajas/historial` (página, diferencias para la franja de
+   cifras y exportación) lee con el cliente de la sesión y enmascara en el servidor: sin
+   `pos.cajas.ver_esperado` con cierre ciego, `final_amount` y `difference` salen `null`, la
+   franja no recibe diferencias y se ignoran el filtro «resultado» y el orden por diferencia
+   (revelarían la cifra). La consulta vive una sola vez en `src/lib/pos/cajas/historialConsulta.ts`;
+   el Desktop sin red la usa sobre su réplica (los datos ya están en el equipo; la pantalla oculta
+   las cifras como antes).
+
+**Fase 2 de `cash_movements` (pendiente de desplegar, como la de `cash_sessions`).** El código en
+producción aún inserta directo desde el navegador; cuando estos commits estén desplegados y los
+Desktop actualizados (su outbox reproduce con la RPC):
+
+```sql
+drop policy if exists cash_movements_insert_caja_abierta on public.cash_movements;
+drop policy if exists cash_movements_update_caja_abierta on public.cash_movements;
+```
+
+Antes de aplicarla hay que decidir qué hacer con «Editar movimiento» de Finanzas
+(`movimientosService.updateMovement`, UPDATE directo): hoy queda limitado a caja abierta y al
+autor; con la fase 2 fallaría. Recomendación: quitar la edición (un movimiento se corrige
+anulándolo con su inverso, que ya pasa por la RPC y deja rastro).
+
+Sigue abierto: la RLS de `cash_sessions` deja leer `difference` y `final_amount` a cualquier miembro
+por la API de PostgREST; la máscara del historial y del resumen está en el servidor, no en la
+tabla. Cerrarla del todo exige una vista o columnas protegidas y que todos los lectores
+(Finanzas, reportes, Desktop) pasen por el servidor: se deja anotado.

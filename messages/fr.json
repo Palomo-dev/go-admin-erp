@@ -5875,7 +5875,9 @@
       "cajaNoEncontrada": "La caisse n'existe pas",
       "cajaYaCerrada": "La caisse est déjà fermée",
       "sinPermiso": "Seul le caissier qui a ouvert la caisse ou un administrateur peut la fermer",
-      "organizacionNoPermitida": "Vous n'avez pas accès à cette organisation"
+      "organizacionNoPermitida": "Vous n'avez pas accès à cette organisation",
+      "datosMovimientoInvalidos": "Vérifiez le type, le montant et le motif du mouvement.",
+      "movimientoFallido": "Le mouvement n'a pas pu être enregistré. Réessayez."
     },
     "detalle": {
       "metodosPago": {

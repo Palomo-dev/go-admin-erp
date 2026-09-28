@@ -5980,7 +5980,9 @@
       "cajaNoEncontrada": "La caja no existe",
       "cajaYaCerrada": "La caja ya está cerrada",
       "sinPermiso": "Solo el cajero que abrió la caja o un administrador puede cerrarla",
-      "organizacionNoPermitida": "No tienes acceso a esta organización"
+      "organizacionNoPermitida": "No tienes acceso a esta organización",
+      "datosMovimientoInvalidos": "Revise el tipo, el monto y el concepto del movimiento.",
+      "movimientoFallido": "No se pudo registrar el movimiento. Intente de nuevo."
     },
     "detalle": {
       "metodosPago": {

@@ -616,3 +616,64 @@ con una clave de idempotencia por intento.
 - **D14** los 8 envíos DIAN retenidos: la interfaz muestra el motivo, no decide.
 - La política `UPDATE` de `payments` sigue abierta: tiene 10 escritores legítimos (web, parqueadero, QR,
   Wompi, CxP). Cerrarla exige pasarlos a RPC; queda anotado como pendiente.
+
+## 8. Estado al cierre de la fase 2 (2026-09-28)
+
+### 8.1 Pasos
+
+| Paso | Estado | Dónde |
+|---|---|---|
+| P0 caracterización L1–L19 | hecho | `src/__tests__/finanzas/ventas/*` (reglas puras, SQL, rutas, guardarraíles) |
+| P1.1 abonos simétricos · anon · DELETE de `payments` | hecho | `20260924071946` |
+| P1.2 / P1.3 pago único y anulación | hecho | `20260924072939` |
+| P1.4 guardar borrador en una transacción | hecho | `20260924104430` (`fn_factura_venta_guardar`, `fn_seriales_vender`) |
+| P1.5 emitir y anular | hecho | `20260924075934` (+ seriales en `20260924104430`) |
+| P1.6 nota crédito | hecho | `20260924093524` (`fn_nota_credito_emitir`, saldo = total − pagado − notas) |
+| P1.7 listados y KPIs | hecho | `20260924081336` |
+| P1.8 estado de cuenta | hecho, sin RPC | cargador del motor (`cargarEstadoCuenta`), reutilizado por `GET /api/clientes/[id]/estado-cuenta` |
+| P1.9 recordatorios | hecho | `20260924082450` (`ar_reminders`, cuotas) |
+| P1.10 resincronizar 233 carteras (D10) | pendiente | ver 8.3 |
+| P1.11 ajustar saldo (D12) | fase 2 | decisión del dueño |
+| P2 route handlers | hecho | `/api/pagos`, `/api/facturas-venta/**`, `/api/cartera/**`, `/api/clientes/[id]/**` |
+| P4–P7 facturas: listado, detalle, pago, emitir, anular, nota crédito | hecho | `components/finanzas/facturas-venta/{listado,detalle}` |
+| P8 nueva y editar | hecho en el servidor | el formulario viejo llama a `POST/PUT /api/facturas-venta`; su rediseño visual (kit) queda para la siguiente ronda |
+| P9 PDF y envío | hecho | motor de documentos + `sendEmail` del CRM |
+| P10–P13 CxC Finanzas y POS, cartera del cliente | hecho | `components/finanzas/cuentas-por-cobrar/{listado,detalle,cliente}` con `BandaAntiguedad`, `PlanCuotasDialog` y `EstadoCuentaDialog` del kit |
+| P14 recordatorios | hecho (envío manual y registro); programados: solo si el dueño lo pide | |
+| P15 limpieza | hecho, salvo `id/DetalleFactura` | ver 8.3 |
+
+### 8.2 Hallazgos que cambiaron el plan
+
+- **El saldo ignoraba las notas crédito.** Los disparadores calculaban `total − pagado`; el diálogo viejo
+  restaba la nota escribiendo el saldo desde el navegador y el siguiente recálculo lo borraba. 7 facturas
+  vivas mostraban un saldo que su nota ya había cancelado. Ahora hay UNA regla
+  (`fn_factura_venta_recalcular_saldo`) que usan los disparadores de pagos, de líneas y de notas.
+- **Cada nota crédito crea una cartera con monto negativo** (28 de 28, todas `paid` o con saldo 0) por
+  `tr_create_account_receivable`. No afecta saldos ni listados (saldo 0); queda anotado para cuando se
+  toque ese disparador.
+- **Los seriales se «vendían» al guardar el borrador** y su número se buscaba en `product_serials`, que
+  no existe. Ahora se venden al emitir (`fn_seriales_vender`, misma regla que `pos_checkout_v1`) y vuelven a
+  stock al anular.
+- **El borrador ya contabiliza CMV y comisión** al crear `sale_items` y `commissions`
+  (`trg_auto_journal_sale_item_cogs`, `trg_auto_journal_commission`), como antes. Por eso la edición del
+  borrador no rehace `sale_items` ni la comisión (tampoco lo hacía el formulario). Corregirlo exige mover
+  esas líneas a la emisión y revertir los asientos ya hechos: decisión contable pendiente.
+- **Numeración de migraciones:** las mías se renombraron a la versión registrada en
+  `supabase_migrations` (el prefijo `20260926…` chocaba con otras sesiones en `supabase db push`).
+
+### 8.3 Pendiente y por qué
+
+- **`id/DetalleFactura` (detalle viejo) sigue** porque el POS lo monta en `CartView` (zona del agente del
+  POS). Sus diálogos de nota crédito, pago y anulación ya delegan en el servidor; «Marcar pagada» y su
+  emisión propia (`issue_invoice`) todavía escriben desde el navegador. Cuando el POS monte
+  `DetalleFacturaVenta`, se borra la carpeta `id/` entera.
+- **D10** (233 carteras con `amount` viejo): no se resincronizaron. El listado nuevo usa el total de la
+  factura, así que no se ven; la resincronización es un backfill con dry-run que conviene hacer en una
+  ventana acordada.
+- **Política `UPDATE` de `payments`**: sigue abierta (10 escritores legítimos; ver §7).
+- **`procesar_devolucion`** (sesión de devoluciones) arma su nota crédito con su propio bloque. Comparte con
+  `fn_nota_credito_emitir` la numeración (`fn_pos_numero_nota_credito`), la convención de signos y el
+  cálculo de base; unificar el bloque de inserción en una función interna se acuerda con esa sesión.
+- **Formulario de factura con el kit** (P8 visual): el comportamiento ya es del servidor; la pantalla sigue
+  con los componentes viejos.
+- **WhatsApp (D6)**: el enlace firmado del motor aún no existe; el envío es por correo.

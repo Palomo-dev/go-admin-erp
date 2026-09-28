@@ -1,4 +1,9 @@
 {
+  "monedasSeguridad": {
+    "sinPermiso": "No tienes permiso para cambiar las monedas de la organización. Pídeselo a un administrador (permiso de facturación o de configuración de la organización).",
+    "monedaNoAsignada": "La organización no tiene asignada esa moneda. Agrégala primero en la lista de monedas.",
+    "monedaBaseNoSeElimina": "No se puede quitar la moneda base. Cambia primero la moneda base."
+  },
   "common": {
     "save": "Guardar",
     "cancel": "Cancelar",

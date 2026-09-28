@@ -1,4 +1,9 @@
 {
+  "monedasSeguridad": {
+    "sinPermiso": "You don't have permission to change the organization's currencies. Ask an administrator (billing or organization settings permission).",
+    "monedaNoAsignada": "That currency is not assigned to the organization. Add it to the currency list first.",
+    "monedaBaseNoSeElimina": "The base currency can't be removed. Change the base currency first."
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",

@@ -1,4 +1,9 @@
 {
+  "monedasSeguridad": {
+    "sinPermiso": "Vous n'avez pas l'autorisation de modifier les devises de l'organisation. Demandez-la à un administrateur (autorisation de facturation ou de configuration de l'organisation).",
+    "monedaNoAsignada": "Cette devise n'est pas attribuée à l'organisation. Ajoutez-la d'abord à la liste des devises.",
+    "monedaBaseNoSeElimina": "La devise de base ne peut pas être supprimée. Changez d'abord la devise de base."
+  },
   "common": {
     "save": "Enregistrer",
     "cancel": "Annuler",

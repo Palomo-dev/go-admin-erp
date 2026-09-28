@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/select';
 import { AlertCircle, Loader2, RefreshCw, Search } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { useTranslations } from 'next-intl';
+import { mensajeErrorMoneda } from './erroresMonedas';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface CurrencyTemplate {
@@ -40,6 +42,7 @@ export default function CurrencySelector({ organizationId, onComplete }: Currenc
   const [selectedCurrency, setSelectedCurrency] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const tErr = useTranslations('monedasSeguridad');
 
   // Función para cargar plantillas
   async function loadTemplates() {
@@ -69,12 +72,12 @@ export default function CurrencySelector({ organizationId, onComplete }: Currenc
       // La función RPC ya devuelve solo las monedas que no están añadidas a esta organización
       setTemplates(allTemplates);
       setFilteredTemplates(allTemplates);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al cargar plantillas de monedas:', err);
-      setError('Error al cargar plantillas: ' + err.message);
+      setError('Error al cargar plantillas: ' + mensajeErrorMoneda(err, tErr));
       toast({
         title: 'Error',
-        description: 'No se pudieron cargar las plantillas de monedas: ' + err.message,
+        description: 'No se pudieron cargar las plantillas de monedas: ' + mensajeErrorMoneda(err, tErr),
         variant: 'destructive',
       });
     } finally {
@@ -87,6 +90,7 @@ export default function CurrencySelector({ organizationId, onComplete }: Currenc
     if (organizationId) {
       loadTemplates();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId]);
 
   // Filtrar plantillas según búsqueda
@@ -125,7 +129,7 @@ export default function CurrencySelector({ organizationId, onComplete }: Currenc
 
       // Usar la función RPC con SECURITY DEFINER para añadir la moneda a la organización
       // Esta función maneja todas las verificaciones y la inserción
-      const { data, error } = await supabase
+      const { error } = await supabase
         .rpc('add_organization_currency', {
           p_organization_id: organizationId,
           p_currency_code: templateToAdd.code,
@@ -142,11 +146,11 @@ export default function CurrencySelector({ organizationId, onComplete }: Currenc
       });
 
       onComplete();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al añadir moneda:', err);
       toast({
         title: 'Error',
-        description: 'No se pudo añadir la moneda: ' + err.message,
+        description: 'No se pudo añadir la moneda: ' + mensajeErrorMoneda(err, tErr),
         variant: 'destructive',
       });
     } finally {

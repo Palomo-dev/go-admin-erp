@@ -20,6 +20,48 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
+export interface FilaComision {
+  payee_id: string | null;
+  payee_name: string | null;
+  base_amount: number | string | null;
+  commission_amount: number | string | null;
+  status: string;
+  currency: string | null;
+}
+
+export interface ResumenComisionVendedor {
+  vendedor_id: string;
+  vendedor: string;
+  moneda: string | null;
+  ventas: number;
+  total: number;
+  comision: number;
+  pagado: number;
+  pendiente: number;
+}
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Agrupa comisiones vivas (accrued/paid) por vendedor y moneda; nunca suma monedas distintas. */
+export function resumirComisionesPorVendedor(rows: readonly FilaComision[]): ResumenComisionVendedor[] {
+  const grupos = new Map<string, ResumenComisionVendedor>();
+  for (const r of rows) {
+    if (r.status !== 'accrued' && r.status !== 'paid') continue;
+    const id = r.payee_id ?? 'sin-vendedor';
+    const moneda = r.currency?.trim() || null;
+    const key = `${id}|${moneda ?? ''}`;
+    const g = grupos.get(key) ?? { vendedor_id: id, vendedor: r.payee_name || id, moneda, ventas: 0, total: 0, comision: 0, pagado: 0, pendiente: 0 };
+    const monto = Number(r.commission_amount) || 0;
+    g.ventas += 1;
+    g.total = r2(g.total + (Number(r.base_amount) || 0));
+    g.comision = r2(g.comision + monto);
+    if (r.status === 'paid') g.pagado = r2(g.pagado + monto);
+    else g.pendiente = r2(g.pendiente + monto);
+    grupos.set(key, g);
+  }
+  return Array.from(grupos.values()).sort((a, b) => b.comision - a.comision);
+}
+
 export const hrmReports: ReportDefinition[] = [
   {
     id: 'hrm-nomina',
@@ -117,52 +159,46 @@ export const hrmReports: ReportDefinition[] = [
     id: 'hrm-comisiones',
     modulo: 'hrm',
     titulo: 'Comisiones',
-    descripcion: 'Comisiones calculadas por vendedor y producto',
+    descripcion: 'Comisiones devengadas por vendedor (pagadas y pendientes)',
     categoria: 'personas',
     periodosSugeridos: ['quincenal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { data, error } = await db
-        .from('sales')
-        .select('salesperson_id, user_id, commission_rate, commission_type, total, sale_date')
+      // La fuente es la tabla commissions (lo que de verdad se devengó, con su
+      // método: monto fijo o porcentaje sobre la base SIN impuestos). Antes se
+      // recalculaba desde sales comparando commission_type === 'fixed' (nunca
+      // ocurre: el tipo es 'salesperson') y sobre el total CON impuestos.
+      let query = db
+        .from('commissions')
+        .select('payee_id, payee_name, base_amount, commission_amount, status, currency, accrued_at')
         .eq('organization_id', orgId)
-        .gte('sale_date', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('sale_date', `${periodo.fechaFin}T23:59:59Z`)
-        .not('status', 'in', '("cancelled","void")');
+        .in('status', ['accrued', 'paid'])
+        .gte('accrued_at', `${periodo.fechaInicio}T00:00:00Z`)
+        .lte('accrued_at', `${periodo.fechaFin}T23:59:59Z`);
+      if (branchId) query = query.eq('branch_id', branchId);
+      const { data, error } = await query;
 
       if (error) throw error;
 
-      const ventas = data ?? [];
-      const porVendedor: Record<string, { ventas: number; total: number; comision: number }> = {};
-      ventas.forEach((v: Record<string, unknown>) => {
-        const id = String(v.salesperson_id ?? v.user_id ?? '');
-        if (!id) return;
-        if (!porVendedor[id]) porVendedor[id] = { ventas: 0, total: 0, comision: 0 };
-        porVendedor[id].ventas++;
-        porVendedor[id].total += Number(v.total ?? 0);
-        const rate = Number(v.commission_rate ?? 0);
-        const tipo = String(v.commission_type ?? 'percentage');
-        porVendedor[id].comision += tipo === 'fixed' ? rate : (Number(v.total ?? 0) * rate / 100);
-      });
-
-      const filas = Object.entries(porVendedor).map(([vendedor_id, v]) => ({
-        vendedor_id, ventas: v.ventas, total: v.total, comision: v.comision,
-      }));
+      const filas = resumirComisionesPorVendedor((data ?? []) as FilaComision[]);
+      const totalComision = filas.reduce((s, f) => s + f.comision, 0);
 
       return buildReportData(
         'hrm-comisiones', 'Comisiones', 'hrm', periodo,
         [
-          { titulo: 'Total Comisiones', valor: filas.reduce((s, f) => s + f.comision, 0), formato: 'moneda' },
-          { titulo: 'Vendedores', valor: filas.length, formato: 'numero' },
+          { titulo: 'Total Comisiones', valor: totalComision, formato: 'moneda' },
+          { titulo: 'Vendedores', valor: new Set(filas.map((f) => f.vendedor_id)).size, formato: 'numero' },
         ],
         [
-          { key: 'vendedor_id', titulo: 'Vendedor', tipo: 'texto' },
-          { key: 'ventas', titulo: 'N° Ventas', tipo: 'numero', alinear: 'right' },
-          { key: 'total', titulo: 'Total Ventas', tipo: 'moneda', alinear: 'right' },
+          { key: 'vendedor', titulo: 'Vendedor', tipo: 'texto' },
+          { key: 'ventas', titulo: 'N° Comisiones', tipo: 'numero', alinear: 'right' },
+          { key: 'total', titulo: 'Base', tipo: 'moneda', alinear: 'right' },
           { key: 'comision', titulo: 'Comisión', tipo: 'moneda', alinear: 'right' },
+          { key: 'pagado', titulo: 'Pagado', tipo: 'moneda', alinear: 'right' },
+          { key: 'pendiente', titulo: 'Pendiente', tipo: 'moneda', alinear: 'right' },
         ],
-        filas,
-        { comision: filas.reduce((s, f) => s + f.comision, 0) },
+        filas as unknown as Record<string, unknown>[],
+        { comision: totalComision, pagado: filas.reduce((s, f) => s + f.pagado, 0), pendiente: filas.reduce((s, f) => s + f.pendiente, 0) },
       );
     },
   },

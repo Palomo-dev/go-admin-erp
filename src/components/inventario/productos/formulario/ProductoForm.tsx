@@ -45,6 +45,7 @@ import { SeccionPrecios } from './secciones/SeccionPrecios';
 import { SeccionVariantes } from './secciones/SeccionVariantes';
 import type { MonedaFormulario, PropsSeccionFormulario } from './tipos';
 import { useProductoForm } from './useProductoForm';
+import { desplazarA } from '@/lib/utils/desplazamiento';
 
 /**
  * Formulario único de producto: nuevo · editar · duplicar, en página o en
@@ -155,11 +156,11 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
   const descartar = () => (form.sucio ? setConfirmarSalir(true) : salir());
 
   const alInicio = () => {
-    document.getElementById('producto-form-inicio')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    desplazarA(document.getElementById('producto-form-inicio'));
   };
 
   const irASeccion = useCallback((s: SeccionFormulario) => {
-    document.getElementById(s)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    desplazarA(document.getElementById(s));
   }, []);
 
   /** Abre las secciones con error, lleva al paso y a la sección, y enfoca el primer campo marcado. */
@@ -174,7 +175,7 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
         const contenedor = pasoError ? document.getElementById(`paso-${pasoError}`) : seccion ? document.getElementById(seccion) : null;
         if (!contenedor) return;
         const campo = contenedor.querySelector<HTMLElement>('[aria-invalid="true"]');
-        (campo ?? contenedor).scrollIntoView({ behavior: 'smooth', block: campo ? 'center' : 'start' });
+        desplazarA(campo ?? contenedor, { block: campo ? 'center' : 'start' });
         campo?.focus({ preventScroll: true });
       }, 80);
     },

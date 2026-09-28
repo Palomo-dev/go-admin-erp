@@ -20,7 +20,7 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
     return (
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="dark:text-white">Resumen por Mesero</CardTitle>
+          <CardTitle className="dark:text-white">{t('resumen.titulo')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="animate-pulse space-y-4">
@@ -37,12 +37,12 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
     return (
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="dark:text-white">Resumen por Mesero</CardTitle>
+          <CardTitle className="dark:text-white">{t('resumen.titulo')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>No hay datos de propinas</p>
+            <p>{t('resumen.sinDatos')}</p>
           </div>
         </CardContent>
       </Card>
@@ -55,9 +55,9 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
     <Card className="dark:bg-gray-800 dark:border-gray-700">
       <CardHeader>
         <CardTitle className="dark:text-white flex items-center justify-between">
-          <span>Resumen por Mesero</span>
+          <span>{t('resumen.titulo')}</span>
           <Badge variant="secondary" className="dark:bg-gray-700">
-            {summaries.length} mesero{summaries.length !== 1 ? 's' : ''}
+            {t('resumen.meseros', { count: summaries.length })}
           </Badge>
         </CardTitle>
       </CardHeader>
@@ -82,7 +82,7 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
                   <div>
                     <p className="font-medium dark:text-white">{summary.server_name}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {summary.tips_count} propina{summary.tips_count !== 1 ? 's' : ''}
+                      {t('resumen.propinas', { count: summary.tips_count })}
                     </p>
                   </div>
                 </div>
@@ -91,7 +91,7 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
                     {formatear(summary.total_tips)}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {percentage.toFixed(1)}% del total
+                    {t('resumen.porcentajeDelTotal', { pct: percentage.toFixed(1) })}
                   </p>
                 </div>
               </div>
@@ -99,7 +99,7 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
               {/* Barra de progreso de distribución */}
               <div className="space-y-1">
                 <div className="flex justify-between text-xs">
-                  <span className="text-gray-500 dark:text-gray-400">Distribución</span>
+                  <span className="text-gray-500 dark:text-gray-400">{t('resumen.distribucion')}</span>
                   <span className="text-gray-500 dark:text-gray-400">
                     {distributedPercentage.toFixed(0)}%
                   </span>
@@ -114,21 +114,21 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
                   <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
                     <span className="flex items-center gap-1">
                       <Banknote className="h-3 w-3 text-green-500" />
-                      Efectivo
+                      {t('tipos.cash')}
                     </span>
                     <span>{formatear(summary.cash_tips)}</span>
                   </div>
                   <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
                     <span className="flex items-center gap-1">
                       <CreditCard className="h-3 w-3 text-blue-500" />
-                      Tarjeta
+                      {t('tipos.card')}
                     </span>
                     <span>{formatear(summary.card_tips)}</span>
                   </div>
                   <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
                     <span className="flex items-center gap-1">
                       <ArrowRightLeft className="h-3 w-3 text-purple-500" />
-                      Transf.
+                      {t('resumen.transferenciaCorta')}
                     </span>
                     <span>{formatear(summary.transfer_tips)}</span>
                   </div>
@@ -136,7 +136,7 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
                     <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
                       <span className="flex items-center gap-1">
                         <Globe className="h-3 w-3 text-cyan-500" />
-                        Online
+                        {t('tipos.online')}
                       </span>
                       <span>{formatear(summary.online_tips)}</span>
                     </div>
@@ -166,7 +166,7 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
                   <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
                     <span className="flex items-center gap-1">
                       <CheckCircle className="h-3 w-3 text-green-500" />
-                      Distrib.
+                      {t('resumen.distribuidoCorto')}
                     </span>
                     <span className="text-green-600 dark:text-green-400">
                       {formatear(summary.distributed_amount)}
@@ -175,7 +175,7 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
                   <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3 text-yellow-500" />
-                      Pendiente
+                      {t('resumen.pendiente')}
                     </span>
                     <span className="text-yellow-600 dark:text-yellow-400">
                       {formatear(summary.pending_amount)}

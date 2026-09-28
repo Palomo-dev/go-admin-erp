@@ -86,11 +86,11 @@ export function TipForm({
     const newErrors: Record<string, string> = {};
 
     if (!formData.server_id) {
-      newErrors.server_id = 'Selecciona un mesero';
+      newErrors.server_id = t('formulario.errores.mesero');
     }
 
     if (!formData.amount || formData.amount <= 0) {
-      newErrors.amount = 'El monto debe ser mayor a 0';
+      newErrors.amount = t('formulario.errores.monto');
     }
 
     setErrors(newErrors);
@@ -111,10 +111,10 @@ export function TipForm({
           tip_type: formData.tip_type,
           notes: formData.notes,
         });
-        toast.success('Propina actualizada correctamente');
+        toast.success(t('toast.actualizada'));
       } else {
         await PropinasService.create(formData);
-        toast.success('Propina registrada correctamente');
+        toast.success(t('toast.registrada'));
       }
       onSuccess();
       onOpenChange(false);
@@ -148,7 +148,7 @@ export function TipForm({
       <DialogContent className="sm:max-w-[450px] dark:bg-gray-800 dark:border-gray-700">
         <DialogHeader>
           <DialogTitle className="dark:text-white">
-            {isEditing ? 'Editar Propina' : 'Nueva Propina'}
+            {isEditing ? t('formulario.tituloEditar') : t('formulario.tituloNueva')}
           </DialogTitle>
         </DialogHeader>
 
@@ -156,7 +156,7 @@ export function TipForm({
           {/* Mesero */}
           <div className="space-y-2">
             <Label className="dark:text-gray-200">
-              Mesero <span className="text-red-500">*</span>
+              {t('formulario.mesero')} <span className="text-red-500">*</span>
             </Label>
             <Select
               value={formData.server_id}
@@ -166,7 +166,7 @@ export function TipForm({
                 "dark:bg-gray-700 dark:border-gray-600 dark:text-white",
                 errors.server_id && "border-red-500"
               )}>
-                <SelectValue placeholder="Seleccionar mesero" />
+                <SelectValue placeholder={t('formulario.seleccionarMesero')} />
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                 {servers.map((server) => (
@@ -184,7 +184,7 @@ export function TipForm({
           {/* Monto */}
           <div className="space-y-2">
             <Label className="dark:text-gray-200">
-              Monto <span className="text-red-500">*</span>
+              {t('formulario.monto')} <span className="text-red-500">*</span>
             </Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
@@ -208,7 +208,7 @@ export function TipForm({
 
           {/* Tipo */}
           <div className="space-y-2">
-            <Label className="dark:text-gray-200">Tipo de Propina</Label>
+            <Label className="dark:text-gray-200">{t('formulario.tipo')}</Label>
             <div className="grid grid-cols-4 gap-2">
               {tiposVisibles.map((type) => (
                 <button
@@ -244,11 +244,11 @@ export function TipForm({
 
           {/* Notas */}
           <div className="space-y-2">
-            <Label className="dark:text-gray-200">Notas (opcional)</Label>
+            <Label className="dark:text-gray-200">{t('formulario.notas')}</Label>
             <Textarea
               value={formData.notes || ''}
               onChange={(e) => handleChange('notes', e.target.value)}
-              placeholder="Notas adicionales..."
+              placeholder={t('formulario.notasPlaceholder')}
               rows={2}
               className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               disabled={loading}
@@ -264,7 +264,7 @@ export function TipForm({
               className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600"
             >
               <X className="h-4 w-4 mr-2" />
-              Cancelar
+              {t('formulario.cancelar')}
             </Button>
             <Button 
               type="submit" 
@@ -272,7 +272,7 @@ export function TipForm({
               className="bg-green-600 hover:bg-green-700"
             >
               <Save className="h-4 w-4 mr-2" />
-              {loading ? 'Guardando...' : isEditing ? 'Actualizar' : 'Registrar'}
+              {loading ? t('formulario.guardando') : isEditing ? t('formulario.actualizar') : t('formulario.registrar')}
             </Button>
           </DialogFooter>
         </form>

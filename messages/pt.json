@@ -2369,6 +2369,18 @@
       "touchModeTouch": "Toque",
       "touchModeNoTouch": "Sem toque",
       "invalidMediaUrlsTooMany": "No máximo {max} imagens de repouso"
+    },
+    "avisoPropina": {
+      "eleccion_porcentaje": "O cliente escolheu {percent}% ({monto})",
+      "eleccion_ninguna": "O cliente escolheu não deixar gorjeta",
+      "eleccion_importe": "O cliente escolheu uma gorjeta de {monto}",
+      "aplicar": "Aplicar",
+      "cambiar": "Alterar",
+      "entendido": "Entendi",
+      "espera_waiting_texto": "Tela do cliente: aguardando a gorjeta…",
+      "espera_waiting_accion": "Pular",
+      "espera_informational_texto": "A tela mostra as gorjetas sugeridas: registre o que o cliente indicar",
+      "espera_informational_accion": "Continuar"
     }
   },
   "posDisplay": {
@@ -5896,7 +5908,8 @@
         },
         "reporteCarta": "Relatório do meu caixa (PDF)",
         "reporteTicket": "Cupom do meu caixa (80 mm)"
-      }
+      },
+      "todasSucursales": "Todas as filiais"
     },
     "errores": {
       "noAutenticado": "Usuário não autenticado",
@@ -9521,7 +9534,9 @@
       "anulada": "Gorjeta anulada",
       "anuladaConReverso": "Gorjeta anulada e lançamento contábil estornado",
       "distribuidas": "{count, plural, one {# gorjeta marcada como distribuída} other {# gorjetas marcadas como distribuídas}}",
-      "ningunaDistribuida": "Não havia gorjetas pendentes para distribuir: já estavam distribuídas ou anuladas."
+      "ningunaDistribuida": "Não havia gorjetas pendentes para distribuir: já estavam distribuídas ou anuladas.",
+      "actualizada": "Gorjeta atualizada com sucesso",
+      "registrada": "Gorjeta registrada com sucesso"
     },
     "errores": {
       "SIN_PERMISO": "Você não tem permissão para esta ação.",
@@ -9532,6 +9547,67 @@
       "PERIODO_CERRADO": "O período contábil de hoje está fechado: não é possível registrar o estorno.",
       "SIN_SUCURSAL": "Selecione uma filial para registrar a gorjeta.",
       "DESCONOCIDO": "Não foi possível concluir a operação. Tente novamente."
+    },
+    "cabecera": {
+      "titulo": "Gestão de gorjetas",
+      "subtitulo": "Registre e distribua as gorjetas da equipe",
+      "distribuirSeleccion": "Distribuir ({count})",
+      "nueva": "Nova gorjeta",
+      "distribuidas": "Distribuídas",
+      "pendientes": "Pendentes",
+      "filtroMesero": "Garçom",
+      "todosMeseros": "Todos os garçons",
+      "filtroEstado": "Status",
+      "filtroTipo": "Tipo",
+      "todos": "Todos",
+      "desde": "De",
+      "hasta": "Até"
+    },
+    "resumen": {
+      "titulo": "Resumo por garçom",
+      "sinDatos": "Não há dados de gorjetas",
+      "meseros": "{count, plural, one {# garçom} other {# garçons}}",
+      "propinas": "{count, plural, one {# gorjeta} other {# gorjetas}}",
+      "porcentajeDelTotal": "{pct}% do total",
+      "distribucion": "Distribuição",
+      "transferenciaCorta": "Transf.",
+      "distribuidoCorto": "Distrib.",
+      "pendiente": "Pendente"
+    },
+    "formulario": {
+      "tituloEditar": "Editar gorjeta",
+      "tituloNueva": "Nova gorjeta",
+      "mesero": "Garçom",
+      "seleccionarMesero": "Selecionar garçom",
+      "monto": "Valor",
+      "tipo": "Tipo de gorjeta",
+      "notas": "Observações (opcional)",
+      "notasPlaceholder": "Observações adicionais...",
+      "cancelar": "Cancelar",
+      "guardando": "Salvando...",
+      "actualizar": "Atualizar",
+      "registrar": "Registrar",
+      "errores": {
+        "mesero": "Selecione um garçom",
+        "monto": "O valor deve ser maior que 0"
+      }
+    },
+    "lista": {
+      "sinAsignar": "Sem atribuição",
+      "vacioTitulo": "Nenhuma gorjeta registrada",
+      "vacioDescripcion": "As gorjetas aparecerão aqui quando forem registradas",
+      "columnas": {
+        "fecha": "Data",
+        "mesero": "Garçom",
+        "tipo": "Tipo",
+        "monto": "Valor",
+        "estado": "Status",
+        "acciones": "Ações"
+      },
+      "distribuida": "Distribuída",
+      "pendiente": "Pendente",
+      "editar": "Editar",
+      "marcarDistribuida": "Marcar como distribuída"
     }
   },
   "posCargosServicio": {
@@ -9560,6 +9636,94 @@
       "NO_ENCONTRADO": "A taxa não existe nesta organização.",
       "TIPO_INVALIDO": "Tipo de taxa inválido: use porcentagem ou valor fixo.",
       "DESCONOCIDO": "Não foi possível concluir a operação. Tente novamente."
+    },
+    "global": "Global (todas as filiais)",
+    "tiposCargo": {
+      "percentage": "Porcentagem",
+      "fixed_amount": "Valor fixo"
+    },
+    "aplicaA": {
+      "all": "Todos",
+      "dine_in": "No local",
+      "delivery": "Entrega",
+      "takeout": "Para viagem"
+    },
+    "cabecera": {
+      "titulo": "Taxas de serviço",
+      "subtitulo": "Configure taxas automáticas, como uma gorjeta sugerida",
+      "importar": "Importar",
+      "nuevo": "Nova taxa",
+      "total": "Total",
+      "activos": "Ativas",
+      "inactivos": "Inativas",
+      "filtroEstado": "Status",
+      "todos": "Todas",
+      "filtroSucursal": "Filial",
+      "todasSucursales": "Todas as filiais",
+      "filtroAplicaA": "Aplica-se a",
+      "importarTitulo": "Importar taxas",
+      "importarDescripcion": "Envie um arquivo CSV com as taxas de serviço",
+      "formatoRequerido": "Formato exigido:",
+      "cancelar": "Cancelar"
+    },
+    "formulario": {
+      "tituloEditar": "Editar taxa de serviço",
+      "tituloNuevo": "Nova taxa de serviço",
+      "nombre": "Nome",
+      "nombrePlaceholder": "Ex.: Taxa de serviço 10%",
+      "tipo": "Tipo de taxa",
+      "valor": "Valor",
+      "montoMinimo": "Valor mínimo (opcional)",
+      "personasMinimas": "Mínimo de pessoas (opcional)",
+      "aplicaA": "Aplica-se a",
+      "sucursal": "Filial (opcional)",
+      "sucursalPlaceholder": "Global (todas)",
+      "gravado": "Tributável",
+      "gravadoAyuda": "A taxa será incluída na base tributável",
+      "opcional": "Taxa opcional",
+      "opcionalAyuda": "O cliente pode recusar esta taxa",
+      "cancelar": "Cancelar",
+      "guardando": "Salvando...",
+      "actualizar": "Atualizar",
+      "crear": "Criar",
+      "errores": {
+        "nombre": "O nome é obrigatório",
+        "valor": "O valor deve ser maior que 0",
+        "porcentajeMaximo": "A porcentagem não pode ser maior que 100%"
+      }
+    },
+    "lista": {
+      "vacioTitulo": "Nenhuma taxa de serviço",
+      "vacioDescripcion": "Crie uma taxa de serviço para aplicá-la às vendas",
+      "columnas": {
+        "nombre": "Nome",
+        "tipo": "Tipo",
+        "valor": "Valor",
+        "condiciones": "Condições",
+        "aplicaA": "Aplica-se a",
+        "estado": "Status",
+        "acciones": "Ações"
+      },
+      "minimoMonto": "Mín.: {monto}",
+      "minimoPersonas": "{count, plural, one {Mín.: # pessoa} other {Mín.: # pessoas}}",
+      "sinRestricciones": "Sem restrições",
+      "gravado": "Tributável",
+      "opcional": "Opcional",
+      "editar": "Editar",
+      "duplicar": "Duplicar",
+      "eliminar": "Excluir",
+      "eliminarTitulo": "Excluir taxa de serviço?",
+      "eliminarDescripcion": "Esta ação não pode ser desfeita.",
+      "cancelar": "Cancelar"
+    },
+    "toast": {
+      "actualizado": "Taxa atualizada com sucesso",
+      "creado": "Taxa criada com sucesso",
+      "eliminado": "Taxa excluída com sucesso",
+      "activado": "Taxa ativada",
+      "desactivado": "Taxa desativada",
+      "duplicado": "Taxa duplicada com sucesso",
+      "errorCarga": "Não foi possível carregar as taxas de serviço"
     }
   },
   "posDevoluciones": {

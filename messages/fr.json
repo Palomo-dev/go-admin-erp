@@ -2369,6 +2369,18 @@
       "touchModeTouch": "Tactile",
       "touchModeNoTouch": "Non tactile",
       "invalidMediaUrlsTooMany": "Au maximum {max} images de veille"
+    },
+    "avisoPropina": {
+      "eleccion_porcentaje": "Le client a choisi {percent} % ({monto})",
+      "eleccion_ninguna": "Le client a choisi de ne pas laisser de pourboire",
+      "eleccion_importe": "Le client a choisi un pourboire de {monto}",
+      "aplicar": "Appliquer",
+      "cambiar": "Modifier",
+      "entendido": "Compris",
+      "espera_waiting_texto": "Écran client : en attente du pourboire…",
+      "espera_waiting_accion": "Ignorer",
+      "espera_informational_texto": "L'écran affiche les pourboires suggérés : saisissez ce que le client vous indique",
+      "espera_informational_accion": "Continuer"
     }
   },
   "posDisplay": {
@@ -5896,7 +5908,8 @@
         },
         "reporteCarta": "Rapport de ma caisse (PDF)",
         "reporteTicket": "Ticket de ma caisse (80 mm)"
-      }
+      },
+      "todasSucursales": "Toutes les succursales"
     },
     "errores": {
       "noAutenticado": "Utilisateur non authentifié",
@@ -9521,7 +9534,9 @@
       "anulada": "Pourboire annulé",
       "anuladaConReverso": "Pourboire annulé et écriture comptable contre-passée",
       "distribuidas": "{count, plural, one {# pourboire marqué comme distribué} other {# pourboires marqués comme distribués}}",
-      "ningunaDistribuida": "Aucun pourboire en attente à distribuer : ils étaient déjà distribués ou annulés."
+      "ningunaDistribuida": "Aucun pourboire en attente à distribuer : ils étaient déjà distribués ou annulés.",
+      "actualizada": "Pourboire mis à jour",
+      "registrada": "Pourboire enregistré"
     },
     "errores": {
       "SIN_PERMISO": "Vous n'avez pas l'autorisation pour cette action.",
@@ -9532,6 +9547,67 @@
       "PERIODO_CERRADO": "La période comptable d'aujourd'hui est clôturée : la contre-passation ne peut pas être enregistrée.",
       "SIN_SUCURSAL": "Sélectionnez une succursale pour enregistrer le pourboire.",
       "DESCONOCIDO": "L'opération n'a pas pu aboutir. Réessayez."
+    },
+    "cabecera": {
+      "titulo": "Gestion des pourboires",
+      "subtitulo": "Enregistrez et répartissez les pourboires de l'équipe",
+      "distribuirSeleccion": "Répartir ({count})",
+      "nueva": "Nouveau pourboire",
+      "distribuidas": "Répartis",
+      "pendientes": "En attente",
+      "filtroMesero": "Serveur",
+      "todosMeseros": "Tous les serveurs",
+      "filtroEstado": "Statut",
+      "filtroTipo": "Type",
+      "todos": "Tous",
+      "desde": "Du",
+      "hasta": "Au"
+    },
+    "resumen": {
+      "titulo": "Résumé par serveur",
+      "sinDatos": "Aucune donnée de pourboire",
+      "meseros": "{count, plural, one {# serveur} other {# serveurs}}",
+      "propinas": "{count, plural, one {# pourboire} other {# pourboires}}",
+      "porcentajeDelTotal": "{pct} % du total",
+      "distribucion": "Répartition",
+      "transferenciaCorta": "Virement",
+      "distribuidoCorto": "Répartis",
+      "pendiente": "En attente"
+    },
+    "formulario": {
+      "tituloEditar": "Modifier le pourboire",
+      "tituloNueva": "Nouveau pourboire",
+      "mesero": "Serveur",
+      "seleccionarMesero": "Sélectionner un serveur",
+      "monto": "Montant",
+      "tipo": "Type de pourboire",
+      "notas": "Notes (facultatif)",
+      "notasPlaceholder": "Notes supplémentaires...",
+      "cancelar": "Annuler",
+      "guardando": "Enregistrement...",
+      "actualizar": "Mettre à jour",
+      "registrar": "Enregistrer",
+      "errores": {
+        "mesero": "Sélectionnez un serveur",
+        "monto": "Le montant doit être supérieur à 0"
+      }
+    },
+    "lista": {
+      "sinAsignar": "Non attribué",
+      "vacioTitulo": "Aucun pourboire enregistré",
+      "vacioDescripcion": "Les pourboires apparaîtront ici une fois enregistrés",
+      "columnas": {
+        "fecha": "Date",
+        "mesero": "Serveur",
+        "tipo": "Type",
+        "monto": "Montant",
+        "estado": "Statut",
+        "acciones": "Actions"
+      },
+      "distribuida": "Réparti",
+      "pendiente": "En attente",
+      "editar": "Modifier",
+      "marcarDistribuida": "Marquer comme réparti"
     }
   },
   "posCargosServicio": {
@@ -9560,6 +9636,94 @@
       "NO_ENCONTRADO": "Les frais n'existent pas dans cette organisation.",
       "TIPO_INVALIDO": "Type de frais non valide : utilisez pourcentage ou montant fixe.",
       "DESCONOCIDO": "L'opération n'a pas pu aboutir. Réessayez."
+    },
+    "global": "Global (toutes les succursales)",
+    "tiposCargo": {
+      "percentage": "Pourcentage",
+      "fixed_amount": "Montant fixe"
+    },
+    "aplicaA": {
+      "all": "Tous",
+      "dine_in": "Sur place",
+      "delivery": "Livraison",
+      "takeout": "À emporter"
+    },
+    "cabecera": {
+      "titulo": "Frais de service",
+      "subtitulo": "Configurez des frais automatiques comme un pourboire suggéré",
+      "importar": "Importer",
+      "nuevo": "Nouveaux frais",
+      "total": "Total",
+      "activos": "Actifs",
+      "inactivos": "Inactifs",
+      "filtroEstado": "Statut",
+      "todos": "Tous",
+      "filtroSucursal": "Succursale",
+      "todasSucursales": "Toutes les succursales",
+      "filtroAplicaA": "S'applique à",
+      "importarTitulo": "Importer des frais",
+      "importarDescripcion": "Téléversez un fichier CSV contenant les frais de service",
+      "formatoRequerido": "Format requis :",
+      "cancelar": "Annuler"
+    },
+    "formulario": {
+      "tituloEditar": "Modifier les frais de service",
+      "tituloNuevo": "Nouveaux frais de service",
+      "nombre": "Nom",
+      "nombrePlaceholder": "Ex. : Frais de service 10 %",
+      "tipo": "Type de frais",
+      "valor": "Valeur",
+      "montoMinimo": "Montant minimum (facultatif)",
+      "personasMinimas": "Couverts minimum (facultatif)",
+      "aplicaA": "S'applique à",
+      "sucursal": "Succursale (facultatif)",
+      "sucursalPlaceholder": "Global (toutes)",
+      "gravado": "Soumis à la taxe",
+      "gravadoAyuda": "Les frais seront inclus dans la base imposable",
+      "opcional": "Frais facultatifs",
+      "opcionalAyuda": "Le client peut refuser ces frais",
+      "cancelar": "Annuler",
+      "guardando": "Enregistrement...",
+      "actualizar": "Mettre à jour",
+      "crear": "Créer",
+      "errores": {
+        "nombre": "Le nom est obligatoire",
+        "valor": "La valeur doit être supérieure à 0",
+        "porcentajeMaximo": "Le pourcentage ne peut pas dépasser 100 %"
+      }
+    },
+    "lista": {
+      "vacioTitulo": "Aucuns frais de service",
+      "vacioDescripcion": "Créez des frais de service pour les appliquer aux ventes",
+      "columnas": {
+        "nombre": "Nom",
+        "tipo": "Type",
+        "valor": "Valeur",
+        "condiciones": "Conditions",
+        "aplicaA": "S'applique à",
+        "estado": "Statut",
+        "acciones": "Actions"
+      },
+      "minimoMonto": "Min. : {monto}",
+      "minimoPersonas": "{count, plural, one {Min. : # couvert} other {Min. : # couverts}}",
+      "sinRestricciones": "Sans restriction",
+      "gravado": "Taxable",
+      "opcional": "Facultatif",
+      "editar": "Modifier",
+      "duplicar": "Dupliquer",
+      "eliminar": "Supprimer",
+      "eliminarTitulo": "Supprimer ces frais de service ?",
+      "eliminarDescripcion": "Cette action est irréversible.",
+      "cancelar": "Annuler"
+    },
+    "toast": {
+      "actualizado": "Frais mis à jour",
+      "creado": "Frais créés",
+      "eliminado": "Frais supprimés",
+      "activado": "Frais activés",
+      "desactivado": "Frais désactivés",
+      "duplicado": "Frais dupliqués",
+      "errorCarga": "Impossible de charger les frais de service"
     }
   },
   "posDevoluciones": {

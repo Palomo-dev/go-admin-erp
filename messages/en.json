@@ -2474,6 +2474,18 @@
       "touchModeTouch": "Touch",
       "touchModeNoTouch": "Non-touch",
       "invalidMediaUrlsTooMany": "At most {max} idle images"
+    },
+    "avisoPropina": {
+      "eleccion_porcentaje": "Customer chose {percent}% ({monto})",
+      "eleccion_ninguna": "Customer chose not to tip",
+      "eleccion_importe": "Customer chose a tip of {monto}",
+      "aplicar": "Apply",
+      "cambiar": "Change",
+      "entendido": "Got it",
+      "espera_waiting_texto": "Customer display: waiting for the tip…",
+      "espera_waiting_accion": "Skip",
+      "espera_informational_texto": "The display shows the suggested tips: enter what the customer tells you",
+      "espera_informational_accion": "Continue"
     }
   },
   "posDisplay": {
@@ -6001,7 +6013,8 @@
         },
         "reporteCarta": "My register report (PDF)",
         "reporteTicket": "My register ticket (80 mm)"
-      }
+      },
+      "todasSucursales": "All branches"
     },
     "errores": {
       "noAutenticado": "User not authenticated",
@@ -9626,7 +9639,9 @@
       "anulada": "Tip voided",
       "anuladaConReverso": "Tip voided and its journal entry reversed",
       "distribuidas": "{count, plural, one {# tip marked as distributed} other {# tips marked as distributed}}",
-      "ningunaDistribuida": "There were no pending tips to distribute: they were already distributed or voided."
+      "ningunaDistribuida": "There were no pending tips to distribute: they were already distributed or voided.",
+      "actualizada": "Tip updated successfully",
+      "registrada": "Tip recorded successfully"
     },
     "errores": {
       "SIN_PERMISO": "You do not have permission for this action.",
@@ -9637,6 +9652,67 @@
       "PERIODO_CERRADO": "Today's accounting period is closed: the reversal cannot be posted.",
       "SIN_SUCURSAL": "Select a branch to record the tip.",
       "DESCONOCIDO": "The operation could not be completed. Please try again."
+    },
+    "cabecera": {
+      "titulo": "Tip Management",
+      "subtitulo": "Record and distribute the team's tips",
+      "distribuirSeleccion": "Distribute ({count})",
+      "nueva": "New Tip",
+      "distribuidas": "Distributed",
+      "pendientes": "Pending",
+      "filtroMesero": "Server",
+      "todosMeseros": "All servers",
+      "filtroEstado": "Status",
+      "filtroTipo": "Type",
+      "todos": "All",
+      "desde": "From",
+      "hasta": "To"
+    },
+    "resumen": {
+      "titulo": "Summary by Server",
+      "sinDatos": "No tip data",
+      "meseros": "{count, plural, one {# server} other {# servers}}",
+      "propinas": "{count, plural, one {# tip} other {# tips}}",
+      "porcentajeDelTotal": "{pct}% of total",
+      "distribucion": "Distribution",
+      "transferenciaCorta": "Transfer",
+      "distribuidoCorto": "Distrib.",
+      "pendiente": "Pending"
+    },
+    "formulario": {
+      "tituloEditar": "Edit Tip",
+      "tituloNueva": "New Tip",
+      "mesero": "Server",
+      "seleccionarMesero": "Select a server",
+      "monto": "Amount",
+      "tipo": "Tip Type",
+      "notas": "Notes (optional)",
+      "notasPlaceholder": "Additional notes...",
+      "cancelar": "Cancel",
+      "guardando": "Saving...",
+      "actualizar": "Update",
+      "registrar": "Record",
+      "errores": {
+        "mesero": "Select a server",
+        "monto": "The amount must be greater than 0"
+      }
+    },
+    "lista": {
+      "sinAsignar": "Unassigned",
+      "vacioTitulo": "No tips recorded",
+      "vacioDescripcion": "Tips will appear here once they are recorded",
+      "columnas": {
+        "fecha": "Date",
+        "mesero": "Server",
+        "tipo": "Type",
+        "monto": "Amount",
+        "estado": "Status",
+        "acciones": "Actions"
+      },
+      "distribuida": "Distributed",
+      "pendiente": "Pending",
+      "editar": "Edit",
+      "marcarDistribuida": "Mark as Distributed"
     }
   },
   "posCargosServicio": {
@@ -9665,6 +9741,94 @@
       "NO_ENCONTRADO": "The charge does not exist in this organization.",
       "TIPO_INVALIDO": "Invalid charge type: use percentage or fixed amount.",
       "DESCONOCIDO": "The operation could not be completed. Please try again."
+    },
+    "global": "Global (all branches)",
+    "tiposCargo": {
+      "percentage": "Percentage",
+      "fixed_amount": "Fixed Amount"
+    },
+    "aplicaA": {
+      "all": "All",
+      "dine_in": "Dine-in",
+      "delivery": "Delivery",
+      "takeout": "Takeout"
+    },
+    "cabecera": {
+      "titulo": "Service Charges",
+      "subtitulo": "Set up automatic charges such as a suggested tip",
+      "importar": "Import",
+      "nuevo": "New Charge",
+      "total": "Total",
+      "activos": "Active",
+      "inactivos": "Inactive",
+      "filtroEstado": "Status",
+      "todos": "All",
+      "filtroSucursal": "Branch",
+      "todasSucursales": "All branches",
+      "filtroAplicaA": "Applies to",
+      "importarTitulo": "Import Charges",
+      "importarDescripcion": "Upload a CSV file with the service charges",
+      "formatoRequerido": "Required format:",
+      "cancelar": "Cancel"
+    },
+    "formulario": {
+      "tituloEditar": "Edit Service Charge",
+      "tituloNuevo": "New Service Charge",
+      "nombre": "Name",
+      "nombrePlaceholder": "E.g.: 10% service charge",
+      "tipo": "Charge Type",
+      "valor": "Value",
+      "montoMinimo": "Minimum Amount (optional)",
+      "personasMinimas": "Minimum Guests (optional)",
+      "aplicaA": "Applies to",
+      "sucursal": "Branch (optional)",
+      "sucursalPlaceholder": "Global (all)",
+      "gravado": "Taxable",
+      "gravadoAyuda": "The charge will be included in the taxable base",
+      "opcional": "Optional charge",
+      "opcionalAyuda": "The customer can decline this charge",
+      "cancelar": "Cancel",
+      "guardando": "Saving...",
+      "actualizar": "Update",
+      "crear": "Create",
+      "errores": {
+        "nombre": "The name is required",
+        "valor": "The value must be greater than 0",
+        "porcentajeMaximo": "The percentage cannot exceed 100%"
+      }
+    },
+    "lista": {
+      "vacioTitulo": "No service charges",
+      "vacioDescripcion": "Create a service charge to apply it to sales",
+      "columnas": {
+        "nombre": "Name",
+        "tipo": "Type",
+        "valor": "Value",
+        "condiciones": "Conditions",
+        "aplicaA": "Applies to",
+        "estado": "Status",
+        "acciones": "Actions"
+      },
+      "minimoMonto": "Min.: {monto}",
+      "minimoPersonas": "{count, plural, one {Min.: # guest} other {Min.: # guests}}",
+      "sinRestricciones": "No restrictions",
+      "gravado": "Taxable",
+      "opcional": "Optional",
+      "editar": "Edit",
+      "duplicar": "Duplicate",
+      "eliminar": "Delete",
+      "eliminarTitulo": "Delete service charge?",
+      "eliminarDescripcion": "This action cannot be undone.",
+      "cancelar": "Cancel"
+    },
+    "toast": {
+      "actualizado": "Charge updated successfully",
+      "creado": "Charge created successfully",
+      "eliminado": "Charge deleted successfully",
+      "activado": "Charge activated",
+      "desactivado": "Charge deactivated",
+      "duplicado": "Charge duplicated successfully",
+      "errorCarga": "Could not load the service charges"
     }
   },
   "posDevoluciones": {

@@ -58,14 +58,19 @@ export interface ServiceChargeFilters {
   applies_to?: AppliesTo;
 }
 
-export const CHARGE_TYPE_LABELS: Record<ChargeType, string> = {
-  percentage: 'Porcentaje',
-  fixed_amount: 'Monto Fijo'
+/**
+ * Clave de `posCargosServicio` con la etiqueta de cada tipo de cargo. El texto
+ * lo pone el componente con `t()`: aquí no hay español fijo.
+ */
+export const CHARGE_TYPE_LABELS: Record<ChargeType, `tiposCargo.${ChargeType}`> = {
+  percentage: 'tiposCargo.percentage',
+  fixed_amount: 'tiposCargo.fixed_amount'
 };
 
-export const APPLIES_TO_LABELS: Record<AppliesTo, string> = {
-  all: 'Todos',
-  dine_in: 'En sitio',
-  delivery: 'Domicilio',
-  takeout: 'Para llevar'
+/** Clave de `posCargosServicio` con la etiqueta de cada «aplica a». */
+export const APPLIES_TO_LABELS: Record<AppliesTo, `aplicaA.${AppliesTo}`> = {
+  all: 'aplicaA.all',
+  dine_in: 'aplicaA.dine_in',
+  delivery: 'aplicaA.delivery',
+  takeout: 'aplicaA.takeout'
 };

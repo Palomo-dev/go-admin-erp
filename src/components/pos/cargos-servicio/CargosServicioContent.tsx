@@ -14,8 +14,10 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 export function CargosServicioContent({ embedded = false }: { embedded?: boolean }) {
+  const t = useTranslations('posCargosServicio');
   const { organization, isLoading: orgLoading } = useOrganization();
   const { branchFilter } = useBranch();
 
@@ -66,11 +68,11 @@ export function CargosServicioContent({ embedded = false }: { embedded?: boolean
       });
     } catch (error: unknown) {
       console.error('Error loading service charges:', error);
-      toast.error('Error al cargar los cargos de servicio');
+      toast.error(t('toast.errorCarga'));
     } finally {
       setLoading(false);
     }
-  }, [organization?.id, filters]);
+  }, [organization?.id, filters, t]);
 
   useEffect(() => {
     if (organization?.id) {

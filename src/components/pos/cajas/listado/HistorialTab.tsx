@@ -32,6 +32,7 @@ import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { addPlainDays } from '@/lib/utils/dateCore';
 import { cn } from '@/utils/Utils';
 import { CajasService } from '../CajasService';
+import { useMensajeErrorCaja } from '../comunesCaja';
 import type { CampoOrdenHistorial, CashHistoryFilters, CashSession, ResultadoCierre } from '../types';
 import {
   dinero,
@@ -69,6 +70,7 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
   const { formatDateTime, getToday, toInstant } = useFormatDate();
   const t = useTranslations('cajas.listado.historial');
   const tListado = useTranslations('cajas.listado');
+  const mensajeError = useMensajeErrorCaja();
   const etiquetaRango = useEtiquetaRango();
   const motivoCierreCiego = tListado('motivoCierreCiego');
   const opcionesResultado = VALORES_RESULTADO.map((valor) => ({ valor, etiqueta: t(`filtroResultado.${valor}`) }));
@@ -131,11 +133,11 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
       setResumen(resumenDiferencias(diferencias));
     } catch (e) {
       console.error('Error cargando el historial de cajas:', e);
-      setError(e instanceof Error ? e.message : tListado('errorDesconocido'));
+      setError(mensajeError((e as { codigo?: string })?.codigo, e instanceof Error ? e.message : tListado('errorDesconocido')));
     } finally {
       setCargando(false);
     }
-  }, [filtros, l.pagina, l.tamano, tListado]);
+  }, [filtros, l.pagina, l.tamano, tListado, mensajeError]);
 
   useEffect(() => {
     void cargar();
@@ -163,9 +165,9 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
           caja: s.id,
           apertura: formatDateTime(s.opened_at),
           cierre: formatDateTime(s.closed_at),
-          cerro: s.closed_by_name ?? '',
-          cajero: s.opened_by_name ?? '',
-          sucursal: s.branch_name ?? '',
+          cerro: s.closed_by ? s.closed_by_name || tListado('cajero') : '',
+          cajero: s.opened_by_name || tListado('cajero'),
+          sucursal: s.branch_id === null ? tListado('todasSucursales') : s.branch_name ?? '',
           inicial: Number(s.initial_amount),
           final: s.final_amount === null || s.final_amount === undefined ? null : Number(s.final_amount),
           diferencia: s.difference === null || s.difference === undefined ? null : Number(s.difference),
@@ -196,7 +198,7 @@ export function HistorialTab({ showExpected, recarga, pestanas }: HistorialTabPr
       URL.revokeObjectURL(url);
       toast.success(t('exportadas', { count: sesiones.length }));
     } catch (e) {
-      toast.error(t('exportarError'), { description: e instanceof Error ? e.message : undefined });
+      toast.error(t('exportarError'), { description: mensajeError((e as { codigo?: string })?.codigo, e instanceof Error ? e.message : undefined) });
     } finally {
       setExportando(false);
     }

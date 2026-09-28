@@ -280,7 +280,8 @@ export class CajasService {
         .eq('id', session.opened_by)
         .single();
       if (profileData) {
-        session.opened_by_name = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Usuario';
+        // Sin nombre queda vacío: la pantalla pone su respaldo traducido («Cajero», «—»).
+        session.opened_by_name = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || undefined;
       }
     }
 
@@ -295,7 +296,8 @@ export class CajasService {
         session.branch_name = branchData.name;
       }
     } else {
-      session.branch_name = 'Todas las sucursales';
+      // Caja global: la pantalla la pinta por `branch_id === null` («Todas las sucursales» traducido).
+      session.branch_name = undefined;
     }
 
     return session;
@@ -1120,7 +1122,8 @@ export class CajasService {
           .eq('id', session.opened_by)
           .single();
         if (profileData) {
-          session.opened_by_name = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Usuario';
+          // Sin nombre queda vacío: la pantalla pone su respaldo traducido («Cajero», «—»).
+          session.opened_by_name = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || undefined;
         }
       }
 

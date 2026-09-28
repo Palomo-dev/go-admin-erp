@@ -137,7 +137,7 @@ export function TipsList({
     const firstName = tip.server?.first_name || '';
     const lastName = tip.server?.last_name || '';
     const fullName = [firstName, lastName].filter(Boolean).join(' ');
-    return fullName || tip.server?.email || 'Sin asignar';
+    return fullName || tip.server?.email || t('lista.sinAsignar');
   };
 
   if (loading) {
@@ -155,10 +155,10 @@ export function TipsList({
       <div className="text-center py-12">
         <Banknote className="h-12 w-12 mx-auto mb-4 text-gray-400" />
         <h3 className="text-lg font-medium text-gray-600 dark:text-gray-400 mb-2">
-          No hay propinas registradas
+          {t('lista.vacioTitulo')}
         </h3>
         <p className="text-gray-500 dark:text-gray-500">
-          Las propinas aparecerán aquí cuando se registren
+          {t('lista.vacioDescripcion')}
         </p>
       </div>
     );
@@ -183,12 +183,12 @@ export function TipsList({
                   />
                 </TableHead>
               )}
-              <TableHead>Fecha</TableHead>
-              <TableHead>Mesero</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead className="text-right">Monto</TableHead>
-              <TableHead className="text-center">Estado</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
+              <TableHead>{t('lista.columnas.fecha')}</TableHead>
+              <TableHead>{t('lista.columnas.mesero')}</TableHead>
+              <TableHead>{t('lista.columnas.tipo')}</TableHead>
+              <TableHead className="text-right">{t('lista.columnas.monto')}</TableHead>
+              <TableHead className="text-center">{t('lista.columnas.estado')}</TableHead>
+              <TableHead className="text-right">{t('lista.columnas.acciones')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -234,11 +234,11 @@ export function TipsList({
                 <TableCell className="text-center">
                   {tip.is_distributed ? (
                     <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                      Distribuida
+                      {t('lista.distribuida')}
                     </Badge>
                   ) : (
                     <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                      Pendiente
+                      {t('lista.pendiente')}
                     </Badge>
                   )}
                 </TableCell>
@@ -258,7 +258,7 @@ export function TipsList({
                           className="dark:hover:bg-gray-700"
                         >
                           <Edit className="h-4 w-4 mr-2" />
-                          Editar
+                          {t('lista.editar')}
                         </DropdownMenuItem>
                       )}
                       {onMarkDistributed && (
@@ -267,7 +267,7 @@ export function TipsList({
                           className="dark:hover:bg-gray-700"
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
-                          Marcar Distribuida
+                          {t('lista.marcarDistribuida')}
                         </DropdownMenuItem>
                       )}
                       {puedeAnular && (

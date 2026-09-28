@@ -75,10 +75,14 @@ export async function consultaHistorial(db: Db, select: string, filtros: CashHis
   return { query, orden: f.orden ?? { campo: 'opened_at' as const, direccion: 'desc' as const } };
 }
 
-/** Nombres de cajero y sucursal (una consulta por tabla para toda la lista). */
+/**
+ * Nombres de cajero y sucursal (una consulta por tabla para toda la lista).
+ * Sin nombre o caja global quedan sin texto: la pantalla pone el respaldo en
+ * su idioma («Cajero», «Todas las sucursales»).
+ */
 export async function enriquecerSesiones(db: Db, sesiones: CashSession[]): Promise<CashSession[]> {
   const nombre = (p?: { first_name: string | null; last_name: string | null }) =>
-    p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Usuario' : 'Usuario';
+    (p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : '') || undefined;
 
   const userIds = [...new Set(sesiones.flatMap((s) => [s.opened_by, s.closed_by]).filter((id): id is string => !!id))];
   if (userIds.length > 0) {
@@ -97,7 +101,7 @@ export async function enriquecerSesiones(db: Db, sesiones: CashSession[]): Promi
     for (const b of (data ?? []) as Array<{ id: number; name: string }>) sucursales.set(b.id, b.name);
   }
   for (const s of sesiones) {
-    s.branch_name = s.branch_id ? sucursales.get(s.branch_id) || `#${s.branch_id}` : 'Todas las sucursales';
+    s.branch_name = s.branch_id ? sucursales.get(s.branch_id) || `#${s.branch_id}` : undefined;
   }
   return sesiones;
 }

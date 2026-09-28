@@ -63,14 +63,16 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { formatCurrency } from '@/utils/Utils';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import type { TipPhase } from '@/lib/pos/display/emitter';
 import type { DisplayCapabilities, DisplayMode } from '@/lib/pos/display/protocol';
 import type { DisplayCapabilitiesByOrigin } from '@/lib/pos/display/transport';
 import { combineLiveDisplayCapabilities } from '@/lib/pos/display/presence';
 import type { TipSelection } from '@/lib/pos/display/tip';
-import { describeTipSelection, isInformativeTipSelection, resolveNoticeTouch, resolveTipWaitingNotice } from './tipNotice';
+import { isInformativeTipSelection, resolveNoticeTouch, resolveTipWaitingNotice, tipSelectionKind } from './tipNotice';
 import { useCustomerDisplayPresence } from './useCustomerDisplayPresence';
 
 export interface TipFromDisplayNoticeProps {
@@ -85,6 +87,7 @@ export interface TipFromDisplayNoticeProps {
 }
 
 export function TipFromDisplayNotice({ open, currency, cashierMovedOn = false, onApply }: TipFromDisplayNoticeProps) {
+  const t = useTranslations('posCustomerDisplay.avisoPropina');
   const presence = useCustomerDisplayPresence();
   const [phase, setPhase] = useState<TipPhase>(null);
   const [displayMode, setDisplayMode] = useState<DisplayMode | null>(null);
@@ -158,7 +161,12 @@ export function TipFromDisplayNotice({ open, currency, cashierMovedOn = false, o
         className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm dark:border-green-800 dark:bg-green-900/20"
         data-testid="tip-from-display"
       >
-        <span className="font-medium text-green-800 dark:text-green-300">{describeTipSelection(selection, currency)}</span>
+        <span className="font-medium text-green-800 dark:text-green-300">
+          {t(`eleccion_${tipSelectionKind(selection)}`, {
+            percent: selection.percent ?? 0,
+            monto: formatCurrency(selection.amount, currency),
+          })}
+        </span>
         <div className="flex items-center gap-2">
           {!informative && (
             <Button
@@ -170,11 +178,11 @@ export function TipFromDisplayNotice({ open, currency, cashierMovedOn = false, o
                 setDismissed(true);
               }}
             >
-              Aplicar
+              {t('aplicar')}
             </Button>
           )}
           <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => setDismissed(true)}>
-            {informative ? 'Entendido' : 'Cambiar'}
+            {informative ? t('entendido') : t('cambiar')}
           </Button>
         </div>
       </div>
@@ -205,9 +213,9 @@ export function TipFromDisplayNotice({ open, currency, cashierMovedOn = false, o
         className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-800 dark:bg-blue-900/20"
         data-testid={waiting.kind === 'waiting' ? 'tip-from-display-waiting' : 'tip-from-display-informational'}
       >
-        <span className="text-blue-800 dark:text-blue-300">{waiting.text}</span>
+        <span className="text-blue-800 dark:text-blue-300">{t(`espera_${waiting.kind}_texto`)}</span>
         <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => getPosDisplayEmitter().skipTip()}>
-          {waiting.action}
+          {t(`espera_${waiting.kind}_accion`)}
         </Button>
       </div>
     );

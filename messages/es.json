@@ -2474,6 +2474,18 @@
       "touchModeTouch": "Táctil",
       "touchModeNoTouch": "No táctil",
       "invalidMediaUrlsTooMany": "Como máximo {max} imágenes de reposo"
+    },
+    "avisoPropina": {
+      "eleccion_porcentaje": "Cliente eligió {percent} % ({monto})",
+      "eleccion_ninguna": "Cliente eligió no dejar propina",
+      "eleccion_importe": "Cliente eligió una propina de {monto}",
+      "aplicar": "Aplicar",
+      "cambiar": "Cambiar",
+      "entendido": "Entendido",
+      "espera_waiting_texto": "Pantalla del cliente: esperando la propina…",
+      "espera_waiting_accion": "Omitir",
+      "espera_informational_texto": "La pantalla muestra las propinas sugeridas: registre lo que indique el cliente",
+      "espera_informational_accion": "Continuar"
     }
   },
   "posDisplay": {
@@ -6001,7 +6013,8 @@
         },
         "reporteCarta": "Reporte de mi caja (PDF)",
         "reporteTicket": "Ticket de mi caja (80 mm)"
-      }
+      },
+      "todasSucursales": "Todas las sucursales"
     },
     "errores": {
       "noAutenticado": "Usuario no autenticado",
@@ -9626,7 +9639,9 @@
       "anulada": "Propina anulada",
       "anuladaConReverso": "Propina anulada y su asiento contable revertido",
       "distribuidas": "{count, plural, one {# propina marcada como distribuida} other {# propinas marcadas como distribuidas}}",
-      "ningunaDistribuida": "No había propinas pendientes para distribuir: ya estaban distribuidas o anuladas."
+      "ningunaDistribuida": "No había propinas pendientes para distribuir: ya estaban distribuidas o anuladas.",
+      "actualizada": "Propina actualizada correctamente",
+      "registrada": "Propina registrada correctamente"
     },
     "errores": {
       "SIN_PERMISO": "No tienes permiso para esta acción.",
@@ -9637,6 +9652,67 @@
       "PERIODO_CERRADO": "El periodo contable de hoy está cerrado: no se puede registrar el reverso.",
       "SIN_SUCURSAL": "Selecciona una sucursal para registrar la propina.",
       "DESCONOCIDO": "No se pudo completar la operación. Inténtalo de nuevo."
+    },
+    "cabecera": {
+      "titulo": "Gestión de Propinas",
+      "subtitulo": "Registra y distribuye propinas del equipo",
+      "distribuirSeleccion": "Distribuir ({count})",
+      "nueva": "Nueva Propina",
+      "distribuidas": "Distribuidas",
+      "pendientes": "Pendientes",
+      "filtroMesero": "Mesero",
+      "todosMeseros": "Todos los meseros",
+      "filtroEstado": "Estado",
+      "filtroTipo": "Tipo",
+      "todos": "Todos",
+      "desde": "Desde",
+      "hasta": "Hasta"
+    },
+    "resumen": {
+      "titulo": "Resumen por Mesero",
+      "sinDatos": "No hay datos de propinas",
+      "meseros": "{count, plural, one {# mesero} other {# meseros}}",
+      "propinas": "{count, plural, one {# propina} other {# propinas}}",
+      "porcentajeDelTotal": "{pct}% del total",
+      "distribucion": "Distribución",
+      "transferenciaCorta": "Transf.",
+      "distribuidoCorto": "Distrib.",
+      "pendiente": "Pendiente"
+    },
+    "formulario": {
+      "tituloEditar": "Editar Propina",
+      "tituloNueva": "Nueva Propina",
+      "mesero": "Mesero",
+      "seleccionarMesero": "Seleccionar mesero",
+      "monto": "Monto",
+      "tipo": "Tipo de Propina",
+      "notas": "Notas (opcional)",
+      "notasPlaceholder": "Notas adicionales...",
+      "cancelar": "Cancelar",
+      "guardando": "Guardando...",
+      "actualizar": "Actualizar",
+      "registrar": "Registrar",
+      "errores": {
+        "mesero": "Selecciona un mesero",
+        "monto": "El monto debe ser mayor a 0"
+      }
+    },
+    "lista": {
+      "sinAsignar": "Sin asignar",
+      "vacioTitulo": "No hay propinas registradas",
+      "vacioDescripcion": "Las propinas aparecerán aquí cuando se registren",
+      "columnas": {
+        "fecha": "Fecha",
+        "mesero": "Mesero",
+        "tipo": "Tipo",
+        "monto": "Monto",
+        "estado": "Estado",
+        "acciones": "Acciones"
+      },
+      "distribuida": "Distribuida",
+      "pendiente": "Pendiente",
+      "editar": "Editar",
+      "marcarDistribuida": "Marcar Distribuida"
     }
   },
   "posCargosServicio": {
@@ -9665,6 +9741,94 @@
       "NO_ENCONTRADO": "El cargo no existe en esta organización.",
       "TIPO_INVALIDO": "Tipo de cargo no válido: usa porcentaje o monto fijo.",
       "DESCONOCIDO": "No se pudo completar la operación. Inténtalo de nuevo."
+    },
+    "global": "Global (todas las sucursales)",
+    "tiposCargo": {
+      "percentage": "Porcentaje",
+      "fixed_amount": "Monto Fijo"
+    },
+    "aplicaA": {
+      "all": "Todos",
+      "dine_in": "En sitio",
+      "delivery": "Domicilio",
+      "takeout": "Para llevar"
+    },
+    "cabecera": {
+      "titulo": "Cargos de Servicio",
+      "subtitulo": "Configura cargos automáticos como propina sugerida",
+      "importar": "Importar",
+      "nuevo": "Nuevo Cargo",
+      "total": "Total",
+      "activos": "Activos",
+      "inactivos": "Inactivos",
+      "filtroEstado": "Estado",
+      "todos": "Todos",
+      "filtroSucursal": "Sucursal",
+      "todasSucursales": "Todas las sucursales",
+      "filtroAplicaA": "Aplica a",
+      "importarTitulo": "Importar Cargos",
+      "importarDescripcion": "Sube un archivo CSV con los cargos de servicio",
+      "formatoRequerido": "Formato requerido:",
+      "cancelar": "Cancelar"
+    },
+    "formulario": {
+      "tituloEditar": "Editar Cargo de Servicio",
+      "tituloNuevo": "Nuevo Cargo de Servicio",
+      "nombre": "Nombre",
+      "nombrePlaceholder": "Ej: Cargo por servicio 10%",
+      "tipo": "Tipo de Cargo",
+      "valor": "Valor",
+      "montoMinimo": "Monto Mínimo (opcional)",
+      "personasMinimas": "Personas Mínimas (opcional)",
+      "aplicaA": "Aplica a",
+      "sucursal": "Sucursal (opcional)",
+      "sucursalPlaceholder": "Global (todas)",
+      "gravado": "Gravado con impuesto",
+      "gravadoAyuda": "El cargo se incluirá en la base gravable",
+      "opcional": "Cargo opcional",
+      "opcionalAyuda": "El cliente puede rechazar este cargo",
+      "cancelar": "Cancelar",
+      "guardando": "Guardando...",
+      "actualizar": "Actualizar",
+      "crear": "Crear",
+      "errores": {
+        "nombre": "El nombre es requerido",
+        "valor": "El valor debe ser mayor a 0",
+        "porcentajeMaximo": "El porcentaje no puede ser mayor a 100%"
+      }
+    },
+    "lista": {
+      "vacioTitulo": "No hay cargos de servicio",
+      "vacioDescripcion": "Crea un cargo de servicio para aplicarlo a las ventas",
+      "columnas": {
+        "nombre": "Nombre",
+        "tipo": "Tipo",
+        "valor": "Valor",
+        "condiciones": "Condiciones",
+        "aplicaA": "Aplica a",
+        "estado": "Estado",
+        "acciones": "Acciones"
+      },
+      "minimoMonto": "Mín.: {monto}",
+      "minimoPersonas": "{count, plural, one {Mín.: # persona} other {Mín.: # personas}}",
+      "sinRestricciones": "Sin restricciones",
+      "gravado": "Gravado",
+      "opcional": "Opcional",
+      "editar": "Editar",
+      "duplicar": "Duplicar",
+      "eliminar": "Eliminar",
+      "eliminarTitulo": "¿Eliminar cargo de servicio?",
+      "eliminarDescripcion": "Esta acción no se puede deshacer.",
+      "cancelar": "Cancelar"
+    },
+    "toast": {
+      "actualizado": "Cargo actualizado correctamente",
+      "creado": "Cargo creado correctamente",
+      "eliminado": "Cargo eliminado correctamente",
+      "activado": "Cargo activado",
+      "desactivado": "Cargo desactivado",
+      "duplicado": "Cargo duplicado correctamente",
+      "errorCarga": "Error al cargar los cargos de servicio"
     }
   },
   "posDevoluciones": {

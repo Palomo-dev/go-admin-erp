@@ -47,6 +47,7 @@ import { CierreCajaDialog } from '../CierreCajaDialog';
 import { MovimientosDialog } from '../MovimientosDialog';
 import { CajasService } from '../CajasService';
 import { useBlindCloseMode } from '../useBlindCloseMode';
+import { useMensajeErrorCaja } from '../comunesCaja';
 import { usePermisosCaja } from '../usePermisosCaja';
 import type { CashSession } from '../types';
 import type { ResumenCompacto } from '@/lib/pos/cajas/resumenServidor';
@@ -72,6 +73,7 @@ export function CajasPage() {
   const t = useTranslations('cajas.listado.pagina');
   const tListado = useTranslations('cajas.listado');
   const tError = useTranslations('cajas.errores');
+  const mensajeError = useMensajeErrorCaja();
   const localeIntl = useLocaleIntl();
   const haceCuanto = useHaceCuanto();
 
@@ -115,11 +117,11 @@ export function CajasPage() {
       setModo(modoOrg);
     } catch (e) {
       console.error('Error loading active session:', e);
-      setErrorMiCaja(e instanceof Error ? e.message : tListado('errorDesconocido'));
+      setErrorMiCaja(mensajeError((e as { codigo?: string })?.codigo, e instanceof Error ? e.message : tListado('errorDesconocido')));
     } finally {
       setCargandoMiCaja(false);
     }
-  }, [tListado]);
+  }, [tListado, mensajeError]);
 
   const cargarAbiertas = useCallback(async () => {
     setErrorAbiertas(null);
@@ -138,10 +140,10 @@ export function CajasPage() {
       }
     } catch (e) {
       console.error('Error loading active sessions:', e);
-      setErrorAbiertas(e instanceof Error ? e.message : tListado('errorDesconocido'));
+      setErrorAbiertas(mensajeError((e as { codigo?: string })?.codigo, e instanceof Error ? e.message : tListado('errorDesconocido')));
       setCargandoAbiertas(false);
     }
-  }, [tListado]);
+  }, [tListado, mensajeError]);
 
   const cargarDelDia = useCallback(async () => {
     try {

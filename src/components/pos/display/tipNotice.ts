@@ -36,11 +36,27 @@ import { formatCurrency } from '@/utils/Utils';
  * a no dejar propina.
  */
 export function describeTipSelection(selection: TipSelection, currency: string): string {
-  if (selection.kind === 'percent' && selection.percent !== null) {
-    return `Cliente eligió ${selection.percent} % (${formatCurrency(selection.amount, currency)})`;
+  switch (tipSelectionKind(selection)) {
+    case 'porcentaje':
+      return `Cliente eligió ${selection.percent} % (${formatCurrency(selection.amount, currency)})`;
+    case 'ninguna':
+      return 'Cliente eligió no dejar propina';
+    case 'importe':
+      return `Cliente eligió una propina de ${formatCurrency(selection.amount, currency)}`;
   }
-  if (selection.kind === 'none' || selection.amount <= 0) return 'Cliente eligió no dejar propina';
-  return `Cliente eligió una propina de ${formatCurrency(selection.amount, currency)}`;
+}
+
+/**
+ * Qué eligió el cliente, con la misma regla que `describeTipSelection` (que
+ * queda como texto en español para logs y pruebas). La pantalla de la caja
+ * traduce esta clave con `posCustomerDisplay.avisoPropina`.
+ */
+export type TipoEleccionPropina = 'porcentaje' | 'ninguna' | 'importe';
+
+export function tipSelectionKind(selection: TipSelection): TipoEleccionPropina {
+  if (selection.kind === 'percent' && selection.percent !== null) return 'porcentaje';
+  if (selection.kind === 'none' || selection.amount <= 0) return 'ninguna';
+  return 'importe';
 }
 
 /** ¿La elección solo informa (no hay importe que aplicar)? */
@@ -73,6 +89,10 @@ export interface TipWaitingInput {
   presetsCount?: number;
 }
 
+/**
+ * Textos en español del aviso (pruebas y respaldo). La caja no los pinta: los
+ * traduce por `kind` con `posCustomerDisplay.avisoPropina` (TipFromDisplayNotice).
+ */
 export const TIP_WAITING_TEXT = 'Pantalla del cliente: esperando la propina…';
 export const TIP_WAITING_ACTION = 'Omitir';
 export const TIP_INFORMATIONAL_TEXT = 'La pantalla muestra las propinas sugeridas: registre lo que indique el cliente';

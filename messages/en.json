@@ -13870,5 +13870,56 @@
       "direccion": "Address:",
       "municipio": "DIAN municipality:"
     }
+  },
+  "impuestosRetenciones": {
+    "resumen": "{impuestos, plural, one {# sales and purchase tax} other {# sales and purchase taxes}} · {retenciones, plural, =0 {no withholdings} one {# withholding} other {# withholdings}}",
+    "pestanas": {
+      "etiqueta": "Tax sections",
+      "impuestos": "Sales and purchase taxes",
+      "retenciones": "Withholdings"
+    },
+    "aviso": {
+      "titulo": "Withholdings are not sales taxes",
+      "texto": "They are not shown on products, in the POS or on sales invoices and quotes, and they are never added to the price. Today they are recorded on purchase invoices; sales support will come later."
+    },
+    "nueva": "New withholding",
+    "tablaEtiqueta": "Organization withholdings",
+    "columnas": {
+      "nombre": "Name",
+      "tipo": "Type",
+      "tarifa": "Rate",
+      "aplicaA": "Applies to",
+      "estado": "Status"
+    },
+    "tipos": {
+      "retefuente": "ReteFuente",
+      "reteiva": "ReteIVA",
+      "reteica": "ReteICA",
+      "otra": "Withholding"
+    },
+    "aplicaCompras": "Purchases",
+    "activa": "Active",
+    "inactiva": "Inactive",
+    "activar": "Activate {nombre}",
+    "desactivar": "Deactivate {nombre}",
+    "acciones": {
+      "editar": "Edit",
+      "eliminar": "Delete"
+    },
+    "vacio": {
+      "titulo": "No withholdings",
+      "descripcion": "Add ReteFuente, ReteIVA or ReteICA to record them on your purchases."
+    },
+    "toast": {
+      "activada": "{nombre} is now active.",
+      "desactivada": "{nombre} is now inactive.",
+      "errorTitulo": "Error",
+      "errorEstado": "The withholding status could not be changed."
+    },
+    "formulario": {
+      "nueva": "New withholding",
+      "editar": "Edit withholding",
+      "nota": "A withholding is applied by the buyer: it is not added to the price, it is not assigned to products and it cannot be the default rate."
+    }
   }
 }

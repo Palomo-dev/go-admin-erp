@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { sinRetenciones } from '@/lib/services/taxResolverCore';
 import type { SucursalBasica } from '../logica/formularioProducto';
 import type {
   CatalogosFormulario,
@@ -42,10 +43,10 @@ export async function cargarCatalogos(organizacionId: number): Promise<Catalogos
       .select('id, name, parent_id, station')
       .eq('organization_id', organizacionId)
       .order('name'),
-    supabase.from('units').select('code, name').order('name'),
+    supabase.from('units').select('code, name, unit_type').order('name'),
     supabase
       .from('organization_taxes')
-      .select('id, name, rate, is_default, tax_included')
+      .select('id, name, rate, is_default, tax_included, kind')
       .eq('organization_id', organizacionId)
       .eq('is_active', true)
       .order('name'),
@@ -77,8 +78,12 @@ export async function cargarCatalogos(organizacionId: number): Promise<Catalogos
       principal: Boolean(s.is_main),
     })),
     categorias: (categorias.data ?? []) as CategoriaCatalogo[],
-    unidades: ((unidades.data ?? []) as UnidadCatalogo[]).map((u) => ({ code: u.code.trim(), name: u.name })),
-    impuestos: ((impuestos.data ?? []) as ImpuestoCatalogo[]).map((i) => ({ ...i, rate: Number(i.rate) || 0 })),
+    unidades: ((unidades.data ?? []) as UnidadCatalogo[]).map((u) => ({ code: u.code.trim(), name: u.name, unit_type: u.unit_type ?? null })),
+    // Las retenciones no se asignan a productos (la base también lo impide).
+    impuestos: sinRetenciones((impuestos.data ?? []) as (ImpuestoCatalogo & { kind?: string | null })[]).map((i) => ({
+      ...i,
+      rate: Number(i.rate) || 0,
+    })),
     proveedores: (proveedores.data ?? []) as ProveedorCatalogo[],
     etiquetas: (etiquetas.data ?? []) as EtiquetaCatalogo[],
     tiposVariante: ((tipos.data ?? []) as FilaTipoVariante[]).map<TipoVarianteCatalogo>((t) => ({

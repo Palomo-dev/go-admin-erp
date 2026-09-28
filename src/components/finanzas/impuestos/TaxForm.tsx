@@ -17,6 +17,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/lib/supabase/config';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { esRetencion, type ClaseImpuesto } from '@/lib/services/taxResolverCore';
 
 interface TaxTemplate {
   id: number;
@@ -25,6 +27,8 @@ interface TaxTemplate {
   name: string;
   rate: number;
   description: string | null;
+  /** Clase de la plantilla (get_tax_templates_by_organization_country la devuelve). */
+  kind?: string | null;
 }
 
 interface OrganizationTax {
@@ -45,6 +49,11 @@ interface TaxFormProps {
   tax: OrganizationTax | null;
   editMode: boolean;
   organizationId: number;
+  /**
+   * Clase que se crea o edita: 'tax' (impuesto de venta y compra) o
+   * 'withholding' (retención: sin «por defecto» ni «incluido en el precio»).
+   */
+  clase?: ClaseImpuesto;
 }
 
 const TaxForm: React.FC<TaxFormProps> = ({
@@ -53,7 +62,10 @@ const TaxForm: React.FC<TaxFormProps> = ({
   tax,
   editMode,
   organizationId,
+  clase = 'tax',
 }) => {
+  const t = useTranslations('impuestosRetenciones');
+  const esClaseRetencion = clase === 'withholding';
   // Estado para el formulario
   const [name, setName] = useState('');
   const [rate, setRate] = useState('');
@@ -81,7 +93,10 @@ const TaxForm: React.FC<TaxFormProps> = ({
         
         // Si hay plantillas disponibles y no estamos en modo edición, 
         // activar automáticamente el uso de plantillas
-        if (!editMode && data && data.length > 0) {
+        const deLaClase = ((data || []) as TaxTemplate[]).filter(
+          (tpl) => esRetencion({ kind: tpl.kind, tax_templates: { code: tpl.code } }) === (clase === 'withholding'),
+        );
+        if (!editMode && deLaClase.length > 0) {
           setUseTemplate(true);
         }
       } catch (error) {
@@ -105,7 +120,7 @@ const TaxForm: React.FC<TaxFormProps> = ({
     if (organizationId) {
       fetchTemplates();
     }
-  }, [organizationId, editMode]);
+  }, [organizationId, editMode, clase]);
 
   // Inicializar formulario con datos del impuesto si estamos en modo edición
   useEffect(() => {
@@ -131,11 +146,17 @@ const TaxForm: React.FC<TaxFormProps> = ({
     }
   }, [editMode, tax]);
 
+  // Solo las plantillas de la clase que se está creando: una retención no se
+  // ofrece como impuesto de venta ni al revés.
+  const plantillas = templates.filter(
+    (tpl) => esRetencion({ kind: tpl.kind, tax_templates: { code: tpl.code } }) === esClaseRetencion,
+  );
+
   // Función para aplicar datos de la plantilla seleccionada
   const applyTemplate = () => {
     if (!selectedTemplate) return;
     
-    const template = templates.find(t => t.id === selectedTemplate);
+    const template = plantillas.find(tpl => tpl.id === selectedTemplate);
     if (template) {
       setName(template.name);
       setRate(template.rate.toString());
@@ -143,11 +164,14 @@ const TaxForm: React.FC<TaxFormProps> = ({
     }
   };
 
-  // Efecto para aplicar la plantilla cuando cambia la selección
+  // Efecto para aplicar la plantilla cuando cambia la selección. A propósito
+  // NO depende de la lista de plantillas: al editar, cuando llegan las
+  // plantillas no se debe pisar el nombre ni la tarifa ya guardados.
   useEffect(() => {
     if (useTemplate && selectedTemplate) {
       applyTemplate();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTemplate, useTemplate]);
 
   // Validación básica
@@ -183,11 +207,12 @@ const TaxForm: React.FC<TaxFormProps> = ({
         p_name: name,
         p_rate: parseFloat(rate.toString()),
         p_description: description || null,
-        p_is_default: isDefault,
+        p_is_default: esClaseRetencion ? false : isDefault,
         p_is_active: isActive,
         p_template_id: useTemplate ? selectedTemplate : null,
         p_id: editMode && tax ? tax.id : null,
-        p_tax_included: taxIncluded
+        p_tax_included: esClaseRetencion ? false : taxIncluded,
+        p_kind: clase,
       });
 
       if (error) {
@@ -226,11 +251,19 @@ const TaxForm: React.FC<TaxFormProps> = ({
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
         <DialogHeader className="px-4 sm:px-6">
           <DialogTitle className="text-lg sm:text-xl text-blue-600 dark:text-blue-400">
-            {editMode ? 'Editar Impuesto' : 'Nuevo Impuesto'}
+            {esClaseRetencion
+              ? t(editMode ? 'formulario.editar' : 'formulario.nueva')
+              : editMode ? 'Editar Impuesto' : 'Nuevo Impuesto'}
           </DialogTitle>
         </DialogHeader>
+
+        {esClaseRetencion && (
+          <p className="mx-4 sm:mx-6 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+            {t('formulario.nota')}
+          </p>
+        )}
         
-        {!editMode && templates.length > 0 && (
+        {!editMode && !esClaseRetencion && plantillas.length > 0 && (
           <div className="mx-4 sm:mx-6 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 leading-relaxed">
               ℹ️ <strong>Plantillas sugeridas:</strong> Se muestran automáticamente los impuestos 
@@ -258,13 +291,13 @@ const TaxForm: React.FC<TaxFormProps> = ({
                 <div className="grid grid-cols-1 gap-2">
                   <Label htmlFor="template" className="text-sm dark:text-gray-300">
                     Plantillas de Impuestos Disponibles
-                    {templates.length > 0 && templates[0]?.country && (
+                    {plantillas.length > 0 && plantillas[0]?.country && (
                       <span className="ml-2 text-xs text-blue-600 dark:text-blue-400 font-medium">
-                        ({templates[0].country})
+                        ({plantillas[0].country})
                       </span>
                     )}
                   </Label>
-                  {templates.length === 0 ? (
+                  {plantillas.length === 0 ? (
                     <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800/50 text-center">
                       <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                         No hay plantillas de impuestos disponibles para su país
@@ -279,7 +312,7 @@ const TaxForm: React.FC<TaxFormProps> = ({
                         className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-200 ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-offset-2"
                       >
                         <option value="" className="dark:bg-gray-900 dark:text-gray-400">Seleccionar plantilla del país</option>
-                        {templates.map((template) => (
+                        {plantillas.map((template) => (
                           <option key={template.id} value={template.id} className="dark:bg-gray-900 dark:text-gray-200">
                             {template.name} - {template.rate}% {template.description ? `(${template.description})` : ''}
                           </option>
@@ -352,6 +385,8 @@ const TaxForm: React.FC<TaxFormProps> = ({
             </Label>
           </div>
 
+          {!esClaseRetencion && (
+          <>
           <div className="flex items-center space-x-2">
             <Switch 
               id="isDefault" 
@@ -379,6 +414,8 @@ const TaxForm: React.FC<TaxFormProps> = ({
             <p className="text-xs text-blue-600 dark:text-blue-400 -mt-2 ml-10">
               El precio del producto ya incluye este impuesto. No se sumará al total.
             </p>
+          )}
+          </>
           )}
         </div>
 

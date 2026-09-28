@@ -21,7 +21,7 @@ import { useToast } from '@/components/ui/use-toast';
 import TaxForm from './TaxForm';
 import DeleteTaxDialog from './DeleteTaxDialog';
 import TarifaPorDefectoCard from './TarifaPorDefectoCard';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import type { OrganizationTax } from './useImpuestosOrganizacion';
 import {
   Select,
   SelectContent,
@@ -30,26 +30,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Tipo para los impuestos de la organización
-interface OrganizationTax {
-  id: string;
-  organization_id: number;
-  template_id: number | null;
-  name: string;
-  rate: number;
-  description: string | null;
-  is_default: boolean;
-  is_active: boolean;
-  tax_included?: boolean;
-  created_at: string;
-  updated_at: string;
+interface TaxesTableProps {
+  /** Impuestos de venta y compra (sin retenciones: ver useImpuestosOrganizacion). */
+  taxes: OrganizationTax[];
+  loading: boolean;
+  organizationId: number | null;
+  onRefresh: () => void | Promise<void>;
 }
 
-const TaxesTable = () => {
-  const [taxes, setTaxes] = useState<OrganizationTax[]>([]);
-  const [loading, setLoading] = useState(true);
+const TaxesTable = ({ taxes, loading, organizationId, onRefresh }: TaxesTableProps) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentTax, setCurrentTax] = useState<OrganizationTax | null>(null);
@@ -60,80 +50,6 @@ const TaxesTable = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const { toast } = useToast();
-
-  // Obtener el ID de la organización usando el hook oficial
-  useEffect(() => {
-    try {
-      // Usar la función oficial para obtener el ID de organización
-      const orgId = getOrganizationId();
-      console.log('TaxesTable usando organization_id:', orgId);
-      if (orgId) {
-        setOrganizationId(orgId);
-      } else {
-        setLoading(false); // Si no hay organización, detener la carga
-        toast({
-          title: 'Advertencia',
-          description: 'No se encontró una organización activa.',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Error al obtener la organización activa:', error);
-      setLoading(false); // Asegurar que el estado de carga cambie si hay un error
-      toast({
-        title: 'Error',
-        description: 'No se pudo obtener la información de la organización.',
-        variant: 'destructive',
-      });
-    }
-  }, []);
-
-  // Cargar los impuestos de la organización
-  useEffect(() => {
-    if (organizationId) {
-      fetchTaxes();
-    } else if (organizationId === null) {
-      // Si organizationId es explícitamente null, significa que se procesó pero no se encontró
-      setLoading(false);
-    }
-  }, [organizationId]);
-
-  // Función para cargar los impuestos usando la función RPC
-  const fetchTaxes = async () => {
-    setLoading(true);
-    try {
-      console.log('Solicitando impuestos para organization_id:', organizationId);
-      
-      // Usar la función RPC con SECURITY DEFINER para evitar problemas de RLS
-      const { data, error } = await supabase
-        .rpc('list_organization_taxes', {
-          p_organization_id: organizationId
-        });
-
-      if (error) {
-        console.error('Error detallado al cargar impuestos:', { 
-          code: error.code, 
-          message: error.message, 
-          details: error.details 
-        });
-        throw error;
-      }
-      
-      console.log('Impuestos recuperados:', data ? data.length : 0, 'registros');
-      console.log('Datos de impuestos:', data);
-      
-      setTaxes(data || []);
-    } catch (error) {
-      console.error('Error al cargar los impuestos:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los impuestos. Intente de nuevo.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Función para cambiar el estado activo de un impuesto
   const handleToggleActive = async (tax: OrganizationTax) => {
@@ -148,10 +64,7 @@ const TaxesTable = () => {
 
       if (error) throw error;
       
-      // Actualizar el estado local
-      setTaxes(taxes.map(t => 
-        t.id === tax.id ? { ...t, is_active: !t.is_active } : t
-      ));
+      await onRefresh();
       
       toast({
         title: 'Éxito',
@@ -211,7 +124,7 @@ const TaxesTable = () => {
       // Asegurarse de que la actualización se realice después de que el estado se actualice
       setTimeout(() => {
         console.log('Refrescando datos después de cerrar el formulario');
-        fetchTaxes();
+        void onRefresh();
       }, 500);
     }
   };
@@ -220,7 +133,7 @@ const TaxesTable = () => {
   const handleDeleteDialogClose = (deleted: boolean = false) => {
     setIsDeleteDialogOpen(false);
     if (deleted) {
-      fetchTaxes();
+      void onRefresh();
     }
   };
 
@@ -230,7 +143,7 @@ const TaxesTable = () => {
         <TarifaPorDefectoCard
           organizationId={organizationId}
           taxes={taxes}
-          onSaved={fetchTaxes}
+          onSaved={onRefresh}
         />
       )}
       <Card className="dark:bg-gray-800/50 bg-white border-gray-200 dark:border-gray-700">
@@ -263,7 +176,7 @@ const TaxesTable = () => {
             <Button 
               variant="outline" 
               size="icon"
-              onClick={fetchTaxes}
+              onClick={() => void onRefresh()}
               disabled={loading}
               className="dark:border-gray-700 dark:hover:bg-gray-700 dark:text-gray-300 shrink-0"
             >
@@ -486,6 +399,7 @@ const TaxesTable = () => {
           tax={currentTax} 
           editMode={editMode}
           organizationId={organizationId as number}
+          clase="tax"
         />
       )}
 

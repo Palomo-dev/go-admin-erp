@@ -2196,7 +2196,9 @@ export class POSService {
         .order('name');
 
       if (error) throw error;
-      return data || [];
+      // Las retenciones (kind = 'withholding') no son impuestos de la venta:
+      // no se ofrecen ni se suman en el POS (taxResolverCore).
+      return sinRetenciones(data ?? []);
     } catch (error) {
       console.error('Error getting organization taxes:', error);
       return [];
@@ -2239,8 +2241,8 @@ export class POSService {
       
       console.log('Tax details:', taxes);
       
-      // Mapear a la estructura esperada. Una retención relacionada (RETE_*) no
-      // es impuesto de la venta: no se suma a la línea (taxResolverCore).
+      // Mapear a la estructura esperada. Una retención relacionada (clase
+      // 'withholding') no es impuesto de la venta: no se suma a la línea (taxResolverCore).
       const result = sinRetenciones(taxes ?? []).map(tax => ({
         product_id: productId,
         tax_id: tax.id,

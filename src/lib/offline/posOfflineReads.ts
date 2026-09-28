@@ -385,10 +385,10 @@ export async function getCurrencyRows(organizationId: number) {
   return (await getCatalogRowsByOrg('currencies', organizationId)).sort((a, b) => Number(!!b.is_base) - Number(!!a.is_base) || a.code.localeCompare(b.code));
 }
 
-/** Equivalente offline de `POSService.getOrganizationTaxes` (activos, por nombre). */
+/** Equivalente offline de `POSService.getOrganizationTaxes` (activos, por nombre, sin retenciones). */
 export async function getOrganizationTaxes(organizationId: number) {
   await requireCatalog(organizationId);
-  return (await getCatalogRowsByOrg('organization_taxes', organizationId))
+  return sinRetenciones(await getCatalogRowsByOrg('organization_taxes', organizationId))
     .filter((t) => t.is_active !== false)
     .sort((a, b) => a.name.localeCompare(b.name, 'es'));
 }

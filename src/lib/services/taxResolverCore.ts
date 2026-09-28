@@ -19,11 +19,14 @@
  *      docs/hallazgos/comisiones-e-impuestos-2026-09-28.md, B7).
  *   5. 0 (y advertir: "Esta línea no tiene impuesto asignado")
  *
- * Las retenciones (plantillas `RETE*`: RETE_4, RETE_11, ReteIVA, ReteICA,
- * ReteFuente) NO son impuestos de la venta: las practica el comprador y no se
- * suman a la línea. Se descartan en los pasos 3 y 4 (`esCodigoRetencion`); un
- * producto relacionado solo con retenciones se trata como «sin relación».
- * Antes el paso 3 sumaba toda tarifa relacionada: RETE_4 + IVA_19 = 23 %.
+ * Las retenciones (ReteFuente, ReteIVA, ReteICA) NO son impuestos de la venta:
+ * las practica el comprador y no se suman a la línea. La fuente de verdad es la
+ * clase `organization_taxes.kind` (`tax` · `withholding`, migración
+ * 20260928220000); el prefijo `RETE*` del código de la plantilla solo decide
+ * cuando la fila no trae la clase (réplica sin conexión anterior a la
+ * columna). Se descartan en los pasos 3 y 4 (`sinRetenciones`); un producto
+ * relacionado solo con retenciones se trata como «sin relación». Antes el
+ * paso 3 sumaba toda tarifa relacionada: RETE_4 + IVA_19 = 23 %.
  *
  * Los impuestos personalizados (template_id NULL) cuentan: la plantilla se lee
  * con join IZQUIERDO (antes `tax_templates!inner` los descartaba).
@@ -85,8 +88,18 @@ export interface ResolveTaxInput {
 /** Cliente Supabase con el que el resolver consulta impuestos (navegador o servidor). */
 export type TaxResolverClient = Pick<SupabaseClient, 'from'>;
 
+/** Clase de un impuesto de la organización (`organization_taxes.kind`). */
+export type ClaseImpuesto = 'tax' | 'withholding';
+
+/** Clase de los impuestos que se cobran en la venta y la compra (IVA, INC…). */
+export const CLASE_IMPUESTO_VENTA: ClaseImpuesto = 'tax';
+/** Clase de las retenciones (ReteFuente, ReteIVA, ReteICA): nunca se suman al precio. */
+export const CLASE_RETENCION: ClaseImpuesto = 'withholding';
+
 export interface OrganizationTaxRow {
   rate: number | string | null;
+  /** Clase de la fila; ausente en réplicas sin conexión anteriores a la columna. */
+  kind?: string | null;
   tax_templates?: { code?: string | null } | { code?: string | null }[] | null;
 }
 
@@ -118,16 +131,35 @@ function templateCode(row: OrganizationTaxRow): string | null {
 
 /**
  * ¿El código de plantilla es una retención? (RETE_4, RETE_11, RETEIVA,
- * RETEICA, RETEFUENTE, RETE_IVA…). Una retención nunca se cobra como impuesto
- * de la línea de venta. Sin código (impuesto personalizado) no es retención.
+ * RETEICA, RETEFUENTE, RETE_IVA…). Solo es el respaldo de `esRetencion` para
+ * filas sin clase; la clase manda. Sin código (impuesto personalizado) no es
+ * retención.
  */
 export function esCodigoRetencion(code: string | null | undefined): boolean {
   return (code ?? '').trim().toUpperCase().startsWith('RETE');
 }
 
-/** Filas de impuestos de la organización que sí son impuestos de la venta (sin retenciones). */
-export function sinRetenciones<T extends OrganizationTaxRow>(rows: T[]): T[] {
-  return rows.filter((row) => !esCodigoRetencion(templateCode(row)));
+/**
+ * ¿La fila es una retención? Por su clase (`kind`); si la fila no la trae
+ * (réplica sin conexión anterior a la columna), por el código de la plantilla.
+ */
+export function esRetencion(row: Pick<OrganizationTaxRow, 'kind' | 'tax_templates'>): boolean {
+  if (row.kind) return row.kind === CLASE_RETENCION;
+  return esCodigoRetencion(templateCode(row as OrganizationTaxRow));
+}
+
+/**
+ * Filas de impuestos de la organización que sí son impuestos de la venta y la
+ * compra (sin retenciones). Único filtro para producto, POS, facturas y
+ * cotizaciones: una retención no se ofrece ni se suma al precio.
+ */
+export function sinRetenciones<T extends Pick<OrganizationTaxRow, 'kind' | 'tax_templates'>>(rows: readonly T[]): T[] {
+  return rows.filter((row) => !esRetencion(row));
+}
+
+/** Solo las retenciones (pestaña «Retenciones» de Finanzas › Impuestos). */
+export function soloRetenciones<T extends Pick<OrganizationTaxRow, 'kind' | 'tax_templates'>>(rows: readonly T[]): T[] {
+  return rows.filter((row) => esRetencion(row));
 }
 
 /** Suma las tarifas de las filas y toma el primer código de plantilla. */
@@ -215,7 +247,7 @@ export async function resolveLineTaxWith(client: TaxResolverClient, input: Resol
         const taxIds = (relations as { tax_id: string }[]).map((r) => r.tax_id);
         const { data: taxes, error: taxError } = await client
           .from('organization_taxes')
-          .select('id, rate, is_active, template_id, tax_templates(code)')
+          .select('id, rate, is_active, kind, template_id, tax_templates(code)')
           .eq('organization_id', organizationId)
           .eq('is_active', true)
           .in('id', taxIds);
@@ -237,7 +269,7 @@ export async function resolveLineTaxWith(client: TaxResolverClient, input: Resol
   try {
     const { data: defaultTaxes, error: defError } = await client
       .from('organization_taxes')
-      .select('id, rate, is_default, template_id, tax_templates(code)')
+      .select('id, rate, is_default, kind, template_id, tax_templates(code)')
       .eq('organization_id', organizationId)
       .eq('is_active', true)
       .eq('is_default', true);

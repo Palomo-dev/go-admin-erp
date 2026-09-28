@@ -16,6 +16,7 @@ import {
 } from '@/lib/utils/taxCalculations';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { sinRetenciones } from '@/lib/services/taxResolverCore';
 
 interface ImpuestosFacturaCompraProps {
   items: TaxCalculationItem[];
@@ -70,8 +71,9 @@ export function ImpuestosFacturaCompra({
         }
 
         if (taxes) {
-          // Convertir al formato esperado por taxCalculations
-          const formattedTaxes: OrganizationTax[] = taxes.map(tax => ({
+          // Convertir al formato esperado por taxCalculations. Las retenciones
+          // no se suman a la compra: se registran aparte en la factura.
+          const formattedTaxes: OrganizationTax[] = sinRetenciones(taxes).map(tax => ({
             id: tax.id,
             name: tax.name,
             rate: parseFloat(tax.rate.toString()),

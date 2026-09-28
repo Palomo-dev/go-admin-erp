@@ -19,6 +19,7 @@ import { normalizarNombre } from '@/lib/inventario/importacion/texto';
 import { filaParaRpc, MAX_FILAS_POR_LOTE, type CuerpoLote, type FilaRpc } from '@/lib/inventario/importacion/payload';
 import type { ResultadoFila } from '@/lib/inventario/importacion/tipos';
 import { urlPublicaSegura } from '@/lib/services/urlSegura';
+import { sinRetenciones } from '@/lib/services/taxResolverCore';
 
 const BUCKET = 'product-images';
 const MAX_BYTES_IMAGEN = 8 * 1024 * 1024;
@@ -74,10 +75,11 @@ export async function contextoImportacion(
 
   const [{ data: cats }, { data: taxes }] = await Promise.all([
     sb.from('categories').select('name').eq('organization_id', organizationId).limit(5000),
-    sb.from('organization_taxes').select('name, rate, is_active').eq('organization_id', organizationId),
+    sb.from('organization_taxes').select('name, rate, is_active, kind').eq('organization_id', organizationId),
   ]);
   const impuestos = new Set<string>();
-  for (const t of (taxes ?? []) as { name: string; rate: number | string; is_active: boolean | null }[]) {
+  // Una retención no se relaciona con productos: la importación no la reconoce (fn_importar_productos_lote tampoco).
+  for (const t of sinRetenciones((taxes ?? []) as { name: string; rate: number | string; is_active: boolean | null; kind?: string | null }[])) {
     if (t.is_active === false) continue;
     impuestos.add(normalizarNombre(t.name));
     impuestos.add(`tasa:${Number(t.rate)}`);

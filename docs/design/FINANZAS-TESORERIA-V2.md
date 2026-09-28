@@ -765,3 +765,51 @@ Capturas: `docs/design/figma/72-tesoreria-00-seccion.png` … `72-tesoreria-21-c
 | 11 | **Sí**: se bloquea cambiar la moneda base cuando ya hay documentos. |
 | 12 | **Sí** a la tasa manual. El dueño prefiere la integración que actualiza la tasa constantemente (Open Exchange Rates) y pide ver las dos opciones: automática por defecto y manual con autor y motivo que prevalece. |
 | 13 | **Sí**: se prohíbe borrar sesiones de caja con movimientos (evita asientos huérfanos). |
+
+## 13. Estado de B-I2 · retenciones fuera de «Impuestos de venta» (2026-09-28)
+
+Decisión del dueño sobre la pregunta 6: **sí**, sin borrar filas. Hecho:
+
+- **Esquema** (`supabase/migrations/20260928220000_impuestos_clase_retencion.sql`, rollback en
+  `supabase/rollbacks/`): columna `kind` (`tax` · `withholding`, NOT NULL DEFAULT `tax`) en
+  `tax_templates` y `organization_taxes`. Aditiva; probada en transacción deshecha antes de aplicar y
+  el rollback también.
+- **Datos reclasificados: 228 filas en 76 organizaciones** (RETE_4, RETE_11 e ICA_0.966 de cada una) y
+  las 3 plantillas del catálogo. Quedan 228 impuestos de venta (IVA 19, IVA 5, IVA 0). **Sin
+  reclasificar por estar en uso: 0** (la migración excluye las relacionadas a productos o por defecto;
+  medido: 0 relaciones, 0 por defecto, 0 líneas de venta o factura con esas tarifas o códigos).
+- **ICA = ReteICA**: el ICA no se suma al precio (lo declara el vendedor); en un documento solo aparece
+  como ReteICA del comprador. Así lo dibuja `1012:87187` y Factus no lo admite como tributo de línea.
+- **Guardas en la base**: una retención no puede ser por defecto (CHECK + `fn_impuesto_fijar_por_defecto`);
+  `product_tax_relations` rechaza una retención o un impuesto de otra organización (disparador,
+  error `impuesto_invalido`); `fn_importar_productos_lote` ya no relaciona «4 %» u «11» con RETE_4 /
+  RETE_11; `fn_codigo_impuesto_linea` filtra por clase; una fila con plantilla hereda la clase de su
+  plantilla (disparador), así que el alta de organizaciones siembra bien sin tocarla.
+- **`manage_organization_tax`**: una sola firma nueva con `p_kind` (la de 9 argumentos se sustituyó para
+  que PostgREST no tenga dos candidatas). Sin `p_kind` conserva la clase; con plantilla manda la
+  plantilla; una retención no es por defecto ni «incluida en el precio»; un impuesto relacionado a
+  productos no pasa a retención (`TAX_IN_USE_BY_PRODUCTS`). Sigue exigiendo permiso de finanzas.
+- **Una sola fuente de verdad en código**: `sinRetenciones` / `soloRetenciones` / `esRetencion`
+  (`taxResolverCore.ts`) deciden por `kind`; el prefijo `RETE*` solo cuando la fila no trae la clase
+  (réplica sin conexión anterior a la columna). Lo usan el resolver, el POS en línea y sin conexión
+  (`getOrganizationTaxes` y `getProductTaxes`), el formulario de producto, la importación de productos,
+  facturas de venta, cotizaciones y documento soporte (`ImpuestosFactura`), la factura de compra
+  vieja (`ImpuestosFacturaCompra`), el folio del PMS y Configuración del POS. La réplica sin conexión
+  trae `kind` de ambas tablas.
+- **Pantalla** Finanzas › Impuestos: `TabBar` del kit con «Impuestos de venta y compra» y
+  «Retenciones» (con contadores). La pestaña Retenciones usa `Tarjeta` (aviso), `DataTable`,
+  `Badge` (ReteFuente · ReteIVA · ReteICA) y `formatearTarifa`; «Nueva retención» abre el mismo
+  formulario en modo retención (sin «por defecto» ni «incluido en el precio», solo plantillas de
+  retención). La tarjeta de tarifa por defecto solo ofrece impuestos. Textos nuevos en es/en/fr/pt
+  (`impuestosRetenciones`).
+- Pruebas: `src/__tests__/finanzas/impuestosClaseRetencion.test.ts`.
+
+**Quedó sin hacer (y por qué):**
+- «Base mínima (UVT)» y «Aplica a» ventas/compras por retención: no hay columnas; «Aplica a» se muestra
+  fijo en «Compras». Requiere diseño de datos propio.
+- Tarifa por mil (B-I3, `rate_per_mille`): ICA se sigue viendo 0,97 % hasta esa tarea.
+- La factura de compra nueva (`FormularioFacturaCompra`) registra retenciones con concepto libre; aún
+  no ofrece las retenciones configuradas como opciones.
+- Pestaña «Por producto» (B-I6) y la cabecera `PageHeader` del diseño: fuera de este alcance.
+- No se verificó la pantalla en el navegador: el servidor local pide iniciar sesión contra la base de
+  producción.

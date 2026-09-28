@@ -13765,5 +13765,56 @@
       "direccion": "Endereço:",
       "municipio": "Município DIAN:"
     }
+  },
+  "impuestosRetenciones": {
+    "resumen": "{impuestos, plural, one {# imposto de venda e compra} other {# impostos de venda e compra}} · {retenciones, plural, =0 {sem retenções} one {# retenção} other {# retenções}}",
+    "pestanas": {
+      "etiqueta": "Seções de impostos",
+      "impuestos": "Impostos de venda e compra",
+      "retenciones": "Retenções"
+    },
+    "aviso": {
+      "titulo": "Retenções não são impostos de venda",
+      "texto": "Não aparecem no produto, no PDV nem em faturas ou orçamentos de venda, e nunca são somadas ao preço. Hoje são registradas nas faturas de compra; nas vendas chegarão depois."
+    },
+    "nueva": "Nova retenção",
+    "tablaEtiqueta": "Retenções da organização",
+    "columnas": {
+      "nombre": "Nome",
+      "tipo": "Tipo",
+      "tarifa": "Alíquota",
+      "aplicaA": "Aplica-se a",
+      "estado": "Status"
+    },
+    "tipos": {
+      "retefuente": "ReteFuente",
+      "reteiva": "ReteIVA",
+      "reteica": "ReteICA",
+      "otra": "Retenção"
+    },
+    "aplicaCompras": "Compras",
+    "activa": "Ativa",
+    "inactiva": "Inativa",
+    "activar": "Ativar {nombre}",
+    "desactivar": "Desativar {nombre}",
+    "acciones": {
+      "editar": "Editar",
+      "eliminar": "Excluir"
+    },
+    "vacio": {
+      "titulo": "Sem retenções",
+      "descripcion": "Adicione ReteFuente, ReteIVA ou ReteICA para registrá-las nas suas compras."
+    },
+    "toast": {
+      "activada": "{nombre} agora está ativa.",
+      "desactivada": "{nombre} agora está inativa.",
+      "errorTitulo": "Erro",
+      "errorEstado": "Não foi possível alterar o status da retenção."
+    },
+    "formulario": {
+      "nueva": "Nova retenção",
+      "editar": "Editar retenção",
+      "nota": "A retenção é feita pelo comprador: não é somada ao preço, não é atribuída a produtos e não pode ser a alíquota padrão."
+    }
   }
 }

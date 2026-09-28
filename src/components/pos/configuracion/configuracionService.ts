@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { CLASE_IMPUESTO_VENTA, sinRetenciones } from '@/lib/services/taxResolverCore';
 import { notifyCustomerDisplaySettingsChanged } from '@/lib/pos/display/posDisplay';
 import {
   defaultCustomerDisplaySettings,
@@ -228,7 +229,8 @@ export class ConfiguracionService {
       .order('name');
 
     if (error) throw error;
-    return data || [];
+    // Las retenciones no son impuestos del POS: se ven en Finanzas › Impuestos › Retenciones.
+    return sinRetenciones(data ?? []);
   }
 
   // Obtener cargos de servicio
@@ -298,7 +300,7 @@ export class ConfiguracionService {
 
     const [paymentMethods, taxes, serviceCharges, invoiceSequences, saleSequences] = await Promise.all([
       supabase.from('organization_payment_methods').select('id', { count: 'exact' }).eq('organization_id', orgId).eq('is_active', true),
-      supabase.from('organization_taxes').select('id', { count: 'exact' }).eq('organization_id', orgId).eq('is_active', true),
+      supabase.from('organization_taxes').select('id', { count: 'exact' }).eq('organization_id', orgId).eq('is_active', true).eq('kind', CLASE_IMPUESTO_VENTA),
       supabase.from('service_charges').select('id', { count: 'exact' }).eq('organization_id', orgId).eq('is_active', true),
       supabase.from('invoice_sequences').select('id', { count: 'exact' }).eq('organization_id', orgId).eq('is_active', true),
       supabase.from('sale_sequences').select('id', { count: 'exact' }).eq('organization_id', orgId).eq('is_active', true),

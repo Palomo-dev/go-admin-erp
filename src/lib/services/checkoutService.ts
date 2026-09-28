@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { resolveLineTax, type ResolveTaxInput } from '@/lib/services/taxResolver';
+import { sinRetenciones } from '@/lib/services/taxResolverCore';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 export interface CheckoutReservation {
@@ -762,11 +763,12 @@ class CheckoutService {
     // Obtener impuestos de la organización
     const { data: orgTaxes } = await supabase
       .from('organization_taxes')
-      .select('id, name, rate, is_default, is_active, tax_templates(code)')
+      .select('id, name, rate, is_default, is_active, kind, tax_templates(code)')
       .eq('organization_id', reservation.organization_id)
       .eq('is_active', true);
 
-    const organizationTaxes = (orgTaxes || []).map((t) => ({
+    // Una retención no se suma a la venta del folio.
+    const organizationTaxes = sinRetenciones(orgTaxes ?? []).map((t) => ({
       id: t.id,
       name: t.name,
       rate: Number(t.rate),

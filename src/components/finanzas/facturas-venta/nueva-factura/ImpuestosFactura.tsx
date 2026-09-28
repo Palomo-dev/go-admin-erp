@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
+import { sinRetenciones } from '@/lib/services/taxResolverCore';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { InvoiceItem } from './NuevaFacturaForm';
@@ -378,8 +379,9 @@ export function ImpuestosFactura({
       if (taxesError) throw taxesError;
       
       if (taxesData && taxesData.length > 0) {
-        // Formatear datos para usar en el componente
-        const formattedTaxes = taxesData.map(tax => ({
+        // Formatear datos para usar en el componente. Las retenciones no se
+        // ofrecen ni se suman al documento de venta.
+        const formattedTaxes = sinRetenciones(taxesData).map(tax => ({
           id: tax.id,
           code: tax.tax_templates.code,
           name: tax.name,

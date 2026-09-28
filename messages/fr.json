@@ -13765,5 +13765,56 @@
       "direccion": "Adresse :",
       "municipio": "Commune DIAN :"
     }
+  },
+  "impuestosRetenciones": {
+    "resumen": "{impuestos, plural, one {# taxe de vente et d’achat} other {# taxes de vente et d’achat}} · {retenciones, plural, =0 {aucune retenue} one {# retenue} other {# retenues}}",
+    "pestanas": {
+      "etiqueta": "Sections des taxes",
+      "impuestos": "Taxes de vente et d’achat",
+      "retenciones": "Retenues"
+    },
+    "aviso": {
+      "titulo": "Les retenues ne sont pas des taxes de vente",
+      "texto": "Elles n’apparaissent ni sur le produit, ni dans le POS, ni sur les factures ou devis de vente, et ne s’ajoutent jamais au prix. Aujourd’hui, elles sont enregistrées sur les factures d’achat ; les ventes viendront plus tard."
+    },
+    "nueva": "Nouvelle retenue",
+    "tablaEtiqueta": "Retenues de l’organisation",
+    "columnas": {
+      "nombre": "Nom",
+      "tipo": "Type",
+      "tarifa": "Taux",
+      "aplicaA": "S’applique à",
+      "estado": "Statut"
+    },
+    "tipos": {
+      "retefuente": "ReteFuente",
+      "reteiva": "ReteIVA",
+      "reteica": "ReteICA",
+      "otra": "Retenue"
+    },
+    "aplicaCompras": "Achats",
+    "activa": "Active",
+    "inactiva": "Inactive",
+    "activar": "Activer {nombre}",
+    "desactivar": "Désactiver {nombre}",
+    "acciones": {
+      "editar": "Modifier",
+      "eliminar": "Supprimer"
+    },
+    "vacio": {
+      "titulo": "Aucune retenue",
+      "descripcion": "Ajoutez ReteFuente, ReteIVA ou ReteICA pour les enregistrer sur vos achats."
+    },
+    "toast": {
+      "activada": "{nombre} est maintenant active.",
+      "desactivada": "{nombre} est maintenant inactive.",
+      "errorTitulo": "Erreur",
+      "errorEstado": "Impossible de modifier le statut de la retenue."
+    },
+    "formulario": {
+      "nueva": "Nouvelle retenue",
+      "editar": "Modifier la retenue",
+      "nota": "Une retenue est pratiquée par l’acheteur : elle ne s’ajoute pas au prix, ne s’attribue pas aux produits et ne peut pas être le taux par défaut."
+    }
   }
 }

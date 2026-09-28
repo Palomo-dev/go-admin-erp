@@ -11,15 +11,17 @@ import {
   SelectTrigger,
   SelectValue,
   } from '@/components/ui/select';
-import { Search, X, Filter, Calendar } from 'lucide-react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { Search, X, Filter } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { CampoFecha } from '@/components/kit/CampoFecha';
+
+/**
+ * El padre guarda un `Date` a medianoche local y lo pasa a la consulta con
+ * `format(d, 'yyyy-MM-dd')`: la ida y vuelta con el día plano del campo de
+ * marca conserva el mismo día.
+ */
+const aDia = (d: Date | undefined): string => (d ? format(d, 'yyyy-MM-dd') : '');
+const aFecha = (dia: string): Date | undefined => (dia ? parseISO(dia) : undefined);
 
 interface MovimientosFiltersProps {
   searchTerm: string;
@@ -126,47 +128,19 @@ export function MovimientosFilters({
 
       {/* Fechas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className="justify-start text-left font-normal dark:bg-gray-900 dark:border-gray-700 dark:text-white"
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              {dateFrom ? format(dateFrom, 'dd/MM/yyyy', { locale: es }) : 'Desde'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 dark:bg-gray-900 dark:border-gray-700" align="start">
-            <CalendarComponent
-              mode="single"
-              selected={dateFrom}
-              onSelect={onDateFromChange}
-              initialFocus
-              locale={es}
-            />
-          </PopoverContent>
-        </Popover>
+        <CampoFecha
+          aria-label="Desde"
+          placeholder="Desde"
+          valor={aDia(dateFrom)}
+          onValorChange={(dia) => onDateFromChange(aFecha(dia))}
+        />
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className="justify-start text-left font-normal dark:bg-gray-900 dark:border-gray-700 dark:text-white"
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              {dateTo ? format(dateTo, 'dd/MM/yyyy', { locale: es }) : 'Hasta'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 dark:bg-gray-900 dark:border-gray-700" align="start">
-            <CalendarComponent
-              mode="single"
-              selected={dateTo}
-              onSelect={onDateToChange}
-              initialFocus
-              locale={es}
-            />
-          </PopoverContent>
-        </Popover>
+        <CampoFecha
+          aria-label="Hasta"
+          placeholder="Hasta"
+          valor={aDia(dateTo)}
+          onValorChange={(dia) => onDateToChange(aFecha(dia))}
+        />
 
         {/* Solo ingredientes */}
         <Button

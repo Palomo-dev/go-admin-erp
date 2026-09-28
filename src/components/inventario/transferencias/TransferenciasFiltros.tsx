@@ -14,6 +14,7 @@ import {
 import { Search, Filter, X } from 'lucide-react';
 import { FiltrosTransferencias, Branch } from './types';
 import { TransferenciasService } from './TransferenciasService';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface TransferenciasFiltrosProps {
   onFiltrosChange: (filtros: FiltrosTransferencias) => void;
@@ -151,21 +152,19 @@ export function TransferenciasFiltros({ onFiltrosChange }: TransferenciasFiltros
 
           <div>
             <label className="block text-sm font-medium mb-1 dark:text-gray-300">Desde</label>
-            <Input
-              type="date"
-              value={filtros.fechaDesde}
-              onChange={(e) => handleChange('fechaDesde', e.target.value)}
-              className="dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+            <CampoFecha
+              aria-label="Desde"
+              valor={filtros.fechaDesde}
+              onValorChange={(dia) => handleChange('fechaDesde', dia)}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1 dark:text-gray-300">Hasta</label>
-            <Input
-              type="date"
-              value={filtros.fechaHasta}
-              onChange={(e) => handleChange('fechaHasta', e.target.value)}
-              className="dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+            <CampoFecha
+              aria-label="Hasta"
+              valor={filtros.fechaHasta}
+              onValorChange={(dia) => handleChange('fechaHasta', dia)}
             />
           </div>
 

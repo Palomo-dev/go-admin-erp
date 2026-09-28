@@ -68,8 +68,8 @@ export default function ComandasPage() {
     } catch (error) {
       console.error('Error cargando tickets:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las comandas',
+        title: tComandas('pagina.error'),
+        description: tComandas('pagina.errorCargar'),
         variant: 'destructive',
       });
     } finally {
@@ -101,9 +101,9 @@ export default function ComandasPage() {
           if (ticketsNuevos.length > 0 && soundEnabled) {
             playNotificationBeep();
             toast({
-              title: ticketsNuevos.length === 1 ? 'Nuevo ticket de cocina' : 'Nuevos tickets de cocina',
+              title: tComandas('pagina.nuevosTickets', { n: ticketsNuevos.length }),
               description: ticketsNuevos
-                .map((t) => t.table_sessions?.restaurant_tables?.name || `Ticket #${t.id}`)
+                .map((t) => t.table_sessions?.restaurant_tables?.name || tComandas('tarjeta.ticket', { id: t.id }))
                 .join(', '),
             });
           }
@@ -119,6 +119,9 @@ export default function ComandasPage() {
     return () => {
       unsubscribe();
     };
+    // La suscripción se rehace solo al cambiar organización, filtros o sonido:
+    // `loadTickets` se redefine en cada render y `toast`/`tComandas` son estables.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization?.id, statusFilter, zoneFilter, soundEnabled, branchFilter]);
 
   // Cambiar estado de ticket (con actualización optimista)
@@ -157,15 +160,15 @@ export default function ComandasPage() {
       await KitchenService.updateTicketStatus(ticketId, status);
       
       toast({
-        title: 'Estado actualizado',
-        description: `Ticket #${ticketId} marcado como ${getStatusLabel(status)}`,
+        title: tComandas('pagina.estadoActualizado'),
+        description: tComandas('pagina.ticketMarcado', { id: ticketId, estado: getStatusLabel(status) }),
       });
     } catch (error) {
       console.error('Error actualizando estado:', JSON.stringify(error));
       setTickets(previousTickets);
       toast({
-        title: 'Error',
-        description: 'No se pudo actualizar el estado',
+        title: tComandas('pagina.error'),
+        description: tComandas('pagina.errorEstado'),
         variant: 'destructive',
       });
     }
@@ -173,10 +176,10 @@ export default function ComandasPage() {
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
-      new: 'Nuevo',
-      preparing: 'En Preparación',
-      ready: 'Listo',
-      delivered: 'Entregado',
+      new: tComandas('estados.new'),
+      preparing: tComandas('estados.preparing'),
+      ready: tComandas('estados.ready'),
+      delivered: tComandas('estados.delivered'),
     };
     return labels[status] || status;
   };
@@ -197,10 +200,10 @@ export default function ComandasPage() {
     try {
       await KitchenService.updateItemStatus(itemId, status);
       
-      const name = productName || 'Producto';
+      const name = productName || tComandas('tarjeta.producto');
       toast({
-        title: `${name} actualizado`,
-        description: `${name} marcado como ${getItemStatusLabel(status)}`,
+        title: tComandas('pagina.productoActualizado', { producto: name }),
+        description: tComandas('pagina.productoMarcado', { producto: name, estado: getItemStatusLabel(status) }),
       });
 
       // Auto-promover estado del ticket si todos los items tienen el mismo estado
@@ -229,8 +232,8 @@ export default function ComandasPage() {
           ));
           await KitchenService.updateTicketStatus(parentTicket.id, newTicketStatus);
           toast({
-            title: 'Comanda actualizada',
-            description: `Ticket #${parentTicket.id} pasó a ${getStatusLabel(newTicketStatus)}`,
+            title: tComandas('pagina.comandaActualizada'),
+            description: tComandas('pagina.ticketPaso', { id: parentTicket.id, estado: getStatusLabel(newTicketStatus) }),
           });
         }
       }
@@ -239,8 +242,8 @@ export default function ComandasPage() {
       // Revertir al estado anterior si falla
       setTickets(previousTickets);
       toast({
-        title: 'Error',
-        description: 'No se pudo actualizar el estado del item',
+        title: tComandas('pagina.error'),
+        description: tComandas('pagina.errorEstadoItem'),
         variant: 'destructive',
       });
     }
@@ -284,26 +287,31 @@ export default function ComandasPage() {
         }),
       });
       if (enqueued > 0) {
-        toast({ title: 'Reimpresión enviada', description: `Ticket #${ticket.id} enviado a impresión` });
+        toast({ title: tComandas('pagina.reimpresionEnviada'), description: tComandas('pagina.ticketEnviadoImpresion', { id: ticket.id }) });
       } else {
         toast({
-          title: 'Sin impresora asignada',
-          description: `No hay impresora configurada para: ${skippedStations.join(', ') || 'esta estación'}`,
+          title: tComandas('pagina.sinImpresora'),
+          description: tComandas('pagina.sinImpresoraDesc', {
+            estaciones: skippedStations
+              .map((s) => (tComandas.has(`estaciones.${s}`) ? tComandas(`estaciones.${s}`) : s))
+              .join(', ') || tComandas('pagina.estaEstacion'),
+          }),
           variant: 'destructive',
         });
       }
     } catch (error) {
       console.error('Error reimprimiendo ticket:', error);
-      toast({ title: 'Error', description: 'No se pudo reimprimir la comanda', variant: 'destructive' });
+      toast({ title: tComandas('pagina.error'), description: tComandas('pagina.errorReimprimir'), variant: 'destructive' });
     }
   };
 
   const getItemStatusLabel = (status: string) => {
+    // Mismo texto que el estado de la comanda, salvo «Pendiente».
     const labels: Record<string, string> = {
-      pending: 'Pendiente',
-      in_progress: 'En Preparación',
-      ready: 'Listo',
-      delivered: 'Entregado',
+      pending: tComandas('estadosItem.pending'),
+      in_progress: tComandas('estados.preparing'),
+      ready: tComandas('estados.ready'),
+      delivered: tComandas('estados.delivered'),
     };
     return labels[status] || status;
   };

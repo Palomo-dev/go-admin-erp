@@ -3008,7 +3008,13 @@
       }
     },
     "markedUnread": "Marked as unread",
-    "dismissedForYou": "Notification dismissed. Only you stop seeing it."
+    "dismissedForYou": "Notification dismissed. Only you stop seeing it.",
+    "datosLocales": {
+      "sinDatos": "Offline with no local data: connect to the internet once to replicate it.",
+      "viendo": "You are viewing local data from {when}",
+      "viendoDe": "You are viewing local {modulo} data from {when}",
+      "tablasSinReplicar": "{n, plural, one {# table not replicated} other {# tables not replicated}}"
+    }
   },
   "kit": {
     "comun": {
@@ -3569,6 +3575,25 @@
       "sinResultados": "No categories found",
       "anteriores": "Show previous categories",
       "siguientes": "Show more categories"
+    },
+    "avisoSinImpuesto": {
+      "titulo": "{n, plural, one {This product has no tax assigned: it will be {accion, select, cotizar {quoted} cobrar {charged} other {invoiced}} without VAT.} other {# products have no tax assigned: they will be {accion, select, cotizar {quoted} cobrar {charged} other {invoiced}} without VAT.}}",
+      "advertencia": "Warning:",
+      "lineaSinDescripcion": "Line without description",
+      "asignar": "Assign a tax to the product",
+      "otraPestana": "(opens in a new tab)",
+      "tarifaDefecto": "Or set a <enlace>default rate for products without tax</enlace>. You can continue; this is only a warning.",
+      "etiqueta": "No tax assigned"
+    },
+    "consultaDian": {
+      "consultar": "Look up in DIAN",
+      "consultando": "Looking up...",
+      "documentoInvalido": "Enter a valid document number (at least 4 digits)",
+      "sinResultados": "No information was found for this document",
+      "obtenidos": "Data retrieved from {proveedor}",
+      "obtenidosCache": "Data retrieved from {proveedor} (cache)",
+      "errorConexion": "Connection error while querying DIAN/RUES",
+      "habeasData": "I authorize looking up my information in DIAN and RUES for electronic invoicing and tax compliance purposes (Colombian Law 1581 of 2012)."
     }
   },
   "inventarioEtiquetas": {
@@ -9297,7 +9322,89 @@
     "motivo": "Reason: {motivo}",
     "alergia": "Allergy",
     "alergiaConfirmadaToast": "Allergy of order #{id} confirmed",
-    "errorConfirmarAlergia": "Could not confirm the allergy"
+    "errorConfirmarAlergia": "Could not confirm the allergy",
+    "cabecera": {
+      "titulo": "Kitchen Orders",
+      "subtitulo": "Real-time monitor",
+      "desactivarSonido": "Turn off notification sound",
+      "activarSonido": "Turn on notification sound",
+      "actualizar": "Refresh"
+    },
+    "filtros": {
+      "todasZonas": "All Zones",
+      "todasEstaciones": "All Stations",
+      "todos": "All",
+      "nuevos": "New",
+      "enPreparacion": "In Preparation",
+      "listos": "Ready",
+      "entregados": "Delivered"
+    },
+    "estaciones": {
+      "hot_kitchen": "Hot Kitchen",
+      "cold_kitchen": "Cold Kitchen",
+      "bar": "Bar",
+      "general": "General"
+    },
+    "estados": {
+      "new": "New",
+      "preparing": "In Preparation",
+      "ready": "Ready",
+      "delivered": "Delivered",
+      "desconocido": "Unknown"
+    },
+    "estadosItem": {
+      "pending": "Pending",
+      "in_progress": "Preparing",
+      "ready": "Ready",
+      "delivered": "Delivered"
+    },
+    "columnas": {
+      "new": "New",
+      "in_progress": "In Preparation",
+      "ready": "Ready to Serve",
+      "delivered": "Delivered",
+      "ultimos": "Showing the latest {visibles} of {total}"
+    },
+    "paginacion": {
+      "mostrar": "Show",
+      "porPagina": "per page",
+      "rango": "Showing <b>{desde}</b> to <b>{hasta}</b> of <b>{total}</b> kitchen orders",
+      "sinComandas": "No kitchen orders"
+    },
+    "vacio": {
+      "titulo": "No kitchen orders",
+      "descripcion": "New kitchen orders will appear here in real time"
+    },
+    "tarjeta": {
+      "mesa": "Table",
+      "minutos": "{n} min",
+      "esperaElevada": "Long wait time",
+      "ticket": "Ticket #{id}",
+      "reimprimir": "Reprint kitchen order",
+      "producto": "Product",
+      "comenzar": "🔥 Start Preparing",
+      "marcarListo": "✅ Mark as Ready",
+      "marcarEntregado": "📤 Mark as Delivered"
+    },
+    "pagina": {
+      "error": "Error",
+      "errorCargar": "Could not load the kitchen orders",
+      "nuevosTickets": "{n, plural, one {New kitchen ticket} other {New kitchen tickets}}",
+      "estadoActualizado": "Status updated",
+      "ticketMarcado": "Ticket #{id} marked as {estado}",
+      "errorEstado": "Could not update the status",
+      "productoActualizado": "{producto} updated",
+      "productoMarcado": "{producto} marked as {estado}",
+      "comandaActualizada": "Kitchen order updated",
+      "ticketPaso": "Ticket #{id} moved to {estado}",
+      "errorEstadoItem": "Could not update the item status",
+      "reimpresionEnviada": "Reprint sent",
+      "ticketEnviadoImpresion": "Ticket #{id} sent to the printer",
+      "sinImpresora": "No printer assigned",
+      "sinImpresoraDesc": "No printer is set up for: {estaciones}",
+      "estaEstacion": "this station",
+      "errorReimprimir": "Could not reprint the kitchen order"
+    }
   },
   "posMesaAjuste": {
     "alergia": "Allergy: {nota}",
@@ -11931,6 +12038,86 @@
       "sinReplicar": "Local catalog not replicated",
       "actualizando": "Updating…",
       "actualizar": "Update catalog now"
+    },
+    "clienteSinConexion": {
+      "titulo": "New customer (offline)",
+      "descripcion": "It is saved on this device and sent to Go Admin when the connection returns, before the sales that use it. The rest of the details (address, municipality, tax responsibilities) are completed later from Customers.",
+      "nombres": "First names *",
+      "apellidos": "Last names",
+      "tipoDocumento": "Document type",
+      "numeroDocumento": "Document number",
+      "email": "Email",
+      "telefono": "Phone",
+      "cancelar": "Cancel",
+      "guardando": "Saving…",
+      "guardar": "Save customer",
+      "nombreObligatorio": "The first name is required",
+      "errorRegistrar": "The customer could not be registered",
+      "tiposDocumento": {
+        "CC": "Citizenship ID card",
+        "CE": "Foreigner ID card",
+        "NIT": "NIT (tax ID)",
+        "TI": "Minor’s ID card",
+        "PP": "Passport",
+        "PEP": "Special residence permit"
+      }
+    },
+    "pendientesSinConexion": {
+      "estados": {
+        "pending": "Pending",
+        "syncing": "Syncing",
+        "synced": "Synced",
+        "needs_review": "Needs review"
+      },
+      "tipos": {
+        "sale": "Sale",
+        "customer": "Customer",
+        "cash": "Cash register"
+      },
+      "items": "{n, plural, one {# item} other {# items}}",
+      "clienteSinNombre": "Unnamed customer",
+      "doc": "Doc",
+      "yaExistia": "Already existed: {id}",
+      "caja": {
+        "apertura": "Cash register opening",
+        "cierre": "Cash register closing",
+        "ingreso": "Cash in",
+        "retiro": "Cash out",
+        "esperado": "Expected {esperado} · difference {diferencia}",
+        "resumenParcial": "Partial summary: payments were not replicated at closing",
+        "cajaLocal": "Local register #{id}",
+        "caja": "Register #{id}"
+      },
+      "avisos": {
+        "sincronizado": "Synced.",
+        "enRevision": "Still failing: it was moved to review.",
+        "seReintentara": "Offline or waiting for another operation: it will be retried.",
+        "noSincronizo": "Could not sync. Check the error in the tray.",
+        "errorReintentar": "Error while retrying: {error}",
+        "etapaFallo": "The “{etapa}” stage failed: {error}",
+        "sincronizadas": "{n, plural, one {# operation synced.} other {# operations synced.}}",
+        "sinRed": "Offline: it will be retried when the connection returns.",
+        "algunasFallaron": "Some operations could not be synced.",
+        "errorSincronizar": "Sync error: {error}"
+      },
+      "intentos": "Attempts: {n}",
+      "reintentar": "Retry",
+      "reintentarAria": "Retry {tipo} {titulo}",
+      "exportar": "Export",
+      "exportarAria": "Export {tipo} {titulo}",
+      "boton": {
+        "title": "Sales, customers and cash register operations made offline",
+        "aria": "{n, plural, one {Offline: # pending} other {Offline: # pending}}",
+        "texto": "Offline"
+      },
+      "titulo": "Pending sync",
+      "descripcion": "Sales, customers and cash register operations made offline on this device. They are sent automatically when the connection returns, in order (customers → register opening → sales → movements and closing); if something fails five times it stays here for review with its error and the full record. They are never deleted.",
+      "resumen": "{pendientes} pending ({ventas} sales · {clientes} customers · {caja} cash register) · {revision} in review · {sincronizados} synced (last 7 days)",
+      "sincronizarAhora": "Sync now",
+      "requierenRevision": "Need review",
+      "pendientes": "Pending",
+      "sinPendientes": "No pending operations.",
+      "sincronizados": "Synced"
     }
   },
   "posCobro": {
@@ -12122,6 +12309,29 @@
       "insuficientes": "Only {disponibles, plural, one {# serial number is} other {# serial numbers are}} available and {requeridos, plural, one {# is} other {# are}} required.",
       "confirmar": "Confirm serial numbers",
       "lista": "Serial numbers of {producto}"
+    },
+    "qrDialogo": {
+      "titulo": "QR payment - {proveedor}",
+      "descripcion": "Scan the QR code with your banking app to complete the payment.",
+      "confirmado": "Payment confirmed",
+      "cierreAutomatico": "This will close automatically in a few seconds.",
+      "rechazado": "Payment rejected by the provider",
+      "cancelado": "Payment cancelled",
+      "expirado": "Time has expired",
+      "verificarSiPago": "If the customer already paid, press “Verify payment”; otherwise, request a new QR code.",
+      "solicitarNuevo": "Request a new QR code to retry the payment.",
+      "errorVerificarVencido": "The payment could not be verified; press “Verify payment” to try again.",
+      "alt": "{proveedor} payment QR code",
+      "expiraEn": "Expires in {tiempo}",
+      "errorVerificar": "The payment could not be verified; press “I already paid” to try again.",
+      "referencia": "Reference",
+      "monto": "Amount",
+      "proveedor": "Provider",
+      "cerrar": "Close",
+      "cancelar": "Cancel",
+      "verificando": "Verifying...",
+      "yaPague": "I already paid",
+      "verificarPago": "Verify payment"
     }
   },
   "comisionesPago": {

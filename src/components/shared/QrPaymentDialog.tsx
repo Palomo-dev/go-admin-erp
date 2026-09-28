@@ -7,6 +7,7 @@
 // real usando QrPoller. Cierra automaticamente al confirmar pago.
 
 import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -135,6 +136,7 @@ export function QrPaymentDialog({
   onTerminal,
   extraControl,
 }: QrPaymentDialogProps) {
+  const t = useTranslations('posCobro.qrDialogo');
   // Estado de pago reportado por el poller (string del backend)
   const [status, setStatus] = useState<QrPaymentStatus>('pending');
   // Segundos restantes de la cuenta regresiva
@@ -446,10 +448,10 @@ export function QrPaymentDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 dark:text-white">
             <QrCode className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            Pago QR - {providerLabel}
+            {t('titulo', { proveedor: providerLabel })}
           </DialogTitle>
           <DialogDescription>
-            Escanea el codigo QR con tu app bancaria para completar el pago.
+            {t('descripcion')}
           </DialogDescription>
         </DialogHeader>
 
@@ -460,10 +462,10 @@ export function QrPaymentDialog({
             <div className="flex flex-col items-center gap-2 py-6 text-center">
               <CheckCircle2 className="h-14 w-14 text-green-600 dark:text-green-400" />
               <p className="text-lg font-semibold text-green-700 dark:text-green-300">
-                Pago confirmado
+                {t('confirmado')}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Se cerrara automaticamente en unos segundos.
+                {t('cierreAutomatico')}
               </p>
             </div>
           )}
@@ -476,20 +478,20 @@ export function QrPaymentDialog({
                   el banco rechazó, si se canceló o si solo venció el tiempo. */}
               <p className="text-lg font-semibold text-red-700 dark:text-red-300">
                 {status === 'rejected'
-                  ? 'Pago rechazado por el proveedor'
+                  ? t('rechazado')
                   : status === 'cancelled'
-                    ? 'Pago cancelado'
-                    : 'El tiempo ha expirado'}
+                    ? t('cancelado')
+                    : t('expirado')}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {canVerifyExpired
-                  ? 'Si el cliente ya pagó, pulse «Verificar pago»; si no, solicite un nuevo código QR.'
-                  : 'Solicita un nuevo codigo QR para reintentar el pago.'}
+                  ? t('verificarSiPago')
+                  : t('solicitarNuevo')}
               </p>
               {canVerifyExpired && verifyFailed && (
                 <p className="flex items-center gap-1.5 text-center text-sm text-amber-700 dark:text-amber-300">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
-                  No se pudo verificar el pago; pulse «Verificar pago» para reintentar.
+                  {t('errorVerificarVencido')}
                 </p>
               )}
             </div>
@@ -504,7 +506,7 @@ export function QrPaymentDialog({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={qrImageUrl}
-                    alt={`Codigo QR de pago ${providerLabel}`}
+                    alt={t('alt', { proveedor: providerLabel })}
                     className="h-52 w-52 object-contain"
                   />
                 ) : qrData ? (
@@ -522,14 +524,14 @@ export function QrPaymentDialog({
               {hasDeadline && (
                 <div className="flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-300">
                   <Clock className="h-4 w-4" />
-                  <span>Expira en {formatCountdown(remaining)}</span>
+                  <span>{t('expiraEn', { tiempo: formatCountdown(remaining) })}</span>
                 </div>
               )}
               {extraControl}
               {verifyFailed && (
                 <p className="flex items-center gap-1.5 text-center text-sm text-amber-700 dark:text-amber-300">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
-                  No se pudo verificar el pago; pulse «Ya pague» para reintentar.
+                  {t('errorVerificar')}
                 </p>
               )}
             </>
@@ -539,19 +541,19 @@ export function QrPaymentDialog({
         {/* Datos del pago */}
         <div className="space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-800/50">
           <div className="flex justify-between gap-2">
-            <span className="text-gray-500 dark:text-gray-400">Referencia</span>
+            <span className="text-gray-500 dark:text-gray-400">{t('referencia')}</span>
             <span className="font-mono font-medium text-gray-900 dark:text-gray-100">
               {reference}
             </span>
           </div>
           <div className="flex justify-between gap-2">
-            <span className="text-gray-500 dark:text-gray-400">Monto</span>
+            <span className="text-gray-500 dark:text-gray-400">{t('monto')}</span>
             <span className="font-semibold text-gray-900 dark:text-gray-100">
               {formattedAmount}
             </span>
           </div>
           <div className="flex justify-between gap-2">
-            <span className="text-gray-500 dark:text-gray-400">Proveedor</span>
+            <span className="text-gray-500 dark:text-gray-400">{t('proveedor')}</span>
             <span className="font-medium text-gray-900 dark:text-gray-100">
               {providerLabel}
             </span>
@@ -566,7 +568,7 @@ export function QrPaymentDialog({
             disabled={isPaid}
             className="dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           >
-            {isPaid ? 'Cerrar' : 'Cancelar'}
+            {isPaid ? t('cerrar') : t('cancelar')}
           </Button>
 
           {/* «Ya pague» mientras se espera; «Verificar pago» vencido por reloj
@@ -580,12 +582,12 @@ export function QrPaymentDialog({
               {checking ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Verificando...
+                  {t('verificando')}
                 </>
               ) : isWaiting ? (
-                'Ya pague'
+                t('yaPague')
               ) : (
-                'Verificar pago'
+                t('verificarPago')
               )}
             </Button>
           ) : null}

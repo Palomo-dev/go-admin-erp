@@ -327,7 +327,10 @@ describe('A · QrPoller: lo que la ronda 8 no cubrió', () => {
     const manual = QR_DIALOG.slice(QR_DIALOG.indexOf('const handleManualCheck = async'), QR_DIALOG.indexOf('// Render'));
     expect(manual).toContain('if (!poller.isRunning) {');
     expect(manual.indexOf('poller.start();')).toBeLessThan(manual.indexOf('await poller.checkNow();'));
-    expect(QR_DIALOG).toContain('No se pudo verificar el pago; pulse «Ya pague» para reintentar.');
+    expect(QR_DIALOG).toContain("t('errorVerificar')");
+    expect((messagesEs.posCobro as { qrDialogo: Record<string, string> }).qrDialogo.errorVerificar).toBe(
+      'No se pudo verificar el pago; pulse «Ya pague» para reintentar.',
+    );
   });
 });
 

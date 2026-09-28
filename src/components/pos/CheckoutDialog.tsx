@@ -1970,7 +1970,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         ) : (
           <>
             {/* Arriba de la zona de pagos: advertencia, no bloquea el cobro. */}
-            <AvisoSinImpuesto lineas={lineasSinImpuesto} accion="se cobrará" />
+            <AvisoSinImpuesto lineas={lineasSinImpuesto} accion="cobrar" />
 
             {/* Pagos: siempre abierto (POS-UX-V2 D4) */}
             <section aria-labelledby="cobro-pagos-titulo" className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">

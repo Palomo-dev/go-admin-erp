@@ -143,8 +143,12 @@ describe('AA/AB · estático: QrPaymentDialog', () => {
 
   it('AA · el botón «Verificar pago» vive en `isWaiting || canVerifyExpired` y el texto del estado vencido lo nombra', () => {
     expect(QR_DIALOG).toContain('{isWaiting || canVerifyExpired ? (');
-    expect(QR_DIALOG).toContain("'Verificar pago'");
-    expect(QR_DIALOG).toContain('Si el cliente ya pagó, pulse «Verificar pago»');
+    // Los textos viven en messages/*.json (`posCobro.qrDialogo`); el diálogo usa las claves.
+    const es = (JSON.parse(readFileSync(join(process.cwd(), 'messages/es.json'), 'utf8')) as { posCobro: { qrDialogo: Record<string, string> } }).posCobro.qrDialogo;
+    expect(QR_DIALOG).toContain("t('verificarPago')");
+    expect(es.verificarPago).toBe('Verificar pago');
+    expect(QR_DIALOG).toContain("t('verificarSiPago')");
+    expect(es.verificarSiPago).toContain('Si el cliente ya pagó, pulse «Verificar pago»');
   });
 
   it('AA/AC · consulta única: `oneShot` en el estado vencido con el poller parado O dentro de la gracia (que se cancela al pulsar); en finally se vuelve a parar salvo que haya pagado', () => {

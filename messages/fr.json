@@ -2903,7 +2903,13 @@
       }
     },
     "markedUnread": "Marquée comme non lue",
-    "dismissedForYou": "Notification ignorée. Seul vous ne la voyez plus."
+    "dismissedForYou": "Notification ignorée. Seul vous ne la voyez plus.",
+    "datosLocales": {
+      "sinDatos": "Hors ligne et sans données locales : connectez-vous une fois à Internet pour les répliquer.",
+      "viendo": "Vous consultez les données locales du {when}",
+      "viendoDe": "Vous consultez les données locales de {modulo} du {when}",
+      "tablasSinReplicar": "{n, plural, one {# table non répliquée} other {# tables non répliquées}}"
+    }
   },
   "kit": {
     "comun": {
@@ -3464,6 +3470,25 @@
       "sinResultados": "Aucune catégorie trouvée",
       "anteriores": "Voir les catégories précédentes",
       "siguientes": "Voir plus de catégories"
+    },
+    "avisoSinImpuesto": {
+      "titulo": "{n, plural, one {Ce produit n’a aucune taxe attribuée : il sera {accion, select, cotizar {chiffré} cobrar {encaissé} other {facturé}} sans TVA.} other {# produits n’ont aucune taxe attribuée : ils seront {accion, select, cotizar {chiffrés} cobrar {encaissés} other {facturés}} sans TVA.}}",
+      "advertencia": "Avertissement :",
+      "lineaSinDescripcion": "Ligne sans description",
+      "asignar": "Attribuer une taxe au produit",
+      "otraPestana": "(s’ouvre dans un nouvel onglet)",
+      "tarifaDefecto": "Ou définissez un <enlace>taux par défaut pour les produits sans taxe</enlace>. Vous pouvez continuer ; ce n’est qu’un avertissement.",
+      "etiqueta": "Aucune taxe attribuée"
+    },
+    "consultaDian": {
+      "consultar": "Consulter la DIAN",
+      "consultando": "Consultation...",
+      "documentoInvalido": "Saisissez un numéro de document valide (4 chiffres minimum)",
+      "sinResultados": "Aucune information trouvée pour ce document",
+      "obtenidos": "Données obtenues depuis {proveedor}",
+      "obtenidosCache": "Données obtenues depuis {proveedor} (cache)",
+      "errorConexion": "Erreur de connexion lors de la consultation DIAN/RUES",
+      "habeasData": "J’autorise la consultation de mes informations auprès de la DIAN et du RUES à des fins de facturation électronique et de conformité fiscale (loi colombienne 1581 de 2012)."
     }
   },
   "inventarioEtiquetas": {
@@ -9192,7 +9217,89 @@
     "motivo": "Motif : {motivo}",
     "alergia": "Allergie",
     "alergiaConfirmadaToast": "Allergie du bon #{id} confirmée",
-    "errorConfirmarAlergia": "Impossible de confirmer l’allergie"
+    "errorConfirmarAlergia": "Impossible de confirmer l’allergie",
+    "cabecera": {
+      "titulo": "Commandes cuisine",
+      "subtitulo": "Suivi en temps réel",
+      "desactivarSonido": "Désactiver le son des notifications",
+      "activarSonido": "Activer le son des notifications",
+      "actualizar": "Actualiser"
+    },
+    "filtros": {
+      "todasZonas": "Toutes les zones",
+      "todasEstaciones": "Tous les postes",
+      "todos": "Toutes",
+      "nuevos": "Nouvelles",
+      "enPreparacion": "En préparation",
+      "listos": "Prêtes",
+      "entregados": "Servies"
+    },
+    "estaciones": {
+      "hot_kitchen": "Cuisine chaude",
+      "cold_kitchen": "Cuisine froide",
+      "bar": "Bar",
+      "general": "Général"
+    },
+    "estados": {
+      "new": "Nouvelle",
+      "preparing": "En préparation",
+      "ready": "Prête",
+      "delivered": "Servie",
+      "desconocido": "Inconnu"
+    },
+    "estadosItem": {
+      "pending": "En attente",
+      "in_progress": "En préparation",
+      "ready": "Prêt",
+      "delivered": "Servi"
+    },
+    "columnas": {
+      "new": "Nouvelles",
+      "in_progress": "En préparation",
+      "ready": "Prêtes à servir",
+      "delivered": "Servies",
+      "ultimos": "Affichage des {visibles} dernières sur {total}"
+    },
+    "paginacion": {
+      "mostrar": "Afficher",
+      "porPagina": "par page",
+      "rango": "Affichage de <b>{desde}</b> à <b>{hasta}</b> sur <b>{total}</b> commandes",
+      "sinComandas": "Aucune commande"
+    },
+    "vacio": {
+      "titulo": "Aucune commande",
+      "descripcion": "Les nouvelles commandes apparaîtront ici en temps réel"
+    },
+    "tarjeta": {
+      "mesa": "Table",
+      "minutos": "{n} min",
+      "esperaElevada": "Temps d’attente élevé",
+      "ticket": "Ticket n° {id}",
+      "reimprimir": "Réimprimer la commande",
+      "producto": "Produit",
+      "comenzar": "🔥 Commencer la préparation",
+      "marcarListo": "✅ Marquer comme prête",
+      "marcarEntregado": "📤 Marquer comme servie"
+    },
+    "pagina": {
+      "error": "Erreur",
+      "errorCargar": "Impossible de charger les commandes",
+      "nuevosTickets": "{n, plural, one {Nouveau ticket cuisine} other {Nouveaux tickets cuisine}}",
+      "estadoActualizado": "Statut mis à jour",
+      "ticketMarcado": "Ticket n° {id} marqué comme « {estado} »",
+      "errorEstado": "Impossible de mettre à jour le statut",
+      "productoActualizado": "{producto} mis à jour",
+      "productoMarcado": "{producto} marqué comme « {estado} »",
+      "comandaActualizada": "Commande mise à jour",
+      "ticketPaso": "Ticket n° {id} passé à « {estado} »",
+      "errorEstadoItem": "Impossible de mettre à jour le statut de l’article",
+      "reimpresionEnviada": "Réimpression envoyée",
+      "ticketEnviadoImpresion": "Ticket n° {id} envoyé à l’impression",
+      "sinImpresora": "Aucune imprimante attribuée",
+      "sinImpresoraDesc": "Aucune imprimante configurée pour : {estaciones}",
+      "estaEstacion": "ce poste",
+      "errorReimprimir": "Impossible de réimprimer la commande"
+    }
   },
   "posMesaAjuste": {
     "alergia": "Allergie : {nota}",
@@ -11826,6 +11933,86 @@
       "sinReplicar": "Catalogue local non répliqué",
       "actualizando": "Mise à jour…",
       "actualizar": "Mettre à jour le catalogue"
+    },
+    "clienteSinConexion": {
+      "titulo": "Nouveau client (hors ligne)",
+      "descripcion": "Il est enregistré sur cet appareil et sera envoyé à Go Admin au retour de la connexion, avant les ventes qui l’utilisent. Les autres données (adresse, commune, obligations fiscales) se complètent ensuite depuis Clients.",
+      "nombres": "Prénoms *",
+      "apellidos": "Noms",
+      "tipoDocumento": "Type de document",
+      "numeroDocumento": "Numéro de document",
+      "email": "E-mail",
+      "telefono": "Téléphone",
+      "cancelar": "Annuler",
+      "guardando": "Enregistrement…",
+      "guardar": "Enregistrer le client",
+      "nombreObligatorio": "Le prénom est obligatoire",
+      "errorRegistrar": "Impossible d’enregistrer le client",
+      "tiposDocumento": {
+        "CC": "Carte d’identité de citoyen",
+        "CE": "Carte d’identité d’étranger",
+        "NIT": "NIT (identifiant fiscal)",
+        "TI": "Carte d’identité de mineur",
+        "PP": "Passeport",
+        "PEP": "Permis spécial de séjour"
+      }
+    },
+    "pendientesSinConexion": {
+      "estados": {
+        "pending": "En attente",
+        "syncing": "Synchronisation",
+        "synced": "Synchronisé",
+        "needs_review": "À vérifier"
+      },
+      "tipos": {
+        "sale": "Vente",
+        "customer": "Client",
+        "cash": "Caisse"
+      },
+      "items": "{n, plural, one {# article} other {# articles}}",
+      "clienteSinNombre": "Client sans nom",
+      "doc": "Doc",
+      "yaExistia": "Existait déjà : {id}",
+      "caja": {
+        "apertura": "Ouverture de caisse",
+        "cierre": "Clôture de caisse",
+        "ingreso": "Entrée d’espèces",
+        "retiro": "Retrait d’espèces",
+        "esperado": "Attendu {esperado} · écart {diferencia}",
+        "resumenParcial": "Résumé partiel : paiements non répliqués à la clôture",
+        "cajaLocal": "Caisse locale n° {id}",
+        "caja": "Caisse n° {id}"
+      },
+      "avisos": {
+        "sincronizado": "Synchronisé.",
+        "enRevision": "Échec persistant : placé en vérification.",
+        "seReintentara": "Hors ligne ou en attente d’une autre opération : nouvel essai prévu.",
+        "noSincronizo": "Synchronisation impossible. Consultez l’erreur dans la liste.",
+        "errorReintentar": "Erreur lors du nouvel essai : {error}",
+        "etapaFallo": "L’étape « {etapa} » a échoué : {error}",
+        "sincronizadas": "{n, plural, one {# opération synchronisée.} other {# opérations synchronisées.}}",
+        "sinRed": "Hors ligne : nouvel essai au retour de la connexion.",
+        "algunasFallaron": "Certaines opérations n’ont pas pu être synchronisées.",
+        "errorSincronizar": "Erreur de synchronisation : {error}"
+      },
+      "intentos": "Tentatives : {n}",
+      "reintentar": "Réessayer",
+      "reintentarAria": "Réessayer {tipo} {titulo}",
+      "exportar": "Exporter",
+      "exportarAria": "Exporter {tipo} {titulo}",
+      "boton": {
+        "title": "Ventes, clients et opérations de caisse effectués hors ligne",
+        "aria": "{n, plural, one {Hors ligne : # en attente} other {Hors ligne : # en attente}}",
+        "texto": "Hors ligne"
+      },
+      "titulo": "En attente de synchronisation",
+      "descripcion": "Ventes, clients et opérations de caisse effectués hors ligne sur cet appareil. Ils sont envoyés automatiquement au retour de la connexion, dans l’ordre (clients → ouverture de caisse → ventes → mouvements et clôture) ; si un envoi échoue cinq fois, il reste ici pour vérification avec son erreur et l’enregistrement complet. Rien n’est jamais supprimé.",
+      "resumen": "{pendientes} en attente ({ventas} ventes · {clientes} clients · {caja} caisse) · {revision} à vérifier · {sincronizados, plural, one {# synchronisée} other {# synchronisées}} (7 derniers jours)",
+      "sincronizarAhora": "Synchroniser maintenant",
+      "requierenRevision": "À vérifier",
+      "pendientes": "En attente",
+      "sinPendientes": "Aucune opération en attente.",
+      "sincronizados": "Synchronisées"
     }
   },
   "posCobro": {
@@ -12017,6 +12204,29 @@
       "insuficientes": "Seulement {disponibles, plural, one {# numéro disponible} other {# numéros disponibles}} et {requeridos, plural, one {# requis} other {# requis}}.",
       "confirmar": "Confirmer les numéros de série",
       "lista": "Numéros de série de {producto}"
+    },
+    "qrDialogo": {
+      "titulo": "Paiement QR - {proveedor}",
+      "descripcion": "Scannez le code QR avec votre application bancaire pour finaliser le paiement.",
+      "confirmado": "Paiement confirmé",
+      "cierreAutomatico": "Fermeture automatique dans quelques secondes.",
+      "rechazado": "Paiement refusé par le prestataire",
+      "cancelado": "Paiement annulé",
+      "expirado": "Le délai a expiré",
+      "verificarSiPago": "Si le client a déjà payé, appuyez sur « Vérifier le paiement » ; sinon, demandez un nouveau code QR.",
+      "solicitarNuevo": "Demandez un nouveau code QR pour réessayer le paiement.",
+      "errorVerificarVencido": "Impossible de vérifier le paiement ; appuyez sur « Vérifier le paiement » pour réessayer.",
+      "alt": "Code QR de paiement {proveedor}",
+      "expiraEn": "Expire dans {tiempo}",
+      "errorVerificar": "Impossible de vérifier le paiement ; appuyez sur « J’ai déjà payé » pour réessayer.",
+      "referencia": "Référence",
+      "monto": "Montant",
+      "proveedor": "Prestataire",
+      "cerrar": "Fermer",
+      "cancelar": "Annuler",
+      "verificando": "Vérification...",
+      "yaPague": "J’ai déjà payé",
+      "verificarPago": "Vérifier le paiement"
     }
   },
   "comisionesPago": {

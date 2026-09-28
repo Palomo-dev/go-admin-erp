@@ -30,6 +30,23 @@ import { transformSync } from 'esbuild';
 
 const ROOT = process.cwd();
 const SRC = join(ROOT, 'src');
+
+// QrPaymentDialog traduce con next-intl (`posCobro.qrDialogo`): sin proveedor en
+// estas pruebas, `useTranslations` devuelve el texto de messages/es.json.
+jest.mock('next-intl', () => {
+  const fs = jest.requireActual<typeof import('fs')>('fs');
+  const path = jest.requireActual<typeof import('path')>('path');
+  const mockEs = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'messages/es.json'), 'utf8')) as Record<string, unknown>;
+  return {
+    useLocale: () => 'es',
+    useTranslations: (ns: string) => (key: string, vars?: Record<string, unknown>) => {
+      let cur: unknown = mockEs;
+      for (const k of `${ns}.${key}`.split('.')) cur = cur && typeof cur === 'object' ? (cur as Record<string, unknown>)[k] : undefined;
+      if (typeof cur !== 'string') throw new Error(`clave i18n ausente: ${ns}.${key}`);
+      return cur.replace(/\{(\w+)\}/g, (_: string, v: string) => String(vars?.[v] ?? `{${v}}`));
+    },
+  };
+});
 const readSrc = (rel: string): string => readFileSync(join(SRC, rel), 'utf8').replace(/\r\n/g, '\n');
 const QR_DIALOG = readSrc('components/shared/QrPaymentDialog.tsx');
 const ROUTE = readSrc('app/api/integrations/qr/status/route.ts');
@@ -519,9 +536,14 @@ describe('Estático · QrPaymentDialog (AD, QA-5) y route qr/status (QA-6)', () 
     expect(countdown).toContain('if (providerTerminalRef.current) return;');
     expect(countdown.indexOf('if (providerTerminalRef.current) return;')).toBeLessThan(countdown.indexOf("setStatus((prev: QrPaymentStatus) => (prev === 'paid' ? prev : 'expired'));"));
     expect(pollerEffect.match(/providerTerminalRef\.current = true;/g)?.length).toBe(2);
-    expect(QR_DIALOG).toContain("? 'Pago rechazado por el proveedor'");
-    expect(QR_DIALOG).toContain("? 'Pago cancelado'");
-    expect(QR_DIALOG).toContain(": 'El tiempo ha expirado'");
+    // Un texto por veredicto: las claves en el diálogo y el español en messages/es.json.
+    const es = (JSON.parse(readFileSync(join(process.cwd(), 'messages/es.json'), 'utf8')) as { posCobro: { qrDialogo: Record<string, string> } }).posCobro.qrDialogo;
+    expect(QR_DIALOG).toContain("? t('rechazado')");
+    expect(QR_DIALOG).toContain("? t('cancelado')");
+    expect(QR_DIALOG).toContain(": t('expirado')");
+    expect(es.rechazado).toBe('Pago rechazado por el proveedor');
+    expect(es.cancelado).toBe('Pago cancelado');
+    expect(es.expirado).toBe('El tiempo ha expirado');
   });
 
   it('QA-6 · route qr/status: 401 propio, registro SOLO con statusCode 403 y respuesta con err.statusCode (nunca un 403 fijo)', () => {

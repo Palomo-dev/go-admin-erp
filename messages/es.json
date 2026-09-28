@@ -3008,7 +3008,13 @@
       }
     },
     "markedUnread": "Marcada como no leída",
-    "dismissedForYou": "Notificación descartada. Solo deja de verla tú."
+    "dismissedForYou": "Notificación descartada. Solo deja de verla tú.",
+    "datosLocales": {
+      "sinDatos": "Sin conexión y sin datos locales: conecta a internet una vez para replicarlos.",
+      "viendo": "Estás viendo datos locales del {when}",
+      "viendoDe": "Estás viendo datos locales de {modulo} del {when}",
+      "tablasSinReplicar": "{n, plural, one {# tabla sin replicar} other {# tablas sin replicar}}"
+    }
   },
   "kit": {
     "comun": {
@@ -3569,6 +3575,25 @@
       "sinResultados": "No se encontraron categorías",
       "anteriores": "Ver categorías anteriores",
       "siguientes": "Ver más categorías"
+    },
+    "avisoSinImpuesto": {
+      "titulo": "{n, plural, one {Este producto no tiene impuesto asignado: {accion, select, cotizar {se cotizará} cobrar {se cobrará} other {se facturará}} sin IVA.} other {# productos no tienen impuesto asignado: {accion, select, cotizar {se cotizarán} cobrar {se cobrarán} other {se facturarán}} sin IVA.}}",
+      "advertencia": "Advertencia:",
+      "lineaSinDescripcion": "Línea sin descripción",
+      "asignar": "Asignar impuesto al producto",
+      "otraPestana": "(se abre en otra pestaña)",
+      "tarifaDefecto": "O define una <enlace>tarifa por defecto para productos sin impuesto</enlace>. Puedes continuar; es solo una advertencia.",
+      "etiqueta": "Sin impuesto asignado"
+    },
+    "consultaDian": {
+      "consultar": "Consultar DIAN",
+      "consultando": "Consultando...",
+      "documentoInvalido": "Ingresa un número de documento válido (mínimo 4 dígitos)",
+      "sinResultados": "No se encontró información para este documento",
+      "obtenidos": "Datos obtenidos desde {proveedor}",
+      "obtenidosCache": "Datos obtenidos desde {proveedor} (caché)",
+      "errorConexion": "Error de conexión al consultar DIAN/RUES",
+      "habeasData": "Autorizo la consulta de mi información en DIAN y RUES para fines de facturación electrónica y cumplimiento tributario (Ley 1581 de 2012)."
     }
   },
   "inventarioEtiquetas": {
@@ -9297,7 +9322,89 @@
     "motivo": "Motivo: {motivo}",
     "alergia": "Alergia",
     "alergiaConfirmadaToast": "Alergia de la comanda #{id} confirmada",
-    "errorConfirmarAlergia": "No se pudo confirmar la alergia"
+    "errorConfirmarAlergia": "No se pudo confirmar la alergia",
+    "cabecera": {
+      "titulo": "Comandas de Cocina",
+      "subtitulo": "Monitor en tiempo real",
+      "desactivarSonido": "Desactivar sonido de notificación",
+      "activarSonido": "Activar sonido de notificación",
+      "actualizar": "Actualizar"
+    },
+    "filtros": {
+      "todasZonas": "Todas las Zonas",
+      "todasEstaciones": "Todas las Estaciones",
+      "todos": "Todos",
+      "nuevos": "Nuevos",
+      "enPreparacion": "En Preparación",
+      "listos": "Listos",
+      "entregados": "Entregados"
+    },
+    "estaciones": {
+      "hot_kitchen": "Cocina Caliente",
+      "cold_kitchen": "Cocina Fría",
+      "bar": "Bar",
+      "general": "General"
+    },
+    "estados": {
+      "new": "Nuevo",
+      "preparing": "En Preparación",
+      "ready": "Listo",
+      "delivered": "Entregado",
+      "desconocido": "Desconocido"
+    },
+    "estadosItem": {
+      "pending": "Pendiente",
+      "in_progress": "Preparando",
+      "ready": "Listo",
+      "delivered": "Entregado"
+    },
+    "columnas": {
+      "new": "Nuevos",
+      "in_progress": "En Preparación",
+      "ready": "Listos para Entregar",
+      "delivered": "Entregados",
+      "ultimos": "Mostrando los últimos {visibles} de {total}"
+    },
+    "paginacion": {
+      "mostrar": "Mostrar",
+      "porPagina": "por página",
+      "rango": "Mostrando <b>{desde}</b> a <b>{hasta}</b> de <b>{total}</b> comandas",
+      "sinComandas": "Sin comandas"
+    },
+    "vacio": {
+      "titulo": "No hay comandas",
+      "descripcion": "Las nuevas comandas aparecerán aquí en tiempo real"
+    },
+    "tarjeta": {
+      "mesa": "Mesa",
+      "minutos": "{n} min",
+      "esperaElevada": "Tiempo de espera elevado",
+      "ticket": "Ticket #{id}",
+      "reimprimir": "Reimprimir comanda",
+      "producto": "Producto",
+      "comenzar": "🔥 Comenzar Preparación",
+      "marcarListo": "✅ Marcar como Listo",
+      "marcarEntregado": "📤 Marcar como Entregado"
+    },
+    "pagina": {
+      "error": "Error",
+      "errorCargar": "No se pudieron cargar las comandas",
+      "nuevosTickets": "{n, plural, one {Nuevo ticket de cocina} other {Nuevos tickets de cocina}}",
+      "estadoActualizado": "Estado actualizado",
+      "ticketMarcado": "Ticket #{id} marcado como {estado}",
+      "errorEstado": "No se pudo actualizar el estado",
+      "productoActualizado": "{producto} actualizado",
+      "productoMarcado": "{producto} marcado como {estado}",
+      "comandaActualizada": "Comanda actualizada",
+      "ticketPaso": "Ticket #{id} pasó a {estado}",
+      "errorEstadoItem": "No se pudo actualizar el estado del item",
+      "reimpresionEnviada": "Reimpresión enviada",
+      "ticketEnviadoImpresion": "Ticket #{id} enviado a impresión",
+      "sinImpresora": "Sin impresora asignada",
+      "sinImpresoraDesc": "No hay impresora configurada para: {estaciones}",
+      "estaEstacion": "esta estación",
+      "errorReimprimir": "No se pudo reimprimir la comanda"
+    }
   },
   "posMesaAjuste": {
     "alergia": "Alergia: {nota}",
@@ -11931,6 +12038,86 @@
       "sinReplicar": "Catálogo local sin replicar",
       "actualizando": "Actualizando…",
       "actualizar": "Actualizar catálogo ahora"
+    },
+    "clienteSinConexion": {
+      "titulo": "Nuevo cliente (sin conexión)",
+      "descripcion": "Se guarda en este equipo y se enviará a Go Admin al volver la red, antes que las ventas que lo usen. Los demás datos (dirección, municipio, responsabilidades fiscales) se completan después desde Clientes.",
+      "nombres": "Nombres *",
+      "apellidos": "Apellidos",
+      "tipoDocumento": "Tipo de documento",
+      "numeroDocumento": "Número de documento",
+      "email": "Email",
+      "telefono": "Teléfono",
+      "cancelar": "Cancelar",
+      "guardando": "Guardando…",
+      "guardar": "Guardar cliente",
+      "nombreObligatorio": "El nombre es obligatorio",
+      "errorRegistrar": "No se pudo registrar el cliente",
+      "tiposDocumento": {
+        "CC": "Cédula de ciudadanía",
+        "CE": "Cédula de extranjería",
+        "NIT": "NIT",
+        "TI": "Tarjeta de identidad",
+        "PP": "Pasaporte",
+        "PEP": "Permiso especial de permanencia"
+      }
+    },
+    "pendientesSinConexion": {
+      "estados": {
+        "pending": "Pendiente",
+        "syncing": "Sincronizando",
+        "synced": "Sincronizado",
+        "needs_review": "Requiere revisión"
+      },
+      "tipos": {
+        "sale": "Venta",
+        "customer": "Cliente",
+        "cash": "Caja"
+      },
+      "items": "{n, plural, one {# ítem} other {# ítems}}",
+      "clienteSinNombre": "Cliente sin nombre",
+      "doc": "Doc",
+      "yaExistia": "Ya existía: {id}",
+      "caja": {
+        "apertura": "Apertura de caja",
+        "cierre": "Cierre de caja",
+        "ingreso": "Ingreso de efectivo",
+        "retiro": "Retiro de efectivo",
+        "esperado": "Esperado {esperado} · diferencia {diferencia}",
+        "resumenParcial": "Resumen parcial: sin réplica de pagos al cerrar",
+        "cajaLocal": "Caja local #{id}",
+        "caja": "Caja #{id}"
+      },
+      "avisos": {
+        "sincronizado": "Sincronizado.",
+        "enRevision": "Sigue fallando: quedó en revisión.",
+        "seReintentara": "Sin conexión o esperando a otra operación: se reintentará.",
+        "noSincronizo": "No se pudo sincronizar. Revisa el error en la bandeja.",
+        "errorReintentar": "Error al reintentar: {error}",
+        "etapaFallo": "Falló la etapa «{etapa}»: {error}",
+        "sincronizadas": "{n, plural, one {# operación sincronizada.} other {# operaciones sincronizadas.}}",
+        "sinRed": "Sin conexión: se reintentará al volver la red.",
+        "algunasFallaron": "Algunas operaciones no se pudieron sincronizar.",
+        "errorSincronizar": "Error al sincronizar: {error}"
+      },
+      "intentos": "Intentos: {n}",
+      "reintentar": "Reintentar",
+      "reintentarAria": "Reintentar {tipo} {titulo}",
+      "exportar": "Exportar",
+      "exportarAria": "Exportar {tipo} {titulo}",
+      "boton": {
+        "title": "Ventas, clientes y caja hechos sin conexión",
+        "aria": "{n, plural, one {Sin conexión: # pendiente} other {Sin conexión: # pendientes}}",
+        "texto": "Sin conexión"
+      },
+      "titulo": "Pendientes de sincronizar",
+      "descripcion": "Ventas, clientes y operaciones de caja hechos sin conexión en este equipo. Se envían solos al volver la red, en orden (clientes → apertura de caja → ventas → movimientos y cierre); si algo falla cinco veces queda aquí para revisión con su error y el registro completo. Nunca se borran.",
+      "resumen": "{pendientes, plural, one {# pendiente} other {# pendientes}} ({ventas} ventas · {clientes} clientes · {caja} caja) · {revision} en revisión · {sincronizados, plural, one {# sincronizado} other {# sincronizados}} (últimos 7 días)",
+      "sincronizarAhora": "Sincronizar ahora",
+      "requierenRevision": "Requieren revisión",
+      "pendientes": "Pendientes",
+      "sinPendientes": "No hay operaciones pendientes.",
+      "sincronizados": "Sincronizados"
     }
   },
   "posCobro": {
@@ -12122,6 +12309,29 @@
       "insuficientes": "Solo {disponibles, plural, one {hay # serial disponible} other {hay # seriales disponibles}} y se {requeridos, plural, one {requiere #} other {requieren #}}.",
       "confirmar": "Confirmar seriales",
       "lista": "Seriales de {producto}"
+    },
+    "qrDialogo": {
+      "titulo": "Pago QR - {proveedor}",
+      "descripcion": "Escanea el codigo QR con tu app bancaria para completar el pago.",
+      "confirmado": "Pago confirmado",
+      "cierreAutomatico": "Se cerrara automaticamente en unos segundos.",
+      "rechazado": "Pago rechazado por el proveedor",
+      "cancelado": "Pago cancelado",
+      "expirado": "El tiempo ha expirado",
+      "verificarSiPago": "Si el cliente ya pagó, pulse «Verificar pago»; si no, solicite un nuevo código QR.",
+      "solicitarNuevo": "Solicita un nuevo codigo QR para reintentar el pago.",
+      "errorVerificarVencido": "No se pudo verificar el pago; pulse «Verificar pago» para reintentar.",
+      "alt": "Codigo QR de pago {proveedor}",
+      "expiraEn": "Expira en {tiempo}",
+      "errorVerificar": "No se pudo verificar el pago; pulse «Ya pague» para reintentar.",
+      "referencia": "Referencia",
+      "monto": "Monto",
+      "proveedor": "Proveedor",
+      "cerrar": "Cerrar",
+      "cancelar": "Cancelar",
+      "verificando": "Verificando...",
+      "yaPague": "Ya pague",
+      "verificarPago": "Verificar pago"
     }
   },
   "comisionesPago": {

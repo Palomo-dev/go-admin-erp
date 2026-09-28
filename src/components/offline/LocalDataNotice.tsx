@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { DatabaseZap } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useOfflineData } from '@/lib/offline/useOfflineData';
@@ -28,17 +29,17 @@ export function LocalDataNotice({ className, label }: { className?: string; labe
   }, []);
   const { isDesktop, isOnline, status } = useOfflineData(orgId);
   const { formatTime, formatDateTime, getToday, toDate } = useFormatDate();
+  const t = useTranslations('header.datosLocales');
 
   if (!isDesktop || !orgId || isOnline) return null;
 
   const base = 'flex flex-wrap items-center gap-x-2 gap-y-1 text-xs rounded-md px-2 py-1';
-  const what = label ? `datos locales de ${label}` : 'datos locales';
 
   if (!status || status.isEmpty) {
     return (
       <div role="status" className={cn(base, 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300', className)}>
         <DatabaseZap className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        <span>Sin conexión y sin datos locales: conecta a internet una vez para replicarlos.</span>
+        <span>{t('sinDatos')}</span>
       </div>
     );
   }
@@ -51,8 +52,8 @@ export function LocalDataNotice({ className, label }: { className?: string; labe
     <div role="status" className={cn(base, 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200', className)}>
       <DatabaseZap className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       <span>
-        Estás viendo {what} del {when}
-        {failed > 0 && ` · ${failed} ${failed === 1 ? 'tabla sin replicar' : 'tablas sin replicar'}`}
+        {label ? t('viendoDe', { modulo: label, when }) : t('viendo', { when })}
+        {failed > 0 && ` · ${t('tablasSinReplicar', { n: failed })}`}
       </span>
     </div>
   );

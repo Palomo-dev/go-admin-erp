@@ -44,6 +44,23 @@ import { resolveQrPresentation, resolveTouch, resolveView, sanitizeDisplayPaymen
 
 const ROOT = process.cwd();
 const SRC = join(ROOT, 'src');
+
+// QrPaymentDialog traduce con next-intl (`posCobro.qrDialogo`): sin proveedor en
+// estas pruebas, `useTranslations` devuelve el texto de messages/es.json.
+jest.mock('next-intl', () => {
+  const fs = jest.requireActual<typeof import('fs')>('fs');
+  const path = jest.requireActual<typeof import('path')>('path');
+  const mockEs = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'messages/es.json'), 'utf8')) as Record<string, unknown>;
+  return {
+    useLocale: () => 'es',
+    useTranslations: (ns: string) => (key: string, vars?: Record<string, unknown>) => {
+      let cur: unknown = mockEs;
+      for (const k of `${ns}.${key}`.split('.')) cur = cur && typeof cur === 'object' ? (cur as Record<string, unknown>)[k] : undefined;
+      if (typeof cur !== 'string') throw new Error(`clave i18n ausente: ${ns}.${key}`);
+      return cur.replace(/\{(\w+)\}/g, (_: string, v: string) => String(vars?.[v] ?? `{${v}}`));
+    },
+  };
+});
 const readSrc = (rel: string): string => readFileSync(join(SRC, rel), 'utf8').replace(/\r\n/g, '\n');
 const CHECKOUT = readSrc('components/pos/CheckoutDialog.tsx');
 const QR_DIALOG = readSrc('components/shared/QrPaymentDialog.tsx');

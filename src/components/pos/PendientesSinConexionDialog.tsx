@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { CloudOff, Download, RefreshCw, AlertTriangle, CheckCircle2, ShoppingCart, Users, Wallet } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -43,12 +44,8 @@ import { registerDefaultSyncStages } from '@/lib/offline/syncStages';
 
 type Status = OutboxSaleStatus;
 
-const STATUS_LABEL: Record<Status, string> = {
-  pending: 'Pendiente',
-  syncing: 'Sincronizando',
-  synced: 'Sincronizado',
-  needs_review: 'Requiere revisión',
-};
+/** Traductor de `posVenta.pendientesSinConexion` (la etiqueta del estado sale de `estados.<status>`). */
+type Traductor = ReturnType<typeof useTranslations>;
 
 function statusVariant(status: Status): 'warning' | 'destructive' | 'secondary' | 'outline' {
   if (status === 'needs_review') return 'destructive';
@@ -88,7 +85,7 @@ interface TrayRow {
   exportContent: string;
 }
 
-function saleRow(r: OutboxSaleRecord, formatear: Formateador): TrayRow {
+function saleRow(r: OutboxSaleRecord, formatear: Formateador, t: Traductor): TrayRow {
   const { envelope } = r;
   const itemCount = envelope.checkout.cart.items.length;
   return {
@@ -101,39 +98,46 @@ function saleRow(r: OutboxSaleRecord, formatear: Formateador): TrayRow {
     createdAt: r.created_at,
     attempts: r.attempts,
     lastError: r.last_error,
-    details: [`${itemCount} ítem${itemCount !== 1 ? 's' : ''}`, envelope.checkout.payments.map((p) => `${p.method}: ${formatear(p.amount)}`).join(' · ')],
+    details: [t('items', { n: itemCount }), envelope.checkout.payments.map((p) => `${p.method}: ${formatear(p.amount)}`).join(' · ')],
     exportName: `venta-offline-${r.receipt_number_local}-${r.id}.json`,
     exportContent: exportOutboxSale(r),
   };
 }
 
-function customerRow(r: OutboxCustomerRecord): TrayRow {
+function customerRow(r: OutboxCustomerRecord, t: Traductor): TrayRow {
   const p = r.payload;
   const name = p.customer_type === 'company' ? p.company_name || `${p.first_name} ${p.last_name}` : `${p.first_name} ${p.last_name}`.trim();
   return {
     key: `customer:${r.id}`,
     kind: 'customer',
     id: r.id,
-    title: name || 'Cliente sin nombre',
+    title: name || t('clienteSinNombre'),
     amount: null,
     status: r.status,
     createdAt: r.created_at,
     attempts: r.attempts,
     lastError: r.last_error,
-    details: [p.identification_number ? `${p.identification_type ?? 'Doc'} ${p.identification_number}` : '', p.email ?? '', r.server_id && r.server_id !== r.id ? `Ya existía: ${r.server_id}` : ''].filter(Boolean),
+    details: [
+      p.identification_number ? `${p.identification_type ?? t('doc')} ${p.identification_number}` : '',
+      p.email ?? '',
+      r.server_id && r.server_id !== r.id ? t('yaExistia', { id: r.server_id }) : '',
+    ].filter(Boolean),
     exportName: `cliente-offline-${r.id}.json`,
     exportContent: exportOutboxCustomer(r),
   };
 }
 
-function cashRow(r: CashOutboxRecord, formatear: Formateador): TrayRow {
+function cashRow(r: CashOutboxRecord, formatear: Formateador, t: Traductor): TrayRow {
   const amount = r.kind === 'open' ? r.payload.initial_amount : r.kind === 'close' ? r.payload.final_amount : r.payload.amount;
-  const kindLabel = r.kind === 'open' ? 'Apertura de caja' : r.kind === 'close' ? 'Cierre de caja' : r.payload.type === 'in' ? 'Ingreso de efectivo' : 'Retiro de efectivo';
+  const kindLabel =
+    r.kind === 'open' ? t('caja.apertura') : r.kind === 'close' ? t('caja.cierre') : r.payload.type === 'in' ? t('caja.ingreso') : t('caja.retiro');
   const details = [
     r.kind === 'movement' ? r.payload.concept : '',
-    r.kind === 'close' ? `Esperado ${formatear(r.payload.summary.expected_amount)} · diferencia ${formatear(r.payload.difference)}` : '',
-    r.kind === 'close' && r.payload.summary_partial ? 'Resumen parcial: sin réplica de pagos al cerrar' : '',
-    r.session_local_id < 0 ? `Caja local #${r.session_local_id}` : `Caja #${r.session_local_id}`,
+    r.kind === 'close'
+      ? t('caja.esperado', { esperado: formatear(r.payload.summary.expected_amount), diferencia: formatear(r.payload.difference) })
+      : '',
+    r.kind === 'close' && r.payload.summary_partial ? t('caja.resumenParcial') : '',
+    r.session_local_id < 0 ? t('caja.cajaLocal', { id: r.session_local_id }) : t('caja.caja', { id: r.session_local_id }),
   ].filter(Boolean);
   return {
     key: `cash:${r.id}`,
@@ -158,6 +162,7 @@ export function PendientesSinConexionDialog() {
   const [syncingAll, setSyncingAll] = useState(false);
   const { formatDateTime } = useFormatDate();
   const { formatear } = useMonedaOrganizacion();
+  const t = useTranslations('posVenta.pendientesSinConexion');
 
   const reload = useCallback(async () => {
     try {
@@ -166,11 +171,15 @@ export function PendientesSinConexionDialog() {
         listOutboxCustomers().catch(() => [] as OutboxCustomerRecord[]),
         listCashOutbox().catch(() => [] as CashOutboxRecord[]),
       ]);
-      setRows([...sales.map((r) => saleRow(r, formatear)), ...customers.map(customerRow), ...cash.map((r) => cashRow(r, formatear))]);
+      setRows([
+        ...sales.map((r) => saleRow(r, formatear, t)),
+        ...customers.map((r) => customerRow(r, t)),
+        ...cash.map((r) => cashRow(r, formatear, t)),
+      ]);
     } catch (err) {
       console.warn('[PendientesSinConexion] No se pudo leer el outbox:', err);
     }
-  }, [formatear]);
+  }, [formatear, t]);
 
   useEffect(() => {
     if (!isDesktop()) return;
@@ -195,12 +204,12 @@ export function PendientesSinConexionDialog() {
     try {
       const result =
         row.kind === 'sale' ? await retryOutboxSale(row.id) : row.kind === 'customer' ? await retryOutboxCustomer(row.id) : await retryCashOutboxRecord(row.id);
-      if (result.synced > 0) toast.success('Sincronizado.');
-      else if (result.needsReview > 0) toast.error('Sigue fallando: quedó en revisión.');
-      else if (result.skipped > 0) toast.warning('Sin conexión o esperando a otra operación: se reintentará.');
-      else toast.warning('No se pudo sincronizar. Revisa el error en la bandeja.');
+      if (result.synced > 0) toast.success(t('avisos.sincronizado'));
+      else if (result.needsReview > 0) toast.error(t('avisos.enRevision'));
+      else if (result.skipped > 0) toast.warning(t('avisos.seReintentara'));
+      else toast.warning(t('avisos.noSincronizo'));
     } catch (err) {
-      toast.error('Error al reintentar: ' + ((err as Error)?.message || String(err)));
+      toast.error(t('avisos.errorReintentar', { error: (err as Error)?.message || String(err) }));
     } finally {
       setBusyKey(null);
       void reload();
@@ -223,13 +232,13 @@ export function PendientesSinConexionDialog() {
         },
         { synced: 0, failed: 0, skipped: 0 },
       );
-      if (failedStages.length > 0) toast.error(`Falló la etapa «${failedStages[0].name}»: ${failedStages[0].error}`);
-      else if (totals.synced > 0) toast.success(`${totals.synced} operación${totals.synced !== 1 ? 'es' : ''} sincronizada${totals.synced !== 1 ? 's' : ''}.`);
-      else if (totals.skipped > 0 && totals.failed === 0) toast.warning('Sin conexión: se reintentará al volver la red.');
-      else if (totals.failed > 0) toast.warning('Algunas operaciones no se pudieron sincronizar.');
-      else toast.info('No hay operaciones pendientes.');
+      if (failedStages.length > 0) toast.error(t('avisos.etapaFallo', { etapa: failedStages[0].name, error: String(failedStages[0].error) }));
+      else if (totals.synced > 0) toast.success(t('avisos.sincronizadas', { n: totals.synced }));
+      else if (totals.skipped > 0 && totals.failed === 0) toast.warning(t('avisos.sinRed'));
+      else if (totals.failed > 0) toast.warning(t('avisos.algunasFallaron'));
+      else toast.info(t('sinPendientes'));
     } catch (err) {
-      toast.error('Error al sincronizar: ' + ((err as Error)?.message || String(err)));
+      toast.error(t('avisos.errorSincronizar', { error: (err as Error)?.message || String(err) }));
     } finally {
       setSyncingAll(false);
       void reload();
@@ -237,7 +246,7 @@ export function PendientesSinConexionDialog() {
   };
 
   const KIND_ICON = { sale: ShoppingCart, customer: Users, cash: Wallet } as const;
-  const KIND_LABEL = { sale: 'Venta', customer: 'Cliente', cash: 'Caja' } as const;
+  const kindLabel = (kind: TrayRow['kind']) => t(`tipos.${kind}`);
 
   const renderRow = (row: TrayRow) => {
     const isBusy = busyKey === row.key || row.status === 'syncing';
@@ -247,9 +256,9 @@ export function PendientesSinConexionDialog() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <Icon className="h-4 w-4 text-gray-500 shrink-0" aria-hidden="true" />
-            <span className="sr-only">{KIND_LABEL[row.kind]}</span>
+            <span className="sr-only">{kindLabel(row.kind)}</span>
             <span className="font-semibold text-gray-900 dark:text-white truncate">{row.title}</span>
-            <Badge variant={statusVariant(row.status)}>{STATUS_LABEL[row.status]}</Badge>
+            <Badge variant={statusVariant(row.status)}>{t(`estados.${row.status}`)}</Badge>
           </div>
           {row.amount !== null && <span className="font-semibold text-gray-900 dark:text-white">{formatear(row.amount)}</span>}
         </div>
@@ -258,7 +267,7 @@ export function PendientesSinConexionDialog() {
           {row.details.map((d, i) => (
             <span key={i}>{d}</span>
           ))}
-          {row.attempts > 0 && <span>Intentos: {row.attempts}</span>}
+          {row.attempts > 0 && <span>{t('intentos', { n: row.attempts })}</span>}
           <span className="font-mono truncate max-w-full" title={row.id}>
             {row.id}
           </span>
@@ -268,14 +277,14 @@ export function PendientesSinConexionDialog() {
         )}
         <div className="flex flex-wrap gap-2">
           {row.status !== 'synced' && (
-            <Button size="sm" variant="outline" disabled={isBusy || syncingAll} onClick={() => handleRetry(row)} aria-label={`Reintentar ${KIND_LABEL[row.kind].toLowerCase()} ${row.title}`}>
+            <Button size="sm" variant="outline" disabled={isBusy || syncingAll} onClick={() => handleRetry(row)} aria-label={t('reintentarAria', { tipo: kindLabel(row.kind).toLowerCase(), titulo: row.title })}>
               <RefreshCw className={`h-3.5 w-3.5 mr-1 ${isBusy ? 'animate-spin' : ''}`} aria-hidden="true" />
-              Reintentar
+              {t('reintentar')}
             </Button>
           )}
-          <Button size="sm" variant="ghost" onClick={() => downloadJson(row.exportName, row.exportContent)} aria-label={`Exportar ${KIND_LABEL[row.kind].toLowerCase()} ${row.title}`}>
+          <Button size="sm" variant="ghost" onClick={() => downloadJson(row.exportName, row.exportContent)} aria-label={t('exportarAria', { tipo: kindLabel(row.kind).toLowerCase(), titulo: row.title })}>
             <Download className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
-            Exportar
+            {t('exportar')}
           </Button>
         </div>
       </li>
@@ -291,12 +300,12 @@ export function PendientesSinConexionDialog() {
         size="sm"
         variant={review.length > 0 ? 'destructive' : 'outline'}
         onClick={() => setOpen(true)}
-        title="Ventas, clientes y caja hechos sin conexión"
-        aria-label={`Sin conexión: ${attention} pendiente${attention !== 1 ? 's' : ''}`}
+        title={t('boton.title')}
+        aria-label={t('boton.aria', { n: attention })}
         className={attention === 0 ? 'hidden lg:inline-flex' : undefined}
       >
         {review.length > 0 ? <AlertTriangle className="h-4 w-4 mr-1" aria-hidden="true" /> : <CloudOff className="h-4 w-4 mr-1" aria-hidden="true" />}
-        <span className="hidden sm:inline">Sin conexión</span>
+        <span className="hidden sm:inline">{t('boton.texto')}</span>
         {attention > 0 && (
           <Badge variant={review.length > 0 ? 'secondary' : 'warning'} className="ml-1 px-1.5 py-0 text-xs">
             {attention}
@@ -309,30 +318,32 @@ export function PendientesSinConexionDialog() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CloudOff className="h-5 w-5" aria-hidden="true" />
-              Pendientes de sincronizar
+              {t('titulo')}
             </DialogTitle>
-            <DialogDescription>
-              Ventas, clientes y operaciones de caja hechos sin conexión en este equipo. Se envían solos al volver la red, en orden
-              (clientes → apertura de caja → ventas → movimientos y cierre); si algo falla cinco veces queda aquí para revisión con su error
-              y el registro completo. Nunca se borran.
-            </DialogDescription>
+            <DialogDescription>{t('descripcion')}</DialogDescription>
           </DialogHeader>
 
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm text-gray-700 dark:text-gray-300">
-              {pending.length} pendiente{pending.length !== 1 ? 's' : ''} ({countBy(pending, 'sale')} ventas · {countBy(pending, 'customer')} clientes ·{' '}
-              {countBy(pending, 'cash')} caja) · {review.length} en revisión · {synced.length} sincronizado{synced.length !== 1 ? 's' : ''} (últimos 7 días)
+              {t('resumen', {
+                pendientes: pending.length,
+                ventas: countBy(pending, 'sale'),
+                clientes: countBy(pending, 'customer'),
+                caja: countBy(pending, 'cash'),
+                revision: review.length,
+                sincronizados: synced.length,
+              })}
             </p>
             <Button size="sm" onClick={handleSyncAll} disabled={syncingAll || pending.length === 0}>
               <RefreshCw className={`h-3.5 w-3.5 mr-1 ${syncingAll ? 'animate-spin' : ''}`} aria-hidden="true" />
-              Sincronizar ahora
+              {t('sincronizarAhora')}
             </Button>
           </div>
 
           {review.length > 0 && (
             <section aria-labelledby="pendientes-revision" className="space-y-2">
               <h3 id="pendientes-revision" className="text-sm font-semibold text-red-700 dark:text-red-300 flex items-center gap-1">
-                <AlertTriangle className="h-4 w-4" aria-hidden="true" /> Requieren revisión
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" /> {t('requierenRevision')}
               </h3>
               <ul className="space-y-2">{review.sort(byDate).map(renderRow)}</ul>
             </section>
@@ -340,10 +351,10 @@ export function PendientesSinConexionDialog() {
 
           <section aria-labelledby="pendientes-pendientes" className="space-y-2">
             <h3 id="pendientes-pendientes" className="text-sm font-semibold text-gray-900 dark:text-white">
-              Pendientes
+              {t('pendientes')}
             </h3>
             {pending.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">No hay operaciones pendientes.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('sinPendientes')}</p>
             ) : (
               <ul className="space-y-2">{pending.sort(byDate).map(renderRow)}</ul>
             )}
@@ -352,7 +363,7 @@ export function PendientesSinConexionDialog() {
           {synced.length > 0 && (
             <section aria-labelledby="pendientes-sincronizados" className="space-y-2">
               <h3 id="pendientes-sincronizados" className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1">
-                <CheckCircle2 className="h-4 w-4 text-green-600" aria-hidden="true" /> Sincronizados
+                <CheckCircle2 className="h-4 w-4 text-green-600" aria-hidden="true" /> {t('sincronizados')}
               </h3>
               <ul className="space-y-2">{synced.sort(byDate).map(renderRow)}</ul>
             </section>

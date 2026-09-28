@@ -36,35 +36,36 @@ export function cantidadComanda(item: Pick<KitchenTicketItem, 'product_name' | '
   return Number(item.sale_items?.quantity ?? item.quantity ?? 1);
 }
 
+// `label` es la clave en `posComandas.estados`, `estaciones` o `estadosItem`.
 const getStatusInfo = (status: KitchenTicket['status']) => {
   switch (status) {
     case 'new':
       return {
-        label: 'Nuevo',
+        label: 'new',
         color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
         icon: AlertCircle,
       };
     case 'preparing':
       return {
-        label: 'En Preparación',
+        label: 'preparing',
         color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
         icon: ChefHat,
       };
     case 'ready':
       return {
-        label: 'Listo',
+        label: 'ready',
         color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
         icon: CheckCircle,
       };
     case 'delivered':
       return {
-        label: 'Entregado',
+        label: 'delivered',
         color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
         icon: CheckCircle,
       };
     default:
       return {
-        label: 'Desconocido',
+        label: 'desconocido',
         color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100',
         icon: AlertCircle,
       };
@@ -74,28 +75,28 @@ const getStatusInfo = (status: KitchenTicket['status']) => {
 const getStationInfo = (station: string | null) => {
   switch (station) {
     case 'hot_kitchen':
-      return { label: 'Cocina Caliente', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' };
+      return { label: 'hot_kitchen', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' };
     case 'cold_kitchen':
-      return { label: 'Cocina Fría', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' };
+      return { label: 'cold_kitchen', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' };
     case 'bar':
-      return { label: 'Bar', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' };
+      return { label: 'bar', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' };
     default:
-      return { label: 'General', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400' };
+      return { label: 'general', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400' };
   }
 };
 
 const getItemStatusInfo = (status: string | undefined) => {
   switch (status) {
     case 'pending':
-      return { label: 'Pendiente', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-50 dark:bg-yellow-900/20' };
+      return { label: 'pending', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-50 dark:bg-yellow-900/20' };
     case 'in_progress':
-      return { label: 'Preparando', color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-50 dark:bg-orange-900/20' };
+      return { label: 'in_progress', color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-50 dark:bg-orange-900/20' };
     case 'ready':
-      return { label: 'Listo', color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-50 dark:bg-green-900/20' };
+      return { label: 'ready', color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-50 dark:bg-green-900/20' };
     case 'delivered':
-      return { label: 'Entregado', color: 'text-gray-600 dark:text-gray-400', bgColor: 'bg-gray-50 dark:bg-gray-900/20' };
+      return { label: 'delivered', color: 'text-gray-600 dark:text-gray-400', bgColor: 'bg-gray-50 dark:bg-gray-900/20' };
     default:
-      return { label: 'Pendiente', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-50 dark:bg-yellow-900/20' };
+      return { label: 'pending', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-50 dark:bg-yellow-900/20' };
   }
 };
 
@@ -135,7 +136,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
   const statusInfo = getStatusInfo(ticket.status);
   const StatusIcon = statusInfo.icon;
   
-  const tableName = ticket.table_sessions?.restaurant_tables?.name || (ticket.source === 'pos' ? 'POS' : 'Mesa');
+  const tableName = ticket.table_sessions?.restaurant_tables?.name || (ticket.source === 'pos' ? 'POS' : t('tarjeta.mesa'));
   const zoneName = ticket.table_sessions?.restaurant_tables?.zone || '';
   const serverName = ticket.table_sessions?.serverName || ticket.server_name || null;
 
@@ -211,12 +212,12 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
             <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-sm text-gray-600 dark:text-gray-400">
               <div className={`flex items-center gap-1 ${timeUrgencyClasses[timeUrgency]}`}>
                 <Clock className="h-4 w-4" />
-                <span>{timeElapsed} min</span>
-                {timeUrgency === 'critical' && <span title="Tiempo de espera elevado">🔥</span>}
+                <span>{t('tarjeta.minutos', { n: timeElapsed })}</span>
+                {timeUrgency === 'critical' && <span title={t('tarjeta.esperaElevada')}>🔥</span>}
               </div>
               <div className="flex items-center gap-1">
                 <Hash className="h-4 w-4" />
-                <span>Ticket #{ticket.id}</span>
+                <span>{t('tarjeta.ticket', { id: ticket.id })}</span>
               </div>
               {serverName && (
                 <div className="flex items-center gap-1">
@@ -233,7 +234,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                 variant="outline"
                 size="icon"
                 className="h-7 w-7 bg-white/70 dark:bg-gray-900/40"
-                title="Reimprimir comanda"
+                title={t('tarjeta.reimprimir')}
                 onClick={handleReprint}
                 disabled={isReprinting}
               >
@@ -242,7 +243,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
             )}
             <Badge className={`${statusInfo.color} flex items-center gap-1`}>
               <StatusIcon className="h-3 w-3" />
-              {statusInfo.label}
+              {t(`estados.${statusInfo.label}`)}
             </Badge>
           </div>
         </div>
@@ -289,7 +290,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
           const matchesStation = stationFilter === 'all' || item.station === stationFilter;
           // La copia del ítem (nombre, cantidad) manda sobre la línea de la venta.
           const itemQuantity = cantidadComanda(item);
-          const productName = item.product_name || product?.name || 'Producto';
+          const productName = item.product_name || product?.name || t('tarjeta.producto');
           const delta = Math.abs(Number(item.quantity_delta) || 0);
           const ajusteLabel = item.adjustment_kind === 'increase' ? t('mas', { cantidad: delta })
             : item.adjustment_kind === 'decrease' ? t('menos', { cantidad: delta })
@@ -400,11 +401,11 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
 
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge className={`${stationInfo.color} text-xs`}>
-                      {stationInfo.label}
+                      {t(`estaciones.${stationInfo.label}`)}
                     </Badge>
                     {!isCancelled && (
                       <Badge className={`${itemStatusInfo.bgColor} ${itemStatusInfo.color} text-xs`}>
-                        {itemStatusInfo.label}
+                        {t(`estadosItem.${itemStatusInfo.label}`)}
                       </Badge>
                     )}
                     {product?.categories?.name && (
@@ -444,9 +445,9 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
             title={bloqueadaPorAlergia ? t('alergiaPendiente') : undefined}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
-            {nextStatus === 'preparing' && '🔥 Comenzar Preparación'}
-            {nextStatus === 'ready' && '✅ Marcar como Listo'}
-            {nextStatus === 'delivered' && '📤 Marcar como Entregado'}
+            {nextStatus === 'preparing' && t('tarjeta.comenzar')}
+            {nextStatus === 'ready' && t('tarjeta.marcarListo')}
+            {nextStatus === 'delivered' && t('tarjeta.marcarEntregado')}
           </Button>
         </div>
       )}

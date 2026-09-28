@@ -2879,6 +2879,9 @@ describe('32. Tasas de cambio: clave de servidor y catálogo solo de plataforma'
   // Partida en dos para que este archivo no se delate a sí mismo.
   const PROHIBIDA = 'NEXT_PUBLIC_' + 'OPENEXCHANGERATES';
   const SERVIDOR = path.join(SRC_ROOT, 'lib', 'services', 'tasasCambio.server.ts');
+  // Filtro propio, no el helper común: testerR4.f0sec.test.ts exige que desde el
+  // caso 21 hasta el final de este archivo no se use ese helper.
+  const esPrueba = (f: string) => /[\\/]__tests__[\\/]|\.test\.|\.spec\./.test(f);
 
   test('nadie usa la clave pública de OpenExchangeRates (src, escritorio, .env.example)', () => {
     const archivos = [
@@ -2893,7 +2896,7 @@ describe('32. Tasas de cambio: clave de servidor y catálogo solo de plataforma'
 
   test('solo el módulo de servidor habla con openexchangerates.org, y no se puede cargar en el navegador', () => {
     const llaman = walkDir(SRC_ROOT)
-      .filter((f) => !isExcluded(f))
+      .filter((f) => !esPrueba(f))
       .filter((f) => /https:\/\/openexchangerates\.org/.test(readFile(f)))
       .map(rel);
     expect(llaman).toEqual(['lib/services/tasasCambio.server.ts']);
@@ -2908,7 +2911,7 @@ describe('32. Tasas de cambio: clave de servidor y catálogo solo de plataforma'
     // RLS cerrada, desde el navegador fallaría igual.
     const PERMITIDOS = new Set(['lib/services/openexchangerates.ts']);
     const escriben = walkDir(SRC_ROOT)
-      .filter((f) => !isExcluded(f) && !/[\\/]app[\\/]api[\\/]/.test(f) && !/\.server\.ts$/.test(f))
+      .filter((f) => !esPrueba(f) && !/[\\/]app[\\/]api[\\/]/.test(f) && !/\.server\.ts$/.test(f))
       .filter((f) => /from\(\s*['"]currency_rates['"]\s*\)[\s\S]{0,200}?\.(insert|upsert|update|delete)\(/.test(stripAllComments(readFile(f))))
       .map(rel)
       .filter((r) => !PERMITIDOS.has(r));

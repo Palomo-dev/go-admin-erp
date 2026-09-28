@@ -64,14 +64,14 @@ describe('personalización propia de la organización', () => {
     expect(requiereReferenciaMetodo(undefined, false)).toBe(false);
   });
 
-  test('el orden es el de la organización; sin orden, al final y por código', () => {
+  test('el orden es el de la organización; sin orden, al final y en el orden de la consulta', () => {
     const filas = [
       { payment_method_code: 'transfer', website_display_order: null },
       { payment_method_code: 'card', website_display_order: 2 },
       { payment_method_code: 'cash', website_display_order: 0 },
       { payment_method_code: 'check' },
     ];
-    expect(ordenarMetodosDeLaOrganizacion(filas).map((f) => f.payment_method_code)).toEqual(['cash', 'card', 'check', 'transfer']);
+    expect(ordenarMetodosDeLaOrganizacion(filas).map((f) => f.payment_method_code)).toEqual(['cash', 'card', 'transfer', 'check']);
   });
 
   test('errores de la RPC traducidos', () => {

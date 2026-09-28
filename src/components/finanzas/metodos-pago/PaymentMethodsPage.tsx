@@ -130,7 +130,7 @@ export default function PaymentMethodsPage() {
             return true;
           }
           // Si tiene países asignados, verificar si incluye el país de la organización
-          return method.countries.some((c) => c.country_code === currentCountryCode);
+          return method.countries.some((c: PaymentMethodCountry) => c.country_code === currentCountryCode);
         });
       }
       

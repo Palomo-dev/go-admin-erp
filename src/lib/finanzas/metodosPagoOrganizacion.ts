@@ -35,13 +35,14 @@ export function requiereReferenciaMetodo(settings: unknown, requiereGlobal: bool
 
 /**
  * Ordena como la organización ordenó sus métodos (`website_display_order`, el
- * mismo orden que arrastra en «Métodos de pago»); sin orden, al final y por código.
+ * mismo orden que arrastra en «Métodos de pago»); sin orden, al final. El orden
+ * es estable: a igual posición se conserva el que trae la consulta.
  */
 export function ordenarMetodosDeLaOrganizacion<T extends { website_display_order?: number | null; payment_method_code: string }>(filas: T[]): T[] {
   return [...filas].sort((a, b) => {
     const oa = typeof a.website_display_order === 'number' ? a.website_display_order : Number.MAX_SAFE_INTEGER;
     const ob = typeof b.website_display_order === 'number' ? b.website_display_order : Number.MAX_SAFE_INTEGER;
-    return oa - ob || a.payment_method_code.localeCompare(b.payment_method_code);
+    return oa - ob;
   });
 }
 

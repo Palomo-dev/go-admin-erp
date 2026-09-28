@@ -9,7 +9,6 @@ import {
   Check,
   Tag,
   Calendar,
-  Settings,
   Filter,
   Percent,
   Gift,
@@ -47,6 +46,22 @@ import {
 } from '../types';
 import { cn } from '@/utils/Utils';
 import { toast } from 'sonner';
+import { CampoFecha } from '@/components/kit/CampoFecha';
+
+/** Fila de `PromotionsService.getProducts` que usa el paso «Productos». */
+interface ProductoPromocion {
+  id: number;
+  name: string;
+  sku: string | null;
+  parent_name?: string | null;
+  variant_data?: Record<string, unknown> | null;
+}
+
+/** Fila de `PromotionsService.getCategories`. */
+interface CategoriaPromocion {
+  id: number;
+  name: string;
+}
 
 interface PromotionWizardProps {
   initialData?: CreatePromotionData;
@@ -62,7 +77,7 @@ const WIZARD_STEPS = [
 ];
 
 /**
- * Dia calendario que debe mostrar un `<input type="date">` para un valor que
+ * Dia calendario (YYYY-MM-DD) que debe mostrar el `CampoFecha` para un valor que
  * puede llegar como instante (timestamptz de la base) o ya como dia.
  */
 function diaDelFormulario(valor: string, timezone: string): string {
@@ -77,8 +92,8 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   const { getToday, timezone } = useFormatDate();
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [products, setProducts] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [products, setProducts] = useState<ProductoPromocion[]>([]);
+  const [categories, setCategories] = useState<CategoriaPromocion[]>([]);
   const [productSearch, setProductSearch] = useState('');
   
   const [formData, setFormData] = useState<CreatePromotionData>({
@@ -159,7 +174,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     }
   };
 
-  const handleChange = (field: keyof CreatePromotionData, value: any) => {
+  const handleChange = (field: keyof CreatePromotionData, value: CreatePromotionData[keyof CreatePromotionData]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -259,8 +274,8 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
       } else {
         router.push('/app/pos/promociones');
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Error al guardar la promoción');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al guardar la promoción');
     } finally {
       setLoading(false);
     }
@@ -517,20 +532,18 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="dark:text-gray-200">Fecha de Inicio *</Label>
-                  <Input
-                    type="date"
-                    value={formData.start_date || ''}
-                    onChange={(e) => handleChange('start_date', e.target.value)}
-                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
+                  <CampoFecha
+                    aria-label="Fecha de Inicio"
+                    valor={formData.start_date || ''}
+                    onValorChange={(dia) => handleChange('start_date', dia)}
                   />
                 </div>
                 <div>
                   <Label className="dark:text-gray-200">Fecha de Fin (opcional)</Label>
-                  <Input
-                    type="date"
-                    value={formData.end_date || ''}
-                    onChange={(e) => handleChange('end_date', e.target.value || undefined)}
-                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
+                  <CampoFecha
+                    aria-label="Fecha de Fin (opcional)"
+                    valor={formData.end_date || ''}
+                    onValorChange={(dia) => handleChange('end_date', dia || undefined)}
                   />
                 </div>
               </div>
@@ -700,7 +713,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
               {formData.applies_to === 'products' && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
-                    <Select value={ruleType} onValueChange={(v: any) => setRuleType(v)}>
+                    <Select value={ruleType} onValueChange={(v) => setRuleType(v as 'include' | 'exclude')}>
                       <SelectTrigger className="w-[150px] dark:bg-gray-700 dark:border-gray-600">
                         <SelectValue />
                       </SelectTrigger>
@@ -719,7 +732,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                   <div className="max-h-60 overflow-y-auto p-2 border rounded-lg dark:border-gray-700">
                     {(() => {
                       // Etiqueta legible de variantes (ej: "Color: Rojo · Talla: M")
-                      const getVariantLabel = (p: any): string | null => {
+                      const getVariantLabel = (p: ProductoPromocion): string | null => {
                         if (!p.variant_data) return null;
                         const entries = Object.entries(p.variant_data).filter(
                           ([, v]) => v && String(v).trim() !== ''
@@ -730,7 +743,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
 
                       // Filtrar por término de búsqueda (nombre, sku, padre, atributos)
                       const search = productSearch.trim().toLowerCase();
-                      const filtered = products.filter((p: any) => {
+                      const filtered = products.filter((p) => {
                         if (!search) return true;
                         const variantAttrs = p.variant_data
                           ? Object.values(p.variant_data).join(' ').toLowerCase()
@@ -744,7 +757,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                       });
 
                       // Agrupar por padre (o por nombre si no tiene)
-                      const grouped = filtered.reduce((acc: Record<string, any[]>, p: any) => {
+                      const grouped = filtered.reduce((acc: Record<string, ProductoPromocion[]>, p) => {
                         const key = p.parent_name || p.name;
                         if (!acc[key]) acc[key] = [];
                         acc[key].push(p);
@@ -776,7 +789,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                                     </span>
                                   </div>
                                 )}
-                                {groupProducts.map((product: any) => {
+                                {groupProducts.map((product) => {
                                   const variantLabel = getVariantLabel(product);
                                   return (
                                     <label
@@ -838,7 +851,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
 
               {formData.applies_to === 'categories' && (
                 <div className="space-y-4">
-                  <Select value={ruleType} onValueChange={(v: any) => setRuleType(v)}>
+                  <Select value={ruleType} onValueChange={(v) => setRuleType(v as 'include' | 'exclude')}>
                     <SelectTrigger className="w-[150px] dark:bg-gray-700 dark:border-gray-600">
                       <SelectValue />
                     </SelectTrigger>

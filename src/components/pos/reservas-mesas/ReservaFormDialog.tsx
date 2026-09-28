@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,6 +30,8 @@ import {
 } from './reservasMesasService';
 import { reservasMesasService } from './reservasMesasService';
 import { useBranch } from '@/lib/context/BranchContext';
+import { CampoFecha } from '@/components/kit/CampoFecha';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface ReservaFormDialogProps {
   open: boolean;
@@ -46,6 +48,10 @@ export function ReservaFormDialog({
 }: ReservaFormDialogProps) {
   const isEditing = !!reservation;
   const { branchFilter } = useBranch();
+  const { getToday } = useFormatDate();
+  // En una ref: que la zona llegue tarde no debe reiniciar el formulario abierto.
+  const hoyRef = useRef(getToday);
+  hoyRef.current = getToday;
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -82,7 +88,8 @@ export function ReservaFormDialog({
         setNotes(reservation.notes || '');
         setSpecialRequests(reservation.special_requests || '');
       } else {
-        const today = new Date().toISOString().split('T')[0];
+        // Día de hoy en la zona de la organización (no el día UTC).
+        const today = hoyRef.current();
         setCustomerName('');
         setCustomerPhone('');
         setCustomerEmail('');
@@ -228,12 +235,10 @@ export function ReservaFormDialog({
               <Label htmlFor="date" className="dark:text-gray-300">
                 Fecha *
               </Label>
-              <Input
+              <CampoFecha
                 id="date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="dark:bg-gray-900 dark:border-gray-600 dark:[color-scheme:dark]"
+                valor={date}
+                onValorChange={setDate}
               />
             </div>
             <div className="space-y-1.5">

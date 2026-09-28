@@ -17,6 +17,7 @@ import { Return, ReturnSearchFilters } from './types';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { toast } from 'sonner';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface ReturnsHistoryProps {
   refreshTrigger?: number;
@@ -197,21 +198,19 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
               />
             </div>
             <div>
-              <Input
-                type="date"
+              <CampoFecha
+                aria-label={tComun('fechaDesde')}
                 placeholder={tComun('fechaDesde')}
-                value={filters.dateFrom || ''}
-                onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
+                valor={filters.dateFrom || ''}
+                onValorChange={(dia) => setFilters(prev => ({ ...prev, dateFrom: dia }))}
               />
             </div>
             <div>
-              <Input
-                type="date"
+              <CampoFecha
+                aria-label={tComun('fechaHasta')}
                 placeholder={tComun('fechaHasta')}
-                value={filters.dateTo || ''}
-                onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
+                valor={filters.dateTo || ''}
+                onValorChange={(dia) => setFilters(prev => ({ ...prev, dateTo: dia }))}
               />
             </div>
             <div>

@@ -9,7 +9,6 @@ import {
   Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -22,6 +21,7 @@ import { TipFilters, TIP_TYPES, TipType } from './types';
 import { esTipoPropina } from './propinasLogica';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useTranslations } from 'next-intl';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface TipsHeaderProps {
   filters: TipFilters;
@@ -236,20 +236,20 @@ export function TipsHeader({
               </SelectContent>
             </Select>
 
-            <Input
-              type="date"
-              value={filters.dateFrom || ''}
-              onChange={(e) => handleDateChange('dateFrom', e.target.value)}
+            <CampoFecha
+              aria-label={t('cabecera.desde')}
               placeholder={t('cabecera.desde')}
-              className="w-[150px] dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
+              valor={filters.dateFrom || ''}
+              onValorChange={(dia) => handleDateChange('dateFrom', dia)}
+              className="w-[170px]"
             />
 
-            <Input
-              type="date"
-              value={filters.dateTo || ''}
-              onChange={(e) => handleDateChange('dateTo', e.target.value)}
+            <CampoFecha
+              aria-label={t('cabecera.hasta')}
               placeholder={t('cabecera.hasta')}
-              className="w-[150px] dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
+              valor={filters.dateTo || ''}
+              onValorChange={(dia) => handleDateChange('dateTo', dia)}
+              className="w-[170px]"
             />
 
             <Button

@@ -16,6 +16,7 @@ import { SaleForReturn, SaleSearchFilters } from './types';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { cn } from '@/utils/Utils';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface TicketSearchProps {
   onSaleSelect: (sale: SaleForReturn) => void;
@@ -129,12 +130,11 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
               </div>
             </div>
             <div>
-              <Input
-                type="date"
+              <CampoFecha
+                aria-label={tComun('fechaDesde')}
                 placeholder={tComun('fechaDesde')}
-                value={filters.dateFrom || ''}
-                onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
+                valor={filters.dateFrom || ''}
+                onValorChange={(dia) => setFilters(prev => ({ ...prev, dateFrom: dia }))}
               />
             </div>
             <div className="flex space-x-2">

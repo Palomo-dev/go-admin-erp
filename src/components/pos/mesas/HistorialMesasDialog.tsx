@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { DatePicker } from '@/components/ui/date-picker';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 import {
   Select,
   SelectContent,
@@ -46,6 +46,12 @@ function toDateInputValue(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+/** Inversa de `toDateInputValue`: el día del campo de fecha a medianoche local, como lo daba el DatePicker. */
+function fromDateInputValue(dia: string): Date {
+  const [year, month, day] = dia.split('-').map(Number);
+  return new Date(year, month - 1, day);
 }
 
 function formatDateTime(iso: string | null): string {
@@ -208,20 +214,24 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
 
           {/* Rango personalizado + mesa + mesero */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-            <DatePicker
-              date={dateFrom}
-              onSelect={(d) => {
-                if (!d) return;
+            <CampoFecha
+              aria-label="Desde"
+              limpiable={false}
+              valor={toDateInputValue(dateFrom)}
+              onValorChange={(dia) => {
+                if (!dia) return;
                 setQuickRange('custom');
-                setDateFrom(d);
+                setDateFrom(fromDateInputValue(dia));
               }}
             />
-            <DatePicker
-              date={dateTo}
-              onSelect={(d) => {
-                if (!d) return;
+            <CampoFecha
+              aria-label="Hasta"
+              limpiable={false}
+              valor={toDateInputValue(dateTo)}
+              onValorChange={(dia) => {
+                if (!dia) return;
                 setQuickRange('custom');
-                setDateTo(d);
+                setDateTo(fromDateInputValue(dia));
               }}
             />
             <Select value={tableId} onValueChange={setTableId}>

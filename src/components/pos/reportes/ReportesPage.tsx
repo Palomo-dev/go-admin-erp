@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -35,6 +34,7 @@ import { todayInTz, toPlainDate } from '@/lib/utils/timezone';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { ReportesService, SalesReport, ProductReport, PaymentMethodReport, DailySalesData } from './reportesService';
 import { useBranch } from '@/lib/context/BranchContext';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 /**
  * Lo que esta página LEE de `ReportesService.getCashReport` (que devuelve
@@ -252,20 +252,20 @@ export function ReportesPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <div>
               <Label className="text-gray-700 dark:text-gray-300">Fecha Inicio</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="mt-1 dark:bg-gray-900 dark:border-gray-600 dark:[color-scheme:dark]"
+              <CampoFecha
+                aria-label="Fecha Inicio"
+                valor={startDate}
+                onValorChange={setStartDate}
+                className="mt-1"
               />
             </div>
             <div>
               <Label className="text-gray-700 dark:text-gray-300">Fecha Fin</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="mt-1 dark:bg-gray-900 dark:border-gray-600 dark:[color-scheme:dark]"
+              <CampoFecha
+                aria-label="Fecha Fin"
+                valor={endDate}
+                onValorChange={setEndDate}
+                className="mt-1"
               />
             </div>
             <div>

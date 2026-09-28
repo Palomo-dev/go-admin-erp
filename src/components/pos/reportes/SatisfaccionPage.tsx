@@ -18,7 +18,6 @@ import Link from 'next/link';
 import { ArrowLeft, RefreshCw, Smile, Store, Terminal as TerminalIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
@@ -28,6 +27,7 @@ import { todayInTz, toPlainDate } from '@/lib/utils/dateDisplay';
 import { useBranch } from '@/lib/context/BranchContext';
 import { ReportesService } from './reportesService';
 import { aggregateSatisfaction, getSatisfactionReport, hasRegisteredTerminals, SATISFACTION_ROWS_LIMIT, type SatisfactionGroup, type SatisfactionReport } from './satisfaccionService';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 /** Etiqueta de cada nota, de peor a mejor. Solo texto: el informe no es un juego de emojis. */
 const RATING_LABELS: Record<1 | 2 | 3 | 4 | 5, string> = {
@@ -141,20 +141,20 @@ export function SatisfaccionPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             <div>
               <Label className="text-gray-700 dark:text-gray-300">Fecha Inicio</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="mt-1 dark:bg-gray-900 dark:border-gray-600 dark:[color-scheme:dark]"
+              <CampoFecha
+                aria-label="Fecha Inicio"
+                valor={startDate}
+                onValorChange={setStartDate}
+                className="mt-1"
               />
             </div>
             <div>
               <Label className="text-gray-700 dark:text-gray-300">Fecha Fin</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="mt-1 dark:bg-gray-900 dark:border-gray-600 dark:[color-scheme:dark]"
+              <CampoFecha
+                aria-label="Fecha Fin"
+                valor={endDate}
+                onValorChange={setEndDate}
+                className="mt-1"
               />
             </div>
             <div>

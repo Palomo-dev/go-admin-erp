@@ -112,7 +112,6 @@ const CatalogoProductos: React.FC = () => {
   const [busquedaRapida, setBusquedaRapida] = useState<string>(busquedaServidor);
   // Productos cuya imagen principal no cargó: cuentan como «sin imagen».
   const [imagenesFallidas, setImagenesFallidas] = useState<ReadonlySet<string>>(() => new Set());
-  const lastFetchKey = useRef<string>('');
   const ultimaCarga = useRef<string | null>(null);
   // Carga por lotes (catalogoLotes.ts): el primer lote pinta la tabla y quita
   // el skeleton; el resto llega en lotes paralelos que se van sumando EN ORDEN,
@@ -216,24 +215,30 @@ const CatalogoProductos: React.FC = () => {
   const parametrosRef = useRef(parametros);
   parametrosRef.current = parametros;
 
-  // Cargar al montar y cuando cambian búsqueda, categoría, estado, organización o «Actualizar».
+  // Cargar al montar y cuando cambian búsqueda, categoría, estado, organización
+  // o «Actualizar». El efecto es dueño de su carga: la limpieza la cancela
+  // (al salir de la página o antes de la siguiente).
+  //
+  // No hay guarda de «misma clave, no vuelvas a pedir»: con `reactStrictMode`
+  // React monta, desmonta y vuelve a montar; el desmontaje cancelaba la única
+  // carga y la guarda impedía pedir otra, así que `loading` nunca bajaba y la
+  // tabla se quedaba en el esqueleto (bug del 2026-09-28). En desarrollo salen
+  // dos pedidos del primer lote y el primero se descarta.
   useEffect(() => {
-    // Evitar doble ejecución en React Strict Mode (desarrollo)
     const resto = JSON.stringify([organization?.id, categoriaRpc, estadoRpc, refreshKey]);
-    const fetchKey = JSON.stringify([resto, busquedaServidor]);
-    if (lastFetchKey.current === fetchKey) return;
-    lastFetchKey.current = fetchKey;
     // Si solo cambió la búsqueda y ya hay lista, se conserva (con el filtro
     // rápido encima) hasta que llegue el primer lote: sin parpadeo de esqueleto.
     const soloBusqueda = ultimaCarga.current === resto && productosRef.current.length > 0;
     ultimaCarga.current = resto;
-    fetchProductos(soloBusqueda ? 'suave' : 'normal');
+    void fetchProductos(soloBusqueda ? 'suave' : 'normal');
+    return () => {
+      const enCurso = backgroundAbortRef.current;
+      if (enCurso) {
+        enCurso.cancelled = true;
+        enCurso.resolveDone?.();
+      }
+    };
   }, [organization?.id, categoriaRpc, estadoRpc, busquedaServidor, refreshKey, fetchProductos]);
-
-  // Al salir de la página, cancelar la carga en curso.
-  useEffect(() => () => {
-    if (backgroundAbortRef.current) backgroundAbortRef.current.cancelled = true;
-  }, []);
 
   // Tiempo real: cambios en products, stock_levels, product_prices y
   // product_costs. Antes cualquier cambio (p. ej. cada venta del POS) recargaba

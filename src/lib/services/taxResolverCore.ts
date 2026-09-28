@@ -19,6 +19,12 @@
  *      docs/hallazgos/comisiones-e-impuestos-2026-09-28.md, B7).
  *   5. 0 (y advertir: "Esta línea no tiene impuesto asignado")
  *
+ * Las retenciones (plantillas `RETE*`: RETE_4, RETE_11, ReteIVA, ReteICA,
+ * ReteFuente) NO son impuestos de la venta: las practica el comprador y no se
+ * suman a la línea. Se descartan en los pasos 3 y 4 (`esCodigoRetencion`); un
+ * producto relacionado solo con retenciones se trata como «sin relación».
+ * Antes el paso 3 sumaba toda tarifa relacionada: RETE_4 + IVA_19 = 23 %.
+ *
  * Los impuestos personalizados (template_id NULL) cuentan: la plantilla se lee
  * con join IZQUIERDO (antes `tax_templates!inner` los descartaba).
  *
@@ -79,7 +85,7 @@ export interface ResolveTaxInput {
 /** Cliente Supabase con el que el resolver consulta impuestos (navegador o servidor). */
 export type TaxResolverClient = Pick<SupabaseClient, 'from'>;
 
-interface OrganizationTaxRow {
+export interface OrganizationTaxRow {
   rate: number | string | null;
   tax_templates?: { code?: string | null } | { code?: string | null }[] | null;
 }
@@ -108,6 +114,20 @@ export function computeLineTotal(
 function templateCode(row: OrganizationTaxRow): string | null {
   const tpl = Array.isArray(row.tax_templates) ? row.tax_templates[0] : row.tax_templates;
   return tpl?.code || null;
+}
+
+/**
+ * ¿El código de plantilla es una retención? (RETE_4, RETE_11, RETEIVA,
+ * RETEICA, RETEFUENTE, RETE_IVA…). Una retención nunca se cobra como impuesto
+ * de la línea de venta. Sin código (impuesto personalizado) no es retención.
+ */
+export function esCodigoRetencion(code: string | null | undefined): boolean {
+  return (code ?? '').trim().toUpperCase().startsWith('RETE');
+}
+
+/** Filas de impuestos de la organización que sí son impuestos de la venta (sin retenciones). */
+export function sinRetenciones<T extends OrganizationTaxRow>(rows: T[]): T[] {
+  return rows.filter((row) => !esCodigoRetencion(templateCode(row)));
 }
 
 /** Suma las tarifas de las filas y toma el primer código de plantilla. */
@@ -200,9 +220,11 @@ export async function resolveLineTaxWith(client: TaxResolverClient, input: Resol
           .eq('is_active', true)
           .in('id', taxIds);
 
-        if (!taxError && taxes && taxes.length > 0) {
+        // Las retenciones relacionadas no son impuesto de la venta.
+        const deVenta = sinRetenciones((taxes ?? []) as OrganizationTaxRow[]);
+        if (!taxError && deVenta.length > 0) {
           // Relación explícita a impuestos activos: su suma manda, también si es 0.
-          const { rate, code } = sumRates(taxes as OrganizationTaxRow[]);
+          const { rate, code } = sumRates(deVenta);
           return result(rate, code, true);
         }
       }
@@ -220,8 +242,9 @@ export async function resolveLineTaxWith(client: TaxResolverClient, input: Resol
       .eq('is_active', true)
       .eq('is_default', true);
 
-    if (!defError && defaultTaxes && defaultTaxes.length > 0) {
-      const { rate, code } = sumRates(defaultTaxes as OrganizationTaxRow[]);
+    const porDefecto = sinRetenciones((defaultTaxes ?? []) as OrganizationTaxRow[]);
+    if (!defError && porDefecto.length > 0) {
+      const { rate, code } = sumRates(porDefecto);
       if (rate > 0) {
         return result(rate, code);
       }

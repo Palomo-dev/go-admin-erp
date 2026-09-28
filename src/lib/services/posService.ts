@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { getTaxIncludedSetting } from '@/lib/utils/taxCalculations';
 import { resolveLineTax } from '@/lib/services/taxResolver';
+import { sinRetenciones } from '@/lib/services/taxResolverCore';
 import { promotionEngine } from '@/lib/services/promotionEngine';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { enqueueOfflineSale, shouldCheckoutOffline, newLocalUuid, newSaleId } from '@/lib/offline/salesOutbox';
@@ -2226,7 +2227,7 @@ export class POSService {
       const taxIds = relations.map(rel => rel.tax_id);
       const { data: taxes, error: taxesError } = await supabase
         .from('organization_taxes')
-        .select('*')
+        .select('*, tax_templates(code)')
         .in('id', taxIds)
         .eq('organization_id', this.organizationId)
         .eq('is_active', true);
@@ -2238,8 +2239,9 @@ export class POSService {
       
       console.log('Tax details:', taxes);
       
-      // Mapear a la estructura esperada
-      const result = taxes?.map(tax => ({
+      // Mapear a la estructura esperada. Una retención relacionada (RETE_*) no
+      // es impuesto de la venta: no se suma a la línea (taxResolverCore).
+      const result = sinRetenciones(taxes ?? []).map(tax => ({
         product_id: productId,
         tax_id: tax.id,
         organization_taxes: tax

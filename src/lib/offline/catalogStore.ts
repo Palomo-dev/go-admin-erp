@@ -210,6 +210,8 @@ export interface CatalogOrganizationTax {
   tax_included: boolean | null;
   created_at: string | null;
   updated_at: string | null;
+  /** Código de la plantilla (embebido al replicar): distingue las retenciones (RETE_*), que no se cobran en la venta. */
+  tax_templates?: { code: string | null } | null;
 }
 
 export interface CatalogProductTaxRelation {

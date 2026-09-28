@@ -31,6 +31,7 @@ import {
   type CatalogStockLevel,
 } from './catalogStore';
 import { precioVigente } from '@/lib/pos/precioVigente';
+import { sinRetenciones } from '@/lib/services/taxResolverCore';
 
 /** Mensaje único para «no hay catálogo local todavía». */
 export const CATALOG_NOT_REPLICATED_MESSAGE = 'Catálogo local aún no replicado: conecta a internet una vez';
@@ -399,7 +400,8 @@ export async function getProductTaxes(organizationId: number, productId: number)
   if (relations.length === 0) return [];
   const taxIds = new Set(relations.map((r) => r.tax_id));
   const taxes = (await getCatalogRowsByOrg('organization_taxes', organizationId)).filter((t) => taxIds.has(t.id) && t.is_active !== false);
-  return taxes.map((tax) => ({ product_id: productId, tax_id: tax.id, organization_taxes: tax }));
+  // Igual que en línea: una retención relacionada no es impuesto de la venta.
+  return sinRetenciones(taxes).map((tax) => ({ product_id: productId, tax_id: tax.id, organization_taxes: tax }));
 }
 
 export const posOfflineReads = {

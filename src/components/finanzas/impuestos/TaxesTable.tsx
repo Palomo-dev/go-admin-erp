@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { RefreshCcw, Search, PlusCircle, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshCcw, Search, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -138,10 +138,13 @@ const TaxesTable = () => {
   // Función para cambiar el estado activo de un impuesto
   const handleToggleActive = async (tax: OrganizationTax) => {
     try {
-      const { error } = await supabase
-        .from('organization_taxes')
-        .update({ is_active: !tax.is_active })
-        .eq('id', tax.id);
+      // RPC con permiso de finanzas y acotada a la organización (la tabla ya no
+      // admite escritura directa desde el navegador).
+      const { error } = await supabase.rpc('fn_impuesto_cambiar_activo', {
+        p_organization_id: organizationId,
+        p_id: tax.id,
+        p_activo: !tax.is_active,
+      });
 
       if (error) throw error;
       
@@ -437,7 +440,7 @@ const TaxesTable = () => {
                       // En móvil, mostrar max 3 páginas, en desktop 5
                       const maxVisiblePages = window.innerWidth < 640 ? 3 : 5;
                       let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-                      let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                      const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
                       
                       if (endPage - startPage + 1 < maxVisiblePages) {
                         startPage = Math.max(1, endPage - maxVisiblePages + 1);

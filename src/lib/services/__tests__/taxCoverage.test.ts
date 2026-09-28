@@ -53,7 +53,21 @@ function fakeClient(tables: Record<string, Row[]>): SupabaseClient {
     };
     return builder;
   }
-  return { from } as unknown as SupabaseClient;
+  // fn_impuesto_fijar_por_defecto (2026-09-28): la tarifa por defecto se fija en
+  // UNA RPC transaccional; el doble reproduce su contrato (impuesto de otra
+  // organización → P0002 sin escribir; desmarca las demás y marca la elegida).
+  function rpc(name: string, args: { p_organization_id: number; p_id: string | null }) {
+    if (name !== 'fn_impuesto_fijar_por_defecto') return Promise.resolve({ data: null, error: { code: '42883', message: name } });
+    const rows = tables.organization_taxes || [];
+    if (args.p_id && !rows.some((r) => r.id === args.p_id && r.organization_id === args.p_organization_id)) {
+      return Promise.resolve({ data: null, error: { code: 'P0002', message: 'impuesto_no_encontrado' } });
+    }
+    for (const r of rows) {
+      if (r.organization_id === args.p_organization_id) r.is_default = r.id === args.p_id;
+    }
+    return Promise.resolve({ data: null, error: null });
+  }
+  return { from, rpc } as unknown as SupabaseClient;
 }
 
 const ORG = 900;

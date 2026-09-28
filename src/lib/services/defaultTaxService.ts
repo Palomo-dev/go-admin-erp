@@ -42,43 +42,23 @@ export function parseCodigoTarifaPorDefecto(value: unknown): CodigoTarifaPorDefe
  * Marca `taxId` como la única tarifa por defecto de la organización, o deja la
  * organización sin ninguna si `taxId` es null.
  *
- * Primero se desmarcan las demás y luego se marca la elegida: si la segunda
- * escritura falla, la organización queda sin tarifa por defecto (lo mismo que
- * hoy) y nunca con dos.
+ * Una sola RPC transaccional (`fn_impuesto_fijar_por_defecto`): exige permiso
+ * de finanzas (admin o finance.create/approve), valida que el impuesto sea de la
+ * organización y desmarca/marca en la misma transacción. El índice único
+ * `uq_organization_taxes_un_por_defecto` impide que queden dos. Antes eran dos
+ * UPDATE desde el cliente, sin atomicidad ni permiso.
  */
 export async function setOrganizationDefaultTax(
   client: SupabaseClient,
   organizationId: number,
   taxId: string | null,
 ): Promise<void> {
-  if (taxId) {
-    const { data: tax, error: taxError } = await client
-      .from('organization_taxes')
-      .select('id')
-      .eq('id', taxId)
-      .eq('organization_id', organizationId)
-      .maybeSingle();
-    if (taxError) throw taxError;
-    if (!tax) throw new Error('El impuesto no pertenece a esta organización');
-  }
-
-  let unset = client
-    .from('organization_taxes')
-    .update({ is_default: false })
-    .eq('organization_id', organizationId)
-    .eq('is_default', true);
-  if (taxId) unset = unset.neq('id', taxId);
-  const { error: unsetError } = await unset;
-  if (unsetError) throw unsetError;
-
-  if (!taxId) return;
-
-  const { error: setError } = await client
-    .from('organization_taxes')
-    .update({ is_default: true })
-    .eq('id', taxId)
-    .eq('organization_id', organizationId);
-  if (setError) throw setError;
+  const { error } = await client.rpc('fn_impuesto_fijar_por_defecto', {
+    p_organization_id: organizationId,
+    p_id: taxId,
+  });
+  if (error?.code === 'P0002') throw new Error('El impuesto no pertenece a esta organización');
+  if (error) throw error;
 }
 
 /**

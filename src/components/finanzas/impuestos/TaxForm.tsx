@@ -212,34 +212,12 @@ const TaxForm: React.FC<TaxFormProps> = ({
       console.error('Error al guardar el impuesto:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo guardar el impuesto. Intente de nuevo.',
+        // El mensaje del servidor dice por qué (sin permiso, tasa fuera de rango…).
+        description: error instanceof Error && error.message ? error.message : 'No se pudo guardar el impuesto. Intente de nuevo.',
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Actualizar impuesto predeterminado
-  const updateDefaultTax = async () => {
-    try {
-      if (editMode && tax) {
-        // Desmarcar todos los demás impuestos como no predeterminados
-        await supabase
-          .from('organization_taxes')
-          .update({ is_default: false })
-          .eq('organization_id', organizationId)
-          .neq('id', tax.id);
-      } else {
-        // Desmarcar todos los impuestos como no predeterminados
-        // La nueva inserción ya tendrá is_default = true
-        await supabase
-          .from('organization_taxes')
-          .update({ is_default: false })
-          .eq('organization_id', organizationId);
-      }
-    } catch (error) {
-      console.error('Error al actualizar impuesto predeterminado:', error);
     }
   };
 

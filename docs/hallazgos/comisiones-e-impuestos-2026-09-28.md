@@ -127,3 +127,19 @@ bastan para generar el movimiento cuando tesorería defina el egreso a terceros.
   `IVA_19`, `IVA_5` y NULL en `invoice_items`; ninguna retención guardada).
 - Visto al pasar: `initialize_organization_taxes` filtra `country = 'CO'`, pero
   el catálogo usa `'COL'`: no copia ningún impuesto a una organización nueva.
+
+### B9 · Impuestos: escritura sin permiso, sin organización y no atómica
+
+- El interruptor «Activo» (`TaxesTable.tsx`) hacía `UPDATE` directo por id, sin
+  filtro de organización; anon y authenticated tenían `INSERT/UPDATE/DELETE` en
+  `organization_taxes` y la política era ALL para cualquier miembro.
+- `manage_organization_tax` (dos firmas) y `delete_organization_tax` solo
+  exigían ser miembro. `setOrganizationDefaultTax` hacía dos `UPDATE` sueltos, y
+  `manage_organization_tax` marcaba el nuevo por defecto antes de desmarcar.
+- **Duplicados medidos: 0** (un solo impuesto por defecto en toda la base).
+- Corrección: índice único parcial `uq_organization_taxes_un_por_defecto`;
+  guarda `fn_impuestos_exigir_gestion` (admin o `finance.create`/`finance.approve`)
+  en crear/editar/eliminar; RPC nuevas `fn_impuesto_cambiar_activo` y
+  `fn_impuesto_fijar_por_defecto` (una transacción); authenticated solo lee.
+  Los creadores de organización son rol 2 (86 de 86): el alta sigue pudiendo
+  fijar la tarifa por defecto.

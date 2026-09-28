@@ -20,6 +20,7 @@
 
 import type { PaperWidth } from '@printing/paper';
 import { getPaperSpec } from '@printing/paper';
+import { moneyFormatter, type MoneyFormat } from '@printing/money';
 import type {
   SaleTicketPrintPayload,
   KitchenTicketPrintPayload,
@@ -208,11 +209,20 @@ class EscposBuilder {
 // Funciones de maquetación de tickets
 // ============================================================================
 
+/** Monedas que se escriben con «$» (el único símbolo seguro en CP437). */
+const MONEDAS_CON_PESO = new Set(['COP', 'USD', 'MXN', 'CLP', 'ARS', 'CAD', 'UYU', 'DOP', 'CUP']);
+
 /**
- * Formatea un valor monetario con separadores de miles.
+ * Formateador de dinero del ticket: moneda, decimales y locale del payload
+ * (moneda del documento o base de la organización; nunca pesos fijos). Con
+ * «$» delante para las monedas que lo usan y el código detrás para el resto
+ * (€ o S/ no existen en todas las páginas de códigos de las impresoras).
  */
-function formatMoney(value: number, currency = '$'): string {
-  return `${currency}${value.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+function formateadorDinero(payload: MoneyFormat): (value: number) => string {
+  const numero = moneyFormatter(payload, { symbol: false });
+  const code = (payload.currency ?? '').trim().toUpperCase();
+  if (!code || MONEDAS_CON_PESO.has(code)) return (v) => `$${numero(v)}`;
+  return (v) => `${numero(v)} ${code}`;
 }
 
 /**
@@ -230,6 +240,7 @@ export function buildSaleTicket(
   payload: SaleTicketPrintPayload,
   paperWidth: PaperWidth = '80mm',
 ): Uint8Array {
+  const formatMoney = formateadorDinero(payload);
   const b = new EscposBuilder().setPaperWidth(paperWidth);
 
   b.init();
@@ -458,6 +469,7 @@ export function buildPreCuenta(
   payload: SaleTicketPrintPayload,
   paperWidth: PaperWidth = '80mm',
 ): Uint8Array {
+  const formatMoney = formateadorDinero(payload);
   const b = new EscposBuilder().setPaperWidth(paperWidth);
 
   b.init();

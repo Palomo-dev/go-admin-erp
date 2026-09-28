@@ -1,14 +1,19 @@
 'use client';
 
 import { use } from 'react';
-import { CuentaPorPagarDetailPage } from '@/components/finanzas/cuentas-por-pagar/id';
+import CuentaPorPagarDetalle from '@/components/finanzas/cuentas-por-pagar/detalle/CuentaPorPagarDetalle';
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
 export default function CuentaPorPagarDetailPageRoute({ params }: PageProps) {
-  const resolvedParams = use(params);
-  
-  return <CuentaPorPagarDetailPage accountId={resolvedParams.id} />;
+  const { id } = use(params);
+  return (
+    // Mismo margen que el resto de pantallas rediseñadas (p-4 · sm:p-6): el
+    // componente no lo trae y todo quedaba pegado al borde (2026-09-28).
+    <div className="p-4 sm:p-6">
+      <CuentaPorPagarDetalle id={id} />
+    </div>
+  );
 }

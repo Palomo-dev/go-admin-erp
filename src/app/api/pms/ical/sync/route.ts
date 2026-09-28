@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
 import { parseICalFeed } from '@/lib/services/icalService';
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { OrgContextError, readOrgBody, withOrg } from '@/lib/utils/orgContext';
 
 /**
  * POST /api/pms/ical/sync
@@ -8,26 +9,25 @@ import { parseICalFeed } from '@/lib/services/icalService';
  * Sincroniza calendarios iCal de todos los canales activos de una organización.
  * Puede ser llamado manualmente desde la UI o por un cron job.
  * 
- * Body: { organization_id: number, connection_id?: string }
- * - Si se pasa connection_id, sincroniza solo esa conexión.
+ * Body: { organization_id?: number, connection_id?: string }
+ * - Si se pasa connection_id, sincroniza solo esa conexión (de la organización).
  * - Si no, sincroniza todas las conexiones activas de la organización.
+ *
+ * GO-sec (2026-09-24): la organización sale de la SESIÓN (`withOrg`); si el
+ * body o la query traen otra → 403 + registro (`readOrgBody`). Antes se
+ * tomaba `organization_id` del body y se escribía con service role en los
+ * bloqueos de calendario de cualquier organización. No hay cron que la llame
+ * (vercel.json), solo el Channel Manager con sesión.
  */
-export async function POST(request: NextRequest) {
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const body = await request.json();
-    const { organization_id, connection_id } = body;
+    const body = (await readOrgBody<{ connection_id?: unknown } | null>(ctx, request)) ?? {};
+    const organization_id = ctx.organizationId;
+    const connection_id = typeof body.connection_id === 'string' ? body.connection_id : null;
 
-    if (!organization_id) {
-      return NextResponse.json(
-        { error: 'organization_id es requerido' },
-        { status: 400 }
-      );
-    }
-
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // Service role solo tras resolver la organización por sesión; toda
+    // consulta va filtrada por ella.
+    const supabaseAdmin = getServiceClient();
 
     // Obtener conexiones a sincronizar
     let query = supabaseAdmin
@@ -183,9 +183,9 @@ export async function POST(request: NextRequest) {
         }
 
         syncResult.status = syncResult.errors.length > 0 ? 'partial' : 'success';
-      } catch (error: any) {
+      } catch (error: unknown) {
         syncResult.status = 'error';
-        syncResult.errors.push(error.message || 'Error desconocido');
+        syncResult.errors.push(error instanceof Error ? error.message : 'Error desconocido');
       }
 
       // Actualizar estado de la conexión
@@ -224,11 +224,10 @@ export async function POST(request: NextRequest) {
       overall_status: allSuccess ? 'success' : anyError ? 'partial' : 'partial',
       results,
     });
-  } catch (error: any) {
-    console.error('Error en sincronización iCal:', error);
-    return NextResponse.json(
-      { error: 'Error interno del servidor', details: error.message },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    // 403/400 de readOrgBody: los responde withOrg.
+    if (error instanceof OrgContextError) throw error;
+    console.error('Error en sincronización iCal:', error instanceof Error ? error.message : String(error));
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
-}
+});

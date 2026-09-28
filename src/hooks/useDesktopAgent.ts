@@ -76,7 +76,18 @@ export function useDesktopAgent(): UseDesktopAgentReturn {
         }
 
         let status: DesktopAgentStatus;
-        if (bridge.startAgentWithToken) {
+        if (bridge.startAgentWithSession && sessionData.session.access_token) {
+          // Desktop >= 0.2.7: el proceso principal pide el código a
+          // app.goadmin.io; el Next embebido (127.0.0.1) no tiene la clave
+          // de servicio para generarlo.
+          status = await bridge.startAgentWithSession(
+            sessionData.session.access_token,
+            org.id,
+            org.name || `Org ${org.id}`,
+            finalBranchIds,
+            finalBranchNames,
+          );
+        } else if (bridge.startAgentWithToken) {
           // Sesión propia para el agente. Compartir el refresh token de esta
           // sesión (camino legado) hacía que web y agente rotaran la misma
           // familia de tokens y Supabase la revocara entera en menos de una
@@ -85,7 +96,9 @@ export function useDesktopAgent(): UseDesktopAgentReturn {
           const res = await fetch('/api/desktop/agent-session', { method: 'POST' });
           const body = await res.json().catch(() => null);
           if (!res.ok || !body?.token_hash) {
-            setError(body?.error || 'No se pudo generar el código de vinculación del agente');
+            // Sin cuerpo JSON (p. ej. 500 del servidor embebido de un Desktop
+            // 0.2.x anterior al 0.2.7) se muestra al menos el código HTTP.
+            setError(body?.error || `No se pudo generar el código de vinculación del agente (HTTP ${res.status})`);
             return false;
           }
           status = await bridge.startAgentWithToken(

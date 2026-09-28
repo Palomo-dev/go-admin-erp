@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -13,11 +14,21 @@ import { Badge } from '@/components/ui/badge';
 import { Package, Check, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { POSService } from '@/lib/services/posService';
 import { cn } from '@/lib/utils';
 import { ProductModifiersService, type ProductModifierGroup } from '@/lib/services/productModifiersService';
 import { resolveVariantDisplayName } from '@/utils/variantUtils';
+import {
+  agruparAtributos,
+  alternarModificador,
+  buscarVariante,
+  extraDeModificadores,
+  modificadoresElegidos,
+  puedeConfirmarVariante,
+  reglaDeSeleccion,
+  faltanteModificadores,
+} from '@/lib/pos/venta/modificadores';
 
 interface Variant {
   id: number;
@@ -55,6 +66,8 @@ export function VariantSelectorDialog({
   product,
   onSelectVariant,
 }: VariantSelectorDialogProps) {
+  const { formatear } = useMonedaOrganizacion();
+  const t = useTranslations('posVenta.variantes');
   const [variants, setVariants] = useState<Variant[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
@@ -81,23 +94,8 @@ export function VariantSelectorDialog({
       const data = await POSService.getProductVariants(product.id);
       setVariants(data);
       
-      // Extraer atributos únicos de todas las variantes
-      const groups: Record<string, Set<string>> = {};
-      data.forEach((variant: Variant) => {
-        if (variant.variant_data) {
-          Object.entries(variant.variant_data).forEach(([key, value]) => {
-            if (!groups[key]) groups[key] = new Set();
-            groups[key].add(value);
-          });
-        }
-      });
-      
-      // Convertir Sets a Arrays
-      const groupsArray: Record<string, string[]> = {};
-      Object.entries(groups).forEach(([key, values]) => {
-        groupsArray[key] = Array.from(values).sort();
-      });
-      setAttributeGroups(groupsArray);
+      // Extraer atributos únicos de todas las variantes (src/lib/pos/venta/modificadores.ts)
+      setAttributeGroups(agruparAtributos(data as Variant[]));
       
       // Pre-seleccionar primera variante si existe
       if (data.length > 0) {
@@ -107,7 +105,7 @@ export function VariantSelectorDialog({
         // Producto simple sin variantes: se usa a sí mismo como "variante" para
         // permitir elegir únicamente sus modificadores (ej. salsas, extras).
         // Se preservan todos los campos originales del producto (station, categories, etc.)
-        setSelectedVariant({ ...(product as any), variant_data: {} });
+        setSelectedVariant({ ...product, variant_data: {} } as Variant);
       }
     } catch (error) {
       console.error('Error cargando variantes:', error);
@@ -130,66 +128,26 @@ export function VariantSelectorDialog({
 
   const toggleModifier = (group: ProductModifierGroup, modifierId: number) => {
     setModifierError(null);
-    setSelectedModifierIds((prev) => {
-      const current = new Set(prev[group.id] || []);
-      if (group.selection_mode === 'single') {
-        // Selección única: si ya estaba marcada, se puede desmarcar (a menos que sea obligatoria)
-        if (current.has(modifierId)) {
-          if (!group.required) current.clear();
-        } else {
-          current.clear();
-          current.add(modifierId);
-        }
-      } else {
-        if (current.has(modifierId)) {
-          current.delete(modifierId);
-        } else {
-          if (group.max_selections && current.size >= group.max_selections) {
-            return prev;
-          }
-          current.add(modifierId);
-        }
-      }
-      return { ...prev, [group.id]: current };
-    });
+    // Reglas de selección (única/múltiple, obligatoria, máximo): src/lib/pos/venta/modificadores.ts (L20).
+    setSelectedModifierIds((prev) => alternarModificador(prev, group, modifierId));
   };
 
-  const selectedModifiers: SelectedModifier[] = modifierGroups.flatMap((group) => {
-    const ids = selectedModifierIds[group.id] || new Set();
-    return (group.product_modifiers || [])
-      .filter((m) => ids.has(m.id))
-      .map((m) => ({
-        groupId: group.id,
-        groupName: group.name,
-        modifierId: m.id,
-        name: m.name,
-        extraPrice: m.extra_price,
-      }));
-  });
+  const selectedModifiers: SelectedModifier[] = modificadoresElegidos(modifierGroups, selectedModifierIds);
 
-  const modifiersExtraTotal = selectedModifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0);
+  const modifiersExtraTotal = extraDeModificadores(selectedModifiers);
 
   const validateModifiers = (): boolean => {
-    for (const group of modifierGroups) {
-      const count = (selectedModifierIds[group.id] || new Set()).size;
-      const minRequired = group.required ? Math.max(group.min_selections, 1) : group.min_selections;
-      if (count < minRequired) {
-        setModifierError(`Selecciona ${minRequired > 1 ? `al menos ${minRequired} opciones` : 'una opción'} en "${group.name}"`);
-        return false;
-      }
+    // Misma regla que validarModificadores (L20), con el texto en el idioma activo.
+    const falta = faltanteModificadores(modifierGroups, selectedModifierIds);
+    if (falta) {
+      setModifierError(falta.minimo > 1 ? t('faltanVarias', { n: falta.minimo, grupo: falta.grupo }) : t('faltaUna', { grupo: falta.grupo }));
+      return false;
     }
     return true;
   };
 
   // Encontrar variante que coincida con los atributos seleccionados
-  const findMatchingVariant = (attrs: Record<string, string>) => {
-    return variants.find(v => {
-      if (!v.variant_data) return false;
-      return Object.entries(attrs).every(([key, value]) => 
-        v.variant_data[key] === value
-      );
-    });
-  };
+  const findMatchingVariant = (attrs: Record<string, string>) => buscarVariante(variants, attrs);
 
   const handleAttributeSelect = (attrName: string, value: string) => {
     const newAttrs = { ...selectedAttributes, [attrName]: value };
@@ -228,15 +186,13 @@ export function VariantSelectorDialog({
         <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-blue-600" />
-            {variants.length > 0 ? 'Seleccionar Variante' : 'Personalizar Producto'}
+            {variants.length > 0 ? t('tituloVariante') : t('tituloPersonalizar')}
           </DialogTitle>
           {/* Radix exige una descripción (o aria-describedby) en cada
               DialogContent; sin ella avisa por consola y el lector de pantalla
               anuncia el diálogo sin contexto. */}
           <DialogDescription className="sr-only">
-            {variants.length > 0
-              ? 'Elige la variante del producto y la cantidad antes de añadirlo al carrito.'
-              : 'Ajusta las opciones del producto antes de añadirlo al carrito.'}
+            {variants.length > 0 ? t('descripcionVariante') : t('descripcionPersonalizar')}
           </DialogDescription>
         </DialogHeader>
 
@@ -254,13 +210,13 @@ export function VariantSelectorDialog({
             {/* Nombre del producto */}
             <div className="text-center pb-2 border-b">
               <h3 className="font-semibold text-lg">{product.name}</h3>
-              <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
+              <p className="text-sm text-muted-foreground">{t('sku', { sku: product.sku })}</p>
               {variants.length === 0 && (
                 <p className="text-lg font-bold text-blue-600 mt-1">
-                  {formatCurrency((selectedVariant?.price || 0) + modifiersExtraTotal)}
+                  {formatear((selectedVariant?.price || 0) + modifiersExtraTotal)}
                   {modifiersExtraTotal > 0 && (
                     <span className="text-xs font-normal text-muted-foreground ml-1">
-                      ({formatCurrency(selectedVariant?.price || 0)} + {formatCurrency(modifiersExtraTotal)})
+                      ({formatear(selectedVariant?.price || 0)} + {formatear(modifiersExtraTotal)})
                     </span>
                   )}
                 </p>
@@ -309,23 +265,23 @@ export function VariantSelectorDialog({
                   <div>
                     <p className="font-medium">{resolveVariantDisplayName(selectedVariant.name, selectedVariant.variant_data, product.name)}</p>
                     <p className="text-sm text-muted-foreground">
-                      SKU: {selectedVariant.sku}
+                      {t('sku', { sku: selectedVariant.sku })}
                     </p>
                   </div>
                   <div className="text-right">
                     {selectedVariant.price ? (
                       <>
                         <p className="text-lg font-bold text-blue-600">
-                          {formatCurrency(selectedVariant.price + modifiersExtraTotal)}
+                          {formatear(selectedVariant.price + modifiersExtraTotal)}
                         </p>
                         {modifiersExtraTotal > 0 && (
                           <p className="text-xs text-muted-foreground">
-                            {formatCurrency(selectedVariant.price)} + {formatCurrency(modifiersExtraTotal)} extras
+                            {t('masExtras', { precio: formatear(selectedVariant.price), extras: formatear(modifiersExtraTotal) })}
                           </p>
                         )}
                       </>
                     ) : (
-                      <Badge variant="destructive">Sin precio</Badge>
+                      <Badge variant="destructive">{t('sinPrecio')}</Badge>
                     )}
                   </div>
                 </div>
@@ -345,7 +301,10 @@ export function VariantSelectorDialog({
                           {group.required && <span className="text-red-500 ml-1">*</span>}
                         </label>
                         <span className="text-xs text-muted-foreground">
-                          {group.selection_mode === 'single' ? 'Elige 1' : group.max_selections ? `Hasta ${group.max_selections}` : 'Elige varias'}
+                          {(() => {
+                            const regla = reglaDeSeleccion(group);
+                            return regla.tipo === 'uno' ? t('eligeUna') : regla.tipo === 'hasta' ? t('hasta', { n: regla.maximo }) : t('eligeVarias');
+                          })()}
                         </span>
                       </div>
                       <div className="space-y-1.5">
@@ -368,7 +327,7 @@ export function VariantSelectorDialog({
                               </div>
                               {modifier.extra_price > 0 && (
                                 <span className="text-xs text-muted-foreground">
-                                  +{formatCurrency(modifier.extra_price)}
+                                  +{formatear(modifier.extra_price)}
                                 </span>
                               )}
                             </div>
@@ -406,11 +365,11 @@ export function VariantSelectorDialog({
                       <div>
                         <p className="font-medium">{resolveVariantDisplayName(variant.name, variant.variant_data, product.name)}</p>
                         <p className="text-sm text-muted-foreground">
-                          SKU: {variant.sku}
+                          {t('sku', { sku: variant.sku })}
                         </p>
                       </div>
                       <p className="font-bold">
-                        {variant.price ? formatCurrency(variant.price) : '-'}
+                        {variant.price ? formatear(variant.price) : '-'}
                       </p>
                     </div>
                   </div>
@@ -427,14 +386,14 @@ export function VariantSelectorDialog({
                 className="flex-1"
                 onClick={resetAndClose}
               >
-                Cancelar
+                {t('cancelar')}
               </Button>
               <Button
                 className="flex-1 bg-blue-600 hover:bg-blue-700"
-                disabled={!selectedVariant || !selectedVariant.price}
+                disabled={!puedeConfirmarVariante(selectedVariant)}
                 onClick={handleConfirm}
               >
-                Agregar al Carrito
+                {t('agregar')}
               </Button>
             </div>
       </DialogContent>

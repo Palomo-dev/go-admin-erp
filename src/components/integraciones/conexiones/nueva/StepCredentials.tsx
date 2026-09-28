@@ -487,6 +487,32 @@ const PROVIDER_CREDENTIAL_OVERRIDES: Record<string, {
   },
 };
 
+/** Ubicación de TripAdvisor (búsqueda y detalle): solo los campos que pinta el asistente. */
+interface TaLocation {
+  location_id: string;
+  name?: string;
+  address_obj?: { address_string?: string; street1?: string; city?: string; country?: string };
+  photo?: { images?: { medium?: { url?: string } } };
+  rating?: string | number;
+  num_reviews?: string | number;
+  category?: { name?: string };
+  ranking_data?: { ranking_string?: string };
+}
+
+/** SDK JS de Facebook tal como lo usa el Embedded Signup de WhatsApp. */
+interface FacebookLoginResponse {
+  authResponse?: { code?: string; grantedScopes?: string } | null;
+}
+interface FacebookSdkWindow {
+  FB?: {
+    init(options: Record<string, unknown>): void;
+    login(callback: (response: FacebookLoginResponse) => void, options: Record<string, unknown>): void;
+  };
+  fbAsyncInit?: () => void;
+  __fbInitDone?: boolean;
+}
+const fbWindow = (): FacebookSdkWindow => window as unknown as FacebookSdkWindow;
+
 const PURPOSE_OPTIONS = [
   { value: 'primary', label: 'Principal', description: 'Credencial principal activa' },
   { value: 'backup', label: 'Respaldo', description: 'Credencial de respaldo' },
@@ -509,11 +535,11 @@ export function StepCredentials({
 
   // TripAdvisor property linking state
   const [taSearchQuery, setTaSearchQuery] = useState('');
-  const [taSearchResults, setTaSearchResults] = useState<any[]>([]);
+  const [taSearchResults, setTaSearchResults] = useState<TaLocation[]>([]);
   const [taIsSearching, setTaIsSearching] = useState(false);
   const [taSearchError, setTaSearchError] = useState<string | null>(null);
   const [taHasSearched, setTaHasSearched] = useState(false);
-  const [taSelectedLocation, setTaSelectedLocation] = useState<any | null>(null);
+  const [taSelectedLocation, setTaSelectedLocation] = useState<TaLocation | null>(null);
   const [taIsLoadingDetails, setTaIsLoadingDetails] = useState(false);
 
   const handleTaSearch = async () => {
@@ -537,7 +563,7 @@ export function StepCredentials({
     setTaIsSearching(false);
   };
 
-  const handleTaSelectLocation = async (location: any) => {
+  const handleTaSelectLocation = async (location: TaLocation) => {
     setTaIsLoadingDetails(true);
     setTaSelectedLocation(location);
     try {
@@ -562,7 +588,7 @@ export function StepCredentials({
     });
   };
 
-  const getTaAddress = (loc: any) =>
+  const getTaAddress = (loc: TaLocation | null) =>
     loc?.address_obj?.address_string ||
     [loc?.address_obj?.street1, loc?.address_obj?.city, loc?.address_obj?.country]
       .filter(Boolean)
@@ -617,13 +643,19 @@ export function StepCredentials({
     setIsOAuthLoading(true);
     setOauthError(null);
     try {
+      // Meta, TikTok y Google Ads toman la organización de la sesión (regla
+      // dura 5): no se manda.
       const res = await fetch(apiRoute, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ organization_id: organizationId }),
+        body: JSON.stringify({}),
       });
-      const data = await res.json();
-      if (data.url) {
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        setOauthError('Tu sesión expiró. Inicia sesión de nuevo para conectar la cuenta.');
+      } else if (res.status === 403) {
+        setOauthError('No tienes permiso para conectar integraciones en esta organización.');
+      } else if (data.url) {
         window.location.href = data.url;
       } else {
         setOauthError(data.error || 'No se pudo generar la URL de autorización');
@@ -668,20 +700,21 @@ export function StepCredentials({
     const loadFBSDK = (): Promise<void> => {
       return new Promise((resolve, reject) => {
         // Si FB ya está inicializado, resolver directo
-        if ((window as any).FB && (window as any).__fbInitDone) {
+        const w = fbWindow();
+        if (w.FB && w.__fbInitDone) {
           resolve();
           return;
         }
 
         // Callback oficial que Meta ejecuta cuando el SDK está listo
-        (window as any).fbAsyncInit = function () {
-          (window as any).FB.init({
+        w.fbAsyncInit = function () {
+          w.FB?.init({
             appId,
             autoLogAppEvents: true,
             xfbml: false,
             version: 'v21.0',
           });
-          (window as any).__fbInitDone = true;
+          w.__fbInitDone = true;
           resolve();
         };
 
@@ -695,15 +728,15 @@ export function StepCredentials({
           script.crossOrigin = 'anonymous';
           script.onerror = () => reject(new Error('No se pudo cargar el SDK de Facebook'));
           document.body.appendChild(script);
-        } else if ((window as any).FB) {
+        } else if (w.FB) {
           // Script ya existe y FB disponible pero no inicializado
-          (window as any).FB.init({
+          w.FB.init({
             appId,
             autoLogAppEvents: true,
             xfbml: false,
             version: 'v21.0',
           });
-          (window as any).__fbInitDone = true;
+          w.__fbInitDone = true;
           resolve();
         }
       });
@@ -711,8 +744,10 @@ export function StepCredentials({
 
     loadFBSDK()
       .then(() => {
-        (window as any).FB.login(
-          (response: any) => {
+        const fb = fbWindow().FB;
+        if (!fb) throw new Error('No se pudo cargar el SDK de Facebook');
+        fb.login(
+          (response: FacebookLoginResponse) => {
             if (response.authResponse) {
               const code = response.authResponse.code;
 
@@ -927,7 +962,7 @@ export function StepCredentials({
               {!taSelectedLocation && taSearchResults.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs text-gray-500 dark:text-gray-400">{taSearchResults.length} resultado(s)</p>
-                  {taSearchResults.map((loc: any) => (
+                  {taSearchResults.map((loc) => (
                     <div
                       key={loc.location_id}
                       onClick={() => handleTaSelectLocation(loc)}

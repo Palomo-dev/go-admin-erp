@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, telefonoOpcionalValido } from '@/components/ui/phone-input';
 import {
   Select,
   SelectContent,
@@ -25,6 +25,8 @@ import { ticketsService, type TicketWithDetails, type TripSeat, type RouteStop, 
 import { cn } from '@/lib/utils';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 interface Trip {
   id: string;
@@ -82,6 +84,8 @@ export function TicketDialog({
   onSave,
   onSearchCustomer,
 }: TicketDialogProps) {
+  // Tarifa del viaje en la moneda del viaje; sin ella, la base.
+  const { paraDocumento } = useMonedaOrganizacion();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchingCustomer, setSearchingCustomer] = useState(false);
   const [customerResults, setCustomerResults] = useState<Customer[]>([]);
@@ -250,6 +254,8 @@ export function TicketDialog({
 
   const handleSubmit = async () => {
     if (!formData.trip_id || !formData.passenger_name) return;
+    // El campo ya muestra el aviso del país: no se guarda un teléfono incompleto.
+    if (!telefonoOpcionalValido(formData.passenger_phone)) return;
 
     setIsSubmitting(true);
     try {
@@ -334,7 +340,7 @@ export function TicketDialog({
                 )}
                 {tripDetails?.base_fare && (
                   <p>
-                    <strong>Tarifa base:</strong> ${tripDetails.base_fare.toLocaleString('es-CO')} {tripDetails.currency || 'COP'}
+                    <strong>Tarifa base:</strong> {formatMoneda(tripDetails.base_fare, paraDocumento(tripDetails.currency))}
                   </p>
                 )}
               </div>
@@ -420,7 +426,6 @@ export function TicketDialog({
                   id="phone"
                   value={formData.passenger_phone}
                   onChange={(v) => setFormData((p) => ({ ...p, passenger_phone: v }))}
-                  placeholder="300 123 4567"
                 />
               </div>
               <div className="space-y-2">

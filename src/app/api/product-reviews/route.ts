@@ -1,5 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
+
+/**
+ * Moderación de reseñas de producto en el ERP.
+ *
+ * Sesión + membresía activa (`withOrg`). La organización sale de la sesión:
+ * un `organizationId` distinto en la query o el body → 403. Las consultas van
+ * con service role (como antes) pero SIEMPRE acotadas a `ctx.organizationId`.
+ */
 
 /**
  * GET /api/product-reviews?organizationId=X&status=pending&productId=Y
@@ -7,16 +16,12 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
  * Lista las reseñas de producto para moderación en el ERP.
  * Filtros opcionales: status (pending|approved|rejected), productId.
  */
-export async function GET(request: NextRequest) {
+export const GET = withOrg(async (ctx, request) => {
   try {
+    await readOrgBody(ctx, request, { route: 'product-reviews' });
     const { searchParams } = new URL(request.url);
-    const organizationId = searchParams.get('organizationId');
     const status = searchParams.get('status');
     const productId = searchParams.get('productId');
-
-    if (!organizationId) {
-      return NextResponse.json({ error: 'organizationId requerido' }, { status: 400 });
-    }
 
     const supabase = getSupabaseAdmin();
     let query = supabase
@@ -39,7 +44,7 @@ export async function GET(request: NextRequest) {
         created_at,
         products!inner (id, name, slug, uuid )
       `)
-      .eq('organization_id', Number(organizationId))
+      .eq('organization_id', ctx.organizationId)
       .order('created_at', { ascending: false });
 
     if (status && status !== 'all') {
@@ -58,21 +63,23 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ reviews: data || [] });
   } catch (error: any) {
+    if (error instanceof OrgContextError) throw error;
     console.error('GET /api/product-reviews:', error?.message || error);
     return NextResponse.json({ error: 'Error interno' }, { status: 500 });
   }
-}
+});
 
 /**
  * PATCH /api/product-reviews
  *
- * Actualiza el estado de una reseña (aprobar, rechazar, responder).
- * Body: { reviewId, status?, rejectionReason?, replyText? }
+ * Actualiza el estado de una reseña (aprobar, rechazar, responder) de la
+ * organización de la sesión. Body: { reviewId, status?, rejectionReason?, replyText? }
+ * Una reseña de otra organización → 404.
  */
-export async function PATCH(request: NextRequest) {
+export const PATCH = withOrg(async (ctx, request) => {
   try {
-    const body = await request.json();
-    const { reviewId, status, rejectionReason, replyText } = body;
+    const body = await readOrgBody(ctx, request, { route: 'product-reviews' });
+    const { reviewId, status, rejectionReason, replyText } = body ?? {};
 
     if (!reviewId) {
       return NextResponse.json({ error: 'reviewId requerido' }, { status: 400 });
@@ -100,17 +107,22 @@ export async function PATCH(request: NextRequest) {
       .from('product_reviews')
       .update(updates)
       .eq('id', reviewId)
+      .eq('organization_id', ctx.organizationId)
       .select('id, status')
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error updating review:', error);
       return NextResponse.json({ error: 'Error al actualizar reseña' }, { status: 500 });
     }
+    if (!data) {
+      return NextResponse.json({ error: 'Reseña no encontrada' }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true, review: data });
   } catch (error: any) {
+    if (error instanceof OrgContextError) throw error;
     console.error('PATCH /api/product-reviews:', error?.message || error);
     return NextResponse.json({ error: 'Error interno' }, { status: 500 });
   }
-}
+});

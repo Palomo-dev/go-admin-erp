@@ -6,7 +6,30 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { openFinanceService } from './openFinanceService';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { plainDayOfInstant } from '@/lib/services/businessInstant';
+import { addPlainDays, todayInTz } from '@/lib/utils/timezone';
 import type { OpenFinanceAccount, OpenFinanceLink, OpenFinanceTransaction } from './openFinanceTypes';
+import { tipoBanco, tipoDesdeImporteBancario } from '@/lib/finanzas/movimientoBancario';
+
+// ============================================================
+// Fase B, tanda 9. Las ventanas de sincronizacion ("ultimos 30 dias", "desde
+// la ultima sincronizacion hasta hoy") se calculaban en UTC. Dos consecuencias
+// distintas, las dos silenciosas:
+//
+//   1. "Hasta hoy" en UTC deja fuera los movimientos del dia en curso en
+//      cualquier zona por delante de UTC (Asia/Kathmandu va +05:45), y en
+//      America adelanta el corte a las 19:00 del dia anterior.
+//   2. Derivar el dia de `link.last_sync_at` —un **timestamptz**, verificado
+//      en `information_schema.columns`— recortando su ISO se queda con el dia
+//      UTC: una sincronizacion hecha a las 20:00 en Bogota se
+//      reanudaba desde el dia SIGUIENTE y se perdian esas horas para siempre,
+//      porque `last_sync_at` ya habia avanzado.
+//
+// `open_finance_links` lleva `organization_id` y no lleva `branch_id`, asi que
+// la zona es la de la organizacion (ADR-003: identidad, no parametro). El link
+// ya se consulta aqui, de modo que no hace falta cambiar ninguna firma.
+// ============================================================
 
 /** Estadisticas de sincronizacion de un link */
 interface SyncStats {
@@ -55,17 +78,8 @@ export class TransactionSyncService {
     try {
       const supabase = getSupabaseAdmin();
 
-      // Fechas por defecto: ultimos 30 dias
-      const today = new Date();
-      const fromDate = new Date(today);
-      fromDate.setDate(fromDate.getDate() - 30);
-      const defaultDateTo = today.toISOString().slice(0, 10);
-      const defaultDateFrom = fromDate.toISOString().slice(0, 10);
-
-      const finalDateFrom = dateFrom ?? defaultDateFrom;
-      const finalDateTo = dateTo ?? defaultDateTo;
-
-      // Obtener el link para validar estado
+      // El link se consulta ANTES que nada porque de el sale la organizacion, y
+      // de la organizacion la zona con la que se calculan las fechas por defecto.
       const { data: link, error: linkError } = await supabase
         .from('open_finance_links')
         .select('*')
@@ -79,6 +93,14 @@ export class TransactionSyncService {
       if ((link as OpenFinanceLink).status !== 'active') {
         throw new Error('El link no esta activo');
       }
+
+      // Fechas por defecto: ultimos 30 dias calendario de la organizacion.
+      const timezone = await resolveTimezone(Number((link as OpenFinanceLink).organization_id));
+      const defaultDateTo = todayInTz(timezone);
+      const defaultDateFrom = addPlainDays(defaultDateTo, -30);
+
+      const finalDateFrom = dateFrom ?? defaultDateFrom;
+      const finalDateTo = dateTo ?? defaultDateTo;
 
       // Determinar las cuentas a sincronizar
       let accounts: OpenFinanceAccount[] = [];
@@ -271,7 +293,8 @@ export class TransactionSyncService {
       }
 
       // 4. Determinar tipo de transaccion segun el monto
-      const transactionType = ofTx.amount >= 0 ? 'credit' : 'debit';
+      // (valores del CHECK: 'credit'/'debit' no existen y el INSERT fallaba)
+      const transactionType = tipoBanco(tipoDesdeImporteBancario(ofTx.amount));
 
       // 5. Insertar en bank_transactions
       const { data: inserted, error: insertError } = await supabase
@@ -397,11 +420,13 @@ export class TransactionSyncService {
       for (const linkRow of links ?? []) {
         const link = linkRow as OpenFinanceLink;
         try {
-          // Fecha de ultima sincronizacion a hoy
-          const today = new Date().toISOString().slice(0, 10);
+          // Fecha de ultima sincronizacion a hoy, en la zona de la
+          // organizacion DUENA DEL LINK (no la de quien dispara el cron).
+          const timezone = await resolveTimezone(Number(link.organization_id));
+          const today = todayInTz(timezone);
           const lastSync = link.last_sync_at
-            ? new Date(link.last_sync_at).toISOString().slice(0, 10)
-            : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+            ? plainDayOfInstant(link.last_sync_at, timezone)
+            : addPlainDays(today, -30);
 
           const stats = await this.syncTransactions(link.id, undefined, lastSync, today);
           linksProcessed++;

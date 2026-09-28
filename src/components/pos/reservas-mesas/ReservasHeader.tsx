@@ -17,6 +17,7 @@ import {
   type ReservationStatus,
   type ReservationSource,
 } from './reservasMesasService';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface ReservasHeaderProps {
   search: string;
@@ -129,18 +130,18 @@ export function ReservasHeader({
           </SelectContent>
         </Select>
 
-        <Input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => onDateFromChange(e.target.value)}
-          className="w-[150px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 dark:[color-scheme:dark]"
+        <CampoFecha
+          aria-label="Desde"
+          valor={dateFrom}
+          onValorChange={onDateFromChange}
+          className="w-[170px]"
         />
         <span className="text-gray-400">—</span>
-        <Input
-          type="date"
-          value={dateTo}
-          onChange={(e) => onDateToChange(e.target.value)}
-          className="w-[150px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 dark:[color-scheme:dark]"
+        <CampoFecha
+          aria-label="Hasta"
+          valor={dateTo}
+          onValorChange={onDateToChange}
+          className="w-[170px]"
         />
       </div>
     </div>

@@ -24,7 +24,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  *      mismo saldo: ambos pasaban la validación y la factura quedaba en negativo.
  *      La RPC es SECURITY INVOKER: corre con la sesión (RLS) o el service role,
  *      según el cliente que reciba esta función, igual que antes.
- *   3. Si pago completo: devenga comisión si no estaba devengada (sigue en Node).
+ *   3. Si pago completo y la factura viene de una oportunidad: RPC
+ *      `fn_comision_oportunidad_devengar` (migración 20260928212000), la única
+ *      escritura de la comisión de oportunidad: base SIN impuestos (subtotal),
+ *      método de la factura (porcentaje o monto fijo) y una sola fuente — si la
+ *      factura (o su venta) ya devengó su comisión, no se devenga otra. Antes
+ *      se insertaba desde Node sobre el total CON impuestos y siempre por
+ *      porcentaje, y duplicaba la comisión de la factura.
  */
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -66,24 +72,22 @@ export function isStripeReferenceDuplicate(error: { code?: string; message?: str
   return typeof error.message !== 'string' || error.message.includes('uq_payments_org_stripe_reference') || /payments/.test(error.message);
 }
 
-/** Fila de la factura que la comisión necesita (la RPC no la devuelve; se lee solo cuando queda pagada). */
-interface InvoiceForCommission {
-  total: number;
-  currency: string;
-  opportunity_id: string | null;
-  salesperson_id: string | null;
-  commission_rate: number | null;
-  commission_type: string | null;
-}
-
-async function readInvoiceForCommission(supabase: SupabaseClient, orgId: number, invoiceId: string): Promise<InvoiceForCommission | null> {
+/** Oportunidad de la factura (la RPC de pago no la devuelve; se lee solo cuando queda pagada). */
+async function readInvoiceOpportunity(supabase: SupabaseClient, orgId: number, invoiceId: string): Promise<string | null> {
   const { data } = await supabase
     .from('invoice_sales')
-    .select('total, currency, opportunity_id, salesperson_id, commission_rate, commission_type')
+    .select('opportunity_id')
     .eq('id', invoiceId)
     .eq('organization_id', orgId)
     .maybeSingle();
-  return (data as InvoiceForCommission | null) ?? null;
+  return ((data as { opportunity_id: string | null } | null)?.opportunity_id) ?? null;
+}
+
+/** Resultado `jsonb` de `fn_comision_oportunidad_devengar`. */
+interface OpportunityCommissionRpc {
+  created: boolean;
+  already_accrued: boolean;
+  reason: string | null;
 }
 
 /** Resultado `jsonb` de `fn_register_crm_payment`. */
@@ -242,59 +246,26 @@ export async function registerCrmPayment(
   // Estado REAL releído por la RPC tras el INSERT (lo fijan los triggers de la BD); no se recalcula aquí.
   const newInvoiceStatus = typeof rpcRow.invoice_status === 'string' && rpcRow.invoice_status !== '' ? rpcRow.invoice_status : 'partial';
 
-  // ─── 3. Si pago completo, devengar comisión si no estaba devengada ─────────
+  // ─── 3. Si pago completo y viene de una oportunidad: su comisión, por la RPC ──
   let commissionCreated = false;
 
   if (newInvoiceStatus === 'paid') {
-    const invoiceRow = await readInvoiceForCommission(supabase, orgId, data.invoice_id);
-    if (invoiceRow?.opportunity_id) {
-      // ¿Ya existe una comisión para esta oportunidad? En CUALQUIER estado (r3):
-      // misma regla que el trigger de BD y que commissionService.accrueCommission;
-      // una cancelada (rechazo/clawback) no se vuelve a devengar sola.
-      const { data: existingComm } = await supabase
-        .from('commissions')
-        .select('id')
-        .eq('organization_id', orgId)
-        .eq('source_type', 'opportunity')
-        .eq('source_id', invoiceRow.opportunity_id)
-        .limit(1)
-        .maybeSingle();
-
-      if (!existingComm && invoiceRow.salesperson_id) {
-        // Devengar comisión
-        const baseAmount = Number(invoiceRow.total);
-        const rate = Number(invoiceRow.commission_rate) || 0;
-        const commissionAmount = (baseAmount * rate) / 100;
-
-        if (commissionAmount > 0) {
-          const { error: commError } = await supabase
-            .from('commissions')
-            .insert({
-              organization_id: orgId,
-              commission_type: invoiceRow.commission_type || 'salesperson',
-              source_type: 'opportunity',
-              source_id: invoiceRow.opportunity_id,
-              payee_type: 'employee',
-              payee_id: invoiceRow.salesperson_id,
-              base_amount: baseAmount,
-              commission_rate: rate,
-              commission_amount: commissionAmount,
-              currency: invoiceRow.currency,
-              status: 'accrued',
-              accrued_at: new Date().toISOString(),
-              metadata: {
-                invoice_id: data.invoice_id,
-                payment_id: paymentId,
-                auto_generated: true,
-              },
-            });
-
-          if (!commError) {
-            commissionCreated = true;
-          } else {
-            console.warn('paymentService.registerCrmPayment - commission error:', commError.message);
-          }
-        }
+    const opportunityId = await readInvoiceOpportunity(supabase, orgId, data.invoice_id);
+    if (opportunityId) {
+      // Una sola escritura: base sin impuestos, método de la factura y sin
+      // duplicar la comisión de la factura; una cancelada (rechazo/clawback)
+      // no se vuelve a devengar sola.
+      const { data: commData, error: commError } = await supabase.rpc('fn_comision_oportunidad_devengar', {
+        p_org: orgId,
+        p_opportunity_id: opportunityId,
+        p_invoice_id: data.invoice_id,
+        p_payment_id: paymentId,
+      });
+      if (commError) {
+        // El pago ya quedó registrado: la comisión no puede tumbarlo.
+        console.warn('paymentService.registerCrmPayment - commission error:', commError.message);
+      } else {
+        commissionCreated = (commData as OpportunityCommissionRpc | null)?.created === true;
       }
     }
   }

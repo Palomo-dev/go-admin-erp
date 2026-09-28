@@ -24,7 +24,8 @@ import {
   RefreshCw,
   Settings2,
 } from 'lucide-react';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { ParkingPass } from '@/lib/services/parkingService';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
@@ -72,6 +73,7 @@ export function PassCard({
   onReactivate,
   onRenew,
 }: PassCardProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const statusConfig = STATUS_CONFIG[pass.status] || STATUS_CONFIG.active;
 
   const formatDate = (dateStr: string) => {

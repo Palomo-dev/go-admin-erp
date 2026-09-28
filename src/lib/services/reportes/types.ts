@@ -73,8 +73,28 @@ export type CategoriaReporte =
  * Cliente de Supabase con el que se ejecuta un reporte (F0-SEC r3, tester r2
  * fallo 3). En el navegador es el cliente browser con la sesión del usuario; en
  * un route handler es el cliente de sesión de `getServerOrgContext()`. Nunca el
- * service role: las RPC `fn_reporte_*` exigen `auth.uid()` miembro de la
- * organización y rechazan al service role a propósito.
+ * service role.
+ *
+ * Aislamiento entre inquilinos (F-53, corregido el 2026-09-22 en
+ * `20260922233000_reportes_cerrar_anon_y_guarda_pertenencia.sql`): las 21
+ * `fn_reporte_*` son SECURITY DEFINER y reciben la organización por parámetro,
+ * así que el aislamiento no lo da esta capa — lo da la propia RPC, con las dos
+ * mitades juntas:
+ *   (a) una guarda de pertenencia al principio del cuerpo, que exige que
+ *       `auth.uid()` sea miembro activo del `p_organization_id` recibido y
+ *       lanza 42501 si no lo es;
+ *   (b) `EXECUTE` revocado a `anon` y a PUBLIC, conservado en `authenticated`
+ *       y `service_role`.
+ * Con el service role la guarda falla cerrada (`auth.uid()` es NULL), de ahí
+ * que aquí nunca se pase ese cliente: no es una convención, es un requisito.
+ * Antes de esa migración, 19 de las 21 no tenían ninguna de las dos mitades y
+ * la sola clave publicable del navegador leía los datos de cualquier
+ * organización cambiando un número. Ver `docs/hallazgos/F-53.md`.
+ *
+ * Cuidado al tocar estas funciones: un `DROP` + `CREATE` posterior reconstruye
+ * los GRANT por defecto del esquema y reabre (b) sin avisar — ya pasó con
+ * `20260922210000`. `seguridadRpc.test.ts` lee el estado efectivo de todas las
+ * migraciones en orden justamente para que eso salga en rojo.
  */
 export type ReportesClient = SupabaseClient;
 

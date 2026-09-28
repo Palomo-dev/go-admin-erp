@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { DatabaseZap, RefreshCw } from 'lucide-react';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
@@ -19,6 +20,7 @@ import { cn } from '@/utils/Utils';
  * arranca la replicación al entrar al POS (el hook la programa).
  */
 export function LocalCatalogNotice({ className }: { className?: string }) {
+  const t = useTranslations('posVenta.catalogoLocal');
   const [orgId, setOrgId] = useState<number | null>(null);
   useEffect(() => {
     setOrgId(getOrganizationId() || null);
@@ -39,40 +41,38 @@ export function LocalCatalogNotice({ className }: { className?: string }) {
   if (!isOnline) {
     if (!status || status.isEmpty) {
       return (
-        <div role="status" className={cn(base, 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300', className)}>
+        <div role="status" className={cn(base, 'bg-danger-subtle text-danger-text', className)}>
           <DatabaseZap className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span>Sin conexión y sin catálogo local: conecta a internet una vez para replicarlo.</span>
+          <span>{t('sinRedSinCatalogo')}</span>
         </div>
       );
     }
     return (
-      <div role="status" className={cn(base, 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200', className)}>
+      <div role="status" className={cn(base, 'bg-warning-subtle text-warning-text', className)}>
         <DatabaseZap className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        <span>
-          Catálogo local del {replicatedLabel ?? '—'} · {status.productsCount} productos · {status.customersCount} clientes
-        </span>
+        <span>{t('sinRed', { fecha: replicatedLabel ?? '—', productos: status.productsCount, clientes: status.customersCount })}</span>
       </div>
     );
   }
 
   return (
-    <div role="status" className={cn(base, 'text-gray-500 dark:text-gray-400', className)}>
+    <div role="status" className={cn(base, 'text-fg-secondary', className)}>
       <DatabaseZap className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       <span>
         {status && !status.isEmpty
-          ? `Catálogo local: ${status.productsCount} productos · actualizado ${replicatedLabel ?? '—'}`
-          : 'Catálogo local sin replicar'}
+          ? t('conRed', { productos: status.productsCount, fecha: replicatedLabel ?? '—' })
+          : t('sinReplicar')}
       </span>
       <button
         type="button"
         onClick={() => replicateNow()}
         disabled={replicating}
-        className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-gray-900 dark:hover:text-gray-100 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+        className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-fg disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         <RefreshCw className={cn('h-3 w-3', replicating && 'animate-spin')} aria-hidden="true" />
-        {replicating ? 'Actualizando…' : 'Actualizar catálogo ahora'}
+        {replicating ? t('actualizando') : t('actualizar')}
       </button>
-      {error && <span className="text-red-600 dark:text-red-400">{error}</span>}
+      {error && <span className="text-danger-text">{error}</span>}
     </div>
   );
 }

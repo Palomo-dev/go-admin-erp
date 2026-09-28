@@ -16,6 +16,7 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { GymReportStats, GymReportFilters, getGymReportStats } from '@/lib/services/gymService';
 import { supabase } from '@/lib/supabase/config';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface Branch {
   id: number;
@@ -23,6 +24,7 @@ interface Branch {
 }
 
 export default function ReportesPage() {
+  const moneda = useMonedaOrganizacion();
   const { organization } = useOrganization();
   const { branchFilter: globalBranchFilter } = useBranch();
   const [stats, setStats] = useState<GymReportStats | null>(null);
@@ -107,8 +109,10 @@ export default function ReportesPage() {
         ['Tasa de Abandono (Churn)', `${stats.churnRate.toFixed(1)}%`],
         [''],
         ['INGRESOS POR PLAN'],
-        ['Plan', 'Miembros Activos', 'Ingresos Estimados'],
-        ...stats.revenueByPlan.map((p) => [p.plan_name, p.count.toString(), `$${p.revenue.toLocaleString()}`]),
+        // Moneda de la organización en el encabezado; el número va crudo (un
+        // «$1,234» partía la columna en un CSV separado por comas).
+        ['Plan', 'Miembros Activos', `Ingresos Estimados (${moneda.code})`],
+        ...stats.revenueByPlan.map((p) => [p.plan_name, p.count.toString(), String(p.revenue)]),
         [''],
         ['HORAS PICO (Check-ins por hora)'],
         ['Hora', 'Check-ins'],

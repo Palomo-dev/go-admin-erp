@@ -9,7 +9,7 @@ import {
   Download, Filter, Search, DollarSign, Calendar 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,7 +17,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BancosService, BankAccount, BankTransaction } from '../BancosService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { esEntradaBancaria, estaConciliado } from '@/lib/finanzas/movimientoBancario';
+import { useTranslations } from 'next-intl';
 
 interface MovimientosPageProps {
   accountId: string;
@@ -25,6 +29,11 @@ interface MovimientosPageProps {
 
 export function MovimientosPage({ accountId }: MovimientosPageProps) {
   const router = useRouter();
+  // Saldo y movimientos de la cuenta: en la moneda de la cuenta.
+  const { paraDocumento } = useMonedaOrganizacion();
+  // Fecha y hora en la zona de la organización, no la del navegador.
+  const { formatDateTime: formatDate } = useFormatDate();
+  const t = useTranslations('tesoreria');
   const [account, setAccount] = useState<BankAccount | null>(null);
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +44,8 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
   const [newTransaction, setNewTransaction] = useState({
     description: '',
     amount: '',
-    transaction_type: 'credit' as 'credit' | 'debit',
+    // Valores del CHECK de bank_transactions (antes 'credit'/'debit': nunca se guardó ninguno).
+    transaction_type: 'deposit' as 'deposit' | 'withdrawal',
     reference: ''
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -57,11 +67,13 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
       setTransactions(transactionsData);
     } catch (error) {
       console.error('Error cargando datos:', error);
-      toast.error('Error al cargar los movimientos');
+      toast.error(t('errorCarga.cuentaBancaria'), {
+        action: { label: t('reintentar'), onClick: () => void loadData() },
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [accountId, router]);
+  }, [accountId, router, t]);
 
   useEffect(() => {
     loadData();
@@ -95,7 +107,7 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
 
       toast.success('Movimiento registrado exitosamente');
       setShowNewDialog(false);
-      setNewTransaction({ description: '', amount: '', transaction_type: 'credit', reference: '' });
+      setNewTransaction({ description: '', amount: '', transaction_type: 'deposit', reference: '' });
       await loadData();
     } catch (error) {
       console.error('Error creando transacción:', error);
@@ -105,22 +117,13 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   const filteredTransactions = transactions.filter(tx => {
     const matchesSearch = !searchTerm || 
       tx.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tx.reference?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'all' || tx.status === statusFilter;
+    const matchesStatus = statusFilter === 'all'
+      || (statusFilter === 'matched' ? estaConciliado(tx.status) : tx.status === statusFilter);
     
     return matchesSearch && matchesStatus;
   });
@@ -202,7 +205,7 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
                   <Label className="text-gray-700 dark:text-gray-300">Tipo de Movimiento</Label>
                   <Select
                     value={newTransaction.transaction_type}
-                    onValueChange={(value: 'credit' | 'debit') => 
+                    onValueChange={(value: 'deposit' | 'withdrawal') => 
                       setNewTransaction({ ...newTransaction, transaction_type: value })
                     }
                   >
@@ -210,8 +213,8 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white dark:bg-gray-800">
-                      <SelectItem value="credit">Ingreso (Crédito)</SelectItem>
-                      <SelectItem value="debit">Egreso (Débito)</SelectItem>
+                      <SelectItem value="deposit">Ingreso (Crédito)</SelectItem>
+                      <SelectItem value="withdrawal">Egreso (Débito)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -273,7 +276,7 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
                   ? 'text-green-600 dark:text-green-400' 
                   : 'text-red-600 dark:text-red-400'
               }`}>
-                {formatCurrency(account.balance, account.currency || 'COP')}
+                {formatMoneda(account.balance, paraDocumento(account.currency))}
               </p>
             </div>
             <div className="text-right">
@@ -304,7 +307,7 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
               </SelectTrigger>
               <SelectContent className="bg-white dark:bg-gray-800">
                 <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="pending">Pendientes</SelectItem>
+                <SelectItem value="unmatched">Pendientes</SelectItem>
                 <SelectItem value="matched">Conciliados</SelectItem>
               </SelectContent>
             </Select>
@@ -341,12 +344,12 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
                 >
                   <div className="flex items-center gap-4">
                     <div className={`p-3 rounded-full ${
-                      tx.transaction_type === 'credit' 
+                      esEntradaBancaria(tx) 
                         ? 'bg-green-100 dark:bg-green-900/30' 
                         : 'bg-red-100 dark:bg-red-900/30'
                     }`}>
                       <DollarSign className={`h-5 w-5 ${
-                        tx.transaction_type === 'credit' 
+                        esEntradaBancaria(tx) 
                           ? 'text-green-600 dark:text-green-400' 
                           : 'text-red-600 dark:text-red-400'
                       }`} />
@@ -370,19 +373,19 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
                   <div className="flex items-center gap-4">
                     <Badge 
                       variant="outline"
-                      className={tx.status === 'matched' 
+                      className={estaConciliado(tx.status) 
                         ? 'border-green-500 text-green-600 dark:text-green-400' 
                         : 'border-yellow-500 text-yellow-600 dark:text-yellow-400'}
                     >
-                      {tx.status === 'matched' ? 'Conciliado' : 'Pendiente'}
+                      {estaConciliado(tx.status) ? 'Conciliado' : 'Pendiente'}
                     </Badge>
                     <p className={`text-lg font-semibold ${
-                      tx.transaction_type === 'credit' 
+                      esEntradaBancaria(tx) 
                         ? 'text-green-600 dark:text-green-400' 
                         : 'text-red-600 dark:text-red-400'
                     }`}>
-                      {tx.transaction_type === 'credit' ? '+' : '-'}
-                      {formatCurrency(Math.abs(tx.amount))}
+                      {esEntradaBancaria(tx) ? '+' : '-'}
+                      {formatMoneda(Math.abs(tx.amount), paraDocumento(account.currency))}
                     </p>
                   </div>
                 </div>

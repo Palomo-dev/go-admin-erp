@@ -1,4 +1,40 @@
 import { supabase } from '@/lib/supabase/config';
+import { nextPlainDay } from '@/lib/utils/dateCore';
+import { diasEntreDias, sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
+
+// ============================================================
+// Fase B, tanda 6 — el tape chart no necesita zona, necesita dias.
+//
+// Todo lo que entra y sale de aqui ya es un dia calendario: `startDate` y
+// `endDate` los manda la pantalla en la zona de la organizacion, y
+// `reservations.checkin` / `.checkout` y `reservation_blocks.date_from` /
+// `.date_to` son columnas **date** (verificado en `information_schema`).
+//
+// Lo que hacia el codigo antes era meter esos dias en un `Date` (que los lee
+// como medianoche UTC), sumarles dias con `setDate` y volver a sacarlos con
+// el ISO cortado por la 'T'. Acertaba por casualidad: basta con que el
+// valor traiga hora, o con que alguien pase un `Date` local, para que el
+// mapa de ocupacion se corra un dia entero. Ahora la aritmetica es de dia
+// calendario de principio a fin, sin ningun `Date` por medio.
+// ============================================================
+
+/**
+ * Dia calendario de un valor que viene de una columna **date**. PostgREST ya
+ * devuelve `YYYY-MM-DD`; el recorte es defensivo.
+ *
+ * NO vale para un `timestamptz`: ahi hay que usar `plainDayOfInstant`, que
+ * respeta el offset (regla 2 de `docs/reglas-fechas-timezone.md`).
+ */
+function diaDeColumnaDate(valor: string): string {
+  return valor.slice(0, 10);
+}
+
+/** Lo unico que necesita el mapa de ocupacion de cada reserva. */
+interface FilaOcupacion {
+  space_id: string | null;
+  checkin: string | null;
+  checkout: string | null;
+}
 
 export interface TapeChartSpace {
   id: string;
@@ -289,28 +325,26 @@ class TapeChartService {
 
     const occupancyMap: Record<string, Set<string>> = {};
 
-    // Initialize dates
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0];
-      occupancyMap[dateStr] = new Set();
+    // Inicializar los dias del rango, uno a uno y en dias calendario.
+    const totalDias = diasEntreDias(startDate, endDate);
+    for (let i = 0; i <= totalDias; i++) {
+      occupancyMap[sumarDiasAlDia(startDate, i)] = new Set();
     }
 
-    // Count occupied spaces per day
-    (reservationsData || []).forEach((r: any) => {
-      if (!r.space_id) return;
-      
-      const checkin = new Date(r.checkin);
-      const checkout = new Date(r.checkout);
-      
-      for (let d = new Date(Math.max(checkin.getTime(), start.getTime())); 
-           d < checkout && d <= end; 
-           d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split('T')[0];
-        if (occupancyMap[dateStr]) {
-          occupancyMap[dateStr].add(r.space_id);
-        }
+    // Contar espacios ocupados por dia. El rango de una reserva es
+    // [checkin, checkout): la noche de la salida ya no se ocupa.
+    (reservationsData || []).forEach((r: FilaOcupacion) => {
+      if (!r.space_id || !r.checkin || !r.checkout) return;
+
+      const checkin = diaDeColumnaDate(r.checkin);
+      const checkout = diaDeColumnaDate(r.checkout);
+
+      for (
+        let dia = checkin > startDate ? checkin : startDate;
+        dia < checkout && dia <= endDate;
+        dia = nextPlainDay(dia)
+      ) {
+        occupancyMap[dia]?.add(r.space_id);
       }
     });
 
@@ -369,16 +403,16 @@ class TapeChartService {
     return { hasConflict: false, conflictType: null };
   }
 
+  /**
+   * Los `days` dias calendario que empiezan en `startDate` (incluido).
+   * Aritmetica de dia, sin `Date`: el resultado es identico en cualquier
+   * runtime y no depende del `TZ` del proceso.
+   */
   generateDateRange(startDate: string, days: number): string[] {
     const dates: string[] = [];
-    const start = new Date(startDate);
-    
     for (let i = 0; i < days; i++) {
-      const date = new Date(start);
-      date.setDate(date.getDate() + i);
-      dates.push(date.toISOString().split('T')[0]);
+      dates.push(sumarDiasAlDia(startDate, i));
     }
-    
     return dates;
   }
 

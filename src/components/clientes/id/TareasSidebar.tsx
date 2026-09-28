@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
-import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { mensajeError, useFechasFicha } from './useFechasFicha';
 
 // Interfaces para el componente
 interface Tarea {
@@ -21,34 +21,41 @@ interface Tarea {
   parent_task_id: string | null;
 }
 
+interface PerfilUsuario {
+  id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+}
+
 interface TareasSidebarProps {
   clienteId: string;
   organizationId: number;
 }
 
 export default function TareasSidebar({ clienteId, organizationId }: TareasSidebarProps) {
+  const t = useTranslations('clientes.ficha');
+  const { relativa } = useFechasFicha();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [tareas, setTareas] = useState<Tarea[]>([]);
+  const [error, setError] = useState<{ mensaje: string | null } | null>(null);
   const [tareasPendientes, setTareasPendientes] = useState<Tarea[]>([]);
   const [tareasCompletadas, setTareasCompletadas] = useState<Tarea[]>([]);
-  const [users, setUsers] = useState<{[key: string]: any}>({});
-  
+  const [users, setUsers] = useState<Record<string, PerfilUsuario>>({});
+
   useEffect(() => {
     const fetchTareas = async () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         // Obtener IDs de oportunidades del cliente
         const { data: oppsData } = await supabase
           .from('opportunities')
           .select('id')
           .eq('customer_id', clienteId)
           .eq('organization_id', organizationId);
-        
+
         const oppIds = (oppsData || []).map(o => o.id);
-        
+
         // Query 1: Tareas del cliente por customer_id
         const { data: customerTasks, error: customerTasksError } = await supabase
           .from('tasks')
@@ -57,11 +64,11 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
           .eq('organization_id', organizationId)
           .order('due_date', { ascending: true })
           .order('priority', { ascending: false });
-        
+
         if (customerTasksError) throw customerTasksError;
-        
-        let allTasks = customerTasks || [];
-        
+
+        let allTasks: Tarea[] = customerTasks || [];
+
         // Query 2: Tareas de las oportunidades del cliente
         if (oppIds.length > 0) {
           const { data: oppTasks, error: oppTasksError } = await supabase
@@ -72,58 +79,57 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
             .eq('organization_id', organizationId)
             .order('due_date', { ascending: true })
             .order('priority', { ascending: false });
-          
+
           if (oppTasksError) throw oppTasksError;
-          
+
           // Merge y deduplicar por id
-          const taskMap = new Map<string, any>();
-          [...allTasks, ...(oppTasks || [])].forEach(t => taskMap.set(t.id, t));
+          const taskMap = new Map<string, Tarea>();
+          [...allTasks, ...((oppTasks || []) as Tarea[])].forEach((tarea) => taskMap.set(tarea.id, tarea));
           allTasks = Array.from(taskMap.values());
         }
-        
+
         const tareasData = allTasks;
-        
+
         if (tareasData) {
           // Separar tareas por estado
-          const pendientes = tareasData.filter(task => 
+          const pendientes = tareasData.filter(task =>
             ['pending', 'in_progress'].includes(task.status));
-          const completadas = tareasData.filter(task => 
+          const completadas = tareasData.filter(task =>
             ['completed', 'canceled'].includes(task.status));
-            
+
           setTareasPendientes(pendientes);
           setTareasCompletadas(completadas);
-          
+
           // Recolectar IDs de usuarios únicos para asignados
           const userIds = tareasData
             .map(task => task.assigned_to)
             .filter(id => id !== null) as string[];
-          
+
           // Usamos Array.from en lugar del spread operator para mayor compatibilidad
           const uniqueUserIds = Array.from(new Set(userIds));
-          
+
           // Obtener información de los usuarios asignados
           if (uniqueUserIds.length > 0) {
             const { data: usersData, error: usersError } = await supabase
               .from('profiles')
               .select('id, first_name, last_name')
               .in('id', uniqueUserIds);
-              
+
             if (usersError) throw usersError;
-            
+
             // Crear mapa de usuarios para fácil acceso
-            const usersMap: {[key: string]: any} = {};
+            const usersMap: Record<string, PerfilUsuario> = {};
             usersData?.forEach(user => {
               usersMap[user.id] = user;
             });
-            
+
             setUsers(usersMap);
           }
-          
-          setTareas(tareasData);
+
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error al cargar tareas:', err);
-        setError(err.message || 'Error al cargar las tareas');
+        setError({ mensaje: mensajeError(err) });
       } finally {
         setLoading(false);
       }
@@ -134,13 +140,12 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
 
   // Formatear fecha relativa
   const formatRelativeDate = (dateString: string | null) => {
-    if (!dateString) return 'Sin fecha';
-    
+    if (!dateString) return t('tareas.sinFecha');
+
     try {
-      const date = new Date(dateString);
-      return formatDistanceToNow(date, { addSuffix: true, locale: es });
-    } catch (error) {
-      return 'Fecha inválida';
+      return relativa(dateString);
+    } catch {
+      return t('tareas.fechaInvalida');
     }
   };
 
@@ -184,25 +189,25 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
 
   // Obtener nombre del asignado
   const getAssigneeName = (userId: string | null) => {
-    if (!userId) return 'Sin asignar';
-    
+    if (!userId) return t('tareas.sinAsignar');
+
     const user = users[userId];
-    if (!user) return 'Usuario';
-    
-    return `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Usuario';
+    if (!user) return t('comun.usuario');
+
+    return `${user.first_name || ''} ${user.last_name || ''}`.trim() || t('comun.usuario');
   };
 
   // Obtener texto de prioridad
   const getPriorityText = (priority: string) => {
     switch (priority) {
       case 'high':
-        return 'Alta';
+        return t('tareas.prioridades.alta');
       case 'medium':
-        return 'Media';
+        return t('tareas.prioridades.media');
       case 'low':
-        return 'Baja';
+        return t('tareas.prioridades.baja');
       default:
-        return 'Normal';
+        return t('tareas.prioridades.normal');
     }
   };
 
@@ -210,13 +215,14 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
   const getStatusText = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'Pendiente';
+        return t('tareas.estados.pendiente');
       case 'in_progress':
-        return 'En progreso';
+        return t('tareas.estados.enProgreso');
       case 'completed':
-        return 'Completada';
+        return t('tareas.estados.completada');
       case 'cancelled':
-        return 'Cancelada';
+      case 'canceled':
+        return t('tareas.estados.cancelada');
       default:
         return status;
     }
@@ -226,7 +232,7 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
   if (loading) {
     return (
       <div className="p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
-        <h3 className="font-medium text-lg mb-4 text-gray-900 dark:text-white">Tareas</h3>
+        <h3 className="font-medium text-lg mb-4 text-gray-900 dark:text-white">{t('tareas.titulo')}</h3>
         <CardListSkeleton cards={3} columns="1" />
       </div>
     );
@@ -236,9 +242,9 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
   if (error) {
     return (
       <div className="p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
-        <h3 className="font-medium text-lg mb-4 text-gray-900 dark:text-white">Tareas</h3>
+        <h3 className="font-medium text-lg mb-4 text-gray-900 dark:text-white">{t('tareas.titulo')}</h3>
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3">
-          <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+          <p className="text-sm text-red-700 dark:text-red-400">{error.mensaje || t('tareas.errorCarga')}</p>
         </div>
       </div>
     );
@@ -249,7 +255,7 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
       {/* Sección de tareas pendientes */}
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-medium text-lg text-gray-900 dark:text-white">
-          Tareas Pendientes
+          {t('tareas.pendientes')}
         </h3>
         <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
           {tareasPendientes.length}
@@ -264,14 +270,14 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
             </svg>
           </div>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            No hay tareas pendientes para este cliente
+            {t('tareas.sinPendientes')}
           </p>
         </div>
       ) : (
         <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 mb-6">
           {tareasPendientes.map(tarea => (
-            <div 
-              key={tarea.id} 
+            <div
+              key={tarea.id}
               className="p-3 border border-gray-100 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
             >
               <div className="flex flex-wrap items-start gap-2">
@@ -282,31 +288,31 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
                   <h4 className="font-medium text-gray-900 dark:text-white text-sm break-words whitespace-normal">
                     {tarea.title}
                   </h4>
-                  
+
                   {tarea.description && (
                     <HtmlContentRenderer html={tarea.description} className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words" />
                   )}
-                  
+
                   <div className="mt-2 flex flex-wrap gap-2">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${getPriorityColor(tarea.priority)}`}>
                       {getPriorityText(tarea.priority)}
                     </span>
-                    
+
                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                       {getStatusText(tarea.status)}
                     </span>
-                    
+
                     {tarea.due_date && (
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        new Date(tarea.due_date) < new Date() 
-                          ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400' 
+                        new Date(tarea.due_date) < new Date()
+                          ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400'
                           : 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400'
                       }`}>
                         {formatRelativeDate(tarea.due_date)}
                       </span>
                     )}
                   </div>
-                  
+
                   <div className="mt-2 flex items-center text-xs text-gray-500 dark:text-gray-400">
                     <span className="break-words whitespace-normal">
                       {getAssigneeName(tarea.assigned_to)}
@@ -322,7 +328,7 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
       {/* Sección de tareas completadas/canceladas */}
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-medium text-lg text-gray-900 dark:text-white">
-          Tareas Finalizadas
+          {t('tareas.finalizadas')}
         </h3>
         <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
           {tareasCompletadas.length}
@@ -332,14 +338,14 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
       {tareasCompletadas.length === 0 ? (
         <div className="text-center py-4">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            No hay tareas finalizadas para este cliente
+            {t('tareas.sinFinalizadas')}
           </p>
         </div>
       ) : (
         <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
           {tareasCompletadas.map(tarea => (
-            <div 
-              key={tarea.id} 
+            <div
+              key={tarea.id}
               className="p-3 border border-gray-100 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition opacity-75"
             >
               <div className="flex flex-wrap items-start gap-2">
@@ -350,7 +356,7 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
                   <h4 className="font-medium text-gray-600 dark:text-gray-300 text-sm break-words whitespace-normal">
                     {tarea.title}
                   </h4>
-                  
+
                   <div className="mt-2 flex flex-wrap gap-2">
                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                       {getStatusText(tarea.status)}
@@ -362,10 +368,10 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
           ))}
         </div>
       )}
-      
+
       <div className="pt-4 flex justify-center border-t border-gray-100 dark:border-gray-700 mt-4">
         <a href="/app/tareas" className="text-xs text-primary hover:underline">
-          Ver todas las tareas
+          {t('tareas.verTodas')}
         </a>
       </div>
     </div>

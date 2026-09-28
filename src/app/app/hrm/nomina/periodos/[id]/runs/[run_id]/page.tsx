@@ -8,7 +8,8 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import PayrollService from '@/lib/services/payrollService';
 import type { PayrollRun, PayrollSlip } from '@/lib/services/payrollService';
 import { SlipsTable } from '@/components/hrm/nomina/periodos/[id]/runs/[run_id]';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -56,6 +57,10 @@ export default function RunDetallePage() {
 
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
+  // Totales de la ejecución: se pintan en la moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
+  // `executed_at` es timestamptz: se pinta en la zona de la organización.
+  const { formatDate } = useFormatDate();
 
   const [run, setRun] = useState<PayrollRun | null>(null);
   const [slips, setSlips] = useState<PayrollSlip[]>([]);
@@ -94,7 +99,7 @@ export default function RunDetallePage() {
 
       setRun(runData);
       setSlips(slipsData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading data:', error);
       toast({
         title: 'Error',
@@ -122,7 +127,7 @@ export default function RunDetallePage() {
       toast({ title: 'Run marcado como final' });
       setMarkFinalOpen(false);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo marcar como final',
@@ -142,7 +147,7 @@ export default function RunDetallePage() {
       setSelectedSlips([]);
       setApproveOpen(false);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudieron aprobar las colillas',
@@ -152,7 +157,6 @@ export default function RunDetallePage() {
   };
 
   // Summary calculations
-  const summary = run?.summary || {};
   const totalGross = slips.reduce((sum, s) => sum + s.gross_pay, 0);
   const totalDeductions = slips.reduce((sum, s) => sum + s.total_deductions, 0);
   const totalNet = slips.reduce((sum, s) => sum + s.net_pay, 0);
@@ -257,7 +261,7 @@ export default function RunDetallePage() {
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Total Neto</p>
                 <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(totalNet, 'COP')}
+                  {formatear(totalNet)}
                 </p>
               </div>
             </div>
@@ -302,25 +306,25 @@ export default function RunDetallePage() {
             <div>
               <p className="text-sm text-blue-700 dark:text-blue-300">Total Bruto</p>
               <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                {formatCurrency(totalGross, 'COP')}
+                {formatear(totalGross)}
               </p>
             </div>
             <div>
               <p className="text-sm text-blue-700 dark:text-blue-300">Total Deducciones</p>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                -{formatCurrency(totalDeductions, 'COP')}
+                -{formatear(totalDeductions)}
               </p>
             </div>
             <div>
               <p className="text-sm text-blue-700 dark:text-blue-300">Total Neto</p>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(totalNet, 'COP')}
+                {formatear(totalNet)}
               </p>
             </div>
             <div>
               <p className="text-sm text-blue-700 dark:text-blue-300">Costo Empleador</p>
               <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                {formatCurrency(totalEmployerCost, 'COP')}
+                {formatear(totalEmployerCost)}
               </p>
             </div>
           </div>

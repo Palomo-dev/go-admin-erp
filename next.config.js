@@ -58,7 +58,7 @@ const nextConfig = {
   // Desactivar minificación SWC para reducir memoria del build
   swcMinify: true,
   // Desactivar cache de webpack para reducir memoria
-  webpack: (config, { dev, isServer }) => {
+  webpack: (config, { dev }) => {
     if (!dev) {
       config.cache = false;
     }
@@ -85,6 +85,15 @@ const nextConfig = {
   // Ver docs/PLAN_CAPACITOR_MOVIL.md para detalles de arquitectura.
   // Fix: multiple lockfiles warning (C:\Users\USUARIO\package-lock.json)
   outputFileTracingRoot: __dirname,
+  // PDF en Vercel (motor de documentos, src/lib/documents/server/pdf.ts):
+  // `@sparticuz/chromium` busca su Chromium comprimido en `bin/` con una ruta
+  // relativa, que el rastreo de archivos no ve. Solo las dos rutas que generan
+  // PDF lo llevan (~65 MB; la función queda ~150-175 MB de 250). Las claves son
+  // globs de picomatch: los corchetes de los segmentos dinámicos van escapados.
+  outputFileTracingIncludes: {
+    '/api/documentos/\\[tipo\\]/\\[id\\]': ['./node_modules/@sparticuz/chromium/bin/**'],
+    '/api/facturas-venta/\\[id\\]/pdf': ['./node_modules/@sparticuz/chromium/bin/**'],
+  },
 }
 
 // NOTA: withSentryConfig removido del build web para evitar OOM en Vercel.

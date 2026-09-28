@@ -16,16 +16,16 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart, CalendarIcon, ChevronDownIcon, RefreshCw, TrendingUp, LineChart } from "lucide-react";
-import { formatCurrency } from "@/utils/Utils";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CalendarIcon, RefreshCw, TrendingUp } from "lucide-react";
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { currencyService } from "@/lib/services/currencyService";
-import { MonthlyForecast, ForecastOpportunity, getMonthlyForecast } from "@/lib/services/forecastService";
+import { MonthlyForecast, getMonthlyForecast } from "@/lib/services/forecastService";
 import { TableSkeleton } from "@/components/common/PageSkeletons";
 import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 
@@ -37,7 +37,9 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
   const [loading, setLoading] = useState<boolean>(true);
   const [monthlyForecasts, setMonthlyForecasts] = useState<MonthlyForecast[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const [baseCurrency, setBaseCurrency] = useState<string>("USD");
+  // Vacía hasta que llega la moneda base de la organización (nunca un código cableado).
+  const [baseCurrency, setBaseCurrency] = useState<string>("");
+  const { paraDocumento } = useMonedaOrganizacion();
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>([]);
   const [includeWon, setIncludeWon] = useState<boolean>(true);
@@ -74,7 +76,7 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
   // Cargar datos de pronóstico
   useEffect(() => {
     const loadForecastData = async () => {
-      if (!pipelineId || !organizationId) return;
+      if (!pipelineId || !organizationId || !baseCurrency) return;
       
       setLoading(true);
       
@@ -110,7 +112,9 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
     };
     
     loadForecastData();
-  }, [pipelineId, baseCurrency, includeWon, includeLost, refreshTrigger]);
+    // `selectedMonth` solo se lee para el valor inicial: no debe recargar el pronóstico.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pipelineId, organizationId, baseCurrency, includeWon, includeLost, refreshTrigger]);
 
   // Obtener los datos del mes seleccionado
   const selectedMonthData = selectedMonth
@@ -181,12 +185,10 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
                     <SelectItem key={currency} value={currency}>{currency}</SelectItem>
                   ))
                 ) : (
-                  <>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="COP">COP</SelectItem>
-                    <SelectItem value="MXN">MXN</SelectItem>
-                  </>
+                  // Sin catálogo de la organización: su base + monedas de referencia.
+                  Array.from(new Set([baseCurrency, 'USD', 'EUR', 'MXN'].filter(Boolean))).map((code) => (
+                    <SelectItem key={code} value={code}>{code}</SelectItem>
+                  ))
                 )}
               </SelectContent>
             </Select>
@@ -201,7 +203,7 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
             <CardTitle className="text-sm text-muted-foreground">Total bruto</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalBruto, baseCurrency)}</div>
+            <div className="text-2xl font-bold">{formatMoneda(totalBruto, paraDocumento(baseCurrency))}</div>
           </CardContent>
         </Card>
         
@@ -210,7 +212,7 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
             <CardTitle className="text-sm text-muted-foreground">Total ponderado por probabilidad</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalPonderado, baseCurrency)}</div>
+            <div className="text-2xl font-bold">{formatMoneda(totalPonderado, paraDocumento(baseCurrency))}</div>
           </CardContent>
         </Card>
       </div>
@@ -246,8 +248,8 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
                 </CardDescription>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 text-sm text-muted-foreground">
                   <span className="flex gap-4 mt-1">
-                    <span>Total: {formatCurrency(selectedMonthData.totalValue, baseCurrency)}</span>
-                    <span>Ponderado: {formatCurrency(selectedMonthData.weightedValue, baseCurrency)}</span>
+                    <span>Total: {formatMoneda(selectedMonthData.totalValue, paraDocumento(baseCurrency))}</span>
+                    <span>Ponderado: {formatMoneda(selectedMonthData.weightedValue, paraDocumento(baseCurrency))}</span>
                   </span>
                 </div>
               </CardHeader>
@@ -272,17 +274,17 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
                         <TableCell>{opp.stage_name}</TableCell>
                         <TableCell>
                           {opp.currency === baseCurrency ? 
-                            formatCurrency(opp.amount, opp.currency) :
+                            formatMoneda(opp.amount, paraDocumento(opp.currency)) :
                             <>
-                              <div>{formatCurrency(opp.amount, opp.currency)}</div>
+                              <div>{formatMoneda(opp.amount, paraDocumento(opp.currency))}</div>
                               <div className="text-xs text-gray-500 dark:text-gray-400">
-                                ({formatCurrency(opp.convertedAmount, baseCurrency)})
+                                ({formatMoneda(opp.convertedAmount, paraDocumento(baseCurrency))})
                               </div>
                             </>
                           }
                         </TableCell>
                         <TableCell>{Math.round(opp.probability)}%</TableCell>
-                        <TableCell>{formatCurrency(opp.weightedAmount, baseCurrency)}</TableCell>
+                        <TableCell>{formatMoneda(opp.weightedAmount, paraDocumento(baseCurrency))}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

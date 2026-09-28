@@ -429,6 +429,73 @@ Comportamientos conservados en móvil: drawer con overlay y ×; acordeón de
 páginas; org card (ahora como `OrgSwitcher` compacto en header); bloque de sesión
 en el pie del drawer; `TrialBanner` y `EmailVerificationBanner` bajo el header.
 
+### 3.5 «Reportar problema» — dónde queda el acceso (revisado 2026-09-22)
+
+Función inventada en el diseño (**no existe en código**: no hay componente,
+ruta ni endpoint de feedback en `src/`). El diálogo es `FeedbackDialog`, un
+único `COMPONENT_SET` en `02 Componentes` con cuatro variantes —
+`Layout=desktop|sheet` × `State=form|sent`—, así que escritorio y móvil
+**apuntan al mismo componente**: tipo (Error · Sugerencia · Pregunta),
+«¿Qué pasó?», «Fotos o capturas (opcional)» con dropzone y miniaturas,
+«Tomar captura de pantalla», bloque de contexto automático de solo lectura,
+casilla «Incluir mi correo … para respuesta» y `Cancelar` / `Enviar`.
+
+| Plataforma | Disparador | Dónde vive | Frame en `03 Navegación y shell` |
+|---|---|---|---|
+| Escritorio | `IconButton` fantasma con `Icon/Bug`, entre `SearchTrigger` y `NotificationsBell` | `AppHeader` (componente maestro), por lo que aparece en **todas** las pantallas de escritorio | `Escritorio / Reportar problema` |
+| Móvil (1) | Fila «Reportar problema» con `Icon/Bug` en el **bloque de sesión** («Mi cuenta»), justo encima del divisor de «Cerrar sesión» | `SessionSheet`, ambas variantes (`Accounts=closed` y `Accounts=open`) | `Móvil / Menú — SessionSheet abierto` |
+| Móvil (2) | Fila «Reportar problema» **fija al pie del drawer**, fuera de la lista que hace scroll, separada por un divisor y por encima del `UserBlock` | `Sidebar` variante `Mode=drawer` → `Pie` › `Acciones (fijas)` | `Móvil / Menú — drawer abierto` |
+| Ambas (3) | Acción «Reportar un problema» (subtítulo «Error, sugerencia o pregunta») en el grupo **Acciones** de la paleta de comandos, encima de «Páginas» | `SearchCommand`, variantes `Layout=desktop` y `Layout=mobile` | `Escritorio / Ctrl+K abierto` · `Móvil / Ctrl+K` |
+
+**Exactamente un disparador por componente** (`AppHeader` 1, `SessionSheet` 1 por
+variante, `Sidebar / Mode=drawer` 1, `SearchCommand` 1 por variante `State=results`,
+`MobileHeader` 0 en los tres modos: no cabe y no lo lleva).
+
+La marca «Nuevo» de la regla I.4.3 va **como anotación fuera del frame**, en gris
+pizarra 12 px sobre cada pantalla — **nunca dentro del componente**. Un badge
+metido en el `AppHeader` empuja el `SearchTrigger` y parece un segundo botón al
+lado del icono de reportar; se probó, se veía mal y se revirtió el 2026-09-22.
+
+Por qué esas dos entradas y no otra: el `MobileHeader` ya está al límite
+(`OrgSwitcher` compacto + buscador) y la `MobileTabBar` está cerrada por decisión
+previa (Inicio · Ventas · GO Asistente · Alertas · Menú); meter ahí un icono de
+bug rompería cualquiera de las dos. El bloque de sesión es el equivalente móvil
+del menú de perfil, que es donde el usuario busca «ayuda / soporte»; el drawer es
+la única superficie que se abre desde la tab bar en un toque. **La fila del
+drawer estaba antes dentro de `Navegación (scroll)`**, es decir, se leía como una
+página más del menú y desaparecía bajo la línea de flotación en organizaciones
+con muchos módulos: por eso se movió al pie fijo.
+
+La hoja móvil es `FeedbackDialog / Layout=sheet`, anclada al borde inferior
+(390 × 763) — `Móvil / Reportar problema (sheet)`. No hay ningún «Ayuda» ni
+«Soporte» en el diseño con el que agruparla; si se añade, su sitio es esa misma
+zona `Acciones (fijas)` del pie del drawer.
+
+### 3.6 Nombres de organización en el archivo de Figma (2026-09-22)
+
+El repositorio es público y las capturas de `docs/design/figma/` viajan a él, así
+que **ningún nombre de organización cliente puede quedar en el archivo**. Se pasó
+un script por las ocho páginas sustituyendo los nombres reales por los ficticios
+acordados, editando los **maestros** de `02 Componentes` para que la corrección
+se propagara a las instancias:
+
+| Antes | Ahora | Dónde estaba |
+|---|---|---|
+| (nombre de una ferretería real, org 145) | `Mi empresa S.A.S.` | `OrgPicker`, `OrgSwitcher` (header y header-mobile), `SessionSheet`, `UserBlock`, breadcrumbs, `PageHeader`, contexto automático del `FeedbackDialog` |
+| (nombre de una panadería real) | `Comercial Andina S.A.S.` | `AccountSwitcher` (segunda cuenta), chips org·rol, estado «Cambiando a …» |
+
+Nomenclatura ficticia vigente: `Mi empresa S.A.S.` (organización actual),
+`Comercial Andina S.A.S.` (segunda cuenta / cliente), `Distribuidora del Norte` y
+`Calzado Mayorista S.A.S.` (proveedores), `Sucursal Principal` / `Sucursal Norte`
+/ `Bodega Norte` (sucursales). Quedan a propósito los nombres **genéricos de
+categoría o de producto** («Calzado», «Panadería», «Tornillo galvanizado 3"»):
+describen el giro, no identifican a nadie.
+
+Verificación: 0 coincidencias de nombres reales en las ocho páginas tras la
+pasada. **Las capturas anteriores a esta fecha siguen mostrando el nombre viejo**
+en el header y en el bloque de sesión y hay que regenerarlas (ver informe de la
+tanda 17).
+
 ---
 
 ## 4. Tabla de paridad — función actual → dónde vive en el diseño nuevo

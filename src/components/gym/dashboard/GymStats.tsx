@@ -5,7 +5,7 @@ import { Users, AlertTriangle, XCircle, LogIn, DollarSign, TrendingUp } from 'lu
 import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/utils/Utils';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { GymStats as GymStatsType } from '@/lib/services/gymService';
 
 interface GymStatsProps {
@@ -14,6 +14,7 @@ interface GymStatsProps {
 }
 
 export function GymStats({ stats, isLoading }: GymStatsProps) {
+  const { formatear } = useMonedaOrganizacion();
   const statCards = [
     {
       title: 'Membresías Activas',
@@ -45,7 +46,7 @@ export function GymStats({ stats, isLoading }: GymStatsProps) {
     },
     {
       title: 'Ingresos Hoy',
-      value: formatCurrency(stats.todayRevenue),
+      value: formatear(stats.todayRevenue),
       icon: DollarSign,
       color: 'text-emerald-600 dark:text-emerald-400',
       bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
@@ -53,7 +54,7 @@ export function GymStats({ stats, isLoading }: GymStatsProps) {
     },
     {
       title: 'Ingresos Semana',
-      value: formatCurrency(stats.weekRevenue),
+      value: formatear(stats.weekRevenue),
       icon: TrendingUp,
       color: 'text-purple-600 dark:text-purple-400',
       bgColor: 'bg-purple-100 dark:bg-purple-900/30',

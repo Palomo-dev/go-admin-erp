@@ -5,7 +5,8 @@
  */
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { getPrometeoWebhookToken, getProviderApiKey, getProviderConfig, isProviderConfigured } from './openFinanceConfig';
+import { getProviderApiKey, getProviderConfig, isProviderConfigured } from './openFinanceConfig';
+import { verificarTokenWebhookPrometeo } from './webhookPrometeo';
 import type {
   AccountBalance,
   AccountValidationRequest,
@@ -535,10 +536,10 @@ export class OpenFinanceService {
    * @param verifyToken Token recibido en el webhook
    */
   static verifyWebhookSignatureInternal(verifyToken: string): boolean {
+    // Punto único (fail-closed, tiempo constante, rechaza secretos de relleno):
+    // `webhookPrometeo.verificarTokenWebhookPrometeo`.
     try {
-      const expectedToken = getPrometeoWebhookToken();
-      if (!expectedToken) return false;
-      return verifyToken === expectedToken;
+      return verificarTokenWebhookPrometeo(verifyToken);
     } catch {
       return false;
     }
@@ -587,9 +588,11 @@ export class OpenFinanceService {
     arg4?: PrometeoLoginRequest,
   ): Promise<PrometeoLoginResponse> {
     if (arg3 && arg4) {
-      // Forma con supabase: (supabase, linkId, provider, credentials)
-      const linkId = arg1 as string;
-      const provider = arg2 as string;
+      // Forma con supabase: (supabase, linkId, provider, credentials).
+      // Antes tomaba `arg1` (el cliente) como linkId y `arg2` como proveedor:
+      // la sesión nunca se guardaba en el link correcto (GO-sec 2026-09-23).
+      const linkId = arg2 as string;
+      const provider = arg3;
       const credentials = arg4;
       const result = await OpenFinanceService.loginToBankInternal(provider, credentials);
       if (result.session_key) {

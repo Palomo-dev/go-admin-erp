@@ -82,6 +82,92 @@ export interface SupplierInput {
   country_code?: string | null;
   legal_organization_code?: string | null;
   trade_name?: string | null;
+  /** «Activo · aparece al comprar». Sin él, el alta usa el default de la BD (true). */
+  is_active?: boolean;
+}
+
+/** Fila del listado (RPC `proveedores_listado`): proveedor + cartera + entregas. */
+export interface ProveedorListadoItem {
+  id: number;
+  uuid: string;
+  name: string;
+  nit: string | null;
+  dv: string | null;
+  doc_type: string | null;
+  identification_document_code: string | null;
+  supplier_type: 'person' | 'company';
+  contact: string | null;
+  phone: string | null;
+  email: string | null;
+  payment_terms: string | null;
+  credit_days: number | null;
+  is_active: boolean;
+  logo_url: string | null;
+  /** Saldo por pagar: suma de `accounts_payable.balance` abiertas. */
+  saldo: number;
+  facturas_abiertas: number;
+  facturas_vencidas: number;
+  saldo_vencido: number;
+  /** % de entregas a tiempo; `null` sin órdenes evaluables. */
+  cumplimiento: number | null;
+  entregas_total: number;
+}
+
+export interface FiltrosListadoProveedores {
+  busqueda?: string;
+  estado?: 'activo' | 'inactivo' | null;
+  tipo?: 'company' | 'person' | null;
+  cartera?: 'con_saldo' | 'vencido' | 'al_dia' | null;
+  sinNit?: boolean;
+  orden?: 'nombre' | 'saldo' | 'creado';
+  direccion?: 'asc' | 'desc';
+  desde?: number;
+  limite?: number;
+}
+
+/** KPIs del listado (RPC `proveedores_resumen`). */
+export interface ProveedoresResumen {
+  total: number;
+  activos: number;
+  inactivos: number;
+  sin_nit: number;
+  saldo_por_pagar: number;
+  proveedores_con_saldo: number;
+  vencido_30: number;
+  proveedores_vencido_30: number;
+}
+
+/** Cifras del detalle de un proveedor (RPC `proveedor_resumen`). */
+export interface ProveedorResumen {
+  saldo: number;
+  facturas_abiertas: number;
+  vencido: number;
+  facturas_vencidas: number;
+  max_dias_mora: number;
+  compras_12m: number;
+  facturas_12m: number;
+  ordenes_12m: number;
+  entregas_total: number;
+  entregas_a_tiempo: number;
+  productos: number;
+  ordenes: number;
+  ordenes_abiertas: number;
+  facturas: number;
+  cuentas_por_pagar: number;
+  pagos: number;
+  lotes: number;
+}
+
+/** Producto que surte el proveedor (`product_suppliers` + `products`). */
+export interface SupplierProductLink {
+  id: number;
+  product_id: number;
+  cost: number;
+  is_preferred: boolean;
+  supplier_sku: string | null;
+  lead_time_days: number | null;
+  min_order_qty: number | null;
+  product: { id: number; uuid: string; name: string; sku: string | null; status: string | null } | null;
 }
 
 // Estadísticas de proveedores
@@ -139,6 +225,21 @@ export interface SupplierPaymentSummary {
   payment_date: string | null;
   created_at: string;
   discount_amount: number;
+}
+
+// Fila de `payments` tal como llega de PostgREST (numéricos como texto).
+interface SupplierPaymentRow {
+  id: string;
+  source: string;
+  source_id: string;
+  method: string;
+  amount: number | string | null;
+  currency: string;
+  reference: string | null;
+  status: string;
+  payment_date: string | null;
+  created_at: string;
+  discount_amount: number | string | null;
 }
 
 // Stock de producto del proveedor
@@ -232,8 +333,8 @@ class SupplierService {
       }
 
       return { data: data as Supplier, error: null };
-    } catch (error: any) {
-      console.error('Error obteniendo proveedor:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo proveedor:', error instanceof Error ? error.message : error);
       return { data: null, error: error as Error };
     }
   }
@@ -294,7 +395,8 @@ class SupplierService {
           tax_regime: input.tax_regime || null,
           fiscal_responsibilities: input.fiscal_responsibilities || null,
           payment_terms: input.payment_terms || null,
-          credit_days: input.credit_days || null,
+          // `?? null`: un proveedor de contado tiene 0 días, no «sin dato».
+          credit_days: input.credit_days ?? null,
           website: input.website || null,
           bank_name: input.bank_name || null,
           bank_account: input.bank_account || null,
@@ -305,6 +407,7 @@ class SupplierService {
           country_code: input.country_code || 'CO',
           legal_organization_code: input.legal_organization_code || null,
           trade_name: input.trade_name || null,
+          ...(input.is_active !== undefined ? { is_active: input.is_active } : {}),
         })
         .select()
         .single();
@@ -327,42 +430,56 @@ class SupplierService {
     input: SupplierInput
   ): Promise<{ data: Supplier | null; error: Error | null }> {
     try {
+      // Actualización PARCIAL: solo se escriben los campos presentes en
+      // `input`. Antes se escribía la fila entera con
+      // `input.campo || <valor por defecto>`, así que un formulario que no
+      // maneja un campo lo borraba: `EditarProveedorForm` no envía
+      // `supplier_type`, `parent_supplier_id`, `doc_type` ni
+      // `fiscal_responsibilities`, y guardar cualquier cambio convertía una
+      // persona natural en empresa y le borraba el proveedor padre y los datos
+      // DIAN (auditoría de proveedores y categorías, 2026-09-22).
+      const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      const setIfPresent = (column: string, value: unknown, empty: unknown = null) => {
+        if (value === undefined) return;
+        payload[column] = value === '' ? empty : value;
+      };
+
+      setIfPresent('name', input.name);
+      setIfPresent('supplier_type', input.supplier_type);
+      setIfPresent('parent_supplier_id', input.parent_supplier_id);
+      setIfPresent('doc_type', input.doc_type);
+      setIfPresent('nit', input.nit);
+      setIfPresent('contact', input.contact);
+      setIfPresent('phone', input.phone);
+      setIfPresent('email', input.email);
+      setIfPresent('notes', input.notes);
+      setIfPresent('description', input.description);
+      setIfPresent('logo_url', input.logo_url);
+      setIfPresent('address', input.address);
+      setIfPresent('city', input.city);
+      setIfPresent('state', input.state);
+      setIfPresent('country', input.country, 'Colombia');
+      setIfPresent('postal_code', input.postal_code);
+      setIfPresent('tax_id', input.tax_id);
+      setIfPresent('tax_regime', input.tax_regime);
+      setIfPresent('fiscal_responsibilities', input.fiscal_responsibilities);
+      setIfPresent('payment_terms', input.payment_terms);
+      setIfPresent('credit_days', input.credit_days);
+      setIfPresent('website', input.website);
+      setIfPresent('bank_name', input.bank_name);
+      setIfPresent('bank_account', input.bank_account);
+      setIfPresent('account_type', input.account_type);
+      setIfPresent('dv', input.dv);
+      setIfPresent('municipality_code', input.municipality_code);
+      setIfPresent('identification_document_code', input.identification_document_code);
+      setIfPresent('country_code', input.country_code, 'CO');
+      setIfPresent('legal_organization_code', input.legal_organization_code);
+      setIfPresent('trade_name', input.trade_name);
+      setIfPresent('is_active', input.is_active);
+
       const { data, error } = await supabase
         .from('suppliers')
-        .update({
-          name: input.name,
-          supplier_type: input.supplier_type || 'company',
-          parent_supplier_id: input.parent_supplier_id || null,
-          doc_type: input.doc_type || null,
-          nit: input.nit || null,
-          contact: input.contact || null,
-          phone: input.phone || null,
-          email: input.email || null,
-          notes: input.notes || null,
-          description: input.description || null,
-          logo_url: input.logo_url || null,
-          address: input.address || null,
-          city: input.city || null,
-          state: input.state || null,
-          country: input.country || 'Colombia',
-          postal_code: input.postal_code || null,
-          tax_id: input.tax_id || null,
-          tax_regime: input.tax_regime || null,
-          fiscal_responsibilities: input.fiscal_responsibilities || null,
-          payment_terms: input.payment_terms || null,
-          credit_days: input.credit_days || null,
-          website: input.website || null,
-          bank_name: input.bank_name || null,
-          bank_account: input.bank_account || null,
-          account_type: input.account_type || null,
-          dv: input.dv || null,
-          municipality_code: input.municipality_code || null,
-          identification_document_code: input.identification_document_code || null,
-          country_code: input.country_code || 'CO',
-          legal_organization_code: input.legal_organization_code || null,
-          trade_name: input.trade_name || null,
-          updated_at: new Date().toISOString()
-        })
+        .update(payload)
         .eq('uuid', supplierUuid)
         .eq('organization_id', organizationId)
         .select()
@@ -397,6 +514,144 @@ class SupplierService {
     } catch (error) {
       console.error('Error eliminando proveedor:', error);
       return { success: false, error: error as Error };
+    }
+  }
+
+  /**
+   * Listado paginado en el servidor con saldo por pagar, cartera y entregas
+   * (RPC `proveedores_listado`, una sola llamada por página: nada de N
+   * consultas por fila). La RPC valida la pertenencia a la organización.
+   */
+  async listarProveedores(
+    organizationId: number,
+    filtros: FiltrosListadoProveedores = {},
+    ids?: readonly number[]
+  ): Promise<{ items: ProveedorListadoItem[]; total: number }> {
+    const { data, error } = await supabase.rpc('proveedores_listado', {
+      p_organization_id: organizationId,
+      p_offset: filtros.desde ?? 0,
+      p_limit: filtros.limite ?? 20,
+      p_busqueda: filtros.busqueda?.trim() || null,
+      p_estado: filtros.estado ?? null,
+      p_tipo: filtros.tipo ?? null,
+      p_cartera: filtros.cartera ?? null,
+      p_sin_nit: !!filtros.sinNit,
+      p_orden: filtros.orden ?? 'nombre',
+      p_direccion: filtros.direccion ?? 'asc',
+      p_ids: ids && ids.length > 0 ? [...ids] : null,
+    });
+    if (error) throw error;
+    const resultado = (data ?? {}) as { items?: ProveedorListadoItem[]; total?: number };
+    const items = (resultado.items ?? []).map((p) => ({
+      ...p,
+      saldo: Number(p.saldo) || 0,
+      saldo_vencido: Number(p.saldo_vencido) || 0,
+    }));
+    return { items, total: Number(resultado.total) || 0 };
+  }
+
+  /** KPIs del listado (RPC `proveedores_resumen`). */
+  async obtenerResumenProveedores(organizationId: number): Promise<ProveedoresResumen> {
+    const { data, error } = await supabase.rpc('proveedores_resumen', { p_organization_id: organizationId });
+    if (error) throw error;
+    const r = (data ?? {}) as Partial<Record<keyof ProveedoresResumen, number | string>>;
+    return {
+      total: Number(r.total) || 0,
+      activos: Number(r.activos) || 0,
+      inactivos: Number(r.inactivos) || 0,
+      sin_nit: Number(r.sin_nit) || 0,
+      saldo_por_pagar: Number(r.saldo_por_pagar) || 0,
+      proveedores_con_saldo: Number(r.proveedores_con_saldo) || 0,
+      vencido_30: Number(r.vencido_30) || 0,
+      proveedores_vencido_30: Number(r.proveedores_vencido_30) || 0,
+    };
+  }
+
+  /**
+   * Cifras reales del detalle (RPC `proveedor_resumen`): antes se contaban
+   * solo las 10 órdenes y 10 facturas que se traían. `null` si el proveedor
+   * no es de la organización.
+   */
+  async obtenerResumenProveedor(organizationId: number, supplierId: number): Promise<ProveedorResumen | null> {
+    const { data, error } = await supabase.rpc('proveedor_resumen', {
+      p_organization_id: organizationId,
+      p_supplier_id: supplierId,
+    });
+    if (error) throw error;
+    if (!data) return null;
+    const r = data as Record<string, number | string | null>;
+    const n = (k: keyof ProveedorResumen) => Number(r[k]) || 0;
+    return {
+      saldo: n('saldo'),
+      facturas_abiertas: n('facturas_abiertas'),
+      vencido: n('vencido'),
+      facturas_vencidas: n('facturas_vencidas'),
+      max_dias_mora: n('max_dias_mora'),
+      compras_12m: n('compras_12m'),
+      facturas_12m: n('facturas_12m'),
+      ordenes_12m: n('ordenes_12m'),
+      entregas_total: n('entregas_total'),
+      entregas_a_tiempo: n('entregas_a_tiempo'),
+      productos: n('productos'),
+      ordenes: n('ordenes'),
+      ordenes_abiertas: n('ordenes_abiertas'),
+      facturas: n('facturas'),
+      cuentas_por_pagar: n('cuentas_por_pagar'),
+      pagos: n('pagos'),
+      lotes: n('lotes'),
+    };
+  }
+
+  /** Activa o desactiva varios proveedores (acción masiva y del menú de fila). */
+  async setSuppliersActive(
+    organizationId: number,
+    supplierIds: readonly number[],
+    isActive: boolean
+  ): Promise<{ success: boolean; error: Error | null }> {
+    if (supplierIds.length === 0) return { success: true, error: null };
+    try {
+      const { error } = await supabase
+        .from('suppliers')
+        .update({ is_active: isActive, updated_at: new Date().toISOString() })
+        .eq('organization_id', organizationId)
+        .in('id', [...supplierIds]);
+      if (error) throw error;
+      return { success: true, error: null };
+    } catch (error) {
+      console.error('Error cambiando el estado de los proveedores:', error);
+      return { success: false, error: error as Error };
+    }
+  }
+
+  /**
+   * Productos que surte el proveedor. Antes el detalle pedía
+   * `products.is_active`, que no existe, y la tarjeta salía siempre vacía.
+   */
+  async getSupplierProducts(supplierId: number): Promise<SupplierProductLink[]> {
+    try {
+      const { data, error } = await supabase
+        .from('product_suppliers')
+        .select('id, product_id, cost, is_preferred, supplier_sku, lead_time_days, min_order_qty, product:products(id, uuid, name, sku, status)')
+        .eq('supplier_id', supplierId);
+      if (error) throw error;
+      type Fila = Omit<SupplierProductLink, 'product' | 'cost' | 'min_order_qty'> & {
+        cost: number | string | null;
+        min_order_qty: number | string | null;
+        product: SupplierProductLink['product'] | SupplierProductLink['product'][];
+      };
+      return ((data ?? []) as unknown as Fila[]).map((row) => ({
+        id: row.id,
+        product_id: row.product_id,
+        cost: Number(row.cost) || 0,
+        is_preferred: !!row.is_preferred,
+        supplier_sku: row.supplier_sku ?? null,
+        lead_time_days: row.lead_time_days ?? null,
+        min_order_qty: row.min_order_qty !== null && row.min_order_qty !== undefined ? Number(row.min_order_qty) : null,
+        product: Array.isArray(row.product) ? (row.product[0] ?? null) : row.product,
+      }));
+    } catch (error) {
+      console.error('Error obteniendo productos del proveedor:', error);
+      return [];
     }
   }
 
@@ -616,8 +871,8 @@ class SupplierService {
         } else {
           results.success++;
         }
-      } catch (error: any) {
-        results.errors.push({ row: i + 1, error: error.message || 'Error desconocido' });
+      } catch (error: unknown) {
+        results.errors.push({ row: i + 1, error: (error instanceof Error && error.message) || 'Error desconocido' });
       }
     }
 
@@ -683,19 +938,35 @@ class SupplierService {
 
       if (error) throw error;
 
-      return (data || []).map((item: any) => ({
-        id: item.id,
-        invoice_id: item.invoice_id,
-        amount: parseFloat(item.amount) || 0,
-        balance: parseFloat(item.balance) || 0,
-        due_date: item.due_date,
-        status: item.status,
-        days_overdue: item.days_overdue || 0,
-        discount_amount: parseFloat(item.discount_amount) || 0,
-        created_at: item.created_at,
-        invoice_number: item.invoice_purchase?.number_ext || null,
-        invoice_total: parseFloat(item.invoice_purchase?.total) || 0
-      }));
+      type Factura = { number_ext: string | null; total: number | string | null };
+      type FilaCxp = {
+        id: string;
+        invoice_id: string | null;
+        amount: number | string | null;
+        balance: number | string | null;
+        due_date: string | null;
+        status: string;
+        days_overdue: number | null;
+        discount_amount: number | string | null;
+        created_at: string;
+        invoice_purchase: Factura | Factura[] | null;
+      };
+      return ((data || []) as unknown as FilaCxp[]).map((item) => {
+        const factura = Array.isArray(item.invoice_purchase) ? item.invoice_purchase[0] : item.invoice_purchase;
+        return {
+          id: item.id,
+          invoice_id: item.invoice_id,
+          amount: Number(item.amount) || 0,
+          balance: Number(item.balance) || 0,
+          due_date: item.due_date,
+          status: item.status,
+          days_overdue: item.days_overdue || 0,
+          discount_amount: Number(item.discount_amount) || 0,
+          created_at: item.created_at,
+          invoice_number: factura?.number_ext || null,
+          invoice_total: Number(factura?.total) || 0
+        };
+      });
     } catch (error) {
       console.error('Error obteniendo cuentas por pagar:', error);
       return [];
@@ -729,54 +1000,45 @@ class SupplierService {
 
       const invoiceIds = (invoices || []).map(inv => inv.id);
 
-      // Buscar pagos donde source = 'account_payable' y source_id IN cxpIds
-      // o source = 'invoice_purchase' y source_id IN invoiceIds
-      let paymentsQuery = supabase
-        .from('payments')
-        .select(`
-          id,
-          source,
-          source_id,
-          method,
-          amount,
-          currency,
-          reference,
-          status,
-          payment_date,
-          created_at,
-          discount_amount
-        `)
-        .eq('organization_id', organizationId)
-        .eq('status', 'completed')
-        .order('payment_date', { ascending: false });
+      // Pagos con source = 'account_payable' y source_id IN cxpIds, o
+      // source = 'invoice_purchase' y source_id IN invoiceIds. El filtro va al
+      // servidor: antes se descargaban todos los pagos de la organización y se
+      // cruzaban en el navegador.
+      const columnas = 'id, source, source_id, method, amount, currency, reference, status, payment_date, created_at, discount_amount';
+      const consultar = (source: string, ids: string[]) =>
+        ids.length === 0
+          ? Promise.resolve({ data: [] as SupplierPaymentRow[], error: null })
+          : supabase
+              .from('payments')
+              .select(columnas)
+              .eq('organization_id', organizationId)
+              .eq('status', 'completed')
+              .eq('source', source)
+              .in('source_id', ids);
 
-      // Buscar pagos relacionados a CxP o facturas de compra
-      const { data: paymentsData, error } = await paymentsQuery
-        .or(`source.eq.account_payable,source.eq.invoice_purchase`);
+      const [deCxp, deFacturas] = await Promise.all([
+        consultar('account_payable', cxpIds.map((id) => String(id))),
+        consultar('invoice_purchase', invoiceIds.map((id) => String(id))),
+      ]);
+      if (deCxp.error) throw deCxp.error;
+      if (deFacturas.error) throw deFacturas.error;
 
-      if (error) throw error;
+      const fecha = (p: SupplierPaymentRow) => p.payment_date ?? p.created_at ?? '';
+      const filteredPayments = [...((deCxp.data ?? []) as SupplierPaymentRow[]), ...((deFacturas.data ?? []) as SupplierPaymentRow[])]
+        .sort((a, b) => (fecha(a) < fecha(b) ? 1 : fecha(a) > fecha(b) ? -1 : 0));
 
-      // Filtrar en cliente los que corresponden a este proveedor
-      const cxpIdSet = new Set(cxpIds.map(id => id.toString()));
-      const invoiceIdSet = new Set(invoiceIds.map(id => id.toString()));
-      const filteredPayments = (paymentsData || []).filter((p: any) => {
-        if (p.source === 'account_payable' && cxpIdSet.has(p.source_id)) return true;
-        if (p.source === 'invoice_purchase' && invoiceIdSet.has(p.source_id)) return true;
-        return false;
-      });
-
-      return filteredPayments.map((p: any) => ({
+      return filteredPayments.map((p) => ({
         id: p.id,
         source: p.source,
         source_id: p.source_id,
         method: p.method,
-        amount: parseFloat(p.amount) || 0,
+        amount: Number(p.amount) || 0,
         currency: p.currency,
         reference: p.reference,
         status: p.status,
         payment_date: p.payment_date,
         created_at: p.created_at,
-        discount_amount: parseFloat(p.discount_amount) || 0
+        discount_amount: Number(p.discount_amount) || 0
       }));
     } catch (error) {
       console.error('Error obteniendo pagos del proveedor:', error);
@@ -800,22 +1062,36 @@ class SupplierService {
           cost,
           is_preferred,
           supplier_sku,
-          product:products (
+          product:products!inner (
             id,
             uuid,
             name,
             sku,
             track_stock,
-            status
+            status,
+            organization_id
           )
         `)
-        .eq('supplier_id', supplierId);
+        .eq('supplier_id', supplierId)
+        // `product_suppliers` no tiene organization_id: el inquilino se
+        // comprueba por el producto, no solo por RLS.
+        .eq('product.organization_id', organizationId);
 
       if (error) throw error;
 
       if (!data || data.length === 0) return [];
 
-      const productIds = data.map((item: any) => item.product_id);
+      type FilaStock = {
+        product_id: number;
+        cost: number | string | null;
+        is_preferred: boolean | null;
+        supplier_sku: string | null;
+        product: { uuid: string; name: string; sku: string | null; track_stock: boolean | null; status: string | null } | null;
+      };
+      const filas = (data as unknown as (Omit<FilaStock, 'product'> & { product: FilaStock['product'] | FilaStock['product'][] })[]).map(
+        (f): FilaStock => ({ ...f, product: Array.isArray(f.product) ? (f.product[0] ?? null) : f.product }),
+      );
+      const productIds = filas.map((item) => item.product_id);
 
       // Obtener stock_levels para los productos del proveedor
       const { data: stockData } = await supabase
@@ -832,8 +1108,9 @@ class SupplierService {
         stockMap.set(stock.product_id, existing);
       }
 
-      return data.map((item: any) => {
+      return filas.map((item) => {
         const stock = stockMap.get(item.product_id) || { total: 0, branches: 0 };
+        const costo = Number(item.cost) || 0;
         return {
           product_id: item.product_id,
           product_uuid: item.product?.uuid || '',
@@ -841,12 +1118,12 @@ class SupplierService {
           product_sku: item.product?.sku || '',
           track_stock: item.product?.track_stock || false,
           status: item.product?.status || 'active',
-          cost: parseFloat(item.cost) || 0,
+          cost: costo,
           is_preferred: item.is_preferred || false,
           supplier_sku: item.supplier_sku || null,
           stock_total: stock.total,
           branches_with_stock: stock.branches,
-          stock_value: stock.total * (parseFloat(item.cost) || 0)
+          stock_value: stock.total * costo
         };
       });
     } catch (error) {
@@ -856,11 +1133,30 @@ class SupplierService {
   }
 
   /**
+   * Proveedores a exportar: todos los de la organización o solo los
+   * seleccionados en el listado (`ids`).
+   */
+  private async proveedoresParaExportar(organizationId: number, ids?: readonly number[]): Promise<Supplier[]> {
+    if (!ids || ids.length === 0) {
+      const { data } = await this.getSuppliers(organizationId, {}, 1, 10000);
+      return data;
+    }
+    const { data, error } = await supabase
+      .from('suppliers')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .in('id', [...ids])
+      .order('name', { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as Supplier[];
+  }
+
+  /**
    * Exportar proveedores a CSV
    */
-  async exportSuppliersToCSV(organizationId: number): Promise<string> {
+  async exportSuppliersToCSV(organizationId: number, ids?: readonly number[]): Promise<string> {
     try {
-      const { data } = await this.getSuppliers(organizationId, {}, 1, 10000);
+      const data = await this.proveedoresParaExportar(organizationId, ids);
       
       if (!data || data.length === 0) return '';
 
@@ -913,9 +1209,9 @@ class SupplierService {
   /**
    * Exportar proveedores a XLSX
    */
-  async exportSuppliersToXLSX(organizationId: number): Promise<Blob> {
+  async exportSuppliersToXLSX(organizationId: number, ids?: readonly number[]): Promise<Blob> {
     try {
-      const { data } = await this.getSuppliers(organizationId, {}, 1, 10000);
+      const data = await this.proveedoresParaExportar(organizationId, ids);
 
       if (!data || data.length === 0) {
         return new Blob([], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -964,9 +1260,9 @@ class SupplierService {
   /**
    * Exportar proveedores a PDF
    */
-  async exportSuppliersToPDF(organizationId: number): Promise<Blob> {
+  async exportSuppliersToPDF(organizationId: number, ids?: readonly number[]): Promise<Blob> {
     try {
-      const { data } = await this.getSuppliers(organizationId, {}, 1, 10000);
+      const data = await this.proveedoresParaExportar(organizationId, ids);
 
       if (!data || data.length === 0) {
         const doc = new jsPDF({ orientation: 'landscape' });

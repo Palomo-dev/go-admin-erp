@@ -77,13 +77,15 @@ export function createFakeCatalogClient(tables: Record<string, Row[]>, rpcs: Rec
 /** Proyección mínima: respeta la lista de columnas simples y el join `payment_methods!inner ( name )`. */
 function project(rows: Row[], cols: string | null): Row[] {
   if (!cols || cols.trim() === '*') return rows.map((r) => ({ ...r }));
-  const wanted = cols
+  const parts = cols
     .split(',')
     .map((c) => c.trim())
-    .filter(Boolean)
-    .map((c) => c.split('!')[0].split(' ')[0]);
+    .filter(Boolean);
+  // `*, tax_templates(code)`: todas las columnas más el embebido (si la fila lo trae).
+  const todas = parts.includes('*');
+  const wanted = parts.filter((c) => c !== '*').map((c) => c.split('!')[0].split('(')[0].split(' ')[0]);
   return rows.map((r) => {
-    const out: Row = {};
+    const out: Row = todas ? { ...r } : {};
     for (const c of wanted) if (c in r) out[c] = r[c];
     return out;
   });

@@ -34,6 +34,8 @@ import type {
   SimulatedRate,
   TransportCarrier,
 } from '@/lib/services/shippingRatesService';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 interface SimulatorDialogProps {
   open: boolean;
@@ -57,6 +59,8 @@ export function SimulatorDialog({
   carriers,
   onSimulate,
 }: SimulatorDialogProps) {
+  // Cada tarifa en su moneda; sin ella, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
   const [params, setParams] = useState<SimulateShippingParams>({
     weight_kg: 1,
     length_cm: undefined,
@@ -86,13 +90,8 @@ export function SimulatorDialog({
     }
   };
 
-  const formatCurrency = (amount: number, currency: string = 'COP') => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number, currency?: string | null) =>
+    formatMoneda(amount, paraDocumento(currency));
 
   const handleChange = (field: keyof SimulateShippingParams, value: unknown) => {
     setParams(prev => ({ ...prev, [field]: value }));

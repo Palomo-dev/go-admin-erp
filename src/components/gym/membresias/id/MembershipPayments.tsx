@@ -17,7 +17,8 @@ import {
   Building2
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
 
@@ -78,6 +79,10 @@ export function MembershipPayments({
   );
 
   const { timezone } = useOrgTimezone();
+  const { paraDocumento } = useMonedaOrganizacion();
+  // El total va en la moneda de los pagos si todos comparten una; si no, en la base.
+  const monedasPagos = new Set(payments.filter((p) => p.status === 'completed').map((p) => p.currency).filter(Boolean));
+  const monedaTotal = monedasPagos.size === 1 ? Array.from(monedasPagos)[0] : null;
 
   if (isLoading) {
     return (
@@ -126,7 +131,7 @@ export function MembershipPayments({
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <span className="text-sm text-gray-500 dark:text-gray-400">Total pagado:</span>
             <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-              {formatCurrency(totalPaid)}
+              {formatMoneda(totalPaid, paraDocumento(monedaTotal))}
             </span>
           </div>
         )}
@@ -159,7 +164,7 @@ export function MembershipPayments({
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium text-gray-900 dark:text-white">
-                        {formatCurrency(payment.amount)}
+                        {formatMoneda(payment.amount, paraDocumento(payment.currency))}
                       </p>
                       <Badge className={cn("text-xs", statusConfig.color)}>
                         <StatusIcon className="h-3 w-3 mr-1" />

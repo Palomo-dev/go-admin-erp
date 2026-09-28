@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/utils/orgId';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 /**
  * Servicio de integraciones CRM - Wrappers que conectan módulos existentes
@@ -39,12 +40,15 @@ async function syncPosSaleToCrm(input: PosSaleIntegrationInput): Promise<void> {
     const orgId = getOrganizationId();
     if (!orgId || !input.customerId) return;
 
+    // Moneda de la venta; si no la trae, la base de la organización (nunca 'COP' cableado).
+    const currency = input.currency || (await resolveOrgCurrency(supabase, orgId)).code;
+
     // 1. Crear actividad de compra
     await supabase.from('activities').insert({
       organization_id: orgId,
       activity_type: 'purchase',
       user_id: input.userId || null,
-      notes: `Venta POS #${input.orderId} - ${input.amount} ${input.currency || 'COP'}`,
+      notes: `Venta POS #${input.orderId} - ${input.amount} ${currency}`,
       related_type: 'customer',
       related_id: input.customerId,
       occurred_at: new Date().toISOString(),
@@ -52,7 +56,7 @@ async function syncPosSaleToCrm(input: PosSaleIntegrationInput): Promise<void> {
         source: 'pos',
         order_id: input.orderId,
         amount: input.amount,
-        currency: input.currency || 'COP',
+        currency,
         branch_id: input.branchId || null,
         auto_generated: true,
       },
@@ -74,7 +78,7 @@ async function syncPosSaleToCrm(input: PosSaleIntegrationInput): Promise<void> {
         organization_id: orgId,
         activity_type: 'purchase',
         user_id: input.userId || null,
-        notes: `Venta POS #${input.orderId} - ${input.amount} ${input.currency || 'COP'}`,
+        notes: `Venta POS #${input.orderId} - ${input.amount} ${currency}`,
         related_type: 'opportunity',
         related_id: (openOpp as { id: string }).id,
         occurred_at: new Date().toISOString(),

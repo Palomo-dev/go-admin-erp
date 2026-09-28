@@ -1011,7 +1011,7 @@ describe('sameLines', () => {
     expect(sameLines(project(base), withL2({ quantity: 2 }))).toBe(false);
     expect(sameLines(project(base), withL2({ unit_price: 1 }))).toBe(false);
     expect(sameLines(project(base), withL2({ discount_amount: 100 }))).toBe(false);
-    expect(sameLines(project(base), withL2({ notes: 'sin azúcar' } as Partial<CartItem>))).toBe(false);
+    expect(sameLines(project(base), withL2({ customer_note: 'sin azúcar' } as Partial<CartItem>))).toBe(false);
     expect(sameLines(project(base), withL2({ modifiers: [{ groupId: 1, groupName: 'Extras', modifierId: 1, name: 'Extra', extraPrice: 0 }] } as Partial<CartItem>))).toBe(false);
   });
 });
@@ -1266,7 +1266,7 @@ describe('DisplayEmitter · setTotals con firma de líneas (F2-A, deuda QA F0)',
       { quantity: 2 },
       { unit_price: 5100 },
       { discount_amount: 500 },
-      { notes: 'sin azúcar' },
+      { customer_note: 'sin azúcar' },
       { modifiers: [{ name: 'Leche', extra_price: 0 }] as unknown as CartItem['modifiers'] },
     ];
     for (const v of variants) {

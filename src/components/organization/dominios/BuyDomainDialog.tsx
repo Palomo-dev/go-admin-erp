@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, esTelefonoValido, mensajeErrorTelefono } from '@/components/ui/phone-input';
 import { normalizePhoneToE164 } from '@/lib/domains/phone';
 import { cn } from '@/utils/Utils';
 import { useTranslations } from 'next-intl';
@@ -104,7 +104,7 @@ function BuyDomainForm({
     zip: '',
     country: 'CO',
   });
-  const phoneIsInvalid = Boolean(contactInfo.phone) && !normalizePhoneToE164(contactInfo.phone);
+  const phoneIsInvalid = Boolean(contactInfo.phone) && (!normalizePhoneToE164(contactInfo.phone) || !esTelefonoValido(contactInfo.phone));
 
   // Resetear al cerrar
   useEffect(() => {
@@ -185,7 +185,7 @@ function BuyDomainForm({
   const isContactValid = () => {
     return Boolean(
       contactInfo.firstName && contactInfo.lastName && contactInfo.email &&
-      normalizePhoneToE164(contactInfo.phone) && contactInfo.address1 && contactInfo.city &&
+      normalizePhoneToE164(contactInfo.phone) && esTelefonoValido(contactInfo.phone) && contactInfo.address1 && contactInfo.city &&
       contactInfo.state && contactInfo.zip && /^[A-Z]{2}$/.test(contactInfo.country)
     );
   };
@@ -402,15 +402,15 @@ function BuyDomainForm({
                   required
                   aria-describedby="domain-phone-help"
                   aria-invalid={phoneIsInvalid}
-                  inputClassName="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  showValidation={false}
                 />
                 <p id="domain-phone-help" className={cn(
                   'mt-1 text-xs',
                   phoneIsInvalid ? 'text-destructive' : 'text-muted-foreground'
                 )}>
                   {phoneIsInvalid
-                    ? 'El teléfono debe incluir un código de país válido.'
-                    : 'Incluye el código del país. Ejemplo: +57 300 123 4567.'}
+                    ? mensajeErrorTelefono(contactInfo.phone) ?? 'El teléfono debe incluir un código de país válido.'
+                    : 'Elige el país en el selector y escribe el número.'}
                 </p>
               </div>
               <div className="sm:col-span-2">

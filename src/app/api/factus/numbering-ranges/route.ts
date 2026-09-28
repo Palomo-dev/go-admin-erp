@@ -1,61 +1,41 @@
+/**
+ * API Route: rangos de numeración de la cuenta de Factus de la organización.
+ * GET /api/factus/numbering-ranges
+ *
+ * Requiere sesión (`getServerOrgContext`: /api/factus está fuera del
+ * middleware) y `finance.view`, resuelto en el servidor (403 sin él). Usa la cuenta de Factus DE LA ORGANIZACIÓN (Vault); la demo del
+ * entorno solo en desarrollo. Ya no devuelve la respuesta cruda de Factus.
+ * Para copiarlos a la numeración de una sucursal:
+ * POST /api/factus/config { action: 'sincronizar_rangos', branchId }.
+ */
+
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { NextResponse } from 'next/server';
-import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
-import factusService from '@/lib/services/factusService';
+import { obtenerAccesoFactus, FacturacionNoActivadaError } from '@/lib/services/einvoicing/accesoFactus.server';
+import { leerRangosFactus } from '@/lib/services/einvoicing/rangosFactus.server';
+import { PERMISOS_FINANZAS, requireOrgPermission } from '@/lib/security/orgGuards';
 
-export async function GET() {
+export async function GET(request: Request) {
+  let ctx;
   try {
-    const credentials = getCredentials();
-    if (!credentials) {
-      return NextResponse.json(
-        { error: 'Credenciales de Factus no configuradas. Configure las variables de entorno o la configuración de la organización.' },
-        { status: 404 }
-      );
+    ctx = await getServerOrgContext(request);
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, 'factus/numbering-ranges');
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
     }
+    throw err;
+  }
 
-    const accessToken = await getValidToken();
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'Error de autenticación con Factus' },
-        { status: 500 }
-      );
+  try {
+    const acceso = await obtenerAccesoFactus(ctx.organizationId, { permitirDemoDesarrollo: true });
+    const rangos = await leerRangosFactus(acceso);
+    return NextResponse.json({ success: true, data: rangos, origen: acceso.origen });
+  } catch (error: unknown) {
+    if (error instanceof FacturacionNoActivadaError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 409 });
     }
-
-    // Usar directamente fetch para ver la respuesta cruda de Factus
-    const baseUrl = credentials.environment === 'sandbox'
-      ? 'https://api-sandbox.factus.com.co'
-      : 'https://api.factus.com.co';
-
-    const factusRes = await fetch(`${baseUrl}/v2/numbering-ranges`, {
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    });
-
-    const rawText = await factusRes.text();
-    console.log('[numbering-ranges] Factus response status:', factusRes.status);
-    console.log('[numbering-ranges] Factus raw response:', rawText.substring(0, 1000));
-
-    if (!factusRes.ok) {
-      return NextResponse.json(
-        { error: `Factus respondió ${factusRes.status}: ${rawText.substring(0, 500)}` },
-        { status: 500 }
-      );
-    }
-
-    const result = JSON.parse(rawText);
-    const ranges = result.data?.data || result.data || [];
-
-    return NextResponse.json({
-      success: true,
-      data: ranges,
-      raw: result,
-    });
-  } catch (error: any) {
-    console.error('Error al obtener rangos de numeración:', error);
-    return NextResponse.json(
-      { error: error.message || 'Error al obtener rangos de numeración' },
-      { status: 500 }
-    );
+    console.error('[factus/numbering-ranges] error:', error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: 'No se pudieron obtener los rangos de numeración de Factus' }, { status: 502 });
   }
 }

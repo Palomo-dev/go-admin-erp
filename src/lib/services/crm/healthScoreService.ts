@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/utils/orgId';
+import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
 import {
   composeHealthResult,
   getOrgHealthConfig,
@@ -94,9 +95,10 @@ class HealthScoreService {
     try {
       const orgId = this.getOrgId(organizationId);
       if (!orgId) return null;
-      const [config, rpc] = await Promise.all([
+      const [config, rpc, moneda] = await Promise.all([
         getOrgHealthConfig(orgId, supabase),
         supabase.rpc('fn_customer_health', { p_org_id: orgId, p_customer_id: customerId }),
+        resolverContextoMoneda(supabase, orgId),
       ]);
       if (rpc.error || !rpc.data) {
         console.warn('Error en fn_customer_health (single):', rpc.error?.message);
@@ -106,7 +108,7 @@ class HealthScoreService {
       if (!row) return null;
       const { data: customerData } = await supabase.from('customers').select('full_name').eq('id', customerId).eq('organization_id', orgId).maybeSingle();
       const customerName = (customerData as { full_name?: string } | null)?.full_name || 'Sin nombre';
-      return composeHealthResult(toHealthRpcRow(row as Record<string, unknown>), config, customerName);
+      return composeHealthResult(toHealthRpcRow(row as Record<string, unknown>), config, customerName, moneda);
     } catch (err) {
       console.error('Error en healthScoreService.getCustomerHealthScore:', err);
       return null;
@@ -118,9 +120,10 @@ class HealthScoreService {
     try {
       const orgId = this.getOrgId(organizationId);
       if (!orgId) return [];
-      const [config, rpc] = await Promise.all([
+      const [config, rpc, moneda] = await Promise.all([
         getOrgHealthConfig(orgId, supabase),
         supabase.rpc('fn_customer_health', { p_org_id: orgId, p_customer_id: null as unknown as string }),
+        resolverContextoMoneda(supabase, orgId),
       ]);
       if (rpc.error || !rpc.data) {
         console.warn('Error en fn_customer_health batch:', rpc.error?.message);
@@ -134,7 +137,7 @@ class HealthScoreService {
       for (const c of (customersData || []) as Array<{ id: string; full_name: string }>) nameMap.set(c.id, c.full_name || 'Sin nombre');
       const results = rows.map((row) => {
         const rpcRow = toHealthRpcRow(row);
-        return composeHealthResult(rpcRow, config, nameMap.get(rpcRow.customer_id) || 'Sin nombre');
+        return composeHealthResult(rpcRow, config, nameMap.get(rpcRow.customer_id) || 'Sin nombre', moneda);
       });
       results.sort((a, b) => a.score - b.score); // más críticos primero
       return results;

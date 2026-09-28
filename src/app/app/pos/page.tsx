@@ -2,24 +2,28 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle, useDefaultLayout } from 'react-resizable-panels';
-import { ShoppingCart, Users, Settings, Clock, Lock, ArrowLeft } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Settings, ArrowLeft, MoreHorizontal } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/kit/EmptyState';
+import { useAtajos } from '@/components/kit/useAtajos';
 import { ProductSearch } from '@/components/pos/ProductSearch';
-import { CustomerSelector } from '@/components/pos/CustomerSelector';
-import { CartView } from '@/components/pos/CartView';
-import { CartTabs } from '@/components/pos/CartTabs';
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
-import { CustomerDisplayIndicator } from '@/components/pos/display/CustomerDisplayIndicator';
+import { PanelCarrito } from '@/components/pos/venta/PanelCarrito';
+import { BarraCobroMovil } from '@/components/pos/venta/BarraCobroMovil';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { estadoBotonCobrar } from '@/lib/pos/venta/requisitosCarrito';
+import { CabeceraPos, abrirMenuPantallaCliente } from '@/components/pos/venta/CabeceraPos';
+import { HojaCajaDispositivo } from '@/components/pos/venta/HojaCajaDispositivo';
+import { MapaAtajos } from '@/components/pos/venta/MapaAtajos';
+import { teclaAtajo } from '@/lib/pos/venta/atajos';
+import { hayRafagaDelLector } from '@/hooks/useHardwareBarcodeScanner';
 import { POSService } from '@/lib/services/posService';
 import { getPosDisplayEmitter, resolveDisplayCurrency, startPosDisplay, stopPosDisplay } from '@/lib/pos/display/posDisplay';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { BranchBadge } from '@/components/inventario/BranchBadge';
-import { Product, Customer, Cart, Category, CartItemModifier } from '@/components/pos/types';
-import { formatCurrency, cn } from '@/utils/Utils';
-import { StatsSkeleton, CardListSkeleton, PageHeaderSkeleton } from '@/components/common/PageSkeletons';
+import { Product, Customer, Cart, CartItemModifier } from '@/components/pos/types';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { VentasService, DailySummary } from '@/components/pos/ventas';
 import { PrintJobsService } from '@/lib/services/printJobsService';
 import KitchenService from '@/lib/services/kitchenService';
@@ -28,18 +32,38 @@ import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
 import { AperturaCajaDialog } from '@/components/pos/cajas/AperturaCajaDialog';
 import { CierreCajaDialog } from '@/components/pos/cajas/CierreCajaDialog';
-import { PendientesSinConexionDialog } from '@/components/pos/PendientesSinConexionDialog';
 import { startSalesSync } from '@/lib/offline/salesSync';
 import { startOfflineSync } from '@/lib/offline/syncStages';
 import { CASH_OUTBOX_CHANGED_EVENT } from '@/lib/offline/cashOutbox';
 import { isDesktop } from '@/lib/utils/desktop';
 import { CajasService } from '@/components/pos/cajas/CajasService';
+import { ConfiguracionService } from '@/components/pos/configuracion/configuracionService';
 import { useBlindCloseMode } from '@/components/pos/cajas/useBlindCloseMode';
+import { usePermisosCaja } from '@/components/pos/cajas/usePermisosCaja';
+import { puedeCerrarCaja } from '@/lib/pos/cajas/reglasCierre';
 import type { CashSession } from '@/components/pos/cajas/types';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatTimeInTz } from '@/lib/utils/dateDisplay';
+import { useTranslations } from 'next-intl';
+import { enviarRondaCocina } from '@/components/pos/cocina/cocinaCliente';
+import { ProductoSinPrecioError } from '@/lib/pos/precioVigente';
+import {
+  asignarClienteAlCarrito,
+  cerrarCarrito,
+  completarCobro,
+  crearCarrito,
+  inicializarCarritos,
+} from '@/lib/pos/venta/carritos';
+import { enviarACocina } from '@/lib/pos/venta/enviarCocina';
 
-/** Clave de localStorage con el ancho elegido para el panel de carrito/pago. */
-const POS_LAYOUT_ID = 'pos-layout-productos-carrito';
+/**
+ * Clave de localStorage con el ancho elegido para el panel del carrito. «-v2»
+ * (paso 9, D1): el carrito arranca en 560 px; el reparto 75/25 guardado con
+ * la versión anterior no se reutiliza.
+ */
+const POS_LAYOUT_ID = 'pos-layout-productos-carrito-v2';
 
 export default function POSPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
@@ -55,13 +79,87 @@ export default function POSPage() {
   const isFirstLoadRef = useRef(true);
   const isInitializingRef = useRef(false);
   const [, setLastUpdate] = useState(new Date());
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [mobileView, setMobileView] = useState<'products' | 'cart'>('products');
+  // Cabecera (paso 3): apertura/cierre de caja abiertos por programa (F9, la
+  // hoja móvil, el botón de la cabecera), hoja «Caja y dispositivo» y mapa F1.
+  const [dialogoCaja, setDialogoCaja] = useState(false);
+  const [hojaCaja, setHojaCaja] = useState(false);
+  const [mapaAtajos, setMapaAtajos] = useState(false);
+  // D4: ¿la organización exige caja para cobrar? (`pos_require_cash_session`,
+  // la misma configuración que revisa el cobro al abrirse). Mientras se lee, sí.
+  const [requiereCaja, setRequiereCaja] = useState(true);
+  // F2: lista de clientes del carrito activo (CustomerPicker del kit).
+  const [clienteAbierto, setClienteAbierto] = useState(false);
   const [, setDailySummary] = useState<DailySummary | null>(null);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [isOrgAdmin, setIsOrgAdmin] = useState(false);
+  const permisosCaja = usePermisosCaja();
   const { showExpected } = useBlindCloseMode();
+  const { formatear } = useMonedaOrganizacion();
+  const { timezone } = useOrgTimezone();
+  const tHeader = useTranslations('header');
+  const tCocina = useTranslations('posCocina');
+  const tCobro = useTranslations('posCobroServidor');
+  const tCabecera = useTranslations('posVenta.cabecera');
+  const tAtajos = useTranslations('posVenta.atajos');
+  const tPagina = useTranslations('posVenta.pagina');
+  const tBarra = useTranslations('posVenta.barraMovil');
+  // Quién puede cerrar la caja lo decide el servidor (`usePermisosCaja`),
+  // nunca el nombre del rol (regla dura 6).
+  const canClose = cashSession ? puedeCerrarCaja(cashSession, permisosCaja.userId ?? currentUserId, permisosCaja.cerrarCajasAjenas) : false;
+  const estadoCaja = cashSession
+    ? tHeader('posCashOpen', { time: formatTimeInTz(cashSession.opened_at, timezone) })
+    : tHeader('posCashClosed');
+  // F9, «Abrir/Cerrar caja» de la cabecera y de la hoja móvil: abre el diálogo
+  // que toque (apertura sin caja; cierre si este cajero puede cerrarla).
+  const abrirDialogoCaja = () => {
+    if (cashSession && !canClose) return;
+    setDialogoCaja(true);
+  };
+  // Shell móvil (Figma MobileHeader Mode=pos y MobileTabBar): la cabecera
+  // muestra el estado de la caja y «⋯ Caja y dispositivo». La barra inferior
+  // de la app NO se muestra en el POS (Figma B.12 · D3c móvil): abajo mandan el
+  // total y «Cobrar» fijos, y para salir está la flecha «←» de la cabecera.
+  useCabeceraMovil({
+    modo: 'pos',
+    estadoPos: { texto: estadoCaja, tono: cashSession ? 'exito' : 'advertencia' },
+    accion: (
+      <button
+        type="button"
+        onClick={() => setHojaCaja(true)}
+        aria-label={tCabecera('abrirHoja')}
+        title={tCabecera('abrirHoja')}
+        className="flex size-10 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      >
+        <MoreHorizontal aria-hidden="true" className="size-5" strokeWidth={1.5} />
+      </button>
+    ),
+    ocultarBarra: true,
+  });
+  // Atajos de la pantalla (mapa canónico, src/lib/pos/venta/atajos.ts). Con el
+  // cobro abierto manda el cobro. El resto de atajos los registra cada pieza.
+  useAtajos(
+    [
+      { tecla: teclaAtajo('mapa'), accion: () => setMapaAtajos(true), descripcion: tAtajos('mapa') },
+      { tecla: teclaAtajo('caja'), accion: abrirDialogoCaja, descripcion: tAtajos('caja') },
+      { tecla: teclaAtajo('pantallaCliente'), accion: () => abrirMenuPantallaCliente(), descripcion: tAtajos('pantallaCliente') },
+      { tecla: teclaAtajo('cliente'), accion: () => setClienteAbierto(true), descripcion: tAtajos('cliente') },
+      {
+        // Celular o tableta con teclado y la hoja del carrito cerrada: F4 de la barra fija
+        // (con la hoja abierta, o en escritorio, lo registra el propio carrito).
+        tecla: teclaAtajo('cobrar'),
+        descripcion: tAtajos('cobrar'),
+        cuando: () => !isDesktopLayout && mobileView === 'products' && !!activeCart,
+        accion: () => {
+          if (!activeCart) return;
+          const estado = estadoBotonCobrar({ caja: !!cashSession, config: { requiereCaja }, carrito: activeCart });
+          if (estado === 'listo') handleCheckout(activeCart);
+          else if (estado === 'sin-caja') abrirDialogoCaja();
+        },
+      },
+    ],
+    { activo: !showCheckout, hayRafaga: hayRafagaDelLector },
+  );
   // Escritorio (≥ lg): productos y carrito en paneles redimensionables. El
   // ancho elegido se recuerda por navegador; doble clic en el divisor lo
   // restablece. En móvil se conserva la vista de pantalla completa por sección.
@@ -85,21 +183,8 @@ export default function POSPage() {
               if (name) getPosDisplayEmitter().setSession({ cashier: { name } });
             })
             .catch(() => undefined);
-          const { data: memberData } = await supabase
-            .from('organization_members')
-            .select('is_super_admin, role_id, roles(name)')
-            .eq('user_id', user.id)
-            .eq('organization_id', organization?.id || 0)
-            .eq('is_active', true)
-            .single();
-          if (memberData) {
-            const roleName = (memberData.roles as { name?: string } | null)?.name?.toLowerCase() || ''
-            const isAdmin = memberData.is_super_admin ||
-              roleName.includes('admin') ||
-              roleName.includes('owner') ||
-              memberData.role_id === 2;
-            setIsOrgAdmin(isAdmin);
-          }
+          // Quién puede cerrar una caja ajena lo decide el servidor
+          // (`usePermisosCaja`), nunca el nombre del rol (regla dura 6).
         }
       } catch (err) {
         console.warn('Error loading user info:', err);
@@ -158,12 +243,6 @@ export default function POSPage() {
     getPosDisplayEmitter().setSession({ sessionOpen: !!cashSession });
   }, [cashSession]);
 
-  // Reloj en tiempo real: actualiza la hora mostrada en el header cada segundo
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   // Desktop (fase 4B): reproducir las ventas hechas sin conexión al abrir el
   // POS con red y cada vez que vuelva la conectividad real. No-op en navegador.
   useEffect(() => {
@@ -220,6 +299,19 @@ export default function POSPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization?.id, branchFilter]);
 
+  useEffect(() => {
+    if (!organization?.id) return;
+    let vigente = true;
+    ConfiguracionService.getRequireCashSessionConfig()
+      .then((config) => {
+        if (vigente) setRequiereCaja(config.require_cash_session !== false);
+      })
+      .catch((err) => console.warn('Error leyendo si la caja es obligatoria:', err));
+    return () => {
+      vigente = false;
+    };
+  }, [organization?.id]);
+
   const loadDashboardData = async () => {
     try {
       const [summary, session] = await Promise.all([
@@ -236,10 +328,9 @@ export default function POSPage() {
   const handleSessionOpened = (session: CashSession) => {
     setCashSession(session);
     loadDashboardData();
-    toast.success(session.pending_sync ? 'Caja abierta sin conexión' : 'Caja abierta exitosamente', {
-      description: session.pending_sync
-        ? `Monto inicial: ${formatCurrency(session.initial_amount)} · pendiente de sincronizar`
-        : `Monto inicial: ${formatCurrency(session.initial_amount)}`
+    const monto = tCabecera('montoInicial', { monto: formatear(session.initial_amount) });
+    toast.success(session.pending_sync ? tCabecera('cajaAbiertaSinConexion') : tCabecera('cajaAbiertaToast'), {
+      description: session.pending_sync ? `${monto} · ${tCabecera('pendienteSincronizar')}` : monto,
     });
   };
 
@@ -253,117 +344,94 @@ export default function POSPage() {
         setCashSession(null);
       });
     loadDashboardData();
-    toast.success(session.pending_sync ? 'Caja cerrada sin conexión' : 'Caja cerrada exitosamente', {
-      description: (showExpected ? `Diferencia: ${formatCurrency(Math.abs(session.difference || 0))}` : 'Caja cerrada')
-        + (session.pending_sync ? ' · pendiente de sincronizar' : '')
+    toast.success(session.pending_sync ? tCabecera('cajaCerradaSinConexion') : tCabecera('cajaCerradaToast'), {
+      description: (showExpected ? tCabecera('diferencia', { monto: formatear(Math.abs(session.difference || 0)) }) : tCabecera('cajaCerradaToast'))
+        + (session.pending_sync ? ` · ${tCabecera('pendienteSincronizar')}` : '')
     });
   };
 
-  const initializePOS = async () => {
-    // Dos inicializaciones solapadas (StrictMode, cambio de sucursal mientras
-    // carga) con el almacenamiento vacío creaban un carrito cada una.
-    if (isInitializingRef.current) return;
-    isInitializingRef.current = true;
-    if (isFirstLoadRef.current) {
-      setIsLoading(true);
-    }
-    setIsRefreshing(true);
-    try {
-      // Cargar carritos existentes
-      const existingCarts = await POSService.getActiveCarts();
-      
-      if (existingCarts.length > 0) {
+  // Carritos (L1-L4 de docs/implementacion/POS-PLAN.md): la lógica vive en
+  // src/lib/pos/venta/carritos.ts; aquí solo se conecta con el estado.
+  const initializePOS = () =>
+    inicializarCarritos({
+      servicio: POSService,
+      branchId: selectedBranchId,
+      cerrojo: isInitializingRef,
+      empezar: () => {
+        if (isFirstLoadRef.current) {
+          setIsLoading(true);
+        }
+        setIsRefreshing(true);
+      },
+      terminar: () => {
+        isFirstLoadRef.current = false;
+        setIsLoading(false);
+        setIsRefreshing(false);
+      },
+      mostrar: (existingCarts) => {
         setCarts(existingCarts);
         setActiveCartId(existingCarts[0].id);
-      } else {
-        // Crear primer carrito
-        await createNewCart();
-      }
-    } catch (error) {
-      console.error('Error initializing POS:', error);
-      // Crear carrito por defecto en caso de error
-      await createNewCart();
-    } finally {
-      isInitializingRef.current = false;
-      isFirstLoadRef.current = false;
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+      },
+      crearCarrito: createNewCart,
+    });
 
-  const createNewCart = async () => {
-    try {
-      // Usar branch_id actual seleccionado por el usuario
-      if (!selectedBranchId) {
-        toast.error('Seleccione una sucursal antes de crear un carrito');
-        return;
-      }
-      const newCart = await POSService.createCart(selectedBranchId);
-      
-      setCarts(prevCarts => [...prevCarts, newCart]);
-      setActiveCartId(newCart.id);
-      setSelectedCustomer(undefined);
-      setLastUpdate(new Date());
-    } catch (error) {
-      console.error('Error creating new cart:', error);
-      alert('Error al crear nuevo carrito');
-    }
-  };
+  const createNewCart = () =>
+    crearCarrito({
+      servicio: POSService,
+      branchId: selectedBranchId,
+      avisarSinSucursal: () => toast.error(tPagina('seleccioneSucursal')),
+      agregar: (newCart) => {
+        setCarts(prevCarts => [...prevCarts, newCart]);
+        setActiveCartId(newCart.id);
+        setSelectedCustomer(undefined);
+        setLastUpdate(new Date());
+      },
+      avisarError: () => toast.error(tPagina('errorCrearCarrito')),
+    });
 
-  const removeCart = async (cartId: string) => {
-    try {
-      // Marcar kitchen_ticket como entregado si el carrito tenía uno
-      const cartToRemove = carts.find(c => c.id === cartId);
-      if (cartToRemove?.kitchen_ticket_id) {
-        await KitchenService.markTicketAsDelivered(cartToRemove.kitchen_ticket_id);
-      }
+  const removeCart = (cartId: string) =>
+    cerrarCarrito({
+      cartId,
+      carts,
+      activeCartId,
+      servicio: POSService,
+      cocina: KitchenService,
+      setCarts,
+      activar: setActiveCartId,
+      crearCarrito: createNewCart,
+    });
 
-      // Borrarlo también de localStorage: si solo sale del estado, vuelve
-      // (con sus productos) en cuanto se navega y se regresa al POS.
-      await POSService.removeCart(cartId);
-
-      const updatedCarts = carts.filter(cart => cart.id !== cartId);
-      setCarts(updatedCarts);
-      
-      // Si el carrito activo fue eliminado, cambiar a otro
-      if (cartId === activeCartId && updatedCarts.length > 0) {
-        setActiveCartId(updatedCarts[0].id);
-      } else if (updatedCarts.length === 0) {
-        // Crear nuevo carrito si no quedan
-        await createNewCart();
-      }
-    } catch (error) {
-      console.error('Error removing cart:', error);
-    }
-  };
-
-  const handleProductSelect = async (product: Product, modifiers?: CartItemModifier[]) => {
+  // `cantidad` llega con la cantidad rápida «3*» del buscador (una unidad si no).
+  const handleProductSelect = async (product: Product, modifiers?: CartItemModifier[], cantidad = 1) => {
     if (!activeCartId) {
-      alert('No hay carrito activo');
+      toast.error(tPagina('sinCarritoActivo'));
       return;
     }
 
     try {
-      const updatedCart = await POSService.addItemToCart(activeCartId, product, 1, modifiers);
+      const updatedCart = await POSService.addItemToCart(activeCartId, product, cantidad, modifiers);
       updateCartInState(updatedCart);
     } catch (error) {
       console.error('Error adding product to cart:', error);
-      alert('Error al agregar producto al carrito');
+      // Sin precio vigente el producto ya no entra gratis: se dice por qué.
+      toast.error(error instanceof ProductoSinPrecioError
+        ? tCobro(error.causa === 'sin_precio' ? 'productoSinPrecio' : 'precioNoConsultado', { producto: product.name ?? String(product.id) })
+        : tPagina('errorAgregar'));
     }
   };
 
-  const handleCustomerSelect = async (customer?: Customer) => {
-    if (!activeCartId) return;
-
-    try {
-      const updatedCart = await POSService.setCartCustomer(activeCartId, customer?.id);
-      updateCartInState(updatedCart);
-      setSelectedCustomer(customer);
-    } catch (error) {
-      console.error('Error setting cart customer:', error);
-      alert('Error al asignar cliente al carrito');
-    }
-  };
+  // L34: la habitación que pueda mandar CustomerSelector se ignora.
+  const handleCustomerSelect = (customer?: Customer) =>
+    asignarClienteAlCarrito({
+      servicio: POSService,
+      activeCartId,
+      customer,
+      actualizar: (updatedCart) => {
+        updateCartInState(updatedCart);
+        setSelectedCustomer(customer);
+      },
+      avisarError: () => toast.error(tPagina('errorAsignarCliente')),
+    });
 
   const updateCartInState = (updatedCart: Cart) => {
     setCarts(prevCarts => 
@@ -383,163 +451,41 @@ export default function POSPage() {
     setShowCheckout(true);
   };
 
-  const handleCheckoutComplete = async () => {
-    try {
-      // Marcar kitchen_ticket como entregado si existe
-      if (checkoutCart?.kitchen_ticket_id) {
-        await KitchenService.markTicketAsDelivered(checkoutCart.kitchen_ticket_id);
-      }
-
-      // Remover el carrito completado
-      if (checkoutCart) {
-        const updatedCarts = carts.filter(cart => cart.id !== checkoutCart.id);
-        setCarts(updatedCarts);
-        
-        // Crear nuevo carrito si era el único
-        if (updatedCarts.length === 0) {
-          await createNewCart();
-        } else {
-          setActiveCartId(updatedCarts[0].id);
-        }
-      }
-
-      // El recibo se muestra automáticamente en el CheckoutDialog
-      // Cerrar el dialog después de procesar
-      setCheckoutCart(null);
-      setShowCheckout(false);
-    } catch (error) {
-      console.error('Error completing checkout:', error);
-    }
-  };
+  const handleCheckoutComplete = () =>
+    completarCobro({
+      checkoutCart,
+      carts,
+      cocina: KitchenService,
+      setCarts,
+      activar: setActiveCartId,
+      crearCarrito: createNewCart,
+      cerrarDialogo: () => {
+        setCheckoutCart(null);
+        setShowCheckout(false);
+      },
+    });
 
   const handleHoldCart = (cart: Cart, reason?: string) => {
     updateCartInState(cart);
-    alert(`Carrito puesto en espera${reason ? ': ' + reason : ''}`);
+    toast.success(reason ? tPagina('enEsperaConMotivo', { motivo: reason }) : tPagina('enEspera'));
   };
 
-  const handleSendComanda = async (cart: Cart) => {
-    if (!cart.branch_id) return;
-
-    // Filtrar solo items que requieren preparación
-    // La categoría llega como `category` (tipo del POS) o `categories` (embed de PostgREST).
-    type ProductWithCategory = Product & { categories?: Category | Category[] | null; variant_data?: unknown; station?: string | null };
-    const prepItems = cart.items.filter((item) => {
-      const product = item.product as ProductWithCategory | undefined;
-      const cat = product?.category || product?.categories;
-      const requiresPrep = Array.isArray(cat) ? cat[0]?.requires_preparation : cat?.requires_preparation;
-      return requiresPrep === true;
+  // L58: la lógica de «Enviar a cocina» vive en src/lib/pos/venta/enviarCocina.ts.
+  const handleSendComanda = (cart: Cart) =>
+    enviarACocina(cart, {
+      servicio: POSService,
+      enviarRonda: enviarRondaCocina,
+      encolarImpresion: (branchId, comanda) => PrintJobsService.enqueueKitchenTicket(branchId, comanda),
+      nombreCajero: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        return user ? getUserName(user.id) : null;
+      },
+      nuevaLlave: () => crypto.randomUUID(),
+      actualizarCarrito: updateCartInState,
+      t: tCocina,
+      avisar: toast,
+      nombreNegocio: organization?.name,
     });
-
-    if (prepItems.length === 0) {
-      toast.info('No hay productos que requieran preparación en el carrito');
-      return;
-    }
-
-    // Obtener nombre del usuario actual
-    let serverName = 'POS';
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const name = await getUserName(user.id);
-        if (name) serverName = name;
-      }
-    } catch {
-      // fallback: usar 'POS'
-    }
-
-    // Mapear items para el ticket de cocina
-    const ticketItems = prepItems.map((item) => {
-      const product = item.product as ProductWithCategory | undefined;
-      const cat = product?.category || product?.categories;
-      const station = Array.isArray(cat) ? cat[0]?.station : cat?.station;
-      return {
-        productName: item.product?.name || 'Producto',
-        quantity: item.quantity,
-        station: station || product?.station || null,
-        notes: item.notes || null,
-        variantData: (product?.variant_data as Record<string, string> | null | undefined) || null,
-        modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
-      };
-    });
-
-    // Si ya existe un ticket, agregar solo items nuevos
-    if (cart.kitchen_ticket_id) {
-      const existingItems = await KitchenService.getTicketItems(cart.kitchen_ticket_id);
-
-      // Identificar items nuevos comparando por productName + variantData
-      const existingKeys = new Set(
-        existingItems.map((ti) =>
-          `${ti.product_name}_${ti.quantity}_${JSON.stringify(ti.variant_data)}`
-        )
-      );
-
-      const newItems = ticketItems.filter(
-        (item) => !existingKeys.has(`${item.productName}_${item.quantity}_${JSON.stringify(item.variantData)}`)
-      );
-
-      if (newItems.length === 0) {
-        toast.info('No hay productos nuevos para enviar a cocina');
-        return;
-      }
-
-      // Agregar items nuevos al ticket existente
-      await KitchenService.addItemsToTicket(
-        cart.kitchen_ticket_id,
-        organization?.id || 0,
-        newItems
-      );
-
-      // Encolar impresión solo de los items nuevos
-      await PrintJobsService.enqueueKitchenTicket(
-        cart.branch_id,
-        {
-          ticketId: cart.kitchen_ticket_id,
-          tableName: 'POS',
-          serverName,
-          createdAt: new Date().toISOString(),
-          items: newItems,
-          businessName: organization?.name,
-          branchName: undefined,
-        }
-      );
-
-      toast.success(`Nuevos productos enviados a cocina (${newItems.length})`);
-      return;
-    }
-
-    // 1. Crear kitchen_ticket en la BD (para que aparezca en /comandas)
-    const ticketResult = await KitchenService.createKitchenTicketFromPOS({
-      organizationId: organization?.id || 0,
-      branchId: cart.branch_id,
-      serverName,
-      items: ticketItems,
-    });
-
-    // Guardar ticketId en el carrito para追踪amiento
-    updateCartInState({ ...cart, kitchen_ticket_id: ticketResult.ticketId });
-
-    // 2. Encolar impresión física via print_jobs (para el print agent)
-    const { enqueued, skippedStations } = await PrintJobsService.enqueueKitchenTicket(
-      cart.branch_id,
-      {
-        ticketId: ticketResult.ticketId,
-        tableName: 'POS',
-        serverName,
-        createdAt: ticketResult.createdAt,
-        items: ticketItems,
-        businessName: organization?.name,
-        branchName: undefined,
-      }
-    );
-
-    if (enqueued > 0) {
-      toast.success(`Comanda enviada a cocina (${enqueued} impresora${enqueued > 1 ? 's' : ''})`);
-    } else if (skippedStations.length > 0) {
-      toast.info(`Ticket creado en /comandas. Sin impresoras para: ${skippedStations.join(', ')}`);
-    } else {
-      toast.success('Comanda enviada a cocina');
-    }
-  };
 
   // Obtener carrito activo
   const activeCart = carts.find(cart => cart.id === activeCartId);
@@ -551,196 +497,121 @@ export default function POSPage() {
     getPosDisplayEmitter().setActiveCart(activeCart ?? null);
   }, [activeCart]);
 
+  // Contadores de la cabecera: los mismos carritos de la sucursal que las pestañas.
+  const carritosActivos = carts.filter(c => c.status === 'active').length;
+  const carritosEnEspera = carts.filter(c => c.status === 'hold').length;
+
   // Estados de carga
   if (orgLoading || branchLoading || (isLoading && carts.length === 0)) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <PageHeaderSkeleton />
-        <StatsSkeleton count={4} />
-        <CardListSkeleton cards={3} columns="1" />
+      <div className="flex h-full flex-col gap-3 bg-canvas p-2 sm:p-4" aria-busy="true">
+        <Skeleton className="hidden h-16 w-full rounded-xl lg:block" />
+        <div className="flex min-h-0 flex-1 gap-4">
+          <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-8 w-2/3 rounded-lg" />
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+              {Array.from({ length: 6 }, (_, i) => (
+                <Skeleton key={i} className="h-48 rounded-xl" />
+              ))}
+            </div>
+          </div>
+          <Skeleton className="hidden w-[400px] shrink-0 rounded-xl lg:block" />
+        </div>
       </div>
     );
   }
 
   if (!organization) {
     return (
-      <div className="flex items-center justify-center h-screen dark:bg-gray-900 bg-gray-50">
-        <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
-          <CardContent className="p-6 text-center">
-            <Settings className="h-12 w-12 mx-auto mb-4 dark:text-gray-400 text-gray-500" />
-            <h2 className="text-lg font-semibold mb-2 dark:text-white text-gray-900">
-              Organización no encontrada
-            </h2>
-            <p className="dark:text-gray-400 text-gray-600">
-              Configure su organización para usar el sistema POS
-            </p>
-          </CardContent>
-        </Card>
+      <div className="flex h-full items-center justify-center bg-canvas p-4">
+        <EmptyState
+          variante="error"
+          icono={Settings}
+          titulo={tCabecera('organizacionNoEncontrada')}
+          descripcion={tCabecera('configureOrganizacion')}
+        />
       </div>
     );
   }
 
   return (
-    <div className={cn("h-full dark:bg-gray-900 bg-gray-50 p-2 sm:p-4", isRefreshing && "opacity-60 pointer-events-none")}>
+    <div className={cn("h-full bg-canvas p-2 sm:p-4", isRefreshing && "opacity-60 pointer-events-none")}>
       <div className="w-full h-full flex flex-col space-y-2 sm:space-y-3">
-        {/* Header - Responsive con estado de caja y accesos rápidos */}
-        <Card className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200 shadow-sm">
-          <CardHeader className="p-3 sm:p-4 md:pb-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              {/* Título y Logo */}
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <div className="p-1.5 sm:p-2 rounded-full dark:bg-blue-500/20 bg-blue-100 shrink-0">
-                  <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 dark:text-blue-400 text-blue-600" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <CardTitle className="text-base sm:text-lg md:text-xl dark:text-white text-gray-900 break-words whitespace-normal">
-                    Sistema POS
-                  </CardTitle>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-xs sm:text-sm dark:text-gray-400 text-gray-600 break-words whitespace-normal">
-                      {organization?.name || 'Caja rápida / Venta'}
-                    </p>
-                    <BranchBadge className="" />
-                  </div>
-                </div>
-              </div>
-              
-              {/* Info y Badges - Responsive */}
-              <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4">
-                {/* Botones de Caja - Abrir/Cerrar */}
-                {cashSession ? (
-                  (() => {
-                    const canClose = isOrgAdmin || cashSession.opened_by === currentUserId;
-                    if (!canClose) {
-                      return (
-                        <Button
-                          disabled
-                          size="sm"
-                          className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
-                          title="Solo el cajero que abrió la caja o un administrador puede cerrarla"
-                        >
-                          <Lock className="h-4 w-4 mr-1" />
-                          <span className="hidden sm:inline">Cerrar Caja</span>
-                        </Button>
-                      );
-                    }
-                    return (
-                      <CierreCajaDialog
-                        session={cashSession}
-                        onSessionClosed={handleSessionClosed}
-                      />
-                    );
-                  })()
-                ) : (
-                  <AperturaCajaDialog onSessionOpened={handleSessionOpened} />
-                )}
+        {/* Cabecera (escritorio y tableta ≥ lg; en celular la lleva el MobileHeader Mode=pos y su «⋯»). */}
+        <CabeceraPos
+          organizacionNombre={organization?.name}
+          cajaAbierta={!!cashSession}
+          cierreBloqueado={!!cashSession && !canClose}
+          onCaja={abrirDialogoCaja}
+          carritosActivos={carritosActivos}
+          carritosEnEspera={carritosEnEspera}
+        />
+        {/* Apertura y cierre de caja: abiertos por programa (cabecera, F9, hoja móvil, «Abrir caja para cobrar»). */}
+        {cashSession ? (
+          canClose && (
+            <CierreCajaDialog
+              session={cashSession}
+              onSessionClosed={handleSessionClosed}
+              open={dialogoCaja}
+              onOpenChange={setDialogoCaja}
+            />
+          )
+        ) : (
+          <AperturaCajaDialog onSessionOpened={handleSessionOpened} open={dialogoCaja} onOpenChange={setDialogoCaja} />
+        )}
+        <HojaCajaDispositivo
+          abierta={hojaCaja}
+          onAbiertaChange={setHojaCaja}
+          cajaAbierta={!!cashSession}
+          estadoCaja={estadoCaja}
+          cierreBloqueado={!!cashSession && !canClose}
+          onCaja={abrirDialogoCaja}
+          onAtajos={() => setMapaAtajos(true)}
+          carritosActivos={carritosActivos}
+          carritosEnEspera={carritosEnEspera}
+        />
+        <MapaAtajos abierto={mapaAtajos} onAbiertoChange={setMapaAtajos} />
 
-                {/* Ventas, clientes y caja sin conexión pendientes de sincronizar (solo Desktop, fases 4B/4D/4F) */}
-                <PendientesSinConexionDialog />
-
-                {/* Hora */}
-                <div className="hidden xs:flex items-center space-x-1.5 sm:space-x-2">
-                  <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 dark:text-gray-400 text-gray-500 shrink-0" />
-                  <span className="text-xs sm:text-sm dark:text-gray-400 text-gray-600 whitespace-nowrap">
-                    {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-
-                {/* Pantalla del cliente: punto verde/gris + menú abrir/cerrar (PLAN pos-doble-pantalla §5.1) */}
-                <CustomerDisplayIndicator />
-
-                {/* Badges - Compactos en móvil */}
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <Badge 
-                    variant="outline" 
-                    className="dark:border-green-600 dark:text-green-400 dark:bg-green-500/10 border-green-500 text-green-700 bg-green-50 text-xs px-1.5 sm:px-2 py-0.5"
-                  >
-                    <span className="hidden xs:inline">{carts.filter(c => c.status === 'active').length} Activos</span>
-                    <span className="inline xs:hidden">{carts.filter(c => c.status === 'active').length}A</span>
-                  </Badge>
-                  <Badge 
-                    variant="outline" 
-                    className="dark:border-yellow-600 dark:text-yellow-400 dark:bg-yellow-500/10 border-yellow-500 text-yellow-700 bg-yellow-50 text-xs px-1.5 sm:px-2 py-0.5"
-                  >
-                    <span className="hidden xs:inline">{carts.filter(c => c.status === 'hold').length} En Espera</span>
-                    <span className="inline xs:hidden">{carts.filter(c => c.status === 'hold').length}E</span>
-                  </Badge>
-                </div>
-
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
-
-        {/* Contenido principal - Layout Responsive */}
+        {/* Contenido principal: productos | carrito (paso 9) */}
         {(() => {
           const productsPane = (
             <ProductSearch
-              onProductSelect={(product, modifiers) => {
-                handleProductSelect(product, modifiers);
+              onProductSelect={(product, modifiers, cantidad) => {
+                handleProductSelect(product, modifiers, cantidad);
               }}
+              bloqueado={showCheckout}
             />
           );
 
           const cartPane = (
-            <>
-              {/* Botón volver a productos - solo móvil */}
-              <div className="lg:hidden shrink-0">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setMobileView('products')}
-                  className="text-xs dark:text-gray-400 dark:hover:text-white"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-1" />
-                  Seguir comprando
-                </Button>
-              </div>
-
-              {/* Selector de cliente */}
-              <Card className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200 shadow-sm shrink-0">
-                <CardHeader className="p-2 sm:p-3 pb-1.5 sm:pb-2">
-                  <CardTitle className="flex items-center space-x-1.5 sm:space-x-2 text-xs sm:text-sm dark:text-white text-gray-900">
-                    <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    <span>Cliente</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-2 sm:p-3 pt-0">
-                  <CustomerSelector
-                    selectedCustomer={activeCart?.customer}
-                    onCustomerSelect={handleCustomerSelect}
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Pestañas de carritos */}
-              <div className="shrink-0">
-                <CartTabs
-                  carts={carts}
-                  activeCartId={activeCartId}
-                  onCartSelect={setActiveCartId}
-                  onNewCart={createNewCart}
-                  onRemoveCart={removeCart}
-                />
-              </div>
-
-              {/* Vista del carrito activo */}
-              {activeCart && (
-                <div className="shrink-0">
-                  <CartView
-                    cart={activeCart}
-                    onCartUpdate={handleCartUpdate}
-                    onCheckout={handleCheckout}
-                    onHold={handleHoldCart}
-                    onSendComanda={handleSendComanda}
-                    cashSessionActive={!!cashSession}
-                  />
-                </div>
-              )}
-            </>
+            <PanelCarrito
+              carts={carts}
+              activeCart={activeCart}
+              activeCartId={activeCartId}
+              onCartSelect={setActiveCartId}
+              onNewCart={createNewCart}
+              onRemoveCart={removeCart}
+              sinSucursal={!selectedBranchId}
+              onClienteSelect={handleCustomerSelect}
+              clienteAbierto={clienteAbierto}
+              onClienteAbiertoChange={setClienteAbierto}
+              atajosActivos={!showCheckout}
+              carrito={{
+                onCartUpdate: handleCartUpdate,
+                onCheckout: handleCheckout,
+                onHold: handleHoldCart,
+                onSendComanda: handleSendComanda,
+                cashSessionActive: !!cashSession,
+                requiereCaja,
+                onAbrirCaja: abrirDialogoCaja,
+              }}
+            />
           );
 
           if (isDesktopLayout) {
+            // D1: divisor arrastrable con el carrito a 560 px por defecto
+            // (mínimo 400); el ancho elegido se recuerda en el navegador.
             return (
               <PanelGroup
                 id={POS_LAYOUT_ID}
@@ -749,22 +620,16 @@ export default function POSPage() {
                 onLayoutChanged={onLayoutChanged}
                 className="flex-1 min-h-0"
               >
-                <Panel id="productos" defaultSize="75%" minSize="35%" className="h-full overflow-y-auto">
+                <Panel id="productos" minSize="35%" className="h-full min-h-0">
                   {productsPane}
                 </Panel>
                 <PanelResizeHandle
-                  title="Arrastra para ampliar el carrito · doble clic para restablecer"
-                  className="group relative mx-1.5 w-1.5 shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 dark:hover:bg-blue-500 active:bg-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-ew-resize"
+                  title={tPagina('divisor')}
+                  className="group relative mx-2 w-1.5 shrink-0 cursor-ew-resize rounded-full bg-line transition-colors hover:bg-brand-action focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand active:bg-brand-action"
                 >
-                  <span className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-1 rounded-full bg-gray-400/60 dark:bg-gray-500/60 group-hover:bg-white/80" />
+                  <span className="pointer-events-none absolute left-1/2 top-1/2 h-10 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-line-strong group-hover:bg-surface" />
                 </PanelResizeHandle>
-                <Panel
-                  id="carrito"
-                  defaultSize="25%"
-                  minSize="20%"
-                  maxSize="60%"
-                  className="h-full flex flex-col space-y-2 overflow-y-auto pb-2 min-h-0"
-                >
+                <Panel id="carrito" defaultSize="560px" minSize="400px" maxSize="60%" className="h-full min-h-0">
                   {cartPane}
                 </Panel>
               </PanelGroup>
@@ -773,46 +638,40 @@ export default function POSPage() {
 
           return (
             <div className="flex-1 flex flex-col gap-2 sm:gap-3 overflow-hidden">
-              {/* === MÓVIL: Vista Productos (pantalla completa) === */}
-              <div className={cn('overflow-hidden', mobileView === 'products' ? 'flex-1' : 'hidden')}>
-                {productsPane}
-              </div>
-
-              {/* === MÓVIL: Vista Carrito (pantalla completa) === */}
-              <div className={cn(
-                'flex flex-col space-y-2 overflow-y-auto pb-20 min-h-0',
-                mobileView === 'cart' ? 'flex-1' : 'hidden',
-              )}>
-                {cartPane}
-              </div>
+              {/* Celular y tableta vertical (< 1024, D2): la grilla ocupa la pantalla, la barra fija lleva
+                  el total y «Cobrar · F4» (o «Abrir caja para cobrar») y el carrito se abre en una hoja. */}
+              <div className="min-h-0 flex-1 overflow-hidden">{productsPane}</div>
+              <Sheet open={mobileView === 'cart'} onOpenChange={(abierta) => setMobileView(abierta ? 'cart' : 'products')}>
+                <SheetContent side="bottom" hideCloseButton className="flex h-[92dvh] flex-col gap-2 rounded-t-2xl border-line bg-canvas p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                  <div className="mx-auto h-1 w-10 shrink-0 rounded-full bg-line-strong" aria-hidden="true" />
+                  <div className="flex shrink-0 items-center justify-between gap-2">
+                    <SheetTitle className="text-base font-semibold text-fg">{tBarra('hojaCarrito')}</SheetTitle>
+                    <SheetDescription className="sr-only">{tBarra('etiqueta')}</SheetDescription>
+                    <button
+                      type="button"
+                      onClick={() => setMobileView('products')}
+                      className="flex h-9 items-center gap-1 rounded-lg px-2 text-sm font-medium text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                      <ArrowLeft aria-hidden="true" className="size-4" />
+                      {tBarra('seguirComprando')}
+                    </button>
+                  </div>
+                  {cartPane}
+                </SheetContent>
+              </Sheet>
+              {mobileView === 'products' && (
+                <BarraCobroMovil
+                  unidades={activeCart ? activeCart.items.reduce((sum, i) => sum + i.quantity, 0) : 0}
+                  total={formatear(activeCart?.total ?? 0)}
+                  estado={activeCart ? estadoBotonCobrar({ caja: !!cashSession, config: { requiereCaja }, carrito: activeCart }) : 'vacio'}
+                  onVerCarrito={() => setMobileView('cart')}
+                  onCobrar={() => activeCart && handleCheckout(activeCart)}
+                  onAbrirCaja={abrirDialogoCaja}
+                />
+              )}
             </div>
           );
         })()}
-
-        {/* === BOTÓN FLOTANTE CARRITO - Solo móvil === */}
-        {mobileView === 'products' && (
-          <button
-            onClick={() => setMobileView('cart')}
-            className={cn(
-              'lg:hidden fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-xl text-white font-semibold text-sm transition-all active:scale-95',
-              activeCart && activeCart.items.length > 0
-                ? 'bg-blue-600 hover:bg-blue-700'
-                : 'bg-gray-600 hover:bg-gray-700',
-            )}
-          >
-            <ShoppingCart className="h-5 w-5" />
-            {activeCart && activeCart.items.length > 0 ? (
-              <>
-                <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">
-                  {activeCart.items.reduce((sum, i) => sum + i.quantity, 0)}
-                </span>
-                <span>{formatCurrency(activeCart.total)}</span>
-              </>
-            ) : (
-              <span>Carrito</span>
-            )}
-          </button>
-        )}
 
         {/* Dialog de checkout */}
         {checkoutCart && (

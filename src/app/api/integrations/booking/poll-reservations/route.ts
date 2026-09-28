@@ -1,15 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { bookingReservationService } from '@/lib/services/integrations/booking';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
+import { createBookingServices } from '@/lib/services/integrations/booking';
+import {
+  channelManagerClientsFor,
+  connectionBelongsToOrg,
+  CONNECTION_NOT_FOUND,
+} from '@/lib/services/integrations/channelManagerAccess';
 
 /**
  * POST /api/integrations/booking/poll-reservations
  * Ejecuta poll de reservas nuevas y modificadas desde Booking.com.
- * Body: { connectionId: string }
+ * Body: { connectionId: string } — la conexión debe ser de la organización de la sesión.
  */
-export async function POST(request: NextRequest) {
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const body = await request.json();
-    const { connectionId } = body;
+    const body = await readOrgBody(ctx, request, { route: 'integrations/booking/poll-reservations' });
+    const { connectionId } = body ?? {};
 
     if (!connectionId) {
       return NextResponse.json(
@@ -18,11 +24,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!(await connectionBelongsToOrg(ctx, connectionId))) {
+      return NextResponse.json(CONNECTION_NOT_FOUND, { status: 404 });
+    }
+
+    const booking = createBookingServices(channelManagerClientsFor(ctx));
+
     // Poll reservas nuevas
-    const newResult = await bookingReservationService.pollNewReservations(connectionId);
+    const newResult = await booking.reservations.pollNewReservations(connectionId);
 
     // Poll modificaciones/cancelaciones
-    const modResult = await bookingReservationService.pollModifiedReservations(connectionId);
+    const modResult = await booking.reservations.pollModifiedReservations(connectionId);
 
     return NextResponse.json({
       success: true,
@@ -37,6 +49,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof OrgContextError) throw error;
     const message = error instanceof Error ? error.message : 'Error desconocido';
     console.error('[API BookingPoll] Error:', message);
     return NextResponse.json(
@@ -44,4 +57,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

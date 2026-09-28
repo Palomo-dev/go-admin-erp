@@ -47,8 +47,14 @@ describe('listCrmActiveOrgIds', () => {
 });
 
 describe('ScheduledTask — tipo aparte del CHECK de outbound_jobs.kind', () => {
-  it('health_recalculate y renewals_sync son tareas programadas, no JobKind', () => {
-    expect(SCHEDULED_TASKS).toEqual(['health_recalculate', 'renewals_sync']);
+  it('health_recalculate, renewals_sync y voice_campaigns son tareas programadas, no JobKind', () => {
+    // r-voz 2026-09-23: se añade `voice_campaigns` (F6). Por el mismo motivo que
+    // las dos de F11 — el CHECK de `outbound_jobs.kind` no la admite y no haría
+    // falta: el reclamo de trabajo de la voz ya vive en la base
+    // (`fn_claim_voice_agent_calls`). La lista se mantiene EXACTA a propósito:
+    // añadir una tarea obliga a declararla aquí.
+    expect(SCHEDULED_TASKS).toEqual(['health_recalculate', 'renewals_sync', 'voice_campaigns']);
+    expect(isScheduledTask('voice_campaigns')).toBe(true);
     expect(isScheduledTask('health_recalculate')).toBe(true);
     expect(isScheduledTask('maintenance')).toBe(false);
     expect(isScheduledTask(42)).toBe(false);

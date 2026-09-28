@@ -40,17 +40,12 @@ import {
   Package,
   TrendingUp,
   Truck,
-  DollarSign,
-  FileText,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  ArrowUp
+  FileText
 } from 'lucide-react';
 import { ReportesService } from './ReportesService';
 import { ReportesPagination, usePagination } from './ReportesPagination';
 import { StockReport, KardexEntry, RotationReport, SupplierPurchaseReport, ReportFilter } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz, toPlainDate } from '@/lib/utils/timezone';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,6 +57,7 @@ export function ReportesPage() {
   const { branchFilter, setSelectedBranch } = useBranch();
   const { formatDate } = useFormatDate();
   const { timezone } = useOrgTimezone();
+  const { formatear } = useMonedaOrganizacion();
   const [activeTab, setActiveTab] = useState('stock');
   const [loading, setLoading] = useState(false);
   
@@ -148,19 +144,15 @@ export function ReportesPage() {
     loadReport(activeTab);
   }, [activeTab, loadReport, selectedProductId]);
 
-  const handleExportCSV = (data: any[], filename: string) => {
-    ReportesService.exportToCSV(data, filename);
+  // `exportToCSV` es async desde que el dia del nombre de archivo lo resuelve
+  // el servicio con la zona de la organizacion. Sin el `await`, el aviso
+  // saldria antes de que el archivo se hubiera generado.
+  const handleExportCSV = async (
+    data: StockReport[] | KardexEntry[] | RotationReport[] | SupplierPurchaseReport[],
+    filename: string
+  ) => {
+    await ReportesService.exportToCSV(data, filename);
     toast({ title: 'Reporte exportado' });
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'normal': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case 'low': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-      case 'out': return <XCircle className="h-4 w-4 text-red-500" />;
-      case 'excess': return <ArrowUp className="h-4 w-4 text-blue-500" />;
-      default: return null;
-    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -316,7 +308,7 @@ export function ReportesPage() {
             </Card>
             <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <CardContent className="pt-4">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(stockSummary.totalValue)}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatear(stockSummary.totalValue)}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Valor total</p>
               </CardContent>
             </Card>
@@ -387,8 +379,8 @@ export function ReportesPage() {
                           <TableCell className="dark:text-gray-300">{item.category_name}</TableCell>
                           <TableCell className="text-center dark:text-gray-300">{item.quantity}</TableCell>
                           <TableCell className="text-center dark:text-gray-300">{item.min_stock}</TableCell>
-                          <TableCell className="text-right dark:text-gray-300">{formatCurrency(item.unit_cost)}</TableCell>
-                          <TableCell className="text-right font-medium dark:text-white">{formatCurrency(item.total_value)}</TableCell>
+                          <TableCell className="text-right dark:text-gray-300">{formatear(item.unit_cost)}</TableCell>
+                          <TableCell className="text-right font-medium dark:text-white">{formatear(item.total_value)}</TableCell>
                           <TableCell className="text-center">{getStatusBadge(item.status)}</TableCell>
                         </TableRow>
                       ))}
@@ -483,7 +475,7 @@ export function ReportesPage() {
                           <TableCell className="text-center text-green-600 font-medium">{entry.quantity_in || '-'}</TableCell>
                           <TableCell className="text-center text-red-600 font-medium">{entry.quantity_out || '-'}</TableCell>
                           <TableCell className="text-center font-medium dark:text-white">{entry.balance}</TableCell>
-                          <TableCell className="text-right dark:text-gray-300">{formatCurrency(entry.unit_cost)}</TableCell>
+                          <TableCell className="text-right dark:text-gray-300">{formatear(entry.unit_cost)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -639,8 +631,8 @@ export function ReportesPage() {
                         <TableRow key={item.supplier_id} className="dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                           <TableCell className="font-medium dark:text-white">{item.supplier_name}</TableCell>
                           <TableCell className="text-center dark:text-gray-300">{item.total_orders}</TableCell>
-                          <TableCell className="text-right font-medium dark:text-white">{formatCurrency(item.total_amount)}</TableCell>
-                          <TableCell className="text-right dark:text-gray-300">{formatCurrency(item.average_order)}</TableCell>
+                          <TableCell className="text-right font-medium dark:text-white">{formatear(item.total_amount)}</TableCell>
+                          <TableCell className="text-right dark:text-gray-300">{formatear(item.average_order)}</TableCell>
                           <TableCell className="dark:text-gray-300">{item.last_purchase_date ? formatDate(item.last_purchase_date) : '-'}</TableCell>
                         </TableRow>
                       ))}

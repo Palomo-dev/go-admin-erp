@@ -33,6 +33,11 @@ function throwIfError(context: string, error: unknown): void {
   throw new Error(`No se pudo cargar ${context}: ${describeError(error)}`);
 }
 
+/** Etapa embebida en una oportunidad. */
+type EtapaEmbebida = { name?: string; color?: string; probability?: number } | null;
+/** Perfil o cliente embebido (nombre y correo). */
+type PersonaEmbebida = { first_name?: string | null; last_name?: string | null; email?: string | null } | null;
+
 class CRMDashboardService {
   // Obtener KPIs principales
   async getKPIs(organizationId: number, filters: CRMFilters): Promise<KPIData> {
@@ -121,7 +126,7 @@ class CRMDashboardService {
     throwIfError('el pronóstico del mes', forecastError);
 
     const monthForecast = forecastData?.reduce((sum, o) => {
-      const probability = (o.stages as any)?.probability || 0;
+      const probability = (o.stages as unknown as EtapaEmbebida)?.probability || 0;
       return sum + ((o.amount || 0) * (probability || 0));
     }, 0) || 0;
 
@@ -330,7 +335,7 @@ class CRMDashboardService {
     ]);
 
     // Agrupar por fecha en memoria
-    const countByDate = (data: any[] | null) => {
+    const countByDate = (data: Array<{ created_at: string }> | null) => {
       const counts = new Map<string, number>();
       for (const row of data || []) {
         const dateStr = format(new Date(row.created_at), 'yyyy-MM-dd');
@@ -462,7 +467,7 @@ class CRMDashboardService {
       const avgResponseTime = stats.responseTimes.length > 0
         ? stats.responseTimes.reduce((a, b) => a + b, 0) / stats.responseTimes.length
         : 0;
-      const profile = member.profiles as any;
+      const profile = member.profiles as unknown as PersonaEmbebida;
       return {
         memberId: member.id,
         name: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Sin nombre',
@@ -577,13 +582,14 @@ class CRMDashboardService {
     return (opportunities || []).map(o => ({
       id: o.id,
       name: o.name,
-      customerName: `${(o.customers as any)?.first_name || ''} ${(o.customers as any)?.last_name || ''}`.trim(),
+      customerName: `${(o.customers as unknown as PersonaEmbebida)?.first_name || ''} ${(o.customers as unknown as PersonaEmbebida)?.last_name || ''}`.trim(),
       amount: o.amount || 0,
-      currency: o.currency || 'USD',
+      // Sin moneda propia, vacía: la pantalla usa la base de la organización (`paraDocumento`).
+      currency: o.currency || '',
       expectedCloseDate: o.expected_close_date,
-      stageName: (o.stages as any)?.name || '',
-      stageColor: (o.stages as any)?.color || '#3b82f6',
-      probability: (o.stages as any)?.probability || 0,
+      stageName: (o.stages as unknown as EtapaEmbebida)?.name || '',
+      stageColor: (o.stages as unknown as EtapaEmbebida)?.color || '#3b82f6',
+      probability: (o.stages as unknown as EtapaEmbebida)?.probability || 0,
     }));
   }
 
@@ -663,7 +669,7 @@ class CRMDashboardService {
     throwIfError('la lista de agentes', error);
 
     return (data || []).map(m => {
-      const profile = m.profiles as any;
+      const profile = m.profiles as unknown as PersonaEmbebida;
       return {
         id: m.id,
         name: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Sin nombre',

@@ -1,90 +1,65 @@
 // ============================================================
 // /api/integrations/open-finance/consents/[id]
-// Operaciones sobre un consentimiento especifico
+// Un consentimiento de la organizacion de la sesion
 // GET    - obtiene un consentimiento por ID
 // DELETE - revoca un consentimiento (body: { reason })
+//
+// SEGURIDAD (GO-sec, 2026-09-23): antes leia o revocaba el consentimiento de
+// CUALQUIER organizacion por id (y revocar uno ajeno revocaba tambien su link).
+// Ahora el consentimiento tiene que ser de la organizacion de la sesion (404).
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { consentService } from '@/lib/services/integrations/openFinance/consentService';
+import { consentimientoDeLaOrganizacion } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-// GET - obtiene un consentimiento por ID
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
-    const supabase = createRouteHandlerClient({ cookies });
+const RUTA = 'open-finance/consents/[id]';
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+type RouteParams = { params: Promise<Record<string, string | string[] | undefined>> };
 
-    const { id } = await params;
-    if (!id) {
-      return NextResponse.json(
-        { error: 'ID de consentimiento requerido' },
-        { status: 400 },
-      );
-    }
-
-    const consent = await consentService.getConsent(id);
-
-    if (!consent) {
-      return NextResponse.json(
-        { error: 'Consentimiento no encontrado' },
-        { status: 404 },
-      );
-    }
-
-    return NextResponse.json({ success: true, data: consent });
-  } catch (error) {
-    console.error('[Open Finance Consent GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+async function idDeLaRuta(routeParams?: RouteParams): Promise<string> {
+  const params = routeParams ? await routeParams.params : {};
+  return typeof params.id === 'string' ? params.id : '';
 }
 
-// DELETE - revoca un consentimiento
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+// GET - obtiene un consentimiento por ID
+export const GET = withOrg(async (ctx, request, routeParams) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const id = await idDeLaRuta(routeParams);
+    await consentimientoDeLaOrganizacion(ctx, id);
+
+    const consent = await consentService.getConsent(id);
+    if (!consent) {
+      return NextResponse.json({ error: 'Consentimiento no encontrado' }, { status: 404 });
     }
+    return NextResponse.json({ success: true, data: consent });
+  } catch (error) {
+    return routeErrorResponse('Open Finance Consent GET', error);
+  }
+});
 
-    const { id } = await params;
-    if (!id) {
-      return NextResponse.json(
-        { error: 'ID de consentimiento requerido' },
-        { status: 400 },
-      );
-    }
+// DELETE - revoca un consentimiento
+export const DELETE = withOrg(async (ctx, request, routeParams) => {
+  try {
+    const body = await readOrgBody<{ reason?: string }>(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.CREAR, RUTA);
 
-    const body = await request.json().catch(() => ({}));
-    const { reason } = body as { reason?: string };
+    const id = await idDeLaRuta(routeParams);
+    await consentimientoDeLaOrganizacion(ctx, id);
 
-    if (!reason || reason.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'El motivo de revocacion es requerido' },
-        { status: 400 },
-      );
+    const reason = typeof body?.reason === 'string' ? body.reason.trim() : '';
+    if (!reason) {
+      return NextResponse.json({ error: 'El motivo de revocacion es requerido' }, { status: 400 });
     }
 
     const result = await consentService.revokeConsent(id, reason);
-
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
-    console.error('[Open Finance Consent DELETE] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Consent DELETE', error);
   }
-}
+});

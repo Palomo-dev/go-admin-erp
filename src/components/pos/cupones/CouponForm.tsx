@@ -17,6 +17,9 @@ import { Coupon, CreateCouponData, UpdateCouponData, DiscountType, DISCOUNT_TYPE
 import { CouponsService } from './couponsService';
 import { cn } from '@/utils/Utils';
 import { toast } from 'sonner';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { plainDayOfInstant } from '@/lib/services/businessInstant';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface CouponFormProps {
   open: boolean;
@@ -42,6 +45,7 @@ export function CouponForm({ open, onOpenChange, coupon, onSuccess }: CouponForm
     applies_to_first_purchase: false
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { timezone } = useOrgTimezone();
 
   const isEditing = !!coupon;
 
@@ -57,8 +61,11 @@ export function CouponForm({ open, onOpenChange, coupon, onSuccess }: CouponForm
           max_discount_amount: coupon.max_discount_amount,
           usage_limit: coupon.usage_limit,
           usage_limit_per_customer: coupon.usage_limit_per_customer,
-          start_date: coupon.start_date?.split('T')[0],
-          end_date: coupon.end_date?.split('T')[0],
+          // timestamptz -> dia de la organizacion. `.split('T')[0]` daba el dia
+          // UTC: un cupon que empieza el 1 en Bogota se abria en el formulario
+          // como si empezara el 31 (regla 2 de docs/reglas-fechas-timezone.md).
+          start_date: plainDayOfInstant(coupon.start_date, timezone) || undefined,
+          end_date: plainDayOfInstant(coupon.end_date, timezone) || undefined,
           is_active: coupon.is_active,
           applies_to_first_purchase: coupon.applies_to_first_purchase
         });
@@ -74,6 +81,8 @@ export function CouponForm({ open, onOpenChange, coupon, onSuccess }: CouponForm
       }
       setErrors({});
     }
+    // La zona que llega tarde no debe reiniciar el formulario abierto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, coupon]);
 
   const generateNewCode = () => {
@@ -103,14 +112,14 @@ export function CouponForm({ open, onOpenChange, coupon, onSuccess }: CouponForm
       }
       onSuccess();
       onOpenChange(false);
-    } catch (error: any) {
-      toast.error(error.message || 'Error al guardar');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al guardar');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (field: keyof CreateCouponData, value: any) => {
+  const handleChange = (field: keyof CreateCouponData, value: CreateCouponData[keyof CreateCouponData]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
   };
@@ -235,21 +244,19 @@ export function CouponForm({ open, onOpenChange, coupon, onSuccess }: CouponForm
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="dark:text-gray-200">Fecha Inicio</Label>
-              <Input
-                type="date"
-                value={formData.start_date || ''}
-                onChange={(e) => handleChange('start_date', e.target.value || undefined)}
-                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
+              <CampoFecha
+                aria-label="Fecha Inicio"
+                valor={formData.start_date || ''}
+                onValorChange={(dia) => handleChange('start_date', dia || undefined)}
                 disabled={loading}
               />
             </div>
             <div className="space-y-2">
               <Label className="dark:text-gray-200">Fecha Fin</Label>
-              <Input
-                type="date"
-                value={formData.end_date || ''}
-                onChange={(e) => handleChange('end_date', e.target.value || undefined)}
-                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
+              <CampoFecha
+                aria-label="Fecha Fin"
+                valor={formData.end_date || ''}
+                onValorChange={(dia) => handleChange('end_date', dia || undefined)}
                 disabled={loading}
               />
             </div>

@@ -17,9 +17,12 @@ import {
 } from '@/components/ui/dialog';
 import { Save, RefreshCw, DollarSign, Calculator, User, Trash2 } from 'lucide-react';
 import { commissionService, type VendorCommissionRate } from '@/lib/services/crm/commissionService';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { describeError } from '@/lib/utils/errorMessage';
 
 export function CommissionsPanel() {
   const { toast } = useToast();
+  const { formatear: formatearMonedaBase } = useMonedaOrganizacion();
 
   const [generalRate, setGeneralRate] = useState<number>(0);
   const [vendorRates, setVendorRates] = useState<VendorCommissionRate[]>([]);
@@ -47,11 +50,10 @@ export function CommissionsPanel() {
         commissionService.listVendorRates(),
       ]);
       setGeneralRate(general);
-      // Filtrar solo los que tienen salesperson_id (overrides)
-      setVendorRates(allRates.filter((r) => r.salesperson_id !== null));
+      setVendorRates(allRates);
     } catch (error) {
       console.error('Error cargando comisiones:', error);
-      toast({ title: 'Error', description: 'No se pudieron cargar las comisiones', variant: 'destructive' });
+      toast({ title: 'Error', description: describeError(error), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -80,7 +82,7 @@ export function CommissionsPanel() {
       });
     } catch (error) {
       console.error('Error guardando comision general:', error);
-      toast({ title: 'Error', description: 'No se pudo guardar la comision general', variant: 'destructive' });
+      toast({ title: 'Error', description: describeError(error), variant: 'destructive' });
     } finally {
       setSavingGeneral(false);
     }
@@ -112,7 +114,7 @@ export function CommissionsPanel() {
       loadData();
     } catch (error) {
       console.error('Error eliminando override:', error);
-      toast({ title: 'Error', description: 'No se pudo eliminar el override', variant: 'destructive' });
+      toast({ title: 'Error', description: describeError(error), variant: 'destructive' });
     }
   };
 
@@ -125,7 +127,8 @@ export function CommissionsPanel() {
     try {
       await commissionService.saveVendorRate(
         overrideForm.salesperson_id.trim(),
-        overrideForm.rate
+        overrideForm.rate,
+        editingOverride?.id ?? null
       );
       toast({
         title: editingOverride ? 'Override actualizado' : 'Override creado',
@@ -135,20 +138,14 @@ export function CommissionsPanel() {
       loadData();
     } catch (error) {
       console.error('Error guardando override:', error);
-      toast({ title: 'Error', description: 'No se pudo guardar el override', variant: 'destructive' });
+      toast({ title: 'Error', description: describeError(error), variant: 'destructive' });
     } finally {
       setSavingOverride(false);
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  // Simulación en la moneda base de la organización (nunca 'COP' cableado).
+  const formatCurrency = (amount: number) => formatearMonedaBase(amount);
 
   if (loading) {
     return (
@@ -238,9 +235,8 @@ export function CommissionsPanel() {
                       <div className="w-2 h-2 rounded-full shrink-0 bg-green-500" />
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                          {override.salesperson_id
-                            ? `${override.salesperson_id.substring(0, 8)}...`
-                            : 'Vendedor'}
+                          {override.salesperson_name
+                            || (override.salesperson_id ? `${override.salesperson_id.substring(0, 8)}...` : 'Vendedor')}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           {override.rate}% comision

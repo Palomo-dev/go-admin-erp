@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { 
   Plus, 
   Upload, 
@@ -15,7 +15,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -48,6 +47,7 @@ export function ReturnReasonsHeader({
   activeReasons,
   loading
 }: ReturnReasonsHeaderProps) {
+  const t = useTranslations('posDevoluciones.motivos.encabezado');
   const handleSearchChange = (value: string) => {
     onFiltersChange({ ...filters, search: value });
   };
@@ -73,7 +73,7 @@ export function ReturnReasonsHeader({
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center space-x-4">
               <Link href="/app/pos/devoluciones">
-                <Button variant="ghost" size="icon" className="dark:hover:bg-gray-700">
+                <Button variant="ghost" size="icon" className="dark:hover:bg-gray-700" aria-label={t('volver')}>
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               </Link>
@@ -82,10 +82,10 @@ export function ReturnReasonsHeader({
               </div>
               <div>
                 <CardTitle className="dark:text-white">
-                  Motivos de Devolución
+                  {t('titulo')}
                 </CardTitle>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Administra los motivos para devoluciones y cambios
+                  {t('descripcion')}
                 </p>
               </div>
             </div>
@@ -98,7 +98,7 @@ export function ReturnReasonsHeader({
                 className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600"
               >
                 <Upload className="h-4 w-4 mr-2" />
-                Importar
+                {t('importar')}
               </Button>
               <Button
                 variant="outline"
@@ -107,7 +107,7 @@ export function ReturnReasonsHeader({
                 className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600"
               >
                 <Download className="h-4 w-4 mr-2" />
-                Exportar
+                {t('exportar')}
               </Button>
               <Button 
                 onClick={onNewClick}
@@ -115,7 +115,7 @@ export function ReturnReasonsHeader({
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Nuevo Motivo
+                {t('nuevo')}
               </Button>
             </div>
           </div>
@@ -129,7 +129,7 @@ export function ReturnReasonsHeader({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Motivos</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('total')}</p>
                 <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                   {totalReasons}
                 </p>
@@ -144,7 +144,7 @@ export function ReturnReasonsHeader({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Activos</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('activos')}</p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {activeReasons}
                 </p>
@@ -166,7 +166,7 @@ export function ReturnReasonsHeader({
                   value={filters.search || ''}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Buscar por código o nombre..."
+                  placeholder={t('buscarPlaceholder')}
                   className="pl-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>
@@ -176,12 +176,12 @@ export function ReturnReasonsHeader({
               >
                 <SelectTrigger className="w-[140px] dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                   <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Estado" />
+                  <SelectValue placeholder={t('estadoPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="active">Activos</SelectItem>
-                  <SelectItem value="inactive">Inactivos</SelectItem>
+                  <SelectItem value="all">{t('todos')}</SelectItem>
+                  <SelectItem value="active">{t('activos')}</SelectItem>
+                  <SelectItem value="inactive">{t('inactivos')}</SelectItem>
                 </SelectContent>
               </Select>
               <Button
@@ -189,6 +189,7 @@ export function ReturnReasonsHeader({
                 size="icon"
                 onClick={onRefresh}
                 disabled={loading}
+                aria-label={t('actualizar')}
                 className="dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600"
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />

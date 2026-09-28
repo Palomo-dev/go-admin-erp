@@ -24,9 +24,11 @@ import { Switch } from '@/components/ui/switch';
 import { Loader2, Save } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useTranslations } from 'next-intl';
+import { mensajeErrorMoneda } from './erroresMonedas';
 
 interface Currency {
   code: string;
@@ -36,16 +38,6 @@ interface Currency {
   auto_update: boolean;
   is_base: boolean;
   org_auto_update: boolean;
-}
-
-interface OrganizationPreferences {
-  organization_id: number;
-  settings: {
-    default_currency_code?: string;
-    auto_sync_exchange_rates?: boolean;
-  };
-  created_at?: string;
-  updated_at?: string;
 }
 
 interface CurrencyPreferencesProps {
@@ -68,11 +60,14 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // Valor de «sincronización automática» tal como se cargó: solo se escribe si cambia.
+  const [autoSyncCargado, setAutoSyncCargado] = useState(true);
   const { toast } = useToast();
+  const tErr = useTranslations('monedasSeguridad');
 
   // Formulario con React Hook Form y zod
-  const form = useForm({
-    resolver: zodResolver(preferencesSchema) as any,
+  const form = useForm<PreferencesFormValues>({
+    resolver: zodResolver(preferencesSchema) as unknown as Resolver<PreferencesFormValues>,
     defaultValues: {
       default_currency_code: '',
       auto_sync_exchange_rates: true,
@@ -85,6 +80,7 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
       loadCurrencies();
       loadPreferences();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId]);
 
   // Cargar monedas disponibles
@@ -98,11 +94,11 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
 
       if (error) throw error;
       setCurrencies(data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al cargar monedas:', err);
       toast({
         title: 'Error',
-        description: 'No se pudieron cargar las monedas: ' + err.message,
+        description: 'No se pudieron cargar las monedas: ' + mensajeErrorMoneda(err, tErr),
         variant: 'destructive',
       });
     } finally {
@@ -164,17 +160,18 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
       }
 
       // 4. Cargar datos en el formulario
+      setAutoSyncCargado(autoSyncRates);
       form.reset({
         default_currency_code: defaultCurrencyCode,
         auto_sync_exchange_rates: autoSyncRates
       });
       
       console.log('Cargadas preferencias:', { defaultCurrencyCode, autoSyncRates });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al cargar preferencias:', err);
       toast({
         title: 'Error',
-        description: 'No se pudieron cargar las preferencias: ' + err.message,
+        description: 'No se pudieron cargar las preferencias: ' + mensajeErrorMoneda(err, tErr),
         variant: 'destructive',
       });
     } finally {
@@ -183,106 +180,44 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
   }
 
   // Guardar preferencias
+  //
+  // GO-sec (2026-09-28): la moneda base y la preferencia que lee
+  // resolveOrgCurrency (`settings.finance.default_currency`) se escriben en UNA
+  // transacción con la RPC `set_organization_base_currency`, que además exige
+  // el permiso en la base. Antes esta pantalla actualizaba
+  // `organization_currencies` directamente: la tabla no tiene política UPDATE,
+  // así que afectaba 0 filas sin error y la moneda base nunca cambiaba.
   async function onSubmit(values: PreferencesFormValues) {
     try {
       setSaving(true);
-      console.log('Guardando preferencias con moneda:', values.default_currency_code);
 
-      // PASO 1: Verificar si ya existen preferencias para la organización
-      const { data: existingPrefs, error: checkError } = await supabase
-        .from('organization_preferences')
-        .select('organization_id, settings')
-        .eq('organization_id', organizationId)
-        .maybeSingle();
+      const { error: baseError } = await supabase.rpc('set_organization_base_currency', {
+        p_organization_id: organizationId,
+        p_currency_code: values.default_currency_code,
+      });
+      if (baseError) throw baseError;
 
-      if (checkError) throw checkError;
-
-      // PASO 2: Preparar los valores actualizados para organization_preferences
-      // Esto puede ser un objeto nuevo o actualizar el existente
-      let settingsData: any = {
-        default_currency_code: values.default_currency_code,
-        auto_sync_exchange_rates: values.auto_sync_exchange_rates
-      };
-      
-      // Si existingPrefs tiene finance, mantenerlo y actualizar solo default_currency
-      if (existingPrefs?.settings?.finance) {
-        settingsData = {
-          ...existingPrefs.settings,
-          finance: {
-            ...existingPrefs.settings.finance,
-            default_currency: values.default_currency_code // Actualizar también el campo finance.default_currency
-          },
-          default_currency_code: values.default_currency_code
-        };
-      }
-      // Si no tiene structure finance, crearlo
-      else if (existingPrefs?.settings) {
-        settingsData = {
-          ...existingPrefs.settings,
-          finance: {
-            default_currency: values.default_currency_code
-          },
-          default_currency_code: values.default_currency_code
-        };
-      }
-      
-      // PASO 3: Actualizar la tabla organization_preferences
-      let preferencesResult;
-      if (existingPrefs) {
-        // Actualizar preferencias existentes
-        preferencesResult = await supabase
+      // La sincronización automática es una preferencia de la pantalla: solo se
+      // escribe si cambió, y se exige que la fila se haya actualizado de verdad
+      // (un UPDATE que RLS bloquea no da error, solo afecta 0 filas).
+      if (values.auto_sync_exchange_rates !== autoSyncCargado) {
+        const { data: prefs, error: prefsError } = await supabase
+          .from('organization_preferences')
+          .select('settings')
+          .eq('organization_id', organizationId)
+          .maybeSingle();
+        if (prefsError) throw prefsError;
+        const { data: filas, error: updError } = await supabase
           .from('organization_preferences')
           .update({
-            settings: settingsData,
-            updated_at: new Date().toISOString()
+            settings: { ...(prefs?.settings ?? {}), auto_sync_exchange_rates: values.auto_sync_exchange_rates },
+            updated_at: new Date().toISOString(),
           })
-          .eq('organization_id', organizationId);
-      } else {
-        // Crear nuevas preferencias
-        preferencesResult = await supabase
-          .from('organization_preferences')
-          .insert({
-            organization_id: organizationId,
-            settings: settingsData,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-      }
-
-      if (preferencesResult.error) throw preferencesResult.error;
-
-      // PASO 4: Actualizar tabla organization_currencies para establecer la moneda base
-      // Primero, resetear todas las monedas is_base=false para la organización
-      const { error: resetBaseError } = await supabase
-        .from('organization_currencies')
-        .update({ is_base: false, updated_at: new Date().toISOString() })
-        .eq('organization_id', organizationId);
-
-      if (resetBaseError) throw resetBaseError;
-
-      // Ahora establecer la moneda seleccionada como base
-      const { error: updateBaseError } = await supabase
-        .from('organization_currencies')
-        .update({ is_base: true, updated_at: new Date().toISOString() })
-        .eq('organization_id', organizationId)
-        .eq('currency_code', values.default_currency_code);
-
-      if (updateBaseError) {
-        // Es posible que la moneda no exista en organization_currencies todavía
-        console.log('Error al actualizar moneda base, posiblemente no existe en organization_currencies');
-        // En este caso, intentamos insertarla
-        const { error: insertError } = await supabase
-          .from('organization_currencies')
-          .insert({
-            organization_id: organizationId,
-            currency_code: values.default_currency_code,
-            is_base: true,
-            auto_update: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-
-        if (insertError) throw insertError;
+          .eq('organization_id', organizationId)
+          .select('organization_id');
+        if (updError) throw updError;
+        if (!filas || filas.length === 0) throw { message: 'sin_permiso' };
+        setAutoSyncCargado(values.auto_sync_exchange_rates);
       }
 
       // Mostrar mensaje de éxito
@@ -291,15 +226,14 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
         description: 'La moneda base ha sido actualizada correctamente en todas las configuraciones.',
         variant: 'default',
       });
-      
+
       // Recargar las monedas para reflejar los cambios
       await loadCurrencies();
-      
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al guardar preferencias:', err);
       toast({
         title: 'Error',
-        description: 'No se pudieron guardar las preferencias: ' + err.message,
+        description: 'No se pudieron guardar las preferencias: ' + mensajeErrorMoneda(err, tErr),
         variant: 'destructive',
       });
     } finally {
@@ -319,9 +253,9 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
         </Alert>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
-              control={form.control as any}
+              control={form.control}
               name="default_currency_code"
               render={({ field }) => (
                 <FormItem>
@@ -363,7 +297,7 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
             />
 
             <FormField
-              control={form.control as any}
+              control={form.control}
               name="auto_sync_exchange_rates"
               render={({ field }) => (
                 <FormItem className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border p-3 sm:p-4 shadow-sm dark:border-gray-700 gap-3 sm:gap-0">

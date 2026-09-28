@@ -9,7 +9,8 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import PayrollService from '@/lib/services/payrollService';
 import type { PayrollPeriod, PayrollRun } from '@/lib/services/payrollService';
 import { RunsTable } from '@/components/hrm/nomina/periodos/[id]';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -68,6 +69,8 @@ export default function PeriodoDetallePage() {
 
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
+  // `payroll_periods` no tiene moneda: sus totales van en la moneda base.
+  const { formatear } = useMonedaOrganizacion();
 
   const [period, setPeriod] = useState<PayrollPeriod | null>(null);
   const [runs, setRuns] = useState<PayrollRun[]>([]);
@@ -106,7 +109,7 @@ export default function PeriodoDetallePage() {
 
       setPeriod(periodData);
       setRuns(runsData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading data:', error);
       toast({
         title: 'Error',
@@ -140,7 +143,7 @@ export default function PeriodoDetallePage() {
         toast({ title: 'Cálculo completado' });
       }, 2000);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo ejecutar el cálculo',
@@ -159,7 +162,7 @@ export default function PeriodoDetallePage() {
       toast({ title: 'Run marcado como final' });
       setMarkFinalRun(null);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo marcar como final',
@@ -177,7 +180,7 @@ export default function PeriodoDetallePage() {
       toast({ title: 'Periodo aprobado' });
       setApproveOpen(false);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo aprobar el periodo',
@@ -194,7 +197,7 @@ export default function PeriodoDetallePage() {
       await service.changePeriodStatus(period.id, status);
       toast({ title: 'Estado actualizado' });
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo actualizar el estado',
@@ -305,7 +308,7 @@ export default function PeriodoDetallePage() {
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Rango</p>
                   <p className="font-medium text-gray-900 dark:text-white">
-                    {formatDate(period.period_start)} - {formatDate(period.period_end)}
+                    {formatPlainDate(period.period_start)} - {formatPlainDate(period.period_end)}
                   </p>
                 </div>
               </div>
@@ -314,7 +317,7 @@ export default function PeriodoDetallePage() {
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Fecha Pago</p>
                   <p className="font-medium text-gray-900 dark:text-white">
-                    {period.payment_date ? formatDate(period.payment_date) : '-'}
+                    {period.payment_date ? formatPlainDate(period.payment_date) : '-'}
                   </p>
                 </div>
               </div>
@@ -370,25 +373,25 @@ export default function PeriodoDetallePage() {
             <div>
               <p className="text-sm text-blue-700 dark:text-blue-300">Total Bruto</p>
               <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                {formatCurrency(period.total_gross || 0, 'COP')}
+                {formatear(period.total_gross || 0)}
               </p>
             </div>
             <div>
               <p className="text-sm text-blue-700 dark:text-blue-300">Total Deducciones</p>
               <p className="text-xl font-bold text-red-600 dark:text-red-400">
-                -{formatCurrency(period.total_deductions || 0, 'COP')}
+                -{formatear(period.total_deductions || 0)}
               </p>
             </div>
             <div>
               <p className="text-sm text-blue-700 dark:text-blue-300">Total Neto</p>
               <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(period.total_net || 0, 'COP')}
+                {formatear(period.total_net || 0)}
               </p>
             </div>
             <div className="pt-4 border-t border-blue-200 dark:border-blue-700">
               <p className="text-sm text-blue-700 dark:text-blue-300">Costo Empleador</p>
               <p className="text-xl font-bold text-blue-900 dark:text-blue-100">
-                {formatCurrency(period.total_employer_cost || 0, 'COP')}
+                {formatear(period.total_employer_cost || 0)}
               </p>
             </div>
           </CardContent>

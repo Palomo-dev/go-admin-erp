@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
@@ -31,22 +31,25 @@ import {
 import Link from 'next/link';
 import * as XLSX from 'xlsx';
 
+/** Claves de `proveedores.importar.validaciones`. */
+type ErrorFila = 'nombreRequerido' | 'emailInvalido' | 'tipoInvalido' | 'diasCreditoNumerico';
+
 interface ParsedSupplier extends SupplierInput {
   rowNumber: number;
   isValid: boolean;
-  errors: string[];
+  errors: ErrorFila[];
 }
 
 export function ImportarProveedores() {
-  const router = useRouter();
-
+  const t = useTranslations('proveedores.importar');
+  const tc = useTranslations('proveedores.comun');
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Estados
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ParsedSupplier[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [, setIsProcessing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importResults, setImportResults] = useState<{ success: number; errors: { row: number; error: string }[] } | null>(null);
 
@@ -167,25 +170,25 @@ export function ImportarProveedores() {
         errors: []
       };
 
-      // Validaciones
+      // Validaciones (se guardan claves; la tabla las traduce)
       if (!supplier.name) {
         supplier.isValid = false;
-        supplier.errors.push('Nombre es requerido');
+        supplier.errors.push('nombreRequerido');
       }
 
       if (supplier.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supplier.email)) {
         supplier.isValid = false;
-        supplier.errors.push('Email inválido');
+        supplier.errors.push('emailInvalido');
       }
 
       if (supplier.supplier_type && supplier.supplier_type !== 'person' && supplier.supplier_type !== 'company') {
         supplier.isValid = false;
-        supplier.errors.push('Tipo debe ser "person" o "company"');
+        supplier.errors.push('tipoInvalido');
       }
 
       if (supplier.credit_days !== undefined && supplier.credit_days !== null && isNaN(supplier.credit_days)) {
         supplier.isValid = false;
-        supplier.errors.push('Días Crédito debe ser numérico');
+        supplier.errors.push('diasCreditoNumerico');
       }
 
       // Marcar is_active en el objeto si viene (se omite de SupplierInput pero se usa para validación)
@@ -255,25 +258,25 @@ export function ImportarProveedores() {
         errors: []
       };
 
-      // Validaciones
+      // Validaciones (se guardan claves; la tabla las traduce)
       if (!supplier.name) {
         supplier.isValid = false;
-        supplier.errors.push('Nombre es requerido');
+        supplier.errors.push('nombreRequerido');
       }
 
       if (supplier.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supplier.email)) {
         supplier.isValid = false;
-        supplier.errors.push('Email inválido');
+        supplier.errors.push('emailInvalido');
       }
 
       if (supplier.supplier_type && supplier.supplier_type !== 'person' && supplier.supplier_type !== 'company') {
         supplier.isValid = false;
-        supplier.errors.push('Tipo debe ser "person" o "company"');
+        supplier.errors.push('tipoInvalido');
       }
 
       if (supplier.credit_days !== undefined && supplier.credit_days !== null && isNaN(supplier.credit_days)) {
         supplier.isValid = false;
-        supplier.errors.push('Días Crédito debe ser numérico');
+        supplier.errors.push('diasCreditoNumerico');
       }
 
       results.push(supplier);
@@ -293,8 +296,8 @@ export function ImportarProveedores() {
     if (!isCSV && !isXLSX) {
       toast({
         variant: 'destructive',
-        title: 'Archivo inválido',
-        description: 'Por favor selecciona un archivo CSV o Excel (.xlsx)'
+        title: t('toast.archivoInvalido'),
+        description: t('toast.archivoInvalidoDescripcion')
       });
       return;
     }
@@ -323,16 +326,16 @@ export function ImportarProveedores() {
       if (data.length === 0) {
         toast({
           variant: 'destructive',
-          title: 'Archivo vacío',
-          description: 'El archivo no contiene datos para importar'
+          title: t('toast.archivoVacio'),
+          description: t('toast.archivoVacioDescripcion')
         });
       }
     } catch (error) {
       console.error('Error procesando archivo:', error);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'No se pudo procesar el archivo'
+        title: tc('error'),
+        description: t('toast.errorProcesar')
       });
     } finally {
       setIsProcessing(false);
@@ -346,8 +349,8 @@ export function ImportarProveedores() {
     if (validSuppliers.length === 0) {
       toast({
         variant: 'destructive',
-        title: 'Sin datos válidos',
-        description: 'No hay proveedores válidos para importar'
+        title: t('toast.sinValidos'),
+        description: t('toast.sinValidosDescripcion')
       });
       return;
     }
@@ -387,24 +390,24 @@ export function ImportarProveedores() {
 
       if (results.success > 0) {
         toast({
-          title: 'Importación completada',
-          description: `${results.success} proveedores importados correctamente`
+          title: t('toast.completada'),
+          description: t('toast.completadaDescripcion', { count: results.success })
         });
       }
 
       if (results.errors.length > 0) {
         toast({
           variant: 'destructive',
-          title: 'Errores en la importación',
-          description: `${results.errors.length} proveedores no pudieron ser importados`
+          title: t('toast.conErrores'),
+          description: t('toast.conErroresDescripcion', { count: results.errors.length })
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error importando proveedores:', error);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: error.message || 'No se pudo completar la importación'
+        title: tc('error'),
+        description: (error instanceof Error && error.message) || t('toast.errorImportar')
       });
     } finally {
       setIsImporting(false);
@@ -431,15 +434,15 @@ export function ImportarProveedores() {
         <Link href="/app/inventario/proveedores">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
+            {t('volver')}
           </Button>
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Importar Proveedores
+            {t('titulo')}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Importa proveedores masivamente desde un archivo CSV o Excel
+            {t('subtitulo')}
           </p>
         </div>
       </div>
@@ -452,10 +455,10 @@ export function ImportarProveedores() {
             <CardHeader>
               <CardTitle className="text-lg dark:text-white flex items-center gap-2">
                 <FileSpreadsheet className="h-5 w-5 text-blue-600" />
-                Seleccionar Archivo
+                {t('archivo.titulo')}
               </CardTitle>
               <CardDescription className="dark:text-gray-400">
-                Sube un archivo CSV o Excel (.xlsx) con los proveedores a importar
+                {t('archivo.descripcion')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -480,20 +483,20 @@ export function ImportarProveedores() {
                     <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
                     <p className="font-medium dark:text-white">{file.name}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {parsedData.length} registros encontrados
+                      {t('archivo.encontrados', { count: parsedData.length })}
                     </p>
                     <Button variant="outline" size="sm" onClick={handleReset}>
-                      Seleccionar otro archivo
+                      {t('archivo.otro')}
                     </Button>
                   </div>
                 ) : (
                   <label htmlFor="csv-upload" className="cursor-pointer">
                     <FileUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="font-medium dark:text-white mb-2">
-                      Arrastra un archivo o haz clic para seleccionar
+                      {t('archivo.arrastra')}
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Archivos CSV o Excel (.xlsx)
+                      {t('archivo.formatos')}
                     </p>
                   </label>
                 )}
@@ -506,17 +509,17 @@ export function ImportarProveedores() {
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader>
                 <CardTitle className="text-lg dark:text-white">
-                  Vista Previa ({parsedData.length} registros)
+                  {t('vistaPrevia.titulo', { count: parsedData.length })}
                 </CardTitle>
                 <div className="flex gap-2 mt-2">
                   <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                     <CheckCircle className="h-3 w-3 mr-1" />
-                    {validCount} válidos
+                    {t('vistaPrevia.validos', { count: validCount })}
                   </Badge>
                   {invalidCount > 0 && (
                     <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
                       <XCircle className="h-3 w-3 mr-1" />
-                      {invalidCount} con errores
+                      {t('vistaPrevia.conErrores', { count: invalidCount })}
                     </Badge>
                   )}
                 </div>
@@ -526,13 +529,13 @@ export function ImportarProveedores() {
                   <Table>
                     <TableHeader>
                       <TableRow className="dark:border-gray-700">
-                        <TableHead className="w-16 dark:text-gray-300">Fila</TableHead>
-                        <TableHead className="dark:text-gray-300">Nombre</TableHead>
-                        <TableHead className="dark:text-gray-300">NIT</TableHead>
-                        <TableHead className="dark:text-gray-300">Contacto</TableHead>
-                        <TableHead className="dark:text-gray-300">Teléfono</TableHead>
-                        <TableHead className="dark:text-gray-300">Email</TableHead>
-                        <TableHead className="dark:text-gray-300">Estado</TableHead>
+                        <TableHead className="w-16 dark:text-gray-300">{t('columnas.fila')}</TableHead>
+                        <TableHead className="dark:text-gray-300">{t('columnas.nombre')}</TableHead>
+                        <TableHead className="dark:text-gray-300">{t('columnas.nit')}</TableHead>
+                        <TableHead className="dark:text-gray-300">{t('columnas.contacto')}</TableHead>
+                        <TableHead className="dark:text-gray-300">{t('columnas.telefono')}</TableHead>
+                        <TableHead className="dark:text-gray-300">{t('columnas.email')}</TableHead>
+                        <TableHead className="dark:text-gray-300">{t('columnas.estado')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -553,12 +556,12 @@ export function ImportarProveedores() {
                             {supplier.isValid ? (
                               <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                                 <CheckCircle className="h-3 w-3 mr-1" />
-                                Válido
+                                {t('vistaPrevia.valido')}
                               </Badge>
                             ) : (
                               <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
                                 <XCircle className="h-3 w-3 mr-1" />
-                                {supplier.errors.join(', ')}
+                                {supplier.errors.map((e) => t(`validaciones.${e}`)).join(', ')}
                               </Badge>
                             )}
                           </TableCell>
@@ -576,7 +579,7 @@ export function ImportarProveedores() {
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader>
                 <CardTitle className="text-lg dark:text-white">
-                  Resultados de Importación
+                  {t('resultados.titulo')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -584,22 +587,22 @@ export function ImportarProveedores() {
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                       <CheckCircle className="h-5 w-5" />
-                      <span className="font-medium">{importResults.success} importados correctamente</span>
+                      <span className="font-medium">{t('resultados.importados', { count: importResults.success })}</span>
                     </div>
                     {importResults.errors.length > 0 && (
                       <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
                         <XCircle className="h-5 w-5" />
-                        <span className="font-medium">{importResults.errors.length} con errores</span>
+                        <span className="font-medium">{t('vistaPrevia.conErrores', { count: importResults.errors.length })}</span>
                       </div>
                     )}
                   </div>
 
                   {importResults.errors.length > 0 && (
                     <div className="mt-4">
-                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Errores:</p>
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('resultados.errores')}</p>
                       <ul className="text-sm text-red-600 dark:text-red-400 space-y-1">
                         {importResults.errors.map((err, idx) => (
-                          <li key={idx}>Fila {err.row}: {err.error}</li>
+                          <li key={idx}>{t('resultados.errorFila', { fila: err.row, error: err.error })}</li>
                         ))}
                       </ul>
                     </div>
@@ -614,7 +617,7 @@ export function ImportarProveedores() {
         <div className="space-y-6">
           <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="text-lg dark:text-white">Acciones</CardTitle>
+              <CardTitle className="text-lg dark:text-white">{t('acciones.titulo')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <Button
@@ -623,7 +626,7 @@ export function ImportarProveedores() {
                 onClick={handleDownloadTemplate}
               >
                 <Download className="h-4 w-4 mr-2" />
-                Descargar Plantilla
+                {t('acciones.plantilla')}
               </Button>
 
               {parsedData.length > 0 && validCount > 0 && !importResults && (
@@ -637,7 +640,7 @@ export function ImportarProveedores() {
                   ) : (
                     <Upload className="h-4 w-4 mr-2" />
                   )}
-                  Importar {validCount} Proveedores
+                  {t('acciones.importar', { count: validCount })}
                 </Button>
               )}
 
@@ -645,7 +648,7 @@ export function ImportarProveedores() {
                 <Link href="/app/inventario/proveedores" className="block">
                   <Button className="w-full bg-green-600 hover:bg-green-700 text-white">
                     <CheckCircle className="h-4 w-4 mr-2" />
-                    Ver Proveedores
+                    {t('acciones.verProveedores')}
                   </Button>
                 </Link>
               )}
@@ -656,17 +659,17 @@ export function ImportarProveedores() {
             <CardHeader>
               <CardTitle className="text-lg dark:text-white flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                Instrucciones
+                {t('instrucciones.titulo')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-2 list-decimal list-inside">
-                <li>Descarga la plantilla CSV</li>
-                <li>Llena los datos de proveedores</li>
-                <li>El campo "Nombre" es obligatorio</li>
-                <li>Guarda el archivo en formato CSV</li>
-                <li>Sube el archivo y verifica la vista previa</li>
-                <li>Haz clic en "Importar" para confirmar</li>
+                <li>{t('instrucciones.paso1')}</li>
+                <li>{t('instrucciones.paso2')}</li>
+                <li>{t('instrucciones.paso3')}</li>
+                <li>{t('instrucciones.paso4')}</li>
+                <li>{t('instrucciones.paso5')}</li>
+                <li>{t('instrucciones.paso6')}</li>
               </ol>
             </CardContent>
           </Card>

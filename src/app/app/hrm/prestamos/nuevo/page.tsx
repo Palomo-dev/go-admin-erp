@@ -33,14 +33,15 @@ export default function NuevoPrestamoPage() {
 
     setIsLoading(true);
     try {
-      const [empData] = await Promise.all([
+      const [empData, currData] = await Promise.all([
         service.getEmployees(),
+        service.getCurrencies(),
       ]);
 
       setEmployees(empData);
       setLoanTypes(service.getLoanTypes());
-      setCurrencies(service.getCurrencies());
-    } catch (error: any) {
+      setCurrencies(currData);
+    } catch (error: unknown) {
       console.error('Error loading data:', error);
       toast({
         title: 'Error',
@@ -66,10 +67,10 @@ export default function NuevoPrestamoPage() {
       await service.create(data);
       toast({ title: 'Solicitud de préstamo creada correctamente' });
       router.push('/app/hrm/prestamos');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo crear el préstamo',
+        description: (error as { message?: string } | null)?.message || 'No se pudo crear el préstamo',
         variant: 'destructive',
       });
       throw error;

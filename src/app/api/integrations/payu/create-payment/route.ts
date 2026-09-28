@@ -1,51 +1,57 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+// ============================================================
+// POST /api/integrations/payu/create-payment
+// Crea una transacción en PayU con la conexión de la organización.
+//
+// SEGURIDAD (GO-sec, 2026-09-24): antes solo comprobaba `auth.getSession()`
+// y cobraba con el `connection_id` del body (cualquier organización). Ahora:
+// sesión validada (`withOrg`), organización ajena en body o query → 403 y
+// registro, permiso de cobro resuelto en el servidor y la conexión tiene que
+// ser de la organización y de PayU (404 si no). Credenciales de la conexión.
+// ============================================================
+
+import { NextResponse } from 'next/server';
+import { withOrg } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
+import { OrgContextError } from '@/lib/utils/orgContextError';
+import { getServiceClient } from '@/lib/supabase/server-service';
 import { payuService } from '@/lib/services/integrations/payu';
 import type { PayUTransaction } from '@/lib/services/integrations/payu';
 import { detectEnvironment } from '@/lib/services/integrations/payu/payuConfig';
+import {
+  CONECTORES,
+  conexionDelProveedor,
+  exigirPermiso,
+  PERMISO_COBRO,
+  registrarError,
+} from '@/lib/services/integrations/accesoIntegraciones';
 
-export async function POST(request: NextRequest) {
+const RUTA = '/api/integrations/payu/create-payment';
+
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const body = await readOrgBody<Record<string, unknown>>(ctx, request, { route: RUTA });
+    await exigirPermiso(ctx, PERMISO_COBRO, RUTA);
 
-    if (!session) {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    const transaction = body.transaction;
+    if (!transaction || typeof transaction !== 'object' || Array.isArray(transaction)) {
+      return NextResponse.json({ error: 'transaction es requerido' }, { status: 400 });
     }
 
-    const body = await request.json();
-    const { connection_id, transaction } = body as {
-      connection_id: string;
-      transaction: PayUTransaction;
-    };
-
-    if (!connection_id || !transaction) {
-      return NextResponse.json(
-        { error: 'connection_id y transaction son requeridos' },
-        { status: 400 }
-      );
-    }
-
-    const credentials = await payuService.getCredentials(connection_id);
+    const conexion = await conexionDelProveedor(ctx, body.connection_id, CONECTORES.payu, RUTA);
+    const credentials = await payuService.getCredentials(conexion.id, getServiceClient());
     if (!credentials?.apiKey || !credentials?.apiLogin) {
       return NextResponse.json(
-        { error: 'No se encontraron credenciales de PayU para esta conexión' },
-        { status: 404 }
+        { error: 'La conexión de PayU no tiene credenciales activas', code: 'CREDENCIALES_NO_CONFIGURADAS' },
+        { status: 412 },
       );
     }
 
     const isTest = detectEnvironment(credentials.merchantId) === 'sandbox';
-    const result = await payuService.createPayment(credentials, transaction, isTest);
-
+    const result = await payuService.createPayment(credentials, transaction as PayUTransaction, isTest);
     return NextResponse.json({ success: true, data: result });
-  } catch (error) {
-    console.error('Error creating PayU payment:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Error al crear el pago' },
-      { status: 500 }
-    );
+  } catch (err) {
+    if (err instanceof OrgContextError) throw err;
+    registrarError(RUTA, err);
+    return NextResponse.json({ error: 'Error al crear el pago' }, { status: 500 });
   }
-}
+});

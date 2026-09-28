@@ -21,6 +21,8 @@ import {
   DollarSign,
   Banknote,
 } from 'lucide-react';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { primerDiaDelMes, ultimoDiaDelMes, partesDelDia } from '@/lib/services/fiscalCalendar';
 
 export default function ReportesHRMPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
@@ -36,12 +38,14 @@ export default function ReportesHRMPage() {
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
 
   // Current filters
-  const today = new Date();
-  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  const [currentFilters, setCurrentFilters] = useState<Filters>({
-    dateFrom: firstDay.toISOString().split('T')[0],
-    dateTo: lastDay.toISOString().split('T')[0],
+  // Mes en curso SEGUN LA ORGANIZACION. `new Date(y, m, 1)` es medianoche
+  // local del navegador, y su dia UTC en Madrid es el 31 del mes anterior: el
+  // informe arrancaba un dia antes de lo que dice el titulo.
+  const { getToday } = useFormatDate();
+  const [currentFilters, setCurrentFilters] = useState<Filters>(() => {
+    const hoy = getToday();
+    const { year, month } = partesDelDia(hoy);
+    return { dateFrom: primerDiaDelMes(year, month), dateTo: ultimoDiaDelMes(year, month) };
   });
 
   const getService = useCallback(() => {

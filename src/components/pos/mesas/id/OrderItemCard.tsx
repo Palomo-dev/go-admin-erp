@@ -16,15 +16,45 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Trash2, Edit2, Check, X, Package, ChefHat, Clock, CheckCircle } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { Trash2, Edit2, Check, X, Package, ChefHat, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { Textarea } from '@/components/ui/textarea';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
+import { MOTIVO_MAX } from '@/lib/pos/cocina/rutasCocina';
 import type { SaleItem } from './types';
+
+/** Mínimo de caracteres del motivo al restar o anular un plato ya enviado. */
+const MOTIVO_MIN = 3;
+
+function CampoMotivo({ valor, onCambio, disabled }: { valor: string; onCambio: (v: string) => void; disabled?: boolean }) {
+  const t = useTranslations('posMesaAjuste');
+  return (
+    <div className="space-y-1">
+      <label htmlFor="motivo-ajuste-cocina" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        {t('motivo')}
+      </label>
+      <Textarea
+        id="motivo-ajuste-cocina"
+        value={valor}
+        onChange={(e) => onCambio(e.target.value)}
+        maxLength={MOTIVO_MAX}
+        placeholder={t('motivoPlaceholder')}
+        disabled={disabled}
+        rows={2}
+        autoFocus
+      />
+      <p className="text-xs text-gray-500 dark:text-gray-400">{t('motivoAyuda')}</p>
+    </div>
+  );
+}
 
 interface OrderItemCardProps {
   item: SaleItem;
-  onUpdateQuantity: (itemId: string, newQuantity: number) => Promise<void>;
-  onDelete: (itemId: string) => Promise<void>;
+  /** `motivo` es obligatorio al restar unidades de un plato que ya está en cocina. */
+  onUpdateQuantity: (itemId: string, newQuantity: number, motivo?: string) => Promise<void>;
+  /** `motivo` es obligatorio al anular un plato que ya está en cocina. */
+  onDelete: (itemId: string, motivo?: string) => Promise<void>;
   onTransfer?: (itemId: string) => void;
 }
 
@@ -34,17 +64,27 @@ export function OrderItemCard({
   onDelete,
   onTransfer,
 }: OrderItemCardProps) {
+  const { formatear } = useMonedaOrganizacion();
+  const tAjuste = useTranslations('posMesaAjuste');
   const [isEditing, setIsEditing] = useState(false);
   const [editQuantity, setEditQuantity] = useState(item.quantity);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  // Restar unidades de un plato ya enviado: se pide el motivo antes de guardar.
+  const [cantidadPorConfirmar, setCantidadPorConfirmar] = useState<number | null>(null);
+  const [motivo, setMotivo] = useState('');
+
+  // Ítems de comanda vivos del plato (los anulados ya no cuentan).
+  const kitchenItemsVivos = (item.kitchen_ticket_items || []).filter(
+    (k) => k.status !== 'cancelled' && !k.cancelled_at,
+  );
+  const enviadoACocina = kitchenItemsVivos.length > 0;
 
   // Obtener estado de cocina del item (usar el más reciente)
   const getKitchenStatus = () => {
-    const kitchenItems = item.kitchen_ticket_items;
-    if (!kitchenItems || kitchenItems.length === 0) return null;
+    if (kitchenItemsVivos.length === 0) return null;
     // Tomar el estado del último kitchen_ticket_item (más reciente)
-    const latest = kitchenItems[kitchenItems.length - 1];
+    const latest = kitchenItemsVivos[kitchenItemsVivos.length - 1];
     return latest.status;
   };
 
@@ -55,6 +95,8 @@ export function OrderItemCard({
   type ParsedNotes = {
     product_name?: string;
     extra?: string;
+    customer_note?: string;
+    is_allergy?: boolean;
     guest_number?: number;
     modifiers?: Array<{ groupId: number; groupName: string; modifierId: number; name: string; extraPrice: number }>;
   };
@@ -78,16 +120,13 @@ export function OrderItemCard({
     delivered: { label: 'Entregado', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', icon: Check },
   };
 
-  const handleSaveQuantity = async () => {
-    if (editQuantity === item.quantity || editQuantity < 1) {
-      setIsEditing(false);
-      return;
-    }
-
+  const guardarCantidad = async (cantidad: number, motivoCambio?: string) => {
     setIsProcessing(true);
     try {
-      await onUpdateQuantity(item.id, editQuantity);
+      await onUpdateQuantity(item.id, cantidad, motivoCambio);
       setIsEditing(false);
+      setCantidadPorConfirmar(null);
+      setMotivo('');
     } catch (error) {
       console.error('Error actualizando cantidad:', error);
       setEditQuantity(item.quantity);
@@ -96,10 +135,28 @@ export function OrderItemCard({
     }
   };
 
+  const handleSaveQuantity = async () => {
+    if (editQuantity === item.quantity || editQuantity < 1) {
+      setIsEditing(false);
+      return;
+    }
+    // Restar a algo que la cocina ya tiene: primero el motivo (sale en la comanda de ajuste).
+    if (enviadoACocina && editQuantity < item.quantity) {
+      setMotivo('');
+      setCantidadPorConfirmar(editQuantity);
+      return;
+    }
+    await guardarCantidad(editQuantity);
+  };
+
+  const motivoValido = motivo.trim().length >= MOTIVO_MIN;
+
   const handleDelete = async () => {
+    if (enviadoACocina && !motivoValido) return;
     setIsProcessing(true);
     try {
-      await onDelete(item.id);
+      await onDelete(item.id, enviadoACocina ? motivo.trim() : undefined);
+      setMotivo('');
     } catch (error) {
       console.error('Error eliminando item:', error);
     } finally {
@@ -176,7 +233,7 @@ export function OrderItemCard({
             <div className="flex items-center gap-1 flex-wrap mt-1">
               {parsedNotes.modifiers.map((mod) => (
                 <Badge key={mod.modifierId} variant="outline" className="text-[0.65rem] px-1.5 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
-                  {mod.name}{mod.extraPrice > 0 ? ` (+${formatCurrency(mod.extraPrice)})` : ''}
+                  {mod.name}{mod.extraPrice > 0 ? ` (+${formatear(mod.extraPrice)})` : ''}
                 </Badge>
               ))}
             </div>
@@ -188,14 +245,22 @@ export function OrderItemCard({
             </Badge>
           )}
           {parsedNotes?.extra && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 break-words whitespace-normal">
-              📝 {parsedNotes.extra}
+            <p className={parsedNotes.is_allergy
+              ? 'text-sm font-semibold text-red-700 dark:text-red-400 mt-1 break-words whitespace-normal flex items-start gap-1'
+              : 'text-sm text-gray-600 dark:text-gray-400 mt-1 break-words whitespace-normal'}>
+              {parsedNotes.is_allergy ? <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" /> : '📝 '}
+              {parsedNotes.is_allergy ? tAjuste('alergia', { nota: parsedNotes.extra }) : parsedNotes.extra}
+            </p>
+          )}
+          {parsedNotes?.customer_note && (
+            <p className="text-sm text-green-700 dark:text-green-400 mt-1 break-words whitespace-normal">
+              {tAjuste('notaCliente', { nota: parsedNotes.customer_note })}
             </p>
           )}
           
           {/* Precio unitario */}
           <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-            {formatCurrency(Number(item.unit_price))} c/u
+            {formatear(Number(item.unit_price))} c/u
           </p>
         </div>
 
@@ -203,7 +268,7 @@ export function OrderItemCard({
         <div className="flex flex-col items-end gap-2">
           {/* Total */}
           <p className="font-bold text-lg text-gray-900 dark:text-gray-100">
-            {formatCurrency(Number(item.total))}
+            {formatear(Number(item.total))}
           </p>
 
           {/* Cantidad editable */}
@@ -279,22 +344,74 @@ export function OrderItemCard({
         </div>
       </div>
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialog open={showDeleteDialog} onOpenChange={(open) => { setShowDeleteDialog(open); if (!open) setMotivo(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar item?</AlertDialogTitle>
+            <AlertDialogTitle>{enviadoACocina ? tAjuste('anularTitulo') : '¿Eliminar item?'}</AlertDialogTitle>
             <AlertDialogDescription>
-              ¿Seguro que deseas eliminar «{item.product?.name || 'este item'}» del pedido?
+              {enviadoACocina
+                ? tAjuste('anularDescripcion', { producto: item.product?.name || '' })
+                : <>¿Seguro que deseas eliminar «{item.product?.name || 'este item'}» del pedido?</>}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {enviadoACocina && (
+            <CampoMotivo valor={motivo} onCambio={setMotivo} disabled={isProcessing} />
+          )}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isProcessing}>{enviadoACocina ? tAjuste('cancelar') : 'Cancelar'}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isProcessing}
+              onClick={(e) => {
+                if (enviadoACocina && !motivoValido) {
+                  e.preventDefault();
+                  return;
+                }
+                handleDelete();
+              }}
+              disabled={isProcessing || (enviadoACocina && !motivoValido)}
               className="bg-red-600 text-white hover:bg-red-700"
             >
-              {isProcessing ? 'Eliminando...' : 'Eliminar'}
+              {enviadoACocina
+                ? (isProcessing ? tAjuste('anulando') : tAjuste('anular'))
+                : (isProcessing ? 'Eliminando...' : 'Eliminar')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Restar unidades de un plato ya enviado: motivo obligatorio (va en la comanda de ajuste) */}
+      <AlertDialog
+        open={cantidadPorConfirmar !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCantidadPorConfirmar(null);
+            setMotivo('');
+            setEditQuantity(item.quantity);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tAjuste('restarTitulo')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tAjuste('restarDescripcion', {
+                producto: item.product?.name || '',
+                antes: item.quantity,
+                despues: cantidadPorConfirmar ?? item.quantity,
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <CampoMotivo valor={motivo} onCambio={setMotivo} disabled={isProcessing} />
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>{tAjuste('cancelar')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (!motivoValido || cantidadPorConfirmar === null) return;
+                guardarCantidad(cantidadPorConfirmar, motivo.trim());
+              }}
+              disabled={isProcessing || !motivoValido}
+            >
+              {tAjuste('confirmarCambio')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

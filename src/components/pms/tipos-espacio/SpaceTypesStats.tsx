@@ -3,7 +3,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Package, CheckCircle, XCircle, Home, DollarSign } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface SpaceTypesStatsProps {
   stats: {
@@ -16,6 +16,7 @@ interface SpaceTypesStatsProps {
 }
 
 export function SpaceTypesStats({ stats }: SpaceTypesStatsProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const statCards = [
     {
       title: 'Total Tipos',

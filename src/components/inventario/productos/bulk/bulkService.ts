@@ -2,16 +2,66 @@
  * Servicio para acciones masivas sobre productos
  */
 import { supabase } from '@/lib/supabase/config';
+import {
+  partirEnLotes,
+  RESUMEN_VACIO,
+  sumarResumen,
+  validarAjusteMasivo,
+  type ModoStock,
+  type ResumenAjusteStock,
+} from './ajusteMasivoStock';
 
+export type { ModoStock } from './ajusteMasivoStock';
 export type TipoPrecio = 'venta' | 'compra' | 'comparacion';
 export type ModoAjuste = 'fijo' | 'valor' | 'porcentaje';
-export type ModoStock = 'set' | 'add';
 export type ModoRedondeo = 'multiplo' | 'digitos';
 
-export interface ResultadoMasivo {
+/** Mensaje legible de un error de Supabase, de JS o desconocido. */
+const mensajeDe = (e: unknown, porDefecto: string): string => {
+  if (e instanceof Error && e.message) return e.message;
+  if (e && typeof e === 'object' && 'message' in e && typeof (e as { message: unknown }).message === 'string') {
+    return (e as { message: string }).message || porDefecto;
+  }
+  return porDefecto;
+};
+
+type FilaJerarquia = { id: number; is_parent: boolean | null; parent_product_id: number | null };
+
+interface ConteoMasivo {
   exitosos: number;
   fallidos: number;
-  errores: string[];
+}
+
+/**
+ * Motivo de un fallo de una acción masiva. El texto se arma en pantalla con
+ * `productos.masivas.errores.<codigo>` (4 idiomas); `detalle` es el mensaje
+ * crudo de la base cuando lo hay.
+ */
+export type CodigoErrorMasivo =
+  | 'expandir'
+  | 'sinProductos'
+  | 'sinCostoPrevio'
+  | 'cerrarCostos'
+  | 'insertarCostos'
+  | 'cerrarPrecios'
+  | 'insertarPrecios'
+  | 'lote'
+  | 'sinPrecio'
+  | 'sinCosto'
+  | 'sinPermisoProducto'
+  | 'producto'
+  | 'detalle';
+
+export interface ErrorMasivo {
+  codigo: CodigoErrorMasivo;
+  valores?: Record<string, string | number>;
+}
+
+const errorMasivo = (codigo: CodigoErrorMasivo, valores?: Record<string, string | number>): ErrorMasivo =>
+  valores ? { codigo, valores } : { codigo };
+
+export interface ResultadoMasivo extends ConteoMasivo {
+  errores: ErrorMasivo[];
 }
 
 /**
@@ -35,23 +85,23 @@ const calcularNuevoValor = (actual: number, modo: ModoAjuste, cantidad: number):
  * (503/PGRST002, errores de red). Lanza si todos los intentos fallan.
  */
 async function retrySupabaseQuery<T>(
-  queryFn: () => PromiseLike<{ data: T | null; error: any }>,
+  queryFn: () => PromiseLike<{ data: T | null; error: unknown }>,
   label: string,
   maxRetries = 3,
   baseDelay = 1000
 ): Promise<T> {
-  let lastError: any = null;
+  let lastError: unknown = null;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const { data, error } = await queryFn();
     if (!error && data !== null) return data;
     lastError = error;
     if (attempt < maxRetries) {
       const delay = baseDelay * Math.pow(2, attempt);
-      console.warn(`[retrySupabaseQuery] ${label}: intento ${attempt + 1}/${maxRetries + 1} falló, reintentando en ${delay}ms`, error?.message || error);
+      console.warn(`[retrySupabaseQuery] ${label}: intento ${attempt + 1}/${maxRetries + 1} falló, reintentando en ${delay}ms`, mensajeDe(error, String(error)));
       await new Promise((res) => setTimeout(res, delay));
     }
   }
-  throw new Error(`${label}: ${lastError?.message || 'Error desconocido tras reintentos'}`);
+  throw new Error(`${label}: ${mensajeDe(lastError, 'Error desconocido tras reintentos')}`);
 }
 
 /**
@@ -67,7 +117,7 @@ async function expandProductIds(productIds: number[]): Promise<number[]> {
   // Consultar productos seleccionados en lotes
   for (let i = 0; i < productIds.length; i += EXPAND_BATCH) {
     const batch = productIds.slice(i, i + EXPAND_BATCH);
-    let data: any[];
+    let data: FilaJerarquia[];
     try {
       data = await retrySupabaseQuery(
         () => supabase
@@ -77,7 +127,7 @@ async function expandProductIds(productIds: number[]): Promise<number[]> {
           .neq('status', 'deleted'),
         `[expandProductIds] query productos lote ${i}`
       );
-    } catch (e: any) {
+    } catch (e) {
       console.error('[expandProductIds] Error querying products:', e);
       continue;
     }
@@ -109,11 +159,11 @@ async function expandProductIds(productIds: number[]): Promise<number[]> {
             .neq('status', 'deleted'),
           `[expandProductIds] query hijos lote ${i}`
         );
-        children.forEach((c: any) => childrenIds.push(c.id));
-      } catch (e: any) {
+        children.forEach((c: { id: number }) => childrenIds.push(c.id));
+      } catch (e) {
         // Si no se pueden obtener los hijos, lanzar para que el caller
         // sepa que la expansión fue incompleta y no proceda con datos parciales.
-        throw new Error(`No se pudieron obtener las variantes de los productos padre: ${e.message || e}. ` +
+        throw new Error(`No se pudieron obtener las variantes de los productos padre: ${mensajeDe(e, String(e))}. ` +
           'Es probable que el servicio de base de datos esté recargando su caché (503). Intente de nuevo en unos segundos.');
       }
     }
@@ -131,8 +181,8 @@ async function expandProductIds(productIds: number[]): Promise<number[]> {
             .neq('status', 'deleted'),
           `[expandProductIds] query padres lote ${i}`
         );
-        parents.forEach((p: any) => expandedIds.add(p.id));
-      } catch (e: any) {
+        parents.forEach((p: { id: number }) => expandedIds.add(p.id));
+      } catch (e) {
         console.error('[expandProductIds] Error querying parents:', e);
       }
     }
@@ -164,14 +214,15 @@ export async function bulkUpdatePrices(
   let allIds: number[];
   try {
     allIds = await expandProductIds(productIds);
-  } catch (e: any) {
+  } catch (e) {
     resultado.fallidos = productIds.length;
-    resultado.errores.push(e.message || 'Error al expandir productos padre → variantes');
+    console.error('[bulk] expandir padres → variantes:', mensajeDe(e, String(e)));
+    resultado.errores.push(errorMasivo('expandir'));
     return resultado;
   }
   if (allIds.length === 0) {
     resultado.fallidos = productIds.length;
-    resultado.errores.push('No se encontraron los productos seleccionados');
+    resultado.errores.push(errorMasivo('sinProductos'));
     return resultado;
   }
 
@@ -198,7 +249,7 @@ export async function bulkUpdatePrices(
             costoPorProducto.set(pid, {
               id: c.id as number,
               cost: Number(c.cost) || 0,
-              supplier_id: (c as any).supplier_id || null,
+              supplier_id: (c as { supplier_id?: string | null }).supplier_id || null,
             });
           }
         }
@@ -232,7 +283,7 @@ export async function bulkUpdatePrices(
 
         if (sinCostoPrevio > 0) {
           resultado.fallidos += sinCostoPrevio;
-          resultado.errores.push(`${sinCostoPrevio} productos sin costo previo (use modo "fijo" para asignar costo)`);
+          resultado.errores.push(errorMasivo('sinCostoPrevio', { count: sinCostoPrevio, n: sinCostoPrevio }));
         }
 
         if (idsACerrar.length > 0) {
@@ -243,7 +294,7 @@ export async function bulkUpdatePrices(
             .is('effective_to', null);
           if (closeErr) {
             resultado.fallidos += nuevosCostos.length;
-            resultado.errores.push(`Error al cerrar costos: ${closeErr.message}`);
+            resultado.errores.push(errorMasivo('cerrarCostos', { detalle: closeErr.message }));
             continue;
           }
         }
@@ -255,7 +306,7 @@ export async function bulkUpdatePrices(
             const { error: insErr } = await supabase.from('product_costs').insert(chunk);
             if (insErr) {
               resultado.fallidos += chunk.length;
-              resultado.errores.push(`Error al insertar costos: ${insErr.message}`);
+              resultado.errores.push(errorMasivo('insertarCostos', { detalle: insErr.message }));
             } else {
               resultado.exitosos += chunk.length;
             }
@@ -343,7 +394,7 @@ export async function bulkUpdatePrices(
             .is('effective_to', null);
           if (closeErr) {
             resultado.fallidos += nuevosPrecios.length;
-            resultado.errores.push(`Error al cerrar precios: ${closeErr.message}`);
+            resultado.errores.push(errorMasivo('cerrarPrecios', { detalle: closeErr.message }));
             continue;
           }
         }
@@ -355,167 +406,88 @@ export async function bulkUpdatePrices(
             const { error: insErr } = await supabase.from('product_prices').insert(chunk);
             if (insErr) {
               resultado.fallidos += chunk.length;
-              resultado.errores.push(`Error al insertar precios: ${insErr.message}`);
+              resultado.errores.push(errorMasivo('insertarPrecios', { detalle: insErr.message }));
             } else {
               resultado.exitosos += chunk.length;
             }
           }
         }
       }
-    } catch (e: any) {
+    } catch (e) {
       resultado.fallidos += batchIds.length;
-      resultado.errores.push(`Lote ${i}-${i + batchIds.length}: ${e.message || 'error'}`);
+      resultado.errores.push(errorMasivo('lote', { desde: i, hasta: i + batchIds.length, detalle: mensajeDe(e, 'error') }));
     }
   }
   return resultado;
 }
 
+export interface ResultadoAjusteStock extends ConteoMasivo {
+  /** Códigos de validación (`sucursal`, `sin_permiso`…) o el mensaje de la base. */
+  errores: string[];
+  /** Suma de los resúmenes de la RPC (entradas, salidas, sin costo…). */
+  resumen: ResumenAjusteStock;
+}
+
 /**
- * Actualización masiva de stock en una sucursal.
- * Expande automáticamente los IDs seleccionados para incluir:
- * - Hijos (variantes) de productos padre seleccionados
- * - Padre de productos hijo seleccionados (si el padre trackea stock)
- * Deduplica para evitar actualizar el mismo producto dos veces.
- * Respeta track_stock: solo actualiza productos que rastrean inventario.
- * Optimizado con operaciones en lote (batch) para miles de productos.
+ * Ajuste masivo de stock en una sucursal, por el kardex.
+ *
+ * Todo ocurre en el servidor: `fn_productos_stock_masivo_alcance` expande la
+ * selección (padre ↔ variantes) y devuelve solo los que rastrean inventario;
+ * después, por lotes, `fn_productos_ajuste_masivo_stock` inserta por cada
+ * producto un stock_movement de ajuste (entrada o salida por la diferencia,
+ * al costo vigente, nota «Ajuste masivo · usuario · motivo») y el trigger
+ * contable crea su asiento. Cada lote es una transacción. El resultado nunca
+ * baja de 0. Permiso (inventory.adjust / inventory_management) resuelto en el
+ * servidor.
  */
 export async function bulkUpdateStock(
+  organizationId: number,
   productIds: number[],
   branchId: number,
   cantidad: number,
-  modo: ModoStock
-): Promise<ResultadoMasivo> {
-  const resultado: ResultadoMasivo = { exitosos: 0, fallidos: 0, errores: [] };
-  const BATCH_SIZE = 300;
-
-  // 1. Expandir IDs: incluir hijos de padres y padres de hijos (en lotes)
-  let allIds: number[];
-  try {
-    allIds = await expandProductIds(productIds);
-  } catch (e: any) {
+  modo: ModoStock,
+  motivo?: string | null
+): Promise<ResultadoAjusteStock> {
+  const resultado: ResultadoAjusteStock = { exitosos: 0, fallidos: 0, errores: [], resumen: { ...RESUMEN_VACIO } };
+  const entrada = validarAjusteMasivo({ productIds, branchId, cantidad, modo, motivo });
+  if (!entrada.ok) {
     resultado.fallidos = productIds.length;
-    resultado.errores.push(e.message || 'Error al expandir productos padre → variantes');
-    return resultado;
-  }
-  console.log(`[bulkUpdateStock] IDs expandidos: ${allIds.length} (originales: ${productIds.length})`);
-  if (allIds.length === 0) {
-    resultado.fallidos = productIds.length;
-    resultado.errores.push('No se encontraron los productos seleccionados');
+    resultado.errores.push(entrada.error);
     return resultado;
   }
 
-  // 2. Filtrar productos que rastrean stock (en lotes)
-  const trackableIds: number[] = [];
-  for (let i = 0; i < allIds.length; i += BATCH_SIZE) {
-    const batch = allIds.slice(i, i + BATCH_SIZE);
-    const { data: prods, error: trackErr } = await supabase
-      .from('products')
-      .select('id, track_stock')
-      .in('id', batch)
-      .neq('status', 'deleted');
-    if (trackErr) console.error('[bulkUpdateStock] Error filtering track_stock:', trackErr);
-    if (prods) {
-      for (const p of prods) {
-        if (p.track_stock !== false) trackableIds.push(p.id);
-      }
-    }
+  // 1. Alcance: una sola expansión para toda la selección, así un padre y su
+  //    variante nunca caen en lotes distintos (en «sumar» se sumaría dos veces).
+  const { data: alcance, error: errorAlcance } = await supabase.rpc('fn_productos_stock_masivo_alcance', {
+    p_organization_id: organizationId,
+    p_product_ids: entrada.productIds,
+  });
+  if (errorAlcance) {
+    resultado.fallidos = entrada.productIds.length;
+    resultado.errores.push(errorAlcance.message);
+    return resultado;
   }
-  console.log(`[bulkUpdateStock] Trackable IDs: ${trackableIds.length} de ${allIds.length}`);
+  const ids = ((alcance as number[] | null) ?? []).map(Number);
 
-  // 3. Procesar stock con upsert (mucho más rápido que update individual)
-  const UPSERT_CHUNK = 100;
-  const ahora = new Date().toISOString();
-
-  for (let i = 0; i < trackableIds.length; i += UPSERT_CHUNK) {
-    const batchIds = trackableIds.slice(i, i + UPSERT_CHUNK);
-
-    try {
-      // Consultar stock existente para el lote
-      const { data: existentes, error: qErr } = await supabase
-        .from('stock_levels')
-        .select('id, product_id, qty_on_hand')
-        .in('product_id', batchIds)
-        .eq('branch_id', branchId)
-        .is('lot_id', null);
-
-      if (qErr) throw qErr;
-
-      // Mapear stock existente
-      const stockMap = new Map<number, { id: number; qty_on_hand: number }>();
-      for (const s of existentes || []) {
-        stockMap.set(s.product_id as number, {
-          id: s.id as number,
-          qty_on_hand: Number(s.qty_on_hand) || 0,
-        });
-      }
-
-      // Separar updates e inserts
-      const toUpdate: Array<{ id: number; qty: number }> = [];
-      const toInsert: Array<{ product_id: number; branch_id: number; qty_on_hand: number; qty_reserved: number; updated_at: string }> = [];
-
-      for (const productId of batchIds) {
-        const existente = stockMap.get(productId);
-        if (existente) {
-          const nuevaQty = modo === 'set' ? cantidad : existente.qty_on_hand + cantidad;
-          toUpdate.push({ id: existente.id, qty: Math.max(0, nuevaQty) });
-        } else {
-          toInsert.push({
-            product_id: productId,
-            branch_id: branchId,
-            qty_on_hand: Math.max(0, cantidad),
-            qty_reserved: 0,
-            updated_at: ahora,
-          });
-        }
-      }
-
-      // Updates en lote usando RPC o update con in()
-      // PostgREST permite update con .in() para múltiples IDs
-      if (toUpdate.length > 0) {
-        // Hacer updates agrupados por valor (qty) para reducir queries
-        const updatesPorQty = new Map<number, number[]>();
-        for (const u of toUpdate) {
-          if (!updatesPorQty.has(u.qty)) updatesPorQty.set(u.qty, []);
-          updatesPorQty.get(u.qty)!.push(u.id);
-        }
-
-        for (const [qty, ids] of updatesPorQty) {
-          // Actualizar en sub-lotes de 100
-          for (let j = 0; j < ids.length; j += 100) {
-            const chunk = ids.slice(j, j + 100);
-            const { error: updErr } = await supabase
-              .from('stock_levels')
-              .update({ qty_on_hand: qty, updated_at: ahora })
-              .in('id', chunk);
-            if (updErr) {
-              resultado.fallidos += chunk.length;
-              resultado.errores.push(`Error update stock: ${updErr.message}`);
-            } else {
-              resultado.exitosos += chunk.length;
-            }
-          }
-        }
-      }
-
-      // Inserts en sub-lotes
-      if (toInsert.length > 0) {
-        for (let j = 0; j < toInsert.length; j += 100) {
-          const chunk = toInsert.slice(j, j + 100);
-          const { error: insErr } = await supabase.from('stock_levels').insert(chunk);
-          if (insErr) {
-            resultado.fallidos += chunk.length;
-            resultado.errores.push(`Error insert stock: ${insErr.message}`);
-            console.error(`[bulkUpdateStock] Error insert ${chunk.length}:`, insErr);
-          } else {
-            resultado.exitosos += chunk.length;
-          }
-        }
-      }
-    } catch (e: any) {
-      resultado.fallidos += batchIds.length;
-      resultado.errores.push(`Lote ${i}-${i + batchIds.length}: ${e.message || 'error'}`);
+  // 2. Ajuste por lotes (cada uno atómico).
+  for (const lote of partirEnLotes(ids)) {
+    const { data, error } = await supabase.rpc('fn_productos_ajuste_masivo_stock', {
+      p_organization_id: organizationId,
+      p_product_ids: lote,
+      p_branch_id: entrada.branchId,
+      p_modo: entrada.modo,
+      p_cantidad: entrada.cantidad,
+      p_motivo: entrada.motivo,
+      p_expandir: false,
+    });
+    if (error) {
+      resultado.fallidos += lote.length;
+      resultado.errores.push(error.message);
+      continue;
     }
+    resultado.resumen = sumarResumen(resultado.resumen, (data ?? {}) as Partial<Record<keyof ResumenAjusteStock, unknown>>);
   }
+  resultado.exitosos = resultado.resumen.ajustados + resultado.resumen.sin_cambio;
   return resultado;
 }
 
@@ -532,14 +504,14 @@ export async function bulkUpdateStatus(
 
   for (let i = 0; i < productIds.length; i += BATCH_SIZE) {
     const batch = productIds.slice(i, i + BATCH_SIZE);
-    const { error, count } = await supabase
+    const { error } = await supabase
       .from('products')
       .update({ status, updated_at: ahora })
       .in('id', batch);
 
     if (error) {
       resultado.fallidos += batch.length;
-      resultado.errores.push(error.message);
+      resultado.errores.push(errorMasivo('detalle', { detalle: error.message }));
     } else {
       resultado.exitosos += batch.length;
     }
@@ -559,11 +531,15 @@ export async function bulkDelete(productIds: number[]): Promise<ResultadoMasivo>
         p_product_id: productId,
       });
       if (error) throw error;
-      if (!data) throw new Error('Sin permisos');
+      if (!data) {
+        resultado.fallidos++;
+        resultado.errores.push(errorMasivo('sinPermisoProducto', { producto: productId }));
+        continue;
+      }
       resultado.exitosos++;
-    } catch (e: any) {
+    } catch (e) {
       resultado.fallidos++;
-      resultado.errores.push(`Producto ${productId}: ${e.message || 'error'}`);
+      resultado.errores.push(errorMasivo('producto', { producto: productId, detalle: mensajeDe(e, 'error') }));
     }
   }
   return resultado;
@@ -588,14 +564,15 @@ export async function bulkCopyPriceToCompare(
   let allIds: number[];
   try {
     allIds = await expandProductIds(productIds);
-  } catch (e: any) {
+  } catch (e) {
     resultado.fallidos = productIds.length;
-    resultado.errores.push(e.message || 'Error al expandir productos padre → variantes');
+    console.error('[bulk] expandir padres → variantes:', mensajeDe(e, String(e)));
+    resultado.errores.push(errorMasivo('expandir'));
     return resultado;
   }
   if (allIds.length === 0) {
     resultado.fallidos = productIds.length;
-    resultado.errores.push('No se encontraron los productos seleccionados');
+    resultado.errores.push(errorMasivo('sinProductos'));
     return resultado;
   }
 
@@ -635,7 +612,7 @@ export async function bulkCopyPriceToCompare(
         const precio = precioPorProducto.get(productId);
         if (!precio || precio.price <= 0) {
           resultado.fallidos++;
-          resultado.errores.push(`Producto ${productId}: sin precio de venta`);
+          resultado.errores.push(errorMasivo('sinPrecio', { producto: productId }));
           continue;
         }
 
@@ -663,7 +640,7 @@ export async function bulkCopyPriceToCompare(
           .is('effective_to', null);
         if (closeError) {
           resultado.fallidos += nuevosPrecios.length;
-          resultado.errores.push(`Error al cerrar precios: ${closeError.message}`);
+          resultado.errores.push(errorMasivo('cerrarPrecios', { detalle: closeError.message }));
           continue;
         }
       }
@@ -677,15 +654,15 @@ export async function bulkCopyPriceToCompare(
             .insert(chunk);
           if (insertError) {
             resultado.fallidos += chunk.length;
-            resultado.errores.push(`Error al insertar: ${insertError.message}`);
+            resultado.errores.push(errorMasivo('insertarPrecios', { detalle: insertError.message }));
           } else {
             resultado.exitosos += chunk.length;
           }
         }
       }
-    } catch (e: any) {
+    } catch (e) {
       resultado.fallidos += batchIds.length;
-      resultado.errores.push(`Lote ${i}-${i + batchIds.length}: ${e.message || 'error'}`);
+      resultado.errores.push(errorMasivo('lote', { desde: i, hasta: i + batchIds.length, detalle: mensajeDe(e, 'error') }));
     }
   }
   return resultado;
@@ -744,14 +721,15 @@ export async function bulkRoundPrices(
   let allIds: number[];
   try {
     allIds = await expandProductIds(productIds);
-  } catch (e: any) {
+  } catch (e) {
     resultado.fallidos = productIds.length;
-    resultado.errores.push(e.message || 'Error al expandir productos padre → variantes');
+    console.error('[bulk] expandir padres → variantes:', mensajeDe(e, String(e)));
+    resultado.errores.push(errorMasivo('expandir'));
     return resultado;
   }
   if (allIds.length === 0) {
     resultado.fallidos = productIds.length;
-    resultado.errores.push('No se encontraron los productos seleccionados');
+    resultado.errores.push(errorMasivo('sinProductos'));
     return resultado;
   }
 
@@ -777,7 +755,7 @@ export async function bulkRoundPrices(
             costoPorProducto.set(pid, {
               id: c.id as number,
               cost: Number(c.cost) || 0,
-              supplier_id: (c as any).supplier_id || null,
+              supplier_id: (c as { supplier_id?: string | null }).supplier_id || null,
             });
           }
         }
@@ -790,7 +768,7 @@ export async function bulkRoundPrices(
           const costoActual = costo?.cost || 0;
           if (costoActual <= 0) {
             resultado.fallidos++;
-            resultado.errores.push(`Producto ${productId}: sin costo`);
+            resultado.errores.push(errorMasivo('sinCosto', { producto: productId }));
             continue;
           }
           const nuevoCosto = calcularRedondeo(costoActual, modo, multiplo, digitosCount, digitosValor);
@@ -811,7 +789,7 @@ export async function bulkRoundPrices(
             .is('effective_to', null);
           if (closeErr) {
             resultado.fallidos += nuevosCostos.length;
-            resultado.errores.push(`Error al cerrar costos: ${closeErr.message}`);
+            resultado.errores.push(errorMasivo('cerrarCostos', { detalle: closeErr.message }));
             continue;
           }
         }
@@ -822,7 +800,7 @@ export async function bulkRoundPrices(
             const { error: insErr } = await supabase.from('product_costs').insert(chunk);
             if (insErr) {
               resultado.fallidos += chunk.length;
-              resultado.errores.push(`Error al insertar costos: ${insErr.message}`);
+              resultado.errores.push(errorMasivo('insertarCostos', { detalle: insErr.message }));
             } else {
               resultado.exitosos += chunk.length;
             }
@@ -865,7 +843,7 @@ export async function bulkRoundPrices(
           if (tipo === 'venta') {
             if (precioActual <= 0) {
               resultado.fallidos++;
-              resultado.errores.push(`Producto ${productId}: sin precio de venta`);
+              resultado.errores.push(errorMasivo('sinPrecio', { producto: productId }));
               continue;
             }
             nuevoPrecio = calcularRedondeo(precioActual, modo, multiplo, digitosCount, digitosValor);
@@ -894,7 +872,7 @@ export async function bulkRoundPrices(
             .is('effective_to', null);
           if (closeErr) {
             resultado.fallidos += nuevosPrecios.length;
-            resultado.errores.push(`Error al cerrar precios: ${closeErr.message}`);
+            resultado.errores.push(errorMasivo('cerrarPrecios', { detalle: closeErr.message }));
             continue;
           }
         }
@@ -905,16 +883,16 @@ export async function bulkRoundPrices(
             const { error: insErr } = await supabase.from('product_prices').insert(chunk);
             if (insErr) {
               resultado.fallidos += chunk.length;
-              resultado.errores.push(`Error al insertar precios: ${insErr.message}`);
+              resultado.errores.push(errorMasivo('insertarPrecios', { detalle: insErr.message }));
             } else {
               resultado.exitosos += chunk.length;
             }
           }
         }
       }
-    } catch (e: any) {
+    } catch (e) {
       resultado.fallidos += batchIds.length;
-      resultado.errores.push(`Lote ${i}-${i + batchIds.length}: ${e.message || 'error'}`);
+      resultado.errores.push(errorMasivo('lote', { desde: i, hasta: i + batchIds.length, detalle: mensajeDe(e, 'error') }));
     }
   }
   return resultado;
@@ -940,7 +918,7 @@ export async function bulkAssignCategory(
 
     if (error) {
       resultado.fallidos += batch.length;
-      resultado.errores.push(error.message);
+      resultado.errores.push(errorMasivo('detalle', { detalle: error.message }));
     } else {
       resultado.exitosos += batch.length;
     }

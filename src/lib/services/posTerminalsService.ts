@@ -165,17 +165,71 @@ async function patchTerminal(id: string, orgId: number, patch: TerminalPatch): P
     body: JSON.stringify(patch),
     cache: 'no-store',
   });
-  let payload: { data?: PosTerminal; error?: string; code?: string } = {};
+  return readRouteResponse<PosTerminal>(res, 'PATCH terminal', 'la terminal');
+}
+
+/**
+ * Fase 3: `POST` a una ruta de sesión de la pantalla remota (código de
+ * emparejamiento, revocación). Misma disciplina que el PATCH: sesión en
+ * cookies, organización en la cabecera `X-Organization-Id`, nunca en el body.
+ */
+async function postDisplayRoute<T>(url: string, orgId: number, body: Record<string, unknown>, what: string): Promise<T> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Organization-Id': String(orgId) },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  });
+  return readRouteResponse<T>(res, `POST ${url}`, what);
+}
+
+/** Respuesta `{ data }` de una ruta de las terminales: no 2xx → `PosTerminalsApiError` con el `code` de la ruta; 2xx sin `data` → EMPTY_RESPONSE. */
+async function readRouteResponse<T>(res: Response, call: string, what: string): Promise<T> {
+  let payload: { data?: T; error?: string; code?: string } = {};
   try {
     payload = (await res.json()) as typeof payload;
   } catch {
     // Sin JSON (proxy, 502): se conserva solo el estado.
   }
   if (!res.ok) {
-    throw new PosTerminalsApiError(res.status, payload.code ?? `HTTP_${res.status}`, payload.error ?? `PATCH terminal falló (${res.status})`);
+    throw new PosTerminalsApiError(res.status, payload.code ?? `HTTP_${res.status}`, payload.error ?? `${call} falló (${res.status})`);
   }
-  if (!payload.data) throw new PosTerminalsApiError(res.status, 'EMPTY_RESPONSE', 'La ruta no devolvió la terminal');
+  if (!payload.data) throw new PosTerminalsApiError(res.status, 'EMPTY_RESPONSE', `La ruta no devolvió ${what}`);
   return payload.data;
+}
+
+/** Respuesta de `POST /api/pos/terminals/[id]/pairing-code` (Fase 3): el código de 6 dígitos y hasta cuándo vale (ISO 8601). */
+export interface PairingCodeIssue {
+  terminalId: string;
+  code: string;
+  expiresAt: string;
+  /**
+   * true si la ruta devolvió el código que la terminal YA tenía vigente en
+   * vez de emitir uno nuevo (F3-C ronda 4 · 5). Ausente en una respuesta
+   * anterior a esa ronda: se lee como «no se sabe» y la UI no afirma nada.
+   */
+  reused?: boolean;
+}
+
+/** Respuesta de `POST /api/pos/display/revoke`. */
+export interface RemoteDisplayRevocation {
+  terminalId: string;
+  revoked: boolean;
+}
+
+/** `code` de la ruta cuando la terminal está desactivada (409). */
+const TERMINAL_INACTIVE = 'TERMINAL_INACTIVE';
+/** `code` cuando el id no es una terminal de esta organización (404). */
+const NOT_FOUND = 'NOT_FOUND';
+
+/** ¿El error es «esa terminal no existe en esta organización» (404 `NOT_FOUND` de la ruta)? La caja no está vinculada a una fila real. */
+export function isTerminalNotFoundError(err: unknown): boolean {
+  return err instanceof PosTerminalsApiError && err.status === 404 && err.code === NOT_FOUND;
+}
+
+/** ¿El error es «la terminal está desactivada» (409 `TERMINAL_INACTIVE`)? */
+export function isTerminalInactiveError(err: unknown): boolean {
+  return err instanceof PosTerminalsApiError && err.status === 409 && err.code === TERMINAL_INACTIVE;
 }
 
 /**
@@ -258,6 +312,39 @@ export class PosTerminalsService {
   }
 
   /**
+   * Fase 3 (PLAN §3.3, §7): pide un código de emparejamiento de 6 dígitos
+   * para la pantalla remota de la terminal dada, por
+   * `POST /api/pos/terminals/[id]/pairing-code` (rol admin/manager
+   * comprobado en el servidor; invalida el código anterior; 5 minutos). Con
+   * `{ reuse: true }` (F3-C ronda 4 · 5) la ruta devuelve el código que la
+   * terminal ya tenía VIGENTE, si lo hay, en vez de quemarlo: es lo que pide
+   * el diálogo al abrirse, que está montado en dos sitios. El
+   * secreto nunca pasa por aquí: el navegador no toca `pos_terminal_secrets`.
+   * Fallos esperables: `isForbiddenError` (rol), `isTerminalNotFoundError`
+   * (la caja no está vinculada a una fila de esta organización),
+   * `isTerminalInactiveError`, `isOrgMismatchError`.
+   */
+  static async requestPairingCode(id: string, options: { reuse?: boolean } = {}): Promise<PairingCodeIssue> {
+    if (!isTerminalId(id)) throw new Error('id de terminal inválido');
+    const orgId = resolveOrgId();
+    const body = options.reuse === true ? { reuse: true } : {};
+    return postDisplayRoute<PairingCodeIssue>(`/api/pos/terminals/${encodeURIComponent(id)}/pairing-code`, orgId, body, 'el código de emparejamiento');
+  }
+
+  /**
+   * Fase 3 (PLAN §7, §11): desempareja la pantalla remota de la terminal
+   * (`POST /api/pos/display/revoke`, rol admin/manager en el servidor): la
+   * tableta deja de autenticar en su siguiente petición y el canal muere en
+   * <= 5 min (TTL del JWT de Realtime). Idempotente: sin pantalla emparejada
+   * también devuelve `revoked: true`.
+   */
+  static async revokeRemoteDisplay(id: string): Promise<RemoteDisplayRevocation> {
+    if (!isTerminalId(id)) throw new Error('id de terminal inválido');
+    const orgId = resolveOrgId();
+    return postDisplayRoute<RemoteDisplayRevocation>('/api/pos/display/revoke', orgId, { terminalId: id }, 'la revocación');
+  }
+
+  /**
    * Vincula ESTA caja (este navegador / esta máquina) a la terminal dada:
    * escribe su `id` en `pos_terminal_id`. Devuelve false si no se pudo
    * escribir (storage bloqueado) o el id no es un UUID.
@@ -282,6 +369,33 @@ export class PosTerminalsService {
     if (!localTerminalId) return { localTerminalId: null, terminal: null, unlinked: false };
     const terminal = terminals.find((t) => t.id === localTerminalId) ?? null;
     return { localTerminalId, terminal, unlinked: terminal === null };
+  }
+
+  /**
+   * Terminal de ESTA organización con ese `id` exacto, leída del SERVIDOR con
+   * el cliente de la sesión (RLS). Devuelve null cuando no hay fila (no
+   * existe, o es de otra organización y RLS no la deja ver) y LANZA cuando la
+   * consulta falla (sin sesión, sin red, PostgREST caído).
+   *
+   * La diferencia con `getLinkedTerminal` no es cosmética (F3-C ronda 4 · C1):
+   * aquel vuelve a leer el id de localStorage y devuelve null también cuando
+   * la consulta se cae, así que quien lo usaba para decidir si abrir el canal
+   * remoto comparaba un id de localStorage contra otro id de localStorage y no
+   * distinguía «no es una terminal» de «no se pudo comprobar». Aquí el id lo
+   * pone quien pregunta y los dos casos se distinguen, que es lo que permite
+   * fallar cerrado y decirlo.
+   */
+  static async getTerminalById(id: string): Promise<PosTerminal | null> {
+    if (!isTerminalId(id)) throw new Error('id de terminal inválido');
+    const orgId = resolveOrgId();
+    const { data, error } = await supabase
+      .from('pos_terminals')
+      .select(TERMINAL_COLUMNS)
+      .eq('id', id)
+      .eq('organization_id', orgId)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as PosTerminal | null) ?? null;
   }
 
   /**

@@ -4,8 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DollarSign, ShoppingCart, FileText, TrendingUp, Package, Users } from 'lucide-react';
 import type { ReportData } from '@/lib/services/reportes/types';
-
-const moneda = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface ReportesResumenGlobalProps {
   reportes: ReportData[];
@@ -19,15 +18,17 @@ interface KPIGlobal {
 }
 
 const KPI_ICONS = [
-  <DollarSign className="h-4 w-4" />,
-  <ShoppingCart className="h-4 w-4" />,
-  <Package className="h-4 w-4" />,
-  <TrendingUp className="h-4 w-4" />,
-  <FileText className="h-4 w-4" />,
-  <Users className="h-4 w-4" />,
+  <DollarSign key="ventas-dia" className="h-4 w-4" />,
+  <ShoppingCart key="ventas-periodo" className="h-4 w-4" />,
+  <Package key="productos" className="h-4 w-4" />,
+  <TrendingUp key="pipeline" className="h-4 w-4" />,
+  <FileText key="cxc" className="h-4 w-4" />,
+  <Users key="clientes" className="h-4 w-4" />,
 ];
 
 export function ReportesResumenGlobal({ reportes, isLoading }: ReportesResumenGlobalProps) {
+  // KPIs agregados: en la moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -48,7 +49,7 @@ export function ReportesResumenGlobal({ reportes, isLoading }: ReportesResumenGl
     );
   }
 
-  const kpis = extractGlobalKPIs(reportes);
+  const kpis = extractGlobalKPIs(reportes, formatear);
   if (!kpis.length) return null;
 
   return (
@@ -70,13 +71,13 @@ export function ReportesResumenGlobal({ reportes, isLoading }: ReportesResumenGl
   );
 }
 
-function extractGlobalKPIs(reportes: ReportData[]): KPIGlobal[] {
+function extractGlobalKPIs(reportes: ReportData[], formatear: (v: number) => string): KPIGlobal[] {
   const kpis: KPIGlobal[] = [];
   const find = (id: string, titulo: string, icono: React.ReactNode) => {
     const r = reportes.find((r) => r.id === id);
     if (!r?.kpis?.length) return;
     const k = r.kpis[0];
-    kpis.push({ titulo, valor: formatKPI(k.valor, k.formato), icono });
+    kpis.push({ titulo, valor: formatKPI(k.valor, formatear, k.formato), icono });
   };
 
   find('cierre-caja', 'Ventas del Día', <DollarSign className="h-4 w-4" />);
@@ -89,9 +90,13 @@ function extractGlobalKPIs(reportes: ReportData[]): KPIGlobal[] {
   return kpis.slice(0, 6);
 }
 
-function formatKPI(valor: string | number, formato?: 'moneda' | 'numero' | 'porcentaje'): string {
+function formatKPI(
+  valor: string | number,
+  formatear: (v: number) => string,
+  formato?: 'moneda' | 'numero' | 'porcentaje'
+): string {
   if (typeof valor === 'string') return valor;
-  if (formato === 'moneda') return moneda.format(valor);
+  if (formato === 'moneda') return formatear(valor);
   if (formato === 'porcentaje') return `${valor}%`;
   return new Intl.NumberFormat('es-CO').format(valor);
 }

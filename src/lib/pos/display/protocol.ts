@@ -96,6 +96,15 @@ export interface DisplayCart {
   total: number;
   /** Línea que acaba de cambiar, para el resaltado de 600 ms. */
   lastChangedLineId: string | null;
+  /**
+   * Nombre del cliente de la venta (Fase 4), o null si la venta es anónima.
+   * Solo se PINTA si los ajustes lo piden (`showCustomerName`, apagado por
+   * defecto: privacidad primero). Viaja con el carrito y no en el `hello`
+   * porque el cajero puede asignar el cliente en mitad del pedido y el
+   * saludo no se reemite con cada cambio del carrito. Opcional y aditivo:
+   * un emisor anterior no lo manda y la pantalla lo sanea a null.
+   */
+  customerName?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -158,6 +167,26 @@ export interface DisplayPresentationSettings {
   /** BCP 47 (p. ej. "es-CO"); null = el de la organización. */
   locale: string | null;
   touch: DisplayTouchOverride;
+  /**
+   * Modo reposo (Fase 4, PLAN §5.2). Opcional y aditivo: un emisor de las
+   * fases 0-3 no lo manda y la pantalla se queda en 'brand', que es lo que
+   * hacía hasta ahora. Viaja aquí —y no por un mensaje propio— porque la
+   * pantalla local no tiene otra fuente de ajustes que el `hello`; la remota
+   * lo recibe además en su `bootstrap`, y gana el último saludo (la caja
+   * vuelve a saludar al guardar la tarjeta).
+   */
+  idle?: DisplayIdleSettings;
+}
+
+/** Qué pinta la pantalla en reposo (PLAN §5.2). Mismo juego de valores que `IDLE_MODES` de settingsSchema.ts. */
+export type DisplayIdleMode = 'brand' | 'promotions' | 'media';
+
+export interface DisplayIdleSettings {
+  mode: DisplayIdleMode;
+  /** Imágenes propias del comercio (http(s) absolutas) para el modo 'media'. */
+  mediaUrls: string[];
+  /** Segundos sin actividad antes de entrar en reposo. */
+  idleAfterSeconds: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -193,7 +222,17 @@ export type UpMessage =
   | (UpEnvelope & { t: 'tip_selected'; cartId: string; kind: TipKind; value: number })
   /** Solo avisa al cajero; no confirma ningún pago. */
   | (UpEnvelope & { t: 'qr_paid_claim'; cartId: string })
-  | (UpEnvelope & { t: 'rating'; saleId: string | null; rating: Rating })
+  /**
+   * Calificación del cliente (Fase 4). `saleId` se ignora en la caja a
+   * propósito (lo pone ella; ver feedback.ts). `thanksId` es el identificador
+   * del «Gracias» que la pantalla estaba pintando al pulsar: la caja lo
+   * coteja con el suyo y descarta la calificación si ya no es la misma venta.
+   * Cubre la carrera del canal remoto —el cliente pulsa al final de los 8 s de
+   * la venta A y el mensaje llega con la venta B ya confirmada— que antes
+   * colgaba la nota de la venta equivocada. Opcional: una pantalla de la
+   * ronda 1 no lo manda y la caja la sigue aceptando.
+   */
+  | (UpEnvelope & { t: 'rating'; saleId: string | null; rating: Rating; thanksId?: string | null })
   /**
    * Presencia de la pantalla (PLAN §5.1: «punto verde: pantalla conectada /
    * gris: sin pantalla»). La pantalla lo emite cada HEARTBEAT_INTERVAL_MS
@@ -204,8 +243,26 @@ export type UpMessage =
    * pestaña concreta.
    */
   | (UpEnvelope & { t: 'display_alive'; at: number; capabilities: DisplayCapabilities })
-  /** La pantalla se cierra a propósito: la caja pone el indicador en gris sin esperar el silencio. */
-  | (UpEnvelope & { t: 'display_bye' });
+  /**
+   * La pantalla se cierra a propósito: la caja pone el indicador en gris sin
+   * esperar el silencio.
+   *
+   * `ackInstanceId` (F3-C ronda 5 · 3, aditivo y opcional): la instancia de
+   * caja que la pantalla venía siguiendo, es decir el `instanceId` que esa
+   * caja estampó en el `hello` que la pantalla adoptó. Existe porque el canal
+   * remoto de una terminal lo puede escribir cualquier miembro activo de la
+   * misma sucursal (política `pos_display_caja_envia`) y el `terminalId` no
+   * es secreto: va en el nombre del topic. Sin esta marca, un `display_bye`
+   * forjado dormía la pata remota de la caja y borraba la presencia de la
+   * tableta legítima. La caja solo HONRA por el tubo remoto un `display_bye`
+   * cuyo `ackInstanceId` sea el suyo; uno sin marca ni se cree ni se
+   * descarta: simplemente no renueva nada y la presencia caduca por silencio.
+   *
+   * No es un destinatario (`toInstanceId`): la despedida sigue llegando a
+   * TODAS las pestañas de la terminal, como el resto de la presencia. Solo la
+   * que la pantalla seguía puede darla por buena.
+   */
+  | (UpEnvelope & { t: 'display_bye'; ackInstanceId?: string });
 
 export type UpMessageType = UpMessage['t'];
 export type TipSelectedMessage = Extract<UpMessage, { t: 'tip_selected' }>;
@@ -230,7 +287,13 @@ export interface DisplayState {
    * null mientras se pregunta.
    */
   tip: { presets: number[]; allowCustom: boolean; selected: TipSelectedMessage | null; base?: number } | null;
-  thanks: { total: number; askRating: boolean } | null;
+  /**
+   * `id` (Fase 4, ronda 2): identifica ESTE «Gracias». Viaja de vuelta en el
+   * mensaje `rating` para que la caja sepa si la calificación es de la venta
+   * que está agradeciendo o de la anterior. Opcional: los emisores previos no
+   * lo mandan.
+   */
+  thanks: { total: number; askRating: boolean; id?: string } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -462,7 +525,8 @@ export function isUpMessage(value: unknown): value is UpMessage {
     case 'display_alive':
       return isFiniteNumber(value.at) && isCapabilities(value.capabilities);
     case 'display_bye':
-      return true;
+      // `ackInstanceId` opcional (F3-C ronda 5 · 3): ausente, o string no vacío.
+      return value.ackInstanceId === undefined || isNonEmptyString(value.ackInstanceId);
     case 'tip_selected':
       return (
         isNonEmptyString(value.cartId) &&
@@ -475,6 +539,7 @@ export function isUpMessage(value: unknown): value is UpMessage {
       return isNonEmptyString(value.cartId);
     case 'rating':
       return (
+        (value.thanksId === undefined || value.thanksId === null || isNonEmptyString(value.thanksId)) &&
         (value.saleId === null || isNonEmptyString(value.saleId)) &&
         isFiniteNumber(value.rating) &&
         Number.isInteger(value.rating) &&
@@ -482,4 +547,43 @@ export function isUpMessage(value: unknown): value is UpMessage {
         value.rating <= 5
       );
   }
+}
+
+/**
+ * El filtro COMPLETO con el que la caja acepta un mensaje de subida
+ * (F3-C ronda 4 · 4): bien formado, de ESTA terminal y —si va dirigido— a
+ * ESTA instancia. Lo comparten `BroadcastChannelTransport.receive` y la
+ * compuerta de oyente del tubo remoto (multiChannel.ts): antes cada uno
+ * aplicaba su propio criterio y un `tip_selected` dirigido a OTRA pestaña de
+ * la misma caja abría la compuerta —y sacaba el carrito por Realtime— de una
+ * instancia que iba a descartar ese mismo mensaje.
+ *
+ * `terminalId` e `instanceId` son opcionales por separado: sin terminal no se
+ * compara la terminal; sin instancia (o con null, cuando todavía no se
+ * conoce) no se compara el destinatario, que es como se comportaba la
+ * compuerta antes de esta ronda.
+ */
+export function isUpMessageForInstance(value: unknown, terminalId?: string, instanceId?: string | null): value is UpMessage {
+  if (!isUpMessage(value)) return false;
+  if (terminalId !== undefined && value.terminalId !== terminalId) return false;
+  if (instanceId !== undefined && instanceId !== null && value.toInstanceId !== undefined && value.toInstanceId !== instanceId) return false;
+  return true;
+}
+
+/**
+ * ¿Este `display_bye` lo manda de verdad la pantalla que seguía a ESTA
+ * instancia de caja? (F3-C ronda 5 · 3.)
+ *
+ * El canal remoto de una terminal lo puede escribir cualquier miembro activo
+ * de su sucursal y el `terminalId` va en el nombre del topic, así que una
+ * despedida sin más es un mensaje que cualquiera sabe construir. La única
+ * marca que la pantalla emparejada conoce y un tercero tiene que haber
+ * escuchado es el `instanceId` que la caja le puso en el `hello`: se exige
+ * aquí. Sin instancia propia (aún no se conoce) no se puede comprobar nada y
+ * se responde `false`: por el tubo remoto se prefiere caducar por silencio a
+ * creerse una despedida que no se puede atribuir.
+ */
+export function isAuthenticatedDisplayBye(msg: UpMessage, instanceId: string | null): boolean {
+  if (msg.t !== 'display_bye') return false;
+  return instanceId !== null && msg.ackInstanceId === instanceId;
 }

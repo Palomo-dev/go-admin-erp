@@ -7,6 +7,7 @@ import type {
   MesaFormData,
   TableState,
 } from './types';
+import { ejecutarLiberacion } from './liberacionMesaCliente';
 
 export class MesasService {
   /**
@@ -736,127 +737,20 @@ export class MesasService {
   }
 
   /**
-   * Liberar mesa (cerrar sesión y cambiar estado a libre)
+   * Liberar una mesa SIN saldo (tras cobrar, o mesa sin consumo).
+   *
+   * Va por `/api/pos/mesas/[id]/liberar` (acción `liberar`): el servidor
+   * comprueba en una transacción que la venta no tenga saldo, cierra la
+   * sesión, suelta la mesa y deja rastro en `ops_audit_log`. La cocina ya no
+   * se marca entregada a ciegas: solo pasa a entregado lo que estaba listo.
+   * Con saldo lanza `LiberacionMesaError('saldo_pendiente')`: la pantalla abre
+   * entonces el diálogo que pide resolverlo (cobrar, cartera o anular).
    */
   static async liberarMesa(tableId: string): Promise<void> {
-    try {
-      if (!tableId) {
-        throw new Error('ID de mesa requerido');
-      }
-
-      // 1. Obtener sesiones activas de la mesa + datos de la mesa para auditoría
-      const { data: sessions, error: sessionsError } = await supabase
-        .from('table_sessions')
-        .select('id, sale_id, organization_id, branch_id')
-        .eq('restaurant_table_id', tableId)
-        .in('status', ['active', 'bill_requested']);
-
-      if (sessionsError) {
-        console.error('Error al obtener sesiones:', sessionsError);
-        throw new Error(`Error al obtener sesiones: ${sessionsError.message || JSON.stringify(sessionsError)}`);
-      }
-
-      // 2. Cerrar todas las sesiones activas
-      if (sessions && sessions.length > 0) {
-        const sessionIds = sessions.map(s => s.id);
-
-        // Marcar comandas (digitales y físicas) como entregadas: se asume que
-        // todo lo que quedó en la mesa al cerrarla/pagarla ya fue consumido.
-        const { data: ticketIds } = await supabase
-          .from('kitchen_tickets')
-          .select('id')
-          .in('table_session_id', sessionIds)
-          .neq('status', 'delivered');
-
-        if (ticketIds && ticketIds.length > 0) {
-          const ids = ticketIds.map((t: any) => t.id);
-          await supabase
-            .from('kitchen_tickets')
-            .update({ status: 'delivered', updated_at: new Date().toISOString() })
-            .in('id', ids);
-          await supabase
-            .from('kitchen_ticket_items')
-            .update({ status: 'delivered', updated_at: new Date().toISOString() })
-            .in('kitchen_ticket_id', ids);
-        }
-
-        const { error: closeError } = await supabase
-          .from('table_sessions')
-          .update({ 
-            status: 'completed',
-            closed_at: new Date().toISOString()
-          })
-          .in('id', sessionIds);
-
-        if (closeError) {
-          console.error('Error al cerrar sesiones:', closeError);
-          throw new Error(`Error al cerrar sesiones: ${closeError.message || JSON.stringify(closeError)}`);
-        }
-      }
-
-      // 2.5 Registrar auditoría de liberación de mesa
-      if (sessions && sessions.length > 0) {
-        await this.registrarAuditoriaLiberacion(tableId, sessions);
-      }
-
-      // 3. Cambiar estado de la mesa a libre
-      const { data, error: updateError } = await supabase
-        .from('restaurant_tables')
-        .update({
-          state: 'free',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', tableId)
-        .select()
-        .single();
-
-      if (updateError) {
-        console.error('Error al actualizar mesa:', updateError);
-        throw new Error(`Error al actualizar mesa: ${updateError.message || JSON.stringify(updateError)}`);
-      }
-
-      if (!data) {
-        throw new Error('No se encontró la mesa para actualizar');
-      }
-    } catch (error: any) {
-      const errorMsg = error?.message || JSON.stringify(error) || 'Error desconocido';
-      console.error('Error liberando mesa:', errorMsg, error);
-      throw new Error(`Error liberando mesa: ${errorMsg}`);
+    if (!tableId) {
+      throw new Error('ID de mesa requerido');
     }
-  }
-
-  /**
-   * Registra en ops_audit_log la liberación de una mesa, para auditar
-   * quién y cuándo liberó la mesa. No lanza error si falla.
-   */
-  private static async registrarAuditoriaLiberacion(
-    tableId: string,
-    sessions: { id: string; organization_id: number; branch_id: number | null }[]
-  ): Promise<void> {
-    try {
-      const { data: authData } = await supabase.auth.getUser();
-      const userId = authData?.user?.id || null;
-      const now = new Date().toISOString();
-
-      const inserts = sessions.map((s) => ({
-        organization_id: s.organization_id,
-        branch_id: s.branch_id,
-        user_id: userId,
-        entity_type: 'table_sessions',
-        entity_id: s.id,
-        action: 'RELEASE',
-        previous_data: { status: 'active' },
-        metadata: {
-          table_id: tableId,
-          table_session_id: s.id,
-          released_at: now,
-        },
-      }));
-
-      await supabase.from('ops_audit_log').insert(inserts);
-    } catch (auditError) {
-      console.error('No se pudo registrar auditoría de liberación de mesa:', auditError);
-    }
+    await ejecutarLiberacion(tableId, 'liberar');
   }
 
   /**

@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { useEtiquetaEstado } from '@/components/kit/useIdiomaKit';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,32 +11,39 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FileText, ArrowLeft, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { NuevaFacturaForm } from '../nueva-factura/NuevaFacturaForm';
+import { NuevaFacturaForm, type DatosEdicionFactura, type FacturaInicialVenta } from '../nueva-factura/NuevaFacturaForm';
 import { toastSuccess, toastError } from '@/components/ui/use-toast';
+import { resolveLineTax } from '@/lib/services/taxResolver';
+import { ErrorPeticionFactura, guardarFacturaVenta } from '@/lib/finanzas/ventas/clienteFacturas';
 
 interface EditarFacturaVentaProps {
   facturaId: string;
 }
 
+/** Por qué no se pudo abrir la factura para editar (el texto sale del idioma activo). */
+type ErrorCargaFactura =
+  | { tipo: 'faltanDatos' }
+  | { tipo: 'noEncontrada' }
+  | { tipo: 'noEditable'; estado: string }
+  | { tipo: 'carga' };
+
 export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [factura, setFactura] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [factura, setFactura] = useState<(FacturaInicialVenta & { id: string }) | null>(null);
+  const [error, setError] = useState<ErrorCargaFactura | null>(null);
   const organizationId = getOrganizationId();
+  const t = useTranslations('facturasVenta');
+  const etiquetaEstado = useEtiquetaEstado();
 
-  useEffect(() => {
-    cargarFactura();
-  }, [facturaId]);
-
-  const cargarFactura = async () => {
+  const cargarFactura = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
       if (!organizationId || !facturaId) {
-        setError('Faltan datos para cargar la factura.');
+        setError({ tipo: 'faltanDatos' });
         return;
       }
 
@@ -46,10 +55,13 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
         .single();
 
       if (facturaError) throw facturaError;
-      if (!facturaData) throw new Error('Factura no encontrada');
+      if (!facturaData) {
+        setError({ tipo: 'noEncontrada' });
+        return;
+      }
 
       if (facturaData.status !== 'draft') {
-        setError(`No se puede editar una factura en estado "${facturaData.status}". Solo las facturas en borrador pueden editarse.`);
+        setError({ tipo: 'noEditable', estado: String(facturaData.status) });
         return;
       }
 
@@ -74,166 +86,99 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
         items: itemsData || [],
         applied_taxes: appliedTaxesData || []
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error cargando factura:', error);
-      setError(error.message || 'Error al cargar la factura');
+      setError({ tipo: 'carga' });
     } finally {
       setLoading(false);
     }
-  };
+  }, [facturaId, organizationId]);
 
-  const handleSubmit = async (datosFactura: any) => {
+  useEffect(() => {
+    void cargarFactura();
+  }, [cargarFactura]);
+
+  const handleSubmit = async (datosFactura: DatosEdicionFactura) => {
     if (!factura) return;
 
     try {
       setSaving(true);
 
-      // Calcular el balance: total nuevo - pagos ya realizados
-      // Usar Number() para asegurar aritmética correcta (Supabase devuelve numeric como string)
-      const totalActual = Number(factura.total) || 0;
-      const balanceActual = Number(factura.balance) || 0;
-      const pagosRealizados = totalActual - balanceActual;
-      const nuevoBalance = Number(datosFactura.total) - pagosRealizados;
-
-      // Recalcular commission_amount basándose en el total real y el método
-      const commissionRateNum = Number(datosFactura.commission_rate) || 0;
-      const commissionMethod = datosFactura.commission_method || 'percentage';
-      const baseComision = Number(datosFactura.subtotal) > 0
-        ? Number(datosFactura.subtotal)
-        : Number(datosFactura.total) || 0;
-      const commissionAmountRecalc = datosFactura.salesperson_id && commissionRateNum > 0
-        ? (commissionMethod === 'fixed_amount'
-            ? commissionRateNum
-            : Math.round(baseComision * commissionRateNum / 100 * 100) / 100)
-        : 0;
-
-      const { error: updateError } = await supabase
-        .from('invoice_sales')
-        .update({
-          number: datosFactura.number,
-          customer_id: datosFactura.customer_id,
-          branch_id: datosFactura.branch_id,
-          issue_date: datosFactura.issue_date,
-          due_date: datosFactura.due_date,
-          currency: datosFactura.currency,
-          payment_terms: Number(datosFactura.payment_terms) || 0,
-          payment_method: datosFactura.payment_method,
-          notes: datosFactura.notes,
-          tax_included: datosFactura.tax_included,
-          subtotal: Number(datosFactura.subtotal) || 0,
-          tax_total: Number(datosFactura.tax_total) || 0,
-          total: Number(datosFactura.total) || 0,
-          balance: nuevoBalance,
-          salesperson_id: datosFactura.salesperson_id || null,
-          commission_rate: commissionRateNum,
-          commission_type: datosFactura.commission_type || 'none',
-          commission_method: commissionMethod,
-          commission_amount: commissionAmountRecalc
-        })
-        .eq('id', factura.id);
-
-      if (updateError) throw updateError;
-
-      const { data: existingItems, error: fetchItemsError } = await supabase
-        .from('invoice_items')
-        .select('id')
-        .eq('invoice_sales_id', factura.id);
-
-      if (fetchItemsError) throw fetchItemsError;
-
-      const existingIds = (existingItems || []).map(i => i.id);
-      const newItemIds = datosFactura.items.filter((i: any) => i.id).map((i: any) => i.id);
-      const idsToDelete = existingIds.filter(id => !newItemIds.includes(id));
-
-      if (idsToDelete.length > 0) {
-        const { error: deleteError } = await supabase
-          .from('invoice_items')
-          .delete()
-          .in('id', idsToDelete)
-          .eq('invoice_sales_id', factura.id);
-
-        if (deleteError) throw deleteError;
-      }
-
+      // F-42: cada línea pasa por el resolver único antes de guardarse. La
+      // tarifa elegida en el formulario manda; si viene en 0, el resolver sigue
+      // con los impuestos del producto y los de la organización por defecto.
+      const documentoTaxIncluded = Boolean(datosFactura.tax_included);
+      const lineas = [];
       for (const item of datosFactura.items) {
-        const itemData = {
-          invoice_sales_id: factura.id,
-          invoice_id: factura.id,
-          invoice_type: 'sale',
+        const qty = Number(item.qty) || 0;
+        const unitPrice = Number(item.unit_price) || 0;
+        const discountAmount = Number(item.discount_amount) || 0;
+        const resolved = await resolveLineTax({
+          itemTaxRate: item.tax_rate,
+          itemTaxCode: item.tax_code,
+          productId: item.product_id || null,
+          organizationId: Number(organizationId),
+          taxIncluded: documentoTaxIncluded,
+          qty,
+          unitPrice,
+          discountAmount,
+        });
+        lineas.push({
           product_id: item.product_id || null,
           description: item.description,
-          qty: item.qty,
-          unit_price: item.unit_price,
-          tax_code: item.tax_code || null,
-          tax_rate: item.tax_rate || 0,
-          tax_included: item.tax_included || false,
-          total_line: item.total_line,
-          discount_amount: item.discount_amount || 0
-        };
-
-        if (item.id) {
-          const { error: updateItemError } = await supabase
-            .from('invoice_items')
-            .update(itemData)
-            .eq('id', item.id)
-            .eq('invoice_sales_id', factura.id);
-
-          if (updateItemError) throw updateItemError;
-        } else {
-          const { error: insertItemError } = await supabase
-            .from('invoice_items')
-            .insert(itemData);
-
-          if (insertItemError) throw insertItemError;
-        }
+          qty,
+          unit_price: unitPrice,
+          tax_code: resolved.tax_code,
+          tax_rate: resolved.tax_rate,
+          tax_included: resolved.tax_included,
+          total_line: resolved.total_line,
+          discount_amount: discountAmount,
+          serial_ids:
+            item.product_id && datosFactura.serial_selections?.[item.product_id]?.length
+              ? datosFactura.serial_selections[item.product_id]
+              : undefined,
+        });
       }
 
-      // Guardar impuestos aplicados (reemplazar los anteriores)
-      if (datosFactura.appliedTaxes) {
-        await supabase
-          .from('invoice_applied_taxes')
-          .delete()
-          .eq('invoice_id', factura.id);
+      // Una sola llamada: la base edita el borrador en una transacción (cabecera,
+      // líneas, impuestos y venta ligada) y recalcula totales y saldo; nada de
+      // saldos escritos desde el navegador.
+      await guardarFacturaVenta(factura.id, {
+        number: datosFactura.number || null,
+        customer_id: datosFactura.customer_id || null,
+        branch_id: Number(datosFactura.branch_id),
+        issue_date: datosFactura.issue_date || null,
+        due_date: datosFactura.due_date || null,
+        currency: datosFactura.currency || null,
+        payment_terms: Number(datosFactura.payment_terms) || 0,
+        payment_method: datosFactura.payment_method || null,
+        notes: datosFactura.notes || null,
+        tax_included: documentoTaxIncluded,
+        salesperson_id: datosFactura.salesperson_id || null,
+        opportunity_id: datosFactura.opportunity_id || null,
+        commission_rate: Number(datosFactura.commission_rate) || 0,
+        commission_type: datosFactura.commission_type || 'none',
+        commission_method: datosFactura.commission_method || 'percentage',
+        applied_taxes: Object.keys(datosFactura.appliedTaxes || {})
+          .filter((code) => datosFactura.appliedTaxes[code])
+          .map((code) => ({ tax_code: code })),
+        items: lineas,
+      });
 
-        const appliedTaxCodes = Object.keys(datosFactura.appliedTaxes).filter(code => datosFactura.appliedTaxes[code]);
-        if (appliedTaxCodes.length > 0) {
-          const taxRows = appliedTaxCodes.map(code => ({
-            invoice_id: factura.id,
-            tax_code: code,
-            tax_rate: 0,
-            is_applied: true
-          }));
-          const { error: taxInsertError } = await supabase
-            .from('invoice_applied_taxes')
-            .insert(taxRows);
-          if (taxInsertError) console.warn('Error guardando impuestos aplicados:', taxInsertError);
-        }
-      }
-
-      if (factura.sale_id) {
-        const { error: saleUpdateError } = await supabase
-          .from('sales')
-          .update({
-            customer_id: datosFactura.customer_id,
-            branch_id: datosFactura.branch_id,
-            subtotal: Number(datosFactura.subtotal) || 0,
-            tax_total: Number(datosFactura.tax_total) || 0,
-            total: Number(datosFactura.total) || 0,
-            balance: nuevoBalance
-          })
-          .eq('id', factura.sale_id);
-
-        if (saleUpdateError) {
-          console.error('Error al actualizar venta:', saleUpdateError);
-        }
-      }
-
-      toastSuccess('Factura actualizada', 'La factura de venta se ha actualizado correctamente.');
+      toastSuccess(t('editar.actualizadaTitulo'), t('editar.actualizada'));
 
       router.push(`/app/finanzas/facturas-venta/${factura.id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error actualizando factura:', error);
-      toastError('Error al actualizar', error.message || 'Error al actualizar la factura');
+      const codigo = error instanceof ErrorPeticionFactura ? error.codigo : null;
+      toastError(
+        t('editar.errorActualizarTitulo'),
+        codigo === 'factura_no_borrador'
+          ? t('errores.factura_no_borrador')
+          : codigo === 'numero_duplicado'
+            ? t('formulario.avisos.numeroYaExiste')
+            : t('editar.errorActualizar'),
+      );
     } finally {
       setSaving(false);
     }
@@ -272,6 +217,14 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
   }
 
   if (error) {
+    const mensajeError =
+      error.tipo === 'faltanDatos'
+        ? t('editar.faltanDatos')
+        : error.tipo === 'noEncontrada'
+          ? t('errores.factura_no_encontrada')
+          : error.tipo === 'noEditable'
+            ? t('editar.noEditable', { estado: etiquetaEstado(error.estado) })
+            : t('editar.errorCarga');
     return (
       <div className="w-full max-w-7xl mx-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -280,6 +233,7 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
               variant="ghost"
               size="sm"
               onClick={() => router.back()}
+              aria-label={t('editar.volver')}
               className="p-2 h-auto min-w-[36px] sm:min-w-[40px] hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
@@ -288,26 +242,24 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
               <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-              Editar Factura
+              {t('editar.titulo')}
             </h1>
           </div>
         </div>
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{mensajeError}</AlertDescription>
         </Alert>
         <div className="text-center">
           <p className="text-gray-500 dark:text-gray-400 mb-4">
-            {error.includes('No se puede editar') ?
-              'La factura no puede ser editada en su estado actual.' :
-              'No se pudo cargar la información de la factura.'}
+            {error.tipo === 'noEditable' ? t('editar.noEditableAyuda') : t('editar.cargaAyuda')}
           </p>
           <div className="flex justify-center gap-2">
             <Button variant="default" onClick={cargarFactura}>
-              Intentar de nuevo
+              {t('editar.reintentar')}
             </Button>
             <Button variant="outline" onClick={() => router.push(`/app/finanzas/facturas-venta/${facturaId}`)}>
-              Volver al detalle
+              {t('editar.volverDetalle')}
             </Button>
           </div>
         </div>
@@ -324,6 +276,7 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
               variant="ghost"
               size="sm"
               onClick={() => router.back()}
+              aria-label={t('editar.volver')}
               className="
                 p-2 h-auto min-w-[36px] sm:min-w-[40px]
                 hover:bg-gray-100 dark:hover:bg-gray-700
@@ -337,7 +290,7 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
               <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-              Editar Factura de Venta
+              {t('editar.tituloVenta')}
             </h1>
           </div>
         </div>

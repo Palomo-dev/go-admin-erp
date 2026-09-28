@@ -1,41 +1,33 @@
 // ============================================================
 // /api/integrations/open-finance/consents/[id]/renew
-// Renueva un consentimiento existente
+// Renueva un consentimiento de la organizacion de la sesion
 // POST - renueva el consentimiento (extiende 90 dias)
+//
+// SEGURIDAD (GO-sec, 2026-09-23): antes renovaba el consentimiento de
+// cualquier organizacion por id. Ahora tiene que ser de la organizacion de la
+// sesion (404) y exige `finance.create`.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { consentService } from '@/lib/services/integrations/openFinance/consentService';
+import { consentimientoDeLaOrganizacion } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-// POST - renueva un consentimiento
-export async function POST(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+const RUTA = 'open-finance/consents/[id]/renew';
+
+export const POST = withOrg(async (ctx, request, routeParams) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.CREAR, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+    const params = routeParams ? await routeParams.params : {};
+    const id = typeof params.id === 'string' ? params.id : '';
+    await consentimientoDeLaOrganizacion(ctx, id);
 
-    const { id } = await params;
-    if (!id) {
-      return NextResponse.json(
-        { error: 'ID de consentimiento requerido' },
-        { status: 400 },
-      );
-    }
-
-    const result = await consentService.renewConsent(id, session.user.id);
-
+    const result = await consentService.renewConsent(id, ctx.userId);
     return NextResponse.json({ success: true, data: result }, { status: 201 });
   } catch (error) {
-    console.error('[Open Finance Consent Renew POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Consent Renew POST', error);
   }
-}
+});

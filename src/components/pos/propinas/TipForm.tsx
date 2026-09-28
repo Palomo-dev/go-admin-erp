@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, X, Banknote, CreditCard, ArrowRightLeft, Globe } from 'lucide-react';
+import { Save, X, Banknote, CreditCard, ArrowRightLeft, Globe, Split, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,15 +20,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tip, CreateTipData, TipType, TIP_TYPE_LABELS } from './types';
+import { Tip, CreateTipData, TipType, TIP_TYPES_FORMULARIO } from './types';
 import { PropinasService } from './propinasService';
+import { codigoErrorPropina } from './propinasLogica';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 interface TipFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tip?: Tip | null;
+  /** Miembros con acceso a la sucursal donde se registra la propina. */
   servers: { id: string; name: string; email: string }[];
   onSuccess: () => void;
 }
@@ -40,6 +43,7 @@ export function TipForm({
   servers,
   onSuccess 
 }: TipFormProps) {
+  const t = useTranslations('posPropinas');
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<CreateTipData>({
     server_id: '',
@@ -50,6 +54,12 @@ export function TipForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const isEditing = !!tip;
+
+  // Los cuatro tipos de registro manual; al editar una propina 'split' o
+  // 'pooled' (que nacen en otros flujos) su tipo también se muestra.
+  const tiposVisibles: TipType[] = tip && !TIP_TYPES_FORMULARIO.includes(tip.tip_type)
+    ? [...TIP_TYPES_FORMULARIO, tip.tip_type]
+    : [...TIP_TYPES_FORMULARIO];
 
   useEffect(() => {
     if (open) {
@@ -76,11 +86,11 @@ export function TipForm({
     const newErrors: Record<string, string> = {};
 
     if (!formData.server_id) {
-      newErrors.server_id = 'Selecciona un mesero';
+      newErrors.server_id = t('formulario.errores.mesero');
     }
 
     if (!formData.amount || formData.amount <= 0) {
-      newErrors.amount = 'El monto debe ser mayor a 0';
+      newErrors.amount = t('formulario.errores.monto');
     }
 
     setErrors(newErrors);
@@ -95,22 +105,27 @@ export function TipForm({
     setLoading(true);
     try {
       if (isEditing && tip) {
-        await PropinasService.update(tip.id, formData);
-        toast.success('Propina actualizada correctamente');
+        await PropinasService.update(tip.id, {
+          server_id: formData.server_id,
+          amount: formData.amount,
+          tip_type: formData.tip_type,
+          notes: formData.notes,
+        });
+        toast.success(t('toast.actualizada'));
       } else {
         await PropinasService.create(formData);
-        toast.success('Propina registrada correctamente');
+        toast.success(t('toast.registrada'));
       }
       onSuccess();
       onOpenChange(false);
-    } catch (error: any) {
-      toast.error(error.message || 'Error al guardar la propina');
+    } catch (error: unknown) {
+      toast.error(t(`errores.${codigoErrorPropina(error)}`));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (field: keyof CreateTipData, value: any) => {
+  const handleChange = <K extends keyof CreateTipData>(field: K, value: CreateTipData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -123,6 +138,8 @@ export function TipForm({
       case 'card': return <CreditCard className="h-5 w-5" />;
       case 'transfer': return <ArrowRightLeft className="h-5 w-5" />;
       case 'online': return <Globe className="h-5 w-5" />;
+      case 'split': return <Split className="h-5 w-5" />;
+      case 'pooled': return <Users className="h-5 w-5" />;
     }
   };
 
@@ -131,7 +148,7 @@ export function TipForm({
       <DialogContent className="sm:max-w-[450px] dark:bg-gray-800 dark:border-gray-700">
         <DialogHeader>
           <DialogTitle className="dark:text-white">
-            {isEditing ? 'Editar Propina' : 'Nueva Propina'}
+            {isEditing ? t('formulario.tituloEditar') : t('formulario.tituloNueva')}
           </DialogTitle>
         </DialogHeader>
 
@@ -139,7 +156,7 @@ export function TipForm({
           {/* Mesero */}
           <div className="space-y-2">
             <Label className="dark:text-gray-200">
-              Mesero <span className="text-red-500">*</span>
+              {t('formulario.mesero')} <span className="text-red-500">*</span>
             </Label>
             <Select
               value={formData.server_id}
@@ -149,7 +166,7 @@ export function TipForm({
                 "dark:bg-gray-700 dark:border-gray-600 dark:text-white",
                 errors.server_id && "border-red-500"
               )}>
-                <SelectValue placeholder="Seleccionar mesero" />
+                <SelectValue placeholder={t('formulario.seleccionarMesero')} />
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                 {servers.map((server) => (
@@ -167,7 +184,7 @@ export function TipForm({
           {/* Monto */}
           <div className="space-y-2">
             <Label className="dark:text-gray-200">
-              Monto <span className="text-red-500">*</span>
+              {t('formulario.monto')} <span className="text-red-500">*</span>
             </Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
@@ -191,9 +208,9 @@ export function TipForm({
 
           {/* Tipo */}
           <div className="space-y-2">
-            <Label className="dark:text-gray-200">Tipo de Propina</Label>
+            <Label className="dark:text-gray-200">{t('formulario.tipo')}</Label>
             <div className="grid grid-cols-4 gap-2">
-              {(Object.entries(TIP_TYPE_LABELS) as [TipType, string][]).map(([type, label]) => (
+              {tiposVisibles.map((type) => (
                 <button
                   key={type}
                   type="button"
@@ -218,7 +235,7 @@ export function TipForm({
                       ? "text-green-600 dark:text-green-400"
                       : "text-gray-600 dark:text-gray-300"
                   )}>
-                    {label}
+                    {t(`tipos.${type}`)}
                   </span>
                 </button>
               ))}
@@ -227,11 +244,11 @@ export function TipForm({
 
           {/* Notas */}
           <div className="space-y-2">
-            <Label className="dark:text-gray-200">Notas (opcional)</Label>
+            <Label className="dark:text-gray-200">{t('formulario.notas')}</Label>
             <Textarea
               value={formData.notes || ''}
               onChange={(e) => handleChange('notes', e.target.value)}
-              placeholder="Notas adicionales..."
+              placeholder={t('formulario.notasPlaceholder')}
               rows={2}
               className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               disabled={loading}
@@ -247,7 +264,7 @@ export function TipForm({
               className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600"
             >
               <X className="h-4 w-4 mr-2" />
-              Cancelar
+              {t('formulario.cancelar')}
             </Button>
             <Button 
               type="submit" 
@@ -255,7 +272,7 @@ export function TipForm({
               className="bg-green-600 hover:bg-green-700"
             >
               <Save className="h-4 w-4 mr-2" />
-              {loading ? 'Guardando...' : isEditing ? 'Actualizar' : 'Registrar'}
+              {loading ? t('formulario.guardando') : isEditing ? t('formulario.actualizar') : t('formulario.registrar')}
             </Button>
           </DialogFooter>
         </form>

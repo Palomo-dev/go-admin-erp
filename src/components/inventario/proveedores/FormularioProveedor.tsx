@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { RichTextEditor } from '@/components/shared/RichTextEditor'
-import { PhoneInput } from '@/components/ui/phone-input'
+import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -132,6 +132,11 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "Email inválido"
     }
+
+    const errorTelefono = mensajeErrorTelefono(formData.phone)
+    if (errorTelefono) {
+      newErrors.phone = errorTelefono
+    }
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
@@ -195,7 +200,7 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
                 name="phone"
                 value={formData.phone}
                 onChange={(v) => setFormData(prev => ({ ...prev, phone: v }))}
-                placeholder="300 123 4567"
+                error={errors.phone || undefined}
               />
             </div>
 

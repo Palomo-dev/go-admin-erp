@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -22,10 +22,14 @@ import {
 } from '@/components/ui/select';
 import { Loader2, ArrowLeftRight, ArrowRight, Building2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
+import { useTranslations } from 'next-intl';
 import { transferenciasService, BankAccount } from '@/lib/services/transferenciasService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface NuevaTransferenciaDialogProps {
   open: boolean;
@@ -39,42 +43,62 @@ export function NuevaTransferenciaDialog({
   onSuccess,
 }: NuevaTransferenciaDialogProps) {
   const { selectedBranchId } = useBranch();
+  // La consulta de cuentas no trae su moneda: saldos en la moneda base.
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
+  const { getToday } = useFormatDate();
   const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
+  const t = useTranslations('tesoreria');
+  // Clave de idempotencia (= id de la transferencia): una por apertura del
+  // diálogo. Un doble clic o un reintento tras un corte no crea dos.
+  const claveRef = useRef<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [formData, setFormData] = useState({
     from_account_id: '',
     to_account_id: '',
     amount: '',
-    transfer_date: new Date().toISOString().split('T')[0],
+    transfer_date: getToday(),
     reference: '',
     notes: '',
   });
 
+  const loadBankAccounts = useCallback(async (): Promise<void> => {
+    try {
+      const accounts = await transferenciasService.getBankAccounts();
+      setBankAccounts(accounts);
+    } catch (error) {
+      console.error('Error loading bank accounts:', error);
+      toast({
+        title: t('errorTitulo'),
+        description: t('errorCarga.cuentasBancarias'),
+        variant: 'destructive',
+        action: (
+          <ToastAction altText={t('reintentar')} onClick={() => void loadBankAccounts()}>
+            {t('reintentar')}
+          </ToastAction>
+        ),
+      });
+    }
+  }, [t]);
+
   useEffect(() => {
     if (open) {
+      claveRef.current = globalThis.crypto.randomUUID();
       loadBankAccounts();
       setFormData({
         from_account_id: '',
         to_account_id: '',
         amount: '',
-        transfer_date: new Date().toISOString().split('T')[0],
+        transfer_date: getToday(),
         reference: '',
         notes: '',
       });
     }
-  }, [open]);
+  }, [open, getToday, loadBankAccounts]);
 
-  const loadBankAccounts = async () => {
-    const accounts = await transferenciasService.getBankAccounts();
-    setBankAccounts(accounts);
-  };
 
   const selectedFromAccount = bankAccounts.find(
     a => a.id.toString() === formData.from_account_id
-  );
-  const selectedToAccount = bankAccounts.find(
-    a => a.id.toString() === formData.to_account_id
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -121,15 +145,19 @@ export function NuevaTransferenciaDialog({
         reference: formData.reference || undefined,
         notes: formData.notes || undefined,
         branch_id: branchId,
-      });
+      }, claveRef.current || undefined);
 
       if (result.success) {
-        toast({ title: 'Éxito', description: 'Transferencia realizada correctamente' });
+        toast({
+          title: 'Éxito',
+          description: result.repetida ? t('transferenciaRepetida') : 'Transferencia realizada correctamente',
+        });
         onSuccess();
       } else {
-        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        // El servidor es quien decide saldo, moneda y organización.
+        toast({ title: t('errorTitulo'), description: t(`errores.${result.codigo ?? 'desconocido'}`), variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al realizar la transferencia', variant: 'destructive' });
     } finally {
       setIsLoading(false);
@@ -249,12 +277,10 @@ export function NuevaTransferenciaDialog({
             <Label htmlFor="transfer_date" className="text-gray-700 dark:text-gray-300">
               Fecha de Transferencia
             </Label>
-            <Input
+            <CampoFecha
               id="transfer_date"
-              type="date"
-              value={formData.transfer_date}
-              onChange={(e) => setFormData({ ...formData, transfer_date: e.target.value })}
-              className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
+              valor={formData.transfer_date}
+              onValorChange={(dia) => setFormData({ ...formData, transfer_date: dia })}
             />
           </div>
 

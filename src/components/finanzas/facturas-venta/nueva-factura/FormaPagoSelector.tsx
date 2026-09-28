@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import {
@@ -23,12 +24,15 @@ export function FormaPagoSelector({ formaPago, onChange }: FormaPagoSelectorProp
   const [metodosPago, setMetodosPago] = useState<OrganizationPaymentMethod[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const organizationId = getOrganizationId();
+  const t = useTranslations('facturasVenta');
   
   // Cargar métodos de pago activos para la organización actual
   useEffect(() => {
     if (organizationId) {
       cargarMetodosPago();
     }
+    // Solo al cambiar de organización: cargarMetodosPago se redefine en cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId]);
   
   // Función para cargar métodos de pago desde Supabase
@@ -53,7 +57,7 @@ export function FormaPagoSelector({ formaPago, onChange }: FormaPagoSelectorProp
       if (error) throw error;
       
       // Obtener detalles de los métodos de pago
-      let metodosFormateados: OrganizationPaymentMethod[] = [];
+      const metodosFormateados: OrganizationPaymentMethod[] = [];
       
       if (data && data.length > 0) {
         // Para cada método de pago de la organización, obtener los detalles del método
@@ -91,7 +95,7 @@ export function FormaPagoSelector({ formaPago, onChange }: FormaPagoSelectorProp
       
     } catch (error) {
       console.error('Error al cargar métodos de pago:', error);
-      toastError("Error", "No se pudieron cargar los métodos de pago. Por favor, inténtelo de nuevo.");
+      toastError(t('comun.error'), t('formaPago.error'));
     } finally {
       setIsLoading(false);
     }
@@ -100,7 +104,7 @@ export function FormaPagoSelector({ formaPago, onChange }: FormaPagoSelectorProp
   return (
     <div className="space-y-1.5">
       <Label htmlFor="payment-method" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-        Forma de Pago
+        {t('formaPago.etiqueta')}
       </Label>
       <Select
         value={formaPago || undefined}
@@ -117,16 +121,16 @@ export function FormaPagoSelector({ formaPago, onChange }: FormaPagoSelectorProp
             disabled:opacity-50 disabled:cursor-not-allowed
           "
         >
-          <SelectValue placeholder="Seleccionar forma de pago" />
+          <SelectValue placeholder={t('formaPago.seleccionar')} />
         </SelectTrigger>
         <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           {isLoading ? (
             <SelectItem value="_loading" disabled className="text-gray-500 dark:text-gray-400">
-              Cargando métodos...
+              {t('formaPago.cargando')}
             </SelectItem>
           ) : metodosPago.length === 0 ? (
             <SelectItem value="_empty" disabled className="text-gray-500 dark:text-gray-400">
-              No hay métodos de pago disponibles
+              {t('formaPago.vacio')}
             </SelectItem>
           ) : (
             metodosPago.map(metodo => (

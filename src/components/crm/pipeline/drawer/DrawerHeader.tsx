@@ -5,7 +5,8 @@ import { Building2, Calendar, Edit, ExternalLink, Trophy, XCircle } from 'lucide
 import { SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
 import { QuickActionsBar, type QuickActionKind } from '@/components/crm/shared/QuickActionsBar';
 import { TemperatureDot } from '../TemperatureDot';
@@ -40,7 +41,9 @@ const formatDate = (d?: string | null) => (d ? formatPlainDate(d, { day: '2-digi
 
 export function DrawerHeader({ opportunity, customer, stages, onStageResult, onWon, onLost, onEdit, onActionCompleted }: DrawerHeaderProps) {
   const isClosed = opportunity.status === 'won' || opportunity.status === 'lost';
-  const amount = formatCurrency(Number(opportunity.amount ?? 0), opportunity.currency || 'COP');
+  // Moneda de la oportunidad; si no la trae, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const amount = formatMoneda(Number(opportunity.amount ?? 0), paraDocumento(opportunity.currency));
   const custName = customer?.full_name ?? opportunity.customer?.full_name ?? 'Cliente no especificado';
   const barCustomer = customer
     ? { id: customer.id, full_name: customer.full_name, email: customer.email, phone: customer.phone }

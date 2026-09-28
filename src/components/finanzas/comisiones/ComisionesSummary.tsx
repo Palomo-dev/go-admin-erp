@@ -11,7 +11,8 @@ import { CheckCircle2, Clock, TrendingUp, XCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { CurrencySummary } from '@/lib/services/crm/commissionTransitions';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { pluralComisiones } from './comisionesModel';
 
 interface Props {
@@ -25,6 +26,10 @@ interface Props {
 }
 
 export function ComisionesSummary({ summary, others = [], currency, loading, unavailable = false }: Props) {
+  // Cada importe en la moneda de su comisión (o la que llega por props), con
+  // el locale y los decimales de la organización. Nunca pesos fijos.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = (valor: number, moneda?: string | null) => formatMoneda(valor, paraDocumento(moneda));
   const cards = [
     {
       key: 'accrued',

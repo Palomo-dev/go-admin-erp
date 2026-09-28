@@ -8,18 +8,53 @@ import {
   FiltrosCuentasPorPagar,
   ProgramarPagoForm,
   RegistrarPagoForm,
-  BankFileRecord,
-  PaymentApproval
+  BankFileRecord
 } from './types';
+import type { APInstallment } from './id/types';
 import { SupplierBase, OrganizationPaymentMethod, OrganizationCurrency } from '../facturas-compra/types';
-import { DEFAULT_TIMEZONE, getToday } from '@/lib/utils/timezone';
+import { DEFAULT_TIMEZONE, getToday, todayInTz } from '@/lib/utils/timezone';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { sumarMesesAlDia } from '@/lib/services/fiscalCalendar';
 import { plainDateToInstant, toPlainDate } from '@/lib/utils/dateDisplay';
 import { logError } from '@/lib/utils/errorMessage';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
+
+/** Cuenta bancaria desde la que se paga (columnas de `obtenerCuentasBancarias`). */
+export interface CuentaBancariaPago {
+  id: string;
+  name: string;
+  bank_name: string | null;
+  account_number: string | null;
+  account_type: string | null;
+  currency: string | null;
+  balance: number | null;
+  is_active: boolean;
+}
 
 /** Datos del creador de un pago, resueltos aparte del propio pago. */
 type CreadorPago = { id: string; email: string; first_name?: string; last_name?: string };
 
 export class CuentasPorPagarService {
+
+  /**
+   * Moneda de un pago a proveedor: la de la factura de compra de la cuenta
+   * (`accounts_payable.invoice_id` → `invoice_purchase.currency`) o, si la
+   * cuenta no tiene factura o la factura no trae moneda, la moneda base de la
+   * organización (`resolveOrgCurrency`). Antes se escribía 'COP' fijo.
+   */
+  private static async monedaDelPago(accountPayableId: string, organizationId: number): Promise<string> {
+    const { data } = await supabase
+      .from('accounts_payable')
+      .select('invoice_purchase:invoice_id(currency)')
+      .eq('id', accountPayableId)
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    const factura = (data as { invoice_purchase?: { currency?: string | null } | null } | null)?.invoice_purchase;
+    const deLaFactura = normalizarCodigoMoneda(factura?.currency);
+    if (deLaFactura) return deLaFactura;
+    return (await resolveOrgCurrency(supabase, organizationId)).code;
+  }
 
   /**
    * Resuelve los perfiles de quienes crearon los pagos.
@@ -272,7 +307,7 @@ export class CuentasPorPagarService {
       }
 
       const suppliers_count = suppliersData
-        ? new Set(suppliersData.map((row: any) => row.supplier_id).filter(Boolean)).size
+        ? new Set((suppliersData as Array<{ supplier_id: number | null }>).map((row) => row.supplier_id).filter(Boolean)).size
         : 0;
 
       // Obtener próximo vencimiento
@@ -402,7 +437,7 @@ export class CuentasPorPagarService {
         source_id: pagoData.account_payable_id,
         method: pagoData.payment_method || 'transfer',
         amount: parseFloat(pagoData.amount.toString()),
-        currency: 'COP', // Por defecto
+        currency: await this.monedaDelPago(pagoData.account_payable_id, organizationId),
         reference: pagoData.reference || `Pago programado para ${pagoData.scheduled_date}`,
         status: 'pending' as const,
         created_by: userId
@@ -470,7 +505,7 @@ export class CuentasPorPagarService {
         source_id: pagoData.account_payable_id,
         method: pagoData.payment_method,
         amount: pagoData.amount,
-        currency: 'COP', // Por defecto, podríamos obtenerlo de la organización
+        currency: await this.monedaDelPago(pagoData.account_payable_id, organizationId),
         reference: pagoData.reference || null,
         status: 'completed' as const,
         created_by: userId
@@ -487,8 +522,10 @@ export class CuentasPorPagarService {
         throw pagoError;
       }
 
-      // Actualizar balances usando el método auxiliar
-      await this.actualizarBalancesDespuesDePago(pagoData.account_payable_id, pagoData.amount);
+      // El saldo de la cuenta por pagar y el de la factura de compra los
+      // recalcula la base de datos (`tr_update_accounts_payable_on_payment` y
+      // `trg_recalc_invoice_balance_from_payments`). Restarlos también aquí
+      // los dejaba en la mitad del saldo real.
 
       console.log(`Pago registrado exitosamente: ${pago.id}`);
       return pago;
@@ -592,64 +629,12 @@ export class CuentasPorPagarService {
   }
 
   /**
-   * Método auxiliar para actualizar balances después de un pago
+   * El saldo de una cuenta por pagar ya no se calcula aquí. Lo recalcula
+   * `fn_recalc_accounts_payable_from_payments` desde la suma de los pagos
+   * completados, igual que la cartera de clientes: restar el importe también
+   * desde el cliente dejaba el saldo en la mitad, y el `paid`/`partial` de la
+   * factura de compra pisaba el estado `received` de la recepción.
    */
-  private static async actualizarBalancesDespuesDePago(accountPayableId: string, paymentAmount: number): Promise<void> {
-    try {
-      // Obtener información de la cuenta por pagar
-      const { data: cuenta, error: cuentaError } = await supabase
-        .from('accounts_payable')
-        .select('balance, invoice_id')
-        .eq('id', accountPayableId)
-        .single();
-
-      if (cuentaError || !cuenta) {
-        console.error('Cuenta por pagar no encontrada para actualización de balance');
-        return;
-      }
-
-      // Calcular nuevo balance
-      const nuevoBalance = cuenta.balance - paymentAmount;
-      const nuevoEstado = nuevoBalance <= 0 ? 'paid' : 'partial';
-
-      // Actualizar balance de la cuenta por pagar
-      const { error: updateError } = await supabase
-        .from('accounts_payable')
-        .update({ 
-          balance: nuevoBalance,
-          status: nuevoEstado,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', accountPayableId);
-
-      if (updateError) {
-        console.error('Error actualizando balance de cuenta por pagar:', updateError);
-      }
-
-      // Actualizar balance y estado de la factura de compra correspondiente
-      if (cuenta.invoice_id) {
-        // Determinar el nuevo estado de la factura basado en el balance
-        const nuevoEstadoFactura = nuevoBalance <= 0 ? 'paid' : 'partial';
-        
-        const { error: invoiceUpdateError } = await supabase
-          .from('invoice_purchase')
-          .update({ 
-            balance: nuevoBalance,
-            status: nuevoEstadoFactura,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', cuenta.invoice_id);
-
-        if (invoiceUpdateError) {
-          console.error('Error actualizando balance y estado de factura de compra:', invoiceUpdateError);
-        } else {
-          console.log(`Balances y estado sincronizados para cuenta ${accountPayableId} y factura ${cuenta.invoice_id}. Nuevo estado: ${nuevoEstadoFactura}`);
-        }
-      }
-    } catch (error) {
-      console.error('Error en actualizarBalancesDespuesDePago:', error);
-    }
-  }
 
   /**
    * Aprueba un pago programado (cambia status a completed)
@@ -663,7 +648,7 @@ export class CuentasPorPagarService {
         throw new Error('Organization ID o User ID no disponibles');
       }
 
-      const updateData: any = {
+      const updateData: { status: string; updated_at: string; reference?: string } = {
         status: 'completed',
         updated_at: new Date().toISOString()
       };
@@ -697,10 +682,8 @@ export class CuentasPorPagarService {
         throw error;
       }
 
-      // Actualizar balances si es un pago de cuenta por pagar
-      if (payment.source_id) {
-        await this.actualizarBalancesDespuesDePago(payment.source_id, payment.amount);
-      }
+      // El paso a 'completed' ya dispara el recálculo del saldo en la base de
+      // datos: el disparador escucha también el cambio de estado.
 
       console.log(`Pago aprobado: ${paymentId}`);
     } catch (error) {
@@ -721,7 +704,7 @@ export class CuentasPorPagarService {
         throw new Error('Organization ID o User ID no disponibles');
       }
 
-      const updateData: any = {
+      const updateData: { status: string; updated_at: string; reference?: string } = {
         status: 'cancelled',
         updated_at: new Date().toISOString()
       };
@@ -786,7 +769,7 @@ export class CuentasPorPagarService {
       // primera aparición de cada proveedor. La clave es supplier.id que es
       // de tipo number, por lo que el Map se tipa como Map<number, SupplierBase>.
       const uniqueSuppliers = new Map<number, SupplierBase>();
-      (data || []).forEach((supplier: any) => {
+      ((data || []) as SupplierBase[]).forEach((supplier) => {
         if (!uniqueSuppliers.has(supplier.id)) {
           uniqueSuppliers.set(supplier.id, supplier);
         }
@@ -903,10 +886,17 @@ export class CuentasPorPagarService {
         throw new Error('Error obteniendo cuentas para exportar');
       }
 
+      // El dia que va en el nombre del archivo es el de la ORGANIZACION, no el
+      // de UTC ni el del navegador: la exportacion agrupa cuentas de cualquier
+      // sucursal, asi que no hay una sucursal dueña del lote a la que pedirle
+      // la zona. A las 19:00 de Bogota `toISOString()` ya escribia el dia
+      // siguiente y el lote de la noche quedaba archivado con fecha de mañana.
+      const zona = await resolveTimezone(organizationId);
+
       // Crear registro del archivo
       const nuevoArchivo = {
         organization_id: organizationId,
-        file_name: `pagos_${new Date().toISOString().split('T')[0]}.csv`,
+        file_name: `pagos_${todayInTz(zona)}.csv`,
         file_type: 'csv' as const,
         records_count: cuentas.length,
         processed_count: 0,
@@ -935,7 +925,7 @@ export class CuentasPorPagarService {
   }
 
   // Obtener cuentas bancarias de la organización
-  static async obtenerCuentasBancarias(branchId?: number | null): Promise<any[]> {
+  static async obtenerCuentasBancarias(branchId?: number | null): Promise<CuentaBancariaPago[]> {
     try {
       const organizationId = getOrganizationId();
       if (!organizationId) throw new Error('Organization ID no disponible');
@@ -965,7 +955,7 @@ export class CuentasPorPagarService {
   }
 
   // Obtener cuotas de una cuenta por pagar
-  static async obtenerCuotas(accountId: string): Promise<any[]> {
+  static async obtenerCuotas(accountId: string): Promise<APInstallment[]> {
     try {
       const { data, error } = await supabase
         .from('ap_installments')
@@ -986,20 +976,43 @@ export class CuentasPorPagarService {
   }
 
   // Crear cuotas para una cuenta por pagar
+  /**
+   * Crea el plan de cuotas de una cuenta por pagar.
+   *
+   * La firma pide IDENTIDAD, no zona (ADR-003). Antes terminaba en
+   * `timezone: string = DEFAULT_TIMEZONE`, un opcional que ningun llamador
+   * rellenaba: todas las cuotas del sistema se calculaban con Bogota cableada,
+   * y el parametro no fallaba de forma visible. Es la misma forma del bug de
+   * impresion de la ronda 4.
+   *
+   * `ap_installments.due_date` es `date` NOT NULL: se escribe un dia
+   * calendario. `accounts_payable` si tiene `branch_id`, y la zona es la de la
+   * sucursal dueña de la cuenta.
+   *
+   * @param primerVencimiento Instante desde el que se cuenta la primera cuota.
+   * @param organizationId Organizacion dueña de la cuenta.
+   * @param branchId Sucursal dueña de la cuenta, si la tiene.
+   */
   static async crearCuotas(
-    accountId: string, 
-    totalAmount: number, 
+    accountId: string,
+    totalAmount: number,
     numberOfInstallments: number,
-    startDate: Date,
-    timezone: string = DEFAULT_TIMEZONE
+    primerVencimiento: Date,
+    organizationId: number,
+    branchId: number | null,
   ): Promise<void> {
     try {
+      const zona = await resolveTimezone(organizationId, branchId);
       const installmentAmount = Math.round((totalAmount / numberOfInstallments) * 100) / 100;
       const installments = [];
+      // Vencimientos por mes calendario, recortando al ultimo dia del mes
+      // destino: una cuenta creada el 31 de enero vence el 28 de febrero, no el
+      // 3 de marzo. `Date.setMonth` desborda, y eso deja febrero sin cuota y
+      // marzo con dos.
+      const diaBase = toPlainDate(primerVencimiento, zona);
 
       for (let i = 1; i <= numberOfInstallments; i++) {
-        const dueDate = new Date(startDate);
-        dueDate.setMonth(dueDate.getMonth() + (i - 1));
+        const dueDate = sumarMesesAlDia(diaBase, i - 1);
 
         const amount = i === numberOfInstallments 
           ? totalAmount - (installmentAmount * (numberOfInstallments - 1))
@@ -1008,7 +1021,7 @@ export class CuentasPorPagarService {
         installments.push({
           account_payable_id: accountId,
           installment_number: i,
-          due_date: toPlainDate(dueDate, timezone),
+          due_date: dueDate,
           amount: amount,
           balance: amount,
           status: 'pending',

@@ -31,8 +31,8 @@ export interface ElectronicInvoiceJob {
   attempt_count: number;
   max_attempts: number;
   next_retry_at: string | null;
-  request_payload: any;
-  response_payload: any;
+  request_payload: Record<string, unknown> | null;
+  response_payload: Record<string, unknown> | null;
   cufe: string | null;
   qr_code: string | null;
   error_code: string | null;
@@ -63,34 +63,35 @@ export interface InvoiceForEInvoicing {
   einvoice_qr?: string | null;
 }
 
-class ElectronicInvoicingService {
-  /**
-   * Crear un job de facturación electrónica para una factura
-   */
-  async createJob(params: CreateJobParams): Promise<{ success: boolean; jobId?: string; error?: string }> {
-    try {
-      const { data, error } = await supabase
-        .from('electronic_invoicing_jobs')
-        .insert({
-          organization_id: params.organizationId,
-          invoice_id: params.invoiceId,
-          document_type: params.documentType || 'invoice',
-          provider: params.provider || 'factus',
-          status: 'pending',
-          attempt_count: 0,
-          max_attempts: 5,
-        })
-        .select('id')
-        .single();
-
-      if (error) throw error;
-
-      return { success: true, jobId: data.id };
-    } catch (error: any) {
-      console.error('Error creating e-invoice job:', error);
-      return { success: false, error: error.message };
-    }
+/**
+ * Reintentar o cancelar un job en el servidor (`/api/factus/jobs`): la cola es
+ * de solo lectura para el navegador (GO-sec, 2026-09-24). Ahí se resuelven la
+ * organización de la sesión, el permiso `finance.*` y el estado admitido.
+ */
+async function accionEnServidor(
+  jobId: string,
+  accion: 'retry' | 'cancel'
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response =
+      accion === 'retry'
+        ? await fetch('/api/factus/jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobId, action: 'retry' }),
+          })
+        : await fetch(`/api/factus/jobs?jobId=${encodeURIComponent(jobId)}`, { method: 'DELETE' });
+    const data = (await response.json().catch(() => ({}))) as { error?: string };
+    if (!response.ok) return { success: false, error: data.error || 'No se pudo actualizar el documento' };
+    return { success: true };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
+}
+
+class ElectronicInvoicingService {
+  // Crear un job ya no se hace desde el navegador: lo crea el servidor al
+  // enviar la factura (`sendToFactus` → /api/factus/invoice → encolarDocumento).
 
   /**
    * Obtener el estado de facturación electrónica de una factura
@@ -145,82 +146,47 @@ class ElectronicInvoicingService {
   }
 
   /**
-   * Enviar factura a DIAN (a través de la API)
+   * Enviar factura a DIAN (a través de la API).
+   *
+   * El job lo crea el servidor (uno por factura): antes se creaba aquí y otra
+   * vez en la ruta. `queued` = quedó en cola (servicio sin activar, reintento
+   * programado o ya en vuelo); `message` lo explica.
    */
-  async sendToFactus(invoiceId: string, organizationId: number): Promise<{ success: boolean; error?: string }> {
+  async sendToFactus(
+    invoiceId: string,
+    organizationId: number
+  ): Promise<{ success: boolean; error?: string; queued?: boolean; message?: string }> {
     try {
-      // Primero crear el job
-      const jobResult = await this.createJob({
-        organizationId,
-        invoiceId,
-        documentType: 'invoice',
-        provider: 'factus',
-      });
-
-      if (!jobResult.success) {
-        return { success: false, error: jobResult.error };
-      }
-
-      // Llamar a la API para procesar el job
       const response = await fetch('/api/factus/invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ invoiceId, organizationId }),
       });
 
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const errorData = await response.json();
-        return { success: false, error: errorData.error || 'Error al enviar a DIAN' };
+        return { success: false, error: data.error || 'Error al enviar a DIAN' };
       }
 
-      return { success: true };
-    } catch (error: any) {
+      return { success: true, queued: data.queued === true, message: data.message };
+    } catch (error: unknown) {
       console.error('Error sending to Factus:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
 
   /**
-   * Reintentar envío de factura
+   * Reintentar envío de factura (en el servidor)
    */
   async retryJob(jobId: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { error } = await supabase
-        .from('electronic_invoicing_jobs')
-        .update({
-          status: 'pending',
-          next_retry_at: new Date().toISOString(),
-          error_code: null,
-          error_message: null,
-        })
-        .eq('id', jobId);
-
-      if (error) throw error;
-
-      return { success: true };
-    } catch (error: any) {
-      console.error('Error retrying job:', error);
-      return { success: false, error: error.message };
-    }
+    return accionEnServidor(jobId, 'retry');
   }
 
   /**
-   * Cancelar job de facturación electrónica
+   * Cancelar job de facturación electrónica (en el servidor)
    */
   async cancelJob(jobId: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { error } = await supabase
-        .from('electronic_invoicing_jobs')
-        .update({ status: 'cancelled' })
-        .eq('id', jobId);
-
-      if (error) throw error;
-
-      return { success: true };
-    } catch (error: any) {
-      console.error('Error cancelling job:', error);
-      return { success: false, error: error.message };
-    }
+    return accionEnServidor(jobId, 'cancel');
   }
 
   /**
@@ -347,8 +313,8 @@ class ElectronicInvoicingService {
       }
 
       return { valid: errors.length === 0, errors };
-    } catch (error: any) {
-      errors.push(`Error de validación: ${error.message}`);
+    } catch (error: unknown) {
+      errors.push(`Error de validación: ${error instanceof Error ? error.message : String(error)}`);
       return { valid: false, errors };
     }
   }
@@ -397,11 +363,13 @@ class ElectronicInvoicingService {
   }
 
   /**
-   * Descargar PDF de factura electrónica
+   * Descargar PDF de factura electrónica.
+   * Recibe el id de la factura (`invoice_sales.id`): el servidor comprueba que
+   * es de la organización de la sesión y pregunta a Factus su número DIAN.
    */
-  async downloadPDF(invoiceNumber: string): Promise<Blob | null> {
+  async downloadPDF(invoiceId: string): Promise<Blob | null> {
     try {
-      const response = await fetch(`/api/factus/download?type=pdf&invoiceNumber=${invoiceNumber}`);
+      const response = await fetch(`/api/factus/download?type=pdf&invoiceId=${encodeURIComponent(invoiceId)}`);
       if (!response.ok) throw new Error('Error descargando PDF');
       return await response.blob();
     } catch (error) {
@@ -411,11 +379,11 @@ class ElectronicInvoicingService {
   }
 
   /**
-   * Descargar XML de factura electrónica
+   * Descargar XML de factura electrónica (por id de factura, ver `downloadPDF`).
    */
-  async downloadXML(invoiceNumber: string): Promise<string | null> {
+  async downloadXML(invoiceId: string): Promise<string | null> {
     try {
-      const response = await fetch(`/api/factus/download?type=xml&invoiceNumber=${invoiceNumber}`);
+      const response = await fetch(`/api/factus/download?type=xml&invoiceId=${encodeURIComponent(invoiceId)}`);
       if (!response.ok) throw new Error('Error descargando XML');
       return await response.text();
     } catch (error) {

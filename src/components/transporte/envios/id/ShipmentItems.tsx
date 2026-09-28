@@ -13,6 +13,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Package, Plus, Trash2, Loader2, Tag, Percent, Search } from 'lucide-react';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { Badge } from '@/components/ui/badge';
 import { VariantSelectorDialog, type SelectedModifier } from '@/components/pos/VariantSelectorDialog';
 import {
@@ -68,12 +70,15 @@ interface ShipmentItemsProps {
   isLoading: boolean;
   canEdit: boolean;
   organizationId?: number;
+  /** Moneda del envío (`shipments.currency`); sin ella, la base de la organización. */
+  currency?: string | null;
   onAddItem: (item: Omit<ShipmentItem, 'id' | 'products'>) => Promise<void>;
   onDeleteItem: (itemId: string) => Promise<void>;
   onSearchProduct?: (query: string) => Promise<ProductSearchResult[]>;
 }
 
-export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAddItem, onDeleteItem, onSearchProduct }: ShipmentItemsProps) {
+export function ShipmentItems({ items, isLoading, canEdit, currency, onAddItem, onDeleteItem, onSearchProduct }: ShipmentItemsProps) {
+  const { paraDocumento } = useMonedaOrganizacion();
   const [showDialog, setShowDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ShipmentItem | null>(null);
@@ -187,8 +192,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
   const totalValue = items.reduce((sum, item) => sum + (item.total_value || 0), 0);
   const totalWeight = items.reduce((sum, item) => sum + ((item.weight_kg || 0) * (item.qty || 1)), 0);
 
-  const formatCOP = (value: number) =>
-    new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
+  const formatCOP = crearFormateadorMoneda(paraDocumento(currency));
 
   const parseItemNotes = (notes?: string): {
     modifiers?: ItemModifier[];

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -72,6 +72,9 @@ import {
 } from '@/components/ui/select';
 import { type EstimatedTime, type TimeUnit, timeToMs, formatEstimatedTime } from './[id]/components';
 import { CopyableId } from '@/components/common/CopyableId';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { CampoFecha } from '@/components/kit/CampoFecha';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface LocalFilters {
   status?: WebOrderStatus[];
@@ -89,8 +92,11 @@ type DatePreset = 'today' | 'yesterday' | 'last7' | 'last30' | 'custom';
 const ITEMS_PER_PAGE = 20;
 
 export default function PedidosOnlinePage() {
+  // Moneda base de la organización para la impresión y la exportación.
+  const moneda = useMonedaOrganizacion();
   const router = useRouter();
   const { toast } = useToast();
+  const { getToday } = useFormatDate();
   const { organization } = useOrganization();
   const { branchFilter } = useBranch();
   const orgTypeId = organization?.type_id ?? 3; // default retail
@@ -99,7 +105,6 @@ export default function PedidosOnlinePage() {
   // - Restaurante (1): 30 min preparación, 30 min traslado
   // - Retail (3): 1 día empacado, 5 días entrega (nacional Colombia)
   // - Otros: 30 min / 60 min
-  const isRestaurant = orgTypeId === 1;
   const isRetail = orgTypeId === 3;
   
   const [orders, setOrders] = useState<WebOrder[]>([]);
@@ -279,7 +284,7 @@ export default function PedidosOnlinePage() {
       }, 800);
     };
 
-    const subscription = webOrdersService.subscribeToOrders((payload) => {
+    webOrdersService.subscribeToOrders((payload) => {
       if (payload.eventType === 'INSERT' && payload.new.status === 'pending') {
         // Nuevo pedido - reproducir sonido
         if (soundEnabled) {
@@ -304,7 +309,7 @@ export default function PedidosOnlinePage() {
     try {
       const audio = new Audio('/sounds/notification.mp3');
       audio.play().catch(() => {});
-    } catch (error) {
+    } catch {
       console.log('Could not play notification sound');
     }
   };
@@ -323,6 +328,16 @@ export default function PedidosOnlinePage() {
         transitMs: order.delivery_type !== 'pickup' ? timeToMs(transitTime) : 0,
         markAsPaid,
       });
+      if (result.yaConfirmado) {
+        toast({
+          title: 'El pedido ya estaba confirmado',
+          description: 'La venta se creó cuando llegó el pago; no se creó otra.',
+        });
+        setConfirmDialog({ open: false, orderId: null });
+        setMarkAsPaid(false);
+        loadOrders();
+        return;
+      }
       const parts = ['Venta creada', 'Comanda enviada a cocina', `Listo: ${formatEstimatedTime(prepTime)}`];
       if (order.delivery_type !== 'pickup' && transitTime.value > 0) parts.push(`Entrega: ${formatEstimatedTime(transitTime)}`);
       if (markAsPaid) parts.push('Marcado como pagado');
@@ -334,11 +349,11 @@ export default function PedidosOnlinePage() {
       setConfirmDialog({ open: false, orderId: null });
       setMarkAsPaid(false);
       loadOrders();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error confirmando pedido:', error);
       toast({
         title: 'Error al confirmar pedido',
-        description: error?.message || 'No se pudo confirmar el pedido',
+        description: (error as { message?: string } | null)?.message || 'No se pudo confirmar el pedido',
         variant: 'destructive',
       });
     } finally {
@@ -359,7 +374,7 @@ export default function PedidosOnlinePage() {
       setRejectDialog({ open: false, orderId: null });
       setRejectReason('');
       loadOrders();
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo rechazar el pedido',
@@ -378,7 +393,7 @@ export default function PedidosOnlinePage() {
         description: `Pedido marcado como ${getStatusLabel(status)}`,
       });
       loadOrders();
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo actualizar el estado',
@@ -426,7 +441,7 @@ export default function PedidosOnlinePage() {
       });
       clearSelection();
       loadOrders();
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudieron actualizar todos los pedidos',
@@ -449,7 +464,7 @@ export default function PedidosOnlinePage() {
       });
       clearSelection();
       loadOrders();
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudieron actualizar todos los pagos',
@@ -490,14 +505,14 @@ export default function PedidosOnlinePage() {
               <tr style="border-bottom:1px solid #eee;">
                 <td style="padding:4px 0;">${item.product_name}</td>
                 <td style="padding:4px 8px;text-align:center;">${item.quantity}</td>
-                <td style="padding:4px 8px;text-align:right;">$${Number(item.unit_price || 0).toLocaleString()}</td>
-                <td style="padding:4px 0;text-align:right;">$${Number(item.total || 0).toLocaleString()}</td>
+                <td style="padding:4px 8px;text-align:right;">${moneda.formatear(Number(item.unit_price || 0))}</td>
+                <td style="padding:4px 0;text-align:right;">${moneda.formatear(Number(item.total || 0))}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
         <div style="text-align:right;margin-top:8px;">
-          <strong style="font-size:18px;">Total: $${order.total.toLocaleString()}</strong>
+          <strong style="font-size:18px;">Total: ${moneda.formatear(order.total)}</strong>
         </div>
         ${order.customer_notes ? `<div style="margin-top:8px;padding:8px;background:#fffbea;border-radius:4px;"><strong>Notas:</strong> ${order.customer_notes}</div>` : ''}
         <p style="margin-top:12px;color:#999;font-size:12px;">Método de pago: ${getPaymentLabel(order.payment_method)} · ${order.payment_status}</p>
@@ -516,7 +531,8 @@ export default function PedidosOnlinePage() {
   const handleBulkExport = () => {
     const selected = getSelectedOrders();
     if (selected.length === 0) return;
-    const headers = ['Pedido', 'Cliente', 'Email', 'Telefono', 'Estado', 'Entrega', 'Total', 'Metodo Pago', 'Fecha'];
+    // La moneda va en el encabezado: el número queda crudo para la hoja de cálculo.
+    const headers = ['Pedido', 'Cliente', 'Email', 'Telefono', 'Estado', 'Entrega', `Total (${moneda.code})`, 'Metodo Pago', 'Fecha'];
     const rows = selected.map(o => [
       o.order_number,
       o.customer_name || o.customer?.full_name || '',
@@ -533,7 +549,7 @@ export default function PedidosOnlinePage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `pedidos_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `pedidos_${getToday()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast({
@@ -720,18 +736,20 @@ export default function PedidosOnlinePage() {
             ))}
             {datePreset === 'custom' && (
               <div className="flex items-center gap-2 ml-2">
-                <Input
-                  type="date"
-                  value={customDateFrom}
-                  onChange={(e) => setCustomDateFrom(e.target.value)}
-                  className="h-8 w-36 text-xs"
+                <CampoFecha
+                  aria-label="Desde"
+                  tamano="sm"
+                  valor={customDateFrom}
+                  onValorChange={setCustomDateFrom}
+                  className="w-40"
                 />
                 <span className="text-sm text-muted-foreground dark:text-gray-400">a</span>
-                <Input
-                  type="date"
-                  value={customDateTo}
-                  onChange={(e) => setCustomDateTo(e.target.value)}
-                  className="h-8 w-36 text-xs"
+                <CampoFecha
+                  aria-label="Hasta"
+                  tamano="sm"
+                  valor={customDateTo}
+                  onValorChange={setCustomDateTo}
+                  className="w-40"
                 />
               </div>
             )}

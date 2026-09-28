@@ -36,11 +36,8 @@ import {
   User,
   DollarSign,
   Calendar,
-  ShoppingCart,
   Wrench,
-  RefreshCw,
   Loader2,
-  AlertTriangle,
   Truck,
   FileText,
 } from 'lucide-react';
@@ -50,8 +47,8 @@ import {
   type WarrantyClaimStatus,
   type ResolutionType,
 } from '@/lib/services/warrantyClaimsService';
-import { getOrganizationId, getCurrentUserId } from '@/lib/hooks/useOrganization';
-import { formatCurrency } from '@/utils/Utils';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 const STATUS_CONFIG: Record<WarrantyClaimStatus, { label: string; color: string; icon: React.ReactNode }> = {
@@ -75,9 +72,15 @@ interface GarantiaDetailPageProps {
   claimId: string;
 }
 
+/** Mensaje de un error de Supabase o de JS, sin suponer su forma. */
+function mensajeDeError(error: unknown): string | undefined {
+  return (error as { message?: string } | null)?.message;
+}
+
 export function GarantiaDetailPage({ claimId }: GarantiaDetailPageProps) {
   const { toast } = useToast();
   const { formatDate } = useFormatDate();
+  const { formatear } = useMonedaOrganizacion();
   const organizationId = getOrganizationId();
 
   const [claim, setClaim] = useState<WarrantyClaimWithDetails | null>(null);
@@ -102,11 +105,11 @@ export function GarantiaDetailPage({ claimId }: GarantiaDetailPageProps) {
       const { data, error } = await warrantyClaimsService.getClaimById(claimId);
       if (error) throw error;
       setClaim(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error cargando detalle de reclamo:', err);
       toast({
         title: 'Error',
-        description: err.message || 'No se pudo cargar el reclamo',
+        description: mensajeDeError(err) || 'No se pudo cargar el reclamo',
         variant: 'destructive',
       });
     } finally {
@@ -125,8 +128,8 @@ export function GarantiaDetailPage({ claimId }: GarantiaDetailPageProps) {
       if (error) throw error;
       toast({ title: 'Reclamo aprobado', description: 'El reclamo ha sido aprobado' });
       fetchClaim();
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Error', description: mensajeDeError(err), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -142,8 +145,8 @@ export function GarantiaDetailPage({ claimId }: GarantiaDetailPageProps) {
       if (error) throw error;
       toast({ title: 'Reclamo rechazado' });
       fetchClaim();
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Error', description: mensajeDeError(err), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -156,8 +159,8 @@ export function GarantiaDetailPage({ claimId }: GarantiaDetailPageProps) {
       if (error) throw error;
       toast({ title: 'Reclamo en proceso' });
       fetchClaim();
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Error', description: mensajeDeError(err), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -181,7 +184,7 @@ export function GarantiaDetailPage({ claimId }: GarantiaDetailPageProps) {
   const handleResolve = async () => {
     setActionLoading(true);
     try {
-      const resolutionData: any = {
+      const resolutionData: NonNullable<Parameters<typeof warrantyClaimsService.updateStatus>[2]> = {
         resolution: resolutionNotes || undefined,
         resolution_type: resolutionType,
       };
@@ -198,8 +201,8 @@ export function GarantiaDetailPage({ claimId }: GarantiaDetailPageProps) {
       toast({ title: 'Reclamo resuelto', description: 'La resolución ha sido registrada' });
       setShowResolveDialog(false);
       fetchClaim();
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Error', description: mensajeDeError(err), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -218,8 +221,8 @@ export function GarantiaDetailPage({ claimId }: GarantiaDetailPageProps) {
       setRmaNumber('');
       setSupplierResponse('');
       fetchClaim();
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Error', description: mensajeDeError(err), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -367,7 +370,7 @@ export function GarantiaDetailPage({ claimId }: GarantiaDetailPageProps) {
             <InfoRow label="Nombre" value={claim.customers?.full_name || 'N/A'} icon={<User size={14} />} />
             <InfoRow label="Teléfono" value={claim.customers?.phone || 'N/A'} />
             <InfoRow label="Email" value={claim.customers?.email || 'N/A'} />
-            <InfoRow label="Dirección" value={(claim.customers as any)?.address || 'N/A'} icon={<MapPin size={14} />} />
+            <InfoRow label="Dirección" value={claim.customers?.address || 'N/A'} icon={<MapPin size={14} />} />
           </CardContent>
         </Card>
 
@@ -391,10 +394,10 @@ export function GarantiaDetailPage({ claimId }: GarantiaDetailPageProps) {
               <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                 <span className="text-gray-500 dark:text-gray-400 block mb-1">Adjuntos ({claim.attachments.length})</span>
                 <div className="flex flex-wrap gap-2">
-                  {claim.attachments.map((att: any, i: number) => (
+                  {claim.attachments.map((att: unknown, i: number) => (
                     <Badge key={i} variant="outline" className="gap-1">
                       <FileText size={12} />
-                      {att.name || `Archivo ${i + 1}`}
+                      {(att as { name?: string } | null)?.name || `Archivo ${i + 1}`}
                     </Badge>
                   ))}
                 </div>
@@ -415,7 +418,7 @@ export function GarantiaDetailPage({ claimId }: GarantiaDetailPageProps) {
               <>
                 <InfoRow label="Tipo de Resolución" value={RESOLUTION_LABELS[claim.resolution_type] || claim.resolution_type} />
                 {claim.refund_amount != null && (
-                  <InfoRow label="Monto Reembolso" value={formatCurrency(claim.refund_amount, 'COP')} icon={<DollarSign size={14} />} />
+                  <InfoRow label="Monto Reembolso" value={formatear(claim.refund_amount)} icon={<DollarSign size={14} />} />
                 )}
                 {claim.replacement_serial && (
                   <InfoRow label="Serial de Reemplazo" value={claim.replacement_serial.serial} icon={<Package size={14} />} />

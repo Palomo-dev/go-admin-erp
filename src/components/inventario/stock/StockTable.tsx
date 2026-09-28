@@ -40,7 +40,7 @@ import {
   ArrowUp,
   ArrowDown
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { StockLevel } from '@/lib/services/stockService';
 import Link from 'next/link';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
@@ -83,10 +83,9 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 export function StockTable({ 
   data, 
   isLoading,
-  onViewProduct,
-  onCreateAdjustment,
   onCreateTransfer
 }: StockTableProps) {
+  const { formatear } = useMonedaOrganizacion();
   // Estados de paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -122,7 +121,7 @@ export function StockTable({
   };
 
   // Datos ordenados y paginados
-  const { sortedData, paginatedData, totalPages, startIndex, endIndex } = useMemo(() => {
+  const { paginatedData, totalPages, startIndex, endIndex } = useMemo(() => {
     // Ordenar datos
     const sorted = [...data].sort((a, b) => {
       const aValue = getSortValue(a, sortField);
@@ -339,10 +338,10 @@ export function StockTable({
                       {(item.min_level || 0).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right text-gray-600 dark:text-gray-400 tabular-nums">
-                      {formatCurrency(item.avg_cost || 0)}
+                      {formatear(item.avg_cost || 0)}
                     </TableCell>
                     <TableCell className="text-right font-medium text-gray-900 dark:text-white tabular-nums">
-                      {formatCurrency(totalValue)}
+                      {formatear(totalValue)}
                     </TableCell>
                     <TableCell>
                       <Badge className={status.color}>

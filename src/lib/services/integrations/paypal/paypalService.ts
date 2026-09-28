@@ -3,6 +3,7 @@
 // Cada cliente usa SUS PROPIAS credenciales de PayPal
 // ============================================================
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 import { PAYPAL_CREDENTIAL_PURPOSES, getPayPalApiUrl } from './paypalConfig';
 import type {
@@ -26,8 +27,11 @@ class PayPalService {
   // ──────────────────────────────────────────────
 
   /** Obtener credenciales de PayPal para una conexión */
-  async getCredentials(connectionId: string): Promise<PayPalCredentials | null> {
-    const { data, error } = await supabase
+  // GO-sec (2026-09-24): en el SERVIDOR, `supabase` (config) es anónimo y RLS no le
+  // deja leer `integration_credentials`; las rutas pasan `getServiceClient()` DESPUÉS de
+  // verificar que la conexión es de la organización de la sesión.
+  async getCredentials(connectionId: string, db: SupabaseClient = supabase): Promise<PayPalCredentials | null> {
+    const { data, error } = await db
       .from('integration_credentials')
       .select('purpose, secret_ref')
       .eq('connection_id', connectionId);

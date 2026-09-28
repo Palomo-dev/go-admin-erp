@@ -20,20 +20,13 @@ import {
   XCircle,
   Clock
 } from 'lucide-react';
-import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
-
-interface Payment {
-  id: string;
-  method: string;
-  amount: number;
-  currency: string;
-  reference: string | null;
-  status: string;
-  created_at: string;
-}
+import { formatDate, parseLocalDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
+import type { PagoFacturaCompra } from '../FacturasCompraService';
 
 interface HistorialPagosProps {
-  pagos: Payment[];
+  pagos: PagoFacturaCompra[];
   loading?: boolean;
 }
 
@@ -41,6 +34,9 @@ export function HistorialPagos({
   pagos, 
   loading = false 
 }: HistorialPagosProps) {
+  // Cada pago en su moneda (`payments.currency`); sin ella, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+
   if (loading) {
     return (
       <Card className="dark:bg-gray-800/50 dark:border-gray-700 border-gray-200">
@@ -132,7 +128,7 @@ export function HistorialPagos({
   };
 
   const totalPagos = pagos.reduce((sum, pago) => 
-    pago.status === 'completed' ? sum + pago.amount : sum, 0
+    pago.status === 'completed' ? sum + (pago.amount ?? 0) : sum, 0
   );
 
   return (
@@ -172,7 +168,7 @@ export function HistorialPagos({
                     </span>
                   </div>
                   <span className="text-base sm:text-lg font-bold text-green-800 dark:text-green-200">
-                    {formatCurrency(totalPagos, pagos[0]?.currency || 'COP')}
+                    {formatMoneda(totalPagos, paraDocumento(pagos[0]?.currency))}
                   </span>
                 </div>
               </div>
@@ -198,10 +194,10 @@ export function HistorialPagos({
                           <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 dark:text-gray-500 hidden sm:block" />
                           <div>
                             <div className="text-xs sm:text-sm font-medium">
-                              {formatDate(parseLocalDate(pago.created_at))}
+                              {formatDate(parseLocalDate(pago.created_at ?? ''))}
                             </div>
                             <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                              {parseLocalDate(pago.created_at).toLocaleTimeString('es-CO', {
+                              {parseLocalDate(pago.created_at ?? '').toLocaleTimeString('es-CO', {
                                 hour: '2-digit',
                                 minute: '2-digit'
                               })}
@@ -211,8 +207,8 @@ export function HistorialPagos({
                       </TableCell>
                       <TableCell className="text-gray-900 dark:text-gray-300 py-2 sm:py-3 hidden sm:table-cell">
                         <div className="flex items-center gap-2">
-                          {getMethodIcon(pago.method)}
-                          <span className="text-xs sm:text-sm">{getMethodName(pago.method)}</span>
+                          {getMethodIcon(pago.method ?? '')}
+                          <span className="text-xs sm:text-sm">{getMethodName(pago.method ?? '')}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-gray-900 dark:text-gray-300 py-2 sm:py-3 hidden md:table-cell">
@@ -221,10 +217,10 @@ export function HistorialPagos({
                         </code>
                       </TableCell>
                       <TableCell className="text-right font-medium text-gray-900 dark:text-white py-2 sm:py-3 text-xs sm:text-sm whitespace-nowrap">
-                        {formatCurrency(pago.amount, pago.currency)}
+                        {formatMoneda(pago.amount, paraDocumento(pago.currency))}
                       </TableCell>
                       <TableCell className="text-center py-2 sm:py-3">
-                        {getStatusBadge(pago.status)}
+                        {getStatusBadge(pago.status ?? '')}
                       </TableCell>
                     </TableRow>
                   ))}

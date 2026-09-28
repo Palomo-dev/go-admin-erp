@@ -5,29 +5,21 @@ import { planWebhookAuthorization, type ResolvedChannel, type WebhookChannelReso
 import { verifyMetaSignature } from '@/lib/security/webhookSignatures';
 import { readRealSecret } from '@/lib/security/secrets';
 import { checkRateLimit, getClientIp } from '@/lib/security/rateLimit';
+import { verificarSuscripcionWebhook } from '@/lib/security/suscripcionWebhook';
 
 export const runtime = 'nodejs';
 
-// GET: Verificación del webhook (Meta envía challenge)
+// GET: Verificación del webhook (Meta envía challenge). Credencial:
+// `WHATSAPP_VERIFY_TOKEN`; sin ella → 403 (fail-closed), token comparado en
+// tiempo constante (GO-sec 2026-09-24, `verificarSuscripcionWebhook`).
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const mode = searchParams.get('hub.mode');
-  const token = searchParams.get('hub.verify_token');
-  const challenge = searchParams.get('hub.challenge');
-
-  const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
-  if (!verifyToken) {
-    console.error('[WhatsApp Webhook] WHATSAPP_VERIFY_TOKEN no configurado');
-    return NextResponse.json({ error: 'Verification not configured' }, { status: 403 });
-  }
-
-  if (mode === 'subscribe' && token === verifyToken) {
-    console.log('[WhatsApp Webhook] Verificación exitosa');
-    return new NextResponse(challenge, { status: 200 });
-  }
-
-  console.warn('[WhatsApp Webhook] Verificación fallida', { mode });
-  return NextResponse.json({ error: 'Verification failed' }, { status: 403 });
+  return verificarSuscripcionWebhook(request, {
+    variable: 'WHATSAPP_VERIFY_TOKEN',
+    parametroToken: 'hub.verify_token',
+    parametroDesafio: 'hub.challenge',
+    parametroModo: 'hub.mode',
+    etiqueta: 'WhatsApp Webhook',
+  });
 }
 
 /**

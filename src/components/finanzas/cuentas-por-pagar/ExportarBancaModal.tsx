@@ -159,7 +159,10 @@ export function ExportarBancaModal({
   onClose,
   onExportado
 }: ExportarBancaModalProps) {
-  const { formatDate } = useFormatDate();
+  // Sin `branchId`: el lote mezcla cuentas de cualquier sucursal, asi que la
+  // zona es la de la organizacion. `getToday()` sale del contexto (identidad),
+  // nunca del reloj del navegador.
+  const { formatDate, getToday } = useFormatDate();
   // Estados
   const [cuentas, setCuentas] = useState<AccountPayable[]>([]);
   const [loading, setLoading] = useState(true);
@@ -238,7 +241,7 @@ export function ExportarBancaModal({
       a.href = url;
       
       const formato = FORMATOS_BANCO.find(f => f.value === formatoBanco);
-      const fechaHoy = new Date().toISOString().split('T')[0];
+      const fechaHoy = getToday();
       a.download = `pagos_${fechaHoy}${formato?.extension || '.txt'}`;
       
       document.body.appendChild(a);

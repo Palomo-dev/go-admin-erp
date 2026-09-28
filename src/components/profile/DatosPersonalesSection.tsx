@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 import { changeLanguage } from '@/i18n/provider';
 import { isValidLocale } from '@/i18n/config';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
 import {
   Dialog,
   DialogContent,
@@ -168,6 +168,12 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
     
     if (!user) {
       toast.error('No hay un usuario autenticado');
+      return;
+    }
+
+    const errorTelefono = mensajeErrorTelefono(phone);
+    if (errorTelefono) {
+      toast.error(errorTelefono);
       return;
     }
     
@@ -446,7 +452,6 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
               value={phone}
               onChange={setPhone}
               disabled={!editing || loading}
-              inputClassName="px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-700/50 disabled:text-gray-500 dark:disabled:text-gray-400"
             />
           </div>
           

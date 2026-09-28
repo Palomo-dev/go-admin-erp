@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
+import { safeEqual } from '@/lib/security/webhookSignatures';
 
 // Configurar VAPID details (solo en el servidor)
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
@@ -30,16 +31,18 @@ function getSupabaseAdmin() {
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar shared secret (la Edge Function de Supabase pasa este header)
-    const internalSecret = process.env.PUSH_WEBHOOK_SECRET;
-    if (internalSecret) {
-      const provided = request.headers.get('x-internal-secret');
-      if (provided !== internalSecret) {
-        return NextResponse.json(
-          { error: 'No autorizado' },
-          { status: 401 },
-        );
-      }
+    // Secreto compartido (la Edge Function de Supabase pasa este header).
+    // GO-sec (2026-09-24): fail-closed. Antes, sin PUSH_WEBHOOK_SECRET
+    // configurado, cualquier usuario con sesión mandaba notificaciones push a
+    // CUALQUIER userId; ahora sin secreto → 503 y siempre en tiempo constante.
+    const internalSecret = process.env.PUSH_WEBHOOK_SECRET || '';
+    if (!internalSecret) {
+      console.error('[push/web] PUSH_WEBHOOK_SECRET no configurado: envío rechazado (fail-closed)');
+      return NextResponse.json({ error: 'Servicio no configurado' }, { status: 503 });
+    }
+    const provided = request.headers.get('x-internal-secret') || '';
+    if (!provided || !safeEqual(provided, internalSecret)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
     const { userId, title, body, url } = await request.json();
@@ -127,10 +130,8 @@ export async function POST(request: NextRequest) {
       failed,
       cleaned: invalidEndpoints.length,
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: 'Error interno: ' + error.message },
-      { status: 500 },
-    );
+  } catch (error: unknown) {
+    console.error('[push/web] Error:', error instanceof Error ? error.message : String(error));
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 });
   }
 }

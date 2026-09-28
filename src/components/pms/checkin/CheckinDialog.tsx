@@ -32,7 +32,6 @@ import {
   CheckCircle2,
   Loader2,
   IdCard,
-  MapPin,
   Globe,
   PenTool,
   Eraser,
@@ -49,6 +48,7 @@ import organizationService from '@/lib/services/organizationService';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface CheckinDialogProps {
   open: boolean;
@@ -321,13 +321,8 @@ export function CheckinDialog({
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  // Moneda base de la organización (la reserva/abono no tiene moneda propia).
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
 
   const formatDate = (dateString: string) => {
     return formatPlainDate(dateString, { day: '2-digit', month: 'long', year: 'numeric' });

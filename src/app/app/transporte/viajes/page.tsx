@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz, toPlainDate } from '@/lib/utils/dateDisplay';
+import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
 import {
   TripsHeader,
   TripsFilters,
@@ -80,6 +83,11 @@ export default function ViajesPage() {
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
+  // `resolveFor` es la cascada sucursal -> organizacion -> fallback. Se usa la
+  // funcion, no `useFormatDate(branchId)`, porque aqui hacen falta dos zonas
+  // distintas: la del filtro (que sucursal se esta listando) y la de CADA viaje
+  // al duplicarlo (`trip.branch_id`), y un hook no se puede llamar por fila.
+  const { resolveFor } = useOrgTimezone();
 
   // Diálogos
   const [showTripDialog, setShowTripDialog] = useState(false);
@@ -96,7 +104,14 @@ export default function ViajesPage() {
     }
     setIsRefreshing(true);
     try {
-      const dateStr = dateFilter ? dateFilter.toISOString().split('T')[0] : undefined;
+      // `trips.trip_date` es `date`. El datepicker entrega un `Date` que
+      // representa el dia que el usuario pincho: su dia calendario sale en la
+      // zona de la sucursal que se esta filtrando (o la de la organizacion si
+      // el filtro es «todas»), nunca en UTC.
+      const zonaDelFiltro = resolveFor(
+        branchFilter !== 'all' ? parseInt(branchFilter, 10) : null,
+      ).timezone;
+      const dateStr = dateFilter ? toPlainDate(dateFilter, zonaDelFiltro) : undefined;
       
       const [tripsData, statsData, routesData, vehiclesData, driversData, branchesData] = await Promise.all([
         tripsService.getTrips(organizationId, {
@@ -132,7 +147,7 @@ export default function ViajesPage() {
       setIsRefreshing(false);
       setIsLoading(false);
     }
-  }, [organizationId, dateFilter, statusFilter, routeFilter, vehicleFilter, driverFilter, branchFilter, toast]);
+  }, [organizationId, dateFilter, statusFilter, routeFilter, vehicleFilter, driverFilter, branchFilter, resolveFor, toast]);
 
   // Sincronizar el filtro local de sede con la sucursal seleccionada globalmente (header)
   useEffect(() => {
@@ -188,9 +203,12 @@ export default function ViajesPage() {
     if (!organizationId) return;
 
     try {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const newDate = tomorrow.toISOString().split('T')[0];
+      // «Manana» es el dia siguiente al de HOY en la sucursal duena del viaje
+      // que se duplica (`trip.branch_id`), no en la sucursal seleccionada en la
+      // barra superior ni en UTC. Sumar 24 h a un instante ademas se descuadra
+      // en los dias de 23 o 25 horas.
+      const zonaDelViaje = resolveFor(trip.branch_id ?? null).timezone;
+      const newDate = sumarDiasAlDia(todayInTz(zonaDelViaje), 1);
 
       await tripsService.duplicateTrip(trip.id, newDate);
       toast({

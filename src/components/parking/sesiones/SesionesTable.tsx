@@ -28,7 +28,7 @@ import {
   XCircle,
   AlertCircle
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 export interface ParkingSession {
   id: string;
@@ -117,6 +117,7 @@ export function SesionesTable({
   onPrint,
   canEdit = false,
 }: SesionesTableProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const router = useRouter();
   if (isLoading) {
     return <TableSkeleton rows={5} columns={9} />;

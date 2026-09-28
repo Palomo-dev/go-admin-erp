@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import {
   TrendingUp,
   TrendingDown,
@@ -40,6 +40,8 @@ const PERIOD_LABELS: Record<Period, string> = {
 };
 
 export function MetricasView() {
+  // Métricas agregadas: moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   const [period, setPeriod] = useState<Period>('30d');
   const [metrics, setMetrics] = useState<CommercialMetrics | null>(null);
   const [vendors, setVendors] = useState<VendorBreakdown[]>([]);
@@ -143,7 +145,7 @@ export function MetricasView() {
               <span className="text-xs text-gray-500 dark:text-gray-400">ARPA</span>
             </div>
             <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {formatCurrency(metrics.arpa, 'COP')}
+              {formatear(metrics.arpa)}
             </div>
             <div className="text-xs text-gray-400 mt-1">Ingreso promedio por cuenta</div>
           </Card>
@@ -174,19 +176,19 @@ export function MetricasView() {
           <Card className="p-3 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
             <div className="text-xs text-gray-500 dark:text-gray-400">Monto abierto</div>
             <div className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-0.5">
-              {formatCurrency(metrics.total_open_amount, 'COP')}
+              {formatear(metrics.total_open_amount)}
             </div>
           </Card>
           <Card className="p-3 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
             <div className="text-xs text-gray-500 dark:text-gray-400">Monto ganado</div>
             <div className="text-lg font-bold text-green-600 dark:text-green-400 mt-0.5">
-              {formatCurrency(metrics.total_won_amount, 'COP')}
+              {formatear(metrics.total_won_amount)}
             </div>
           </Card>
           <Card className="p-3 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
             <div className="text-xs text-gray-500 dark:text-gray-400">Proyección (forecast)</div>
             <div className="text-lg font-bold text-blue-600 dark:text-blue-400 mt-0.5">
-              {formatCurrency(metrics.projection, 'COP')}
+              {formatear(metrics.projection)}
             </div>
           </Card>
         </div>
@@ -217,13 +219,13 @@ export function MetricasView() {
               <Card className="p-3 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
                 <div className="text-xs text-gray-500 dark:text-gray-400">Total pipeline</div>
                 <div className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-0.5">
-                  {formatCurrency(funnel.total_pipeline, 'COP')}
+                  {formatear(funnel.total_pipeline)}
                 </div>
               </Card>
               <Card className="p-3 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
                 <div className="text-xs text-gray-500 dark:text-gray-400">Forecast ponderado</div>
                 <div className="text-lg font-bold text-blue-600 dark:text-blue-400 mt-0.5">
-                  {formatCurrency(funnel.forecast, 'COP')}
+                  {formatear(funnel.forecast)}
                 </div>
               </Card>
             </div>
@@ -268,7 +270,7 @@ export function MetricasView() {
                           }}
                         >
                           <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
-                            {stage.current_count} · {formatCurrency(stage.current_amount, 'COP')}
+                            {stage.current_count} · {formatear(stage.current_amount)}
                           </span>
                         </div>
                       </div>
@@ -342,7 +344,7 @@ export function MetricasView() {
                   </div>
                   <div className="text-right shrink-0">
                     <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                      {formatCurrency(v.won_amount, 'COP')}
+                      {formatear(v.won_amount)}
                     </div>
                     <Badge
                       className={`mt-1 ${

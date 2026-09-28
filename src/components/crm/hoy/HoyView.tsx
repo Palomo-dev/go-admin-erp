@@ -13,7 +13,7 @@ import type {
   StaleOpportunity,
   LeadWithoutContact,
 } from '@/lib/services/crm/followupService';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda } from '@/lib/utils/moneda';
 import {
   Phone,
   Mail,
@@ -346,7 +346,8 @@ function FollowupRow({
             <span className="text-xs text-gray-500 dark:text-gray-400">{stageName}</span>
             <span className="text-xs text-gray-400">·</span>
             <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              {formatCurrency(amount, currency)}
+              {/* `currency` ya viene resuelta: la de la oportunidad o la base de la organización. */}
+              {formatMoneda(amount, currency)}
             </span>
           </div>
         </div>

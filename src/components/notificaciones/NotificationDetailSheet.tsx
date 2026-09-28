@@ -1,19 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { useLocale, useTranslations } from 'next-intl';
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
+  Sheet, SheetContent, SheetTitle, SheetDescription,
 } from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Bell, ExternalLink, User, DollarSign, Hotel, Package,
   ClipboardList, CreditCard, UserPlus, Calendar, AlertTriangle,
-  MapPin, Hash, Clock, TrendingDown, Building2, Mail,
+  Hash, Clock, TrendingDown, Building2, Mail, Info, AlertCircle, RefreshCw, Trash2, X,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { supabase } from '@/lib/supabase/config';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz, formatPlainDate } from '@/lib/utils/dateDisplay';
 
 // ── Tipos ──────────────────────────────────────────────
 interface NotificationForSheet {
@@ -21,7 +22,7 @@ interface NotificationForSheet {
   organization_id: number;
   recipient_user_id?: string | null;
   channel: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   status: string;
   read_at: string | null; // Deprecado: usar is_read_by_me
   is_read_by_me?: boolean; // true si el usuario actual tiene fila en notification_reads
@@ -33,10 +34,33 @@ interface NotificationDetailSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onNavigate: (url: string) => void;
+  /** «Marcar como no leída» (solo para quien la abre). Sin él no se muestra. */
+  onMarkUnread?: () => void;
+  /** «Descartar» (solo para quien la abre). Sin él no se muestra. */
+  onDismiss?: () => void;
 }
 
+/** Tono del tipo (Badge y chip del icono, manual de marca: tinte + texto profundo). */
+type Tono = 'peligro' | 'advertencia' | 'info' | 'marca' | 'neutro';
+
+export function getTypeTone(type: string): Tono {
+  if (type === 'ar_overdue' || type === 'ap_overdue' || type === 'stock_out' || type === 'payment_failed' || type.endsWith('_cancelled') || type === 'no_show' || type === 'opportunity_lost') return 'peligro';
+  if (type.startsWith('stock_') || type === 'trial_expiring' || type === 'ai_credits_low' || type === 'transfer_rejected') return 'advertencia';
+  if (type.includes('invoice') || type.includes('payment') || type.startsWith('cash_') || type.startsWith('payroll')) return 'info';
+  if (type.startsWith('task_') || type.startsWith('opportunity_') || type.startsWith('reservation') || type.startsWith('calendar_')) return 'marca';
+  return 'neutro';
+}
+
+const TONOS: Record<Tono, { chip: string; badge: string }> = {
+  peligro: { chip: 'bg-danger-subtle text-danger-text', badge: 'border-line-danger bg-danger-subtle text-danger-text' },
+  advertencia: { chip: 'bg-warning-subtle text-warning-text', badge: 'border-line-warning bg-warning-subtle text-warning-text' },
+  info: { chip: 'bg-info-subtle text-info-text', badge: 'border-line-info bg-info-subtle text-info-text' },
+  marca: { chip: 'bg-brand-tint text-brand-deep', badge: 'border-line-brand bg-brand-tint text-brand-deep' },
+  neutro: { chip: 'bg-subtle text-fg-secondary', badge: 'border-line bg-subtle text-fg-secondary' },
+};
+
 // ── Helpers de tipo ────────────────────────────────────
-function getTypeIcon(type: string) {
+export function getTypeIcon(type: string) {
   if (type.includes('invoice') || type.includes('payment') || type.includes('ar_') || type.includes('ap_')) return DollarSign;
   if (type.includes('reservation') || type.includes('checkin') || type.includes('checkout') || type.includes('housekeeping') || type.includes('no_show')) return Hotel;
   if (type.includes('opportunity') || type.includes('task_')) return ClipboardList;
@@ -48,69 +72,90 @@ function getTypeIcon(type: string) {
   return Bell;
 }
 
-const typeLabels: Record<string, string> = {
-  purchase_invoice_created: 'Factura compra', payment_registered: 'Pago', ar_overdue: 'CxC vencida', ap_overdue: 'CxP vencida',
-  reservation_created: 'Reserva', checkin: 'Check-in', checkout: 'Check-out', reservation_cancelled: 'Reserva cancelada', no_show: 'No-show', housekeeping_assigned: 'Limpieza',
-  opportunity_stage_change: 'Oportunidad', opportunity_won: 'Oportunidad ganada', opportunity_lost: 'Oportunidad perdida', task_assigned: 'Tarea', task_completed: 'Tarea completada',
-  stock_low: 'Stock bajo', stock_out: 'Sin stock', stock_low_periodic: 'Stock bajo', transfer_created: 'Transferencia', transfer_approved: 'Transferencia', transfer_rejected: 'Transferencia',
-  cash_opened: 'Caja abierta', cash_closed: 'Caja cerrada', payroll_approved: 'Nómina', payroll_paid: 'Nómina pagada', shift_assigned: 'Turno',
-  calendar_event_assigned: 'Evento', calendar_event_cancelled: 'Evento cancelado',
-  subscription_cancelled: 'Suscripción', trial_ended: 'Trial', trial_expiring: 'Trial por vencer', payment_failed: 'Pago fallido', ai_credits_low: 'Créditos IA',
-  new_member: 'Nuevo miembro', role_changed: 'Cambio de rol',
-};
+/**
+ * Tipos con etiqueta propia en `header.notificationDetail.types`. Un tipo que
+ * no esté aquí se muestra como «Notificación».
+ */
+const TIPOS_CON_ETIQUETA = new Set([
+  'purchase_invoice_created', 'payment_registered', 'ar_overdue', 'ap_overdue',
+  'reservation_created', 'checkin', 'checkout', 'reservation_cancelled', 'no_show', 'housekeeping_assigned',
+  'opportunity_stage_change', 'opportunity_won', 'opportunity_lost', 'task_assigned', 'task_completed',
+  'stock_low', 'stock_out', 'stock_low_periodic', 'transfer_created', 'transfer_approved', 'transfer_rejected',
+  'cash_opened', 'cash_closed', 'payroll_approved', 'payroll_paid', 'shift_assigned',
+  'calendar_event_assigned', 'calendar_event_cancelled',
+  'subscription_cancelled', 'trial_ended', 'trial_expiring', 'payment_failed', 'ai_credits_low',
+  'new_member', 'role_changed',
+]);
 
-function getRedirect(notif: NotificationForSheet): { url: string; label: string } | null {
-  const type = notif.payload?.type || '';
-  const p = notif.payload || {};
+/** Traductor de `header.notificationDetail` (lo crea el componente con `useTranslations`). */
+type Traductor = ReturnType<typeof useTranslations>;
+
+/** Destino del botón principal; `accion` es la clave en `header.notificationDetail.actions`. */
+function getRedirect(notif: NotificationForSheet): { url: string; accion: string } | null {
+  const type = String(notif.payload?.type ?? '');
+  const p = (notif.payload || {}) as Record<string, string | undefined>;
   switch (type) {
     case 'ar_overdue':
-      return p.ar_id ? { url: `/app/finanzas/cuentas-por-cobrar/${p.ar_id}`, label: 'Ver cuenta por cobrar' } : { url: '/app/finanzas/cuentas-por-cobrar', label: 'Ver CxC' };
+      return p.ar_id ? { url: `/app/finanzas/cuentas-por-cobrar/${p.ar_id}`, accion: 'viewReceivable' } : { url: '/app/finanzas/cuentas-por-cobrar', accion: 'viewReceivables' };
     case 'ap_overdue':
-      return p.ap_id ? { url: `/app/finanzas/cuentas-por-pagar/${p.ap_id}`, label: 'Ver cuenta por pagar' } : { url: '/app/finanzas/cuentas-por-pagar', label: 'Ver CxP' };
+      return p.ap_id ? { url: `/app/finanzas/cuentas-por-pagar/${p.ap_id}`, accion: 'viewPayable' } : { url: '/app/finanzas/cuentas-por-pagar', accion: 'viewPayables' };
     case 'purchase_invoice_created':
-      return p.invoice_id ? { url: `/app/finanzas/facturas-compra/${p.invoice_id}`, label: 'Ver factura' } : { url: '/app/finanzas/facturas-compra', label: 'Ver facturas' };
+      return p.invoice_id ? { url: `/app/finanzas/facturas-compra/${p.invoice_id}`, accion: 'viewInvoice' } : { url: '/app/finanzas/facturas-compra', accion: 'viewInvoices' };
     case 'payment_registered':
-      return { url: '/app/finanzas', label: 'Ver finanzas' };
+      return { url: '/app/finanzas', accion: 'viewFinance' };
     case 'reservation_created': case 'checkin': case 'checkout': case 'reservation_cancelled': case 'no_show':
-      return p.reservation_id ? { url: `/app/pms/reservas/${p.reservation_id}`, label: 'Ver reserva' } : { url: '/app/pms/reservas', label: 'Ver reservas' };
+      return p.reservation_id ? { url: `/app/pms/reservas/${p.reservation_id}`, accion: 'viewReservation' } : { url: '/app/pms/reservas', accion: 'viewReservations' };
     case 'housekeeping_assigned':
-      return { url: '/app/pms/housekeeping', label: 'Ver housekeeping' };
+      return { url: '/app/pms/housekeeping', accion: 'viewHousekeeping' };
     case 'opportunity_stage_change': case 'opportunity_won': case 'opportunity_lost':
-      return p.opportunity_id ? { url: `/app/crm/oportunidades/${p.opportunity_id}`, label: 'Ver oportunidad' } : { url: '/app/crm/oportunidades', label: 'Ver oportunidades' };
+      return p.opportunity_id ? { url: `/app/crm/oportunidades/${p.opportunity_id}`, accion: 'viewOpportunity' } : { url: '/app/crm/oportunidades', accion: 'viewOpportunities' };
     case 'task_agent': case 'task_rescheduled': case 'task_reschedule_summary':
-      return p.task_id ? { url: `/app/pm/tareas?taskId=${p.task_id}`, label: 'Ver tarea PM' } : { url: '/app/pm/tareas', label: 'Ver tareas PM' };
-    case 'task_assigned': case 'task_completed': {
-      return p.task_id ? { url: `/app/pm/tareas?taskId=${p.task_id}`, label: 'Ver tarea' } : { url: '/app/pm/tareas', label: 'Ver tareas' };
-    }
+    case 'task_assigned': case 'task_completed':
+      return p.task_id ? { url: `/app/pm/tareas?taskId=${p.task_id}`, accion: 'viewTask' } : { url: '/app/pm/tareas', accion: 'viewTasks' };
     case 'stock_low': case 'stock_out': case 'stock_low_periodic':
-      return p.product_id ? { url: `/app/inventario/productos/${p.product_id}`, label: 'Ver producto' } : { url: '/app/inventario/stock', label: 'Ver stock' };
+      return p.product_id ? { url: `/app/inventario/productos/${p.product_id}`, accion: 'viewProduct' } : { url: '/app/inventario/stock', accion: 'viewStock' };
     case 'transfer_created': case 'transfer_approved': case 'transfer_rejected':
-      return p.transfer_id ? { url: `/app/inventario/transferencias/${p.transfer_id}`, label: 'Ver transferencia' } : { url: '/app/inventario/transferencias', label: 'Ver transferencias' };
+      return p.transfer_id ? { url: `/app/inventario/transferencias/${p.transfer_id}`, accion: 'viewTransfer' } : { url: '/app/inventario/transferencias', accion: 'viewTransfers' };
     case 'cash_opened': case 'cash_closed':
-      return { url: '/app/pos', label: 'Ver POS' };
+      return { url: '/app/pos', accion: 'viewPos' };
     case 'payroll_approved': case 'payroll_paid':
-      return { url: '/app/hrm', label: 'Ver nómina' };
+      return { url: '/app/hrm', accion: 'viewPayroll' };
     case 'shift_assigned':
-      return { url: '/app/hrm', label: 'Ver turnos' };
+      return { url: '/app/hrm', accion: 'viewShifts' };
     case 'calendar_event_assigned': case 'calendar_event_cancelled':
-      return { url: '/app/calendario', label: 'Ver calendario' };
+      return { url: '/app/calendario', accion: 'viewCalendar' };
     case 'subscription_cancelled': case 'trial_ended': case 'trial_expiring': case 'payment_failed':
     case 'ai_credits_low': case 'new_member': case 'role_changed':
-      return { url: '/app/organizacion', label: 'Ver organización' };
+      return { url: '/app/organizacion', accion: 'viewOrganization' };
     default:
       return null;
   }
 }
 
 // ── Fetch de datos relacionados desde tablas específicas ──
+const FECHA_CORTA: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
+
+interface PersonaFila { first_name?: string | null; last_name?: string | null; email?: string | null }
+interface ProveedorFila { name?: string | null; email?: string | null }
+interface ProductoFila { name?: string | null; sku?: string | null }
 interface RelatedData {
   label: string;
-  fields: { icon: typeof Bell; label: string; value: string }[];
+  fields: { icon: typeof Bell; label: string; value: string; peligro?: boolean }[];
 }
 
-async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedData | null> {
-  const type = notif.payload?.type || '';
-  const p = notif.payload || {};
+/** Idioma y zona para los valores: los textos salen de `t`, los números y fechas de `locale`. */
+interface Formato {
+  t: Traductor;
+  locale: string;
+  timezone: string;
+}
+
+async function fetchRelatedData(notif: NotificationForSheet, { t, locale, timezone }: Formato): Promise<RelatedData | null> {
+  const type = String(notif.payload?.type ?? '');
+  const p = (notif.payload || {}) as Record<string, string | undefined>;
+  const numero = (v: unknown) => Number(v ?? 0).toLocaleString(locale);
+  const dinero = (v: unknown) => `$${numero(v)}`;
+  const fecha = (v: string) => formatDateInTz(v, timezone, { ...FECHA_CORTA, locale });
 
   try {
     // CxC vencida → accounts_receivable + customers
@@ -121,9 +166,9 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
         .eq('id', p.ar_id)
         .maybeSingle();
 
-      if (arErr) console.error('[NotifSheet] ar query error:', arErr.message);
+      if (arErr) throw arErr;
       if (ar) {
-        let cust: any = null;
+        let cust: PersonaFila | null = null;
         if (ar.customer_id) {
           const { data: c } = await supabase
             .from('customers')
@@ -133,15 +178,15 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
           cust = c;
         }
         return {
-          label: 'Cuenta por Cobrar',
+          label: t('related.receivable'),
           fields: [
-            { icon: User, label: 'Cliente', value: cust ? `${cust.first_name || ''} ${cust.last_name || ''}`.trim() : '—' },
-            { icon: Mail, label: 'Email', value: cust?.email || '—' },
-            { icon: DollarSign, label: 'Monto original', value: `$${Number(ar.amount).toLocaleString('es')}` },
-            { icon: TrendingDown, label: 'Saldo pendiente', value: `$${Number(ar.balance).toLocaleString('es')}` },
-            { icon: Calendar, label: 'Fecha vencimiento', value: ar.due_date ? new Date(ar.due_date).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' }) : '—' },
-            { icon: Clock, label: 'Días vencida', value: `${ar.days_overdue ?? 0} días` },
-            { icon: Hash, label: 'Estado', value: ar.status || '—' },
+            { icon: User, label: t('fields.customer'), value: cust ? `${cust.first_name || ''} ${cust.last_name || ''}`.trim() : '—' },
+            { icon: Mail, label: t('fields.email'), value: cust?.email || '—' },
+            { icon: DollarSign, label: t('fields.originalAmount'), value: dinero(ar.amount) },
+            { icon: TrendingDown, label: t('fields.balanceDue'), value: dinero(ar.balance) },
+            { icon: Calendar, label: t('fields.dueDate'), value: ar.due_date ? fecha(ar.due_date) : '—' },
+            { icon: Clock, label: t('fields.daysOverdue'), value: t('days', { n: ar.days_overdue ?? 0 }) },
+            { icon: Hash, label: t('fields.status'), value: ar.status || '—' },
           ],
         };
       }
@@ -155,9 +200,9 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
         .eq('id', p.ap_id)
         .maybeSingle();
 
-      if (apErr) console.error('[NotifSheet] ap query error:', apErr.message);
+      if (apErr) throw apErr;
       if (ap) {
-        let sup: any = null;
+        let sup: ProveedorFila | null = null;
         if (ap.supplier_id) {
           const { data: s } = await supabase
             .from('suppliers')
@@ -167,15 +212,15 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
           sup = s;
         }
         return {
-          label: 'Cuenta por Pagar',
+          label: t('related.payable'),
           fields: [
-            { icon: Building2, label: 'Proveedor', value: sup?.name || '—' },
-            { icon: Mail, label: 'Email', value: sup?.email || '—' },
-            { icon: DollarSign, label: 'Monto original', value: `$${Number(ap.amount).toLocaleString('es')}` },
-            { icon: TrendingDown, label: 'Saldo pendiente', value: `$${Number(ap.balance).toLocaleString('es')}` },
-            { icon: Calendar, label: 'Fecha vencimiento', value: ap.due_date ? new Date(ap.due_date).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' }) : '—' },
-            { icon: Clock, label: 'Días vencida', value: `${ap.days_overdue ?? 0} días` },
-            { icon: Hash, label: 'Estado', value: ap.status || '—' },
+            { icon: Building2, label: t('fields.supplier'), value: sup?.name || '—' },
+            { icon: Mail, label: t('fields.email'), value: sup?.email || '—' },
+            { icon: DollarSign, label: t('fields.originalAmount'), value: dinero(ap.amount) },
+            { icon: TrendingDown, label: t('fields.balanceDue'), value: dinero(ap.balance) },
+            { icon: Calendar, label: t('fields.dueDate'), value: ap.due_date ? fecha(ap.due_date) : '—' },
+            { icon: Clock, label: t('fields.daysOverdue'), value: t('days', { n: ap.days_overdue ?? 0 }) },
+            { icon: Hash, label: t('fields.status'), value: ap.status || '—' },
           ],
         };
       }
@@ -190,9 +235,9 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
         .limit(1)
         .maybeSingle();
 
-      if (slErr) console.error('[NotifSheet] stock query error:', slErr.message);
+      if (slErr) throw slErr;
       if (sl) {
-        let prod: any = null;
+        let prod: ProductoFila | null = null;
         const { data: pr } = await supabase
           .from('products')
           .select('name, sku, description')
@@ -201,14 +246,14 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
         prod = pr;
 
         return {
-          label: 'Producto — Stock',
+          label: t('related.productStock'),
           fields: [
-            { icon: Package, label: 'Producto', value: prod?.name || p.product_name || '—' },
-            { icon: Hash, label: 'SKU', value: prod?.sku || '—' },
-            { icon: TrendingDown, label: 'Stock actual', value: `${Number(sl.qty_on_hand).toLocaleString('es')} uds` },
-            { icon: AlertTriangle, label: 'Mínimo requerido', value: `${sl.min_level ?? 0} uds` },
-            { icon: Package, label: 'Reservado', value: `${Number(sl.qty_reserved ?? 0).toLocaleString('es')} uds` },
-            { icon: DollarSign, label: 'Costo promedio', value: sl.avg_cost ? `$${Number(sl.avg_cost).toLocaleString('es')}` : '—' },
+            { icon: Package, label: t('fields.product'), value: prod?.name || p.product_name || '—' },
+            { icon: Hash, label: t('fields.sku'), value: prod?.sku || '—' },
+            { icon: TrendingDown, label: t('fields.currentStock'), value: t('units', { qty: numero(sl.qty_on_hand) }), peligro: Number(sl.qty_on_hand) < Number(sl.min_level ?? 0) },
+            { icon: AlertTriangle, label: t('fields.minimumRequired'), value: t('units', { qty: numero(sl.min_level) }) },
+            { icon: Package, label: t('fields.reserved'), value: t('units', { qty: numero(sl.qty_reserved) }) },
+            { icon: DollarSign, label: t('fields.averageCost'), value: sl.avg_cost ? dinero(sl.avg_cost) : '—' },
           ],
         };
       }
@@ -222,9 +267,9 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
         .eq('id', p.reservation_id)
         .maybeSingle();
 
-      if (resErr) console.error('[NotifSheet] reservation query error:', resErr.message);
+      if (resErr) throw resErr;
       if (res) {
-        let cust: any = null;
+        let cust: PersonaFila | null = null;
         if (res.customer_id) {
           const { data: c } = await supabase
             .from('customers')
@@ -234,15 +279,15 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
           cust = c;
         }
         return {
-          label: 'Reservación',
+          label: t('related.reservation'),
           fields: [
-            { icon: User, label: 'Huésped', value: cust ? `${cust.first_name || ''} ${cust.last_name || ''}`.trim() : '—' },
-            { icon: Mail, label: 'Email', value: cust?.email || '—' },
-            { icon: Calendar, label: 'Check-in', value: res.checkin ? new Date(res.checkin).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' }) : '—' },
-            { icon: Calendar, label: 'Check-out', value: res.checkout ? new Date(res.checkout).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' }) : '—' },
-            { icon: DollarSign, label: 'Total estimado', value: res.total_estimated ? `$${Number(res.total_estimated).toLocaleString('es')}` : '—' },
-            { icon: UserPlus, label: 'Ocupantes', value: `${res.occupant_count ?? 1}` },
-            { icon: Hash, label: 'Estado', value: res.status || '—' },
+            { icon: User, label: t('fields.guest'), value: cust ? `${cust.first_name || ''} ${cust.last_name || ''}`.trim() : '—' },
+            { icon: Mail, label: t('fields.email'), value: cust?.email || '—' },
+            { icon: Calendar, label: t('fields.checkIn'), value: res.checkin ? formatPlainDate(res.checkin, FECHA_CORTA) : '—' },
+            { icon: Calendar, label: t('fields.checkOut'), value: res.checkout ? formatPlainDate(res.checkout, FECHA_CORTA) : '—' },
+            { icon: DollarSign, label: t('fields.estimatedTotal'), value: res.total_estimated ? dinero(res.total_estimated) : '—' },
+            { icon: UserPlus, label: t('fields.occupants'), value: numero(res.occupant_count ?? 1) },
+            { icon: Hash, label: t('fields.status'), value: res.status || '—' },
           ],
         };
       }
@@ -256,9 +301,9 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
         .eq('id', p.invoice_id)
         .maybeSingle();
 
-      if (invErr) console.error('[NotifSheet] invoice query error:', invErr.message);
+      if (invErr) throw invErr;
       if (inv) {
-        let sup: any = null;
+        let sup: ProveedorFila | null = null;
         if (inv.supplier_id) {
           const { data: s } = await supabase
             .from('suppliers')
@@ -268,13 +313,13 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
           sup = s;
         }
         return {
-          label: 'Factura de Compra',
+          label: t('related.purchaseInvoice'),
           fields: [
-            { icon: Hash, label: 'Número', value: inv.number_ext || inv.id.substring(0, 8) },
-            { icon: Building2, label: 'Proveedor', value: sup?.name || '—' },
-            { icon: DollarSign, label: 'Total', value: inv.total ? `$${Number(inv.total).toLocaleString('es')}` : '—' },
-            { icon: Calendar, label: 'Vencimiento', value: inv.due_date ? new Date(inv.due_date).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' }) : '—' },
-            { icon: Hash, label: 'Estado', value: inv.status || '—' },
+            { icon: Hash, label: t('fields.number'), value: inv.number_ext || inv.id.substring(0, 8) },
+            { icon: Building2, label: t('fields.supplier'), value: sup?.name || '—' },
+            { icon: DollarSign, label: t('fields.total'), value: inv.total ? dinero(inv.total) : '—' },
+            { icon: Calendar, label: t('fields.dueDate'), value: inv.due_date ? fecha(inv.due_date) : '—' },
+            { icon: Hash, label: t('fields.status'), value: inv.status || '—' },
           ],
         };
       }
@@ -282,179 +327,249 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
 
   } catch (err) {
     console.error('[NotifSheet] Error fetching related data:', err);
+    throw err;
   }
 
   return null;
 }
 
+/** Claves del payload con etiqueta propia en `header.notificationDetail.payloadKeys`. */
+const CLAVES_PAYLOAD = new Set(['balance', 'due_date', 'qty', 'min', 'product_name', 'amount', 'difference', 'new_role_id', 'priority', 'event_type']);
+
 // ── Componente principal ──────────────────────────────
-export function NotificationDetailSheet({ notification, open, onOpenChange, onNavigate }: NotificationDetailSheetProps) {
+// Figma `02 Componentes` › NotificationDetail 625:14683: hoja lateral de 440 px
+// en escritorio y hoja inferior en móvil. Cabecera con chip del tipo, título y
+// badges (tipo · canal); texto; fecha y destinatario; datos relacionados del
+// recurso con sus estados (cargando, sin datos, error con reintentar); acción
+// principal a ancho completo y, debajo, «Marcar como no leída» y «Descartar».
+export function NotificationDetailSheet({ notification, open, onOpenChange, onNavigate, onMarkUnread, onDismiss }: NotificationDetailSheetProps) {
+  const t = useTranslations('header.notificationDetail');
+  const locale = useLocale();
+  const movil = useMediaQuery('(max-width: 1023px)');
   const [relatedData, setRelatedData] = useState<RelatedData | null>(null);
   const [loadingRelated, setLoadingRelated] = useState(false);
+  const [errorRelated, setErrorRelated] = useState(false);
+  const [intento, setIntento] = useState(0);
+  const { timezone } = useOrgTimezone();
 
   useEffect(() => {
-    if (notification && open) {
-      setLoadingRelated(true);
-      setRelatedData(null);
-      fetchRelatedData(notification).then(data => {
-        setRelatedData(data);
-        setLoadingRelated(false);
-      });
-    }
-  }, [notification?.id, open]);
+    if (!notification || !open) return;
+    let vivo = true;
+    setLoadingRelated(true);
+    setErrorRelated(false);
+    setRelatedData(null);
+    fetchRelatedData(notification, { t, locale, timezone })
+      .then((data) => vivo && setRelatedData(data))
+      .catch(() => vivo && setErrorRelated(true))
+      .finally(() => vivo && setLoadingRelated(false));
+    return () => {
+      vivo = false;
+    };
+    // Se relee al cambiar de notificación (por id), de idioma o al reintentar,
+    // no cuando el objeto se recrea.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notification?.id, open, timezone, locale, intento]);
 
   if (!notification) return null;
 
   const n = notification;
-  const type = n.payload?.type || '';
-  const title = n.payload?.title || type || 'Notificación';
-  const content = n.payload?.content || '';
+  const type = String(n.payload?.type ?? '');
+  const title = String(n.payload?.title || type || t('notification'));
+  // Algunos emisores (p. ej. cocina) mandan el texto en `message` en vez de `content`.
+  const content = String(n.payload?.content ?? n.payload?.message ?? '');
   const TypeIcon = getTypeIcon(type);
-  const typeLabel = typeLabels[type] || 'Notificación';
+  const tono = TONOS[getTypeTone(type)];
+  const typeLabel = TIPOS_CON_ETIQUETA.has(type) ? t(`types.${type}`) : t('notification');
   const redirect = getRedirect(n);
 
   // Payload extra (excluir keys ya mostradas)
-  const hiddenKeys = new Set(['type', 'title', 'content', 'ar_id', 'ap_id', 'invoice_id', 'reservation_id', 'product_id', 'transfer_id', 'task_id', 'opportunity_id', 'event_id']);
-  const extraPayload = Object.entries(n.payload || {}).filter(([key]) => !hiddenKeys.has(key));
+  const hiddenKeys = new Set(['type', 'title', 'content', 'message']);
+  // Los identificadores (…_id, uuids) no le dicen nada a la persona: ya van en el
+  // botón que abre el recurso. Solo se muestran valores legibles.
+  const esTecnico = (key: string, value: unknown) =>
+    key === 'id' || key.endsWith('_id') || key.endsWith('_uuid') ||
+    (typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) ||
+    (value !== null && typeof value === 'object');
+  const extraPayload = Object.entries(n.payload || {}).filter(([key, value]) => !hiddenKeys.has(key) && !esTecnico(key, value));
 
   const formatVal = (key: string, value: unknown): string => {
     const str = String(value);
     if (key === 'balance' || key === 'amount' || key === 'difference') {
       const num = parseFloat(str);
-      return isNaN(num) ? str : `$${num.toLocaleString('es')}`;
+      return isNaN(num) ? str : `$${num.toLocaleString(locale)}`;
     }
     if (key === 'due_date' && str.length > 8) {
-      try { return new Date(str).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return str; }
+      // YYYY-MM-DD es un día calendario (no se convierte); con hora es un instante.
+      return (str.length === 10 ? formatPlainDate(str, FECHA_CORTA) : formatDateInTz(str, timezone, { ...FECHA_CORTA, locale })) || str;
     }
     return str;
   };
 
-  const payloadKeyLabels: Record<string, string> = {
-    balance: 'Saldo', due_date: 'Vencimiento', qty: 'Cantidad', min: 'Mínimo',
-    product_name: 'Producto', amount: 'Monto', difference: 'Diferencia',
-    new_role_id: 'Nuevo rol', priority: 'Prioridad', event_type: 'Tipo evento',
-  };
+  const etiquetaPayload = (key: string) => (CLAVES_PAYLOAD.has(key) ? t(`payloadKeys.${key}`) : key.replace(/_/g, ' '));
+  const canal = t.has(`channels.${n.channel}`) ? t(`channels.${n.channel}`) : n.channel;
+  const fecha = [
+    formatDateInTz(n.created_at, timezone, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', locale }),
+    formatDateInTz(n.created_at, timezone, { hour: 'numeric', minute: '2-digit', locale }),
+  ].join(' · ');
+  const tituloRelacionados = relatedData ? t('relatedTitle', { label: relatedData.label }) : t('relatedTitleGeneric');
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-md w-full overflow-y-auto bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800">
-        {/* Header */}
-        <SheetHeader className="pb-4">
-          <div className="flex flex-wrap items-start gap-3">
-            <div className="p-2.5 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 mt-0.5">
-              <TypeIcon className="h-5 w-5" />
+      <SheetContent
+        side={movil ? 'bottom' : 'right'}
+        hideCloseButton
+        className={cn(
+          'flex flex-col gap-0 border-line bg-surface p-0 text-fg',
+          movil ? 'max-h-[92dvh] rounded-t-2xl pb-[env(safe-area-inset-bottom)]' : 'h-full w-full sm:max-w-[440px]'
+        )}
+      >
+        {movil && <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-line-strong" aria-hidden="true" />}
+
+        {/* Cabecera */}
+        <div className="flex shrink-0 items-start gap-3 border-b border-line px-5 py-4">
+          <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', tono.chip)} aria-hidden="true">
+            <TypeIcon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <SheetTitle className="text-base font-semibold leading-[22px] text-fg">{title}</SheetTitle>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className={cn('rounded-full border px-2 py-0.5 text-xs font-semibold leading-4', tono.badge)}>{typeLabel}</span>
+              <span className="rounded-full border border-line bg-subtle px-2 py-0.5 text-xs font-semibold leading-4 text-fg-secondary">{canal}</span>
+              {!n.is_read_by_me && <span className="sr-only">{t('new')}</span>}
             </div>
-            <div className="flex-1 min-w-0">
-              <SheetTitle className="text-base leading-tight">{title}</SheetTitle>
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <Badge variant="outline" className="text-xs">{typeLabel}</Badge>
-                <Badge variant="secondary" className="text-xs capitalize">{n.channel}</Badge>
-                {n.is_read_by_me
-                  ? <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">Leída</span>
-                  : <span className="inline-flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 font-medium"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />Nueva</span>
-                }
-              </div>
-              <SheetDescription className="sr-only">Detalle de notificación</SheetDescription>
-            </div>
+            <SheetDescription className="sr-only">{t('srDescription')}</SheetDescription>
           </div>
-        </SheetHeader>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            aria-label={t('close')}
+            className="-mr-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-fg-secondary outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
 
-        <Separator />
+        {/* Cuerpo */}
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-4">
+          {content && <p className="rounded-lg bg-subtle p-3 text-sm leading-5 text-fg-secondary">{content}</p>}
 
-        {/* Contenido */}
-        <div className="space-y-4 py-4">
-          {content && (
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3.5">
-              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{content}</p>
+          <dl className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <dt className="text-xs font-medium text-fg-muted">{t('date')}</dt>
+              <dd className="mt-0.5 text-fg">{fecha}</dd>
             </div>
-          )}
-
-          {/* Info básica */}
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
-              <span className="text-gray-500 dark:text-gray-400 block mb-1">Fecha</span>
-              <span className="font-medium text-gray-900 dark:text-white block">
-                {new Date(n.created_at).toLocaleString('es', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              </span>
+            <div>
+              <dt className="text-xs font-medium text-fg-muted">{t('recipient')}</dt>
+              <dd className="mt-0.5 text-fg">{n.recipient_user_id ? t('onlyYou') : t('wholeOrganization')}</dd>
             </div>
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
-              <span className="text-gray-500 dark:text-gray-400 block mb-1">Destinatario</span>
-              <span className="font-medium text-gray-900 dark:text-white block">
-                {n.recipient_user_id ? 'Individual' : 'Toda la organización'}
-              </span>
-            </div>
-          </div>
+          </dl>
 
-          {/* Payload extra */}
           {extraPayload.length > 0 && (
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3.5">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-2">Datos de la notificación</span>
-              <div className="space-y-2">
+            <div className="rounded-lg border border-line">
+              <p className="border-b border-line px-3 py-2 text-xs font-semibold text-fg-secondary">{t('payloadData')}</p>
+              <dl className="divide-y divide-line">
                 {extraPayload.map(([key, value]) => (
-                  <div key={key} className="flex flex-wrap items-center justify-between text-xs gap-2">
-                    <span className="text-gray-500 dark:text-gray-400">{payloadKeyLabels[key] || key.replace(/_/g, ' ')}</span>
-                    <span className="font-medium text-gray-900 dark:text-white text-right">{formatVal(key, value)}</span>
+                  <div key={key} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                    <dt className="text-fg-secondary">{etiquetaPayload(key)}</dt>
+                    <dd className="text-right font-medium text-fg">{formatVal(key, value)}</dd>
                   </div>
                 ))}
-              </div>
+              </dl>
             </div>
           )}
 
-          <Separator />
-
-          {/* Datos reales de tablas relacionadas */}
-          {loadingRelated && (
-            <div className="py-4 space-y-3">
-              <Skeleton className="h-4 w-1/3" />
-              <div className="space-y-2">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-4 w-full" />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {relatedData && (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="h-1 w-1 rounded-full bg-blue-500" />
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">{relatedData.label}</span>
-              </div>
-              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg divide-y divide-blue-100 dark:divide-blue-800">
-                {relatedData.fields.map((field, idx) => {
-                  const FieldIcon = field.icon;
-                  return (
-                    <div key={idx} className="flex flex-wrap items-center gap-3 px-3.5 py-2.5">
-                      <FieldIcon className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
-                      <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[100px]">{field.label}</span>
-                      <span className="text-xs font-medium text-gray-900 dark:text-white ml-auto text-right">{field.value}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {!loadingRelated && !relatedData && type && (
-            <div className="text-center py-4">
-              <span className="text-xs text-gray-400 dark:text-gray-500">No hay datos adicionales del recurso</span>
-            </div>
+          {type && (
+            <section aria-busy={loadingRelated}>
+              <h3 className="mb-2 text-xs font-semibold text-fg">{tituloRelacionados}</h3>
+              {loadingRelated ? (
+                <div className="space-y-2.5 rounded-lg border border-line p-3" aria-hidden="true">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="h-3 w-2/5 animate-pulse rounded bg-subtle" />
+                  ))}
+                </div>
+              ) : errorRelated ? (
+                <div className="rounded-lg border border-line-danger bg-danger-subtle p-3" role="alert">
+                  <p className="flex items-center gap-2 text-sm font-medium text-danger-text">
+                    <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    {t('relatedError')}
+                  </p>
+                  <p className="mt-1 pl-6 text-xs text-fg-secondary">{t('relatedErrorHint')}</p>
+                  <button
+                    type="button"
+                    onClick={() => setIntento((x) => x + 1)}
+                    className="ml-4 mt-2 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-fg hover:bg-hover"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t('retry')}
+                  </button>
+                </div>
+              ) : relatedData ? (
+                <dl className="divide-y divide-line rounded-lg border border-line">
+                  {relatedData.fields.map((field, idx) => {
+                    const FieldIcon = field.icon;
+                    return (
+                      <div key={idx} className="flex items-center gap-2.5 px-3 py-2.5 text-sm">
+                        <FieldIcon className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden="true" />
+                        <dt className="text-fg-secondary">{field.label}</dt>
+                        <dd className={cn('ml-auto text-right font-medium', field.peligro ? 'text-danger-text' : 'text-fg')}>{field.value}</dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+              ) : (
+                <p className="flex gap-2 rounded-lg bg-subtle p-3 text-xs text-fg-secondary">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-fg-muted" aria-hidden="true" />
+                  {t('noRelatedHint')}
+                </p>
+              )}
+            </section>
           )}
         </div>
 
-        {/* Footer */}
-        <Separator />
-        <SheetFooter className="pt-4 gap-2 sm:gap-2">
-          <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
-            Cerrar
-          </Button>
-          {redirect && (
-            <Button className="flex-1 gap-2" onClick={() => { onOpenChange(false); onNavigate(redirect.url); }}>
-              <ExternalLink className="h-4 w-4" />
-              {redirect.label}
-            </Button>
-          )}
-        </SheetFooter>
+        {/* Pie */}
+        {(redirect || onMarkUnread || onDismiss) && (
+          <div className="shrink-0 space-y-2 border-t border-line px-5 py-4">
+            {redirect && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenChange(false);
+                  onNavigate(redirect.url);
+                }}
+                className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-brand-action text-sm font-medium text-fg-on-brand outline-none hover:bg-brand-action-hover focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              >
+                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                {t(`actions.${redirect.accion}`)}
+              </button>
+            )}
+            {(onMarkUnread || onDismiss) && (
+              <div className="flex items-center justify-between">
+                {onMarkUnread ? (
+                  <button
+                    type="button"
+                    onClick={onMarkUnread}
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-fg hover:bg-hover"
+                  >
+                    <Mail className="h-4 w-4" aria-hidden="true" />
+                    {t('markUnread')}
+                  </button>
+                ) : (
+                  <span />
+                )}
+                {onDismiss && (
+                  <button
+                    type="button"
+                    onClick={onDismiss}
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-fg hover:bg-hover"
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    {t('dismiss')}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );

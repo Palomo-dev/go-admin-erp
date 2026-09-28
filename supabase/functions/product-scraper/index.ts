@@ -12,12 +12,60 @@ const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const openaiKey = Deno.env.get("OPENAI_API_KEY")!;
 const supabase = createClient(supabaseUrl, serviceKey);
 
-const DEFAULT_UNIT_CODE = "UN";
-const MAX_IMAGES_PER_PRODUCT = 10;
-const MAX_VARIANT_CHILDREN = 50;
-// Mínimo de imágenes para considerar un producto "completo" y no enriquecerlo
-const MIN_IMAGES_FOR_COMPLETE = 3;
+// ─── Acceso: solo el servidor de GO Admin ───────────────────────────────────
+// Antes la función estaba abierta (verify_jwt=false y sin comprobación): desde
+// internet se podía gastar la cuenta de OpenAI, usarla de proxy y, con la
+// acción `import`, escribir productos con service role en la organización que
+// dijera el body. Ahora exige el secreto interno compartido (vault
+// `get_ai_internal_secret`, el mismo de `ai-auto-response`). La ruta
+// `/api/inventario/productos/importar-web` lo envía tras validar sesión,
+// organización, permiso y saldo; la importación va por la RPC
+// `fn_importar_productos_lote`, no por aquí.
+let secretoInterno: string | null = null;
+async function obtenerSecretoInterno(): Promise<string | null> {
+  if (secretoInterno) return secretoInterno;
+  const desdeEntorno = Deno.env.get("AI_INTERNAL_SECRET");
+  if (desdeEntorno) return (secretoInterno = desdeEntorno);
+  const { data, error } = await supabase.rpc("get_ai_internal_secret");
+  if (error || !data) return null;
+  secretoInterno = String(data);
+  return secretoInterno;
+}
 
+function secretosCoinciden(a: string, b: string): boolean {
+  if (!a || !b || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+// Solo http(s) público: nada de localhost, IPs privadas ni metadatos (SSRF).
+function urlPublica(valor: unknown): string | null {
+  if (typeof valor !== "string") return null;
+  let u: URL;
+  try {
+    u = new URL(valor.trim());
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+  if (u.username || u.password) return null;
+  if (u.port && u.port !== "80" && u.port !== "443") return null;
+  const h = u.hostname.toLowerCase();
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".internal") || h.endsWith(".local") || h.startsWith("[")) return null;
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const a = Number(m[1]);
+    const b = Number(m[2]);
+    if (a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224) return null;
+  }
+  return u.toString();
+}
+
+const MAX_IMAGES_PER_PRODUCT = 10;
+// Solo para la importación de transición (ver más abajo).
+const DEFAULT_UNIT_CODE = "UN";
+const MAX_VARIANT_CHILDREN = 50;
 type DuplicateMode = "skip" | "update" | "create";
 
 interface ScrapedProduct {
@@ -1365,17 +1413,17 @@ async function enrichWooCommerceProduct(url: string): Promise<ScrapedProduct | n
   } catch (_) { return null; }
 }
 
-async function enrichProduct(url: string): Promise<ScrapedProduct | null> {
+async function enrichProduct(url: string): Promise<{ product: ScrapedProduct | null; ia: boolean }> {
   // 1) Intentar endpoint nativo de Shopify primero (galería completa exacta)
   const shopifyData = await enrichShopifyProduct(url);
   if (shopifyData && (shopifyData.images?.length || 0) > 0) {
-    return normalizePrices(shopifyData);
+    return { product: normalizePrices(shopifyData), ia: false };
   }
 
   // 1b) Intentar endpoint nativo de WooCommerce (Store API por slug)
   const wooData = await enrichWooCommerceProduct(url);
   if (wooData && (wooData.images?.length || 0) > 0) {
-    return normalizePrices(wooData);
+    return { product: normalizePrices(wooData), ia: false };
   }
 
   // 2) Fallback: scraping del HTML/markdown con IA
@@ -1401,14 +1449,14 @@ async function enrichProduct(url: string): Promise<ScrapedProduct | null> {
     }
   } catch (_) {
     const jina = await fetchWithJina(url);
-    if (!jina) return null;
+    if (!jina) return { product: null, ia: false };
     content = jina;
     isMarkdown = true;
   }
 
   // Si la página vino casi vacía (bloqueo/redirección), no enriquecer para evitar datos inventados
   const cleanedLen = getCleanedText(content, isMarkdown, url).length;
-  if (cleanedLen < 400) return null;
+  if (cleanedLen < 400) return { product: null, ia: false };
 
   const images = extractImages(content, url);
   const context = buildContext(content, isMarkdown, 40000, url);
@@ -1434,7 +1482,7 @@ Reglas:
 - Pon null en los campos sin dato real`;
 
   const parsed = await callOpenAI(prompt);
-  if (!parsed.product) return null;
+  if (!parsed.product) return { product: null, ia: true };
   const prod = sanitizeProduct(parsed.product);
 
   // A: datos DETERMINISTAS del detalle (JSON-LD/meta) tienen prioridad sobre lo que infiere la IA
@@ -1457,7 +1505,7 @@ Reglas:
   const candidatas = [...new Set(galeria)];
   prod.images = candidatas.length > 0 ? await filterWorkingImages(candidatas, MAX_IMAGES_PER_PRODUCT, 20) : prod.images;
 
-  return normalizePrices(prod);
+  return { product: normalizePrices(prod), ia: true };
 }
 
 // C: extrae un precio del texto como último recurso (montos con $ o COP). Devuelve el menor mostrado (precio de venta).
@@ -1469,6 +1517,11 @@ function regexPriceFromText(text: string): number | null {
   return Math.min(...matches);
 }
 
+// ─── TRANSICIÓN: importación antigua del diálogo «Importar con IA» ─────────
+// Lo que sigue solo lo usa la acción `import` del diálogo anterior mientras la
+// web nueva (asistente + /api/inventario/productos/importar/lote) no esté
+// desplegada. Exige sesión de usuario y membresía activa en la organización
+// del body. Se borra junto con la acción `import` al desplegar la web nueva.
 async function uploadImage(imageUrl: string, productId: number, index: number): Promise<string | null> {
   const MAX_RETRIES = 1;
   const TIMEOUT_MS = 8000; // reducido de 15s a 8s para evitar 504 en lotes grandes
@@ -2320,61 +2373,71 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+  const json = (cuerpo: unknown, status = 200) =>
+    new Response(JSON.stringify(cuerpo), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+  // Servidor de GO Admin (secreto interno) o, en la transición, un usuario con
+  // sesión (JWT válido de Supabase Auth; la clave anon sola NO basta).
+  const esperado = await obtenerSecretoInterno();
+  const interno = !!esperado && secretosCoinciden(req.headers.get("x-internal-secret") || "", esperado);
+  let usuarioId: string | null = null;
+  if (!interno) {
+    const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+    if (jwt) {
+      const { data } = await supabase.auth.getUser(jwt);
+      usuarioId = data?.user?.id ?? null;
+    }
+    if (!usuarioId) return json({ error: "No autorizado" }, 401);
+  }
 
   try {
     const body = await req.json();
     const { action } = body;
 
     if (action === "preview") {
-      const { url } = body;
-      if (!url || !/^https?:\/\//.test(url)) {
-        return new Response(JSON.stringify({ error: "URL inválida" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      // 1) Intentar catálogo nativo (Shopify/Woo/VTEX - APIs ligeras JSON, sin HTML)
+      const url = urlPublica(body.url);
+      if (!url) return json({ error: "URL inválida" }, 400);
+      // 1) Catálogo nativo (Shopify/Woo/VTEX/Algolia): JSON, sin IA → no se cobra.
       const native = await fetchWithSubcategories(url);
-      if (native && native.length) {
-        return new Response(JSON.stringify({ products: native }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      // 2) Fallback: Jina con motor de navegador + IA (1 sola llamada, mínimo uso de memoria)
-      //    Usar solo Jina (no fetch directo) para minimizar memoria en sitios pesados como Éxito
+      if (native && native.length) return json({ products: native, ia: false });
+      // 2) Jina con navegador + IA (1 sola llamada, mínimo uso de memoria).
       const jinaContent = await jinaRequest(url, true);
       if (jinaContent && jinaContent.length > 500) {
         const products = await extractProductsLight(jinaContent, url);
-        if (products.length > 0) {
-          return new Response(JSON.stringify({ products }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
+        if (products.length > 0) return json({ products, ia: true });
       }
-      // 3) Último recurso: fetch directo + Jina rápido + IA completa
+      // 3) Último recurso: fetch directo + Jina rápido + IA completa.
       const { direct, jina } = await fetchSources(url);
       const products = await extractWithAI(direct, jina, url);
-      return new Response(JSON.stringify({ products }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ products, ia: true });
     }
 
     if (action === "enrich") {
-      const { url } = body;
-      if (!url || !/^https?:\/\//.test(url)) {
-        return new Response(JSON.stringify({ error: "URL inválida" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const product = await enrichProduct(url);
-      return new Response(JSON.stringify({ product }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const url = urlPublica(body.url);
+      if (!url) return json({ error: "URL inválida" }, 400);
+      const { product, ia } = await enrichProduct(url);
+      return json({ product, ia });
     }
 
     if (action === "import") {
       const { products, organization_id, branch_id, source_url, duplicate_mode } = body;
+      // TRANSICIÓN: solo con sesión de usuario y siendo miembro activo de ESA
+      // organización (antes bastaba con decir cualquier organization_id).
+      if (!usuarioId) {
+        return json({ error: "La importación se hace en /api/inventario/productos/importar/lote" }, 410);
+      }
+      const { data: miembro } = await supabase
+        .from("organization_members")
+        .select("organization_id")
+        .eq("user_id", usuarioId)
+        .eq("organization_id", Number(organization_id))
+        .eq("is_active", true)
+        .maybeSingle();
+      if (!miembro) return json({ error: "Organización no permitida" }, 403);
+      if (branch_id) {
+        const { data: suc } = await supabase.from("branches").select("id").eq("id", Number(branch_id)).eq("organization_id", Number(organization_id)).maybeSingle();
+        if (!suc) return json({ error: "Sucursal no permitida" }, 403);
+      }
       if (!products?.length || !organization_id) {
         return new Response(JSON.stringify({ error: "Faltan datos" }), {
           status: 400,
@@ -2438,14 +2501,9 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    return new Response(JSON.stringify({ error: "Acción no válida" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+
+    return json({ error: "Acción no válida" }, 400);
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: (e as Error).message }, 500);
   }
 });

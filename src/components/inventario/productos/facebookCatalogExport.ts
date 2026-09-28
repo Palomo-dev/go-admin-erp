@@ -8,6 +8,7 @@
 
 import { supabase } from '@/lib/supabase/config';
 import { Producto } from './types';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 // ─── Columnas del catálogo de Facebook ───
 export const FACEBOOK_CATALOG_HEADERS = [
@@ -461,18 +462,12 @@ export async function getOrganizationDomain(organizationId: number): Promise<str
 }
 
 /**
- * Obtiene la moneda base de una organización
+ * Obtiene la moneda base de una organización.
+ * Delegado en la fuente única `resolveOrgCurrency`
+ * (`src/lib/services/monedaOrganizacion.ts`).
  */
 export async function getOrganizationCurrency(organizationId: number): Promise<string> {
-  const { data, error } = await supabase
-    .from('organization_currencies')
-    .select('currency_code')
-    .eq('organization_id', organizationId)
-    .eq('is_base', true)
-    .maybeSingle();
-
-  if (error || !data) return 'COP';
-  return data.currency_code || 'COP';
+  return (await resolveOrgCurrency(supabase, organizationId)).code;
 }
 
 /**

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 export interface CheckinReservation {
   id: string;
@@ -21,7 +22,7 @@ export interface CheckinReservation {
     housekeeping_status?: string;
     is_ready: boolean;
   }>;
-  metadata: any;
+  metadata: Record<string, unknown>;
 }
 
 export interface CheckinStats {
@@ -30,6 +31,54 @@ export interface CheckinStats {
   pending: number;
   rooms_ready: number;
   rooms_not_ready: number;
+}
+
+// Filas de las consultas de reservas (el cliente Supabase no está tipado).
+interface FilaEspacioReserva {
+  space_id?: string;
+  spaces: {
+    id: string;
+    label: string | null;
+    floor_zone: string | null;
+    status: string | null;
+    space_types: { name: string | null } | null;
+  } | null;
+}
+
+interface FilaClienteReserva {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
+interface FilaReservaCheckin {
+  id: string;
+  customer_id: string | null;
+  checkin: string;
+  checkout: string;
+  occupant_count: number;
+  total_estimated: number | string | null;
+  status: string;
+  metadata: Record<string, unknown> | null;
+  customers: FilaClienteReserva | FilaClienteReserva[] | null;
+  reservation_spaces: FilaEspacioReserva[] | null;
+}
+
+interface FilaTareaLimpieza {
+  space_id: string;
+  status: string;
+}
+
+/** Estado más reciente de limpieza por espacio (las filas vienen ordenadas de más nueva a más vieja). */
+function mapaLimpieza(filas: FilaTareaLimpieza[] | null): Record<string, string> {
+  return (filas || []).reduce((acc: Record<string, string>, task) => {
+    if (!acc[task.space_id]) {
+      acc[task.space_id] = task.status;
+    }
+    return acc;
+  }, {});
 }
 
 class CheckinService {
@@ -92,8 +141,9 @@ class CheckinService {
     if (error) throw error;
 
     // Obtener estados de housekeeping para los espacios
-    const spaceIds = (data || [])
-      .flatMap((r: any) => r.reservation_spaces?.map((rs: any) => rs.spaces?.id))
+    const filas = (data || []) as unknown as FilaReservaCheckin[];
+    const spaceIds = filas
+      .flatMap((r) => (r.reservation_spaces || []).map((rs) => rs.spaces?.id))
       .filter(Boolean);
 
     // Crear mapa de estados de housekeeping
@@ -109,17 +159,11 @@ class CheckinService {
         .order('created_at', { ascending: false });
 
       // Crear mapa con el estado más reciente de cada espacio
-      housekeepingMap = (housekeepingData || []).reduce((acc: any, task: any) => {
-        // Solo guardar el primer (más reciente) estado de cada espacio
-        if (!acc[task.space_id]) {
-          acc[task.space_id] = task.status;
-        }
-        return acc;
-      }, {});
+      housekeepingMap = mapaLimpieza(housekeepingData as FilaTareaLimpieza[] | null);
     }
 
     // Transformar datos
-    return (data || []).map((reservation: any) => {
+    return filas.map((reservation) => {
       const customer = Array.isArray(reservation.customers) ? reservation.customers[0] : reservation.customers;
       const spaces = reservation.reservation_spaces || [];
 
@@ -129,10 +173,10 @@ class CheckinService {
         (checkoutDate.getTime() - checkinDate.getTime()) / (1000 * 60 * 60 * 24)
       );
 
-      const spacesData = spaces.map((rs: any) => {
+      const spacesData = spaces.map((rs) => {
         const space = rs.spaces;
         const spaceStatus = space?.status || 'available';
-        const housekeepingStatus = housekeepingMap[space?.id];
+        const housekeepingStatus = space ? housekeepingMap[space.id] : undefined;
 
         // Si hay tarea de housekeeping, usar su estado
         // Si no hay tarea y el espacio está disponible, considerarlo listo
@@ -163,7 +207,7 @@ class CheckinService {
         checkout: reservation.checkout,
         nights,
         occupant_count: reservation.occupant_count,
-        total_estimated: parseFloat(reservation.total_estimated) || 0,
+        total_estimated: parseFloat(String(reservation.total_estimated)) || 0,
         status: reservation.status,
         spaces: spacesData,
         metadata: reservation.metadata || {},
@@ -175,7 +219,7 @@ class CheckinService {
    * Obtener una reserva individual con todos los datos para check-in
    */
   async getReservationForCheckin(reservationId: string): Promise<CheckinReservation | null> {
-    const { data: reservation, error } = await supabase
+    const { data: reservaCruda, error } = await supabase
       .from('reservations')
       .select(`
         id,
@@ -209,11 +253,12 @@ class CheckinService {
       .eq('id', reservationId)
       .single();
 
-    if (error || !reservation) return null;
+    if (error || !reservaCruda) return null;
+    const reservation = reservaCruda as unknown as FilaReservaCheckin;
 
     // Obtener estados de housekeeping
     const spaceIds = (reservation.reservation_spaces || [])
-      .map((rs: any) => rs.spaces?.id)
+      .map((rs) => rs.spaces?.id)
       .filter(Boolean);
 
     let housekeepingMap: Record<string, string> = {};
@@ -225,12 +270,7 @@ class CheckinService {
         .order('task_date', { ascending: false })
         .order('created_at', { ascending: false });
 
-      housekeepingMap = (housekeepingData || []).reduce((acc: any, task: any) => {
-        if (!acc[task.space_id]) {
-          acc[task.space_id] = task.status;
-        }
-        return acc;
-      }, {});
+      housekeepingMap = mapaLimpieza(housekeepingData as FilaTareaLimpieza[] | null);
     }
 
     const customer = Array.isArray(reservation.customers) ? reservation.customers[0] : reservation.customers;
@@ -242,10 +282,10 @@ class CheckinService {
       (checkoutDate.getTime() - checkinDate.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    const spacesData = spaces.map((rs: any) => {
+    const spacesData = spaces.map((rs) => {
       const space = rs.spaces;
       const spaceStatus = space?.status || 'available';
-      const housekeepingStatus = housekeepingMap[space?.id];
+      const housekeepingStatus = space ? housekeepingMap[space.id] : undefined;
       const isReady = housekeepingStatus
         ? housekeepingStatus === 'done'
         : spaceStatus === 'available';
@@ -273,7 +313,7 @@ class CheckinService {
       checkout: reservation.checkout,
       nights,
       occupant_count: reservation.occupant_count,
-      total_estimated: parseFloat(reservation.total_estimated) || 0,
+      total_estimated: parseFloat(String(reservation.total_estimated)) || 0,
       status: reservation.status,
       spaces: spacesData,
       metadata: reservation.metadata || {},
@@ -369,7 +409,7 @@ class CheckinService {
 
     // Actualizar datos del customer si se proporcionaron
     if (identificationType || identificationNumber) {
-      const customerUpdate: any = {};
+      const customerUpdate: { identification_type?: string; identification_number?: string } = {};
       
       if (identificationType) {
         customerUpdate.identification_type = identificationType;
@@ -386,7 +426,7 @@ class CheckinService {
 
     // Actualizar estado de la reserva con campos de auditoría y metadata
     const todayStr = new Date().toISOString().split('T')[0];
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       status: 'checked_in',
       updated_at: new Date().toISOString(),
       // Campos de auditoría
@@ -486,7 +526,6 @@ class CheckinService {
       const nightlyRate = nights > 0 ? totalEstimated / nights : totalEstimated;
 
       // Intentar obtener la tarifa real usando el RPC
-      let rateSource = 'base_rate';
       let calculatedTotal = totalEstimated;
       try {
         const { data: rateResult } = await supabase.rpc('calculate_reservation_total', {
@@ -499,7 +538,6 @@ class CheckinService {
 
         if (rateResult?.[0]) {
           calculatedTotal = parseFloat(rateResult[0].total_amount) || totalEstimated;
-          rateSource = rateResult[0].rate_source || 'base_rate';
         }
       } catch {
         // Si falla, usar total_estimated de la reserva
@@ -579,6 +617,10 @@ class CheckinService {
 
     if (!reservation) throw new Error('Reserva no encontrada');
 
+    // La reserva no tiene moneda propia: el depósito va en la moneda base de
+    // la organización (`payments.currency` es NOT NULL y no tiene trigger).
+    const { code: currency } = await resolveOrgCurrency(supabase, reservation.organization_id);
+
     // Registrar pago de depósito
     const { error } = await supabase.from('payments').insert([
       {
@@ -588,7 +630,7 @@ class CheckinService {
         source_id: reservationId,
         amount,
         method,
-        currency: 'COP',
+        currency,
         reference: reference || `DEP-${Date.now()}`,
         status: 'completed',
       },
@@ -633,7 +675,7 @@ class CheckinService {
   /**
    * Imprimir tarjeta de registro (datos para PDF)
    */
-  async getRegistrationCardData(reservationId: string): Promise<any> {
+  async getRegistrationCardData(reservationId: string): Promise<Record<string, unknown> | null> {
     const { data, error } = await supabase
       .from('reservations')
       .select(`

@@ -1,23 +1,35 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import { buildGoogleOAuthUrl } from '@/lib/services/integrations/google-ads/googleAdsConfig';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
+import { buildGoogleOAuthUrl, GOOGLE_ADS_CONNECTOR_CODE } from '@/lib/services/integrations/google-ads/googleAdsConfig';
+import { CONNECTION_NOT_FOUND } from '@/lib/services/integrations/channelManagerAccess';
+import { marketingConnectionInOrg } from '@/lib/services/integrations/marketingAccess';
+import {
+  issueOAuthState,
+  oauthNonceCookieName,
+  oauthNonceCookieOptions,
+  OAuthStateSecretMissingError,
+} from '@/lib/security/oauthState';
+
+const ROUTE = 'integrations/google-ads/oauth/authorize';
 
 /**
  * POST /api/integrations/google-ads/oauth/authorize
- * Genera la URL de autorización OAuth de Google.
- * El frontend redirige al usuario a esta URL.
+ * Genera la URL de autorización OAuth de Google. El frontend redirige al
+ * usuario a esa URL.
+ *
+ * Antes: la organización salía del body y el `state` era base64 sin firma, y
+ * el callback lo usaba para crear conexiones y guardar credenciales en esa
+ * organización. Ahora: sesión + organización activa + admin
+ * (`withOrg({ admin: true })`), organización ajena en el body → 403 y
+ * registro, `connection_id` opcional validado contra la organización y el
+ * conector, y `state` firmado (`@/lib/security/oauthState`) con el nonce en
+ * una cookie httpOnly.
+ *
+ * Body: { connection_id?: uuid }.
  */
-export async function POST(request: NextRequest) {
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-    }
+    const body = ((await readOrgBody(ctx, request, { route: ROUTE })) ?? {}) as { connection_id?: unknown };
 
     if (!process.env.GOOGLE_ADS_CLIENT_ID || !process.env.GOOGLE_ADS_CLIENT_SECRET) {
       return NextResponse.json(
@@ -26,33 +38,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { organization_id, connection_id } = await request.json();
-
-    if (!organization_id) {
-      return NextResponse.json(
-        { error: 'Se requiere organization_id' },
-        { status: 400 }
-      );
+    let connectionId: string | null = null;
+    if (body.connection_id != null && body.connection_id !== '') {
+      if (!(await marketingConnectionInOrg(ctx, body.connection_id, GOOGLE_ADS_CONNECTOR_CODE, ROUTE))) {
+        return NextResponse.json(CONNECTION_NOT_FOUND, { status: 404 });
+      }
+      connectionId = body.connection_id as string;
     }
 
-    // State contiene datos que necesitamos en el callback
-    const state = JSON.stringify({
-      organization_id,
-      connection_id: connection_id || '',
-      user_id: session.user.id,
-      ts: Date.now(),
+    const { state, nonce } = issueOAuthState({
+      provider: 'google',
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+      connectionId,
     });
 
-    // Codificar en base64 para seguridad
-    const encodedState = Buffer.from(state).toString('base64');
-    const oauthUrl = buildGoogleOAuthUrl(encodedState);
-
-    return NextResponse.json({ url: oauthUrl });
+    const response = NextResponse.json({ url: buildGoogleOAuthUrl(state) });
+    response.cookies.set(oauthNonceCookieName('google'), nonce, oauthNonceCookieOptions());
+    return response;
   } catch (error) {
+    if (error instanceof OrgContextError) throw error;
+    if (error instanceof OAuthStateSecretMissingError) {
+      return NextResponse.json(
+        { error: 'La conexión con Google Ads no está disponible: falta configurar el servidor.', code: error.code },
+        { status: 503 }
+      );
+    }
     console.error('Error generating Google Ads OAuth URL:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Error al generar URL de OAuth' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Error al generar URL de OAuth' }, { status: 500 });
   }
-}
+}, { admin: true });

@@ -6,16 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { 
   AlertCircle,
   Calendar,
-  DollarSign,
   TrendingUp,
-  TrendingDown,
   Users,
-  Wallet,
-  Clock
+  Wallet
 } from 'lucide-react';
 
 import { AccountsPayableSummary } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface ResumenCuentasPorPagarProps {
@@ -24,6 +21,8 @@ interface ResumenCuentasPorPagarProps {
 
 export function ResumenCuentasPorPagar({ resumen }: ResumenCuentasPorPagarProps) {
   const { formatDate } = useFormatDate();
+  // Totales agregados de varias cuentas: en la moneda base de la organización.
+  const { formatear: formatCurrency, code: monedaBase } = useMonedaOrganizacion();
   
   // Calcular métricas adicionales
   const porcentajeVencido = resumen.total_amount > 0 
@@ -40,7 +39,7 @@ export function ResumenCuentasPorPagar({ resumen }: ResumenCuentasPorPagarProps)
     {
       title: 'Total Pendiente',
       value: resumen.total_amount,
-      currency: 'COP',
+      currency: monedaBase,
       icon: Wallet,
       color: 'blue',
       description: 'Monto total por pagar'
@@ -48,7 +47,7 @@ export function ResumenCuentasPorPagar({ resumen }: ResumenCuentasPorPagarProps)
     {
       title: 'Pagos Vencidos',
       value: resumen.total_overdue,
-      currency: 'COP',
+      currency: monedaBase,
       icon: AlertCircle,
       color: resumen.total_overdue > 0 ? 'red' : 'gray',
       description: `${resumen.overdue_count} cuenta${resumen.overdue_count !== 1 ? 's' : ''} vencida${resumen.overdue_count !== 1 ? 's' : ''}`,
@@ -57,7 +56,7 @@ export function ResumenCuentasPorPagar({ resumen }: ResumenCuentasPorPagarProps)
     {
       title: 'Pagos Parciales',
       value: resumen.total_partial,
-      currency: 'COP',
+      currency: monedaBase,
       icon: TrendingUp,
       color: resumen.total_partial > 0 ? 'yellow' : 'gray',
       description: 'Cuentas con pagos parciales'
@@ -65,7 +64,7 @@ export function ResumenCuentasPorPagar({ resumen }: ResumenCuentasPorPagarProps)
     {
       title: 'Próximo Vencimiento',
       value: resumen.next_due_amount,
-      currency: 'COP',
+      currency: monedaBase,
       icon: Calendar,
       color: 'purple',
       description: resumen.next_due_date ? formatDate(resumen.next_due_date) : 'Sin vencimientos próximos',

@@ -11,20 +11,16 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 // Importación con ruta relativa
 import CurrencySelector from './CurrencySelector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-// Declaración de tipo para CurrencySelector en caso de que no sea reconocido
-interface CurrencySelectorProps {
-  organizationId: number;
-  onComplete: () => void;
-}
 import { useToast } from '@/components/ui/use-toast';
+import { useTranslations } from 'next-intl';
+import { mensajeErrorMoneda } from './erroresMonedas';
 
 interface Currency {
   code: string;
@@ -47,10 +43,12 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
   const [error, setError] = useState<string | null>(null);
   const [openSelector, setOpenSelector] = useState(false);
   const { toast } = useToast();
+  const tErr = useTranslations('monedasSeguridad');
 
   // Cargar monedas al iniciar
   useEffect(() => {
     loadCurrencies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId]);
 
   // Función para cargar monedas
@@ -68,9 +66,9 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
       if (error) throw error;
 
       setCurrencies(data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al cargar monedas:', err);
-      setError('Error al cargar monedas: ' + err.message);
+      setError('Error al cargar monedas: ' + mensajeErrorMoneda(err, tErr));
     } finally {
       setLoading(false);
     }
@@ -82,7 +80,7 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
       setLoading(true);
 
       // Llamamos a la función RPC para establecer la moneda base
-      const { data, error } = await supabase
+      const { error } = await supabase
         .rpc('set_organization_base_currency', {
           p_organization_id: organizationId,
           p_currency_code: code
@@ -98,12 +96,12 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
 
       // Recargar datos
       loadCurrencies();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al actualizar moneda base:', err);
-      setError('Error al actualizar moneda base: ' + err.message);
+      setError('Error al actualizar moneda base: ' + mensajeErrorMoneda(err, tErr));
       toast({
         title: 'Error',
-        description: 'No se pudo actualizar la moneda base: ' + err.message,
+        description: 'No se pudo actualizar la moneda base: ' + mensajeErrorMoneda(err, tErr),
         variant: 'destructive',
       });
     } finally {
@@ -117,6 +115,8 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
       setLoading(true);
 
       // Llamamos a la función RPC para actualizar la configuración de actualización automática
+      // Una sola sobrecarga desde 20260928145431 (antes PostgREST no podía
+      // elegir entre dos con los mismos nombres de parámetro).
       const { error } = await supabase
         .rpc('set_currency_auto_update', {
           p_currency_code: code,
@@ -133,12 +133,12 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
 
       // Recargar datos
       loadCurrencies();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al cambiar actualización automática:', err);
-      setError('Error al cambiar actualización automática: ' + err.message);
+      setError('Error al cambiar actualización automática: ' + mensajeErrorMoneda(err, tErr));
       toast({
         title: 'Error',
-        description: 'No se pudo cambiar la configuración: ' + err.message,
+        description: 'No se pudo cambiar la configuración: ' + mensajeErrorMoneda(err, tErr),
         variant: 'destructive',
       });
     } finally {
@@ -180,12 +180,12 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
 
       // Recargar datos
       loadCurrencies();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al eliminar moneda:', err);
-      setError('Error al eliminar moneda: ' + err.message);
+      setError('Error al eliminar moneda: ' + mensajeErrorMoneda(err, tErr));
       toast({
         title: 'Error',
-        description: 'No se pudo eliminar la moneda: ' + err.message,
+        description: 'No se pudo eliminar la moneda: ' + mensajeErrorMoneda(err, tErr),
         variant: 'destructive',
       });
     } finally {

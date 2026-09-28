@@ -12,6 +12,8 @@
  * usa el `score`/`band` que ya calcula la RPC.
  */
 
+import { formatMoneda, LOCALE_RESPALDO, type ContextoMoneda } from '@/lib/utils/moneda';
+
 export type HealthBand = 'green' | 'yellow' | 'red';
 
 export interface HealthRpcRow {
@@ -190,9 +192,16 @@ export interface HealthAlertOptions {
   noInvoiceDays?: number;
   /** Ratio de cartera vencida a partir del cual la alerta es roja. */
   overdueRedRatio?: number;
+  /** Moneda de la organización para el importe de la cartera vencida. */
+  moneda?: ContextoMoneda | string;
 }
 
-const fmtCop = (n: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n);
+/**
+ * Importe de la cartera vencida en la moneda de la organización. Sin moneda
+ * conocida sale el número sin símbolo: nunca se supone 'COP'.
+ */
+const formatImporte = (n: number, moneda?: ContextoMoneda | string) =>
+  moneda ? formatMoneda(n, moneda) : Math.round(n).toLocaleString(LOCALE_RESPALDO);
 
 export function buildHealthAlerts(row: HealthRpcRow, opts: HealthAlertOptions = {}): HealthAlert[] {
   const noActivityDays = opts.noActivityDays ?? 30;
@@ -207,7 +216,7 @@ export function buildHealthAlerts(row: HealthRpcRow, opts: HealthAlertOptions = 
     out.push({
       code: 'overdue',
       severity: ratio >= overdueRed ? 'red' : 'yellow',
-      message: `Cartera vencida: ${fmtCop(overdue)} (${pct} % de su saldo)`,
+      message: `Cartera vencida: ${formatImporte(overdue, opts.moneda)} (${pct} % de su saldo)`,
     });
   }
 

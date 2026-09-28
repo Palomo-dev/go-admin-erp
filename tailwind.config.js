@@ -1,9 +1,15 @@
+const tema = require('./src/styles/tailwind-theme');
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    // Clases que viven en utilidades y catálogos (colores de organización,
+    // catálogo de navegación): sin esto Tailwind no las generaba.
+    './src/lib/**/*.{js,ts,jsx,tsx}',
+    './src/config/**/*.{js,ts,jsx,tsx}',
   ],
   // Activamos el modo oscuro con clase para tener más control
   darkMode: 'class',
@@ -12,21 +18,12 @@ module.exports = {
       screens: {
         'xs': '475px',  // Extra small breakpoint for better mobile responsiveness
       },
-      colors: {
-        primary: {
-          DEFAULT: '#0070f3',
-          dark: '#0050b3',
-          foreground: '#ffffff',
-        },
-        destructive: {
-          DEFAULT: '#ef4444',
-          foreground: '#ffffff',
-        },
-        secondary: {
-          DEFAULT: '#f1f5f9',
-          foreground: '#0f172a',
-        },
-      },
+      // Colores, borde por defecto y medidas del sistema de diseño: salen de
+      // src/styles/tailwind-theme.js, que a su vez lee los tokens de Figma
+      // (src/styles/tokens.css). No se añaden colores sueltos aquí.
+      colors: tema.colors,
+      borderColor: tema.borderColor,
+      spacing: tema.spacing,
       // Animaciones para notificaciones en tiempo real
       animation: {
         'slide-in-right': 'slideInRight 0.3s ease-out',

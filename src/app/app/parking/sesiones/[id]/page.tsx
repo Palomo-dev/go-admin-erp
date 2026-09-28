@@ -19,6 +19,7 @@ import {
 } from '@/components/parking/sesiones/id';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface ParkingSession {
   id: string;
@@ -43,6 +44,9 @@ interface ParkingSession {
 }
 
 export default function SessionDetailPage() {
+  // Moneda base de la organización: recibo impreso y pagos.
+  const moneda = useMonedaOrganizacion();
+  const formatearMoneda = moneda.formatear;
   const params = useParams();
   const router = useRouter();
   const sessionId = params?.id as string;
@@ -183,7 +187,7 @@ export default function SessionDetailPage() {
             {
               id: `payment-${payment.id}`,
               type: 'payment' as const,
-              description: `Pago registrado: $${payment.amount.toLocaleString('es-CO')}`,
+              description: `Pago registrado: ${formatearMoneda(payment.amount)}`,
               timestamp: payment.created_at,
             },
           ].sort((a, b) => 
@@ -194,7 +198,7 @@ export default function SessionDetailPage() {
     } catch (err) {
       console.error('Error loading payments:', err);
     }
-  }, [sessionId, branchFilter]);
+  }, [sessionId, branchFilter, formatearMoneda]);
 
   useEffect(() => {
     loadSession();
@@ -237,7 +241,7 @@ export default function SessionDetailPage() {
         <div class="row"><span>Salida:</span><span>${session.exit_at ? new Date(session.exit_at).toLocaleString('es-ES') : 'En curso'}</span></div>
         <div class="row"><span>Duración:</span><span>${session.duration_min || 0} min</span></div>
         <div class="row"><span>Estado:</span><span>${session.status}</span></div>
-        <div class="row total"><span>TOTAL:</span><span>$${session.amount?.toLocaleString('es-CO') || 0}</span></div>
+        <div class="row total"><span>TOTAL:</span><span>${moneda.formatear(session.amount ?? 0)}</span></div>
         <div class="footer">
           <p>ID: ${session.id.substring(0, 8)}</p>
         </div>
@@ -268,7 +272,8 @@ export default function SessionDetailPage() {
           source_id: session.id,
           method: data.method,
           amount: data.amount,
-          currency: 'COP',
+          // Moneda base de la organización, no pesos fijos.
+          currency: moneda.code,
           reference: data.reference,
           status: 'completed',
         })
@@ -290,7 +295,7 @@ export default function SessionDetailPage() {
 
       toast({
         title: 'Pago registrado',
-        description: `Se registró un pago de $${data.amount.toLocaleString('es-CO')}`,
+        description: `Se registró un pago de ${moneda.formatear(data.amount)}`,
       });
 
       loadPayments();

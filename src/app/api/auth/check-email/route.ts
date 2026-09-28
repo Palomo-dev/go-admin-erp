@@ -1,8 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit';
+
+/**
+ * Pública a propósito (el registro pregunta si el correo ya existe antes de
+ * que haya cuenta). GO-sec (2026-09-24): con freno por IP, porque sin él
+ * servía para enumerar en bloque qué correos tienen cuenta.
+ */
+const LIMITE_IP = { limit: 20, windowMs: 15 * 60 * 1000 };
 
 export async function POST(request: Request) {
   try {
+    const rl = await checkRateLimits([{ key: `auth:check-email:ip:${getClientIp(request)}`, opts: LIMITE_IP }]);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en unos minutos.' }, { status: 429 });
+    }
+
     const { email } = await request.json();
 
     if (!email || typeof email !== 'string') {

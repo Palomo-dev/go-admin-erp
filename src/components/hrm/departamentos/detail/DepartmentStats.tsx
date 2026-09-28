@@ -1,7 +1,8 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import {
   Users,
   Briefcase,
@@ -35,6 +36,7 @@ interface StatCardData {
 }
 
 export function DepartmentStats({ stats, isLoading }: DepartmentStatsProps) {
+  const { formatear } = useMonedaOrganizacion();
   const cards: StatCardData[] = [
     {
       title: 'Total Empleados',
@@ -62,7 +64,7 @@ export function DepartmentStats({ stats, isLoading }: DepartmentStatsProps) {
     },
     {
       title: 'Salario Promedio',
-      value: stats.avgSalary ? formatCurrency(stats.avgSalary) : 'N/A',
+      value: stats.avgSalary ? formatear(stats.avgSalary) : 'N/A',
       icon: <DollarSign className="h-5 w-5" />,
       color: 'text-emerald-600 dark:text-emerald-400',
       bgColor: 'bg-emerald-100',

@@ -1,50 +1,36 @@
 /**
- * API Route: Autenticación Factus
+ * API Route: ¿conecta Factus para esta organización?
  * POST /api/factus/auth
- * 
- * Credenciales via variables de entorno:
- * - FACTUS_CLIENT_ID
- * - FACTUS_CLIENT_SECRET
- * - FACTUS_USERNAME
- * - FACTUS_PASSWORD
- * - FACTUS_ENVIRONMENT (sandbox | production)
+ *
+ * Exige sesión y membresía (`getServerOrgContext`) y NUNCA devuelve el token
+ * (2026-09-22: antes lo entregaba sin sesión). Probar la cuenta es tarea de
+ * configuración: administrador de la organización o `finance.approve`
+ * (como POST /api/factus/config), resuelto en el servidor.
+ *
+ * Desde 2026-09-23 prueba la cuenta de Factus DE LA ORGANIZACIÓN (credenciales
+ * cifradas en Vault que carga la plataforma). Sin servicio activo → 409. Las
+ * variables `FACTUS_*` del entorno ya no se usan aquí.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
+import { getServerOrgContext, OrgContextError, requireOrgAdminOrPermission } from '@/lib/utils/orgContext';
+import { obtenerAccesoFactus, FacturacionNoActivadaError } from '@/lib/services/einvoicing/accesoFactus.server';
+import { PERMISOS_FINANZAS } from '@/lib/security/orgGuards';
 
 export async function POST(request: NextRequest) {
   try {
-    const credentials = getCredentials();
-
-    if (!credentials) {
-      return NextResponse.json(
-        { error: 'Credenciales de Factus no configuradas. Configure las variables de entorno.' },
-        { status: 404 }
-      );
+    const ctx = await getServerOrgContext(request);
+    await requireOrgAdminOrPermission(ctx, PERMISOS_FINANZAS.APROBAR);
+    await obtenerAccesoFactus(ctx.organizationId);
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    if (error instanceof OrgContextError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     }
-
-    // Verificar si el token en cache es válido (el token manager lo gestiona)
-    const accessToken = await getValidToken();
-    if (accessToken) {
-      return NextResponse.json({
-        success: true,
-        accessToken,
-        fromCache: true,
-      });
+    if (error instanceof FacturacionNoActivadaError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 409 });
     }
-
-    // Si getValidToken falló, retornar error
-    return NextResponse.json(
-      { error: 'Error de autenticación con Factus' },
-      { status: 500 }
-    );
-
-  } catch (error: any) {
-    console.error('Error en autenticación Factus:', error);
-    return NextResponse.json(
-      { error: error.message || 'Error de autenticación' },
-      { status: 500 }
-    );
+    console.error('[factus/auth] error:', error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: 'Factus no aceptó las credenciales de la organización' }, { status: 502 });
   }
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { CardListSkeleton, PageHeaderSkeleton } from '@/components/common/PageSkeletons';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,6 +28,7 @@ export default function TrackingPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
+  const { getToday } = useFormatDate();
 
   const [events, setEvents] = useState<TrackingEvent[]>([]);
   const [stats, setStats] = useState<TrackingStats>({
@@ -100,7 +102,9 @@ export default function TrackingPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `tracking_${new Date().toISOString().split('T')[0]}.csv`;
+    // Nombre del archivo: el dia de la organizacion. Exportar a las 20:00 de
+    // Bogota dejaba un `tracking_<manana>.csv` en la carpeta de descargas.
+    link.download = `tracking_${getToday()}.csv`;
     link.click();
     URL.revokeObjectURL(url);
     toast({ title: 'Exportado', description: `${events.length} eventos exportados a CSV` });

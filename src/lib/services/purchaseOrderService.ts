@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { stockMovementService, type StockDecrementResult } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
+import { clienteCompras } from '@/lib/services/compras/clienteCompras';
 
 // Tipos para Órdenes de Compra
 export interface PurchaseOrder {
@@ -87,6 +88,39 @@ export interface PurchaseOrderStats {
   totalAmount: number;
 }
 
+/** Fila de `products` que lee `getProducts`. */
+interface FilaProductoOrdenCompra {
+  id: number;
+  uuid: string;
+  sku: string;
+  name: string;
+  unit_code: string | null;
+  track_stock: boolean;
+  track_serial: boolean;
+  is_parent: boolean;
+  parent_product_id: number | null;
+  variant_data: Record<string, string> | null;
+  categories: { name: string } | null;
+}
+
+/** Producto para los selectores de órdenes de compra y recetas. */
+export interface ProductoParaOrdenCompra {
+  id: number;
+  uuid: string;
+  sku: string;
+  name: string;
+  unit_code?: string;
+  category?: string;
+  cost: number;
+  track_stock: boolean;
+  image: string | null;
+  is_parent: boolean;
+  parent_product_id: number | null;
+  variant_data: Record<string, string> | null;
+  parent_name: string | null;
+  parent_image: string | null;
+}
+
 class PurchaseOrderService {
   /**
    * Obtener lista de órdenes de compra con filtros
@@ -134,8 +168,8 @@ class PurchaseOrderService {
       if (error) throw error;
 
       return { data: data as PurchaseOrder[], error: null };
-    } catch (error: any) {
-      console.error('Error obteniendo órdenes de compra:', error?.message || error);
+    } catch (error) {
+      console.error('Error obteniendo órdenes de compra:', (error as { message?: string } | null)?.message || error);
       return { data: [], error: error as Error };
     }
   }
@@ -192,8 +226,8 @@ class PurchaseOrderService {
         },
         error: null
       };
-    } catch (error: any) {
-      console.error('Error obteniendo orden de compra:', error?.message || error);
+    } catch (error) {
+      console.error('Error obteniendo orden de compra:', (error as { message?: string } | null)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -255,8 +289,8 @@ class PurchaseOrderService {
       }
 
       return { data: order as PurchaseOrder, error: null };
-    } catch (error: any) {
-      console.error('Error creando orden de compra:', error?.message || error);
+    } catch (error) {
+      console.error('Error creando orden de compra:', (error as { message?: string } | null)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -325,8 +359,8 @@ class PurchaseOrderService {
       }
 
       return { data: order as PurchaseOrder, error: null };
-    } catch (error: any) {
-      console.error('Error actualizando orden de compra:', error?.message || error);
+    } catch (error) {
+      console.error('Error actualizando orden de compra:', (error as { message?: string } | null)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -356,8 +390,8 @@ class PurchaseOrderService {
       if (error) throw error;
 
       return { success: true, error: null };
-    } catch (error: any) {
-      console.error('Error actualizando estado:', error?.message || error);
+    } catch (error) {
+      console.error('Error actualizando estado:', (error as { message?: string } | null)?.message || error);
       return { success: false, error: error as Error };
     }
   }
@@ -429,8 +463,8 @@ class PurchaseOrderService {
       }
 
       return this.receiveItems(orderUuid, organizationId, pending);
-    } catch (error: any) {
-      console.error('Error recibiendo orden completa:', error?.message || error);
+    } catch (error) {
+      console.error('Error recibiendo orden completa:', (error as { message?: string } | null)?.message || error);
       return { success: false, error: error as Error };
     }
   }
@@ -464,8 +498,8 @@ class PurchaseOrderService {
       if (error) throw error;
 
       return { success: true, error: null };
-    } catch (error: any) {
-      console.error('Error eliminando orden:', error?.message || error);
+    } catch (error) {
+      console.error('Error eliminando orden:', (error as { message?: string } | null)?.message || error);
       return { success: false, error: error as Error };
     }
   }
@@ -506,8 +540,8 @@ class PurchaseOrderService {
       if (createError) throw createError;
 
       return { data: newOrder, error: null };
-    } catch (error: any) {
-      console.error('Error duplicando orden:', error?.message || error);
+    } catch (error) {
+      console.error('Error duplicando orden:', (error as { message?: string } | null)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -592,7 +626,7 @@ class PurchaseOrderService {
           }
           console.log(`📦 Stock incrementado (OC ${orderId}): ${stockItems.length - stockResult.skipped} items`);
         }
-      } catch (stockError: any) {
+      } catch (stockError) {
         // El stock no bloquea la recepcion, pero el fallo se devuelve para que la
         // UI pueda avisar en vez de dejarlo enterrado en la consola.
         console.warn('⚠️ Error sumando stock (no bloquea recepción):', stockError);
@@ -600,7 +634,7 @@ class PurchaseOrderService {
           success: false,
           skipped: 0,
           skippedItems: [],
-          errors: [stockError?.message || 'Error desconocido sumando stock'],
+          errors: [(stockError as { message?: string } | null)?.message || 'Error desconocido sumando stock'],
         };
       }
 
@@ -621,7 +655,7 @@ class PurchaseOrderService {
         // Si la recepción es completa, generar factura de compra y cuenta por pagar automáticamente
         if (isComplete) {
           try {
-            await this.generateInvoiceFromPurchaseOrder(orderId, organizationId, branchId);
+            await this.generateInvoiceFromPurchaseOrder(orderUuid);
           } catch (invError) {
             console.warn('⚠️ Error generando factura automática (no bloquea recepción):', invError);
           }
@@ -629,8 +663,8 @@ class PurchaseOrderService {
       }
 
       return { success: true, error: null, stock: stockResult };
-    } catch (error: any) {
-      console.error('Error recibiendo items:', error?.message || error);
+    } catch (error) {
+      console.error('Error recibiendo items:', (error as { message?: string } | null)?.message || error);
       return { success: false, error: error as Error };
     }
   }
@@ -713,13 +747,13 @@ class PurchaseOrderService {
             'purchase_order'
           );
         }
-      } catch (stockError: any) {
+      } catch (stockError) {
         console.warn('⚠️ Error sumando stock (no bloquea recepción):', stockError);
         stockResult = {
           success: false,
           skipped: 0,
           skippedItems: [],
-          errors: [stockError?.message || 'Error desconocido sumando stock'],
+          errors: [(stockError as { message?: string } | null)?.message || 'Error desconocido sumando stock'],
         };
       }
 
@@ -769,7 +803,7 @@ class PurchaseOrderService {
 
         if (isComplete) {
           try {
-            await this.generateInvoiceFromPurchaseOrder(orderId, organizationId, branchId);
+            await this.generateInvoiceFromPurchaseOrder(orderUuid);
           } catch (invError) {
             console.warn('⚠️ Error generando factura automática (no bloquea recepción):', invError);
           }
@@ -777,166 +811,27 @@ class PurchaseOrderService {
       }
 
       return { success: true, error: null, stock: stockResult };
-    } catch (error: any) {
-      console.error('Error recibiendo items con seriales:', error?.message || error);
+    } catch (error) {
+      console.error('Error recibiendo items con seriales:', (error as { message?: string } | null)?.message || error);
       return { success: false, error: error as Error };
     }
   }
 
   /**
-   * Generar factura de compra y cuenta por pagar automáticamente desde una OC recibida
+   * Factura de compra desde una OC recibida por completo. Es UNA sola RPC
+   * (`fn_factura_compra_desde_oc`, vía `POST /api/facturas-compra/desde-orden`)
+   * la que la arma, la confirma sin kardex (la mercancía ya entró con la
+   * recepción de la OC), deja `po_id`, crea la CxP por el neto con su
+   * disparador y enlaza los seriales. Es idempotente: si la OC ya tiene
+   * factura, devuelve la existente.
+   *
+   * Antes esta función insertaba la factura, las líneas y la CxP a mano, con el
+   * día UTC, un consecutivo leído del último registro y sin `po_id` (plan de
+   * compras y CxP, F1/F7): la tercera implementación de «registrar una compra».
    */
-  private async generateInvoiceFromPurchaseOrder(
-    orderId: number,
-    organizationId: number,
-    branchId: number
-  ): Promise<void> {
-    // Obtener datos de la OC y sus items
-    const { data: order, error: orderError } = await supabase
-      .from('purchase_orders')
-      .select('id, supplier_id, total, notes, created_at')
-      .eq('id', orderId)
-      .single();
-
-    if (orderError || !order) {
-      throw new Error('No se pudo obtener la orden de compra para generar factura');
-    }
-
-    // Verificar si ya existe una factura para esta OC (evitar duplicados)
-    const { data: existingInvoice } = await supabase
-      .from('invoice_purchase')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .eq('supplier_id', order.supplier_id)
-      .eq('total', order.total)
-      .eq('issue_date', new Date().toISOString().split('T')[0])
-      .ilike('notes', `%OC-${orderId}%`)
-      .limit(1);
-
-    if (existingInvoice && existingInvoice.length > 0) {
-      console.log('ℹ️ Ya existe factura para esta OC, se omite generación automática');
-      return;
-    }
-
-    // Obtener items de la OC con datos del producto
-    const { data: items, error: itemsError } = await supabase
-      .from('purchase_order_items')
-      .select(`
-        id, product_id, quantity, unit_cost, subtotal, serials_received,
-        products(id, name, sku)
-      `)
-      .eq('purchase_order_id', orderId);
-
-    if (itemsError || !items) {
-      throw new Error('No se pudieron obtener los items de la OC');
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 30);
-    const dueDateStr = dueDate.toISOString().split('T')[0];
-
-    // Generar número de factura
-    const { data: lastInvoice } = await supabase
-      .from('invoice_purchase')
-      .select('number_ext')
-      .eq('organization_id', organizationId)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    const year = new Date().getFullYear();
-    const nextNum = lastInvoice && lastInvoice.length > 0
-      ? (parseInt(lastInvoice[0].number_ext?.split('-').pop() || '0') + 1)
-      : 1;
-    const numberExt = `COMP-${year}-${String(nextNum).padStart(4, '0')}`;
-
-    // Calcular subtotal
-    const subtotal = items.reduce((sum: number, item: any) => sum + Number(item.subtotal || item.quantity * item.unit_cost), 0);
-
-    // Crear factura de compra
-    const { data: factura, error: facturaError } = await supabase
-      .from('invoice_purchase')
-      .insert({
-        organization_id: organizationId,
-        branch_id: branchId,
-        supplier_id: order.supplier_id,
-        number_ext: numberExt,
-        issue_date: today,
-        due_date: dueDateStr,
-        currency: 'COP',
-        subtotal,
-        tax_total: 0,
-        total: subtotal,
-        balance: subtotal,
-        status: 'received',
-        notes: `Factura generada automáticamente desde Orden de Compra OC-${orderId}. ${(order.notes || '').trim()}`.trim(),
-        payment_terms: 30,
-        tax_included: false,
-      })
-      .select()
-      .single();
-
-    if (facturaError || !factura) {
-      throw new Error(`Error creando factura automática: ${facturaError?.message}`);
-    }
-
-    // Crear items de la factura (incluyendo seriales recibidos en la OC)
-    const invoiceItems = items.map((item: any) => ({
-      invoice_id: factura.id,
-      invoice_type: 'purchase',
-      invoice_purchase_id: factura.id,
-      invoice_sales_id: null,
-      product_id: item.product_id || null,
-      description: item.products?.name || 'Producto',
-      qty: Number(item.quantity),
-      unit_price: Number(item.unit_cost),
-      tax_rate: 0,
-      total_line: Number(item.subtotal || item.quantity * item.unit_cost),
-      discount_amount: 0,
-      tax_included: false,
-      serial_numbers: item.serials_received && item.serials_received.length > 0 ? item.serials_received : null,
-    }));
-
-    const { error: invItemsError } = await supabase
-      .from('invoice_items')
-      .insert(invoiceItems);
-
-    if (invItemsError) {
-      console.warn('⚠️ Error creando items de factura automática:', invItemsError);
-    }
-
-    // Vincular los seriales ya creados (con purchase_order_id) a la nueva factura
-    // para mantener la trazabilidad completa: OC -> Factura -> Seriales
-    try {
-      const { error: serialLinkError } = await supabase
-        .from('serial_numbers')
-        .update({ purchase_invoice_id: factura.id })
-        .eq('purchase_order_id', orderId);
-      if (serialLinkError) {
-        console.warn('⚠️ Error vinculando seriales a factura automática:', serialLinkError);
-      }
-    } catch (serialLinkErr) {
-      console.warn('⚠️ Error vinculando seriales a factura automática:', serialLinkErr);
-    }
-
-    // Crear cuenta por pagar
-    const { error: apError } = await supabase
-      .from('accounts_payable')
-      .insert({
-        organization_id: organizationId,
-        supplier_id: order.supplier_id,
-        invoice_id: factura.id,
-        amount: subtotal,
-        balance: subtotal,
-        due_date: dueDateStr,
-        status: 'pending',
-      });
-
-    if (apError) {
-      console.warn('⚠️ Error creando cuenta por pagar automática:', apError);
-    }
-
-    console.log(`✅ Factura ${numberExt} generada automáticamente desde OC-${orderId}`);
+  private async generateInvoiceFromPurchaseOrder(orderUuid: string): Promise<void> {
+    const r = await clienteCompras.desdeOrden(orderUuid);
+    console.log(r.ya_existia ? 'ℹ️ La OC ya tenía factura de compra' : '✅ Factura de compra generada desde la OC');
   }
 
   /**
@@ -1013,12 +908,12 @@ class PurchaseOrderService {
   /**
    * Obtener productos para selector
    */
-  async getProducts(organizationId: number): Promise<any[]> {
+  async getProducts(organizationId: number): Promise<ProductoParaOrdenCompra[]> {
     try {
       // Cargar todos los productos activos (incluyendo padres para mapeo)
       // Paginar porque Supabase devuelve máximo 1000 filas por defecto
       const PAGE_SIZE = 1000;
-      let allData: any[] = [];
+      let allData: FilaProductoOrdenCompra[] = [];
       let offset = 0;
       while (true) {
         const { data: pageData, error: pageError } = await supabase
@@ -1032,7 +927,7 @@ class PurchaseOrderService {
 
         if (pageError) break;
         if (!pageData || pageData.length === 0) break;
-        allData = allData.concat(pageData);
+        allData = allData.concat(pageData as unknown as FilaProductoOrdenCompra[]);
         if (pageData.length < PAGE_SIZE) break;
         offset += PAGE_SIZE;
       }
@@ -1041,7 +936,7 @@ class PurchaseOrderService {
 
       // Mapa de padres: id -> { name, sku }
       const parentMap = new Map<number, { name: string; sku: string }>();
-      allData.forEach((p: any) => {
+      allData.forEach((p) => {
         if (p.is_parent) {
           parentMap.set(p.id, { name: p.name, sku: p.sku });
         }
@@ -1049,17 +944,17 @@ class PurchaseOrderService {
 
       // Mapa de SKU base -> nombre del padre (para variantes huérfanas sin parent_product_id)
       const skuToParent = new Map<string, string>();
-      allData.forEach((p: any) => {
+      allData.forEach((p) => {
         if (p.is_parent) {
           skuToParent.set(p.sku, p.name);
         }
       });
 
       // Filtrar: excluir padres y productos con variant_data vacío
-      const data = allData.filter((p: any) => {
+      const data = allData.filter((p) => {
         if (p.is_parent) return false;
         if (p.variant_data && typeof p.variant_data === 'object') {
-          const hasValues = Object.values(p.variant_data).some((v: any) => v && String(v).trim() !== '');
+          const hasValues = Object.values(p.variant_data).some((v: unknown) => v && String(v).trim() !== '');
           if (!hasValues && Object.keys(p.variant_data).length > 0) return false;
         }
         return true;
@@ -1090,7 +985,7 @@ class PurchaseOrderService {
           .in('product_id', chunk)
           .eq('is_primary', true);
         if (imgData) {
-          imgData.forEach((img: any) => {
+          imgData.forEach((img: { product_id: number; storage_path: string | null; is_primary: boolean }) => {
             if (img.storage_path) {
               const bucket = (img.storage_path.startsWith('products/') || img.storage_path.startsWith('productos/')) ? 'product-images' : 'organization_images';
               const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(img.storage_path);
@@ -1100,7 +995,7 @@ class PurchaseOrderService {
         }
       }
 
-      return data.map((p: any) => {
+      return data.map((p): ProductoParaOrdenCompra => {
         // Determinar parent_name: por parent_product_id o por prefijo de SKU
         let parentName: string | null = null;
         let parentImage: string | null = null;
@@ -1116,7 +1011,7 @@ class PurchaseOrderService {
             if (skuToParent.has(baseSku)) {
               parentName = skuToParent.get(baseSku)!;
               // Buscar imagen del padre
-              const parentEntry = allData.find((pp: any) => pp.sku === baseSku && pp.is_parent);
+              const parentEntry = allData.find((pp) => pp.sku === baseSku && pp.is_parent);
               if (parentEntry) {
                 parentImage = imageMap[parentEntry.id] || null;
               }
@@ -1129,7 +1024,7 @@ class PurchaseOrderService {
           uuid: p.uuid,
           sku: p.sku,
           name: p.name,
-          unit_code: p.unit_code,
+          unit_code: p.unit_code ?? undefined,
           category: p.categories?.name,
           cost: costMap.get(p.id) || 0,
           track_stock: p.track_stock,

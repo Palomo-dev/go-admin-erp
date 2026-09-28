@@ -5,7 +5,7 @@
  */
 
 import { cancellationKind } from '@/lib/services/crm/commissionTransitions';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 
 export interface ComisionesFiltersState {
   status: 'all' | 'accrued' | 'paid' | 'cancelled';
@@ -21,7 +21,10 @@ export function emptyFilters(): ComisionesFiltersState {
   return { status: 'all', source_type: 'all', payee_id: '', from: '', to: '', search: '' };
 }
 
-export function buildCommissionsQuery(f: ComisionesFiltersState): string {
+/** Tamaño de página de la lista (la API admite hasta 500; devuelve `count` total). */
+export const COMMISSIONS_PAGE_SIZE = 200;
+
+export function buildCommissionsQuery(f: ComisionesFiltersState, page?: { offset: number; limit?: number }): string {
   const p = new URLSearchParams();
   if (f.status !== 'all') p.set('status', f.status);
   if (f.source_type !== 'all') p.set('source_type', f.source_type);
@@ -30,7 +33,17 @@ export function buildCommissionsQuery(f: ComisionesFiltersState): string {
   if (f.to) p.set('to', f.to);
   const search = f.search.trim();
   if (search) p.set('search', search);
+  if (page && page.offset > 0) {
+    p.set('offset', String(page.offset));
+    p.set('limit', String(page.limit ?? COMMISSIONS_PAGE_SIZE));
+  }
   return p.toString();
+}
+
+/** Une una página nueva a la lista sin duplicar filas (si algo cambió entre páginas). */
+export function appendCommissionPage<T extends { id: string }>(prev: readonly T[], next: readonly T[]): T[] {
+  const seen = new Set(prev.map((r) => r.id));
+  return [...prev, ...next.filter((r) => !seen.has(r.id))];
 }
 
 export function activeFilterCount(f: ComisionesFiltersState): number {
@@ -78,12 +91,19 @@ export interface SelectionSummary {
   payee: string;
 }
 
-/** Texto para los diálogos: «$250 de Beto» o «$150 de 2 vendedores». */
-export function describeSelection(rows: readonly { commission_amount: number | string | null; payee_name: string | null }[], currency: string): SelectionSummary {
+/**
+ * Texto para los diálogos: «$250 de Beto» o «$150 de 2 vendedores». `currency`
+ * es el código (o el contexto, con locale y decimales) de la moneda de la
+ * selección; nunca se supone COP.
+ */
+export function describeSelection(
+  rows: readonly { commission_amount: number | string | null; payee_name: string | null }[],
+  currency: string | ContextoMoneda
+): SelectionSummary {
   const total = rows.reduce((s, r) => s + (Number(r.commission_amount) || 0), 0);
   const names = Array.from(new Set(rows.map((r) => r.payee_name || 'Sin nombre')));
   const payee = names.length === 1 ? names[0] : `${names.length} vendedores`;
-  return { count: rows.length, total, totalLabel: formatCurrency(total, currency), payee };
+  return { count: rows.length, total, totalLabel: formatMoneda(total, currency), payee };
 }
 
 export type StatusTone = 'pending' | 'paid' | 'cancelled';
@@ -140,4 +160,21 @@ export function focusAfterCommissionAction<T extends { isConnected: boolean }>(
   if (opener && opener.isConnected) return opener;
   for (const c of candidates) if (c && c.isConnected) return c;
   return null;
+}
+
+/** Elección de la cuenta de dinero en la confirmación de pago. */
+export type CuentaPagoValor = 'rule' | 'cash' | `bank:${number}`;
+
+/**
+ * Cuerpo que esperan las rutas de pago. `rule` no manda nada: el asiento usa
+ * la cuenta de la regla contable, como antes. `cash` sale de la caja abierta
+ * (o la cuenta de caja del plan); `bank:<id>` de esa cuenta bancaria.
+ */
+export function cuentaPagoABody(v: CuentaPagoValor): { payment_method?: string; bank_account_id?: number } {
+  if (v === 'cash') return { payment_method: 'cash' };
+  if (v.startsWith('bank:')) {
+    const id = Number(v.slice(5));
+    if (Number.isInteger(id) && id > 0) return { payment_method: 'transfer', bank_account_id: id };
+  }
+  return {};
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { TrendingUp, DollarSign, Target } from 'lucide-react';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { PipelineMetrics } from './types';
 
 interface ReportesEmbudoProps {
@@ -10,6 +10,8 @@ interface ReportesEmbudoProps {
 }
 
 export function ReportesEmbudo({ metrics, loading }: ReportesEmbudoProps) {
+  // Importes agregados: moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   if (loading) {
     return (
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6">
@@ -62,7 +64,7 @@ export function ReportesEmbudo({ metrics, loading }: ReportesEmbudoProps) {
                 <div className="flex items-center gap-2 text-sm">
                   <DollarSign className="h-4 w-4 text-green-500" />
                   <span className="text-gray-600 dark:text-gray-400">
-                    {formatCurrency(pipeline.totalValue)}
+                    {formatear(pipeline.totalValue)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
@@ -76,7 +78,7 @@ export function ReportesEmbudo({ metrics, loading }: ReportesEmbudoProps) {
 
             {/* Embudo visual */}
             <div className="space-y-2">
-              {pipeline.stages.map((stage, index) => {
+              {pipeline.stages.map((stage) => {
                 const widthPercent = Math.max((stage.count / maxCount) * 100, 10);
                 
                 return (
@@ -104,7 +106,7 @@ export function ReportesEmbudo({ metrics, loading }: ReportesEmbudoProps) {
                           {stage.count} ops
                         </span>
                         <span className="font-medium text-gray-900 dark:text-white">
-                          {formatCurrency(stage.value)}
+                          {formatear(stage.value)}
                         </span>
                         <span className="text-xs text-gray-500 dark:text-gray-400">
                           {Math.round(Number(stage.probability))}%
@@ -128,7 +130,7 @@ export function ReportesEmbudo({ metrics, loading }: ReportesEmbudoProps) {
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(pipeline.avgDealSize)}
+                  {formatear(pipeline.avgDealSize)}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Ticket Promedio

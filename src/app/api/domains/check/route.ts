@@ -3,6 +3,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
+import { routeErrorResponse } from '@/lib/security/orgGuards';
 
 const VERCEL_API_TOKEN = process.env.VERCEL_API_TOKEN;
 const VERCEL_TEAM_ID = process.env.VERCEL_TEAM_ID || 'team_frIu9xHSNGKf7olF1x4Fsvfh';
@@ -17,8 +19,22 @@ interface DomainCheckResult {
   error?: string;
 }
 
+/**
+ * Nombre de dominio estricto. El valor va en la RUTA de la API de Vercel con
+ * el token de la plataforma: sin esta validación, `../..` o `?` en el dominio
+ * apuntaban la llamada autenticada a otro endpoint de la cuenta.
+ */
+const DOMINIO_RE = /^(?=.{3,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+
+/**
+ * GO-sec (2026-09-24): sesión y organización activa (`getServerOrgContext`,
+ * 401/403) antes de gastar el token de Vercel de la plataforma, y dominio
+ * validado antes de meterlo en la URL.
+ */
 export async function POST(request: NextRequest) {
   try {
+    await getServerOrgContext(request);
+
     if (!VERCEL_API_TOKEN) {
       return NextResponse.json(
         { success: false, error: 'VERCEL_API_TOKEN no configurado' },
@@ -26,18 +42,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { domain } = body;
-
-    if (!domain) {
-      return NextResponse.json(
-        { success: false, error: 'El dominio es requerido' },
-        { status: 400 }
-      );
+    let body: { domain?: unknown };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ success: false, error: 'JSON inválido' }, { status: 400 });
     }
 
     // Normalizar dominio
-    const normalizedDomain = domain.toLowerCase().trim();
+    const normalizedDomain = typeof body.domain === 'string' ? body.domain.toLowerCase().trim() : '';
+
+    if (!DOMINIO_RE.test(normalizedDomain)) {
+      return NextResponse.json(
+        { success: false, error: 'El dominio es requerido y debe ser válido' },
+        { status: 400 }
+      );
+    }
 
     // Verificar disponibilidad
     const availabilityResponse = await fetch(
@@ -127,11 +147,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: unknown) {
-    console.error('Error en check domain:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
+    return routeErrorResponse('domains/check', error);
   }
 }

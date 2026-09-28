@@ -1,12 +1,19 @@
 // ============================================================
 // GET /api/integrations/credential-rotation
-// Retorna el estado de rotacion de todas las credenciales QR
-// de una organizacion. Query param: ?organizationId=xxx
+// Estado de rotación de las credenciales QR de la organización de la sesión.
+//
+// SEGURIDAD (GO-sec, 2026-09-24): antes bastaba `auth.getSession()` y la
+// organización salía de `?organizationId=` (cualquier organización veía el
+// inventario de conexiones y credenciales de otra). Ahora sesión validada +
+// administración (`withOrg({ admin: true })`); un `organizationId` ajeno en la
+// query → 403 y registro (`readOrgBody`). El cliente puede seguir mandando la
+// suya: no se usa, la organización es la de la sesión.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
+import { OrgContextError } from '@/lib/utils/orgContextError';
 import {
   checkAllCredentialsExpiry,
   generateRotationAlert,
@@ -14,56 +21,20 @@ import {
   type RotationAlert,
 } from '@/lib/services/integrations/qrShared/credentialRotation';
 
-export async function GET(request: NextRequest) {
+const RUTA = '/api/integrations/credential-rotation';
+
+export const GET = withOrg(async (ctx, request) => {
   try {
-    // Verificar autenticacion
-    const supabase = createRouteHandlerClient({ cookies });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    await readOrgBody(ctx, request, { route: RUTA });
 
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+    const credentials: CredentialExpiry[] = await checkAllCredentialsExpiry(ctx.organizationId);
 
-    // Leer query params
-    const { searchParams } = new URL(request.url);
-    const organizationIdParam = searchParams.get('organizationId');
-
-    if (!organizationIdParam) {
-      return NextResponse.json(
-        { error: 'Falta el parametro organizationId' },
-        { status: 400 },
-      );
-    }
-
-    const organizationId = parseInt(organizationIdParam, 10);
-    if (Number.isNaN(organizationId)) {
-      return NextResponse.json(
-        { error: 'organizationId debe ser un numero valido' },
-        { status: 400 },
-      );
-    }
-
-    // Verificar todas las credenciales de la organizacion
-    const credentials: CredentialExpiry[] = await checkAllCredentialsExpiry(
-      organizationId,
-    );
-
-    // Generar alertas para credenciales que requieren atencion
+    // Alertas para credenciales que requieren atención
     const alerts: RotationAlert[] = [];
     for (const cred of credentials) {
-      if (cred.severity === 'none') {
-        continue;
-      }
-
-      const daysOverdue = cred.needsRotation
-        ? Math.abs(cred.daysUntilRotation)
-        : -cred.daysUntilRotation;
-
-      alerts.push(
-        generateRotationAlert(cred.provider, cred.connectionId, daysOverdue),
-      );
+      if (cred.severity === 'none') continue;
+      const daysOverdue = cred.needsRotation ? Math.abs(cred.daysUntilRotation) : -cred.daysUntilRotation;
+      alerts.push(generateRotationAlert(cred.provider, cred.connectionId, daysOverdue));
     }
 
     return NextResponse.json({
@@ -72,17 +43,13 @@ export async function GET(request: NextRequest) {
       summary: {
         total: credentials.length,
         needsRotation: credentials.filter((c) => c.needsRotation).length,
-        upcoming: credentials.filter(
-          (c) => c.severity === 'medium' && !c.needsRotation,
-        ).length,
+        upcoming: credentials.filter((c) => c.severity === 'medium' && !c.needsRotation).length,
         healthy: credentials.filter((c) => c.severity === 'none').length,
       },
     });
   } catch (err) {
-    console.error('[API Credential Rotation] Error:', err);
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 },
-    );
+    if (err instanceof OrgContextError) throw err;
+    console.error('[API Credential Rotation] Error:', err instanceof Error ? err.message : String(err));
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
-}
+}, { admin: true });

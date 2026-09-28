@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { 
@@ -9,6 +10,8 @@ import {
   ReturnReasonsHeader,
   ReturnReasonsService 
 } from '@/components/pos/devoluciones/motivos';
+import { claveErrorMotivo } from '@/components/pos/devoluciones/motivos/returnReasonsService';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { ReturnReason, ReturnReasonFilters, CreateReturnReasonData } from '@/components/pos/devoluciones/types';
 import { toast } from 'sonner';
 
@@ -19,6 +22,9 @@ export default function MotivosDevolucionPage() {
   const [filters, setFilters] = useState<ReturnReasonFilters>({});
   const [showForm, setShowForm] = useState(false);
   const [editingReason, setEditingReason] = useState<ReturnReason | null>(null);
+  const t = useTranslations('posDevoluciones.motivos.pagina');
+  const tErrores = useTranslations('posDevoluciones.motivos.errores');
+  const { getToday } = useFormatDate();
 
   const loadReasons = useCallback(async () => {
     if (!organization?.id) return;
@@ -27,13 +33,13 @@ export default function MotivosDevolucionPage() {
     try {
       const data = await ReturnReasonsService.getAll(filters);
       setReasons(data);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading reasons:', error);
-      toast.error('Error al cargar motivos de devolución');
+      toast.error(t('errorCarga'));
     } finally {
       setLoading(false);
     }
-  }, [organization?.id, filters]);
+  }, [organization?.id, filters, t]);
 
   useEffect(() => {
     loadReasons();
@@ -60,18 +66,20 @@ export default function MotivosDevolucionPage() {
   const handleExport = () => {
     try {
       if (reasons.length === 0) {
-        toast.error('No hay motivos para exportar');
+        toast.error(t('sinDatosExportar'));
         return;
       }
 
+      // El importador lee por posición e ignora la fila de encabezados, así que
+      // estos se traducen. Los valores «Sí»/«No» NO: el importador los interpreta.
       const csvData = reasons.map(reason => ({
-        'Código': reason.code,
-        'Nombre': reason.name,
-        'Descripción': reason.description || '',
-        'Requiere Foto': reason.requires_photo ? 'Sí' : 'No',
-        'Afecta Inventario': reason.affects_inventory ? 'Sí' : 'No',
-        'Activo': reason.is_active ? 'Sí' : 'No',
-        'Orden': reason.display_order
+        [t('csv.codigo')]: reason.code,
+        [t('csv.nombre')]: reason.name,
+        [t('csv.descripcion')]: reason.description || '',
+        [t('csv.requiereFoto')]: reason.requires_photo ? 'Sí' : 'No',
+        [t('csv.afectaInventario')]: reason.affects_inventory ? 'Sí' : 'No',
+        [t('csv.activo')]: reason.is_active ? 'Sí' : 'No',
+        [t('csv.orden')]: reason.display_order
       }));
 
       const csvContent = [
@@ -83,13 +91,13 @@ export default function MotivosDevolucionPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.setAttribute('href', url);
-      a.setAttribute('download', `motivos-devolucion-${new Date().toISOString().split('T')[0]}.csv`);
+      a.setAttribute('download', `motivos-devolucion-${getToday()}.csv`);
       a.click();
       window.URL.revokeObjectURL(url);
       
-      toast.success('Exportación completada');
-    } catch (error) {
-      toast.error('Error al exportar datos');
+      toast.success(t('exportado'));
+    } catch {
+      toast.error(t('errorExportar'));
     }
   };
 
@@ -109,8 +117,7 @@ export default function MotivosDevolucionPage() {
           data = JSON.parse(text);
         } else if (file.name.endsWith('.csv')) {
           const lines = text.split('\n');
-          const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-          
+          // La fila 0 son los encabezados: se lee por posición desde la fila 1.
           for (let i = 1; i < lines.length; i++) {
             const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
             if (values.length >= 2) {
@@ -128,25 +135,31 @@ export default function MotivosDevolucionPage() {
         }
 
         if (data.length === 0) {
-          toast.error('No se encontraron datos válidos en el archivo');
+          toast.error(t('sinDatosArchivo'));
           return;
         }
 
         const result = await ReturnReasonsService.importFromData(data);
         
         if (result.success > 0) {
-          toast.success(`Se importaron ${result.success} motivos correctamente`);
+          toast.success(t('importados', { n: result.success }));
           loadReasons();
         }
         
         if (result.errors.length > 0) {
-          toast.warning(`${result.errors.length} registros no se pudieron importar`, {
-            description: result.errors.slice(0, 3).join(', ')
+          toast.warning(t('noImportados', { n: result.errors.length }), {
+            description: result.errors
+              .slice(0, 3)
+              .map(({ code, error }) => {
+                const { clave, valores } = claveErrorMotivo(error, 'importar');
+                return `${code}: ${tErrores(clave, valores)}`;
+              })
+              .join(', ')
           });
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('Import error:', error);
-        toast.error('Error al procesar el archivo');
+        toast.error(t('errorArchivo'));
       }
     };
     input.click();

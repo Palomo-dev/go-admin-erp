@@ -2,15 +2,31 @@
  * API Route: Descargar PDF/XML de Documento Soporte (Factus API v2)
  * GET /api/factus/support-document/download?type=pdf|xml&number=XXX
  *
- * Credenciales via variables de entorno (factusTokenManager)
+ * Credenciales: la cuenta de Factus de la ORGANIZACIÓN (Vault; las carga la
+ * plataforma). Las `FACTUS_*` del entorno solo sirven en desarrollo.
  */
 
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { NextRequest, NextResponse } from 'next/server';
-import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
 import factusService from '@/lib/services/factusService';
+import { obtenerAccesoFactus } from '@/lib/services/einvoicing/accesoFactus.server';
+import { PERMISOS_FINANZAS, requireOrgPermission } from '@/lib/security/orgGuards';
 
 export async function GET(request: NextRequest) {
   try {
+    // /api/factus está fuera del middleware: sin esta guarda, cualquiera en
+    // internet usaba la cuenta de Factus de la plataforma. Además, `finance.view`
+    // resuelto en el servidor (403 sin él).
+    let ctx: Awaited<ReturnType<typeof getServerOrgContext>>;
+    try {
+      ctx = await getServerOrgContext(request);
+      await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, 'factus/support-document/download');
+    } catch (err) {
+      if (err instanceof OrgContextError) {
+        return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+      }
+      throw err;
+    }
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') as 'pdf' | 'xml';
     const number = searchParams.get('number');
@@ -22,23 +38,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const credentials = getCredentials();
-    if (!credentials) {
-      return NextResponse.json(
-        { error: 'Credenciales de Factus no configuradas' },
-        { status: 404 }
-      );
+    // El número llega en la URL: solo se descarga si el documento soporte es
+    // de la organización de la sesión (antes se descargaba cualquier número).
+    const { data: propio, error: errorPropio } = await ctx.supabase
+      .from('support_documents')
+      .select('id')
+      .eq('organization_id', ctx.organizationId)
+      .eq('number', number)
+      .maybeSingle();
+    if (errorPropio) throw errorPropio;
+    if (!propio) {
+      return NextResponse.json({ error: 'Documento soporte no encontrado' }, { status: 404 });
     }
 
-    const accessToken = await getValidToken();
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'No se pudo obtener token de Factus' },
-        { status: 500 }
-      );
+    // Cuenta de Factus de la organización (la demo del entorno solo en desarrollo).
+    let acceso;
+    try {
+      acceso = await obtenerAccesoFactus(ctx.organizationId, { permitirDemoDesarrollo: true });
+    } catch (err) {
+      if (err instanceof OrgContextError) {
+        return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+      }
+      throw err;
     }
-
-    const environment = credentials.environment;
+    const { environment, accessToken } = acceso;
 
     if (type === 'pdf') {
       const pdfBuffer = await factusService.downloadSupportDocumentPDF(
@@ -74,10 +97,10 @@ export async function GET(request: NextRequest) {
       { error: 'Tipo de documento no válido. Use pdf o xml.' },
       { status: 400 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error descargando documento soporte:', error);
     return NextResponse.json(
-      { error: error.message || 'Error descargando documento soporte' },
+      { error: (error instanceof Error && error.message) || 'Error descargando documento soporte' },
       { status: 500 }
     );
   }

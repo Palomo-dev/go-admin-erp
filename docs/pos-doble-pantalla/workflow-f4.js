@@ -7,7 +7,7 @@ export const meta = {
 const PLAN = args.plan
 const DATE = args.date
 const UMBRAL = 9.5
-const MAX_RONDAS = 3
+const MAX_RONDAS = 4 // la 4 solo como ronda de cierre con lista congelada del orquestador
 
 const REGLAS = `
 Reglas del repositorio (además del CLAUDE.md que ya tienes):
@@ -16,6 +16,11 @@ Reglas del repositorio (además del CLAUDE.md que ya tienes):
 - Sin datos personales del cliente: solo el número de calificación.
 - Ruta de servidor para registrar la calificación: con sesión (pantalla local) → getServerOrgContext(); con token de pantalla remota → displayAuth de la Fase 3. Nunca organization_id del body.
 - eslint limpio; tsc filtrado; jest de pos-display en verde. No edites PROGRESS.md ni ${PLAN}. No commits ni push.
+- PROHIBIDO git stash / git checkout -- . / git reset --hard: el árbol tiene cambios de otras sesiones. Para ver el estado limpio, git show HEAD:<ruta>.
+- Compartidos (middleware.ts, posService.ts, CheckoutDialog.tsx, messages/*.json, guardrails.test.ts): solo reemplazos puntuales (Edit con old_string corto), releyendo justo antes.
+- ALCANCE CONGELADO: nada fuera de los 4 puntos. Lo que falte va a pendientes. Las tres fases anteriores se atascaron por ampliar el alcance.
+- La tarjeta de Configuración marca hoy calificación, reposo, desglose, nombre del cliente e idioma con la nota «Disponible en la fase 4» y los controles deshabilitados (clave phase4Hint): al entregar CADA ajuste que la pantalla ya consuma, quítale la nota y vuelve a habilitarlo. Los que sigan sin consumirse, se quedan como están.
+- Además de los 4 puntos, consume en la pantalla estos ajustes que ya viajan en hello.settings y nadie lee: showTaxBreakdown (desglose de impuestos en OrderView, como en el recibo), showCustomerName (nombre del cliente en la cabecera, apagado por defecto) y locale (formato de moneda y textos de la pantalla: helper formatDisplayMoney(value, currency, locale) con respaldo al locale de la organización; PLAN §4.5).
 `
 
 const CONTEXTO = `

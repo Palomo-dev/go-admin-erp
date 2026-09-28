@@ -26,6 +26,13 @@ export const telephonyPatchSchema = z
     voice_max_concurrent_calls: z.number().int().min(1).max(50).optional(),
     voice_caller_id: e164.nullable().optional(),
     phone_number: e164.nullable().optional(),
+    /**
+     * Interruptor del agente IA de voz (F6 · r-voz 2026-09-23). Faltaba: el
+     * despachador se niega a marcar con `voice_agent_enabled` en false (que es
+     * el DEFAULT de la columna) y no había ninguna pantalla que lo pusiera en
+     * true, así que el agente no podía llegar a llamar nunca.
+     */
+    voice_agent_enabled: z.boolean().optional(),
   })
   .strict();
 export type TelephonyPatch = z.infer<typeof telephonyPatchSchema>;

@@ -66,6 +66,14 @@ export interface ProjectCartOptions {
    * finito o 0; descuento nunca negativo).
    */
   totals?: DisplayTotalsOverride | null;
+  /**
+   * ¿Puede viajar el nombre del cliente? Por defecto sí, por compatibilidad
+   * con quien no lo pase. El emisor lo ata a `showCustomerName` (PLAN §5.2,
+   * «privacidad primero»): con el ajuste apagado el nombre no se filtra solo
+   * al pintar, no sale del emisor, así que tampoco cruza el canal remoto ni
+   * aparece en las herramientas de desarrollo de la pantalla.
+   */
+  includeCustomerName?: boolean;
 }
 
 /** Moneda de respaldo cuando la Parte B no pasa una válida. */
@@ -151,7 +159,10 @@ function projectLine(item: CartItem, index: number): DisplayLine {
   // → 3000 vs 2999.997). La pantalla formatea con Intl.NumberFormat.
   const total = qty * unitPrice;
   const discount = toAmount(item.discount_amount);
-  const note = typeof item.notes === 'string' && item.notes.trim().length > 0 ? item.notes.trim() : null;
+  // Solo la nota PARA EL CLIENTE: la de cocina (`notes`: «sin cebolla»,
+  // alergias) nunca sale en una pantalla que ve el cliente (decisión del
+  // dueño, 2026-09-23; POS-CARRITO-LINEAS-NOTAS.md).
+  const note = typeof item.customer_note === 'string' && item.customer_note.trim().length > 0 ? item.customer_note.trim() : null;
 
   return {
     id: lineId(item, index),
@@ -183,6 +194,19 @@ function resolveTaxIncluded(items: CartItem[], cartFlag: unknown): boolean {
   return items.some((item) => Boolean(item.tax_included));
 }
 
+/**
+ * Nombre del cliente del carrito (Fase 4) o null. Solo `customer.full_name`
+ * (columna GENERATED de la BD); nunca documento, teléfono ni correo: a la
+ * pantalla del cliente no viaja ningún otro dato personal. Recortado y, si
+ * queda vacío, null. La pantalla solo lo pinta con `showCustomerName`.
+ */
+function projectCustomerName(cart: Cart): string | null {
+  const raw = (cart.customer as { full_name?: unknown } | undefined)?.full_name;
+  if (typeof raw !== 'string') return null;
+  const name = raw.trim();
+  return name.length > 0 ? name : null;
+}
+
 /** DisplayCart sin carrito: lo que se proyecta cuando la caja no tiene carrito activo. */
 function emptyDisplayCart(currency: string): DisplayCart {
   return {
@@ -196,6 +220,7 @@ function emptyDisplayCart(currency: string): DisplayCart {
     taxIncluded: false,
     total: 0,
     lastChangedLineId: null,
+    customerName: null,
   };
 }
 
@@ -237,5 +262,6 @@ export function projectCartForDisplay(cart: Cart | null | undefined, opts: Proje
     total: toAmount(totals ? totals.total : cart.total),
     // Solo se resalta una línea que exista en el carrito proyectado.
     lastChangedLineId: lastChangedLineId !== null && lines.some((l) => l.id === lastChangedLineId) ? lastChangedLineId : null,
+    customerName: opts.includeCustomerName === false ? null : projectCustomerName(cart),
   };
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { actualizarTasasDeCambioGlobal } from '@/lib/services/openexchangerates';
+import { verifyCronSecret, webhookErrorResponse } from '@/lib/security/webhookSignatures';
+import { actualizarTasasDeCambioGlobal } from '@/lib/services/tasasCambio.server';
 import { getServiceClient } from '@/lib/supabase/server-service';
 
 /**
@@ -18,32 +19,13 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
   
   try {
-    // 1. Verificar autorización
-    const authHeader = request.headers.get('authorization');
-    const expectedToken = process.env.CRON_SECRET;
-    
-    // Si no hay CRON_SECRET configurado, rechazar por seguridad
-    if (!expectedToken) {
-      console.error('❌ CRON_SECRET no configurado en variables de entorno');
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Servicio no configurado correctamente' 
-        },
-        { status: 500 }
-      );
-    }
-    
-    // Verificar que el token coincida
-    if (authHeader !== `Bearer ${expectedToken}`) {
-      console.warn('⚠️ Intento de acceso no autorizado al cron job');
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'No autorizado' 
-        },
-        { status: 401 }
-      );
+    // 1. Verificar autorización. GO-sec (2026-09-24): `verifyCronSecret`
+    //    (Bearer o x-cron-secret, fail-closed sin CRON_SECRET real y en tiempo
+    //    constante), en lugar de una comparación `!==` propia.
+    try {
+      verifyCronSecret(request);
+    } catch (err) {
+      return webhookErrorResponse(err);
     }
 
     console.log('🔄 Iniciando actualización programada de tasas de cambio...');
@@ -80,16 +62,15 @@ export async function GET(request: NextRequest) {
       throw new Error(result.message || 'Error desconocido en actualización');
     }
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     const executionTime = Date.now() - startTime;
-    console.error('❌ Error en actualización automática de tasas:', error);
-    console.error('Stack trace:', error.stack);
-    
+    const mensaje = error instanceof Error ? error.message : String(error);
+    console.error('❌ Error en actualización automática de tasas:', mensaje);
+
     return NextResponse.json(
-      { 
+      {
         success: false,
-        error: error.message,
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        error: mensaje,
         execution_time_ms: executionTime,
         date: new Date().toISOString()
       },
@@ -110,35 +91,22 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   
   try {
-    // Verificar autorización
-    const authHeader = request.headers.get('authorization');
-    const expectedToken = process.env.CRON_SECRET;
-    
-    if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'No autorizado' 
-        },
-        { status: 401 }
-      );
-    }
-
-    // Leer opciones del body (si las hay)
-    let options = {};
+    // 1. Verificar autorización. GO-sec (2026-09-24): `verifyCronSecret`
+    //    (Bearer o x-cron-secret, fail-closed sin CRON_SECRET real y en tiempo
+    //    constante), en lugar de una comparación `!==` propia.
     try {
-      const body = await request.json();
-      options = body;
-    } catch {
-      // Si no hay body o no es JSON válido, usar opciones por defecto
+      verifyCronSecret(request);
+    } catch (err) {
+      return webhookErrorResponse(err);
     }
 
     console.log('🔄 Iniciando actualización manual de tasas de cambio...');
     console.log('📅 Fecha/Hora:', new Date().toISOString());
-    console.log('⚙️ Opciones:', options);
-    
-    // Ejecutar actualización
-    const result = await actualizarTasasDeCambioGlobal();
+
+    // GO-sec (2026-09-28): igual que el GET, con service role. Antes usaba el
+    // cliente del navegador sin sesión y fallaba por RLS; desde
+    // 20260928150534 solo service role escribe `currency_rates`.
+    const result = await actualizarTasasDeCambioGlobal(getServiceClient());
     
     const executionTime = Date.now() - startTime;
     
@@ -160,14 +128,15 @@ export async function POST(request: NextRequest) {
       throw new Error(result.message || 'Error en actualización');
     }
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     const executionTime = Date.now() - startTime;
-    console.error('❌ Error en actualización manual:', error);
-    
+    const mensaje = error instanceof Error ? error.message : String(error);
+    console.error('❌ Error en actualización manual:', mensaje);
+
     return NextResponse.json(
-      { 
+      {
         success: false,
-        error: error.message,
+        error: mensaje,
         execution_time_ms: executionTime,
         date: new Date().toISOString()
       },

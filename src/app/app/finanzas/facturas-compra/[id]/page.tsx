@@ -1,15 +1,19 @@
 'use client';
 
-import React from 'react';
-import { DetalleFacturaCompra } from '@/components/finanzas/facturas-compra/id/DetalleFacturaCompra';
+import { use } from 'react';
+import DetalleFacturaCompraV2 from '@/components/finanzas/facturas-compra/detalle/DetalleFacturaCompraV2';
 
 interface PageProps {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>;
 }
 
 export default function DetalleFacturaPage({ params }: PageProps) {
-  const { id } = React.use(params);
-  return <DetalleFacturaCompra facturaId={id} />;
+  const { id } = use(params);
+  return (
+    // Mismo margen que el resto de pantallas rediseñadas (p-4 · sm:p-6): el
+    // componente no lo trae y todo quedaba pegado al borde (2026-09-28).
+    <div className="p-4 sm:p-6">
+      <DetalleFacturaCompraV2 id={id} />
+    </div>
+  );
 }

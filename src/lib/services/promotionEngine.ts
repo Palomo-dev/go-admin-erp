@@ -25,9 +25,8 @@ import { supabase } from '@/lib/supabase/config';
 import {
   Promotion,
   PromotionRule,
-  WeekDay,
-  JS_DAY_TO_WEEKDAY,
 } from '@/components/pos/promociones/types';
+import { appliesOnWeekDay, isWithinEndDate, weekDayOfLocalDate } from '@/lib/promotions/vigencia';
 
 // --- Tipos públicos ---
 
@@ -128,19 +127,20 @@ class PromotionEngineService {
       return { ...resto, rules: (promotion_rules ?? resto.rules ?? []) } as Promotion;
     });
 
-    // Filtrar end_date en memoria (PostgREST no soporta or(is.null,gte) fácilmente
-    // combinado con otros filtros en una sola query sin RPC)
-    promos = promos.filter((p) => {
-      if (!p.end_date) return true;
-      return new Date(p.end_date) >= date;
-    });
+    // Filtrar end_date y día de la semana en memoria (PostgREST no soporta
+    // or(is.null,gte) fácilmente combinado con otros filtros en una sola query
+    // sin RPC). Los dos predicados viven en `lib/promotions/vigencia.ts`
+    // porque la cartelera de la pantalla del cliente los necesita IGUALES:
+    // cuando eran solo de aquí, la pantalla anunciaba promociones que este
+    // motor no aplicaba (Fase 4, ronda 1). CLAUDE.md §7.
+    promos = promos.filter((p) => isWithinEndDate(p, date));
 
-    // Filtrar por día de la semana
-    const dayName: WeekDay = JS_DAY_TO_WEEKDAY[date.getDay()];
-    promos = promos.filter((p) => {
-      if (!p.applicable_days || p.applicable_days.length === 0) return true;
-      return p.applicable_days.includes(dayName);
-    });
+    // El día sale del reloj del NAVEGADOR del cajero (comportamiento de
+    // siempre de este motor; no se toca en la Fase 4). La cartelera de la
+    // pantalla, que corre en servidor, resuelve el suyo con la zona horaria
+    // de la organización antes de llamar al mismo predicado.
+    const dayName = weekDayOfLocalDate(date);
+    promos = promos.filter((p) => appliesOnWeekDay(p, dayName));
 
     return promos;
   }

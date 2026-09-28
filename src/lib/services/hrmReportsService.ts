@@ -1,6 +1,7 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 export interface ReportFilters {
   dateFrom: string;
@@ -84,6 +85,67 @@ export interface ReportSummary {
   activeLoans?: number;
 }
 
+/** Empleo embebido en las filas de los reportes (nombre, código, área, cargo). */
+interface EmpleoEmbebido {
+  employee_code?: string | null;
+  organization_members?: { profiles?: { first_name?: string | null; last_name?: string | null } | null } | null;
+  departments?: { name?: string | null } | null;
+  job_positions?: { name?: string | null } | null;
+}
+
+function nombreEmpleado(empleo?: EmpleoEmbebido | null): string {
+  const profile = empleo?.organization_members?.profiles;
+  return profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : '-';
+}
+
+interface FilaTimesheet {
+  employments?: EmpleoEmbebido | null;
+  branches?: { name?: string | null } | null;
+  work_date: string;
+  scheduled_minutes?: number | null;
+  worked_minutes?: number | null;
+  net_worked_minutes?: number | null;
+  overtime_minutes?: number | null;
+  late_minutes?: number | null;
+  first_check_in: string | null;
+  last_check_out: string | null;
+}
+
+interface FilaAusencia {
+  employments?: EmpleoEmbebido | null;
+  leave_types?: { name?: string | null } | null;
+  leave_type?: string | null;
+  start_date: string;
+  end_date: string;
+  status?: string | null;
+  reason: string | null;
+}
+
+interface FilaColilla {
+  employments?: EmpleoEmbebido | null;
+  payroll_runs?: {
+    payroll_periods?: { name?: string | null; period_start?: string | null; organization_id?: number | null } | null;
+  } | null;
+  gross_pay?: number | null;
+  total_deductions?: number | null;
+  net_pay?: number | null;
+  status?: string | null;
+  currency_code?: string | null;
+}
+
+interface FilaPrestamo {
+  employments?: EmpleoEmbebido | null;
+  loan_number: string | null;
+  loan_type: string | null;
+  principal?: number | null;
+  total_amount?: number | null;
+  balance?: number | null;
+  installments_paid?: number | null;
+  installments_total?: number | null;
+  status: string | null;
+  currency_code?: string | null;
+}
+
 class HRMReportsService {
   private organizationId: number;
 
@@ -125,11 +187,10 @@ class HRMReportsService {
     const { data, error } = await query;
     if (error) throw error;
 
-    const rows: AttendanceReportRow[] = (data || []).map((row: any) => {
-      const profile = row.employments?.organization_members?.profiles;
+    const rows: AttendanceReportRow[] = ((data || []) as FilaTimesheet[]).map((row) => {
       return {
-        employee_name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : '-',
-        employee_code: row.employments?.employee_code,
+        employee_name: nombreEmpleado(row.employments),
+        employee_code: row.employments?.employee_code ?? null,
         department: row.employments?.departments?.name || null,
         position: row.employments?.job_positions?.name || null,
         branch: row.branches?.name || null,
@@ -166,7 +227,7 @@ class HRMReportsService {
     data: AbsenceReportRow[];
     summary: ReportSummary;
   }> {
-    let query = supabase
+    const query = supabase
       .from('leave_requests')
       .select(`
         *,
@@ -186,15 +247,14 @@ class HRMReportsService {
     const { data, error } = await query;
     if (error) throw error;
 
-    const rows: AbsenceReportRow[] = (data || []).map((row: any) => {
-      const profile = row.employments?.organization_members?.profiles;
+    const rows: AbsenceReportRow[] = ((data || []) as FilaAusencia[]).map((row) => {
       const startDate = new Date(row.start_date);
       const endDate = new Date(row.end_date);
       const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
       return {
-        employee_name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : '-',
-        employee_code: row.employments?.employee_code,
+        employee_name: nombreEmpleado(row.employments),
+        employee_code: row.employments?.employee_code ?? null,
         department: row.employments?.departments?.name || null,
         leave_type: row.leave_types?.name || row.leave_type || '-',
         start_date: row.start_date,
@@ -248,7 +308,10 @@ class HRMReportsService {
     if (error) throw error;
 
     // Filter by organization and date range
-    const filtered = (data || []).filter((row: any) => {
+    // Una colilla sin moneda (no debería haberla: la columna es NOT NULL) se
+    // muestra en la moneda base de la organización, no en pesos supuestos.
+    const monedaBase = (await resolveOrgCurrency(supabase, this.organizationId)).code;
+    const filtered = ((data || []) as FilaColilla[]).filter((row) => {
       const orgId = row.payroll_runs?.payroll_periods?.organization_id;
       if (orgId !== this.organizationId) return false;
       
@@ -258,18 +321,17 @@ class HRMReportsService {
       return periodStart >= filters.dateFrom && periodStart <= filters.dateTo;
     });
 
-    const rows: PayrollReportRow[] = filtered.map((row: any) => {
-      const profile = row.employments?.organization_members?.profiles;
+    const rows: PayrollReportRow[] = filtered.map((row) => {
       return {
-        employee_name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : '-',
-        employee_code: row.employments?.employee_code,
+        employee_name: nombreEmpleado(row.employments),
+        employee_code: row.employments?.employee_code ?? null,
         department: row.employments?.departments?.name || null,
         period_name: row.payroll_runs?.payroll_periods?.name || '-',
         gross_pay: row.gross_pay || 0,
         total_deductions: row.total_deductions || 0,
         net_pay: row.net_pay || 0,
         status: row.status || 'draft',
-        currency_code: row.currency_code || 'COP',
+        currency_code: row.currency_code || monedaBase,
       };
     });
 
@@ -289,6 +351,9 @@ class HRMReportsService {
     data: LoanReportRow[];
     summary: ReportSummary;
   }> {
+    // El reporte de préstamos lista la cartera completa: el rango de fechas
+    // no aplica. Se conserva el parámetro por la firma común de los reportes.
+    void filters;
     const { data, error } = await supabase
       .from('employee_loans')
       .select(`
@@ -305,11 +370,11 @@ class HRMReportsService {
 
     if (error) throw error;
 
-    const rows: LoanReportRow[] = (data || []).map((row: any) => {
-      const profile = row.employments?.organization_members?.profiles;
+    const monedaBase = (await resolveOrgCurrency(supabase, this.organizationId)).code;
+    const rows: LoanReportRow[] = ((data || []) as FilaPrestamo[]).map((row) => {
       return {
-        employee_name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : '-',
-        employee_code: row.employments?.employee_code,
+        employee_name: nombreEmpleado(row.employments),
+        employee_code: row.employments?.employee_code ?? null,
         loan_number: row.loan_number,
         loan_type: row.loan_type,
         principal: row.principal || 0,
@@ -318,7 +383,7 @@ class HRMReportsService {
         installments_paid: row.installments_paid || 0,
         installments_total: row.installments_total || 0,
         status: row.status,
-        currency_code: row.currency_code || 'COP',
+        currency_code: row.currency_code || monedaBase,
       };
     });
 
@@ -382,15 +447,15 @@ class HRMReportsService {
   }
 
   // Export helpers
-  exportToCSV(data: any[], filename: string): void {
+  exportToCSV(data: ReadonlyArray<object>, filename: string): void {
     if (data.length === 0) return;
 
     const headers = Object.keys(data[0]);
     const csvContent = [
       headers.join(','),
-      ...data.map(row => 
+      ...data.map(row =>
         headers.map(h => {
-          const val = row[h];
+          const val = (row as Record<string, unknown>)[h];
           if (val === null || val === undefined) return '';
           if (typeof val === 'string' && val.includes(',')) return `"${val}"`;
           return val;

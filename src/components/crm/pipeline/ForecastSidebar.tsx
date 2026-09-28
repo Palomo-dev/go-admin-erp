@@ -12,7 +12,9 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { ArrowUpRight, ArrowDownRight, LineChart, TrendingUp, ChevronRight, RefreshCw } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,6 +64,7 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
   const [forecastData, setForecastData] = useState<ForecastSummary | null>(null);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+  const { paraDocumento } = useMonedaOrganizacion();
 
   // Obtener el ID de organización usando la función canónica
   useEffect(() => {
@@ -93,7 +96,7 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
             stages:stage_id (name, probability)
           `)
           .eq('pipeline_id', pipelineId)
-          .eq('organization_id', organizationId) as { data: Opportunity[] | null, error: any };
+          .eq('organization_id', organizationId) as { data: Opportunity[] | null, error: unknown };
 
         if (opportunitiesError) {
           toast({
@@ -106,7 +109,8 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
         }
 
         // Calcular métricas de pronóstico
-        const baseCurrency = "COP"; // Usar moneda base predeterminada
+        // Moneda base de la organización (nunca 'COP' cableado).
+        const baseCurrency = (await resolveOrgCurrency(supabase, organizationId)).code;
         let totalAmount = 0;
         let weightedAmount = 0;
         let openCount = 0;
@@ -274,7 +278,7 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
             <p className="text-sm text-gray-600 dark:text-gray-400">Total ponderado</p>
             <div className="flex items-center justify-between">
               <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {formatCurrency(forecastData.weightedAmount, forecastData.baseCurrency)}
+                {formatMoneda(forecastData.weightedAmount, paraDocumento(forecastData.baseCurrency))}
               </h3>
               
               {forecastData.lastMonthComparison.percentageChange !== 0 && (
@@ -292,7 +296,7 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
               )}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-              Total bruto: {formatCurrency(forecastData.totalAmount, forecastData.baseCurrency)}
+              Total bruto: {formatMoneda(forecastData.totalAmount, paraDocumento(forecastData.baseCurrency))}
             </p>
           </div>
           
@@ -306,7 +310,7 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
                 <div>
                   <p className="text-xs text-gray-600 dark:text-gray-400">Promedio</p>
                   <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                    {formatCurrency(forecastData.averageAmount, forecastData.baseCurrency)}
+                    {formatMoneda(forecastData.averageAmount, paraDocumento(forecastData.baseCurrency))}
                   </p>
                 </div>
               </div>

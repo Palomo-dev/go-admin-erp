@@ -2,11 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
-import { 
-  obtenerTasasDeCambio, 
-  guardarTasasDeCambio,
-  llenarFechasFaltantesConDatosReales
-} from '@/lib/services/openexchangerates';
+// GO-sec (2026-09-28): la sincronización la hace el servidor (plataforma) con
+// una clave de servidor; el navegador ya no llama a OpenExchangeRates.
+import { sincronizarTasasDeCambio } from '@/lib/services/tasasCambioCliente';
 import {
   Table,
   TableBody,
@@ -16,10 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Input } from '@/components/ui/input';
-import { CalendarIcon, Loader2, RefreshCw, Edit, Save, X } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -28,19 +23,33 @@ import { useToast } from '@/components/ui/use-toast';
 import { DatePicker } from '@/components/ui/date-picker';
 import CurrencyConverter from './CurrencyConverter';
 import { TrendingDown, TrendingUp } from 'lucide-react';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { addPlainDays } from '@/lib/utils/timezone';
+
+// ============================================================
+// Fase B, tanda 10. Esta pantalla LEE el catalogo global `currency_rates`.
+// ADR-004 deja su escritura con el dia del sistema, pero prohibe expresamente
+// leerlo con el dia UTC: las ventanas de "ultimos 5 dias" y "hay datos de hoy"
+// son preguntas del negocio y se responden con el dia de la organizacion.
+// ============================================================
 
 // Componente de minigráfica interactiva para mostrar histórico de 5 días
 const MiniSparkline = ({ currencyCode }: { currencyCode: string }) => {
   const [historicalData, setHistoricalData] = React.useState<{rate: number, date: string}[]>([]);
   const [hoveredPoint, setHoveredPoint] = React.useState<{rate: number, date: string, x: number, y: number} | null>(null);
+  const { getToday } = useFormatDate();
 
   React.useEffect(() => {
     const fetchHistoricalData = async () => {
+      // Cinco dias CALENDARIO atras en la zona de la organizacion. Restar
+      // `5 * 24 h` a un instante y quedarse con su dia UTC daba seis dias en el
+      // cambio de hora y cuatro al otro lado del cambio de dia.
+      const desde = addPlainDays(getToday(), -5);
       const { data, error } = await supabase
         .from('currency_rates')
         .select('rate, rate_date')
         .eq('code', currencyCode)
-        .gte('rate_date', new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .gte('rate_date', desde)
         .order('rate_date', { ascending: true })
         .limit(6);
 
@@ -53,7 +62,7 @@ const MiniSparkline = ({ currencyCode }: { currencyCode: string }) => {
     };
 
     fetchHistoricalData();
-  }, [currencyCode]);
+  }, [currencyCode, getToday]);
 
   if (historicalData.length < 2) {
     return <div className="w-16 h-8 bg-gray-100 dark:bg-gray-700 rounded animate-pulse"></div>;
@@ -202,118 +211,12 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
   const [rates, setRates] = useState<CurrencyRate[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [baseCurrency, setBaseCurrency] = useState<Currency | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [previousRates, setPreviousRates] = useState<CurrencyRate[]>([]);
   const [tipoMonedaBase, setTipoMonedaBase] = useState<'base'|'preferencia'|'usd'|'primera'|'global'>('base');
   const { toast } = useToast();
 
-  // Estado para datos reales
-  const [fillingRealData, setFillingRealData] = useState(false);
-
-  // Función para llenar fechas faltantes con datos reales
-  async function handleFillRealData() {
-    try {
-      setFillingRealData(true);
-      
-      toast({
-        title: '🔄 Iniciando llenado de datos reales',
-        description: 'Detectando fechas faltantes y obteniendo datos del API...',
-        variant: 'default',
-        duration: 3000
-      });
-
-      await llenarFechasFaltantesConDatosReales();
-      
-      toast({
-        title: '✅ Datos reales completados',
-        description: 'Se han llenado todas las fechas faltantes con datos reales del API.',
-        variant: 'default',
-        duration: 5000
-      });
-
-      // Recargar datos para mostrar los nuevos
-      await loadRates();
-      
-    } catch (error) {
-      console.error('Error llenando datos reales:', error);
-      toast({
-        title: '❌ Error al llenar datos reales',
-        description: 'Hubo un error al obtener los datos reales del API.',
-        variant: 'destructive',
-        duration: 5000
-      });
-    } finally {
-      setFillingRealData(false);
-    }
-  }
-  
-  // Estado para manejo inteligente de precarga
-  const [autoSyncAttempted, setAutoSyncAttempted] = useState(false);
-  const [dailyDataStatus, setDailyDataStatus] = useState<'checking' | 'available' | 'missing' | 'syncing'>('checking');
-
-  // 🚀 Función auxiliar para verificación inteligente de datos diarios
-  async function checkDailyDataAvailability() {
-    try {
-      setDailyDataStatus('checking');
-      const today = format(new Date(), 'yyyy-MM-dd');
-      
-      const { data, error } = await supabase
-        .from('currency_rates')
-        .select('id, source')
-        .eq('rate_date', today)
-        .limit(1);
-      
-      if (error) throw error;
-      
-      if (!data || data.length === 0) {
-        console.log('📊 Sin datos para hoy - iniciando precarga automática');
-        setDailyDataStatus('missing');
-        return false;
-      } else {
-        console.log('✅ Datos diarios disponibles:', data[0].source);
-        setDailyDataStatus('available');
-        return true;
-      }
-    } catch (error) {
-      console.error('Error verificando datos diarios:', error);
-      setDailyDataStatus('missing');
-      return false;
-    }
-  }
-  
-  // DESHABILITADO: Precarga automática - las tasas se actualizan via cron job diario
-  // La página solo carga datos de la BD, no intenta sincronizar desde la API
-  /*
-  async function intelligentPreload() {
-    if (autoSyncAttempted) return;
-    
-    const hasDataToday = await checkDailyDataAvailability();
-    
-    if (!hasDataToday) {
-      console.log('🔄 Iniciando sincronización automática silenciosa...');
-      setAutoSyncAttempted(true);
-      setDailyDataStatus('syncing');
-      
-      try {
-        await syncRatesViaEdgeFunction(false);
-        setDailyDataStatus('available');
-        setTimeout(() => loadRates(), 2000);
-      } catch (error) {
-        console.error('Error en precarga automática:', error);
-        setDailyDataStatus('missing');
-      }
-    }
-  }
-  */
-  
-  // Función auxiliar para cargar datos iniciales
-  const initData = async () => {
-    await loadCurrencies();
-    await loadRates();
-    // NO sincronizar automáticamente - las tasas se actualizan via cron job diario
-  };
-  
   // Cargar monedas y tasas de cambio al iniciar
   useEffect(() => {
     if (organizationId) {
@@ -322,10 +225,11 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
         await loadRates();
       })();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, date]);
   
   // Estado para información de la actualización automática
-  const [lastAutoUpdateInfo, setLastAutoUpdateInfo] = useState<{
+  const [, setLastAutoUpdateInfo] = useState<{
     lastUpdate: Date | null;
     nextUpdate: Date | null;
     source: string;
@@ -336,6 +240,7 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
     if (organizationId) {
       loadAutoUpdateInfo();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId]);
 
   // Cargar información sobre la última actualización automática
@@ -465,11 +370,11 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
           });
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al cargar monedas:', err);
       toast({
         title: 'Error',
-        description: 'No se pudieron cargar las monedas: ' + err.message,
+        description: 'No se pudieron cargar las monedas: ' + (err instanceof Error ? err.message : String(err)),
         variant: 'destructive',
       });
     }
@@ -561,7 +466,7 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
             console.log(`Usando datos de ${latestDate} como fallback (${latestRates.length} tasas)`);
             
             // Procesar datos con indicación de que son datos anteriores
-            await processAndShowRates(latestRates, formattedDate);
+            await processAndShowRates(latestRates);
             
             toast({
               title: 'Tasas de cambio',
@@ -595,7 +500,7 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
             }));
               
             // Convertir explícitamente al tipo CurrencyRate[]
-            setRates(tempRates as any);
+            setRates(tempRates as CurrencyRate[]);
             setPreviousRates([]);
             toast({
               title: 'Sin tasas disponibles',
@@ -632,12 +537,12 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
       
       // Hay datos disponibles - procesarlos
       console.log('Tasas encontradas en base de datos:', data.length);
-      await processAndShowRates(data, formattedDate);
-    } catch (err: any) {
+      await processAndShowRates(data);
+    } catch (err: unknown) {
       console.error('Error al cargar tasas de cambio:', err);
       toast({
         title: 'Error',
-        description: 'No se pudieron cargar las tasas de cambio: ' + err.message,
+        description: 'No se pudieron cargar las tasas de cambio: ' + (err instanceof Error ? err.message : String(err)),
         variant: 'destructive',
       });
     } finally {
@@ -646,7 +551,7 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
   }
   
   // Procesar y mostrar las tasas de cambio
-  async function processAndShowRates(data: any[], formattedDate: string) {
+  async function processAndShowRates(data: CurrencyRate[]) {
     try {
       // Obtener información de todas las monedas del catálogo global
       const { data: templates, error: templatesError } = await supabase
@@ -656,13 +561,13 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
       if (templatesError) throw templatesError;
       
       // Crear un mapa de monedas para acceso rápido
-      const templateMap = templates.reduce((acc: Record<string, any>, curr: any) => {
+      const templateMap = (templates ?? []).reduce((acc: Record<string, { code: string; name: string; symbol: string }>, curr: { code: string; name: string; symbol: string }) => {
         acc[curr.code] = curr;
         return acc;
       }, {});
       
       // Formatear los datos para el componente
-      const enhancedRates = data.map((r: any) => ({
+      const enhancedRates = data.map((r) => ({
         id: r.id,
         code: r.code,
         rate: r.rate,
@@ -716,7 +621,12 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
       const ratesByDate: { [key: string]: CurrencyRate[] } = {};
       
       data.forEach(rate => {
-        const dateKey = rate.rate_date.split('T')[0];
+        // `currency_rates.rate_date` es una columna **date**: PostgREST la
+        // devuelve ya como 'YYYY-MM-DD', sin parte de hora. El `split('T')[0]`
+        // que habia aqui era inofensivo pero pedia al lector volver a
+        // demostrarlo; se quita para que no se copie a una columna timestamptz,
+        // donde si descartaria el offset (regla 2).
+        const dateKey = rate.rate_date;
         if (!ratesByDate[dateKey]) {
           ratesByDate[dateKey] = [];
         }
@@ -778,11 +688,7 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
       // Usar directamente el método que funciona (sin Edge Function)
       console.log('Iniciando actualización de tasas de cambio...');
       
-      // Importar la función para actualización global de tasas
-      const { actualizarTasasDeCambioGlobal } = await import('@/lib/services/openexchangerates');
-
-      // Llamar a la función de actualización global de tasas
-      const result = await actualizarTasasDeCambioGlobal();
+      const result = await sincronizarTasasDeCambio();
       console.log('Resultado de actualización:', result);
       
       if (result.success) {
@@ -820,58 +726,19 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
         throw new Error(result.message || 'Error en la actualización de tasas');
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al actualizar tasas:', err);
       
       if (showNotifications) {
         toast({
           title: '❌ Error en actualización',
-          description: `No se pudieron actualizar las tasas: ${err.message}`,
+          description: `No se pudieron actualizar las tasas: ${err instanceof Error ? err.message : String(err)}`,
           variant: 'destructive',
           duration: 7000
         });
       }
     } finally {
       setUpdating(false);
-    }
-  }
-
-  // Método de respaldo (anterior)
-  async function syncRatesLegacy(showNotifications = true) {
-    try {
-      console.log('Usando método de sincronización de respaldo...');
-      
-      // Importar la función para actualización global de tasas
-      const { actualizarTasasDeCambioGlobal } = await import('@/lib/services/openexchangerates');
-
-      // Llamar a la función de actualización global de tasas
-      const result = await actualizarTasasDeCambioGlobal();
-      console.log('Resultado de sincronización de respaldo:', result);
-      
-      if (result.success) {
-        if (showNotifications) {
-          toast({
-            title: 'Tasas actualizadas (método de respaldo)',
-            description: `Se actualizaron ${result.updated_count || 0} tasas de cambio usando el método de respaldo.`,
-            variant: 'default',
-            duration: 5000
-          });
-        }
-        
-        // Recargar tasas
-        await loadRates();
-      } else {
-        throw new Error(result.message || 'Error desconocido en método de respaldo');
-      }
-
-    } catch (err: any) {
-      console.error('Error en método de respaldo:', err);
-      toast({
-        title: 'Error en actualización',
-        description: `No se pudieron actualizar las tasas: ${err.message}`,
-        variant: 'destructive',
-        duration: 7000
-      });
     }
   }
 
@@ -993,7 +860,7 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
               <span className="inline-block w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400 mt-1 flex-shrink-0"></span>
               <span className="leading-relaxed">
                 <strong className="dark:text-gray-300">Información:</strong> Las tasas se actualizan automáticamente cada día a las 2:00 AM UTC. 
-                <span className="hidden sm:inline">Use "Sincronizar Ahora" solo si necesita datos más recientes.</span>
+                <span className="hidden sm:inline">Use &quot;Sincronizar Ahora&quot; solo si necesita datos más recientes.</span>
               </span>
             </div>
           </div>
@@ -1033,7 +900,7 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
                     <Button
                       className="h-9 px-4 text-xs sm:text-sm"
                       variant="outline"
-                      onClick={(e) => syncRatesViaEdgeFunction(true)}
+                      onClick={() => syncRatesViaEdgeFunction(true)}
                       disabled={updating}
                     >
                       {updating ? (

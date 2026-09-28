@@ -58,9 +58,47 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=8192
 
   timezone-tests:
-    name: Timezone tests (TZ=UTC + TZ=America/Bogota)
+    # Matriz multi-pais (fase A2). Las seis zonas cubren los casos que
+    # rompian el codigo: sin DST y offset entero (Bogota), sin DST pero
+    # otro offset (Ciudad de Mexico, sin DST desde 2022), DST del
+    # hemisferio norte (Madrid), DST del hemisferio sur con medianoche
+    # inexistente (Santiago), offset no entero (Katmandu, +05:45) y el
+    # runtime de produccion (UTC, que es lo que usa Vercel).
+    name: Timezone tests (TZ=${{ matrix.tz }})
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
+      matrix:
+        tz:
+          - 'UTC'
+          - 'America/Bogota'
+          - 'America/Mexico_City'
+          - 'Europe/Madrid'
+          - 'America/Santiago'
+          - 'Asia/Kathmandu'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:tz
+        env:
+          TZ: ${{ matrix.tz }}
+
+  full-suite-tz:
+    # La suite COMPLETA solo en dos zonas. Ver
+    # docs/adr/ADR-002-dst-y-matriz-de-zonas.md: correrla en las seis
+    # multiplicaria por tres el tiempo de CI y metaria en la matriz
+    # suites que no tienen nada que ver con fechas (una de ellas mide
+    # latencia y es sensible a la carga del runner), sin anadir un solo
+    # caso de zona horaria: los tests que dependen del TZ del runtime
+    # estan en src/__tests__/timezone/ y ya corren en las seis.
+    name: Suite completa (TZ=${{ matrix.tz }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
       matrix:
         tz: ['UTC', 'America/Bogota']
     steps:
@@ -70,6 +108,13 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npx jest src/__tests__/timezone/ src/__tests__/guardrails.test.ts
+      - run: npx jest
+        continue-on-error: true
+        # Informativo, todavia no bloqueante: la suite completa tiene dos
+        # rojos preexistentes ajenos a las fechas (sectionContract, fase
+        # F2.6 del editor web, y una asercion de latencia de pos-display
+        # sensible a la carga del runner). Quitar continue-on-error en
+        # cuanto esos dos esten en verde; el job de zonas de arriba SI
+        # bloquea desde ya.
         env:
           TZ: ${{ matrix.tz }}

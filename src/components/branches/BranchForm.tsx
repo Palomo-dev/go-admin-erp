@@ -9,12 +9,14 @@ import {
 import { MapPinIcon, PhoneIcon, EnvelopeIcon, BuildingOfficeIcon, IdentificationIcon, UserIcon } from '@heroicons/react/24/outline';
 import { ManagerSelector } from './ManagerSelector';
 import LocationSelector from '../common/LocationSelector';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
+import { paisIsoDeOrganizacion } from '@/lib/utils/telefono';
 import { supabase } from '@/lib/supabase/config';
 import { BuyDomainDialog, AddCustomDomainDialog } from '@/components/organization/dominios';
 import { useSession } from '@/lib/hooks/useSession';
 import { ShoppingCart, LinkIcon } from 'lucide-react';
 import ImageUploader from '@/components/common/ImageUploader';
+import { BranchTimezoneField } from './BranchTimezoneField';
 
 type BranchFormProps = {
   initialData?: Partial<Branch>;
@@ -110,6 +112,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     capacity: initialData.capacity || undefined,
     branch_type: initialData.branch_type || '',
     zone: initialData.zone || '',
+    timezone: initialData.timezone ?? null,
     branch_code: initialData.branch_code || '',
     is_active: hideStatusSection ? true : (initialData.is_active ?? true), // Force true during signup
     is_web_stock_source: hideStatusSection ? true : (initialData.is_web_stock_source ?? false), // La sucursal del signup surte la web
@@ -223,6 +226,12 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     // Validar slug obligatorio al publicar
     if (formWithPublished.is_web_published && !formWithPublished.slug) {
       setError('El slug es obligatorio para publicar el outlet en la web');
+      return;
+    }
+
+    const errorTelefono = mensajeErrorTelefono(form.phone);
+    if (errorTelefono) {
+      setError(`Teléfono: ${errorTelefono}`);
       return;
     }
 
@@ -389,6 +398,11 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-300"
                 />
               </div>
+              {/* Fase A3: zona propia de la sucursal (por defecto hereda). */}
+              <BranchTimezoneField
+                value={form.timezone}
+                onChange={(timezone) => setForm((prev) => ({ ...prev, timezone }))}
+              />
             </div>
           </div>
         </div>
@@ -401,13 +415,13 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Teléfono</label>
+              <label htmlFor="branch-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Teléfono</label>
               <PhoneInput
+                id="branch-phone"
                 name="phone"
                 value={form.phone}
                 onChange={(v) => setForm((prev) => ({ ...prev, phone: v }))}
-                placeholder="300 123 4567"
-                inputClassName="focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-300 h-10"
+                defaultIso={paisIsoDeOrganizacion(form.country_code, form.country) ?? undefined}
               />
             </div>
             <div className="relative">

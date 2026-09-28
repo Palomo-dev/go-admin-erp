@@ -1,650 +1,927 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  useRouter } from 'next/navigation';
-import { useToast } from '@/components/ui/use-toast';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { supabase } from '@/lib/supabase/config';
-import { supplierService, type Supplier, type PurchaseOrderSummary, type PurchaseInvoiceSummary, type AccountPayableSummary, type SupplierPaymentSummary, type SupplierStockSummary } from '@/lib/services/supplierService';
-import { Button } from '@/components/ui/button';
-import { Card,
-  CardContent,
-  CardHeader,
-  CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
-import { 
-  ArrowLeft, Edit, Building2, User, Phone, Mail, FileText,
-  ShoppingCart, Receipt, Calendar, Plus, MapPin, Globe, CreditCard,
-  Landmark, Package, Star, Wallet, TrendingDown, DollarSign, Boxes
-} from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
-import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
+import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import {
+  AlertTriangle,
+  Banknote,
+  Boxes,
+  ClipboardList,
+  Copy,
+  Eye,
+  EyeOff,
+  FileText,
+  HandCoins,
+  Package,
+  Plus,
+  Star,
+  TrendingUp,
+  Truck,
+  WalletCards,
+} from 'lucide-react';
+import {
+  DataTable,
+  KpiStrip,
+  PageHeader,
+  RowActionsMenu,
+  StatCard,
+  StatusBadge,
+  TabBar,
+  idPanel,
+  idPestana,
+  type AccionFila,
+  type ColumnaTabla,
+} from '@/components/kit';
+import { RelatedLinkCard } from '@/components/kit/RelatedLinkCard';
+import { useFormatoEntero, useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
-
-interface ProductSupplierRelation {
-  id: number;
-  product_id: number;
-  cost: number;
-  is_preferred: boolean;
-  supplier_sku?: string;
-  lead_time_days?: number;
-  min_order_qty?: number;
-  product?: {
-    id: number;
-    uuid: string;
-    name: string;
-    sku: string;
-    is_active: boolean;
-  };
-}
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/components/ui/use-toast';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useOrgCurrency } from '@/lib/hooks/useOrgCurrency';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import {
+  supplierService,
+  type AccountPayableSummary,
+  type ProveedorResumen,
+  type PurchaseInvoiceSummary,
+  type PurchaseOrderSummary,
+  type Supplier,
+  type SupplierPaymentSummary,
+  type SupplierProductLink,
+  type SupplierStockSummary,
+} from '@/lib/services/supplierService';
+import { formatDateInTz, formatPlainDate } from '@/lib/utils/dateDisplay';
+import { DialogoEliminarProveedor } from '../DialogoEliminarProveedor';
+import {
+  condicionPago,
+  cuentaEnmascarada,
+  documentoProveedor,
+  etiquetaDocumentoDian,
+  etiquetaRegimen,
+  etiquetaTipoCuenta,
+  formatoMoneda,
+  tipoProveedor,
+  TIPOS_CUENTA,
+  type Traductor,
+} from '../formato';
+import { RUTA_PROVEEDORES, rutaNuevaOrdenCompra, useAccionesProveedor } from '../useAccionesProveedor';
 
 interface ProveedorDetalleProps {
   supplierUuid: string;
 }
 
+type Pestana = 'resumen' | 'productos' | 'ordenes' | 'facturas' | 'cuentas' | 'pagos';
+
+const ID_TABS = 'proveedor';
+
+/** Estados de OC y de factura con etiqueta propia (`proveedores.detalle.estadosOc|estadosFactura`). */
+const ESTADOS_OC = new Set(['draft', 'pending', 'approved', 'sent', 'partial', 'received', 'completed', 'cancelled']);
+const ESTADOS_FACTURA = new Set(['draft', 'received', 'partial', 'paid', 'cancelled', 'void']);
+const ESTADOS_CXP = new Set(['pending', 'partial', 'paid', 'overdue']);
+
+const etiquetaOc = (s: string, t: Traductor) => (ESTADOS_OC.has(s) ? t(`estadosOc.${s}`) : undefined);
+const etiquetaFactura = (s: string, t: Traductor) => (ESTADOS_FACTURA.has(s) ? t(`estadosFactura.${s}`) : undefined);
+
+/** Método de pago guardado → clave de `proveedores.detalle.metodos`. */
+const METODO_PAGO: Record<string, string> = {
+  cash: 'efectivo',
+  efectivo: 'efectivo',
+  transfer: 'transferencia',
+  bank_transfer: 'transferencia',
+  transferencia: 'transferencia',
+  card: 'tarjeta',
+  credit_card: 'tarjeta',
+  debit_card: 'tarjeta',
+  check: 'cheque',
+  cheque: 'cheque',
+};
+
+const etiquetaMetodo = (m: string | null | undefined, t: Traductor) => {
+  if (!m) return '—';
+  const clave = METODO_PAGO[m.toLowerCase()];
+  return clave ? t(`metodos.${clave}`) : m.charAt(0).toUpperCase() + m.slice(1);
+};
+
+const DIA_MS = 86_400_000;
+
+/** Estado de una cuenta por pagar: «Vencida 12 d» si ya pasó y tiene saldo. */
+function estadoCxp(c: AccountPayableSummary, t: Traductor): { estado: string; etiqueta: string } {
+  if (c.status !== 'paid' && c.balance > 0 && c.due_date) {
+    const dias = Math.floor((Date.now() - new Date(c.due_date).getTime()) / DIA_MS);
+    if (dias > 0) return { estado: 'vencida', etiqueta: t('estadosCxp.vencidaDias', { dias }) };
+  }
+  return { estado: c.status, etiqueta: ESTADOS_CXP.has(c.status) ? t(`estadosCxp.${c.status}`) : c.status };
+}
+
+function Fila({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-1 gap-0.5 py-1.5 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-4">
+      <dt className="text-sm text-fg-secondary">{etiqueta}</dt>
+      <dd className="min-w-0 break-words text-sm text-fg">{children}</dd>
+    </div>
+  );
+}
+
+function Tarjeta({ titulo, accion, children }: { titulo: string; accion?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="rounded-xl border border-line bg-surface p-4 sm:p-6" aria-label={titulo}>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-fg">{titulo}</h2>
+        {accion}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+const CLASE_BOTON_SECUNDARIO =
+  'inline-flex h-10 items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:pointer-events-none disabled:opacity-50';
+const CLASE_BOTON_PRIMARIO =
+  'inline-flex h-10 items-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2';
+
+/**
+ * Detalle del proveedor (Figma «Proveedores — detalle»): cabecera con estado,
+ * KPIs reales (RPC `proveedor_resumen`), pestañas con conteos reales y el
+ * panel «Cómo se conecta». Conserva todo lo que mostraba la versión anterior:
+ * datos, dirección, fiscales DIAN, bancarios, productos, órdenes, facturas,
+ * cuentas por pagar, pagos y stock.
+ */
 export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const { formatDate } = useFormatDate();
+  const t = useTranslations('proveedores.detalle');
+  const tc = useTranslations('proveedores.comun');
+  const tf = useTranslations('proveedores.formato');
+  const entero = useFormatoEntero();
+  const localeIntl = useLocaleIntl();
+  const { timezone } = useFormatDate();
+  // timestamptz en la zona de la organización y con el formato del idioma activo.
+  const formatDate = useCallback(
+    (v: string | null | undefined) => formatDateInTz(v, timezone, { locale: localeIntl, day: '2-digit', month: '2-digit', year: 'numeric' }),
+    [localeIntl, timezone],
+  );
+  const moneda = useOrgCurrency();
+  const dinero = useCallback((v: number | string | null | undefined) => formatoMoneda(v, moneda), [moneda]);
 
   const [supplier, setSupplier] = useState<Supplier | null>(null);
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderSummary[]>([]);
-  const [invoices, setInvoices] = useState<PurchaseInvoiceSummary[]>([]);
-  const [products, setProducts] = useState<ProductSupplierRelation[]>([]);
-  const [accountsPayable, setAccountsPayable] = useState<AccountPayableSummary[]>([]);
-  const [payments, setPayments] = useState<SupplierPaymentSummary[]>([]);
-  const [stockSummary, setStockSummary] = useState<SupplierStockSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [padre, setPadre] = useState<Supplier | null>(null);
+  const [resumen, setResumen] = useState<ProveedorResumen | null>(null);
+  const [ordenes, setOrdenes] = useState<PurchaseOrderSummary[]>([]);
+  const [facturas, setFacturas] = useState<PurchaseInvoiceSummary[]>([]);
+  const [cuentas, setCuentas] = useState<AccountPayableSummary[]>([]);
+  const [pagos, setPagos] = useState<SupplierPaymentSummary[]>([]);
+  const [productos, setProductos] = useState<SupplierProductLink[]>([]);
+  const [stock, setStock] = useState<SupplierStockSummary[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [pestana, setPestana] = useState<Pestana>('resumen');
+  const [recarga, setRecarga] = useState(0);
+  const [verCuenta, setVerCuenta] = useState(false);
 
-  const loadData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const organizationId = getOrganizationId();
+  const recargar = useCallback(() => setRecarga((n) => n + 1), []);
+  const { accionesDe, aEliminar, setAEliminar } = useAccionesProveedor({ onCambio: recargar, conVer: false });
 
-      const { data, error } = await supplierService.getSupplierByUuid(supplierUuid, organizationId);
-      if (error) throw error;
-      if (!data) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Proveedor no encontrado' });
-        router.push('/app/inventario/proveedores');
-        return;
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      try {
+        setCargando(true);
+        const org = getOrganizationId();
+        const { data, error } = await supplierService.getSupplierByUuid(supplierUuid, org);
+        if (error) throw error;
+        if (!data) {
+          toast({ variant: 'destructive', title: tc('error'), description: tc('noEncontrado') });
+          router.push(RUTA_PROVEEDORES);
+          return;
+        }
+        if (cancelado) return;
+        setSupplier(data);
+        const [r, oc, fc, cxp, pay, prods, st, madre] = await Promise.all([
+          supplierService.obtenerResumenProveedor(org, data.id).catch(() => null),
+          supplierService.getSupplierPurchaseOrders(data.id, org),
+          supplierService.getSupplierInvoices(data.id, org),
+          supplierService.getSupplierAccountsPayable(data.id, org),
+          supplierService.getSupplierPayments(data.id, org),
+          supplierService.getSupplierProducts(data.id),
+          supplierService.getSupplierStockSummary(data.id, org),
+          data.parent_supplier_id
+            ? supplierService.getSupplierById(data.parent_supplier_id, org).then((x) => x.data)
+            : Promise.resolve(null),
+        ]);
+        if (cancelado) return;
+        setResumen(r);
+        setOrdenes(oc);
+        setFacturas(fc);
+        setCuentas(cxp);
+        setPagos(pay);
+        setProductos(prods);
+        setStock(st);
+        setPadre(madre);
+      } catch (error: unknown) {
+        console.error('Error cargando proveedor:', error);
+        toast({
+          variant: 'destructive',
+          title: tc('error'),
+          description: error instanceof Error ? error.message : t('errorCarga'),
+        });
+        router.push(RUTA_PROVEEDORES);
+      } finally {
+        if (!cancelado) setCargando(false);
       }
-      setSupplier(data);
-
-      const [orders, invs, cxp, pays, stock] = await Promise.all([
-        supplierService.getSupplierPurchaseOrders(data.id, organizationId),
-        supplierService.getSupplierInvoices(data.id, organizationId),
-        supplierService.getSupplierAccountsPayable(data.id, organizationId),
-        supplierService.getSupplierPayments(data.id, organizationId),
-        supplierService.getSupplierStockSummary(data.id, organizationId)
-      ]);
-      setPurchaseOrders(orders);
-      setInvoices(invs);
-      setAccountsPayable(cxp);
-      setPayments(pays);
-      setStockSummary(stock);
-
-      // Cargar productos relacionados via product_suppliers
-      const { data: prodData } = await supabase
-        .from('product_suppliers')
-        .select('id, product_id, cost, is_preferred, supplier_sku, lead_time_days, min_order_qty, product:products(id, uuid, name, sku, is_active)')
-        .eq('supplier_id', data.id);
-      if (prodData) {
-        // Supabase devuelve 'product' como array (relación); aplanar a objeto.
-        const normalized: ProductSupplierRelation[] = prodData.map((row: any) => ({
-          id: row.id,
-          product_id: row.product_id,
-          cost: Number(row.cost) || 0,
-          is_preferred: row.is_preferred,
-          supplier_sku: row.supplier_sku,
-          lead_time_days: row.lead_time_days,
-          min_order_qty: row.min_order_qty,
-          product: Array.isArray(row.product) ? row.product[0] : row.product,
-        }));
-        setProducts(normalized);
-      }
-    } catch (error: unknown) {
-      console.error('Error cargando proveedor:', error);
-      toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'No se pudo cargar el proveedor' });
-      router.push('/app/inventario/proveedores');
-    } finally { setIsLoading(false); }
-  }, [supplierUuid, router, toast]);
-
-  useEffect(() => { loadData(); }, [loadData]);
-
-  const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { label: string; className: string }> = {
-      draft: { label: 'Borrador', className: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
-      pending: { label: 'Pendiente', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
-      approved: { label: 'Aprobada', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
-      completed: { label: 'Completada', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
-      cancelled: { label: 'Cancelada', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
-      paid: { label: 'Pagada', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' }
+    })();
+    return () => {
+      cancelado = true;
     };
-    const config = statusMap[status] || statusMap.draft;
-    return <Badge className={config.className}>{config.label}</Badge>;
+  }, [supplierUuid, router, toast, recarga, t, tc]);
+
+  const cuentasAbiertas = useMemo(() => cuentas.filter((c) => c.status !== 'paid' && c.balance > 0), [cuentas]);
+
+  const registrarPago = () => {
+    if (cuentasAbiertas.length === 1) {
+      router.push(`/app/finanzas/cuentas-por-pagar/${cuentasAbiertas[0].id}`);
+      return;
+    }
+    setPestana('cuentas');
+    toast({ title: t('pago.elegirCuenta'), description: t('pago.elegirCuentaDescripcion') });
   };
 
-  const paymentTermsLabel = (val?: string) => {
-    const map: Record<string, string> = { contado: 'Contado', credito_15: 'Crédito 15 días', credito_30: 'Crédito 30 días', credito_60: 'Crédito 60 días', credito_90: 'Crédito 90 días' };
-    return val ? map[val] || val : 'No definido';
-  };
+  // ── Stock por producto (se une a la lista de productos que surte) ───────
+  const stockPorProducto = useMemo(() => new Map(stock.map((s) => [s.product_id, s])), [stock]);
+  const valorStock = useMemo(() => stock.reduce((s, x) => s + (x.stock_value || 0), 0), [stock]);
+  const totalPagado = useMemo(() => pagos.reduce((s, p) => s + (p.amount || 0), 0), [pagos]);
 
-  const taxRegimeLabel = (val?: string) => {
-    const map: Record<string, string> = { simple: 'Régimen Simple', comun: 'Régimen Común', gran_contribuyente: 'Gran Contribuyente', no_responsable: 'No Responsable de IVA' };
-    return val ? map[val] || val : 'No definido';
-  };
+  // ── Últimos documentos (los cuatro tipos mezclados) ─────────────────────
+  const ultimos = useMemo(() => {
+    type Doc = { id: string; titulo: string; tipo: string; fecha: string; estado: ReactNode; total: number; href?: string };
+    const docs: Doc[] = [
+      ...ordenes.map((o) => ({
+        id: `oc-${o.id}`,
+        titulo: `OC-${o.id}`,
+        tipo: t('tiposDocumento.orden'),
+        fecha: o.created_at,
+        estado: <StatusBadge estado={o.status} etiqueta={etiquetaOc(o.status, t)} />,
+        total: o.total,
+        href: `/app/inventario/ordenes-compra/${o.id}`,
+      })),
+      ...facturas.map((f) => ({
+        id: `fc-${f.id}`,
+        titulo: f.number_ext ? `FC ${f.number_ext}` : `FC-${f.id.slice(0, 8)}`,
+        tipo: t('tiposDocumento.factura'),
+        fecha: f.issue_date || f.created_at,
+        estado: <StatusBadge estado={f.status} etiqueta={etiquetaFactura(f.status, t)} />,
+        total: f.total,
+        href: `/app/finanzas/facturas-compra/${f.id}`,
+      })),
+      ...cuentas.map((c) => {
+        const e = estadoCxp(c, t);
+        return {
+          id: `cxp-${c.id}`,
+          titulo: `CxP ${c.invoice_number || c.id.slice(0, 8)}`,
+          tipo: t('tiposDocumento.cuenta'),
+          fecha: c.created_at,
+          estado: <StatusBadge estado={e.estado} etiqueta={e.etiqueta} />,
+          total: c.balance,
+          href: `/app/finanzas/cuentas-por-pagar/${c.id}`,
+        };
+      }),
+      ...pagos.map((p) => ({
+        id: `pago-${p.id}`,
+        titulo: t('pagoRef', { referencia: p.reference || p.id.slice(0, 8) }),
+        tipo: etiquetaMetodo(p.method, t),
+        fecha: p.payment_date || p.created_at,
+        estado: <StatusBadge estado="aplicado" />,
+        total: p.amount,
+      })),
+    ];
+    return docs.sort((a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0)).slice(0, 5);
+  }, [ordenes, facturas, cuentas, pagos, t]);
 
-  const accountTypeLabel = (val?: string) => {
-    const map: Record<string, string> = { savings: 'Ahorros', checking: 'Corriente', other: 'Otro' };
-    return val ? map[val] || val : 'No definido';
-  };
-
-  const InfoItem = ({ icon, iconBg, label, value }: { icon: React.ReactNode; iconBg: string; label: string; value: string }) => (
-    <div className="flex items-start gap-3">
-      <div className={`p-2 ${iconBg} rounded-lg`}>{icon}</div>
-      <div>
-        <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-        <p className="font-medium dark:text-white">{value}</p>
+  if (cargando && !supplier) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-16 w-full rounded-xl" />
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-28 rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-72 w-full rounded-xl" />
       </div>
+    );
+  }
+  if (!supplier) return null;
+
+  const activo = supplier.is_active !== false;
+  const documento = documentoProveedor({ ...supplier, supplier_type: supplier.supplier_type }, tf);
+  const condicion = condicionPago(supplier.payment_terms, supplier.credit_days, tf);
+  const direccion = [supplier.address, supplier.city, supplier.state, supplier.country, supplier.postal_code]
+    .filter(Boolean)
+    .join(', ');
+  const codigoDian = etiquetaDocumentoDian(supplier.identification_document_code, tf);
+  const tipoCuenta = TIPOS_CUENTA.some((x) => x.valor === supplier.account_type)
+    ? t(`cuentaDe.${supplier.account_type}`)
+    : supplier.account_type
+      ? t('cuentaDeOtro', { tipo: etiquetaTipoCuenta(supplier.account_type, tf).toLowerCase() })
+      : '';
+  const entregas =
+    resumen && resumen.entregas_total > 0 ? Math.round((resumen.entregas_a_tiempo * 100) / resumen.entregas_total) : null;
+
+  const accionesMovil: AccionFila[] = [
+    { id: 'orden-movil', etiqueta: t('nuevaOrden'), icono: ClipboardList, onSelect: () => router.push(rutaNuevaOrdenCompra(supplier.id)) },
+    {
+      id: 'pagar-movil',
+      etiqueta: t('registrarPago'),
+      icono: HandCoins,
+      onSelect: registrarPago,
+      deshabilitada: cuentasAbiertas.length === 0,
+      motivo: t('sinSaldo'),
+    },
+    ...accionesDe({ id: supplier.id, uuid: supplier.uuid, name: supplier.name, is_active: activo }).filter((a) => a.id !== 'orden'),
+  ];
+
+  // ── Columnas de las pestañas ────────────────────────────────────────────
+  const colProductos: ColumnaTabla<SupplierProductLink>[] = [
+    {
+      id: 'producto',
+      encabezado: t('columnas.producto'),
+      celda: (p) => (
+        <span className="inline-flex items-center gap-1.5">
+          {p.is_preferred && <Star aria-label={t('preferido')} className="size-3.5 fill-warning-text text-warning-text" />}
+          <span className="font-medium">{p.product?.name ?? t('productoN', { id: p.product_id })}</span>
+        </span>
+      ),
+    },
+    { id: 'sku', encabezado: t('columnas.sku'), variante: 'mono', ocultarDebajo: 'md', celda: (p) => p.product?.sku || '—' },
+    { id: 'sku-prov', encabezado: t('columnas.skuProveedor'), variante: 'mono', ocultarDebajo: 'lg', celda: (p) => p.supplier_sku || '—' },
+    { id: 'costo', encabezado: t('columnas.costo'), variante: 'importe', celda: (p) => dinero(p.cost) },
+    {
+      id: 'entrega',
+      encabezado: t('columnas.entrega'),
+      ocultarDebajo: 'lg',
+      celda: (p) => (p.lead_time_days ? t('diasCorto', { dias: p.lead_time_days }) : '—'),
+    },
+    {
+      id: 'minimo',
+      encabezado: t('columnas.pedidoMinimo'),
+      alinear: 'derecha',
+      ocultarDebajo: 'xl',
+      celda: (p) => (p.min_order_qty !== null ? entero(p.min_order_qty) : '—'),
+    },
+    {
+      id: 'stock',
+      encabezado: t('columnas.stock'),
+      alinear: 'derecha',
+      celda: (p) => {
+        const s = stockPorProducto.get(p.product_id);
+        if (!s) return '—';
+        return s.track_stock ? entero(s.stock_total) : t('noAplica');
+      },
+    },
+    {
+      id: 'valor',
+      encabezado: t('columnas.valorStock'),
+      variante: 'importe',
+      ocultarDebajo: 'md',
+      celda: (p) => dinero(stockPorProducto.get(p.product_id)?.stock_value ?? 0),
+    },
+  ];
+
+  const colOrdenes: ColumnaTabla<PurchaseOrderSummary>[] = [
+    { id: 'numero', encabezado: t('columnas.orden'), celda: (o) => <span className="font-medium text-link">OC-{o.id}</span> },
+    { id: 'fecha', encabezado: t('columnas.creada'), celda: (o) => formatDate(o.created_at) },
+    {
+      id: 'esperada',
+      encabezado: t('columnas.fechaEsperada'),
+      ocultarDebajo: 'md',
+      celda: (o) => (o.expected_date ? formatPlainDate(o.expected_date) : '—'),
+    },
+    { id: 'estado', encabezado: t('columnas.estado'), celda: (o) => <StatusBadge estado={o.status} etiqueta={etiquetaOc(o.status, t)} /> },
+    { id: 'total', encabezado: t('columnas.total'), variante: 'importe', celda: (o) => dinero(o.total) },
+  ];
+
+  const colFacturas: ColumnaTabla<PurchaseInvoiceSummary>[] = [
+    {
+      id: 'numero',
+      encabezado: t('columnas.factura'),
+      celda: (f) => <span className="font-medium text-link">{f.number_ext || `FC-${f.id.slice(0, 8)}`}</span>,
+    },
+    // Antes se consultaba `issue_date` y se pintaba `created_at`.
+    { id: 'fecha', encabezado: t('columnas.fecha'), celda: (f) => formatDate(f.issue_date || f.created_at) },
+    { id: 'estado', encabezado: t('columnas.estado'), celda: (f) => <StatusBadge estado={f.status} etiqueta={etiquetaFactura(f.status, t)} /> },
+    { id: 'total', encabezado: t('columnas.total'), variante: 'importe', celda: (f) => dinero(f.total) },
+  ];
+
+  const colCuentas: ColumnaTabla<AccountPayableSummary>[] = [
+    {
+      id: 'factura',
+      encabezado: t('columnas.factura'),
+      celda: (c) => <span className="font-medium text-link">{c.invoice_number || `CxP-${c.id.slice(0, 8)}`}</span>,
+    },
+    { id: 'vence', encabezado: t('columnas.vencimiento'), celda: (c) => (c.due_date ? formatDate(c.due_date) : '—') },
+    {
+      id: 'estado',
+      encabezado: t('columnas.estado'),
+      celda: (c) => {
+        const e = estadoCxp(c, t);
+        return <StatusBadge estado={e.estado} etiqueta={e.etiqueta} />;
+      },
+    },
+    { id: 'monto', encabezado: t('columnas.monto'), variante: 'importe', ocultarDebajo: 'md', celda: (c) => dinero(c.amount) },
+    {
+      id: 'descuento',
+      encabezado: t('columnas.descuento'),
+      variante: 'importe',
+      ocultarDebajo: 'xl',
+      celda: (c) => (c.discount_amount > 0 ? dinero(c.discount_amount) : '—'),
+    },
+    { id: 'saldo', encabezado: t('columnas.saldo'), variante: 'importe', celda: (c) => <span className="font-medium">{dinero(c.balance)}</span> },
+  ];
+
+  const colPagos: ColumnaTabla<SupplierPaymentSummary>[] = [
+    { id: 'fecha', encabezado: t('columnas.fecha'), celda: (p) => formatDate(p.payment_date || p.created_at) },
+    { id: 'metodo', encabezado: t('columnas.metodo'), celda: (p) => etiquetaMetodo(p.method, t) },
+    { id: 'referencia', encabezado: t('columnas.referencia'), ocultarDebajo: 'md', celda: (p) => p.reference || '—' },
+    {
+      id: 'origen',
+      encabezado: t('columnas.origen'),
+      ocultarDebajo: 'lg',
+      celda: (p) => (p.source === 'account_payable' ? t('tiposDocumento.cuenta') : t('origenFactura')),
+    },
+    { id: 'monto', encabezado: t('columnas.monto'), variante: 'importe', celda: (p) => <span className="font-medium text-success-text">{dinero(p.amount)}</span> },
+  ];
+
+  const pestanas = [
+    { valor: 'resumen' as const, etiqueta: t('pestanas.resumen') },
+    { valor: 'productos' as const, etiqueta: t('pestanas.productos'), contador: resumen?.productos ?? productos.length },
+    { valor: 'ordenes' as const, etiqueta: t('pestanas.ordenes'), contador: resumen?.ordenes ?? ordenes.length },
+    { valor: 'facturas' as const, etiqueta: t('pestanas.facturas'), contador: resumen?.facturas ?? facturas.length },
+    { valor: 'cuentas' as const, etiqueta: t('pestanas.cuentas'), contador: resumen?.cuentas_por_pagar ?? cuentas.length },
+    { valor: 'pagos' as const, etiqueta: t('pestanas.pagos'), contador: resumen?.pagos ?? pagos.length },
+  ];
+
+  const recientes = (total: number | undefined, mostradas: number, href: string, tipo: 'ordenes' | 'facturas') =>
+    total !== undefined && total > mostradas ? (
+      <p className="text-[13px] text-fg-secondary">
+        {tipo === 'ordenes'
+          ? t('recientes.ordenes', { mostradas, total: entero(total) })
+          : t('recientes.facturas', { mostradas, total: entero(total) })}{' '}
+        <Link href={href} className="font-medium text-link hover:underline">
+          {t('recientes.verTodas')}
+        </Link>
+      </p>
+    ) : null;
+
+  const panel = (valor: Pestana, contenido: ReactNode) => (
+    <div
+      role="tabpanel"
+      id={idPanel(ID_TABS, valor)}
+      aria-labelledby={idPestana(ID_TABS, valor)}
+      hidden={pestana !== valor}
+      tabIndex={0}
+      className="flex flex-col gap-4 focus-visible:outline-none"
+    >
+      {pestana === valor && contenido}
     </div>
   );
 
-  if (isLoading) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <PageHeaderSkeleton />
-        <DetailSkeleton />
-      </div>
-    );
-  }
-
-  if (!supplier) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-500 dark:text-gray-400">Proveedor no encontrado</p>
-        <Link href="/app/inventario/proveedores"><Button className="mt-4">Volver a la lista</Button></Link>
-      </div>
-    );
-  }
-
-  const fullAddress = [supplier.address, supplier.city, supplier.state, supplier.country, supplier.postal_code].filter(Boolean).join(', ');
-
   return (
-    <div className="flex flex-col gap-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/app/inventario/proveedores">
-            <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />Volver</Button>
-          </Link>
-          <div className="flex items-center gap-3">
-            {supplier.logo_url && (
-              <Image src={supplier.logo_url} alt={supplier.name} width={48} height={48} className="rounded-lg object-cover border dark:border-gray-700" />
-            )}
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{supplier.name}</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {supplier.nit ? `NIT: ${supplier.nit}` : `Proveedor #${supplier.id}`}
-              </p>
+    <div className="flex flex-col gap-4 lg:gap-5">
+      <PageHeader
+        variante="detail"
+        titulo={supplier.name}
+        badge={<StatusBadge estado={activo ? 'activo' : 'inactivo'} tamano="md" />}
+        subtitulo={`${documento} · ${tipoProveedor(supplier.supplier_type, tf)} · ${condicion}`}
+        icono={Truck}
+        miniatura={
+          supplier.logo_url ? (
+            <Image src={supplier.logo_url} alt="" width={48} height={48} className="size-12 object-cover" />
+          ) : undefined
+        }
+        cargando={cargando}
+        migas={[
+          { etiqueta: tc('inventario'), href: '/app/inventario' },
+          { etiqueta: tc('titulo'), href: RUTA_PROVEEDORES },
+          { etiqueta: supplier.name },
+        ]}
+        acciones={
+          <>
+            <button type="button" onClick={registrarPago} disabled={cuentasAbiertas.length === 0} className={CLASE_BOTON_SECUNDARIO}>
+              <HandCoins aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('registrarPago')}
+            </button>
+            <Link href={rutaNuevaOrdenCompra(supplier.id)} className={CLASE_BOTON_PRIMARIO}>
+              <ClipboardList aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('nuevaOrden')}
+            </Link>
+            <RowActionsMenu
+              orientacion="horizontal"
+              tamano="md"
+              titulo={supplier.name}
+              acciones={accionesDe({ id: supplier.id, uuid: supplier.uuid, name: supplier.name, is_active: activo }).filter(
+                (a) => a.id !== 'orden',
+              )}
+            />
+          </>
+        }
+        movil={{
+          subtitulo: documento,
+          accion: <RowActionsMenu orientacion="horizontal" titulo={supplier.name} acciones={accionesMovil} />,
+        }}
+        debajo={
+          <TabBar
+            id={ID_TABS}
+            etiqueta={t('pestanas.etiqueta')}
+            valor={pestana}
+            onValorChange={setPestana}
+            pestanas={pestanas}
+            className="w-full"
+          />
+        }
+      />
+
+      {panel(
+        'resumen',
+        <>
+          <KpiStrip etiqueta={t('kpis.etiqueta')}>
+            <StatCard
+              etiqueta={t('kpis.saldo')}
+              icono={WalletCards}
+              cargando={!resumen}
+              valor={dinero(resumen?.saldo ?? 0)}
+              detalle={
+                resumen ? t('kpis.facturasAbiertas', { count: resumen.facturas_abiertas, n: entero(resumen.facturas_abiertas) }) : undefined
+              }
+              onClick={() => setPestana('cuentas')}
+            />
+            <StatCard
+              etiqueta={t('kpis.vencido')}
+              icono={AlertTriangle}
+              cargando={!resumen}
+              valor={dinero(resumen?.vencido ?? 0)}
+              tono={resumen && resumen.vencido > 0 ? 'peligro' : 'neutro'}
+              tendencia={resumen && resumen.vencido > 0 ? 'baja' : undefined}
+              detalle={
+                resumen
+                  ? resumen.facturas_vencidas > 0
+                    ? t('kpis.vencidoDetalle', {
+                        count: resumen.facturas_vencidas,
+                        n: entero(resumen.facturas_vencidas),
+                        dias: resumen.max_dias_mora,
+                      })
+                    : t('kpis.sinVencidas')
+                  : undefined
+              }
+              onClick={() => setPestana('cuentas')}
+            />
+            <StatCard
+              etiqueta={t('kpis.compras12m')}
+              icono={TrendingUp}
+              cargando={!resumen}
+              valor={dinero(resumen?.compras_12m ?? 0)}
+              detalle={resumen ? t('kpis.compras12mDetalle', { ordenes: resumen.ordenes_12m, facturas: resumen.facturas_12m }) : undefined}
+            />
+            <StatCard
+              etiqueta={t('kpis.entregas')}
+              icono={Truck}
+              cargando={!resumen}
+              valor={entregas === null ? '—' : t('porcentaje', { valor: entregas })}
+              tono={entregas === null ? 'neutro' : entregas >= 80 ? 'exito' : entregas >= 60 ? 'advertencia' : 'peligro'}
+              tendencia={entregas !== null && entregas >= 80 ? 'sube' : undefined}
+              detalle={
+                resumen
+                  ? resumen.entregas_total > 0
+                    ? t('kpis.entregasDetalle', { a: resumen.entregas_a_tiempo, total: resumen.entregas_total })
+                    : t('kpis.sinFechaEsperada')
+                  : undefined
+              }
+            />
+          </KpiStrip>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
+            <div className="flex min-w-0 flex-col gap-4 lg:col-span-2 lg:gap-5">
+              <Tarjeta
+                titulo={t('datos.titulo')}
+                accion={
+                  <Link href={`${RUTA_PROVEEDORES}/${supplier.uuid}/editar`} className="text-sm font-medium text-link hover:underline">
+                    {tc('editar')}
+                  </Link>
+                }
+              >
+                <dl>
+                  <Fila etiqueta={t('datos.tipo')}>{tipoProveedor(supplier.supplier_type, tf)}</Fila>
+                  <Fila etiqueta={t('datos.documento')}>{documento}</Fila>
+                  {supplier.trade_name && <Fila etiqueta={t('datos.nombreComercial')}>{supplier.trade_name}</Fila>}
+                  {padre && (
+                    <Fila etiqueta={t('datos.empresaAsociada')}>
+                      <Link href={`${RUTA_PROVEEDORES}/${padre.uuid}`} className="text-link hover:underline">
+                        {padre.name}
+                      </Link>
+                    </Fila>
+                  )}
+                  <Fila etiqueta={t('datos.contacto')}>{supplier.contact || '—'}</Fila>
+                  <Fila etiqueta={t('datos.telefono')}>
+                    {supplier.phone ? (
+                      <a href={`tel:${supplier.phone.replace(/\s+/g, '')}`} className="text-link hover:underline">
+                        {supplier.phone}
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </Fila>
+                  <Fila etiqueta={t('datos.correo')}>
+                    {supplier.email ? (
+                      <a href={`mailto:${supplier.email}`} className="text-link hover:underline">
+                        {supplier.email}
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </Fila>
+                  {supplier.website && (
+                    <Fila etiqueta={t('datos.sitioWeb')}>
+                      <a
+                        href={/^https?:\/\//i.test(supplier.website) ? supplier.website : `https://${supplier.website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-link hover:underline"
+                      >
+                        {supplier.website}
+                      </a>
+                    </Fila>
+                  )}
+                  <Fila etiqueta={t('datos.direccion')}>{direccion || '—'}</Fila>
+                  <Fila etiqueta={t('datos.registrado')}>{formatDate(supplier.created_at)}</Fila>
+                </dl>
+              </Tarjeta>
+
+              <Tarjeta titulo={t('fiscal.titulo')}>
+                <dl>
+                  <Fila etiqueta={t('fiscal.regimen')}>{etiquetaRegimen(supplier.tax_regime, tf)}</Fila>
+                  <Fila etiqueta={t('fiscal.responsabilidades')}>
+                    {supplier.fiscal_responsibilities && supplier.fiscal_responsibilities.length > 0
+                      ? supplier.fiscal_responsibilities.join(' · ')
+                      : '—'}
+                  </Fila>
+                  <Fila etiqueta={t('fiscal.tipoDocumentoDian')}>{codigoDian ?? (supplier.identification_document_code || '—')}</Fila>
+                  {supplier.legal_organization_code && (
+                    <Fila etiqueta={t('fiscal.tipoOrganizacion')}>
+                      {supplier.legal_organization_code === '1' ? tf('tipo.company') : t('fiscal.personaNatural')}
+                    </Fila>
+                  )}
+                  <Fila etiqueta={t('fiscal.municipio')}>{supplier.municipality_code || '—'}</Fila>
+                  {supplier.country_code && <Fila etiqueta={t('fiscal.codigoPais')}>{supplier.country_code}</Fila>}
+                  {supplier.tax_id && <Fila etiqueta={t('fiscal.identificacionTributaria')}>{supplier.tax_id}</Fila>}
+                  <Fila etiqueta={t('fiscal.condicionPago')}>{condicion}</Fila>
+                  <Fila etiqueta={t('fiscal.banco')}>
+                    {[supplier.bank_name, tipoCuenta].filter(Boolean).join(' · ') || '—'}
+                  </Fila>
+                  <Fila etiqueta={t('fiscal.numeroCuenta')}>
+                    {supplier.bank_account ? (
+                      <span className="inline-flex flex-wrap items-center gap-2">
+                        <span className="font-mono tabular-nums">{verCuenta ? supplier.bank_account : cuentaEnmascarada(supplier.bank_account)}</span>
+                        <button
+                          type="button"
+                          onClick={() => setVerCuenta((v) => !v)}
+                          aria-label={verCuenta ? t('fiscal.ocultarCuenta') : t('fiscal.mostrarCuenta')}
+                          className="inline-flex size-7 items-center justify-center rounded-md text-fg-secondary hover:bg-hover"
+                        >
+                          {verCuenta ? <EyeOff aria-hidden="true" className="size-4" /> : <Eye aria-hidden="true" className="size-4" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(supplier.bank_account ?? '');
+                              toast({ title: t('fiscal.cuentaCopiada') });
+                            } catch {
+                              toast({ variant: 'destructive', title: t('fiscal.errorCopiar') });
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 text-sm font-medium text-link hover:underline"
+                        >
+                          <Copy aria-hidden="true" className="size-3.5" /> {t('fiscal.copiar')}
+                        </button>
+                      </span>
+                    ) : (
+                      '—'
+                    )}
+                  </Fila>
+                </dl>
+              </Tarjeta>
+
+              {(supplier.description || supplier.notes) && (
+                <Tarjeta titulo={t('notas.titulo')}>
+                  <div className="flex flex-col gap-4 text-sm text-fg-secondary">
+                    {supplier.description && <HtmlContentRenderer html={supplier.description} />}
+                    {supplier.notes && (
+                      <div className="rounded-lg bg-subtle p-3">
+                        <p className="mb-1 text-xs font-medium text-fg-secondary">{t('notas.internas')}</p>
+                        <HtmlContentRenderer html={supplier.notes} />
+                      </div>
+                    )}
+                  </div>
+                </Tarjeta>
+              )}
+
+              <Tarjeta titulo={t('ultimos.titulo')}>
+                <DataTable
+                  etiqueta={t('ultimos.titulo')}
+                  densidad="compacta"
+                  columnas={[
+                    {
+                      id: 'doc',
+                      encabezado: t('columnas.documento'),
+                      celda: (d) => (
+                        <div className="flex flex-col">
+                          <span className="font-medium text-link">{d.titulo}</span>
+                          <span className="text-xs text-fg-secondary">{d.tipo}</span>
+                        </div>
+                      ),
+                    },
+                    { id: 'fecha', encabezado: t('columnas.fecha'), celda: (d) => formatDate(d.fecha) },
+                    { id: 'estado', encabezado: t('columnas.estado'), ocultarDebajo: 'sm', celda: (d) => d.estado },
+                    { id: 'total', encabezado: t('columnas.total'), variante: 'importe', celda: (d) => dinero(d.total) },
+                  ]}
+                  filas={ultimos}
+                  obtenerId={(d) => d.id}
+                  onFilaClick={(d) => d.href && router.push(d.href)}
+                  vacio={{
+                    titulo: t('ultimos.vacioTitulo'),
+                    descripcion: t('ultimos.vacioDescripcion'),
+                    icono: FileText,
+                    accion: { etiqueta: t('nuevaOrden'), href: rutaNuevaOrdenCompra(supplier.id), icono: Plus },
+                    compacto: true,
+                  }}
+                />
+              </Tarjeta>
             </div>
+
+            <section aria-label={t('conexiones.titulo')} className="flex h-fit flex-col gap-3 rounded-xl border border-line bg-surface p-4 sm:p-6">
+              <h2 className="text-base font-semibold text-fg">{t('conexiones.titulo')}</h2>
+              <RelatedLinkCard
+                icono={ClipboardList}
+                etiqueta={
+                  resumen
+                    ? t('conexiones.ordenesAbiertas', { count: resumen.ordenes_abiertas, n: entero(resumen.ordenes_abiertas) })
+                    : t('pestanas.ordenes')
+                }
+                valor={resumen?.ordenes ?? ordenes.length}
+                cargando={!resumen}
+                onAccion={() => setPestana('ordenes')}
+              />
+              <RelatedLinkCard
+                icono={FileText}
+                etiqueta={t('pestanas.facturas')}
+                valor={resumen?.facturas ?? facturas.length}
+                cargando={!resumen}
+                onAccion={() => setPestana('facturas')}
+              />
+              <RelatedLinkCard
+                icono={HandCoins}
+                etiqueta={t('conexiones.cuentasAbiertas')}
+                valor={resumen?.facturas_abiertas ?? cuentasAbiertas.length}
+                cargando={!resumen}
+                tono={(resumen?.facturas_abiertas ?? 0) > 0 ? 'warning' : 'neutral'}
+                onAccion={() => setPestana('cuentas')}
+              />
+              {resumen && resumen.vencido > 0 && (
+                <RelatedLinkCard
+                  icono={AlertTriangle}
+                  etiqueta={t('kpis.vencido')}
+                  valor={dinero(resumen.vencido)}
+                  tono="danger"
+                  textoAccion={t('conexiones.pagar')}
+                  onAccion={registrarPago}
+                />
+              )}
+              <RelatedLinkCard
+                icono={Package}
+                etiqueta={t('pestanas.productos')}
+                valor={resumen?.productos ?? productos.length}
+                cargando={!resumen}
+                onAccion={() => setPestana('productos')}
+              />
+              <RelatedLinkCard icono={Boxes} etiqueta={t('conexiones.lotes')} valor={resumen?.lotes ?? 0} cargando={!resumen} />
+              <RelatedLinkCard
+                icono={Banknote}
+                etiqueta={t('conexiones.pagos')}
+                valor={resumen?.pagos ?? pagos.length}
+                cargando={!resumen}
+                onAccion={() => setPestana('pagos')}
+              />
+            </section>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href={`/app/inventario/proveedores/${supplier.uuid}/editar`}>
-            <Button variant="outline" size="sm" className="dark:border-gray-700"><Edit className="h-4 w-4 mr-2" />Editar</Button>
-          </Link>
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => router.push(`/app/inventario/ordenes-compra/nuevo?supplier=${supplier.id}`)}>
-            <Plus className="h-4 w-4 mr-2" />Nueva Orden de Compra
-          </Button>
-        </div>
-      </div>
+        </>,
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Información básica + contacto */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-lg dark:text-white flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-blue-600" />Información del Proveedor
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InfoItem icon={<Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />} iconBg="bg-blue-100 dark:bg-blue-900/30" label="NIT / Identificación" value={supplier.nit || 'No registrado'} />
-                <InfoItem icon={<User className="h-4 w-4 text-purple-600 dark:text-purple-400" />} iconBg="bg-purple-100 dark:bg-purple-900/30" label="Persona de Contacto" value={supplier.contact || 'No registrado'} />
-                <InfoItem icon={<Phone className="h-4 w-4 text-green-600 dark:text-green-400" />} iconBg="bg-green-100 dark:bg-green-900/30" label="Teléfono" value={supplier.phone || 'No registrado'} />
-                <InfoItem icon={<Mail className="h-4 w-4 text-orange-600 dark:text-orange-400" />} iconBg="bg-orange-100 dark:bg-orange-900/30" label="Correo Electrónico" value={supplier.email || 'No registrado'} />
-                {supplier.website && <InfoItem icon={<Globe className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />} iconBg="bg-cyan-100 dark:bg-cyan-900/30" label="Sitio Web" value={supplier.website} />}
-                <InfoItem icon={<Calendar className="h-4 w-4 text-gray-600 dark:text-gray-400" />} iconBg="bg-gray-100 dark:bg-gray-700" label="Fecha de Registro" value={formatDate(supplier.created_at)} />
-              </div>
-
-              {supplier.description && (
-                <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</p>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    <HtmlContentRenderer html={supplier.description} />
-                  </div>
-                </div>
-              )}
-
-              {supplier.notes && (
-                <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                  <div className="flex items-center gap-2 mb-1">
-                    <FileText className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Notas</span>
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    <HtmlContentRenderer html={supplier.notes} />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Dirección */}
-          {fullAddress && (
-            <Card className="dark:bg-gray-800 dark:border-gray-700">
-              <CardHeader>
-                <CardTitle className="text-lg dark:text-white flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-blue-600" />Dirección
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {supplier.address && <InfoItem icon={<MapPin className="h-4 w-4 text-red-600 dark:text-red-400" />} iconBg="bg-red-100 dark:bg-red-900/30" label="Dirección" value={supplier.address} />}
-                  {supplier.city && <InfoItem icon={<Building2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />} iconBg="bg-indigo-100 dark:bg-indigo-900/30" label="Ciudad" value={supplier.city} />}
-                  {supplier.state && <InfoItem icon={<MapPin className="h-4 w-4 text-teal-600 dark:text-teal-400" />} iconBg="bg-teal-100 dark:bg-teal-900/30" label="Departamento" value={supplier.state} />}
-                  {supplier.country && <InfoItem icon={<Globe className="h-4 w-4 text-blue-600 dark:text-blue-400" />} iconBg="bg-blue-100 dark:bg-blue-900/30" label="País" value={supplier.country} />}
-                  {supplier.postal_code && <InfoItem icon={<Mail className="h-4 w-4 text-gray-600 dark:text-gray-400" />} iconBg="bg-gray-100 dark:bg-gray-700" label="Código Postal" value={supplier.postal_code} />}
-                </div>
-              </CardContent>
-            </Card>
+      {panel(
+        'productos',
+        <>
+          {stock.length > 0 && (
+            <p className="text-sm text-fg-secondary">
+              {t('valorStock')} <span className="font-medium text-fg">{dinero(valorStock)}</span>
+            </p>
           )}
+          <DataTable
+            etiqueta={t('pestanas.productos')}
+            columnas={colProductos}
+            filas={productos}
+            obtenerId={(p) => String(p.id)}
+            onFilaClick={(p) => p.product?.uuid && router.push(`/app/inventario/productos/${p.product.uuid}`)}
+            etiquetaFila={(p) => p.product?.name ?? t('productoN', { id: p.product_id })}
+            vacio={{
+              titulo: t('vacios.productos'),
+              descripcion: t('vacios.productosDescripcion'),
+              icono: Package,
+            }}
+          />
+        </>,
+      )}
 
-          {/* Información fiscal y comercial */}
-          {(supplier.tax_regime || supplier.payment_terms || supplier.credit_days) && (
-            <Card className="dark:bg-gray-800 dark:border-gray-700">
-              <CardHeader>
-                <CardTitle className="text-lg dark:text-white flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-blue-600" />Información Fiscal y Comercial
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {supplier.tax_regime && <InfoItem icon={<FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" />} iconBg="bg-amber-100 dark:bg-amber-900/30" label="Régimen Tributario" value={taxRegimeLabel(supplier.tax_regime)} />}
-                  {supplier.payment_terms && <InfoItem icon={<CreditCard className="h-4 w-4 text-violet-600 dark:text-violet-400" />} iconBg="bg-violet-100 dark:bg-violet-900/30" label="Condiciones de Pago" value={paymentTermsLabel(supplier.payment_terms)} />}
-                  {supplier.credit_days !== undefined && supplier.credit_days !== null && <InfoItem icon={<Calendar className="h-4 w-4 text-rose-600 dark:text-rose-400" />} iconBg="bg-rose-100 dark:bg-rose-900/30" label="Días de Crédito" value={`${supplier.credit_days} días`} />}
-                </div>
-              </CardContent>
-            </Card>
+      {panel(
+        'ordenes',
+        <>
+          {recientes(resumen?.ordenes, ordenes.length, '/app/inventario/ordenes-compra', 'ordenes')}
+          <DataTable
+            etiqueta={t('pestanas.ordenes')}
+            columnas={colOrdenes}
+            filas={ordenes}
+            obtenerId={(o) => String(o.id)}
+            onFilaClick={(o) => router.push(`/app/inventario/ordenes-compra/${o.id}`)}
+            etiquetaFila={(o) => `OC-${o.id}`}
+            vacio={{
+              titulo: t('vacios.ordenes'),
+              icono: ClipboardList,
+              accion: { etiqueta: t('nuevaOrden'), href: rutaNuevaOrdenCompra(supplier.id), icono: Plus },
+            }}
+          />
+        </>,
+      )}
+
+      {panel(
+        'facturas',
+        <>
+          {recientes(resumen?.facturas, facturas.length, '/app/finanzas/facturas-compra', 'facturas')}
+          <DataTable
+            etiqueta={t('pestanas.facturas')}
+            columnas={colFacturas}
+            filas={facturas}
+            obtenerId={(f) => f.id}
+            onFilaClick={(f) => router.push(`/app/finanzas/facturas-compra/${f.id}`)}
+            etiquetaFila={(f) => f.number_ext || `FC-${f.id.slice(0, 8)}`}
+            vacio={{ titulo: t('vacios.facturas'), icono: FileText }}
+          />
+        </>,
+      )}
+
+      {panel(
+        'cuentas',
+        <DataTable
+          etiqueta={t('pestanas.cuentas')}
+          columnas={colCuentas}
+          filas={cuentas}
+          obtenerId={(c) => c.id}
+          onFilaClick={(c) => router.push(`/app/finanzas/cuentas-por-pagar/${c.id}`)}
+          etiquetaFila={(c) => c.invoice_number || `CxP-${c.id.slice(0, 8)}`}
+          tonoFila={(c) => (estadoCxp(c, t).estado === 'vencida' ? 'peligro' : undefined)}
+          vacio={{ titulo: t('vacios.cuentas'), icono: WalletCards }}
+        />,
+      )}
+
+      {panel(
+        'pagos',
+        <>
+          {pagos.length > 0 && (
+            <p className="text-sm text-fg-secondary">
+              {t('totalPagado')} <span className="font-medium text-success-text">{dinero(totalPagado)}</span>
+            </p>
           )}
+          <DataTable
+            etiqueta={t('pestanas.pagos')}
+            columnas={colPagos}
+            filas={pagos}
+            obtenerId={(p) => p.id}
+            vacio={{ titulo: t('vacios.pagos'), icono: Banknote }}
+          />
+        </>,
+      )}
 
-          {/* Datos fiscales DIAN / Factus */}
-          {(supplier.dv || supplier.municipality_code || supplier.identification_document_code || supplier.trade_name || supplier.country_code || supplier.legal_organization_code) && (
-            <Card className="dark:bg-gray-800 dark:border-gray-700">
-              <CardHeader>
-                <CardTitle className="text-lg dark:text-white flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-blue-600" />Datos Fiscales DIAN
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {supplier.identification_document_code && <InfoItem icon={<FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" />} iconBg="bg-amber-100 dark:bg-amber-900/30" label="Tipo Doc. DIAN" value={supplier.identification_document_code} />}
-                  {supplier.dv && <InfoItem icon={<FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" />} iconBg="bg-amber-100 dark:bg-amber-900/30" label="Dígito Verificación" value={supplier.dv} />}
-                  {supplier.legal_organization_code && <InfoItem icon={<Building2 className="h-4 w-4 text-violet-600 dark:text-violet-400" />} iconBg="bg-violet-100 dark:bg-violet-900/30" label="Tipo Organización" value={supplier.legal_organization_code === '1' ? 'Empresa' : 'Persona Natural'} />}
-                  {supplier.country_code && <InfoItem icon={<Globe className="h-4 w-4 text-sky-600 dark:text-sky-400" />} iconBg="bg-sky-100 dark:bg-sky-900/30" label="Código País" value={supplier.country_code} />}
-                  {supplier.municipality_code && <InfoItem icon={<MapPin className="h-4 w-4 text-rose-600 dark:text-rose-400" />} iconBg="bg-rose-100 dark:bg-rose-900/30" label="Código Municipio" value={supplier.municipality_code} />}
-                  {supplier.trade_name && <InfoItem icon={<Building2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />} iconBg="bg-emerald-100 dark:bg-emerald-900/30" label="Nombre Comercial" value={supplier.trade_name} />}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Información bancaria */}
-          {(supplier.bank_name || supplier.bank_account) && (
-            <Card className="dark:bg-gray-800 dark:border-gray-700">
-              <CardHeader>
-                <CardTitle className="text-lg dark:text-white flex items-center gap-2">
-                  <Landmark className="h-5 w-5 text-blue-600" />Información Bancaria
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {supplier.bank_name && <InfoItem icon={<Landmark className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />} iconBg="bg-emerald-100 dark:bg-emerald-900/30" label="Banco" value={supplier.bank_name} />}
-                  {supplier.bank_account && <InfoItem icon={<CreditCard className="h-4 w-4 text-sky-600 dark:text-sky-400" />} iconBg="bg-sky-100 dark:bg-sky-900/30" label="Número de Cuenta" value={supplier.bank_account} />}
-                  {supplier.account_type && <InfoItem icon={<FileText className="h-4 w-4 text-pink-600 dark:text-pink-400" />} iconBg="bg-pink-100 dark:bg-pink-900/30" label="Tipo de Cuenta" value={accountTypeLabel(supplier.account_type)} />}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Productos relacionados */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-lg dark:text-white flex items-center gap-2">
-                <Package className="h-5 w-5 text-blue-600" />
-                Productos Vinculados
-                {products.length > 0 && <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">{products.length}</Badge>}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {products.length === 0 ? (
-                <p className="text-center py-4 text-gray-500 dark:text-gray-400">No hay productos vinculados a este proveedor</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="dark:border-gray-700">
-                        <TableHead className="dark:text-gray-300">Producto</TableHead>
-                        <TableHead className="dark:text-gray-300">SKU</TableHead>
-                        <TableHead className="text-right dark:text-gray-300">Costo</TableHead>
-                        <TableHead className="dark:text-gray-300">Preferido</TableHead>
-                        <TableHead className="dark:text-gray-300">SKU Proveedor</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {products.map((ps) => (
-                        <TableRow key={ps.id} className="dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => ps.product?.uuid && router.push(`/app/inventario/productos/${ps.product.uuid}`)}>
-                          <TableCell className="font-medium dark:text-white">{ps.product?.name || `Producto #${ps.product_id}`}</TableCell>
-                          <TableCell className="text-gray-600 dark:text-gray-400">{ps.product?.sku || '-'}</TableCell>
-                          <TableCell className="text-right font-medium dark:text-white">{formatCurrency(ps.cost)}</TableCell>
-                          <TableCell>{ps.is_preferred ? <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" /> : <span className="text-gray-400">-</span>}</TableCell>
-                          <TableCell className="text-gray-600 dark:text-gray-400">{ps.supplier_sku || '-'}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Órdenes de compra */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-lg dark:text-white flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5 text-blue-600" />Órdenes de Compra Recientes
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {purchaseOrders.length === 0 ? (
-                <p className="text-center py-4 text-gray-500 dark:text-gray-400">No hay órdenes de compra registradas</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="dark:border-gray-700">
-                        <TableHead className="dark:text-gray-300">Fecha</TableHead>
-                        <TableHead className="dark:text-gray-300">Número</TableHead>
-                        <TableHead className="dark:text-gray-300">Estado</TableHead>
-                        <TableHead className="text-right dark:text-gray-300">Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {purchaseOrders.map((order) => (
-                        <TableRow key={order.id} className="dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => router.push(`/app/inventario/ordenes-compra/${order.id}`)}>
-                          <TableCell className="text-gray-600 dark:text-gray-400">{formatDate(order.created_at)}</TableCell>
-                          <TableCell className="font-medium dark:text-white">{`OC-${order.id}`}</TableCell>
-                          <TableCell>{getStatusBadge(order.status)}</TableCell>
-                          <TableCell className="text-right font-medium dark:text-white">{formatCurrency(order.total)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Facturas de compra */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-lg dark:text-white flex items-center gap-2">
-                <Receipt className="h-5 w-5 text-blue-600" />Facturas de Compra Recientes
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {invoices.length === 0 ? (
-                <p className="text-center py-4 text-gray-500 dark:text-gray-400">No hay facturas de compra registradas</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="dark:border-gray-700">
-                        <TableHead className="dark:text-gray-300">Fecha</TableHead>
-                        <TableHead className="dark:text-gray-300">Número</TableHead>
-                        <TableHead className="dark:text-gray-300">Estado</TableHead>
-                        <TableHead className="text-right dark:text-gray-300">Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {invoices.map((invoice) => (
-                        <TableRow key={invoice.id} className="dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => router.push(`/app/finanzas/facturas-compra/${invoice.id}`)}>
-                          <TableCell className="text-gray-600 dark:text-gray-400">{formatDate(invoice.created_at)}</TableCell>
-                          <TableCell className="font-medium dark:text-white">{invoice.number_ext || `FC-${invoice.id.slice(0, 8)}`}</TableCell>
-                          <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                          <TableCell className="text-right font-medium dark:text-white">{formatCurrency(invoice.total)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Cuentas por Pagar */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-lg dark:text-white flex items-center gap-2">
-                <Wallet className="h-5 w-5 text-blue-600" />
-                Cuentas por Pagar
-                {accountsPayable.length > 0 && <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">{accountsPayable.length}</Badge>}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {accountsPayable.length === 0 ? (
-                <p className="text-center py-4 text-gray-500 dark:text-gray-400">No hay cuentas por pagar registradas</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="dark:border-gray-700">
-                        <TableHead className="dark:text-gray-300">Factura</TableHead>
-                        <TableHead className="dark:text-gray-300">Vencimiento</TableHead>
-                        <TableHead className="dark:text-gray-300">Estado</TableHead>
-                        <TableHead className="text-right dark:text-gray-300">Monto</TableHead>
-                        <TableHead className="text-right dark:text-gray-300">Saldo</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {accountsPayable.map((cxp) => (
-                        <TableRow key={cxp.id} className="dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => router.push(`/app/finanzas/cuentas-por-pagar/${cxp.id}`)}>
-                          <TableCell className="font-medium dark:text-white">{cxp.invoice_number || `CxP-${cxp.id.slice(0, 8)}`}</TableCell>
-                          <TableCell className="text-gray-600 dark:text-gray-400">{cxp.due_date ? formatDate(cxp.due_date) : '-'}</TableCell>
-                          <TableCell>
-                            <Badge className={
-                              cxp.status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                              cxp.status === 'overdue' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
-                              cxp.status === 'partial' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                              'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                            }>
-                              {cxp.status === 'paid' ? 'Pagada' : cxp.status === 'overdue' ? `Vencida (${cxp.days_overdue}d)` : cxp.status === 'partial' ? 'Parcial' : 'Pendiente'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right dark:text-white">{formatCurrency(cxp.amount)}</TableCell>
-                          <TableCell className="text-right font-medium dark:text-white">{formatCurrency(cxp.balance)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Historial de Pagos */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-lg dark:text-white flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-green-600" />
-                Historial de Pagos
-                {payments.length > 0 && <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">{payments.length}</Badge>}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {payments.length === 0 ? (
-                <p className="text-center py-4 text-gray-500 dark:text-gray-400">No hay pagos registrados a este proveedor</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="dark:border-gray-700">
-                        <TableHead className="dark:text-gray-300">Fecha</TableHead>
-                        <TableHead className="dark:text-gray-300">Método</TableHead>
-                        <TableHead className="dark:text-gray-300">Referencia</TableHead>
-                        <TableHead className="dark:text-gray-300">Origen</TableHead>
-                        <TableHead className="text-right dark:text-gray-300">Monto</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {payments.map((pay) => (
-                        <TableRow key={pay.id} className="dark:border-gray-700">
-                          <TableCell className="text-gray-600 dark:text-gray-400">{pay.payment_date ? formatDate(pay.payment_date) : formatDate(pay.created_at)}</TableCell>
-                          <TableCell className="font-medium dark:text-white capitalize">{pay.method || '-'}</TableCell>
-                          <TableCell className="text-gray-600 dark:text-gray-400">{pay.reference || '-'}</TableCell>
-                          <TableCell className="text-gray-600 dark:text-gray-400">{pay.source === 'account_payable' ? 'CxP' : 'Factura'}</TableCell>
-                          <TableCell className="text-right font-medium text-green-600 dark:text-green-400">{formatCurrency(pay.amount)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Stock comprado del proveedor */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-lg dark:text-white flex items-center gap-2">
-                <Boxes className="h-5 w-5 text-blue-600" />
-                Stock de Productos del Proveedor
-                {stockSummary.length > 0 && <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">{stockSummary.length}</Badge>}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {stockSummary.length === 0 ? (
-                <p className="text-center py-4 text-gray-500 dark:text-gray-400">No hay productos con stock registrado</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="dark:border-gray-700">
-                        <TableHead className="dark:text-gray-300">Producto</TableHead>
-                        <TableHead className="dark:text-gray-300">SKU</TableHead>
-                        <TableHead className="text-right dark:text-gray-300">Costo</TableHead>
-                        <TableHead className="text-right dark:text-gray-300">Stock Total</TableHead>
-                        <TableHead className="text-right dark:text-gray-300">Valor Stock</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {stockSummary.map((item) => (
-                        <TableRow key={item.product_id} className="dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => item.product_uuid && router.push(`/app/inventario/productos/${item.product_uuid}`)}>
-                          <TableCell className="font-medium dark:text-white">{item.product_name}</TableCell>
-                          <TableCell className="text-gray-600 dark:text-gray-400">{item.product_sku || '-'}</TableCell>
-                          <TableCell className="text-right dark:text-white">{formatCurrency(item.cost)}</TableCell>
-                          <TableCell className="text-right dark:text-white">
-                            {item.track_stock ? item.stock_total : <span className="text-gray-400">N/A</span>}
-                          </TableCell>
-                          <TableCell className="text-right font-medium dark:text-white">{formatCurrency(item.stock_value)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Panel lateral */}
-        <div className="space-y-6">
-          {/* Resumen financiero */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700 sticky top-6">
-            <CardHeader>
-              <CardTitle className="text-lg dark:text-white">Resumen Financiero</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
-                <span className="text-gray-600 dark:text-gray-400">Productos</span>
-                <span className="font-medium dark:text-white">{products.length}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
-                <span className="text-gray-600 dark:text-gray-400">Órdenes de Compra</span>
-                <span className="font-medium dark:text-white">{purchaseOrders.length}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
-                <span className="text-gray-600 dark:text-gray-400">Facturas</span>
-                <span className="font-medium dark:text-white">{invoices.length}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
-                <span className="text-gray-600 dark:text-gray-400">Total Compras</span>
-                <span className="font-medium text-green-600 dark:text-green-400">
-                  {formatCurrency(purchaseOrders.reduce((sum, o) => sum + (o.total || 0), 0))}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
-                <span className="text-gray-600 dark:text-gray-400">Total Facturado</span>
-                <span className="font-medium dark:text-white">
-                  {formatCurrency(invoices.reduce((sum, inv) => sum + (inv.total || 0), 0))}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
-                <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                  <TrendingDown className="h-4 w-4 text-red-500" />
-                  Saldo Pendiente CxP
-                </span>
-                <span className="font-medium text-red-600 dark:text-red-400">
-                  {formatCurrency(accountsPayable.reduce((sum, cxp) => sum + (cxp.balance || 0), 0))}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
-                <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                  <DollarSign className="h-4 w-4 text-green-500" />
-                  Total Pagado
-                </span>
-                <span className="font-medium text-green-600 dark:text-green-400">
-                  {formatCurrency(payments.reduce((sum, pay) => sum + (pay.amount || 0), 0))}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
-                <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                  <Boxes className="h-4 w-4 text-blue-500" />
-                  Valor en Stock
-                </span>
-                <span className="font-medium dark:text-white">
-                  {formatCurrency(stockSummary.reduce((sum, item) => sum + (item.stock_value || 0), 0))}
-                </span>
-              </div>
-              <div className="space-y-2 pt-4">
-                <Link href={`/app/inventario/proveedores/${supplier.uuid}/editar`}>
-                  <Button variant="outline" className="w-full dark:border-gray-700">
-                    <Edit className="h-4 w-4 mr-2" />Editar Proveedor
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <DialogoEliminarProveedor
+        proveedor={aEliminar}
+        onCerrar={() => setAEliminar(null)}
+        onEliminado={() => {
+          setAEliminar(null);
+          router.push(RUTA_PROVEEDORES);
+        }}
+        onDesactivado={() => {
+          setAEliminar(null);
+          recargar();
+        }}
+      />
     </div>
   );
 }

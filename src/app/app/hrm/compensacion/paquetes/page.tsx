@@ -4,6 +4,7 @@ import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/component
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import CompensationPackagesService from '@/lib/services/compensationPackagesService';
 import type { CompensationPackage, CreatePackageDTO, UpdatePackageDTO } from '@/lib/services/compensationPackagesService';
 import { PackagesTable, PackageForm } from '@/components/hrm/compensacion/paquetes';
@@ -41,6 +42,7 @@ import {
 export default function PaquetesCompensacionPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
+  const { formatear } = useMonedaOrganizacion();
 
   const [packages, setPackages] = useState<CompensationPackage[]>([]);
   const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0, avgSalary: 0 });
@@ -81,7 +83,7 @@ export default function PaquetesCompensacionPage() {
       setCurrencies(currData);
       setSalaryPeriods(periodsData);
       setPositions(posData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading data:', error);
       toast({
         title: 'Error',
@@ -104,14 +106,10 @@ export default function PaquetesCompensacionPage() {
     const service = getService();
     if (!service) return;
 
-    try {
-      await service.create(data as CreatePackageDTO);
-      toast({ title: 'Paquete creado correctamente' });
-      setIsFormOpen(false);
-      await loadData();
-    } catch (error: any) {
-      throw error;
-    }
+    await service.create(data as CreatePackageDTO);
+    toast({ title: 'Paquete creado correctamente' });
+    setIsFormOpen(false);
+    await loadData();
   };
 
   const handleUpdate = async (data: UpdatePackageDTO) => {
@@ -119,14 +117,10 @@ export default function PaquetesCompensacionPage() {
     const service = getService();
     if (!service) return;
 
-    try {
-      await service.update(editingPackage.id, data);
-      toast({ title: 'Paquete actualizado correctamente' });
-      setEditingPackage(null);
-      await loadData();
-    } catch (error: any) {
-      throw error;
-    }
+    await service.update(editingPackage.id, data);
+    toast({ title: 'Paquete actualizado correctamente' });
+    setEditingPackage(null);
+    await loadData();
   };
 
   const handleDelete = async () => {
@@ -139,7 +133,7 @@ export default function PaquetesCompensacionPage() {
       toast({ title: 'Paquete eliminado' });
       setDeleteId(null);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo eliminar el paquete',
@@ -156,7 +150,7 @@ export default function PaquetesCompensacionPage() {
       await service.toggleActive(pkg.id, !pkg.is_active);
       toast({ title: pkg.is_active ? 'Paquete desactivado' : 'Paquete activado' });
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo cambiar el estado',
@@ -173,7 +167,7 @@ export default function PaquetesCompensacionPage() {
       await service.duplicate(pkg.id, `${pkg.name} (copia)`);
       toast({ title: 'Paquete duplicado correctamente' });
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo duplicar el paquete',
@@ -276,11 +270,8 @@ export default function PaquetesCompensacionPage() {
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Salario Promedio</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {new Intl.NumberFormat('es-CO', {
-                    style: 'currency',
-                    currency: 'COP',
-                    minimumFractionDigits: 0,
-                  }).format(stats.avgSalary)}
+                  {/* Promedio de paquetes: se pinta en la moneda base de la organización. */}
+                  {formatear(stats.avgSalary)}
                 </p>
               </div>
             </div>

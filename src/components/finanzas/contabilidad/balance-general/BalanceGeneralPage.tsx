@@ -1,21 +1,30 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {Scale, Calendar, CheckCircle, AlertCircle} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ReportesContablesService, BalanceSheetRow } from '../ReportesContablesService';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 
-function formatCurrency(value: number): string {
-  if (Math.abs(value) < 0.01) return '-';
-  return new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
+// Cifra contable en la moneda base de la organizacion (los reportes contables
+// se llevan en moneda base): sin simbolo, con los decimales y el formato de esa
+// moneda; '-' cuando es cero.
+function crearFormatoCifra(moneda: ContextoMoneda): (value: number) => string {
+  return (value) => (Math.abs(value) < 0.01 ? '-' : formatNumeroMoneda(value, moneda));
 }
 
-function renderRow(row: BalanceSheetRow, level: number = 0): React.ReactNode {
+function renderRow(
+  row: BalanceSheetRow,
+  formatCifra: (value: number) => string,
+  level: number = 0,
+): React.ReactNode {
   const indent = level * 20;
   const isParent = row.children.length > 0;
 
@@ -26,27 +35,40 @@ function renderRow(row: BalanceSheetRow, level: number = 0): React.ReactNode {
           <span className="font-mono text-xs text-gray-500 dark:text-gray-500 mr-2">{row.account_code}</span>
           <span className={`${isParent ? 'font-bold' : 'font-normal'} text-gray-900 dark:text-white`}>{row.name}</span>
         </td>
-        <td className="py-2 px-3 text-right font-mono text-gray-900 dark:text-white">{formatCurrency(row.amount)}</td>
+        <td className="py-2 px-3 text-right font-mono text-gray-900 dark:text-white">{formatCifra(row.amount)}</td>
       </tr>
-      {row.children.map(child => renderRow(child, level + 1))}
+      {row.children.map(child => renderRow(child, formatCifra, level + 1))}
     </React.Fragment>
   );
 }
 
 export function BalanceGeneralPage() {
-  const today = new Date().toISOString().split('T')[0];
-  const [asOfDate, setAsOfDate] = useState(today);
+  const formatCifra = crearFormatoCifra(useMonedaOrganizacion());
+  // `entry_date` es timestamptz; el corte «a fecha de» se convierte al ultimo
+  // instante del dia DENTRO del servicio. Aqui basta el dia de la zona de la
+  // organizacion, y se pone cuando el contexto ya la sabe.
+  const { getToday } = useFormatDate();
+  const { isLoading: tzLoading } = useOrgTimezone();
+  const [asOfDate, setAsOfDate] = useState('');
   const [data, setData] = useState<{ assets: BalanceSheetRow[]; liabilities: BalanceSheetRow[]; equity: BalanceSheetRow[]; totalAssets: number; totalLiabilities: number; totalEquity: number; balanced: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const arrancado = useRef(false);
 
-  const loadData = async () => {
+  useEffect(() => {
+    if (tzLoading || arrancado.current) return;
+    arrancado.current = true;
+    const hoy = getToday();
+    setAsOfDate(hoy);
+    loadData(hoy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tzLoading, getToday]);
+
+  const loadData = async (corte: string = asOfDate) => {
+    if (!corte) return;
     try {
       setIsLoading(true);
-      const result = await ReportesContablesService.getBalanceSheet(asOfDate);
+      const result = await ReportesContablesService.getBalanceSheet(corte);
       setData(result);
     } catch (error) {
       console.error('Error cargando balance general:', error);
@@ -88,7 +110,7 @@ export function BalanceGeneralPage() {
               <Label className="text-gray-700 dark:text-gray-300">Fecha de Corte</Label>
               <Input type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
             </div>
-            <Button onClick={loadData} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => loadData()} className="bg-blue-600 hover:bg-blue-700">
               <Calendar className="h-4 w-4 mr-2" />
               Consultar
             </Button>
@@ -103,7 +125,7 @@ export function BalanceGeneralPage() {
           <AlertCircle className="h-5 w-5 text-red-600" />
         )}
         <p className={`text-sm font-medium ${data.balanced ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-          {data.balanced ? 'Balance cuadrado: Activos = Pasivos + Patrimonio' : `Balance descuadrado: Diferencia de ${formatCurrency(Math.abs(data.totalAssets - (data.totalLiabilities + data.totalEquity)))}`}
+          {data.balanced ? 'Balance cuadrado: Activos = Pasivos + Patrimonio' : `Balance descuadrado: Diferencia de ${formatCifra(Math.abs(data.totalAssets - (data.totalLiabilities + data.totalEquity)))}`}
         </p>
       </div>
 
@@ -111,15 +133,15 @@ export function BalanceGeneralPage() {
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white">Activos</CardTitle>
-            <CardDescription className="dark:text-gray-400">Total: {formatCurrency(data.totalAssets)}</CardDescription>
+            <CardDescription className="dark:text-gray-400">Total: {formatCifra(data.totalAssets)}</CardDescription>
           </CardHeader>
           <CardContent>
             <table className="w-full text-sm">
               <tbody>
-                {data.assets.map(row => renderRow(row))}
+                {data.assets.map(row => renderRow(row, formatCifra))}
                 <tr className="border-t-2 dark:border-gray-600 font-bold">
                   <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL ACTIVOS</td>
-                  <td className="py-3 px-3 text-right font-mono text-blue-600 dark:text-blue-400">{formatCurrency(data.totalAssets)}</td>
+                  <td className="py-3 px-3 text-right font-mono text-blue-600 dark:text-blue-400">{formatCifra(data.totalAssets)}</td>
                 </tr>
               </tbody>
             </table>
@@ -130,15 +152,15 @@ export function BalanceGeneralPage() {
           <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white">Pasivos</CardTitle>
-              <CardDescription className="dark:text-gray-400">Total: {formatCurrency(data.totalLiabilities)}</CardDescription>
+              <CardDescription className="dark:text-gray-400">Total: {formatCifra(data.totalLiabilities)}</CardDescription>
             </CardHeader>
             <CardContent>
               <table className="w-full text-sm">
                 <tbody>
-                  {data.liabilities.map(row => renderRow(row))}
+                  {data.liabilities.map(row => renderRow(row, formatCifra))}
                   <tr className="border-t-2 dark:border-gray-600 font-bold">
                     <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL PASIVOS</td>
-                    <td className="py-3 px-3 text-right font-mono text-red-600 dark:text-red-400">{formatCurrency(data.totalLiabilities)}</td>
+                    <td className="py-3 px-3 text-right font-mono text-red-600 dark:text-red-400">{formatCifra(data.totalLiabilities)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -148,15 +170,15 @@ export function BalanceGeneralPage() {
           <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white">Patrimonio</CardTitle>
-              <CardDescription className="dark:text-gray-400">Total: {formatCurrency(data.totalEquity)}</CardDescription>
+              <CardDescription className="dark:text-gray-400">Total: {formatCifra(data.totalEquity)}</CardDescription>
             </CardHeader>
             <CardContent>
               <table className="w-full text-sm">
                 <tbody>
-                  {data.equity.map(row => renderRow(row))}
+                  {data.equity.map(row => renderRow(row, formatCifra))}
                   <tr className="border-t-2 dark:border-gray-600 font-bold">
                     <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL PATRIMONIO</td>
-                    <td className="py-3 px-3 text-right font-mono text-purple-600 dark:text-purple-400">{formatCurrency(data.totalEquity)}</td>
+                    <td className="py-3 px-3 text-right font-mono text-purple-600 dark:text-purple-400">{formatCifra(data.totalEquity)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -167,7 +189,7 @@ export function BalanceGeneralPage() {
             <CardContent className="py-4">
               <div className="flex flex-wrap items-center justify-between">
                 <span className="font-bold text-gray-900 dark:text-white">PASIVOS + PATRIMONIO</span>
-                <span className="font-bold font-mono text-lg text-gray-900 dark:text-white">{formatCurrency(data.totalLiabilities + data.totalEquity)}</span>
+                <span className="font-bold font-mono text-lg text-gray-900 dark:text-white">{formatCifra(data.totalLiabilities + data.totalEquity)}</span>
               </div>
             </CardContent>
           </Card>

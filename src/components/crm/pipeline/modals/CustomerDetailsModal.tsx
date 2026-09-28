@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Customer } from "../types";
-import { formatCurrency } from "@/utils/Utils";
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,8 @@ const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
   customer,
   onEdit,
 }: CustomerDetailsModalProps) => {
+  // Valor acumulado del cliente: moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   if (!customer) return null;
 
   return (
@@ -123,7 +125,7 @@ const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
               <div className="flex justify-between items-center">
                 <span className="text-sm">Valor total:</span>
                 <span className="font-medium text-blue-600">
-                  {formatCurrency(customer.total_value)}
+                  {formatear(customer.total_value)}
                 </span>
               </div>
             </div>

@@ -452,9 +452,10 @@ describe('HALLAZGO M (alto, PREEXISTENTE en HEAD) · corregido en r5 (QA-2): onP
     expect(CHECKOUT).toContain('const [qrEntryId, setQrEntryId] = useState<string | undefined>();');
     expect(CHECKOUT).toContain('setQrEntryId(entryId);');
     const onPaid = CHECKOUT.slice(CHECKOUT.indexOf('onPaid={() => {'), CHECKOUT.indexOf('<SerialSelectorDialog'));
-    expect(onPaid).toContain('prev.some(p => p.id === qrEntryId)');
-    expect(onPaid).toContain('prev.map(p => p.id === qrEntryId ? { ...p, method: qrPaymentMethod || p.method, amount: qrPaymentAmount } : p)');
-    expect(onPaid).toContain(': [...prev, newPayment]');
+    // Ronda 7 (QA-2): la decisión «confirmar la de origen o añadir respaldo» vive en
+    // confirmQrPaymentEntry (payment.ts), alimentada con el `prev` del updater.
+    expect(onPaid).toContain('confirmQrPaymentEntry({ payments: prev, qrEntryId, method: qrPaymentMethod, amount: qrPaymentAmount, fallback: newPayment })');
+    expect(onPaid).toContain('return confirmed.payments;');
     // Ronda 4: `setPayments(prev => [...prev, newPayment])` a secas (duplicaba el pago).
     expect(onPaid).not.toContain('setPayments(prev => [...prev, newPayment])');
   });
@@ -694,7 +695,8 @@ describe('qr_paid_claim', () => {
     const start = CHECKOUT.indexOf("if (msg.t !== 'qr_paid_claim' || msg.cartId !== cart.id) return;");
     expect(start).toBeGreaterThan(0);
     const block = CHECKOUT.slice(start, CHECKOUT.indexOf('});', start));
-    expect(block).toContain("toast.info('El cliente indica que ya pagó'");
+    // Paso 12 del POS: los textos del cobro salen de next-intl (posCobro); se busca la llamada, no el literal.
+    expect(block).toContain("toast.info(tPos('qr.clienteDiceQuePago')");
     expect(block).not.toMatch(/setPayments|setShowQrDialog|onPaid|skipTip|setMode/);
   });
 });

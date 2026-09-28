@@ -8,6 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Search } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
 import * as GiIcons from 'react-icons/gi'
+import { useKitT } from '@/components/kit/useIdiomaKit'
+import type { ComponentType, CSSProperties } from 'react'
+
+type ComponenteIcono = ComponentType<{ size?: number; style?: CSSProperties }>
+const ICONOS_LUCIDE = LucideIcons as unknown as Record<string, ComponenteIcono | undefined>
+const ICONOS_GI = GiIcons as unknown as Record<string, ComponenteIcono | undefined>
 
 interface IconSelectorProps {
   value?: string
@@ -145,7 +151,8 @@ const COMMON_ICONS = [
   'Atom', 'Beaker', 'Microscope', 'Telescope', 'Dna', 'Brain', 'FlaskConical',
 ]
 
-export default function IconSelector({ value, onChange, label = 'Icono', className = '', color }: IconSelectorProps) {
+export default function IconSelector({ value, onChange, label, className = '', color }: IconSelectorProps) {
+  const t = useKitT()
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -160,9 +167,7 @@ export default function IconSelector({ value, onChange, label = 'Icono', classNa
   }
 
   const renderIcon = (iconName: string, size: number = 20, iconColor?: string) => {
-    const IconComponent = iconName.startsWith('Gi')
-      ? (GiIcons as any)[iconName]
-      : (LucideIcons as any)[iconName]
+    const IconComponent = iconName.startsWith('Gi') ? ICONOS_GI[iconName] : ICONOS_LUCIDE[iconName]
     if (!IconComponent) return null
     return <IconComponent size={size} style={iconColor ? { color: iconColor } : undefined} />
   }
@@ -170,7 +175,7 @@ export default function IconSelector({ value, onChange, label = 'Icono', classNa
   return (
     <div className={`space-y-2 ${className}`}>
       <Label className="text-gray-700 dark:text-gray-300">
-        {label}
+        {label ?? t('selectorIcono.etiqueta')}
       </Label>
       
       <Button
@@ -192,14 +197,14 @@ export default function IconSelector({ value, onChange, label = 'Icono', classNa
             <span>{value}</span>
           </div>
         ) : (
-          <span className="text-gray-500">Seleccionar icono</span>
+          <span className="text-gray-500">{t('selectorIcono.seleccionar')}</span>
         )}
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Seleccionar Icono</DialogTitle>
+            <DialogTitle>{t('selectorIcono.titulo')}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
@@ -209,7 +214,7 @@ export default function IconSelector({ value, onChange, label = 'Icono', classNa
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar icono..."
+                placeholder={t('selectorIcono.buscar')}
                 className="pl-10"
               />
             </div>
@@ -241,7 +246,7 @@ export default function IconSelector({ value, onChange, label = 'Icono', classNa
 
               {filteredIcons.length === 0 && (
                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  No se encontraron iconos
+                  {t('selectorIcono.vacio')}
                 </div>
               )}
             </div>

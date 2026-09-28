@@ -11,9 +11,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { toast } from 'sonner';
 import { CuentaPorPagarDetalle, AccountActions } from './types';
 import { CuentaPorPagarDetailService } from './service';
-import { formatCurrency } from '@/utils/Utils';
-import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
+import { useTimezoneFor } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz, toPlainDate } from '@/lib/utils/timezone';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface AccountActionsCardProps {
   account: CuentaPorPagarDetalle;
@@ -31,7 +33,24 @@ interface Installment {
 }
 
 export function AccountActionsCard({ account, actions, onUpdate }: AccountActionsCardProps) {
-  const { timezone } = useOrgTimezone();
+  // Montos en la moneda base de la organización (fuente única:
+  // monedaOrganizacion.ts), también en el documento exportado. Nunca pesos fijos.
+  const monedaOrg = useMonedaOrganizacion();
+  // La cuenta por pagar hereda la moneda de la factura del proveedor.
+  const formatCurrency = crearFormateadorMoneda(monedaOrg.paraDocumento(account.invoice_currency));
+  // Zona de la SUCURSAL DUEÑA de la cuenta, no la de la organizacion ni la del
+  // selector de la barra superior. `obtenerDetalleCuentaPorPagar` consulta
+  // `accounts_payable` directamente (no un RPC) y esa tabla si tiene
+  // `branch_id`, asi que aqui la sucursal se conoce y se pasa. Importa porque
+  // `CuentaPorPagarDetailService.registrarPago`/`crearCuotas` ya escriben con
+  // `resolveTimezone(org, branch)`: si el formulario propusiera el dia de la
+  // organizacion, el dia propuesto y el dia guardado podrian ser distintos.
+  //
+  // (La deuda anotada en la bitacora de la tanda 2 es la del lado de COBRAR:
+  // alli `get_account_receivable_detail` sigue SIN devolver `branch_id`
+  // —comprobado por MCP el 2026-09-23 con `pg_get_function_result`— y esa
+  // pantalla sigue cayendo en la organizacion. Esa deuda continua abierta.)
+  const { timezone } = useTimezoneFor(account.branch_id);
   const [isLoading, setIsLoading] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
@@ -174,7 +193,7 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `estado_cuenta_${account.supplier_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+      a.download = `estado_cuenta_${account.supplier_name.replace(/\s+/g, '_')}_${todayInTz(timezone)}.txt`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -319,19 +338,21 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
                   <Label className="text-gray-700 dark:text-gray-300">
                     Fecha de Pago
                   </Label>
-                  <Input
-                    type="date"
-                    value={paymentData.paymentDate}
-                    onChange={(e) => {
-                      setPaymentData({ ...paymentData, paymentDate: e.target.value });
+                  <CampoFecha
+                    aria-label="Fecha de Pago"
+                    aria-invalid={fechaError || undefined}
+                    limpiable={false}
+                    valor={paymentData.paymentDate}
+                    onValorChange={(dia) => {
+                      setPaymentData({ ...paymentData, paymentDate: dia });
                       if (account.invoice_date) {
                         const fechaEmision = toPlainDate(new Date(account.invoice_date), timezone);
-                        setFechaError(e.target.value < fechaEmision);
+                        setFechaError(dia < fechaEmision);
                       }
                     }}
                     max={todayInTz(timezone)}
+                    hoy={todayInTz(timezone)}
                     min={account.invoice_date ? toPlainDate(new Date(account.invoice_date), timezone) : undefined}
-                    className={`dark:bg-gray-900 dark:border-gray-600 ${fechaError ? 'border-red-500 dark:border-red-500' : ''}`}
                   />
                   {fechaError && (
                     <p className="text-xs text-red-500 dark:text-red-400 mt-1">La fecha no puede ser anterior a la emisión</p>

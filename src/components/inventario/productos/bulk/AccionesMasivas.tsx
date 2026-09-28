@@ -2,23 +2,26 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  DollarSign,
-  Package,
-  Power,
-  Trash2,
-  FolderTree,
-  X,
-  Loader2,
-  ChevronDown,
-  TrendingUp,
-  TrendingDown,
-  Copy,
-  Hash,
   AlertTriangle,
+  Barcode,
+  Copy,
+  DollarSign,
+  Hash,
+  Info,
+  Loader2,
+  Power,
+  Printer,
+  SlidersHorizontal,
+  Tags,
+  Trash,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react';
+import { BulkActionBar, FormField, SegmentedControl, type AccionFila, type AccionMasiva } from '@/components/kit';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -27,25 +30,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchSelect } from '@/components/ui/search-select';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { avisarCambioCatalogo } from '@/lib/services/website/avisarCambioCatalogo';
+import { useTranslations } from 'next-intl';
+import { AltaRapidaCategoria } from '../nuevo/AltaRapidaCategoria';
+import { useFormatoEntero, useKitT } from '@/components/kit/useIdiomaKit';
 import {
   bulkUpdatePrices,
   bulkUpdateStock,
@@ -58,21 +52,57 @@ import {
   ModoAjuste,
   ModoStock,
   ModoRedondeo,
+  type ErrorMasivo,
 } from './bulkService';
 
+/**
+ * Acciones masivas del catálogo: la `BulkActionBar` del kit (flota al pie,
+ * PATRONES §1) y un diálogo por acción con los mismos campos y servicios de
+ * siempre (`bulkService.ts`).
+ *
+ * Barra: Precios · Stock · Categoría · Estado · Eliminar; en «⋯»: Precio →
+ * Comparación y Redondear precios.
+ */
 interface AccionesMasivasProps {
   selectedIds: number[];
+  /** Productos del listado (con los filtros actuales), para «Seleccionar los N». */
+  total?: number;
+  onSeleccionarTodos?: () => void;
   onClearSelection: () => void;
   onActionComplete: () => void;
+  /** «⋯ › Imprimir etiquetas» de los seleccionados. */
+  onImprimirEtiquetas?: (ids: number[]) => void;
+  /** «⋯ › Generar códigos de barras» de los seleccionados que no tienen. */
+  onGenerarCodigos?: (ids: number[]) => void;
 }
 
-type DialogType = 'precios' | 'stock' | 'categoria' | 'eliminar' | 'copiarComparacion' | 'redondear' | null;
+type DialogType = 'precios' | 'stock' | 'categoria' | 'estado' | 'eliminar' | 'copiarComparacion' | 'redondear' | null;
+type EstadoMasivo = 'active' | 'inactive' | 'discontinued';
+
+const SUGERENCIAS_DIGITOS = [
+  '0', '5', '9',
+  '00', '50', '90', '99',
+  '000', '500', '900', '990', '999', '050',
+  '0000', '5000', '9000', '9900', '9990', '9999',
+  '00000', '50000', '90000', '99000', '99900', '99990', '99999',
+];
+
+const MULTIPLOS = ['10', '50', '100', '500', '1000'] as const;
 
 const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   selectedIds,
+  total,
+  onSeleccionarTodos,
   onClearSelection,
   onActionComplete,
+  onImprimirEtiquetas,
+  onGenerarCodigos,
 }) => {
+  const tEtq = useTranslations('inventarioEtiquetas.catalogo');
+  const tCat = useTranslations('inventarioEtiquetas.categoria');
+  const t = useTranslations('productos.masivas');
+  const tk = useKitT();
+  const entero = useFormatoEntero();
   const { organization } = useOrganization();
   const { selectedBranchId } = useBranch();
   const [activeDialog, setActiveDialog] = useState<DialogType>(null);
@@ -87,12 +117,18 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   // Estados para stock
   const [modoStock, setModoStock] = useState<ModoStock>('set');
   const [cantidadStock, setCantidadStock] = useState<string>('');
+  const [motivoStock, setMotivoStock] = useState<string>('');
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
 
   // Estados para categoría
   const [categorias, setCategorias] = useState<{ id: number; name: string }[]>([]);
   const [selectedCategoria, setSelectedCategoria] = useState<string>('');
+  // Alta rápida desde el selector («Crear “…”»): el nombre escrito.
+  const [nuevaCategoria, setNuevaCategoria] = useState<string | null>(null);
+
+  // Estado masivo (antes un menú sin confirmación)
+  const [estadoNuevo, setEstadoNuevo] = useState<EstadoMasivo>('active');
 
   // Estado para copiar precio → comparación
   const [sobrescribirComparacion, setSobrescribirComparacion] = useState(false);
@@ -118,17 +154,28 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     load();
   }, [organization?.id, selectedBranchId]);
 
-  const mostrarResultado = (accion: string, exitosos: number, fallidos: number, errores: string[]) => {
+  const n = selectedIds.length;
+  const alcance = t('alcance', { count: n, n: entero(n) });
+
+  // Mientras se procesa, el diálogo no se cierra (ni con Esc ni fuera).
+  const cerrar = (abierto: boolean) => {
+    if (!abierto && !processing) setActiveDialog(null);
+  };
+
+  // Los fallos del servicio llegan como código (`productos.masivas.errores`) o como texto ya listo.
+  const textoError = (e: string | ErrorMasivo) => (typeof e === 'string' ? e : t(`errores.${e.codigo}`, e.valores));
+
+  const mostrarResultado = (accion: string, exitosos: number, fallidos: number, errores: readonly (string | ErrorMasivo)[]) => {
     // La tienda web cachea el catálogo 30 s: avisarle para que refleje ya
     // los precios, el stock o el estado que acaban de cambiar.
     if (exitosos > 0) avisarCambioCatalogo();
     if (fallidos === 0) {
-      toast({ title: accion, description: `${exitosos} productos actualizados correctamente.` });
+      toast({ title: accion, description: t('resultado.ok', { count: exitosos, n: entero(exitosos) }) });
     } else {
       toast({
         variant: 'destructive',
-        title: `${accion} (parcial)`,
-        description: `${exitosos} exitosos, ${fallidos} fallidos. ${errores[0] || ''}`,
+        title: t('resultado.parcialTitulo', { accion }),
+        description: t('resultado.parcial', { exitosos: entero(exitosos), fallidos: entero(fallidos), error: errores[0] ? textoError(errores[0]) : '' }),
       });
     }
     onActionComplete();
@@ -139,7 +186,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   const handlePrecios = async () => {
     const cantidadRaw = parseFloat(cantidadPrecio);
     if (isNaN(cantidadRaw) || cantidadRaw < 0) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Ingrese una cantidad válida (mayor o igual a 0).' });
+      toast({ variant: 'destructive', title: t('error'), description: t('validacion.cantidad') });
       return;
     }
     // Si es "Disminuir", se niega el valor para que el servicio lo reste
@@ -147,7 +194,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     setProcessing(true);
     try {
       const r = await bulkUpdatePrices(selectedIds, tipoPrecio, modoAjuste, cantidad);
-      mostrarResultado('Precios actualizados', r.exitosos, r.fallidos, r.errores);
+      mostrarResultado(t('resultado.precios'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
       setCantidadPrecio('');
@@ -156,25 +203,31 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
 
   const handleStock = async () => {
     const cantidad = parseFloat(cantidadStock);
-    if (isNaN(cantidad) || !selectedBranch) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Complete todos los campos.' });
+    if (isNaN(cantidad) || !selectedBranch || !organization?.id) {
+      toast({ variant: 'destructive', title: t('error'), description: t('validacion.campos') });
       return;
     }
     setProcessing(true);
     try {
-      const r = await bulkUpdateStock(selectedIds, parseInt(selectedBranch), cantidad, modoStock);
-      mostrarResultado('Stock actualizado', r.exitosos, r.fallidos, r.errores);
+      // Por el kardex: cada producto genera su movimiento de ajuste y su asiento (en el servidor).
+      const r = await bulkUpdateStock(organization.id, selectedIds, parseInt(selectedBranch), cantidad, modoStock, motivoStock);
+      const errores = r.errores.map((e) => (e.includes('sin_permiso') ? t('stock.sinPermiso') : e));
+      mostrarResultado(t('resultado.stock'), r.exitosos, r.fallidos, errores);
+      if (r.resumen.sin_costo > 0) {
+        toast({ title: t('resultado.stock'), description: t('stock.sinCosto', { count: r.resumen.sin_costo, n: entero(r.resumen.sin_costo) }) });
+      }
     } finally {
       setProcessing(false);
       setCantidadStock('');
+      setMotivoStock('');
     }
   };
 
-  const handleEstado = async (status: 'active' | 'inactive' | 'discontinued') => {
+  const handleEstado = async (status: EstadoMasivo) => {
     setProcessing(true);
     try {
       const r = await bulkUpdateStatus(selectedIds, status);
-      mostrarResultado('Estado actualizado', r.exitosos, r.fallidos, r.errores);
+      mostrarResultado(t('resultado.estado'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
     }
@@ -182,13 +235,13 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
 
   const handleCategoria = async () => {
     if (!selectedCategoria) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Seleccione una categoría.' });
+      toast({ variant: 'destructive', title: t('error'), description: t('validacion.categoria') });
       return;
     }
     setProcessing(true);
     try {
       const r = await bulkAssignCategory(selectedIds, parseInt(selectedCategoria));
-      mostrarResultado('Categoría asignada', r.exitosos, r.fallidos, r.errores);
+      mostrarResultado(t('resultado.categoria'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
     }
@@ -198,7 +251,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     setProcessing(true);
     try {
       const r = await bulkDelete(selectedIds);
-      mostrarResultado('Productos eliminados', r.exitosos, r.fallidos, r.errores);
+      mostrarResultado(t('resultado.eliminados'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
     }
@@ -208,7 +261,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     setProcessing(true);
     try {
       const r = await bulkCopyPriceToCompare(selectedIds, sobrescribirComparacion);
-      mostrarResultado('Precio de comparación actualizado', r.exitosos, r.fallidos, r.errores);
+      mostrarResultado(t('resultado.comparacion'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
       setSobrescribirComparacion(false);
@@ -220,526 +273,464 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     const dCount = modoRedondeo === 'digitos' ? parseInt(digitosCount, 10) : 0;
 
     if (modoRedondeo === 'multiplo' && (!multiplo || multiplo <= 0)) {
-      toast({ variant: 'destructive', title: 'Error', description: 'El múltiplo debe ser mayor a 0' });
+      toast({ variant: 'destructive', title: t('error'), description: t('validacion.multiplo') });
       return;
     }
     if (modoRedondeo === 'digitos' && (!dCount || dCount < 1 || dCount > 5)) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Los dígitos a reemplazar deben estar entre 1 y 5' });
+      toast({ variant: 'destructive', title: t('error'), description: t('validacion.digitosRango') });
       return;
     }
     if (modoRedondeo === 'digitos' && digitosValor.length !== dCount) {
-      toast({ variant: 'destructive', title: 'Error', description: `El valor debe tener ${dCount} dígitos` });
+      toast({ variant: 'destructive', title: t('error'), description: t('validacion.digitosValor', { count: dCount }) });
       return;
     }
 
     setProcessing(true);
     try {
       const r = await bulkRoundPrices(selectedIds, tipoRedondeo, modoRedondeo, multiplo, dCount, digitosValor);
-      mostrarResultado('Precios redondeados', r.exitosos, r.fallidos, r.errores);
+      mostrarResultado(t('resultado.redondeados'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
     }
   };
 
-  if (selectedIds.length === 0) return null;
+  const acciones: AccionMasiva[] = [
+    { id: 'precios', etiqueta: t('acciones.precios'), icono: DollarSign, onClick: () => setActiveDialog('precios') },
+    { id: 'stock', etiqueta: t('acciones.stock'), icono: SlidersHorizontal, onClick: () => setActiveDialog('stock') },
+    { id: 'categoria', etiqueta: t('acciones.categoria'), icono: Tags, onClick: () => setActiveDialog('categoria') },
+    { id: 'estado', etiqueta: t('acciones.estado'), icono: Power, onClick: () => setActiveDialog('estado') },
+    {
+      id: 'eliminar',
+      etiqueta: t('acciones.eliminar'),
+      icono: Trash,
+      onClick: () => setActiveDialog('eliminar'),
+      destructiva: true,
+    },
+  ];
+
+  const secundarias: AccionFila[] = [
+    // Figma «Catálogo — barra masiva · menú «⋯»»: entran por el «⋯», no como sexto botón.
+    ...(onImprimirEtiquetas
+      ? [{ id: 'imprimir-etiquetas', etiqueta: tEtq('imprimirEtiquetas'), icono: Printer, onSelect: () => onImprimirEtiquetas(selectedIds) }]
+      : []),
+    ...(onGenerarCodigos
+      ? [{ id: 'generar-codigos', etiqueta: tEtq('generarCodigos'), icono: Barcode, onSelect: () => onGenerarCodigos(selectedIds) }]
+      : []),
+    { id: 'comparacion', etiqueta: t('acciones.comparacion'), icono: Copy, onSelect: () => setActiveDialog('copiarComparacion'), separadorAntes: !!(onImprimirEtiquetas || onGenerarCodigos) },
+    { id: 'redondear', etiqueta: t('acciones.redondear'), icono: Hash, onSelect: () => setActiveDialog('redondear') },
+  ];
+
+  const pieDialogo = (textoPrimario: string, onAplicar: () => void, destructiva = false) => (
+    <DialogFooter className="gap-2 sm:gap-2">
+      <Button variant="outline" className="h-10" onClick={() => setActiveDialog(null)} disabled={processing}>
+        {tk('comun.cancelar')}
+      </Button>
+      <Button
+        variant={destructiva ? 'destructive' : 'default'}
+        className="h-10"
+        onClick={onAplicar}
+        disabled={processing}
+        aria-busy={processing || undefined}
+      >
+        {processing && <Loader2 aria-hidden="true" className="mr-2 size-4 animate-spin" />}
+        {textoPrimario}
+      </Button>
+    </DialogFooter>
+  );
+
+  const clasesDialogo = 'border-line bg-surface text-fg sm:max-w-[440px]';
+  const nDigitos = parseInt(digitosCount, 10);
 
   return (
     <>
-      {/* Barra flotante de acciones */}
-      <div className="sticky top-2 z-20 flex flex-wrap items-center gap-2 px-4 py-3 rounded-lg border shadow-md bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800">
-        <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
-          {selectedIds.length} seleccionado{selectedIds.length !== 1 ? 's' : ''}
-        </span>
+      <BulkActionBar
+        seleccionados={n}
+        total={total}
+        onSeleccionarTodos={onSeleccionarTodos}
+        sustantivo={{ singular: t('sustantivo.singular'), plural: t('sustantivo.plural') }}
+        acciones={acciones}
+        accionesSecundarias={secundarias}
+        onLimpiar={onClearSelection}
+      />
 
-        <div className="flex flex-wrap items-center gap-2 ml-auto">
-          <Button variant="outline" size="sm" onClick={() => setActiveDialog('precios')} className="text-xs">
-            <DollarSign className="h-3.5 w-3.5 mr-1" />
-            Precios
-          </Button>
-
-          <Button variant="outline" size="sm" onClick={() => setActiveDialog('copiarComparacion')} className="text-xs">
-            <Copy className="h-3.5 w-3.5 mr-1" />
-            Precio → Comparación
-          </Button>
-
-          <Button variant="outline" size="sm" onClick={() => setActiveDialog('redondear')} className="text-xs">
-            <Hash className="h-3.5 w-3.5 mr-1" />
-            Redondear
-          </Button>
-
-          <Button variant="outline" size="sm" onClick={() => setActiveDialog('stock')} className="text-xs">
-            <Package className="h-3.5 w-3.5 mr-1" />
-            Stock
-          </Button>
-
-          <Button variant="outline" size="sm" onClick={() => setActiveDialog('categoria')} className="text-xs">
-            <FolderTree className="h-3.5 w-3.5 mr-1" />
-            Categoría
-          </Button>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="text-xs" disabled={processing}>
-                <Power className="h-3.5 w-3.5 mr-1" />
-                Estado
-                <ChevronDown className="h-3 w-3 ml-1" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="dark:bg-gray-800 dark:border-gray-700">
-              <DropdownMenuItem onClick={() => handleEstado('active')} className="cursor-pointer">
-                <span className="w-2 h-2 rounded-full mr-2 bg-green-500" />
-                Activar
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleEstado('inactive')} className="cursor-pointer">
-                <span className="w-2 h-2 rounded-full mr-2 bg-gray-400" />
-                Desactivar
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleEstado('discontinued')} className="cursor-pointer">
-                <span className="w-2 h-2 rounded-full mr-2 bg-red-500" />
-                Descontinuar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setActiveDialog('eliminar')}
-            className="text-xs"
-          >
-            <Trash2 className="h-3.5 w-3.5 mr-1" />
-            Eliminar
-          </Button>
-
-          <Button variant="ghost" size="icon" onClick={onClearSelection} className="h-8 w-8">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Dialog: Edición masiva de precios */}
-      <Dialog open={activeDialog === 'precios'} onOpenChange={(o) => !o && setActiveDialog(null)}>
-        <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
+      {/* Precios */}
+      <Dialog open={activeDialog === 'precios'} onOpenChange={cerrar}>
+        <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle className="dark:text-gray-100">Edición masiva de precios</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Se aplicará a {selectedIds.length} producto{selectedIds.length !== 1 ? 's' : ''}.
-            </DialogDescription>
+            <DialogTitle>{t('precios.titulo')}</DialogTitle>
+            <DialogDescription>{alcance}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="dark:text-gray-300">Tipo de precio</Label>
-              <Select value={tipoPrecio} onValueChange={(v) => setTipoPrecio(v as TipoPrecio)}>
-                <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                  <SelectItem value="venta">Precio de venta</SelectItem>
-                  <SelectItem value="compra">Precio de compra (costo)</SelectItem>
-                  <SelectItem value="comparacion">Precio de comparación</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="dark:text-gray-300">Modo de ajuste</Label>
-              <Select value={modoAjuste} onValueChange={(v) => setModoAjuste(v as ModoAjuste)}>
-                <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                  <SelectItem value="fijo">Establecer valor fijo</SelectItem>
-                  <SelectItem value="valor">Por valor ($)</SelectItem>
-                  <SelectItem value="porcentaje">Por porcentaje (%)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="flex flex-col gap-4">
+            <FormField etiqueta={t('precios.tipo')}>
+              {(campo) => (
+                <Select value={tipoPrecio} onValueChange={(v) => setTipoPrecio(v as TipoPrecio)}>
+                  <SelectTrigger id={campo.id} className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="venta">{t('tipos.venta')}</SelectItem>
+                    <SelectItem value="compra">{t('tipos.compra')}</SelectItem>
+                    <SelectItem value="comparacion">{t('tipos.comparacion')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+            <FormField etiqueta={t('precios.modo')}>
+              {(campo) => (
+                <Select value={modoAjuste} onValueChange={(v) => setModoAjuste(v as ModoAjuste)}>
+                  <SelectTrigger id={campo.id} className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fijo">{t('precios.modos.fijo')}</SelectItem>
+                    <SelectItem value="valor">{t('precios.modos.valor')}</SelectItem>
+                    <SelectItem value="porcentaje">{t('precios.modos.porcentaje')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
             {modoAjuste !== 'fijo' && (
-              <div>
-                <Label className="dark:text-gray-300">Dirección</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setDireccion('aumentar')}
-                    className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                      direccion === 'aumentar'
-                        ? 'border-green-500 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <TrendingUp className="h-4 w-4" />
-                    Aumentar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDireccion('disminuir')}
-                    className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                      direccion === 'disminuir'
-                        ? 'border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <TrendingDown className="h-4 w-4" />
-                    Disminuir
-                  </button>
-                </div>
-              </div>
+              <FormField etiqueta={t('precios.direccion')}>
+                {(campo) => (
+                  <SegmentedControl
+                    aria-labelledby={campo.idEtiqueta}
+                    anchoCompleto
+                    valor={direccion}
+                    onValorChange={setDireccion}
+                    opciones={[
+                      { valor: 'aumentar', etiqueta: t('precios.aumentar'), icono: TrendingUp },
+                      { valor: 'disminuir', etiqueta: t('precios.disminuir'), icono: TrendingDown },
+                    ]}
+                  />
+                )}
+              </FormField>
             )}
-            <div>
-              <Label className="dark:text-gray-300">
-                {modoAjuste === 'fijo' && 'Nuevo valor'}
-                {modoAjuste === 'valor' && (direccion === 'aumentar' ? 'Cantidad a aumentar ($)' : 'Cantidad a disminuir ($)')}
-                {modoAjuste === 'porcentaje' && (direccion === 'aumentar' ? 'Porcentaje a aumentar (%)' : 'Porcentaje a disminuir (%)')}
-              </Label>
+            <FormField
+              etiqueta={
+                modoAjuste === 'fijo'
+                  ? t('precios.nuevoValor')
+                  : modoAjuste === 'valor'
+                    ? direccion === 'aumentar' ? t('precios.valorAumentar') : t('precios.valorDisminuir')
+                    : direccion === 'aumentar' ? t('precios.porcentajeAumentar') : t('precios.porcentajeDisminuir')
+              }
+            >
               <Input
                 type="number"
+                inputMode="decimal"
                 min="0"
                 value={cantidadPrecio}
                 onChange={(e) => setCantidadPrecio(e.target.value)}
-                placeholder={modoAjuste === 'porcentaje' ? 'Ej: 10' : 'Ej: 5000'}
-                className="dark:bg-gray-900 dark:border-gray-600"
+                placeholder={modoAjuste === 'porcentaje' ? t('precios.ejemploPorcentaje') : t('precios.ejemploValor')}
+                className="h-10"
               />
-            </div>
+            </FormField>
             {tipoPrecio === 'compra' && modoAjuste === 'porcentaje' && (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  Los productos <strong>sin costo previo</strong> no serán afectados
-                  (0 × % = 0). Use modo <strong>&quot;Establecer valor fijo&quot;</strong> para
-                  asignar un costo a productos que no tienen uno.
-                </p>
+              <div role="note" className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-subtle p-3 text-xs text-warning-text">
+                <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+                <p>{t.rich('precios.avisoCosto', { b: (c) => <strong>{c}</strong> })}</p>
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveDialog(null)} disabled={processing}>
-              Cancelar
-            </Button>
-            <Button onClick={handlePrecios} disabled={processing} className="bg-blue-600 hover:bg-blue-700">
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Aplicar
-            </Button>
-          </DialogFooter>
+          {pieDialogo(tk('comun.aplicar'), handlePrecios)}
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Actualización masiva de stock */}
-      <Dialog open={activeDialog === 'stock'} onOpenChange={(o) => !o && setActiveDialog(null)}>
-        <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
+      {/* Stock */}
+      <Dialog open={activeDialog === 'stock'} onOpenChange={cerrar}>
+        <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle className="dark:text-gray-100">Actualización masiva de stock</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Se aplicará a {selectedIds.length} producto{selectedIds.length !== 1 ? 's' : ''}.
-            </DialogDescription>
+            <DialogTitle>{t('stock.titulo')}</DialogTitle>
+            <DialogDescription>{alcance}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="dark:text-gray-300">Sucursal</Label>
-              <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                  <SelectValue placeholder="Seleccione sucursal" />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                  {branches.map((b) => (
-                    <SelectItem key={b.id} value={String(b.id)}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="dark:text-gray-300">Modo</Label>
-              <Select value={modoStock} onValueChange={(v) => setModoStock(v as ModoStock)}>
-                <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                  <SelectItem value="set">Establecer cantidad exacta</SelectItem>
-                  <SelectItem value="add">Sumar/restar a cantidad actual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="dark:text-gray-300">Cantidad</Label>
+          <div className="flex flex-col gap-4">
+            <FormField etiqueta={t('stock.sucursal')} obligatorio>
+              {(campo) => (
+                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                  <SelectTrigger id={campo.id} aria-required className="h-10">
+                    <SelectValue placeholder={t('stock.seleccioneSucursal')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map((b) => (
+                      <SelectItem key={b.id} value={String(b.id)}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+            <FormField etiqueta={t('stock.modo')}>
+              {(campo) => (
+                <Select value={modoStock} onValueChange={(v) => setModoStock(v as ModoStock)}>
+                  <SelectTrigger id={campo.id} className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="set">{t('stock.modos.set')}</SelectItem>
+                    <SelectItem value="add">{t('stock.modos.add')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+            <FormField etiqueta={t('stock.cantidad')} obligatorio>
               <Input
                 type="number"
+                inputMode="decimal"
                 value={cantidadStock}
                 onChange={(e) => setCantidadStock(e.target.value)}
-                placeholder={modoStock === 'add' ? 'Ej: 10 o -5' : 'Ej: 100'}
-                className="dark:bg-gray-900 dark:border-gray-600"
+                placeholder={modoStock === 'add' ? t('stock.ejemploSumar') : t('stock.ejemploExacto')}
+                className="h-10"
               />
+            </FormField>
+            <FormField etiqueta={t('stock.motivo')}>
+              <Textarea
+                value={motivoStock}
+                onChange={(e) => setMotivoStock(e.target.value)}
+                placeholder={t('stock.motivoPlaceholder')}
+                maxLength={500}
+                rows={2}
+              />
+            </FormField>
+            <div role="note" className="flex items-start gap-2 rounded-lg border border-line-brand bg-brand-tint p-3 text-xs text-brand-deep">
+              <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+              <p>{t('stock.avisoKardex')}</p>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveDialog(null)} disabled={processing}>
-              Cancelar
-            </Button>
-            <Button onClick={handleStock} disabled={processing} className="bg-blue-600 hover:bg-blue-700">
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Aplicar
-            </Button>
-          </DialogFooter>
+          {pieDialogo(tk('comun.aplicar'), handleStock)}
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Asignar categoría */}
-      <Dialog open={activeDialog === 'categoria'} onOpenChange={(o) => !o && setActiveDialog(null)}>
-        <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
+      {/* Categoría */}
+      <Dialog open={activeDialog === 'categoria'} onOpenChange={cerrar}>
+        <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle className="dark:text-gray-100">Asignar categoría</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Se asignará a {selectedIds.length} producto{selectedIds.length !== 1 ? 's' : ''}.
+            <DialogTitle>{t('categoria.titulo')}</DialogTitle>
+            <DialogDescription>
+              {t('categoria.alcance', { count: n, n: entero(n) })}
             </DialogDescription>
           </DialogHeader>
-          <div>
-            <Label className="dark:text-gray-300">Categoría</Label>
-            <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
-              <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                <SelectValue placeholder="Seleccione categoría" />
-              </SelectTrigger>
-              <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                {categorias.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveDialog(null)} disabled={processing}>
-              Cancelar
-            </Button>
-            <Button onClick={handleCategoria} disabled={processing} className="bg-blue-600 hover:bg-blue-700">
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Asignar
-            </Button>
-          </DialogFooter>
+          <FormField etiqueta={t('categoria.campo')} obligatorio>
+            {() => (
+              <SearchSelect
+                options={categorias.map((c) => ({ value: String(c.id), label: c.name }))}
+                value={selectedCategoria}
+                onValueChange={setSelectedCategoria}
+                placeholder={t('categoria.seleccione')}
+                searchPlaceholder={t('categoria.buscar')}
+                emptyText={t('categoria.vacio')}
+                className="h-10"
+                onCreate={(texto) => setNuevaCategoria(texto)}
+                createLabel={(texto) => tCat('crearCon', { nombre: texto })}
+                createEmptyLabel={tCat('crear')}
+              />
+            )}
+          </FormField>
+          {pieDialogo(t('categoria.asignar'), handleCategoria)}
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Redondear precios */}
-      <Dialog open={activeDialog === 'redondear'} onOpenChange={(o) => !o && setActiveDialog(null)}>
-        <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
+      <AltaRapidaCategoria
+        abierto={nuevaCategoria !== null}
+        onAbiertoChange={(v) => !v && setNuevaCategoria(null)}
+        nombreInicial={nuevaCategoria ?? undefined}
+        onCreada={(categoria) => {
+          setCategorias((prev) => [...prev, { id: categoria.id, name: categoria.name }].sort((a, b) => a.name.localeCompare(b.name)));
+          setSelectedCategoria(String(categoria.id));
+        }}
+      />
+
+      {/* Estado */}
+      <Dialog open={activeDialog === 'estado'} onOpenChange={cerrar}>
+        <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle className="dark:text-gray-100">Redondear precios</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Se aplicará a {selectedIds.length} producto{selectedIds.length !== 1 ? 's' : ''} (incluye padres e hijos).
+            <DialogTitle>{t('estado.titulo')}</DialogTitle>
+            <DialogDescription>{alcance}</DialogDescription>
+          </DialogHeader>
+          <FormField etiqueta={t('estado.nuevo')}>
+            {(campo) => (
+              <SegmentedControl
+                aria-labelledby={campo.idEtiqueta}
+                anchoCompleto
+                valor={estadoNuevo}
+                onValorChange={setEstadoNuevo}
+                opciones={[
+                  { valor: 'active', etiqueta: t('estado.active') },
+                  { valor: 'inactive', etiqueta: t('estado.inactive') },
+                  { valor: 'discontinued', etiqueta: t('estado.discontinued') },
+                ]}
+              />
+            )}
+          </FormField>
+          {pieDialogo(t('estado.cambiar'), () => handleEstado(estadoNuevo))}
+        </DialogContent>
+      </Dialog>
+
+      {/* Redondear precios */}
+      <Dialog open={activeDialog === 'redondear'} onOpenChange={cerrar}>
+        <DialogContent className={clasesDialogo}>
+          <DialogHeader>
+            <DialogTitle>{t('redondear.titulo')}</DialogTitle>
+            <DialogDescription>
+              {t('redondear.alcance', { count: n, n: entero(n) })}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            {/* Tipo de precio */}
-            <div className="space-y-1.5">
-              <Label className="text-xs dark:text-gray-300">Precio a redondear</Label>
-              <Select value={tipoRedondeo} onValueChange={(v) => setTipoRedondeo(v as TipoPrecio)}>
-                <SelectTrigger className="h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                  <SelectItem value="venta">Precio de venta</SelectItem>
-                  <SelectItem value="compra">Costo de compra</SelectItem>
-                  <SelectItem value="comparacion">Precio de comparación</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="flex flex-col gap-4">
+            <FormField etiqueta={t('redondear.precio')}>
+              {(campo) => (
+                <Select value={tipoRedondeo} onValueChange={(v) => setTipoRedondeo(v as TipoPrecio)}>
+                  <SelectTrigger id={campo.id} className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="venta">{t('tipos.venta')}</SelectItem>
+                    <SelectItem value="compra">{t('tipos.compra')}</SelectItem>
+                    <SelectItem value="comparacion">{t('tipos.comparacion')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
 
-            {/* Modo de redondeo */}
-            <div className="space-y-1.5">
-              <Label className="text-xs dark:text-gray-300">Modo de redondeo</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setModoRedondeo('multiplo')}
-                  className={`px-3 py-2 rounded-md text-xs font-medium border transition-colors ${
-                    modoRedondeo === 'multiplo'
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  A múltiplo de N
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModoRedondeo('digitos')}
-                  className={`px-3 py-2 rounded-md text-xs font-medium border transition-colors ${
-                    modoRedondeo === 'digitos'
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  Reemplazar últimos dígitos
-                </button>
-              </div>
-            </div>
+            <FormField etiqueta={t('redondear.modo')}>
+              {(campo) => (
+                <SegmentedControl
+                  aria-labelledby={campo.idEtiqueta}
+                  anchoCompleto
+                  valor={modoRedondeo}
+                  onValorChange={setModoRedondeo}
+                  opciones={[
+                    { valor: 'multiplo', etiqueta: t('redondear.modoMultiplo') },
+                    { valor: 'digitos', etiqueta: t('redondear.modoDigitos') },
+                  ]}
+                />
+              )}
+            </FormField>
 
-            {/* Configuración según modo */}
             {modoRedondeo === 'multiplo' ? (
-              <div className="space-y-2">
-                <Label className="text-xs dark:text-gray-300">Redondear al múltiplo más cercano de</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {[10, 50, 100, 500, 1000].map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setMultiploRedondeo(String(m))}
-                      className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                        multiploRedondeo === String(m)
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">o personalizado:</span>
+              <>
+                <FormField
+                  etiqueta={t('redondear.multiplo')}
+                  ayuda={t('redondear.multiploAyuda')}
+                >
+                  {(campo) => (
+                    <SegmentedControl
+                      aria-labelledby={campo.idEtiqueta}
+                      anchoCompleto
+                      tamano="sm"
+                      valor={multiploRedondeo}
+                      onValorChange={setMultiploRedondeo}
+                      opciones={MULTIPLOS.map((m) => ({ valor: m, etiqueta: entero(Number(m)) }))}
+                    />
+                  )}
+                </FormField>
+                <FormField etiqueta={t('redondear.multiploPersonalizado')}>
                   <Input
                     type="number"
+                    inputMode="numeric"
+                    min="1"
                     value={multiploRedondeo}
                     onChange={(e) => setMultiploRedondeo(e.target.value)}
-                    className="h-8 w-24 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
-                    min="1"
+                    className="h-10 w-32"
                   />
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Ej: $1,234 con múltiplo 100 → $1,200 | $1,267 con múltiplo 100 → $1,300
-                </p>
-              </div>
+                </FormField>
+              </>
             ) : (
-              <div className="space-y-2">
+              <>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs dark:text-gray-300">¿Cuántos dígitos reemplazar?</Label>
-                    <Select value={digitosCount} onValueChange={(v) => {
-                      setDigitosCount(v);
-                      // Ajustar el valor para que tenga la misma cantidad de dígitos
-                      const padded = digitosValor.padStart(parseInt(v, 10), '0').slice(-parseInt(v, 10));
-                      setDigitosValor(padded);
-                    }}>
-                      <SelectTrigger className="h-8 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <SelectItem key={n} value={String(n)}>{n} dígito{n > 1 ? 's' : ''}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs dark:text-gray-300">Valor a poner</Label>
+                  <FormField etiqueta={t('redondear.digitos')}>
+                    {(campo) => (
+                      <Select
+                        value={digitosCount}
+                        onValueChange={(v) => {
+                          setDigitosCount(v);
+                          // Ajustar el valor para que tenga la misma cantidad de dígitos
+                          const padded = digitosValor.padStart(parseInt(v, 10), '0').slice(-parseInt(v, 10));
+                          setDigitosValor(padded);
+                        }}
+                      >
+                        <SelectTrigger id={campo.id} className="h-10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5].map((d) => (
+                            <SelectItem key={d} value={String(d)}>
+                              {t('redondear.nDigitos', { count: d })}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </FormField>
+                  <FormField etiqueta={t('redondear.valor')}>
                     <Input
                       type="text"
+                      inputMode="numeric"
                       value={digitosValor}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, '').slice(0, parseInt(digitosCount, 10));
-                        setDigitosValor(val);
-                      }}
-                      className="h-8 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
-                      placeholder={'0'.repeat(parseInt(digitosCount, 10))}
-                      maxLength={parseInt(digitosCount, 10)}
+                      onChange={(e) => setDigitosValor(e.target.value.replace(/[^0-9]/g, '').slice(0, nDigitos))}
+                      placeholder={'0'.repeat(nDigitos)}
+                      maxLength={nDigitos}
+                      className="h-10 font-mono"
                     />
-                  </div>
+                  </FormField>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {['000', '500', '900', '990', '999', '050'].map((v) => {
-                    if (v.length !== parseInt(digitosCount, 10)) return null;
-                    return (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setDigitosValor(v)}
-                        className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                          digitosValor === v
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                        }`}
-                      >
-                        {v}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Ej: $1,234 con últimos 3 = "990" → $1,990 | $5,678 con últimos 2 = "50" → $5,650
-                </p>
-              </div>
+                <FormField
+                  etiqueta={t('redondear.frecuentes')}
+                  ayuda={t('redondear.frecuentesAyuda')}
+                >
+                  {(campo) => (
+                    <SegmentedControl
+                      aria-labelledby={campo.idEtiqueta}
+                      tamano="sm"
+                      valor={digitosValor}
+                      onValorChange={setDigitosValor}
+                      opciones={SUGERENCIAS_DIGITOS.filter((v) => v.length === nDigitos).map((v) => ({ valor: v, etiqueta: v }))}
+                    />
+                  )}
+                </FormField>
+              </>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveDialog(null)} disabled={processing}>
-              Cancelar
-            </Button>
-            <Button onClick={handleRedondear} disabled={processing} className="bg-blue-600 hover:bg-blue-700">
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Aplicar
-            </Button>
-          </DialogFooter>
+          {pieDialogo(tk('comun.aplicar'), handleRedondear)}
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Copiar precio de venta a precio de comparación */}
-      <Dialog open={activeDialog === 'copiarComparacion'} onOpenChange={(o) => !o && setActiveDialog(null)}>
-        <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
+      {/* Precio de venta → precio de comparación */}
+      <Dialog open={activeDialog === 'copiarComparacion'} onOpenChange={cerrar}>
+        <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle className="dark:text-gray-100">Precio de venta → Precio de comparación</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Se aplicará a {selectedIds.length} producto{selectedIds.length !== 1 ? 's' : ''}.
-            </DialogDescription>
+            <DialogTitle>{t('comparacion.titulo')}</DialogTitle>
+            <DialogDescription>{alcance}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3 text-sm text-blue-800 dark:text-blue-200">
-              <p className="font-medium mb-1">Comportamiento por defecto:</p>
-              <ul className="list-disc list-inside space-y-0.5 text-xs">
-                <li>Productos <strong>sin</strong> precio de comparación: se copia el precio de venta.</li>
-                <li>Productos <strong>con</strong> precio de comparación: se dejan igual.</li>
+          <div className="flex flex-col gap-3">
+            <div className="rounded-lg border border-line-brand bg-brand-tint p-3 text-sm text-brand-deep">
+              <p className="mb-1 font-medium">{t('comparacion.porDefecto')}</p>
+              <ul className="list-inside list-disc space-y-0.5 text-xs">
+                <li>{t.rich('comparacion.sin', { b: (c) => <strong>{c}</strong> })}</li>
+                <li>{t.rich('comparacion.con', { b: (c) => <strong>{c}</strong> })}</li>
               </ul>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
+              <Checkbox
                 checked={sobrescribirComparacion}
-                onChange={(e) => setSobrescribirComparacion(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                onCheckedChange={(v) => setSobrescribirComparacion(v === true)}
+                className="size-[18px] rounded"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                Sobrescribir también los que ya tienen precio de comparación
-              </span>
+              {t('comparacion.sobrescribir')}
             </label>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveDialog(null)} disabled={processing}>
-              Cancelar
-            </Button>
-            <Button onClick={handleCopiarComparacion} disabled={processing} className="bg-blue-600 hover:bg-blue-700">
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Aplicar
-            </Button>
-          </DialogFooter>
+          {pieDialogo(tk('comun.aplicar'), handleCopiarComparacion)}
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Eliminar */}
-      <Dialog open={activeDialog === 'eliminar'} onOpenChange={(o) => !o && setActiveDialog(null)}>
-        <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
+      {/* Eliminar */}
+      <Dialog open={activeDialog === 'eliminar'} onOpenChange={cerrar}>
+        <DialogContent className={clasesDialogo}>
           <DialogHeader>
-            <DialogTitle className="dark:text-gray-100">¿Eliminar productos?</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Se eliminarán {selectedIds.length} producto{selectedIds.length !== 1 ? 's' : ''}. Esta acción
-              no se puede deshacer.
+            <DialogTitle>{t('eliminar.titulo', { count: n, n: entero(n) })}</DialogTitle>
+            <DialogDescription>
+              {t('eliminar.descripcion', { count: n, n: entero(n) })}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveDialog(null)} disabled={processing}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={handleEliminar} disabled={processing}>
-              {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Eliminar todos
-            </Button>
-          </DialogFooter>
+          {pieDialogo(t('acciones.eliminar'), handleEliminar, true)}
         </DialogContent>
       </Dialog>
     </>

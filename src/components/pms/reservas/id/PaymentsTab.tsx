@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, CreditCard, CheckCircle, XCircle } from 'lucide-react';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface Payment {
   id: string;
@@ -126,13 +127,8 @@ export function PaymentsTab({ payments, onAddPayment }: PaymentsTabProps) {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  // Moneda base de la organización (la reserva/abono no tiene moneda propia).
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
 
   const formatDate = (dateString: string) => {
     // Los timestamps con hora no necesitan ajuste, pero las fechas sí

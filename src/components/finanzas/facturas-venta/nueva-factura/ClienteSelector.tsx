@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { toastError } from '@/components/ui/use-toast';
@@ -30,6 +31,13 @@ type Cliente = {
   primary_contact_position?: string | null;
 };
 
+/** Vínculo empresa → persona de contacto (`customer_company_links`). */
+type VinculoContacto = {
+  company_id: string;
+  position: string | null;
+  person: { first_name: string | null; last_name: string | null } | null;
+};
+
 type ClienteSelectorProps = {
   selectedCustomerId: string | null;
   onCustomerChange: (customerId: string | null) => void;
@@ -43,12 +51,15 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
   const [searchTerm, setSearchTerm] = useState('');
   const organizationId = getOrganizationId();
   const loadingSelectedRef = useRef<string | null>(null);
+  const t = useTranslations('facturasVenta');
   
   // Cargar clientes al iniciar
   useEffect(() => {
     if (organizationId) {
       cargarClientes();
     }
+    // Solo al cambiar de organización: cargarClientes se redefine en cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId]);
 
   // Resultados derivados: si no hay búsqueda, mostrar todos; si hay, mostrar resultados de búsqueda
@@ -83,10 +94,10 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
         if (error) throw error;
         
         // Obtener contactos principales para empresas
-        const companyResults = (data || []).filter((c: any) => c.customer_type === 'company');
+        const companyResults = (data || []).filter((c: { customer_type?: string | null }) => c.customer_type === 'company');
         const contactMap = new Map<string, { name: string; position: string | null }>();
         if (companyResults.length > 0) {
-          const companyIds = companyResults.map((c: any) => c.id);
+          const companyIds = companyResults.map((c: { id: string }) => c.id);
           const { data: links } = await supabase
             .from('customer_company_links')
             .select(`
@@ -99,7 +110,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
             .order('is_primary', { ascending: false });
 
           if (links) {
-            for (const link of links as any[]) {
+            for (const link of links as unknown as VinculoContacto[]) {
               if (!contactMap.has(link.company_id)) {
                 const person = link.person;
                 if (person) {
@@ -175,11 +186,11 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
       }
     } catch (error) {
       console.error('Error al cargar cliente seleccionado:', error);
-      toastError("Error", "No se pudo cargar la información del cliente seleccionado.");
+      toastError(t('comun.error'), t('clienteSelector.errorCliente'));
     } finally {
       loadingSelectedRef.current = null;
     }
-  }, [selectedCustomerId]);
+  }, [selectedCustomerId, t]);
 
   // Función para cargar clientes
   const cargarClientes = async () => {
@@ -210,7 +221,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
       setClientes(clientesFormateados);
     } catch (error) {
       console.error('Error al cargar clientes:', error);
-      toastError("Error", "No se pudieron cargar los clientes. Intente nuevamente.");
+      toastError(t('comun.error'), t('clienteSelector.errorClientes'));
     } finally {
       setIsLoading(false);
     }
@@ -224,7 +235,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
   }, [selectedCustomerId, cargarClienteSeleccionado]);
 
   // Cuando el diálogo compartido crea un cliente, refrescar lista y seleccionarlo
-  const handleClienteCreado = async (customer: any) => {
+  const handleClienteCreado = async (customer: { id?: string } | null) => {
     await cargarClientes();
     if (customer?.id) onCustomerChange(customer.id);
   };
@@ -244,12 +255,12 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
               border-gray-300 dark:border-gray-600
               text-gray-900 dark:text-gray-100
             ">
-              <SelectValue placeholder="Buscar cliente" />
+              <SelectValue placeholder={t('clienteSelector.buscar')} />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <div className="p-2 sticky top-0 bg-white dark:bg-gray-800 z-10">
                 <Input
-                  placeholder="Buscar cliente por nombre, email o teléfono"
+                  placeholder={t('clienteSelector.buscarPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="
@@ -265,7 +276,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
                 {isLoading && (
                   <div className="flex items-center justify-center py-1">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 dark:border-blue-400 border-t-transparent"></div>
-                    <span className="ml-2 text-xs text-gray-600 dark:text-gray-400">Buscando...</span>
+                    <span className="ml-2 text-xs text-gray-600 dark:text-gray-400">{t('clienteSelector.buscando')}</span>
                   </div>
                 )}
               </div>
@@ -273,7 +284,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
               <div className="max-h-[200px] overflow-y-auto">
                 {clientesFiltrados.length === 0 ? (
                   <div className="px-2 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                    {isLoading ? 'Cargando clientes...' : 'No se encontraron clientes'}
+                    {isLoading ? t('clienteSelector.cargando') : t('clienteSelector.sinResultados')}
                   </div>
                 ) : (
                   clientesFiltrados.map((cliente) => (
@@ -281,6 +292,8 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
                       <div className="flex items-center gap-2">
                         <div className="flex-shrink-0">
                           {cliente.avatar_url ? (
+                            // Avatar de Supabase Storage con tamaño fijo: next/image no aporta aquí.
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={cliente.avatar_url}
                               alt={cliente.full_name}
@@ -297,7 +310,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
                         <div className="min-w-0">
                           <div className="font-medium text-sm">{cliente.full_name}</div>
                           {cliente.customer_type === 'company' && cliente.primary_contact_name && (
-                            <div className="text-xs text-gray-500 dark:text-gray-400">Contacto: {cliente.primary_contact_name}{cliente.primary_contact_position ? ` (${cliente.primary_contact_position})` : ''}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{cliente.primary_contact_position ? t('clienteSelector.contactoCargo', { nombre: cliente.primary_contact_name, cargo: cliente.primary_contact_position }) : t('clienteSelector.contacto', { nombre: cliente.primary_contact_name })}</div>
                           )}
                           {cliente.email && <div className="text-xs text-gray-600 dark:text-gray-400">{cliente.email}</div>}
                         </div>
@@ -315,6 +328,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
           variant="outline" 
           size="sm"
           onClick={() => setIsOpen(true)}
+          aria-label={t('clienteSelector.nuevoCliente')}
           className="
             flex-shrink-0 h-9 w-9 sm:h-10 sm:w-10 p-0
             bg-white dark:bg-gray-800
@@ -344,6 +358,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
             <div key={cliente.id} className="flex items-start gap-3">
               <div className="flex-shrink-0">
                 {cliente.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={cliente.avatar_url}
                     alt={cliente.full_name}
@@ -359,8 +374,8 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
               </div>
               <div className="flex flex-col min-w-0">
                 <p className="font-medium">{cliente.full_name}</p>
-                {cliente.email && <p className="text-gray-600 dark:text-gray-400">Email: {cliente.email}</p>}
-                {cliente.phone && <p className="text-gray-600 dark:text-gray-400">Teléfono: {cliente.phone}</p>}
+                {cliente.email && <p className="text-gray-600 dark:text-gray-400">{t('clienteSelector.correo', { correo: cliente.email })}</p>}
+                {cliente.phone && <p className="text-gray-600 dark:text-gray-400">{t('clienteSelector.telefono', { telefono: cliente.phone })}</p>}
               </div>
             </div>
           ))}

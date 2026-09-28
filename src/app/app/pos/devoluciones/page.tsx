@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { ArrowLeftRight, Package, History, RotateCcw, Tag, Settings } from 'lucide-react';
+import { ArrowLeftRight, Package, History, RotateCcw, Tag } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,12 +17,16 @@ import { ReturnsHistory } from '@/components/pos/devoluciones/ReturnsHistory';
 import { SaleForReturn } from '@/components/pos/devoluciones/types';
 import { toast } from 'sonner';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 type ViewState = 'search' | 'process' | 'history';
 
 export default function DevolucionesPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { branchFilter } = useBranch();
+  const t = useTranslations('posDevoluciones.pagina');
+  const tComun = useTranslations('posDevoluciones.comun');
+  const { formatDate } = useFormatDate();
   const [activeView, setActiveView] = useState<ViewState>('search');
   const [selectedSale, setSelectedSale] = useState<SaleForReturn | null>(null);
   const [refreshHistoryTrigger, setRefreshHistoryTrigger] = useState(0);
@@ -37,7 +42,7 @@ export default function DevolucionesPage() {
   };
 
   const handleReturnSuccess = () => {
-    toast.success('Devolución procesada exitosamente');
+    toast.success(t('procesadaExito'));
     setSelectedSale(null);
     setActiveView('history');
     setRefreshHistoryTrigger(prev => prev + 1);
@@ -74,10 +79,10 @@ export default function DevolucionesPage() {
                 </div>
                 <div>
                   <CardTitle className="text-base sm:text-lg dark:text-white text-gray-900">
-                    Devoluciones y Cambios - {organization?.name || 'Organización'}
+                    {t('titulo', { organizacion: organization?.name || t('organizacionRespaldo') })}
                   </CardTitle>
                   <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                    Gestiona devoluciones, reembolsos y notas de crédito
+                    {t('subtitulo')}
                   </p>
                 </div>
               </div>
@@ -85,20 +90,20 @@ export default function DevolucionesPage() {
                 <Link href="/app/pos/devoluciones/motivos">
                   <Button variant="outline" size="sm" className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600">
                     <Tag className="h-4 w-4 mr-2" />
-                    Motivos
+                    {t('motivos')}
                   </Button>
                 </Link>
                 <div className="text-right">
                   <div className="flex items-center space-x-2">
                     <Package className="h-4 w-4 text-gray-400" />
                     <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {new Date().toLocaleDateString()}
+                      {formatDate(new Date())}
                     </span>
                   </div>
                   <div className="flex items-center space-x-2 mt-1">
                     <Badge variant="outline" className="dark:border-blue-500 dark:text-blue-400 border-blue-500 text-blue-600">
                       <RotateCcw className="h-3 w-3 mr-1" />
-                      Sistema Activo
+                      {t('sistemaActivo')}
                     </Badge>
                   </div>
                 </div>
@@ -117,7 +122,7 @@ export default function DevolucionesPage() {
                   className="flex items-center space-x-2 dark:data-[state=active]:bg-gray-600 dark:data-[state=active]:text-white"
                 >
                   <Package className="h-4 w-4 shrink-0" />
-                  <span className="break-words whitespace-normal text-left">Buscar Ticket</span>
+                  <span className="break-words whitespace-normal text-left">{tComun('buscarTicket')}</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="process"
@@ -125,14 +130,14 @@ export default function DevolucionesPage() {
                   className="flex items-center space-x-2 dark:data-[state=active]:bg-gray-600 dark:data-[state=active]:text-white"
                 >
                   <ArrowLeftRight className="h-4 w-4 shrink-0" />
-                  <span className="break-words whitespace-normal text-left">Procesar Devolución</span>
+                  <span className="break-words whitespace-normal text-left">{tComun('procesarDevolucion')}</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="history"
                   className="flex items-center space-x-2 dark:data-[state=active]:bg-gray-600 dark:data-[state=active]:text-white"
                 >
                   <History className="h-4 w-4 shrink-0" />
-                  <span className="break-words whitespace-normal text-left">Historial</span>
+                  <span className="break-words whitespace-normal text-left">{tComun('historial')}</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -142,14 +147,14 @@ export default function DevolucionesPage() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-lg font-medium dark:text-white">Buscar Ticket Original</h3>
+                        <h3 className="text-lg font-medium dark:text-white">{tComun('buscarTicketOriginal')}</h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Busca la venta original para procesar la devolución
+                          {t('busquedaDescripcion')}
                         </p>
                       </div>
                       {selectedSale && (
                         <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                          Ticket Seleccionado: {selectedSale.id.slice(-8)}
+                          {t('ticketSeleccionado', { id: selectedSale.id.slice(-8) })}
                         </Badge>
                       )}
                     </div>
@@ -161,9 +166,9 @@ export default function DevolucionesPage() {
                   {selectedSale ? (
                     <div className="space-y-4">
                       <div>
-                        <h3 className="text-lg font-medium dark:text-white">Procesar Devolución</h3>
+                        <h3 className="text-lg font-medium dark:text-white">{tComun('procesarDevolucion')}</h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Selecciona los items a devolver y el método de reembolso
+                          {t('procesoDescripcion')}
                         </p>
                       </div>
                       <ReturnForm 
@@ -176,17 +181,17 @@ export default function DevolucionesPage() {
                     <div className="text-center py-12">
                       <Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                       <h3 className="text-lg font-medium text-gray-600 dark:text-gray-400 mb-2">
-                        No hay ticket seleccionado
+                        {t('sinTicketTitulo')}
                       </h3>
                       <p className="text-gray-500 dark:text-gray-500 mb-4">
-                        Primero debes buscar y seleccionar un ticket desde la pestaña "Buscar Ticket"
+                        {t('sinTicketDescripcion')}
                       </p>
                       <Button 
                         onClick={() => setActiveView('search')}
                         className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
                       >
                         <Package className="h-4 w-4 mr-2" />
-                        Buscar Ticket
+                        {tComun('buscarTicket')}
                       </Button>
                     </div>
                   )}
@@ -195,9 +200,9 @@ export default function DevolucionesPage() {
                 <TabsContent value="history" className="mt-0">
                   <div className="space-y-4">
                     <div>
-                      <h3 className="text-lg font-medium dark:text-white">Historial de Devoluciones</h3>
+                      <h3 className="text-lg font-medium dark:text-white">{tComun('historialDevoluciones')}</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Consulta todas las devoluciones procesadas
+                        {t('historialDescripcion')}
                       </p>
                     </div>
                     <ReturnsHistory refreshTrigger={refreshHistoryTrigger} branchFilter={branchFilter} />
@@ -217,8 +222,8 @@ export default function DevolucionesPage() {
                   <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Buscar Ticket</p>
-                  <p className="font-medium dark:text-white">Encuentra la venta original</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{tComun('buscarTicket')}</p>
+                  <p className="font-medium dark:text-white">{t('tarjetas.buscarDescripcion')}</p>
                 </div>
               </div>
             </CardContent>
@@ -231,8 +236,8 @@ export default function DevolucionesPage() {
                   <ArrowLeftRight className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Procesar Devolución</p>
-                  <p className="font-medium dark:text-white">Reembolso o nota de crédito</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{tComun('procesarDevolucion')}</p>
+                  <p className="font-medium dark:text-white">{t('tarjetas.procesarDescripcion')}</p>
                 </div>
               </div>
             </CardContent>
@@ -245,8 +250,8 @@ export default function DevolucionesPage() {
                   <History className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Historial</p>
-                  <p className="font-medium dark:text-white">Consulta devoluciones</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{tComun('historial')}</p>
+                  <p className="font-medium dark:text-white">{t('tarjetas.historialDescripcion')}</p>
                 </div>
               </div>
             </CardContent>
@@ -260,8 +265,8 @@ export default function DevolucionesPage() {
                     <Tag className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Catálogo de Motivos</p>
-                    <p className="font-medium dark:text-white">Gestionar motivos</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{t('tarjetas.catalogoMotivos')}</p>
+                    <p className="font-medium dark:text-white">{t('tarjetas.gestionarMotivos')}</p>
                   </div>
                 </div>
               </CardContent>

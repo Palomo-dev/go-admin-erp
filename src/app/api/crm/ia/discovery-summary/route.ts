@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 import { readOrgBody } from '@/lib/security/organizationBody';
 /**
@@ -137,7 +138,10 @@ async function gatherDiscoveryContext(
     // Obtener todas las actividades — filtrar por organización
     const { data: activities } = await supabase
       .from('activities')
-      .select('activity_type, title, description, occurred_at')
+      // `activities` NO tiene `title` ni `description`: el texto vive en
+      // `notes` (columnas verificadas por MCP el 2026-09-23). Pedirlas devolvía
+      // 42703 y la lista se quedaba vacía sin que nadie mirase el `error`.
+      .select('activity_type, notes, occurred_at')
       .eq('related_id', opportunityId)
       .eq('related_type', 'opportunity')
       .eq('organization_id', organizationId)
@@ -154,7 +158,7 @@ async function gatherDiscoveryContext(
           a.activity_type === 'call' ||
           a.activity_type === 'meeting'
       )
-      .map((a) => (a.description as string) || (a.title as string))
+      .map((a) => a.notes as string)
       .filter(Boolean);
 
     return {
@@ -162,7 +166,8 @@ async function gatherDiscoveryContext(
       customer_name: customer?.full_name || 'N/A',
       stage_name: stage?.name || 'Sin etapa',
       amount: (oppData.amount as number) || 0,
-      currency: (oppData.currency as string) || 'COP',
+      // Moneda del documento; si no la trae, la base de la organización.
+      currency: (oppData.currency as string) || (await resolveOrgCurrency(supabase, organizationId)).code,
       activities: activityList.map((a) => ({
         type: (a.activity_type as string) || 'unknown',
         title: (a.title as string) || '',

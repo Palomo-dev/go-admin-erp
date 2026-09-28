@@ -1,141 +1,84 @@
 // ============================================================
 // /api/integrations/open-finance/consents
-// Gestion de consentimientos Open Finance (Decreto 0368 de 2026)
-// GET  - lista consentimientos de la organizacion
-//        (query: ?organizationId=xxx&status=xxx&consentType=xxx)
+// Consentimientos Open Finance de la organizacion (Decreto 0368 de 2026)
+// GET  - lista consentimientos (query: ?status=xxx&consentType=xxx)
 // POST - crea un nuevo consentimiento
+//
+// SEGURIDAD (GO-sec, 2026-09-23): la organizacion salia de la query/body o de
+// «la membresia activa mas reciente». Ahora sale de la sesion (`withOrg`), un
+// body o query con otra organizacion responde 403 (`readOrgBody`), hay permiso
+// `finance.*` resuelto en el servidor y el `linkId` tiene que ser de la
+// organizacion (404 si no).
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { consentService } from '@/lib/services/integrations/openFinance/consentService';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
+import { consentService, type CreateConsentInput } from '@/lib/services/integrations/openFinance/consentService';
+import { linkDeLaOrganizacion } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-// Obtiene el organizationId activo del usuario desde la sesion
-async function getActiveOrganizationId(
-  supabase: SupabaseClient,
-  userId: string,
-): Promise<number | null> {
-  const { data, error } = await supabase
-    .from('organization_members')
-    .select('organization_id')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
+const RUTA = 'open-finance/consents';
+const TIPOS_VALIDOS = ['data_access', 'payment_initiation', 'account_validation'];
 
-  if (error || !data) return null;
-  return Number(data.organization_id);
-}
-
-// GET - lista consentimientos de la organizacion
-export async function GET(request: NextRequest) {
+// GET - lista consentimientos de la organizacion de la sesion
+export const GET = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, RUTA);
 
     const { searchParams } = new URL(request.url);
-    const orgIdQuery = searchParams.get('organizationId');
     const status = searchParams.get('status') || undefined;
     const consentType = searchParams.get('consentType') || undefined;
 
-    let organizationId = orgIdQuery ? Number(orgIdQuery) : undefined;
-    if (!organizationId) {
-      organizationId = (await getActiveOrganizationId(supabase, session.user.id)) ?? undefined;
-    }
-
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: 'No se pudo determinar la organizacion activa' },
-        { status: 400 },
-      );
-    }
-
-    const consents = await consentService.listConsents(organizationId, { status, consentType });
-
+    const consents = await consentService.listConsents(ctx.organizationId, { status, consentType });
     return NextResponse.json({ success: true, data: consents });
   } catch (error) {
-    console.error('[Open Finance Consents GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Consents GET', error);
   }
+});
+
+interface ConsentimientoBody {
+  linkId?: string;
+  consentType?: string;
+  purpose?: string;
+  scope?: Record<string, unknown>;
+  expiresAt?: string;
 }
 
-// POST - crea un nuevo consentimiento
-export async function POST(request: NextRequest) {
+// POST - crea un nuevo consentimiento de la organizacion de la sesion
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const body = await readOrgBody<ConsentimientoBody>(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.CREAR, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+    const { linkId, consentType, purpose, scope, expiresAt } = body;
 
-    const body = await request.json();
-    const {
-      organizationId,
-      linkId,
-      consentType,
-      purpose,
-      scope,
-      expiresAt,
-    } = body;
-
-    // organizationId puede venir en el body o deducirse de la sesion
-    let orgId = organizationId ? Number(organizationId) : undefined;
-    if (!orgId) {
-      orgId = (await getActiveOrganizationId(supabase, session.user.id)) ?? undefined;
-    }
-
-    if (!orgId) {
-      return NextResponse.json(
-        { error: 'No se pudo determinar la organizacion activa' },
-        { status: 400 },
-      );
-    }
-
-    // Validar campos requeridos
     if (!consentType || !purpose) {
-      return NextResponse.json(
-        { error: 'consentType y purpose son requeridos' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'consentType y purpose son requeridos' }, { status: 400 });
     }
-
-    const validTypes = ['data_access', 'payment_initiation', 'account_validation'];
-    if (!validTypes.includes(consentType)) {
-      return NextResponse.json(
-        { error: 'consentType no valido' },
-        { status: 400 },
-      );
+    if (!TIPOS_VALIDOS.includes(consentType)) {
+      return NextResponse.json({ error: 'consentType no valido' }, { status: 400 });
     }
+    if (linkId) await linkDeLaOrganizacion(ctx, linkId);
 
     // IP y user agent del request para auditoria
-    const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0] || null;
-    const userAgent = request.headers.get('user-agent') || null;
+    const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined;
+    const userAgent = request.headers.get('user-agent') || undefined;
 
     const result = await consentService.createConsent({
-      organizationId: orgId,
+      organizationId: ctx.organizationId,
       linkId,
-      consentType,
+      consentType: consentType as CreateConsentInput['consentType'],
       purpose,
       scope,
       expiresAt,
-      ipAddress: ipAddress || undefined,
-      userAgent: userAgent || undefined,
-      userId: session.user.id,
+      ipAddress,
+      userAgent,
+      userId: ctx.userId,
     });
 
     return NextResponse.json({ success: true, data: result }, { status: 201 });
   } catch (error) {
-    console.error('[Open Finance Consents POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Consents POST', error);
   }
-}
+});

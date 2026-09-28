@@ -14,18 +14,29 @@ import { AccountStatusBadge } from './AccountStatusBadge';
 import { PaymentHistoryCard } from './PaymentHistoryCard';
 import { AccountActionsCard } from './AccountActionsCard';
 import { InstallmentsCard } from './InstallmentsCard';
-import { formatCurrency } from '@/utils/Utils';
-import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
+import { useTimezoneFor } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz, formatDateTimeInTz } from '@/lib/utils/dateDisplay';
+import { todayInTz } from '@/lib/utils/timezone';
 
 interface CuentaPorPagarDetailPageProps {
   accountId: string;
 }
 
 export function CuentaPorPagarDetailPage({ accountId }: CuentaPorPagarDetailPageProps) {
+  // Montos en la moneda base de la organización (fuente única:
+  // monedaOrganizacion.ts), también en el documento exportado. Nunca pesos fijos.
+  const monedaOrg = useMonedaOrganizacion();
   const router = useRouter();
-  const { timezone } = useOrgTimezone();
   const [account, setAccount] = useState<CuentaPorPagarDetalle | null>(null);
+  // La cuenta por pagar hereda la moneda de la factura del proveedor.
+  const formatCurrency = crearFormateadorMoneda(monedaOrg.paraDocumento(account?.invoice_currency));
+  // Zona de la sucursal DUEÑA de la cuenta (`accounts_payable.branch_id`), no
+  // la de la organizacion: el vencimiento de una cuenta de otra sucursal se
+  // lee en la zona de esa sucursal. Mientras la cuenta no ha cargado, la
+  // cascada cae en la organizacion, que es lo correcto por defecto.
+  const { timezone } = useTimezoneFor(account?.branch_id);
   const [agingInfo, setAgingInfo] = useState<AgingInfo | null>(null);
   const [accountActions, setAccountActions] = useState<AccountActions | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -101,7 +112,7 @@ Fecha de Generación: ${formatDateInTz(new Date().toISOString(), timezone)}
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `estado_cuenta_${account.supplier_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+      a.download = `estado_cuenta_${account.supplier_name.replace(/\s+/g, '_')}_${todayInTz(timezone)}.txt`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -440,6 +451,9 @@ Fecha de Generación: ${formatDateInTz(new Date().toISOString(), timezone)}
         <InstallmentsCard
           accountId={account.id}
           totalAmount={account.balance}
+          organizationId={account.organization_id}
+          branchId={account.branch_id ?? null}
+          currency={account.invoice_currency}
           onUpdate={handleRefresh}
         />
       </div>

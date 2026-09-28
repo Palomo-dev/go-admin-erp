@@ -28,7 +28,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { MembershipPlan } from '@/lib/services/gymService';
 import { AccessRules } from './AccessRulesEditor';
 
@@ -40,6 +41,7 @@ interface PlanCardProps {
 }
 
 export function PlanCard({ plan, onEdit, onDuplicate, onToggleStatus }: PlanCardProps) {
+  const { formatear } = useMonedaOrganizacion();
   const formatDuration = (days: number): string => {
     if (days === 1) return '1 día';
     if (days === 7) return '1 semana';
@@ -132,7 +134,7 @@ export function PlanCard({ plan, onEdit, onDuplicate, onToggleStatus }: PlanCard
           </div>
           
           <p className="text-xl font-bold text-gray-900 dark:text-white">
-            {formatCurrency(plan.price)}
+            {formatear(plan.price)}
           </p>
         </div>
 

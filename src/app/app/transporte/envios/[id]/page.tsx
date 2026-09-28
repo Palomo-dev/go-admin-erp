@@ -41,6 +41,8 @@ import {
   AssignDriverDialog,
   type AvailableDriver,
 } from '@/components/transporte/envios/id';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   draft: { label: 'Borrador', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100', icon: <Package className="h-4 w-4" /> },
@@ -66,6 +68,8 @@ export default function ShipmentDetailPage() {
   const organizationId = organization?.id;
   const { selectedBranchId } = useBranch();
   const { timezone } = useOrgTimezone();
+  // Moneda base de la organización para las guías impresas (nunca pesos fijos).
+  const moneda = useMonedaOrganizacion();
 
   const [shipment, setShipment] = useState<ShipmentWithDetails | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -367,6 +371,7 @@ export default function ShipmentDetailPage() {
           phone: orgInfo.phone,
         } : undefined,
         timezone,
+        moneda,
       },
       selectedBranchId,
     );
@@ -476,7 +481,7 @@ export default function ShipmentDetailPage() {
               variant="outline"
               onClick={async () => {
                 try {
-                  await shipmentsService.updateShipment(shipmentId, { payment_status: 'paid' } as any);
+                  await shipmentsService.updateShipment(shipmentId, { payment_status: 'paid' });
                   toast({ title: 'Pago registrado', description: 'El envío ha sido marcado como pagado.' });
                   loadData();
                 } catch (error) {
@@ -684,7 +689,7 @@ export default function ShipmentDetailPage() {
                 <p className="text-sm text-gray-500 dark:text-gray-400">Valor Declarado</p>
                 <p className="font-medium">
                   {shipment.declared_value
-                    ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(shipment.declared_value)
+                    ? formatMoneda(shipment.declared_value, moneda.paraDocumento(shipment.currency))
                     : '-'}
                 </p>
               </div>
@@ -736,6 +741,7 @@ export default function ShipmentDetailPage() {
                 isLoading={isLoading}
                 canEdit={canEdit}
                 organizationId={organizationId || undefined}
+                currency={shipment?.currency}
                 onAddItem={handleAddItem}
                 onDeleteItem={handleDeleteItem}
                 onSearchProduct={async (query) => {
@@ -785,21 +791,21 @@ export default function ShipmentDetailPage() {
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">Flete</span>
                 <span className="font-medium">
-                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: shipment.currency || 'COP', minimumFractionDigits: 0 }).format(shipment.shipping_fee || shipment.freight_cost || 0)}
+                  {formatMoneda(shipment.shipping_fee || shipment.freight_cost || 0, moneda.paraDocumento(shipment.currency))}
                 </span>
               </div>
               {shipment.insurance_cost && shipment.insurance_cost > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-gray-400">Seguro</span>
                   <span className="font-medium">
-                    {new Intl.NumberFormat('es-CO', { style: 'currency', currency: shipment.currency || 'COP', minimumFractionDigits: 0 }).format(shipment.insurance_cost)}
+                    {formatMoneda(shipment.insurance_cost, moneda.paraDocumento(shipment.currency))}
                   </span>
                 </div>
               )}
               <div className="border-t pt-3 flex justify-between font-semibold">
                 <span>Total</span>
                 <span className="text-blue-600 dark:text-blue-300">
-                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: shipment.currency || 'COP', minimumFractionDigits: 0 }).format(shipment.total_cost || 0)}
+                  {formatMoneda(shipment.total_cost || 0, moneda.paraDocumento(shipment.currency))}
                 </span>
               </div>
             </div>

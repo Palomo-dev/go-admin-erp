@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 
 /**
  * GET /api/web-orders/observability
@@ -13,10 +14,19 @@ import { createClient } from '@supabase/supabase-js';
  *     con el tiempo efectivo de expiración por organización.
  *
  * Requiere service_role (es un endpoint interno del ERP).
+ *
+ * SEGURIDAD (2026-09-22): la ruta usaba la clave de servicio, tomaba
+ * `organization_id` del query string y **no comprobaba sesión ni pertenencia**,
+ * así que cualquiera podía leer el stock reservado y los pedidos pendientes de
+ * cualquier organización cambiando un número en la URL (incumplía las reglas 5
+ * y 6 de CLAUDE.md). Ahora la organización sale de la sesión
+ * (`getServerOrgContext`) y el `organization_id` del query solo se acepta si
+ * coincide con ella.
  */
 
 export async function GET(request: Request) {
   try {
+    const ctx = await getServerOrgContext(request);
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseUrl || !serviceKey) {
@@ -34,14 +44,18 @@ export async function GET(request: Request) {
     const organizationId = searchParams.get('organization_id');
     const withinMinutes = parseInt(searchParams.get('within_minutes') || '30', 10);
 
-    if (!organizationId) {
+    // La organización SIEMPRE sale de la sesión. Si el cliente manda una
+    // distinta en el query, se rechaza y se registra.
+    const orgId = ctx.organizationId;
+    if (organizationId && parseInt(organizationId, 10) !== orgId) {
+      console.warn(
+        `[Observability] Petición rechazada: la sesión es de la organización ${orgId} y pidió ${organizationId}`
+      );
       return NextResponse.json(
-        { error: 'organization_id es requerido' },
-        { status: 400 }
+        { error: 'No perteneces a esa organización', code: 'ORG_FORBIDDEN' },
+        { status: 403 }
       );
     }
-
-    const orgId = parseInt(organizationId, 10);
 
     // ── 0. Obtener sucursales de la organización para filtrar stock ──
     const { data: orgBranches, error: branchesError } = await supabase
@@ -233,6 +247,9 @@ export async function GET(request: Request) {
       timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
+    if (error instanceof OrgContextError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
+    }
     console.error('[Observability] Error inesperado:', error);
     const message = error instanceof Error ? error.message : 'Error interno';
     return NextResponse.json({ error: message }, { status: 500 });

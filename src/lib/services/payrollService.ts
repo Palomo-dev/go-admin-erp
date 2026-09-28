@@ -1,6 +1,8 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/dateCore';
 
 // Interfaces
 export interface PayrollPeriod {
@@ -20,10 +22,22 @@ export interface PayrollPeriod {
   approved_by: string | null;
   approved_at: string | null;
   notes: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   runs_count?: number;
+}
+
+interface RawProfile { first_name: string | null; last_name: string | null }
+/** Fila de payroll_slips con sus embebidos (lo que devuelve el select con joins). */
+type RawSlip = PayrollSlip & {
+  employments?: { employee_code?: string | null; organization_members?: { profiles?: RawProfile | null } | null } | null;
+  payroll_runs?: { run_number?: number; payroll_periods?: { name?: string; organization_id?: number } | null } | null;
+};
+interface RawEmployment {
+  id: string;
+  employee_code: string | null;
+  organization_members?: { organization_id?: number; profiles?: RawProfile | null } | null;
 }
 
 export interface PayrollRun {
@@ -33,7 +47,7 @@ export interface PayrollRun {
   executed_by: string;
   executed_at: string | null;
   status: string | null;
-  summary: Record<string, any> | null;
+  summary: Record<string, unknown> | null;
   error_log: string | null;
   superseded_by: string | null;
   is_final: boolean;
@@ -85,12 +99,12 @@ export interface PayrollSlip {
   payment_id: string | null;
   paid_at: string | null;
   notes: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   // Joined fields
   employee_name?: string;
-  employee_code?: string;
+  employee_code?: string | null;
   run_number?: number;
   period_name?: string;
 }
@@ -111,7 +125,7 @@ export interface PayrollItem {
   source_type: string | null;
   source_id: string | null;
   notes: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -270,7 +284,7 @@ class PayrollService {
   }
 
   async changePeriodStatus(id: string, status: string): Promise<PayrollPeriod> {
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       status,
       updated_at: new Date().toISOString(),
     };
@@ -416,11 +430,11 @@ class PayrollService {
     if (error) throw error;
 
     // Filter by organization
-    const filtered = (data || []).filter((slip: any) => 
+    const filtered = ((data || []) as unknown as RawSlip[]).filter((slip) =>
       slip.payroll_runs?.payroll_periods?.organization_id === this.organizationId
     );
 
-    return filtered.map((slip: any) => this.mapSlip(slip));
+    return filtered.map((slip) => this.mapSlip(slip));
   }
 
   async getSlipById(id: string): Promise<PayrollSlip | null> {
@@ -447,7 +461,7 @@ class PayrollService {
   }
 
   async updateSlipStatus(id: string, status: string): Promise<PayrollSlip> {
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       status,
       updated_at: new Date().toISOString(),
     };
@@ -465,19 +479,20 @@ class PayrollService {
 
     if (error) throw error;
 
-    // Si se marca como pagado, marcar comisiones vinculadas como pagadas
-    if (status === 'paid' && data?.metadata?.commission_ids?.length) {
-      const now = new Date().toISOString();
-      await supabase
-        .from('commissions')
-        .update({
-          status: 'paid',
-          paid_at: now,
-          updated_at: now,
-          metadata: { payroll_slip_id: id },
-        })
-        .in('id', data.metadata.commission_ids)
-        .eq('status', 'accrued');
+    // Si se marca como pagado, marcar comisiones vinculadas como pagadas. La
+    // tabla commissions ya no admite escritura desde el navegador: lo hace la
+    // RPC fn_comisiones_pagar_por_nomina (20260928213000), que exige la colilla
+    // pagada, gestión o hr.payroll.process / finance.approve, y solo toca las
+    // comisiones devengadas del empleado de la colilla, de su organización.
+    // Metadata FUSIONADA (se conserva sale_id, commission_method…) con
+    // payroll_slip_id en la misma escritura: fn_auto_journal_commission no
+    // asienta el pago de una comisión pagada por nómina (lo asienta la nómina).
+    const commissionIds = Array.isArray(data?.metadata?.commission_ids)
+      ? (data.metadata.commission_ids as unknown[]).filter((x): x is string => typeof x === 'string')
+      : [];
+    if (status === 'paid' && commissionIds.length > 0) {
+      const { error: commError } = await supabase.rpc('fn_comisiones_pagar_por_nomina', { p_slip_id: id });
+      if (commError) throw commError;
     }
 
     return this.getSlipById(data.id) as Promise<PayrollSlip>;
@@ -560,14 +575,28 @@ class PayrollService {
   }
 
   // Country Rules
+  /**
+   * Tabla de retenciones vigente HOY para un pais.
+   *
+   * El dia decide QUE NORMA se aplica: `country_payroll_rules.valid_from` es
+   * `date` y las tablas entran en vigor el 1 de enero. Con el dia UTC, una
+   * nomina liquidada el 31 de diciembre a las 20:00 en Bogota (ya 1 de enero en
+   * UTC) cogia la tabla del ANO SIGUIENTE, y una liquidada el 1 de enero a las
+   * 00:30 en Madrid cogia la del anterior. Por eso el dia sale de la zona de la
+   * organizacion y no del reloj del servidor.
+   *
+   * `country_payroll_rules` es un catalogo por pais, sin organizacion: la zona
+   * es la de la organizacion que liquida, que es quien tiene el calendario
+   * laboral. No hay sucursal en juego.
+   */
   async getCountryRules(countryCode: string = 'CO'): Promise<CountryPayrollRules | null> {
-    const currentYear = new Date().getFullYear();
+    const hoy = todayInTz(await resolveTimezone(this.organizationId));
     const { data, error } = await supabase
       .from('country_payroll_rules')
       .select('*')
       .eq('country_code', countryCode)
       .eq('is_active', true)
-      .lte('valid_from', new Date().toISOString().split('T')[0])
+      .lte('valid_from', hoy)
       .order('year', { ascending: false })
       .limit(1)
       .single();
@@ -592,11 +621,11 @@ class PayrollService {
 
     if (error) throw error;
 
-    const filtered = (data || []).filter((emp: any) => 
+    const filtered = ((data || []) as unknown as RawEmployment[]).filter((emp) =>
       emp.organization_members?.organization_id === this.organizationId
     );
 
-    return filtered.map((emp: any) => {
+    return filtered.map((emp) => {
       const profile = emp.organization_members?.profiles;
       return {
         id: emp.id,
@@ -626,7 +655,7 @@ class PayrollService {
     return `Periodo ${start} - ${end}`;
   }
 
-  private mapSlip(slip: any): PayrollSlip {
+  private mapSlip(slip: RawSlip): PayrollSlip {
     const profile = slip.employments?.organization_members?.profiles;
     return {
       ...slip,

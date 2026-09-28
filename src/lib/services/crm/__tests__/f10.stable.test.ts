@@ -12,7 +12,7 @@
 import { createFakeSupabase, type FakeDb } from '@/lib/services/crm/__tests__/f10FakeSupabase';
 
 let db: FakeDb;
-jest.mock('@/lib/supabase/config', () => ({ supabase: { from: (t: string) => createFakeSupabase(db).from(t) } }));
+jest.mock('@/lib/supabase/config', () => ({ supabase: { from: (t: string) => createFakeSupabase(db).from(t), rpc: (fn: string, args: Record<string, unknown>) => createFakeSupabase(db).rpc(fn, args) } }));
 jest.mock('@/lib/utils/orgId', () => ({ getOrganizationId: () => 120, obtenerOrganizacionActiva: () => ({ id: 120 }) }));
 
 import { registerCrmPayment, isStripeReferenceDuplicate } from '@/lib/services/crm/paymentService';
@@ -30,7 +30,7 @@ function seed(): FakeDb {
       payments: [{ id: 'pay-seed', organization_id: 120, source: 'invoice_sales', source_id: 'inv-1', status: 'completed', amount: 1800000, currency: 'COP', reference: 'anticipo-seed', method: 'cash' }],
       accounts_receivable: [{ id: 'ar-1', organization_id: 120, invoice_id: 'inv-1', balance: 5000000, status: 'partial' }],
       commissions: [],
-      opportunities: [{ id: 'op-1', organization_id: 120, salesperson_id: 'u-1', commission_rate: 10, amount: 1000, currency: 'COP' }],
+      opportunities: [{ id: 'op-1', organization_id: 120, status: 'won', salesperson_id: 'u-1', commission_rate: 10, amount: 1000, currency: 'COP' }],
       vendor_commission_rates: [],
       activities: [],
     },
@@ -51,7 +51,7 @@ describe('doble comisión: trigger de BD + accrueCommission (tester r1 T-E)', ()
       { id: 'cm-trigger', organization_id: 120, source_type: 'opportunity', source_id: 'op-1', status: 'accrued', base_amount: 1000, commission_rate: 10, commission_amount: 100 },
       { id: 'cm-ajena', organization_id: 121, source_type: 'opportunity', source_id: 'op-1', status: 'accrued', base_amount: 1, commission_rate: 1, commission_amount: 1 },
     ];
-    const r = await commissionService.accrueCommission('op-1', 'u-1', 1000);
+    const r = await commissionService.accrueCommission('op-1');
     expect(r).toMatchObject({ id: 'cm-trigger', commission_rate: 10, commission_amount: 100, already_accrued: true });
     expect(db.rows.commissions.filter((c) => c.organization_id === 120 && c.source_type === 'opportunity' && c.source_id === 'op-1')).toHaveLength(1);
     expect(db.writes).toEqual([]);
@@ -62,7 +62,7 @@ describe('doble comisión: trigger de BD + accrueCommission (tester r1 T-E)', ()
       { id: 'cm-inv', organization_id: 120, source_type: 'invoice', source_id: 'op-1', status: 'accrued', commission_amount: 7 },
       { id: 'cm-ajena', organization_id: 121, source_type: 'opportunity', source_id: 'op-1', status: 'accrued', commission_amount: 9 },
     ];
-    const r = await commissionService.accrueCommission('op-1', 'u-1', 1000);
+    const r = await commissionService.accrueCommission('op-1');
     expect(r).toMatchObject({ commission_rate: 10, commission_amount: 100, status: 'accrued' });
     expect(r?.already_accrued).toBeFalsy();
     const inserted = commissionWrites().filter((w) => w.op === 'insert');
@@ -72,7 +72,7 @@ describe('doble comisión: trigger de BD + accrueCommission (tester r1 T-E)', ()
 
   it('E3 (r3) una comisión CANCELADA (rechazo/clawback de un gestor) también bloquea el devengo automático, como el trigger de BD que cuenta cualquier estado', async () => {
     db.rows.commissions = [{ id: 'cm-cancel', organization_id: 120, source_type: 'opportunity', source_id: 'op-1', status: 'cancelled', base_amount: 1000, commission_rate: 10, commission_amount: 100 }];
-    const r = await commissionService.accrueCommission('op-1', 'u-1', 1000);
+    const r = await commissionService.accrueCommission('op-1');
     expect(r).toMatchObject({ id: 'cm-cancel', already_accrued: true, existing_status: 'cancelled' });
     expect(db.writes).toEqual([]);
     expect(db.rows.commissions).toHaveLength(1);

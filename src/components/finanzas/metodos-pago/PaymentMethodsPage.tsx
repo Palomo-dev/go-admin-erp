@@ -43,8 +43,13 @@ export interface OrganizationPaymentMethod {
   is_active: boolean;
   settings: {
     gateway?: string;
-    gateway_config?: Record<string, any>;
+    gateway_config?: Record<string, unknown>;
     account_mapping?: Record<string, string>;
+    // Personalización propia de la organización (el catálogo global no se toca):
+    // ver src/lib/finanzas/metodosPagoOrganizacion.ts.
+    display_name?: string | null;
+    requires_reference?: boolean | null;
+    [clave: string]: unknown;
   };
   payment_method?: PaymentMethod;
   integration_connection_id?: string | null;
@@ -64,7 +69,7 @@ export default function PaymentMethodsPage() {
   const [activeTab, setActiveTab] = useState<string>("lista");
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [orgPaymentMethods, setOrgPaymentMethods] = useState<OrganizationPaymentMethod[]>([]);
-  const [recommendedMethods, setRecommendedMethods] = useState<any[]>([]);
+  const [recommendedMethods, setRecommendedMethods] = useState<Array<{ code?: string; payment_method_code?: string }>>([]);
   const [actualCountryCode, setActualCountryCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMethod, setSelectedMethod] = useState<OrganizationPaymentMethod | null>(null);
@@ -74,6 +79,7 @@ export default function PaymentMethodsPage() {
     if (organizationId) {
       loadPaymentMethods();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId]);
 
   // Función para cargar los métodos de pago
@@ -124,7 +130,7 @@ export default function PaymentMethodsPage() {
             return true;
           }
           // Si tiene países asignados, verificar si incluye el país de la organización
-          return method.countries.some((c: any) => c.country_code === currentCountryCode);
+          return method.countries.some((c: PaymentMethodCountry) => c.country_code === currentCountryCode);
         });
       }
       
@@ -167,8 +173,8 @@ export default function PaymentMethodsPage() {
       })) || []);
       setRecommendedMethods(recommendedData || []);
       setActualCountryCode(currentCountryCode || null);
-    } catch (error: any) {
-      console.error("Error al cargar métodos de pago:", error.message);
+    } catch (error: unknown) {
+      console.error("Error al cargar métodos de pago:", error);
       toast({
         title: "Error",
         description: "No se pudieron cargar los métodos de pago",

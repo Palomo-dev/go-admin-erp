@@ -157,6 +157,19 @@ export interface GoAdminDesktopBridge {
     branchIds: number[],
     branchNames: string[],
   ) => Promise<DesktopAgentStatus>;
+  /**
+   * Arranca el agente pidiendo el código de vinculación desde el proceso
+   * principal a app.goadmin.io con el access token de la sesión. Solo existe
+   * en Desktop >= 0.2.7: desde que la ventana se sirve del Next embebido,
+   * `/api/desktop/agent-session` relativo no puede generar el código.
+   */
+  startAgentWithSession?: (
+    accessToken: string,
+    orgId: number,
+    orgName: string,
+    branchIds: number[],
+    branchNames: string[],
+  ) => Promise<DesktopAgentStatus>;
   stopAgent?: () => Promise<DesktopAgentStatus>;
   status?: () => Promise<DesktopAgentStatus>;
   logout?: () => Promise<boolean>;

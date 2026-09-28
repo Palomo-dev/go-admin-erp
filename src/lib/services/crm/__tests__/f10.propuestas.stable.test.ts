@@ -80,13 +80,18 @@ describe('cotización facturada: ni «enviada» ni «regenerar» (testers r2/r4)
     expect(db.writes).toEqual([]);
   });
 
-  it('T2-C3 regenerar una propuesta en borrador sí refresca el total (camino feliz)', async () => {
+  it('T2-C3 regenerar una propuesta en borrador sí refresca el total (camino feliz): cabecera y líneas por fn_cotizacion_guardar, nunca la cabecera sola', async () => {
     quotation().status = 'draft';
     quotation().converted_invoice_id = null;
     db.rows.opportunities[0].amount = 7000000;
+    db.rows.branches = [{ id: 7, organization_id: 120, is_main: true, is_active: true }];
     const r = await generateProposal(120, 'op-1', client(), opts);
     expect(r?.isNew).toBe(false);
-    expect(quotation().total).toBe(7000000);
+    // 2026-09-28: la base recalcula cabecera y líneas en una transacción (antes se
+    // escribía solo `total` y la cabecera quedaba desalineada con sus líneas).
+    const llamada = (db.rpcCalls ?? []).find((c) => c.fn === 'fn_cotizacion_guardar');
+    expect(llamada?.args).toMatchObject({ p_org: 120, p_id: 'q-conv', p_datos: { branch_id: 7, opportunity_id: 'op-1', items: [{ qty: 1, unit_price: 7000000, discount_amount: 0, tax_rate: 0 }] } });
+    expect(db.writes.filter((w) => w.table === 'quotations')).toEqual([]);
   });
 });
 

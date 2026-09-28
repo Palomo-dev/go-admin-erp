@@ -1,7 +1,15 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { generateInvoiceNumberWithClient } from '@/lib/utils/invoiceUtils';
 import type { WebOrder } from './webOrdersService';
-import { avisarSiNoCuadra, lineasFacturaDesdePedidoWeb, repartirTotalesPedidoWeb } from './webOrderTotals';
+import {
+  avisarSiNoCuadra,
+  facturaWebConImpuestoIncluido,
+  lineasFacturaWebConImpuesto,
+  repartirTotalesPedidoWeb,
+} from './webOrderTotals';
+import { resolveLineTaxWith } from './taxResolverCore';
+import { resolveOrgCurrency } from './monedaOrganizacion';
+import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
 
 /**
  * Sub-métodos de Wompi (pasarela de pago del website).
@@ -301,6 +309,40 @@ export const webOrderServerConfirmation = {
   },
 
   /**
+   * Cuando el pedido ya tenía venta (la confirmó otro camino), la referencia de
+   * la pasarela debe quedar en el pago que sobrevive: si el pago de la factura
+   * de esa venta no la tiene, se le pone la del pedido. Ver ADR-CC-011.
+   */
+  async conservarReferenciaPasarela(
+    supabase: SupabaseClient,
+    order: WebOrder,
+    saleId: string
+  ): Promise<void> {
+    const referencia = order.payment_reference;
+    if (!referencia) return;
+
+    const { data: factura } = await supabase
+      .from('invoice_sales')
+      .select('id')
+      .eq('sale_id', saleId)
+      .neq('status', 'void')
+      .limit(1)
+      .maybeSingle();
+    if (!factura) return;
+
+    const { error } = await supabase
+      .from('payments')
+      .update({ reference: referencia })
+      .eq('source', 'invoice_sales')
+      .eq('source_id', factura.id)
+      .eq('status', 'completed')
+      .is('reference', null);
+    if (error) {
+      console.error('[webOrderServerConfirmation] No se pudo conservar la referencia de la pasarela:', error.message);
+    }
+  },
+
+  /**
    * Resuelve un user_id válido para registros que requieren NOT NULL (sales.user_id).
    * Prioriza `confirmed_by` del pedido; si es null (pedido auto-confirmado por
    * webhook del website sin sesión de usuario), usa `organizations.created_by`
@@ -375,38 +417,27 @@ export const webOrderServerConfirmation = {
     // usar organizations.created_by como fallback.
     const userId = await this.resolveUserId(supabase, order);
 
-    // ── 1. Crear sale (venta web) ──
-    // source='web' e include_in_cash_register=false para que no aparezca en caja POS.
-    // sale_date usa la fecha original del pedido (created_at), no la fecha de
-    // reconciliación, para que las estadísticas diarias sean correctas.
-    // confirmed_at puede tener la fecha de la reconciliación, no la del pedido.
+    // ── 1. Crear la venta (una sola vez por pedido) ──
+    // fn_confirmar_pedido_web toma el pedido con FOR UPDATE: si otro camino
+    // (el botón «Confirmar pedido» de Pedidos online) ya creó la venta, la
+    // devuelve con creada=false y aquí no se crea nada más. Ver ADR-CC-011.
+    // La venta es source='web', fuera de caja POS, con la fecha del pedido.
     const saleDate = order.created_at || now;
-    const { data: sale, error: saleError } = await supabase
-      .from('sales')
-      .insert({
-        organization_id: order.organization_id,
-        branch_id: order.branch_id,
-        customer_id: customerId,
-        user_id: userId,
-        sale_date: saleDate,
-        total: Number(order.total) || 0,
-        subtotal: Number(order.subtotal) || 0,
-        tax_total: Number(order.tax_total) || 0,
-        discount_total: Number(order.discount_total) || 0,
-        delivery_fee: Number(order.delivery_fee) || 0,
-        tip_amount: Number(order.tip_amount) || 0,
-        balance: 0,
-        status: 'paid',
-        payment_status: 'paid',
-        source: 'web',
-        include_in_cash_register: false,
-        notes: `Pedido web: ${order.order_number}`,
-      })
-      .select('id')
-      .single();
+    const { data: confirmacion, error: saleError } = await supabase.rpc('fn_confirmar_pedido_web', {
+      p_order_id: order.id,
+      p_customer_id: customerId,
+      p_user_id: userId,
+      p_pagado: true,
+    });
 
     if (saleError) throw new Error(`Error creando sale: ${saleError.message}`);
-    const saleId = sale.id;
+    const { sale_id: saleId, creada } = (confirmacion ?? {}) as { sale_id?: string; creada?: boolean };
+    if (!saleId) throw new Error(`El pedido ${order.order_number} no devolvió venta`);
+
+    if (!creada) {
+      await this.conservarReferenciaPasarela(supabase, order, saleId);
+      return { saleId, stockErrors };
+    }
 
     // ── 2. Crear sale_items ──
     // El descuento de pedido (cupón/promoción del sitio web) se prorratea en
@@ -553,6 +584,7 @@ export const webOrderServerConfirmation = {
     // ── 5. Crear factura de venta (invoice_sales + invoice_items) ──
     let invoiceId: string | undefined;
     let invoiceNumber: string | undefined;
+    let invoiceCurrency: string | null = null;
 
     try {
       invoiceNumber = await generateInvoiceNumberWithClient(supabase, order.organization_id, 'FACT');
@@ -567,7 +599,9 @@ export const webOrderServerConfirmation = {
           number: invoiceNumber,
           issue_date: saleDate,
           due_date: saleDate,
-          currency: 'COP',
+          // Sin moneda: el pedido web no la trae y el trigger
+          // trg_00_moneda_base_por_defecto pone la base de la organización.
+          currency: null,
           subtotal: Number(order.subtotal) || 0,
           tax_total: Number(order.tax_total) || 0,
           total: Number(order.total) || 0,
@@ -575,10 +609,13 @@ export const webOrderServerConfirmation = {
           status: 'paid',
           payment_method: mapWebPaymentMethodToInvoice(order.payment_method),
           payment_terms: 0,
+          // El trigger fn_recalc_invoice_totals deriva la base con el modo de la
+          // cabecera: tiene que ser el mismo de las líneas (F-42).
+          tax_included: facturaWebConImpuestoIncluido(reparto),
           created_by: userId,
           notes: `Factura generada automáticamente desde pedido web ${order.order_number}`,
         })
-        .select('id, number')
+        .select('id, number, currency')
         .single();
 
       if (invoiceError) {
@@ -586,6 +623,7 @@ export const webOrderServerConfirmation = {
       } else {
         invoiceId = invoice.id;
         invoiceNumber = invoice.number;
+        invoiceCurrency = invoice.currency ?? null;
 
         // Líneas de la factura. El trigger fn_recalc_invoice_totals pisa
         // invoice_sales.total con SUM(total_line), así que las líneas tienen que
@@ -593,7 +631,14 @@ export const webOrderServerConfirmation = {
         // pedido prorrateado, envío y propina como líneas propias. Si falta
         // cualquiera de esos componentes, la factura queda con saldo fantasma
         // (descuento) o con sobrepago (envío/propina). Ver `webOrderTotals.ts`.
-        const invoiceItems = lineasFacturaDesdePedidoWeb(order, invoice.id, reparto);
+        // Tarifa, código y modo de cada línea salen del resolver único (F-42),
+        // con el cliente de servidor de esta confirmación.
+        const invoiceItems = await lineasFacturaWebConImpuesto(
+          order,
+          invoice.id,
+          (input) => resolveLineTaxWith(supabase, input),
+          reparto,
+        );
 
         if (invoiceItems.length > 0) {
           const { error: invItemsError } = await supabase
@@ -696,7 +741,12 @@ export const webOrderServerConfirmation = {
               source_id: invoiceId,
               amount: Number(order.total) || 0,
               method: mapWebPaymentMethodToInvoice(order.payment_method),
-              currency: 'COP',
+              // payments.currency es NOT NULL y no tiene trigger: la moneda de
+              // la factura que se paga y, si no la trae, la base de la
+              // organización del pedido.
+              currency:
+                normalizarCodigoMoneda(invoiceCurrency) ??
+                (await resolveOrgCurrency(supabase, order.organization_id)).code,
               status: 'completed',
               created_by: userId,
             })

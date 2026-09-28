@@ -1,6 +1,6 @@
 import { app, ipcMain } from 'electron';
 import http from 'http';
-import { startAgent, startAgentWithTokenHash, stopAgent, getStatus, logout } from './agentRunner';
+import { startAgent, startAgentWithTokenHash, startAgentWithAccessToken, stopAgent, getStatus, logout } from './agentRunner';
 import { setAutoStart, isAutoStartEnabled } from './autostart';
 import { saveConfig, loadConfig } from './store';
 import { DISCOVERY_PORT } from './constants';
@@ -44,6 +44,21 @@ export function registerIpcHandlers(): void {
       branchNames: string[],
     ) => {
       await startAgentWithTokenHash(tokenHash, orgId, orgName, branchIds, branchNames);
+      return getStatus();
+    },
+  );
+
+  ipcMain.handle(
+    'agent:start-session',
+    async (
+      _e,
+      accessToken: string,
+      orgId: number,
+      orgName: string,
+      branchIds: number[],
+      branchNames: string[],
+    ) => {
+      await startAgentWithAccessToken(accessToken, orgId, orgName, branchIds, branchNames);
       return getStatus();
     },
   );

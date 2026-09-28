@@ -3,9 +3,21 @@
 // ============================================================
 
 import crypto from 'crypto';
+
+/**
+ * Compara firmas en tiempo constante (GO-sec 2026-09-28): con `===` el tiempo
+ * de respuesta revela cuántos caracteres del HMAC coinciden. No importa
+ * `safeEqual` de webhookSignatures para no arrastrar `svix` (ESM) a Jest.
+ */
+function igualEnTiempoConstante(a: string, b: string): boolean {
+  const ba = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  return ba.length === bb.length && crypto.timingSafeEqual(ba, bb);
+}
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getMonoBaseUrl, type MonoEnvironment } from './monoConfig';
 import { confirmQrPayment } from '@/lib/services/integrations/qrShared/paymentConfirmation';
+import { getQrSessionForWebhook } from '@/lib/services/integrations/qrShared/qrSessionService';
 import type {
   MonoCredentials,
   MonoCollectionRequest,
@@ -296,7 +308,7 @@ class MonoService {
         .update(payload)
         .digest('hex');
 
-      if (calculatedHex === signature) {
+      if (igualEnTiempoConstante(calculatedHex, signature)) {
         return true;
       }
 
@@ -306,7 +318,7 @@ class MonoService {
         .update(payload)
         .digest('base64');
 
-      return calculatedBase64 === signature;
+      return igualEnTiempoConstante(calculatedBase64, signature);
     } catch (err) {
       console.error('[Mono] Error verificando firma webhook:', err);
       return false;
@@ -341,14 +353,11 @@ class MonoService {
         };
       }
 
-      // Buscar sesion QR por reference
-      const { data: session, error: sessionError } = await supabase
-        .from('payment_qr_sessions')
-        .select('*')
-        .eq('reference', reference)
-        .maybeSingle();
+      // Sesion QR de ESTA conexion (la que firmo) y de su organizacion; nunca
+      // solo por referencia (GO-sec 2026-09-24).
+      const session = await getQrSessionForWebhook(connectionId, reference);
 
-      if (sessionError || !session) {
+      if (!session) {
         return {
           success: false,
           message: `Sesion QR no encontrada para referencia ${reference}`,

@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
-import { ArrowLeft, Printer, Mail, FileCheck2, Copy, Pencil, Send, Loader2, FileText, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Printer, Mail, FileCheck2, Copy, Pencil, Send, Loader2, FileText, ExternalLink, FileDown } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useToast, toastSuccess, toastError, toastInfo } from '@/components/ui/use-toast';
+import { toastSuccess, toastError, toastInfo } from '@/components/ui/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,11 +22,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { formatCurrency } from '@/utils/Utils';
-import { supabase } from '@/lib/supabase/config';
-import { obtenerOrganizacionActiva, getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { CotizacionesService, type Quotation } from '@/lib/services/cotizacionesService';
-import { PDFService, type InvoiceDataForPDF } from '@/lib/services/pdfService';
+import { abrirDocumento, imprimirDocumento } from '@/lib/documents/cliente';
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -57,47 +57,20 @@ interface DetalleCotizacionProps {
 
 export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
   const router = useRouter();
-  const { toast } = useToast();
-  const [organizationData, setOrganizationData] = useState<any>(null);
   const [converting, setConverting] = useState(false);
   const [showConvertDialog, setShowConvertDialog] = useState(false);
-  const [invoiceNumber, setInvoiceNumber] = useState<string | null>(null);
+  const [invoiceNumber, setInvoiceNumber] = useState<string | null>(cotizacion.converted_invoice_number ?? null);
   const [duplicating, setDuplicating] = useState(false);
   const [sending, setSending] = useState(false);
   const [cotActual, setCotActual] = useState(cotizacion);
-
-  const organizationId = getOrganizationId();
-  const org = obtenerOrganizacionActiva();
-
-  useEffect(() => {
-    const loadOrgData = async () => {
-      if (!org?.id) return;
-      try {
-        const { data } = await supabase
-          .from('organizations')
-          .select('name, tax_id, nit, address, phone, email, logo_url, primary_color, secondary_color')
-          .eq('id', org.id)
-          .single();
-        if (data) setOrganizationData(data);
-      } catch (e) {
-        console.error('Error loading org data:', e);
-      }
-    };
-    loadOrgData();
-  }, []);
-
-  useEffect(() => {
-    if (cotActual.status === 'converted' && cotActual.converted_invoice_id && !invoiceNumber) {
-      supabase
-        .from('invoice_sales')
-        .select('number')
-        .eq('id', cotActual.converted_invoice_id)
-        .single()
-        .then(({ data }) => {
-          if (data?.number) setInvoiceNumber(data.number);
-        });
-    }
-  }, [cotActual.status, cotActual.converted_invoice_id, invoiceNumber]);
+  // Montos en la moneda de la cotización o en la base de la organización.
+  const monedaOrg = useMonedaOrganizacion();
+  const monedaCotizacion = monedaOrg.paraDocumento(cotActual?.currency);
+  const formatCurrency = crearFormateadorMoneda(monedaCotizacion);
+  // Textos nuevos (conversión, correo, errores del servidor): namespace propio en los 4 idiomas.
+  const tv = useTranslations('documentosVenta.cotizaciones');
+  const ta = useTranslations('accionesDocumento');
+  const mensajeError = (error: unknown) => (error instanceof Error && error.message ? error.message : tv('errores.error_desconocido'));
 
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
@@ -108,65 +81,13 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
     }
   };
 
-  const buildPDFData = (): InvoiceDataForPDF => {
-    return {
-      id: cotActual.id,
-      number: cotActual.number,
-      issue_date: cotActual.issue_date,
-      due_date: cotActual.valid_until || cotActual.issue_date,
-      status: cotActual.status,
-      currency: cotActual.currency || 'COP',
-      subtotal: cotActual.subtotal || 0,
-      tax_total: cotActual.tax_total || 0,
-      total: cotActual.total || 0,
-      balance: 0,
-      notes: cotActual.terms_conditions || undefined,
-      tax_included: cotActual.quotation_items?.[0]?.tax_included || false,
-      discount_total: cotActual.discount_total > 0 ? cotActual.discount_total : undefined,
-      organization: organizationData
-        ? {
-            name: organizationData.name || 'Mi Empresa',
-            tax_id: organizationData.tax_id || organizationData.nit,
-            address: organizationData.address,
-            phone: organizationData.phone,
-            email: organizationData.email,
-            logo_url: organizationData.logo_url,
-            primary_color: organizationData.primary_color,
-            secondary_color: organizationData.secondary_color,
-          }
-        : undefined,
-      customer: cotActual.customers
-        ? {
-            full_name: cotActual.customers.full_name,
-            email: cotActual.customers.email,
-            phone: cotActual.customers.phone,
-            address: cotActual.customers.address,
-            tax_id: cotActual.customers.identification_number,
-          }
-        : undefined,
-      items: (cotActual.quotation_items || []).map((item) => ({
-        description: item.description,
-        qty: item.qty,
-        unit_price: item.unit_price,
-        tax_rate: item.tax_rate,
-        tax_included: item.tax_included,
-        discount_amount: item.discount_amount || 0,
-        total_line: item.total_line,
-      })),
-    };
-  };
+  // Imprimir y PDF: motor único de documentos (`GET /api/documentos/cotizacion/<id>`).
+  // El servidor arma la cotización desde la base con la organización de la
+  // sesión; la pestaña se abre dentro del clic para que no la bloqueen.
+  const handleImprimir = () => imprimirDocumento('cotizacion', cotActual.id);
+  const handleVerPdf = () => abrirDocumento('cotizacion', cotActual.id);
 
-  const handleImprimir = async () => {
-    try {
-      const pdfData = buildPDFData();
-      pdfData.status = 'quotation';
-      await PDFService.printInvoiceHTML(pdfData);
-      toastSuccess('PDF Generado', `Cotización ${cotActual.number} lista para imprimir.`);
-    } catch (error: any) {
-      toastError('Error', error.message);
-    }
-  };
-
+  // Envío real por correo con el PDF del motor de documentos. Antes solo cambiaba el estado.
   const handleEnviarEmail = async () => {
     if (!cotActual.customers?.email) {
       toastError('Error', 'El cliente no tiene email configurado');
@@ -175,76 +96,62 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
     try {
       setSending(true);
       toastInfo('Enviando...', `Enviando cotización ${cotActual.number} por email`);
-      await CotizacionesService.changeStatus(cotActual.id, 'sent');
-      setCotActual({ ...cotActual, status: 'sent' });
-      toastSuccess('Cotización enviada', `Enviada a ${cotActual.customers.email}`);
-    } catch (error: any) {
-      toastError('Error', error.message);
+      const r = await CotizacionesService.sendByEmail(cotActual.id);
+      setCotActual({ ...cotActual, status: r.status as Quotation['status'] });
+      toastSuccess('Cotización enviada', r.adjunto ? `Enviada a ${r.destino}` : tv('correo.sinAdjunto', { destino: r.destino }));
+    } catch (error: unknown) {
+      toastError('Error', mensajeError(error));
     } finally {
       setSending(false);
     }
   };
 
+  // Transiciones validadas en el servidor (fn_cotizacion_cambiar_estado).
+  const cambiarEstado = async (estado: 'sent' | 'accepted' | 'rejected') => {
+    const r = await CotizacionesService.changeStatus(cotActual.id, estado);
+    setCotActual({ ...cotActual, status: r.status as Quotation['status'], stored_status: r.status });
+  };
+
   const handleMarcarEnviada = async () => {
     try {
-      await CotizacionesService.changeStatus(cotActual.id, 'sent');
-      setCotActual({ ...cotActual, status: 'sent' });
+      await cambiarEstado('sent');
       toastSuccess('Estado actualizado', 'Cotización marcada como enviada');
-    } catch (error: any) {
-      toastError('Error', error.message);
+    } catch (error: unknown) {
+      toastError('Error', mensajeError(error));
     }
   };
 
   const handleAceptar = async () => {
     try {
-      await CotizacionesService.changeStatus(cotActual.id, 'accepted');
-      setCotActual({ ...cotActual, status: 'accepted' });
+      await cambiarEstado('accepted');
       toastSuccess('Cotización aceptada', 'La cotización fue marcada como aceptada');
-    } catch (error: any) {
-      toastError('Error', error.message);
+    } catch (error: unknown) {
+      toastError('Error', mensajeError(error));
     }
   };
 
   const handleRechazar = async () => {
     try {
-      await CotizacionesService.changeStatus(cotActual.id, 'rejected');
-      setCotActual({ ...cotActual, status: 'rejected' });
+      await cambiarEstado('rejected');
       toastInfo('Cotización rechazada');
-    } catch (error: any) {
-      toastError('Error', error.message);
+    } catch (error: unknown) {
+      toastError('Error', mensajeError(error));
     }
   };
 
+  // Conversión en el servidor: factura BORRADOR con venta ligada, impuestos y
+  // comisión, en una transacción (fn_cotizacion_convertir). Se emite después.
   const handleConvertir = async () => {
-    if (!organizationId) return;
     setShowConvertDialog(false);
     try {
       setConverting(true);
-      const branchId = cotActual.branch_id;
-      if (!branchId) {
-        const { data } = await supabase
-          .from('branches')
-          .select('id')
-          .eq('organization_id', organizationId)
-          .limit(1);
-        if (!data || data.length === 0) {
-          toastError('Error', 'No hay sucursal configurada');
-          return;
-        }
-        const invoiceId = await CotizacionesService.convertToInvoice(cotActual.id, organizationId, data[0].id);
-        toastSuccess('Factura creada', 'La cotización fue convertida a factura exitosamente');
-        setCotActual({ ...cotActual, status: 'converted', converted_invoice_id: invoiceId });
-        const { data: invData } = await supabase.from('invoice_sales').select('number').eq('id', invoiceId).single();
-        if (invData?.number) setInvoiceNumber(invData.number);
-        return;
-      }
-      const invoiceId = await CotizacionesService.convertToInvoice(cotActual.id, organizationId, branchId);
-      toastSuccess('Factura creada', 'La cotización fue convertida a factura exitosamente');
-      setCotActual({ ...cotActual, status: 'converted', converted_invoice_id: invoiceId });
-      const { data: invData } = await supabase.from('invoice_sales').select('number').eq('id', invoiceId).single();
-      if (invData?.number) setInvoiceNumber(invData.number);
-    } catch (error: any) {
-      toastError('Error', error.message);
+      const r = await CotizacionesService.convertToInvoice(cotActual.id);
+      toastSuccess(tv('conversion.titulo'), tv(r.yaConvertida ? 'conversion.yaConvertida' : 'conversion.borrador', { numero: r.numero ?? '' }));
+      if (r.faltantes.length > 0) toastInfo(tv('conversion.faltantes', { n: r.faltantes.length }));
+      setCotActual({ ...cotActual, status: 'converted', stored_status: 'converted', converted_invoice_id: r.invoiceId });
+      if (r.numero) setInvoiceNumber(r.numero);
+    } catch (error: unknown) {
+      toastError('Error', mensajeError(error));
     } finally {
       setConverting(false);
     }
@@ -254,17 +161,19 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
     try {
       setDuplicating(true);
       const nueva = await CotizacionesService.duplicateQuotation(cotActual.id);
-      toastSuccess('Cotización duplicada', `Nueva cotización ${nueva?.number}`);
-      if (nueva) router.push(`/app/finanzas/cotizaciones/${nueva.id}`);
-    } catch (error: any) {
-      toastError('Error', error.message);
+      toastSuccess('Cotización duplicada', `Nueva cotización ${nueva.number}`);
+      router.push(`/app/finanzas/cotizaciones/${nueva.id}`);
+    } catch (error: unknown) {
+      toastError('Error', mensajeError(error));
     } finally {
       setDuplicating(false);
     }
   };
 
-  const canEdit = cotActual.status === 'draft' || cotActual.status === 'sent';
-  const canConvert = cotActual.status !== 'converted' && cotActual.status !== 'rejected';
+  // Editar mira el estado guardado (una vencida se edita para renovar su
+  // vigencia); convertir y aceptar, el estado vivo (una vencida no se convierte).
+  const canEdit = cotActual.stored_status === 'draft' || cotActual.stored_status === 'sent';
+  const canConvert = cotActual.status === 'draft' || cotActual.status === 'sent' || cotActual.status === 'accepted';
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -290,7 +199,10 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={handleImprimir}>
-            <Printer className="h-4 w-4 mr-2" /> Imprimir
+            <Printer className="h-4 w-4 mr-2" /> {ta('imprimir')}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleVerPdf}>
+            <FileDown className="h-4 w-4 mr-2" /> {ta('verPdf')}
           </Button>
           <Button variant="outline" size="sm" onClick={handleEnviarEmail} disabled={sending || !cotActual.customers?.email}>
             {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
@@ -428,7 +340,7 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
           <div className="w-full sm:w-72 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
-              <span className="font-medium text-gray-900 dark:text-gray-100">{formatCurrency(cotActual.subtotal)}</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100">{formatCurrency(cotActual.subtotal + (cotActual.discount_total > 0 ? cotActual.discount_total : 0))}</span>
             </div>
             {cotActual.discount_total > 0 && (
               <div className="flex justify-between text-sm text-red-600 dark:text-red-400">
@@ -517,7 +429,7 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
                   <FileCheck2 className="h-4 w-4 mr-2" /> Marcar Aceptada
                 </Button>
               )}
-              {(cotActual.status === 'sent' || cotActual.status === 'draft') && (
+              {(cotActual.status === 'sent' || cotActual.status === 'draft' || cotActual.status === 'expired') && (
                 <Button variant="outline" size="sm" onClick={handleRechazar} className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700">
                   Rechazar
                 </Button>

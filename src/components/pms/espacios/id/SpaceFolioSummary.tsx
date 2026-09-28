@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ShoppingCart, Image as ImageIcon, Plus, Receipt } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import { supabase } from '@/lib/supabase/config';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
@@ -42,6 +42,7 @@ interface FolioItemWithProduct extends FolioItem {
 }
 
 export function SpaceFolioSummary({ spaceId, onAddConsumption, refreshTrigger }: SpaceFolioSummaryProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const [items, setItems] = useState<FolioItemWithProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -98,7 +99,7 @@ export function SpaceFolioSummary({ spaceId, onAddConsumption, refreshTrigger }:
     const product = item.product;
     if (!product) return null;
 
-    let images = product.product_images;
+    const images = product.product_images;
 
     // Si no hay imágenes y el producto tiene parent_product, buscar imágenes del padre
     if ((!images || images.length === 0) && product.parent_product) {

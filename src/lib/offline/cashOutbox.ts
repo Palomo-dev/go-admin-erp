@@ -82,6 +82,10 @@ export interface CashMovementPayload {
   user_id: string;
   notes: string | null;
   created_at: string;
+  /** Clave del catálogo único de conceptos (`src/lib/pos/cajas/conceptos.ts`). */
+  concept_code?: string | null;
+  /** Número de soporte. */
+  reference?: string | null;
 }
 
 /** Columnas de `cash_sessions` que escribe el cierre, más el resumen con el que se contó. */
@@ -95,6 +99,10 @@ export interface CashClosePayload {
   summary: CashSummary;
   /** true si el resumen no pudo leer la réplica y solo cuenta el outbox (ver `CajasService`). */
   summary_partial: boolean;
+  /** Lo contado de cada otro método (tarjeta, transferencia…); el servidor lo guarda en el arqueo de cierre. */
+  counted_by_method?: Record<string, number>;
+  /** Billetes y monedas contados. */
+  denominations?: { bills?: Record<string, number>; coins?: Record<string, number> } | null;
 }
 
 interface CashOutboxBase {
@@ -449,6 +457,8 @@ export interface EnqueueCashMovementInput {
   userId: string;
   notes: string | null;
   createdAt?: string;
+  conceptCode?: string | null;
+  reference?: string | null;
 }
 
 /** Guarda un ingreso/retiro en el outbox. Devuelve el movimiento provisional (id negativo). */
@@ -463,6 +473,8 @@ export async function enqueueCashMovement(input: EnqueueCashMovementInput): Prom
     user_id: input.userId,
     notes: input.notes ?? null,
     created_at: createdAt,
+    ...(input.conceptCode ? { concept_code: input.conceptCode } : {}),
+    ...(input.reference ? { reference: input.reference } : {}),
   };
   const record: CashMovementRecord = {
     id: uuid,
@@ -496,6 +508,8 @@ export function movementRecordToRow(record: CashMovementRecord): CashMovement {
     cash_session_id: record.session_local_id,
     type: record.payload.type,
     concept: record.payload.concept,
+    concept_code: record.payload.concept_code ?? null,
+    reference: record.payload.reference ?? null,
     amount: record.payload.amount,
     user_id: record.payload.user_id,
     notes: record.payload.notes ?? undefined,
@@ -525,6 +539,8 @@ export interface EnqueueCashCloseInput {
   summary: CashSummary;
   summaryPartial: boolean;
   closedAt?: string;
+  countedByMethod?: Record<string, number>;
+  denominations?: CashClosePayload['denominations'];
 }
 
 /**
@@ -542,6 +558,8 @@ export async function enqueueCashSessionClose(input: EnqueueCashCloseInput): Pro
     notes: input.notes ?? null,
     summary: JSON.parse(JSON.stringify(input.summary)),
     summary_partial: input.summaryPartial,
+    ...(input.countedByMethod ? { counted_by_method: { ...input.countedByMethod } } : {}),
+    ...(input.denominations ? { denominations: JSON.parse(JSON.stringify(input.denominations)) } : {}),
   };
   const record: CashCloseRecord = {
     id: `close:${session.uuid}`,

@@ -1,33 +1,23 @@
 // ============================================================
 // /api/integrations/open-finance/cron/hourly-balance
-// Cron job de verificacion horaria de saldos.
-// POST - refresca saldos de todas las organizaciones.
-// Sin auth de sesion: verifica CRON_SECRET en header de autorizacion.
+// Cron de Open Finance — DESHABILITADO (no-op seguro).
+//
+// SEGURIDAD (GO-sec, 2026-09-23; auditoria de integraciones §1.3):
+// - Antes solo exportaba POST (Vercel cron llama con GET), comparaba con
+//   `OPEN_FINANCE_CRON_SECRET` (Vercel envia `CRON_SECRET`) con `===`, y el
+//   middleware lo redirigia a login (307): nunca se ejecuto.
+// - Ahora: GET y POST con `withCron` (Authorization: Bearer CRON_SECRET,
+//   comparacion en tiempo constante, fail-closed: sin secreto real → 401),
+//   excluido del middleware como los demas crons.
+// - Mientras no exista el rediseno de la sesion bancaria (decision de
+//   producto, auditoria §1.5 punto 3) el trabajo NO corre: responde 200 con
+//   `disabled: true` y no toca la base ni al proveedor.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { cronJobs } from '@/lib/services/integrations/openFinance/cronJobs';
+import { withCron } from '@/lib/utils/orgContext';
+import { respuestaCronDeshabilitado } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-/** Verifica el secret de autorizacion del cron job */
-function verifyCronSecret(request: NextRequest): boolean {
-  const secret = process.env.OPEN_FINANCE_CRON_SECRET;
-  if (!secret) return false;
-  const authHeader = request.headers.get('authorization');
-  return authHeader === `Bearer ${secret}`;
-}
+const handler = withCron(async () => respuestaCronDeshabilitado('hourly-balance'));
 
-// POST - ejecuta verificacion horaria de saldos
-export async function POST(request: NextRequest) {
-  try {
-    if (!verifyCronSecret(request)) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const report = await cronJobs.runHourlyBalanceCheck();
-    return NextResponse.json({ success: true, report });
-  } catch (error) {
-    console.error('[Cron Hourly Balance] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
+export const GET = handler;
+export const POST = handler;

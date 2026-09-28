@@ -8,13 +8,26 @@ export interface SaleItem {
   unit_price: number;
   total: number;
   tax_amount: number;
+  /** Tasa de impuesto de la línea (% ; la suma de los impuestos aplicados). */
+  tax_rate?: number | null;
+  /** Modo de impuesto de la línea; null en líneas anteriores al 2026-09-24. */
+  tax_included?: boolean | null;
   discount_amount: number;
-  notes: string | { product_name?: string; extra?: string; guest_number?: number; modifiers?: SelectedProductModifier[] } | null;
+  notes: string | {
+    product_name?: string;
+    /** Nota de cocina: nunca se muestra al cliente (pre-cuenta, recibo, factura). */
+    extra?: string;
+    /** Nota para el cliente: sí va a la pre-cuenta, el recibo y la factura. */
+    customer_note?: string;
+    is_allergy?: boolean;
+    guest_number?: number;
+    modifiers?: SelectedProductModifier[];
+  } | null;
   created_at: string;
   updated_at: string;
   // Relaciones
   product?: Product;
-  kitchen_ticket_items?: Pick<KitchenTicketItem, 'id' | 'status'>[];
+  kitchen_ticket_items?: Array<Pick<KitchenTicketItem, 'id' | 'status'> & Partial<Pick<KitchenTicketItem, 'cancelled_at' | 'adjustment_kind'>>>;
 }
 
 export interface ProductImage {
@@ -123,10 +136,12 @@ export interface KitchenTicketItem {
   sale_item_id: string;
   station: string | null;
   notes: string | null;
-  status: 'pending' | 'in_progress' | 'ready' | 'delivered';
+  status: 'pending' | 'in_progress' | 'ready' | 'delivered' | 'cancelled';
   preparation_time: number | null;
   created_at: string;
   updated_at: string;
+  cancelled_at?: string | null;
+  adjustment_kind?: 'increase' | 'decrease' | 'void' | 'note' | null;
 }
 
 export interface SelectedProductModifier {
@@ -148,6 +163,12 @@ export interface ProductToAdd {
   guest_number?: number;
   variant_data?: Record<string, string> | null;
   modifiers?: SelectedProductModifier[];
+  /** La nota es una alergia: la comanda no se empieza sin confirmarla en cocina. */
+  is_allergy?: boolean;
+  /** Para las promociones por categoría (igual que en el mostrador). */
+  category_id?: number | null;
+  /** Variante: su producto padre, para que una promoción sobre el padre la alcance. */
+  parent_product_id?: number | null;
 }
 
 export interface TransferItemData {

@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { NuevaFacturaCompraForm, SupplierBase, OrganizationPaymentMethod, OrganizationCurrency } from '../types';
 import { SupplierSelector } from './SupplierSelector';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface InformacionBasicaFormProps {
   formData: NuevaFacturaCompraForm;
@@ -63,8 +64,8 @@ export function InformacionBasicaForm({
     onInputChange('currency', value);
   }, [onInputChange]);
 
-  const handleIssueDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onInputChange('issue_date', e.target.value);
+  const handleIssueDateChange = useCallback((dia: string) => {
+    onInputChange('issue_date', dia);
   }, [onInputChange]);
 
   const handlePaymentTermsChange = useCallback((value: string) => {
@@ -89,8 +90,8 @@ export function InformacionBasicaForm({
     updateDueDate(days);
   }, [onInputChange]);
 
-  const handleDueDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onInputChange('due_date', e.target.value);
+  const handleDueDateChange = useCallback((dia: string) => {
+    onInputChange('due_date', dia);
   }, [onInputChange]);
 
   const handleNotesChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -286,12 +287,13 @@ export function InformacionBasicaForm({
             <Label htmlFor="issue_date" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               Fecha de Emisión *
             </Label>
-            <Input
+            <CampoFecha
               id="issue_date"
-              type="date"
-              value={formData.issue_date}
-              onChange={handleIssueDateChange}
-              className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:[color-scheme:dark]"
+              tamano="sm"
+              aria-required
+              valor={formData.issue_date}
+              onValorChange={handleIssueDateChange}
+              className="sm:h-9"
             />
             {errors.issue_date && (
               <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">{errors.issue_date}</p>
@@ -344,12 +346,12 @@ export function InformacionBasicaForm({
             <Label htmlFor="due_date" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               Fecha de Vencimiento
             </Label>
-            <Input
+            <CampoFecha
               id="due_date"
-              type="date"
-              value={formData.due_date}
-              onChange={handleDueDateChange}
-              className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:[color-scheme:dark]"
+              tamano="sm"
+              valor={formData.due_date}
+              onValorChange={handleDueDateChange}
+              className="sm:h-9"
             />
           </div>
         </div>

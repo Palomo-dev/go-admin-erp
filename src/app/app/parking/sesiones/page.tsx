@@ -14,8 +14,11 @@ import {
   printSessionReceipt,
   type ParkingSession,
 } from '@/components/parking/sesiones';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 export default function ParkingSesionesPage() {
+  // Moneda base de la organización para el recibo impreso.
+  const moneda = useMonedaOrganizacion();
   const {
     organization,
     branchId,
@@ -86,7 +89,7 @@ export default function ParkingSesionesPage() {
         sessions={sessions}
         isLoading={isLoading}
         onEdit={handleEdit}
-        onPrint={printSessionReceipt}
+        onPrint={(sesion) => printSessionReceipt(sesion, moneda)}
         canEdit={true}
       />
 

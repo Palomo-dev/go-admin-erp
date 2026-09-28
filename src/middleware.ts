@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest, NextFetchEvent } from 'next/server';
-import { decodeJwt, type JWTPayload } from 'jose';
+import {
+  verificarTokenAcceso,
+  esServidorEmbebidoEscritorio,
+  sesionHeredadaSoloEscritorio,
+  type ClaimsVerificados,
+} from '@/lib/auth/verificarTokenAcceso';
 import {
   edgeSelect,
   edgePatch,
@@ -72,66 +77,78 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 
+type SesionMiddleware = {
+  access_token: string;
+  expires_at: number;
+  user: ClaimsVerificados;
+};
+
+type ResultadoSesion = {
+  session: SesionMiddleware | null;
+  isAuthenticated: boolean;
+  /** El token es de fiar en su firma pero está vencido (o eso dice su `exp`): toca refrescar en el cliente. */
+  isExpired: boolean;
+};
+
+const SIN_SESION: ResultadoSesion = { session: null, isAuthenticated: false, isExpired: false };
+
 /**
- * Obtiene sesión desde la cookie de forma SIMPLE y tolerante a fallos.
- * 
- * PRINCIPIO: El middleware NUNCA intenta refrescar tokens.
- * Solo verifica que la cookie existe y contiene un JWT decodificable.
- * El refresh lo maneja exclusivamente el client-side (auth-manager.ts).
- * Esto elimina race conditions por refresh token rotation.
+ * Obtiene la sesión de la cookie VERIFICANDO la firma del access token
+ * (GO-sec, auditoría 2026-09-24). Antes se decodificaba sin verificar
+ * (`decodeJwt`) y una cookie inventada pasaba la protección de rutas.
+ *
+ * - Token válido (firma + `sub` + `role=authenticated` + no vencido) → sesión.
+ * - Firma mala, alterado, `alg` raro, vencido o no verificable → SIN sesión
+ *   (fail-closed). Vencido se distingue solo para mandar al cliente a
+ *   refrescar (`/auth/login?reason=expired`, que restaura la sesión con el
+ *   refresh token del dispositivo y vuelve a `redirectTo`).
+ * - Servidor embebido del escritorio sin red: ver `sesionHeredadaSoloEscritorio`.
+ *
+ * PRINCIPIO que se mantiene: el middleware NUNCA refresca tokens (el refresh
+ * es del cliente, `auth-manager.ts`): refrescar aquí y en el navegador a la
+ * vez quema el refresh token rotado y cierra la sesión.
  */
-async function getValidatedSession(authCookie: { value: string }) {
+async function getValidatedSession(authCookie: { value: string }, request: NextRequest): Promise<ResultadoSesion> {
+  let accessToken: unknown;
   try {
-    const tokenData = JSON.parse(authCookie.value);
-    const { access_token, refresh_token } = tokenData;
-    
-    // Si no hay tokens básicos, no hay sesión
-    if (!access_token) {
-      return { session: null, isAuthenticated: false, isExpired: false, newCookieValue: null };
-    }
-    
-    // Decodificar el JWT sin verificar firma (solo para obtener payload/exp)
-    let payload: JWTPayload;
-    try {
-      payload = decodeJwt(access_token);
-    } catch {
-      // Si ni siquiera se puede decodificar, la cookie está corrupta
-      return { session: null, isAuthenticated: false, isExpired: false, newCookieValue: null };
-    }
-    
-    // Verificar expiración
-    const currentTime = Math.floor(Date.now() / 1000);
-    const isExpired = payload.exp ? payload.exp < currentTime : false;
-    
-    // SIEMPRE considerar autenticado si tenemos un JWT decodificable con sub (user id)
-    // El client-side se encarga de refrescar si está expirado
-    if (payload.sub) {
-      const session = {
-        access_token,
-        refresh_token,
-        expires_at: payload.exp,
-        user: payload
-      };
-      
-      // Solo marcar como NO autenticado si expiró hace más de 7 días
-      // (sesión abandonada, no un refresh pendiente)
-      const HARD_EXPIRY = 7 * 24 * 60 * 60; // 7 días en segundos
-      const timeSinceExpiry = currentTime - (payload.exp || currentTime);
-      
-      if (isExpired && timeSinceExpiry > HARD_EXPIRY) {
-        return { session: null, isAuthenticated: false, isExpired: true, newCookieValue: null };
-      }
-      
-      // Token válido o expirado recientemente → autenticado (client refreshará)
-      return { session, isAuthenticated: true, isExpired: false, newCookieValue: null };
-    }
-    
-    return { session: null, isAuthenticated: false, isExpired: false, newCookieValue: null };
-    
+    accessToken = (JSON.parse(authCookie.value) as { access_token?: unknown })?.access_token;
   } catch {
-    // Error parseando JSON → cookie corrupta
-    return { session: null, isAuthenticated: false, isExpired: false, newCookieValue: null };
+    return SIN_SESION; // JSON ilegible → cookie corrupta
   }
+  if (typeof accessToken !== 'string' || !accessToken) return SIN_SESION;
+
+  const veredicto = await verificarTokenAcceso(accessToken);
+
+  if (veredicto.estado === 'valido') {
+    return {
+      session: { access_token: accessToken, expires_at: veredicto.claims.exp, user: veredicto.claims },
+      isAuthenticated: true,
+      isExpired: false,
+    };
+  }
+
+  if (
+    (veredicto.estado === 'no_verificable' || veredicto.estado === 'vencido') &&
+    esServidorEmbebidoEscritorio(request.nextUrl.hostname)
+  ) {
+    const heredada = sesionHeredadaSoloEscritorio(accessToken);
+    if (heredada) {
+      return {
+        session: { access_token: accessToken, expires_at: heredada.exp, user: heredada },
+        isAuthenticated: true,
+        isExpired: false,
+      };
+    }
+  }
+
+  if (veredicto.estado === 'invalido') {
+    // Nunca se registra el token; solo el motivo y la ruta.
+    console.warn('[MIDDLEWARE] Cookie de sesión con JWT no válido:', veredicto.motivo, request.nextUrl.pathname);
+  } else if (veredicto.estado === 'no_verificable') {
+    console.warn('[MIDDLEWARE] No se pudo verificar la sesión (se trata como sin sesión):', veredicto.motivo);
+  }
+
+  return { session: null, isAuthenticated: false, isExpired: veredicto.estado === 'vencido' };
 }
 
 /**
@@ -142,24 +159,63 @@ function shouldSkipRoute(pathname: string): boolean {
     '/_next/',
     '/favicon.ico',
     '/public/',
-    '/api/test',
-    '/api/stripe/',  // <-- Excluir APIs de Stripe
-    '/api/sessions/', // <-- Excluir APIs de sesiones
+    // GO-sec (2026-09-24): '/api/test' y '/api/sessions/' ya no se excluyen —
+    // sus rutas (test-geolocation, sessions) eran código muerto y se borraron;
+    // el prefijo dejaba fuera del middleware cualquier ruta futura que empezara así.
+    '/api/stripe/',  // <-- Webhook de Stripe (constructEvent fail-closed) y setup-intent del alta (sin cuenta aún). Las demás rutas de /api/stripe/ exigen sesión en el handler (contextoDeFacturacion / getServerOrgContext / withPlatformAdmin)
     '/api/integrations/twilio/', // <-- Excluir webhooks de Twilio (autenticación propia via firma)
     '/api/integrations/whatsapp/webhook', // <-- Excluir webhook de WhatsApp Cloud API (verificación Meta)
     '/api/integrations/whatsapp/qr/inbound', // <-- Excluir callback del microservicio Baileys (autenticación propia via shared secret)
     '/api/integrations/whatsapp/qr/dispatch-pending', // <-- F0: despacho QR invocado por cron (fail-closed via Authorization: Bearer CRON_SECRET)
     '/api/voice/', // <-- F0: webhooks Twilio de voz (firma X-Twilio-Signature fail-closed) y rutas de sesión (getServerOrgContext → 401 JSON, no redirect)
     '/api/super-admin-access', // <-- Excluir canje de token de super admin (autenticación propia via token BD)
-    '/api/super-admin-cleanup', // <-- Excluir cleanup de super admin (autenticación propia via body)
+    // '/api/super-admin-cleanup' ya NO se excluye (GO-sec 2026-09-24): no tenía
+    // «autenticación propia via body»; ahora exige la sesión del usuario.
     '/api/factus/', // <-- Excluir APIs de Factus (usan credenciales de entorno, no requieren sesión)
     '/api/facebook-feed', // <-- Excluir feed de Facebook (autenticación propia via token en query param)
     '/api/cron/', // <-- Excluir cron jobs de Vercel (autenticación propia via Authorization: Bearer CRON_SECRET)
+    '/api/integrations/open-finance/cron/', // <-- GO-sec: crons de Open Finance (withCron: Bearer CRON_SECRET fail-closed; hoy no-op «deshabilitado»)
+    '/api/integrations/open-finance/webhook', // <-- GO-sec: webhook de Prometeo (verify_token fail-closed en tiempo constante; 401 sin token)
     '/api/crm/jobs/run', // <-- Runner de la cola CRM (pg_cron / Vercel Cron; fail-closed via Authorization: Bearer CRON_SECRET)
     '/api/email/webhook', // <-- F7: webhook de Resend (firma svix fail-closed)
     '/api/crm/webhooks/', // <-- F4: webhook de ElevenLabs Scribe (firma ElevenLabs-Signature fail-closed via constructEvent)
     '/u/', // <-- F7: página pública de baja de correo (token HMAC firmado)
-    '/api/web-orders/', // <-- Excluir webhooks de pedidos web (autenticación propia via x-webhook-secret header)
+    '/api/pos/display/', // <-- Pantalla remota del POS (PLAN pos-doble-pantalla §7): fail-closed por token Bearer (displayAuth) o, en /revoke, por getServerOrgContext → 401 JSON, no redirect
+    '/api/web-orders/', // <-- Tienda web → ERP: cada handler exige x-webhook-secret (verifyWebOrdersSecret, fail-closed)
+    // GO-sec (2026-09-28): revisados uno por uno. Meta (Facebook/Instagram por
+    // canal): GET exige el verify_token del canal o META_WEBHOOK_VERIFY_TOKEN
+    // (403, sin literal de respaldo); POST exige X-Hub-Signature-256 con el
+    // appSecret del canal (401 y nada se procesa). El cron de sesiones QR usa
+    // withCron (Bearer CRON_SECRET, 401). Antes el middleware les respondía 401
+    // por falta de cookie y nunca funcionaban.
+    '/api/webhooks/facebook/',
+    '/api/webhooks/instagram/',
+    '/api/integrations/qr/expire-sessions',
+    '/api/desktop/agent-session', // <-- Código de vinculación del agente de Go Admin Desktop: withOrg({ bearer }) → sesión por cookie o Authorization: Bearer (Auth valida el token) + membresía activa; 401/403 JSON. El proceso principal del Desktop llega sin cookies
+    // GO-sec (2026-09-24): webhooks de cobro y crons que se autentican SOLOS,
+    // revisados uno por uno antes de excluirlos (401/403 sin firma, sin secreto
+    // configurado o con firma mala; nada se escribe antes de verificar). Antes
+    // el proveedor, que llega sin cookie, recibía la redirección al login.
+    // Mantener en sincronía con el matcher y con
+    // src/__tests__/services/middlewareSesionVerificada.test.ts.
+    '/api/integrations/bancolombia/webhook', // <-- JWT HS256 con el client_secret de la conexión; 401 sin secreto o firma mala
+    '/api/integrations/bold/webhook', // <-- HMAC x-bold-signature con webhook_secret de la conexión; 401 sin firma, sin secreto o firma mala
+    '/api/integrations/breb/webhook', // <-- HMAC X-Signature con webhook_secret de la conexión; 401 sin firma, sin secreto o firma mala
+    '/api/integrations/wompi/webhook', // <-- checksum SHA-256 con events_secret de la conexión (tiempo constante); 401 sin secreto o checksum malo
+    '/api/integrations/redeban/webhook', // <-- siempre 401 hasta implementar la firma del proveedor (inocuo)
+    '/api/integrations/sendgrid/webhook', // <-- ECDSA con SENDGRID_WEBHOOK_VERIFICATION_KEY; 403 sin clave, sin cabeceras o firma mala
+    // GO-sec (2026-09-24, tras 6f7c97e7): webhooks de proveedores con
+    // credenciales de la organización, revisados uno por uno: sin firma, sin
+    // secreto o con firma que ninguna conexión valida → 401 y NADA se escribe
+    // antes de verificar (el evento se registra en la conexión que firmó).
+    '/api/integrations/mercadopago/webhook', // <-- HMAC x-signature (id;request-id;ts) con webhookSecret de la conexión; 401 sin firma o si ninguna conexión la valida
+    '/api/integrations/payu/webhook', // <-- firma MD5 `sign` con ApiKey + merchant_id de la conexión (tiempo constante); 401 si ninguna conexión la valida
+    '/api/integrations/paypal/webhook', // <-- verify-webhook-signature de PayPal con client_id/secret/webhook_id de la conexión; 401 sin cabeceras o si ninguna verifica
+    '/api/integrations/stripe/webhook', // <-- constructEvent con el whsec_ de la conexión; 401 sin stripe-signature o si ningún secreto verifica
+    '/api/integrations/meta/webhook', // <-- POST: HMAC x-hub-signature-256 con appSecret de la conexión (401); GET: META_WEBHOOK_VERIFY_TOKEN (403 sin él)
+    '/api/integrations/tiktok/webhook', // <-- POST siempre 401 hasta implementar la firma (inocuo); GET: TIKTOK_WEBHOOK_VERIFY_TOKEN (403 sin él)
+    '/api/crm/contracts/webhook', // <-- re-exporta el POST de /api/crm/webhooks/documenso (firma Documenso fail-closed)
+    '/api/crm/voice-agents/campaigns/run', // <-- withCron → verifyCronSecret (Bearer CRON_SECRET real, fail-closed)
     '/api/auth/invite/resend', // <-- Reenvío de magic link para invitaciones (usuario no autenticado, valida contra tabla invitations)
     '/auth/v1/',
     '/auth/callback', // <-- Excluir callback de OAuth para no interferir con PKCE
@@ -305,8 +361,8 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
       return response;
     }
     
-    // Validar sesión de forma simple (sin refresh, sin llamadas externas)
-    const sessionResult = await getValidatedSession(authCookie);
+    // Validar sesión verificando la firma del JWT (sin refresh)
+    const sessionResult = await getValidatedSession(authCookie, request);
     session = sessionResult.session;
     isAuthenticated = sessionResult.isAuthenticated;
     isExpired = sessionResult.isExpired;
@@ -861,10 +917,21 @@ async function handleRouteProtection(
     return NextResponse.next();
   }
 
-  // Manejar sesión expirada - solo redirigir si está REALMENTE expirada (fuera de grace period)
-  // El client-side SDK maneja el refresh automáticamente en la mayoría de casos
+  // APIs sin sesión verificada: 401 JSON, no una redirección al login. Una
+  // redirección convertía la respuesta en el HTML del login (200) y el cliente
+  // fallaba al leer JSON en vez de ver un 401. Las APIs que se autentican solas
+  // (webhooks, crons) están fuera del middleware (shouldSkipRoute + matcher).
+  if (!isAuthenticated && pathname.startsWith('/api/')) {
+    return NextResponse.json(
+      { error: 'No autenticado', code: isExpired ? 'SESSION_EXPIRED' : 'UNAUTHENTICATED' },
+      { status: 401 }
+    );
+  }
+
+  // Sesión vencida: el cliente la restaura con su refresh token en
+  // /auth/login?reason=expired y vuelve a redirectTo (el middleware no refresca).
   if (isExpired && !isPublicRoute) {
-    console.log('🔒 [MIDDLEWARE] Sesión expirada fuera de grace period, redirigiendo a login');
+    console.log('🔒 [MIDDLEWARE] Sesión vencida, el cliente debe refrescarla en /auth/login');
     const redirectUrl = new URL('/auth/login', request.url);
     if (pathname.startsWith('/app/')) {
       redirectUrl.searchParams.set('redirectTo', pathname);
@@ -980,9 +1047,10 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - api/test (test endpoints - no auth required)
-     * - api/stripe (Stripe API endpoints - handle their own auth)
-     * - api/sessions (Session API endpoints - handle their own auth)
+     * - api/stripe (webhook firmado y setup-intent del alta; el resto exige sesión en el handler)
+     *
+     * GO-sec (2026-09-24): salen del matcher `api/test`, `api/sessions` (rutas
+     * muertas, borradas) y `api/super-admin-cleanup` (ahora exige sesión).
      *
      * NOTA sobre los assets de public/: Next los sirve en la RAIZ (/sw.js),
      * no bajo /public/, asi que el token "public" de este matcher nunca los
@@ -991,7 +1059,11 @@ export const config = {
      * eso eran ~6,5 invocaciones por segundo puramente desperdiciadas.
      * Se enumeran de forma explicita (no por regex de extension) para no
      * arriesgar el parseo del matcher en un hotfix de produccion.
+     *
+     * Webhooks y crons que se autentican solos (GO-sec 2026-09-24): cada uno
+     * está también en shouldSkipRoute con el motivo por el que es fail-closed.
+     * Solo se añade aquí lo que verifica firma o CRON_SECRET por sí mismo.
      */
-    '/((?!_next/static|_next/image|favicon.ico|favicon-32x32.png|apple-touch-icon.png|icon-192x192.png|icon-512x512.png|placeholder-image.png|placeholder.svg|manifest.json|sw.js|api/test|api/stripe|api/sessions|api/integrations/twilio|api/integrations/whatsapp/webhook|api/integrations/whatsapp/qr/dispatch-pending|api/voice|api/super-admin-access|api/super-admin-cleanup|api/factus|api/facebook-feed|api/cron|api/crm/jobs/run|api/email/webhook|api/crm/webhooks|u/|api/web-orders|api/auth).*)',
+    '/((?!_next/static|_next/image|favicon.ico|favicon-16x16.png|favicon-32x32.png|apple-touch-icon.png|icon.svg|icon-192x192.png|icon-512x512.png|icon-maskable-192x192.png|icon-maskable-512x512.png|badge-96x96.png|placeholder-image.png|placeholder.svg|manifest.json|sw.js|api/stripe|api/integrations/twilio|api/integrations/whatsapp/webhook|api/integrations/whatsapp/qr/dispatch-pending|api/voice|api/super-admin-access|api/factus|api/facebook-feed|api/cron|api/crm/jobs/run|api/email/webhook|api/crm/webhooks|u/|api/pos/display/|api/web-orders|api/desktop/agent-session|api/webhooks/facebook/|api/webhooks/instagram/|api/integrations/qr/expire-sessions|api/auth|api/integrations/bancolombia/webhook|api/integrations/bold/webhook|api/integrations/breb/webhook|api/integrations/wompi/webhook|api/integrations/redeban/webhook|api/integrations/sendgrid/webhook|api/integrations/mercadopago/webhook|api/integrations/payu/webhook|api/integrations/paypal/webhook|api/integrations/stripe/webhook|api/integrations/meta/webhook|api/integrations/tiktok/webhook|api/crm/contracts/webhook|api/crm/voice-agents/campaigns/run).*)',
   ],
 };

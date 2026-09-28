@@ -125,6 +125,15 @@
             </intent-filter>
         </activity>
 
+        <!-- Ícono pequeño y color de las notificaciones push (FCM) cuando el
+             mensaje no trae los suyos: silueta blanca del isotipo y Azul GO. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_goadmin" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/ic_launcher_background" />
+
         <!-- ========================================================
              FIREBASE MESSAGING SERVICE
              Recibe push notifications vía FCM (Firebase Cloud Messaging).

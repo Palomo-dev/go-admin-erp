@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/components/ui/use-toast";
@@ -39,12 +39,14 @@ import { Badge } from "@/components/ui/badge";
 import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import { PaymentMethod, OrganizationPaymentMethod } from "./PaymentMethodsPage";
 import AccountMappingForm from "@/components/finanzas/metodos-pago/AccountMappingForm";
+import { useTranslations } from "next-intl";
+import { claveErrorMetodoPago, requiereReferenciaMetodo } from "@/lib/finanzas/metodosPagoOrganizacion";
 import Link from "next/link";
 
 interface PaymentMethodFormProps {
   organizationId: number;
   globalMethods: PaymentMethod[];
-  recommendedMethods?: any[];
+  recommendedMethods?: unknown[];
   countryCode?: string | null;
   selectedMethod: OrganizationPaymentMethod | null;
   onSaveComplete: () => void;
@@ -96,14 +98,13 @@ interface FormValues {
   website_display_name?: string;
   website_description?: string;
   website_icon?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export default function PaymentMethodForm({
   organizationId,
   globalMethods,
-  recommendedMethods = [],
-  countryCode,
+  // recommendedMethods y countryCode llegan por props pero el formulario no los usa.
   selectedMethod,
   onSaveComplete,
   onCancel
@@ -112,18 +113,19 @@ export default function PaymentMethodForm({
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [isNewMethod, setIsNewMethod] = useState(false);
-  const [gatewayConfig, setGatewayConfig] = useState<Record<string, any>>({});
+  const [gatewayConfig, setGatewayConfig] = useState<Record<string, unknown>>({});
   const [accountMapping, setAccountMapping] = useState<Record<string, string>>({});
   const [showAdvancedAccounting, setShowAdvancedAccounting] = useState(false);
+  const tErr = useTranslations("metodosPagoSeguridad");
   
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema) as any,
+    resolver: zodResolver(formSchema) as unknown as Resolver<FormValues>,
     defaultValues: {
       payment_method_code: selectedMethod?.payment_method_code || "",
       is_active: selectedMethod?.is_active ?? true,
       gateway: selectedMethod?.settings?.gateway || "",
-      requires_reference: selectedMethod?.payment_method?.requires_reference ?? false,
-      name: "",
+      requires_reference: requiereReferenciaMetodo(selectedMethod?.settings, selectedMethod?.payment_method?.requires_reference),
+      name: selectedMethod?.settings?.display_name || "",
       code: "",
       show_on_website: selectedMethod?.show_on_website ?? true,
       website_display_order: selectedMethod?.website_display_order ?? 0,
@@ -147,7 +149,8 @@ export default function PaymentMethodForm({
         payment_method_code: selectedMethod.payment_method_code,
         is_active: selectedMethod.is_active,
         gateway: selectedMethod.settings?.gateway || "",
-        requires_reference: selectedMethod?.payment_method?.requires_reference || false,
+        requires_reference: requiereReferenciaMetodo(selectedMethod.settings, selectedMethod.payment_method?.requires_reference),
+        name: selectedMethod.settings?.display_name || "",
         show_on_website: selectedMethod.show_on_website ?? true,
         website_display_order: selectedMethod.website_display_order ?? 0,
         website_display_name: selectedMethod.website_display_name || "",
@@ -231,39 +234,38 @@ export default function PaymentMethodForm({
         throw new Error("No se pudo determinar el ID de la organización");
       }
       
-      // Si es un nuevo método personalizado
+      // Si es un nuevo método personalizado. GO-sec (2026-09-28): el código del
+      // catálogo global y el vínculo de la organización los crea la base en una
+      // transacción, con el permiso de facturación resuelto allí.
       if (isNewMethod && values.name && values.code) {
-        const { data: existingMethod, error: checkError } = await supabase
-          .from("payment_methods")
-          .select("code")
-          .eq("code", values.code)
-          .single();
-          
-        if (checkError && checkError.code !== "PGRST116") throw checkError;
-        
-        if (existingMethod) {
-          toast({ title: "Error", description: "Ya existe un método con este código", variant: "destructive" });
-          return;
-        }
-        
-        const { error: insertError } = await supabase
-          .from("payment_methods")
-          .insert({
-            code: values.code,
-            name: values.name,
-            requires_reference: values.requires_reference,
-            is_active: true,
-            is_system: false,
-          });
-        if (insertError) throw insertError;
-        values.payment_method_code = values.code;
+        const { data: codigoCreado, error: rpcError } = await supabase.rpc("fn_metodo_pago_personalizado_crear", {
+          p_organization_id: organizationId,
+          p_code: values.code,
+          p_name: values.name,
+          p_requires_reference: values.requires_reference,
+        });
+        if (rpcError) throw rpcError;
+        values.payment_method_code = (codigoCreado as string) || values.code;
       }
       
       if (!values.payment_method_code) {
         throw new Error("No se ha seleccionado un método de pago válido");
       }
       
+      // Nombre propio de la organización: solo si difiere del catálogo global.
+      // Los métodos manuales no muestran el campo: conservan el que tuvieran.
+      const nombreGlobal = selectedMethod?.payment_method?.name ?? currentMethod?.name ?? "";
+      const nombreEscrito = (values.name ?? "").trim();
+      const nombrePropio =
+        selectedMethod && MANUAL_METHODS.includes(selectedMethod.payment_method_code)
+          ? selectedMethod.settings?.display_name ?? null
+          : nombreEscrito && nombreEscrito !== nombreGlobal ? nombreEscrito : null;
+
       const settings = {
+        // Se conservan las claves que la pantalla no edita (color, etc.).
+        ...(selectedMethod?.settings ?? {}),
+        display_name: nombrePropio,
+        requires_reference: values.requires_reference,
         gateway: values.gateway === "none" ? "" : values.gateway,
         gateway_config: Object.keys(gatewayConfig).length > 0 ? gatewayConfig : undefined,
         account_mapping: Object.keys(accountMapping).length > 0 ? accountMapping : undefined,
@@ -300,26 +302,26 @@ export default function PaymentMethodForm({
           if (error) throw error;
         }
       } else {
-        // Si es un método personalizado (no manual), actualizar nombre en payment_methods
-        if (!MANUAL_METHODS.includes(selectedMethod.payment_method_code) && values.name) {
-          const { error: pmError } = await supabase
-            .from("payment_methods")
-            .update({ name: values.name, requires_reference: values.requires_reference })
-            .eq("code", selectedMethod.payment_method_code);
-          if (pmError) console.error("Error al actualizar payment_methods:", pmError);
-        }
-        const { error } = await supabase
+        // GO-sec (2026-09-28): el nombre y «requiere referencia» se guardan en el
+        // vínculo de la organización (settings), nunca en el catálogo global
+        // `payment_methods`, que comparten todas. `.select()` para detectar un
+        // UPDATE que RLS bloquea (0 filas, sin error).
+        const { data: filas, error } = await supabase
           .from("organization_payment_methods")
           .update({ is_active: values.is_active, settings, ...payloadWebsite, updated_at: new Date().toISOString() })
-          .eq("id", selectedMethod.id);
+          .eq("id", selectedMethod.id)
+          .select("id");
         if (error) throw error;
+        if (!filas || filas.length === 0) throw { message: "sin_permiso" };
       }
       
       toast({ title: "Método de pago guardado", description: "Configurado exitosamente" });
       onSaveComplete();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error al guardar método de pago:", error);
-      toast({ title: "Error", description: "No se pudo guardar: " + error.message, variant: "destructive" });
+      const clave = claveErrorMetodoPago(error);
+      const detalle = clave ? tErr(clave) : error instanceof Error ? error.message : String((error as { message?: unknown })?.message ?? error);
+      toast({ title: "Error", description: "No se pudo guardar: " + detalle, variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
@@ -486,7 +488,7 @@ export default function PaymentMethodForm({
             <MapPin className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-blue-700 dark:text-blue-300">Disponible en:</span>
-              {currentMethod.countries.map((c: any) => (
+              {currentMethod.countries.map((c) => (
                 <Badge key={c.country_code} variant="outline" className="text-[10px] px-1.5 py-0 dark:bg-gray-800 dark:text-gray-300">
                   {c.country?.name || c.country_code}
                 </Badge>
@@ -704,7 +706,7 @@ export default function PaymentMethodForm({
           </Button>
           <Button 
             type="button" 
-            onClick={(e) => handleFormSubmit(e as any)} 
+            onClick={(e) => handleFormSubmit(e as unknown as React.FormEvent)} 
             disabled={isSaving || !hasMethodSelected}
             className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-sm"
           >

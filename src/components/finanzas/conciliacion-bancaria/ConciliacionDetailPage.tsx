@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { 
   ArrowLeft, ArrowRightLeft, RefreshCw, CheckCircle, 
-  XCircle, DollarSign, Calendar, Lock, Unlock, Link2
+  XCircle, DollarSign, Lock, Link2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,9 +15,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ConciliacionService } from './ConciliacionService';
+import { esEntradaBancaria } from '@/lib/finanzas/movimientoBancario';
 import { AIMatchingPanel } from './AIMatchingPanel';
 import { BankReconciliation, BankReconciliationItem, BankTransaction } from '../bancos/BancosService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 interface ConciliacionDetailPageProps {
   reconciliationId: string;
@@ -25,10 +27,11 @@ interface ConciliacionDetailPageProps {
 
 export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailPageProps) {
   const router = useRouter();
+  const { paraDocumento } = useMonedaOrganizacion();
   const [reconciliation, setReconciliation] = useState<BankReconciliation | null>(null);
   const [items, setItems] = useState<BankReconciliationItem[]>([]);
   const [pendingTransactions, setPendingTransactions] = useState<BankTransaction[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
+  const [, setPayments] = useState<unknown[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
@@ -161,6 +164,11 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
 
   if (!reconciliation) return null;
 
+  // Saldos y movimientos de la cuenta conciliada: en la moneda de esa cuenta
+  // (sin ella, la base de la organizacion).
+  const monedaCuenta = paraDocumento(reconciliation.bank_account?.currency);
+  const formatearCuenta = (valor: number) => formatMoneda(valor, monedaCuenta);
+
   const matchedAmount = items.filter(i => i.is_matched).reduce((sum, i) => sum + i.amount, 0);
   const difference = (reconciliation.statement_balance || 0) - (reconciliation.opening_balance + matchedAmount);
 
@@ -221,7 +229,7 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {formatCurrency(reconciliation.opening_balance)}
+              {formatearCuenta(reconciliation.opening_balance)}
             </div>
           </CardContent>
         </Card>
@@ -235,7 +243,7 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {formatCurrency(reconciliation.statement_balance || 0)}
+              {formatearCuenta(reconciliation.statement_balance || 0)}
             </div>
           </CardContent>
         </Card>
@@ -249,7 +257,7 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {formatCurrency(matchedAmount)}
+              {formatearCuenta(matchedAmount)}
             </div>
           </CardContent>
         </Card>
@@ -263,7 +271,7 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${difference === 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-              {formatCurrency(difference)}
+              {formatearCuenta(difference)}
             </div>
           </CardContent>
         </Card>
@@ -313,12 +321,12 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`font-semibold ${
-                        tx.transaction_type === 'credit' 
+                        esEntradaBancaria(tx) 
                           ? 'text-green-600 dark:text-green-400' 
                           : 'text-red-600 dark:text-red-400'
                       }`}>
-                        {tx.transaction_type === 'credit' ? '+' : '-'}
-                        {formatCurrency(Math.abs(tx.amount))}
+                        {esEntradaBancaria(tx) ? '+' : '-'}
+                        {formatearCuenta(Math.abs(tx.amount))}
                       </span>
                       {reconciliation.status !== 'closed' && (
                         <Button
@@ -376,7 +384,7 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-green-600 dark:text-green-400">
-                        {formatCurrency(item.amount)}
+                        {formatearCuenta(item.amount)}
                       </span>
                       {reconciliation.status !== 'closed' && (
                         <Button
@@ -403,6 +411,7 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
           <AIMatchingPanel
             reconciliationId={reconciliationId}
             onMatchComplete={loadData}
+            monedaCuenta={reconciliation.bank_account?.currency}
           />
         </TabsContent>
       </Tabs>
@@ -418,7 +427,7 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
           </DialogHeader>
           <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
             <p className="text-sm text-yellow-800 dark:text-yellow-300">
-              <strong>Diferencia actual:</strong> {formatCurrency(difference)}
+              <strong>Diferencia actual:</strong> {formatearCuenta(difference)}
             </p>
             {difference !== 0 && (
               <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">

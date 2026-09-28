@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { type ReservationDetail } from '@/lib/services/reservationDetailService';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface ReservationHeaderProps {
   reservation: ReservationDetail;
@@ -48,13 +49,8 @@ export function ReservationHeader({ reservation, nights, financials }: Reservati
     return formatPlainDate(dateString, { day: '2-digit', month: 'long', year: 'numeric' });
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  // Moneda base de la organización (la reserva/abono no tiene moneda propia).
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
 
   return (
     <div className="space-y-4">

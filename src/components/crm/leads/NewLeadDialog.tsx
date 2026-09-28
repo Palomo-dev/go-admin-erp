@@ -13,6 +13,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { mensajeErrorTelefono } from '@/lib/utils/telefono';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -51,7 +54,11 @@ const LEAD_SOURCES: { value: string; label: string }[] = [
   { value: 'otro', label: 'Otro' },
 ];
 
-const CURRENCIES = ['COP', 'USD', 'EUR', 'MXN'];
+/**
+ * Monedas extra del selector. La base de la organización y la del formulario
+ * se añaden siempre; no se cablea ninguna moneda local.
+ */
+const CURRENCIES = ['USD', 'EUR', 'MXN'];
 
 interface NewLeadDialogProps {
   open: boolean;
@@ -72,7 +79,13 @@ export function NewLeadDialog({ open, onOpenChange, branchId, onCreated }: NewLe
   // Lead
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('COP');
+  // Vacía hasta que se resuelve la moneda base de la organización.
+  const [currency, setCurrency] = useState('');
+  const { code: monedaBase, resuelta: monedaResuelta } = useMonedaOrganizacion();
+  useEffect(() => {
+    if (monedaResuelta && !currency) setCurrency(monedaBase);
+  }, [monedaResuelta, monedaBase, currency]);
+  const opcionesMoneda = Array.from(new Set([monedaResuelta ? monedaBase : '', currency, ...CURRENCIES].filter(Boolean)));
   const [source, setSource] = useState('manual_erp');
   const [expectedCloseDate, setExpectedCloseDate] = useState('');
 
@@ -100,7 +113,7 @@ export function NewLeadDialog({ open, onOpenChange, branchId, onCreated }: NewLe
     setFormError(null);
     setName('');
     setAmount('');
-    setCurrency('COP');
+    setCurrency('');
     setSource('manual_erp');
     setExpectedCloseDate('');
     setPipelineId('');
@@ -196,12 +209,18 @@ export function NewLeadDialog({ open, onOpenChange, branchId, onCreated }: NewLe
         setFormError('El cliente nuevo necesita al menos correo o teléfono.');
         return;
       }
+      const errorTelefono = mensajeErrorTelefono(newPhone);
+      if (errorTelefono) {
+        setFormError(errorTelefono);
+        return;
+      }
     }
 
     const payload: Record<string, unknown> = {
       name: name.trim(),
       amount: amount ? Number(amount) : 0,
-      currency,
+      // Sin moneda elegida no se manda: la base la pone el servidor.
+      currency: currency || undefined,
       source,
       expected_close_date: expectedCloseDate || undefined,
       pipeline_id: pipelineId || undefined,
@@ -342,12 +361,10 @@ export function NewLeadDialog({ open, onOpenChange, branchId, onCreated }: NewLe
                   <Label htmlFor="lead-customer-phone" className="text-gray-700 dark:text-gray-300">
                     Teléfono
                   </Label>
-                  <Input
+                  <PhoneInput
                     id="lead-customer-phone"
                     value={newPhone}
-                    onChange={(e) => setNewPhone(e.target.value)}
-                    placeholder="+57 300 000 0000"
-                    className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                    onChange={setNewPhone}
                   />
                 </div>
               </div>
@@ -419,7 +436,7 @@ export function NewLeadDialog({ open, onOpenChange, branchId, onCreated }: NewLe
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {CURRENCIES.map((c) => (
+                  {opcionesMoneda.map((c) => (
                     <SelectItem key={c} value={c}>
                       {c}
                     </SelectItem>

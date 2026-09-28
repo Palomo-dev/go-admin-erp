@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { requireOrgId } from '../useEquipoData';
 import type { Territory, SalesTeam } from '../types';
 import { TerritoryDialog, DeleteConfirmDialog } from '../dialogs';
@@ -15,6 +15,7 @@ type TerritoryWithStats = Territory & { _teamCount?: number; _oppCount?: number;
 
 export function TerritoriosTab() {
   const { toast } = useToast();
+  const { formatear } = useMonedaOrganizacion();
   const [territories, setTerritories] = useState<TerritoryWithStats[]>([]);
   const [teams, setTeams] = useState<SalesTeam[]>([]);
   const [loading, setLoading] = useState(true);
@@ -197,7 +198,7 @@ export function TerritoriosTab() {
                     </div>
                     <div className="rounded-lg bg-gray-50 dark:bg-gray-900 p-2">
                       <p className="text-xs font-bold text-gray-900 dark:text-white truncate">
-                        {t._oppAmount ? formatCurrency(t._oppAmount, 'COP') : '—'}
+                        {t._oppAmount ? formatear(t._oppAmount) : '—'}
                       </p>
                       <p className="text-[10px] text-gray-500 mt-1">Valor</p>
                     </div>

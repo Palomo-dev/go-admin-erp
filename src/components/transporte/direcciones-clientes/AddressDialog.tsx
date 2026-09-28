@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, telefonoOpcionalValido } from '@/components/ui/phone-input';
 import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
@@ -244,6 +244,8 @@ export function AddressDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.customer_id || !formData.address_line1 || !formData.city) return;
+    // El campo ya muestra el aviso del país: no se guarda un teléfono incompleto.
+    if (!telefonoOpcionalValido(formData.recipient_phone)) return;
 
     setIsSubmitting(true);
     try {
@@ -481,7 +483,6 @@ export function AddressDialog({
                 id="recipient_phone"
                 value={formData.recipient_phone}
                 onChange={(v) => setFormData({ ...formData, recipient_phone: v })}
-                placeholder="300 123 4567"
               />
             </div>
           </div>

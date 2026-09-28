@@ -3,7 +3,9 @@
 import { memo } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { AlarmClock, GripVertical, Mail, MessageCircle, Phone, Calendar, Bot, Clock } from 'lucide-react';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
 import { QuickActionsBar } from '@/components/crm/shared/QuickActionsBar';
 import { relativeTime } from '@/components/crm/timeline/utils';
@@ -34,6 +36,7 @@ function initials(name?: string | null): string {
 }
 
 function OpportunityCardV2Inner({ opportunity: o, index, onOpen, compact }: OpportunityCardV2Props) {
+  const { paraDocumento } = useMonedaOrganizacion();
   const won = o.status === 'won';
   const lost = o.status === 'lost';
   const overdue = o.next_contact_at != null && Date.parse(o.next_contact_at) < Date.now() && !won && !lost;
@@ -92,7 +95,7 @@ function OpportunityCardV2Inner({ opportunity: o, index, onOpen, compact }: Oppo
 
           <div className="mt-2 flex items-center justify-between gap-2">
             <span className={cn('text-sm font-semibold', won ? 'text-green-600 dark:text-green-400' : lost ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-400')}>
-              {formatCurrency(o.amount ?? 0, o.currency || 'COP')}
+              {formatMoneda(o.amount ?? 0, paraDocumento(o.currency))}
             </span>
             <div className="flex items-center gap-1">
               <ScoreBadge score={o.score_total} />

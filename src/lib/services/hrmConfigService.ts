@@ -1,6 +1,7 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 export interface CountryPayrollRules {
   id: string;
@@ -28,7 +29,7 @@ export interface CountryPayrollRules {
   severance_interest_rate: number | null;
   vacation_rate: number | null;
   bonus_rate: number | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   is_active: boolean;
   valid_from: string;
   valid_to: string | null;
@@ -174,9 +175,14 @@ class HRMConfigService {
       .eq('is_base', true)
       .single();
 
+    // Sin moneda marcada como base, la cadena de respaldo única del ERP
+    // (preferencia, moneda asignada, país de la organización): nunca COP fijo.
+    const baseCurrency =
+      currencyData?.currency_code?.trim() || (await resolveOrgCurrency(supabase, organizationId)).code;
+
     return data ? {
       ...data,
-      base_currency: currencyData?.currency_code || 'COP',
+      base_currency: baseCurrency,
       default_frequency: 'monthly',
       overtime_policy: 'standard',
     } : null;

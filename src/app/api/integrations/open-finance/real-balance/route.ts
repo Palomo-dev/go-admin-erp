@@ -1,64 +1,43 @@
 // ============================================================
 // /api/integrations/open-finance/real-balance
-// Obtiene saldos en tiempo real de cuentas bancarias
+// Saldos en tiempo real de cuentas bancarias de la organizacion
 // GET - saldo real de una cuenta (?bankAccountId=xxx)
-//       o de todas las cuentas de la organizacion (?organizationId=xxx)
+//       o de todas las cuentas de la organizacion de la sesion (sin parametros)
+//
+// SEGURIDAD (GO-sec, 2026-09-23): antes cualquier `bankAccountId` u
+// `organizationId` (y escribia `last_balance` en cuentas ajenas). Ahora la
+// cuenta tiene que ser de la organizacion de la sesion (404) y un
+// `?organizationId=` ajeno responde 403.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { balanceService } from '@/lib/services/integrations/openFinance/balanceService';
+import { cuentaBancariaDeLaOrganizacion } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-// GET - obtiene saldo en tiempo real
-export async function GET(request: NextRequest) {
+const RUTA = 'open-finance/real-balance';
+
+export const GET = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+    const bankAccountIdParam = new URL(request.url).searchParams.get('bankAccountId');
 
-    const { searchParams } = new URL(request.url);
-    const bankAccountIdParam = searchParams.get('bankAccountId');
-    const organizationIdParam = searchParams.get('organizationId');
-
-    // Caso 1: saldo de una cuenta especifica
     if (bankAccountIdParam) {
       const bankAccountId = Number(bankAccountIdParam);
-      if (!bankAccountId || Number.isNaN(bankAccountId)) {
-        return NextResponse.json(
-          { error: 'bankAccountId debe ser un numero valido' },
-          { status: 400 },
-        );
+      if (!Number.isInteger(bankAccountId) || bankAccountId <= 0) {
+        return NextResponse.json({ error: 'bankAccountId debe ser un numero valido' }, { status: 400 });
       }
-
+      await cuentaBancariaDeLaOrganizacion(ctx, bankAccountId);
       const balance = await balanceService.getRealTimeBalance(bankAccountId);
       return NextResponse.json({ success: true, data: balance });
     }
 
-    // Caso 2: saldos de todas las cuentas de la organizacion
-    if (organizationIdParam) {
-      const organizationId = Number(organizationIdParam);
-      if (!organizationId || Number.isNaN(organizationId)) {
-        return NextResponse.json(
-          { error: 'organizationId debe ser un numero valido' },
-          { status: 400 },
-        );
-      }
-
-      const balances = await balanceService.getRealTimeBalances(organizationId);
-      return NextResponse.json({ success: true, data: balances });
-    }
-
-    return NextResponse.json(
-      { error: 'Se requiere bankAccountId u organizationId' },
-      { status: 400 },
-    );
+    const balances = await balanceService.getRealTimeBalances(ctx.organizationId);
+    return NextResponse.json({ success: true, data: balances });
   } catch (error) {
-    console.error('[Open Finance Real Balance GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Real Balance GET', error);
   }
-}
+});

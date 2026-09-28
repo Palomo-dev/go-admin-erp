@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Receipt, Banknote, Loader2, ShoppingCart } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
-import { FoliosService, type FolioItem } from '@/lib/services/foliosService';
+import { Banknote, Loader2, ShoppingCart } from 'lucide-react';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { type FolioItem } from '@/lib/services/foliosService';
 import { FolioPaymentDialog } from '@/components/pms/FolioPaymentDialog';
 
 interface DrawerFolioSummaryProps {
@@ -15,6 +14,7 @@ interface DrawerFolioSummaryProps {
 }
 
 export function DrawerFolioSummary({ spaceId, refreshTrigger }: DrawerFolioSummaryProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const [items, setItems] = useState<FolioItem[]>([]);
   const [folioId, setFolioId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);

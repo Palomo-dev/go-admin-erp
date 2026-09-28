@@ -63,7 +63,7 @@ interface LogEntry {
   organizations_total: number;
   organizations_success: number;
   organizations_error: number;
-  details: any;
+  details: unknown;
   created_at: string;
 }
 
@@ -77,7 +77,7 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
   const [selectedCurrency, setSelectedCurrency] = useState<string | null>(null);
   const [rateHistory, setRateHistory] = useState<RateHistoryItem[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [updatingRates, setUpdatingRates] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -233,7 +233,7 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
           setSelectedCurrency(defaultCurrency);
           return;
         }
-      } catch (prefError) {
+      } catch {
         console.warn('No se encontraron preferencias para la organización');
       }
       
@@ -252,11 +252,11 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
         console.warn('No se encontraron monedas disponibles');
         setError('No se encontraron monedas disponibles para la organización');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al cargar monedas:', err);
       toast({
         title: 'Error',
-        description: 'No se pudieron cargar las monedas: ' + err.message,
+        description: 'No se pudieron cargar las monedas: ' + (err instanceof Error ? err.message : String(err)),
         variant: 'destructive',
       });
     } finally {
@@ -293,7 +293,7 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
       }
       
       // 2. Verificar si la moneda está asociada a la organización
-      const { data: orgCurrency, error: orgCurrencyError } = await supabase
+      const { data: orgCurrency } = await supabase
         .from('organization_currencies')
         .select('currency_code, is_base')
         .eq('organization_id', organizationId)
@@ -375,11 +375,11 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
       }
       
       setRateHistory(formattedData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al cargar historial de tasas:', err);
       toast({
         title: 'Error',
-        description: 'No se pudo cargar el historial de tasas: ' + err.message,
+        description: 'No se pudo cargar el historial de tasas: ' + (err instanceof Error ? err.message : String(err)),
         variant: 'destructive',
       });
     } finally {
@@ -399,7 +399,7 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
       if (error) throw error;
       
       setLogs(data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al cargar logs:', err);
     }
   }
@@ -410,18 +410,18 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
     
     try {
       // Convertir string a objeto si es necesario
-      let parsedDetails: { organizations?: Array<any> } = {};
+      let parsedDetails: { organizations?: Array<unknown> } = {};
       
       if (typeof details === 'string') {
         parsedDetails = JSON.parse(details);
       } else if (typeof details === 'object') {
-        parsedDetails = details as { organizations?: Array<any> };
+        parsedDetails = details as { organizations?: Array<unknown> };
       }
       
       // Extraer información relevante
       const orgs = parsedDetails.organizations || [];
       return `${orgs.length} organizaciones procesadas`;
-    } catch (error) {
+    } catch {
       return 'Formato de detalles no válido';
     }
   }
@@ -435,11 +435,9 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
         description: "Obteniendo las tasas más recientes..."
       });
       
-      // Importar el servicio de tasas de cambio
-      const { actualizarTasasDeCambioGlobal } = await import('@/lib/services/openexchangerates');
-      
-      // Llamar al servicio para actualizar tasas
-      const resultado = await actualizarTasasDeCambioGlobal();
+      // GO-sec (2026-09-28): lo sincroniza el servidor (solo plataforma).
+      const { sincronizarTasasDeCambio } = await import('@/lib/services/tasasCambioCliente');
+      const resultado = await sincronizarTasasDeCambio();
       
       if (resultado.success) {
         toast({
@@ -457,11 +455,11 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
       } else {
         throw new Error(resultado.message || "Error desconocido");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error al actualizar tasas:", err);
       toast({
         title: "Error",
-        description: `No se pudieron actualizar las tasas: ${err.message}`,
+        description: `No se pudieron actualizar las tasas: ${err instanceof Error ? err.message : String(err)}`,
         variant: "destructive"
       });
     } finally {

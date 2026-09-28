@@ -8,7 +8,7 @@
 
   IMPORTANTE: Capacitor genera su propio strings.xml. Debes hacer
   un MERGE conservando las strings existentes y actualizando:
-    - app_name → "GoAdmin ERP"
+    - app_name → "GO Admin ERP"
     - default_notification_channel_id → "goadmin_default"
 
   El notification channel ID debe coincidir con el usado en la
@@ -16,7 +16,7 @@
 -->
 <resources>
     <!-- Nombre visible de la app en el launcher -->
-    <string name="app_name">GoAdmin ERP</string>
+    <string name="app_name">GO Admin ERP</string>
 
     <!--
       ID del canal de notificaciones por defecto (Android 8+).

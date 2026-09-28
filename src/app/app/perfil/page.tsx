@@ -117,7 +117,26 @@ export default function PerfilUsuarioPage() {
           console.error('Error al obtener perfil:', profileError);
           toast.error('Error al cargar datos de perfil');
         } else {
-          setProfile(profileData);
+          // `profiles` NO tiene `full_name` ni `lang`: los nombres reales son
+          // `first_name`/`last_name` y `preferred_language`. La página leía
+          // `profile.lang`, que llegaba siempre `undefined`, así que el
+          // selector de idioma arrancaba en «Español» aunque el usuario
+          // hubiera guardado otro (auditoría de perfil y cajas, 2026-09-22).
+          setProfile(
+            profileData
+              ? {
+                  ...profileData,
+                  lang: (profileData as { preferred_language?: string }).preferred_language,
+                  full_name:
+                    (profileData as { full_name?: string }).full_name ||
+                    [profileData.first_name, profileData.last_name]
+                      .filter(Boolean)
+                      .join(' ')
+                      .trim() ||
+                    undefined,
+                }
+              : profileData
+          );
         }
         
         // Obtener sesiones del usuario

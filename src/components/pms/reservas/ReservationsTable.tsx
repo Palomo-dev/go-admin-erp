@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { type ReservationListItem } from '@/lib/services/reservationListService';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface ReservationsTableProps {
   reservations: ReservationListItem[];
@@ -96,13 +97,8 @@ export function ReservationsTable({
     return formatPlainDate(dateString, { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  // Moneda base de la organización (la reserva/abono no tiene moneda propia).
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
 
   const canCheckIn = (status: string) => status === 'confirmed';
   const canCheckOut = (status: string) => status === 'checked_in';
@@ -117,7 +113,7 @@ export function ReservationsTable({
               <Checkbox
                 checked={allSelected}
                 ref={(el) => {
-                  if (el) (el as any).indeterminate = someSelected;
+                  if (el) (el as unknown as HTMLInputElement).indeterminate = someSelected;
                 }}
                 onCheckedChange={handleSelectAll}
                 aria-label="Seleccionar todas"

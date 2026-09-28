@@ -5,7 +5,8 @@ import { ShoppingCart } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toastError } from '@/components/ui/use-toast';
 import ModuloSection from '../ModuloSection';
 import {
@@ -29,26 +30,26 @@ import type {
   ExportOrganizationInfo,
 } from '@/lib/services/inicio/dashboardSectionExport';
 
-const CURRENCY_CODE = 'COP';
 
 function buildExportData(
   kpis: PosKPIsData | null,
   productos: TopProductoPos[],
   periodo: string,
+  moneda: ContextoMoneda,
 ): SectionExportData | null {
   if (!kpis) return null;
 
   const kpiList: SectionKPI[] = [
-    { label: 'Ventas hoy', value: formatCurrency(kpis.totalVentasHoy, CURRENCY_CODE), kind: 'ingreso' },
-    { label: 'Ventas del mes', value: formatCurrency(kpis.totalVentasMes, CURRENCY_CODE), kind: 'ingreso' },
+    { label: 'Ventas hoy', value: formatMoneda(kpis.totalVentasHoy, moneda), kind: 'ingreso' },
+    { label: 'Ventas del mes', value: formatMoneda(kpis.totalVentasMes, moneda), kind: 'ingreso' },
     { label: 'Transacciones hoy', value: String(kpis.numTransaccionesHoy), kind: 'neutro' },
-    { label: 'Ticket promedio', value: formatCurrency(kpis.ticketPromedio, CURRENCY_CODE), kind: 'ingreso' },
+    { label: 'Ticket promedio', value: formatMoneda(kpis.ticketPromedio, moneda), kind: 'ingreso' },
   ];
 
   const filas: SectionDataRow[] = productos.map((p) => ({
     producto: p.productName,
     cantidad: p.cantidad,
-    total: formatCurrency(p.total, CURRENCY_CODE),
+    total: formatMoneda(p.total, moneda),
   }));
 
   return {
@@ -65,6 +66,8 @@ function buildExportData(
 }
 
 export default function PosSection() {
+  // Montos en la moneda base de la organización (nunca pesos fijos).
+  const moneda = useMonedaOrganizacion();
   const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState<PosKPIsData | null>(null);
@@ -141,8 +144,8 @@ export default function PosSection() {
   }, [branchFilter]);
 
   const exportData = useMemo(
-    () => buildExportData(kpis, topProductos, periodoLabel),
-    [kpis, topProductos],
+    () => buildExportData(kpis, topProductos, periodoLabel, moneda),
+    [kpis, topProductos, moneda],
   );
 
   return (

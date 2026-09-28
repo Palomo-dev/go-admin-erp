@@ -1,58 +1,28 @@
 // ============================================================
 // /api/integrations/open-finance/validate-account
-// Valida una cuenta bancaria antes de transferir
-// POST - valida cuenta (body: { countryCode, accountNumber, bankCode, accountType, documentNumber, documentType })
+// POST - validar una cuenta bancaria arbitraria — DESHABILITADO (501)
+//
+// SEGURIDAD (GO-sec, 2026-09-23; auditoria §1.4, hallazgo 13): con cualquier
+// numero de cuenta y documento servia de oraculo de titulares (datos
+// personales) y consumia sin limite la cuota de Prometeo de la plataforma
+// (ademas llamaba un host y una ruta que no son los de Account Validation).
+// Sin consumidor en la UI. Responde 501 despues de sesion, organizacion y
+// `finance.approve`; la validacion de proveedores PROPIOS sigue en
+// `validate-supplier`.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import { openFinanceService } from '@/lib/services/integrations/openFinance/openFinanceService';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { flujoDeshabilitado, PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
+import { MOTIVO_VALIDACION_DESHABILITADA } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-// POST - valida cuenta bancaria
-export async function POST(request: NextRequest) {
+const RUTA = 'open-finance/validate-account';
+
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const {
-      countryCode,
-      accountNumber,
-      bankCode,
-      accountType,
-      documentNumber,
-      documentType,
-    } = body;
-
-    // Validar campos requeridos
-    if (!countryCode || !accountNumber || !bankCode || !accountType
-      || !documentNumber || !documentType) {
-      return NextResponse.json(
-        {
-          error: 'countryCode, accountNumber, bankCode, accountType, documentNumber y documentType son requeridos',
-        },
-        { status: 400 },
-      );
-    }
-
-    const result = await openFinanceService.validateAccount({
-      country_code: countryCode,
-      account_number: accountNumber,
-      bank_code: bankCode,
-      account_type: accountType,
-      document_number: documentNumber,
-      document_type: documentType,
-    });
-
-    return NextResponse.json({ success: true, data: result });
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.APROBAR, RUTA);
+    return flujoDeshabilitado(MOTIVO_VALIDACION_DESHABILITADA);
   } catch (error) {
-    console.error('[Open Finance Validate Account POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Validate Account POST', error);
   }
-}
+});

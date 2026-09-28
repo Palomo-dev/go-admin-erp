@@ -7,18 +7,20 @@
  */
 
 import { useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui/use-toast';
 import { TableSkeleton } from '@/components/common/PageSkeletons';
-import { useOrgCurrency } from '@/lib/hooks/useOrgCurrency';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useOrgMembers } from '@/lib/hooks/useOrgMembers';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
 import { describeError } from '@/lib/utils/errorMessage';
 import type { CommissionRow } from '@/lib/services/crm/commissionAdminService';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
 import {
   ClawbackDialog,
   ComisionesFilters,
@@ -28,15 +30,19 @@ import {
   ComisionesToolbar,
   useComisiones,
 } from '@/components/finanzas/comisiones';
-import { activeFilterCount } from '@/components/finanzas/comisiones/comisionesModel';
+import { activeFilterCount, type CuentaPagoValor } from '@/components/finanzas/comisiones/comisionesModel';
+import { CuentaPagoComision } from '@/components/finanzas/comisiones/CuentaPagoComision';
 import { REFRESH_BUTTON_ID, commissionFocusFallback } from '@/components/finanzas/comisiones/comisionesFocus';
 
 export default function ComisionesPage() {
   const state = useComisiones();
-  const currency = useOrgCurrency();
+  const t = useTranslations('comisionesPago');
+  // Moneda base de la organización; cada comisión se muestra en la suya si la trae.
+  const { code: currency, paraDocumento } = useMonedaOrganizacion();
   const { members } = useOrgMembers();
   const [clawbackRow, setClawbackRow] = useState<CommissionRow | null>(null);
   const [payRow, setPayRow] = useState<CommissionRow | null>(null);
+  const [cuentaPago, setCuentaPago] = useState<CuentaPagoValor>('rule');
   // Foco tras confirmar (brief §4): el botón «Pagar» de la fila desaparece al pagarla;
   // el fallback va a la fila siguiente → «Actualizar» → «Seleccionar todas».
   const actedRef = useRef<string[]>([]);
@@ -46,7 +52,7 @@ export default function ComisionesPage() {
   const payOne = async (row: CommissionRow) => {
     actedRef.current = [row.id];
     try {
-      toast({ title: await state.payMany([row.id]) });
+      toast({ title: await state.payMany([row.id], cuentaPago) });
     } catch (err) {
       toast({ title: 'No se pudo pagar', description: describeError(err), variant: 'destructive' });
     }
@@ -100,18 +106,31 @@ export default function ComisionesPage() {
         />
       )}
 
+      {state.rows.length > 0 && state.count > state.rows.length && (
+        <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
+          <p className="text-xs text-gray-500 dark:text-gray-400" aria-live="polite">
+            {t('mostrando', { shown: state.rows.length, total: state.count })}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => state.loadMore()} disabled={state.loadingMore}>
+            {state.loadingMore ? t('cargando') : t('cargarMas')}
+          </Button>
+        </div>
+      )}
+
       <ConfirmDialog
         open={payRow !== null}
         onOpenChange={(o) => !o && setPayRow(null)}
         onCloseAutoFocus={onPayDialogClose}
-        title={payRow ? `¿Pagar ${formatCurrency(Number(payRow.commission_amount), payRow.currency || currency)} a ${payRow.payee_name || 'sin nombre'}?` : ''}
+        title={payRow ? `¿Pagar ${formatMoneda(Number(payRow.commission_amount), paraDocumento(payRow.currency || currency))} a ${payRow.payee_name || 'sin nombre'}?` : ''}
         description="La comisión pasará a pagada con la fecha de hoy. Solo se paga si sigue pendiente."
         confirmLabel="Sí, pagar"
         loading={state.busy}
         onConfirm={async () => {
           if (payRow) await payOne(payRow);
         }}
-      />
+      >
+        <CuentaPagoComision value={cuentaPago} onChange={setCuentaPago} accounts={state.moneyAccounts} disabled={state.busy} />
+      </ConfirmDialog>
 
       <ClawbackDialog
         open={clawbackRow !== null}

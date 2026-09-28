@@ -13,18 +13,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, Users, GitBranch, Check, ChevronRight, Plus, Trash2, User, Percent, MessageCircle } from 'lucide-react';
-import dynamic from 'next/dynamic';
 // F16: pestaña "Mensaje" (WhatsApp masivo a la selección → campaña opportunity_list)
-const ComposeWhatsAppDialog = dynamic(() => import('@/components/crm/whatsapp/ComposeWhatsAppDialog').then((m) => m.ComposeWhatsAppDialog), { ssr: false });
 import { toast } from '@/components/ui/use-toast';
 import { opportunitiesService } from '@/components/crm/oportunidades/opportunitiesService';
-import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import type { Pipeline, Stage, Customer, Opportunity } from '@/components/crm/oportunidades/types';
 import { SpaceSearchSelect } from '@/components/crm/oportunidades/SpaceSearchSelect';
 import { ProductSearchDialog, type UnifiedProduct, type SelectedModifier } from '@/components/shared/product-search';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 interface ProductLine {
   product_id: number;
@@ -53,6 +50,22 @@ interface BulkActionsDialogProps {
 
 type TabMode = 'assign' | 'move' | 'message';
 
+/**
+ * Monedas extra del selector. La base de la organización y la del formulario
+ * se añaden siempre; no se cablea ninguna moneda local.
+ */
+const MONEDAS_CATALOGO = ['USD', 'EUR'];
+
+/** Espacio tal como lo devuelve `opportunitiesService.getSpaces()`. */
+interface EspacioDisponible {
+  id: string;
+  label: string;
+  floor_zone?: string;
+  status: string;
+  type_name?: string;
+  base_rate: number;
+}
+
 export default function BulkActionsDialog({
   isOpen,
   onClose,
@@ -66,8 +79,8 @@ export default function BulkActionsDialog({
   const [stages, setStages] = useState<Stage[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [products, setProducts] = useState<{ id: number; name: string; sku: string; price: number }[]>([]);
-  const [spaces, setSpaces] = useState<{ id: string; label: string; base_rate: number }[]>([]);
+  const [, setProducts] = useState<{ id: number; name: string; sku: string; price: number }[]>([]);
+  const [spaces, setSpaces] = useState<EspacioDisponible[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -76,7 +89,14 @@ export default function BulkActionsDialog({
   const [selectedStageId, setSelectedStageId] = useState('');
   const [oppName, setOppName] = useState('');
   const [oppAmount, setOppAmount] = useState('');
-  const [currency, setCurrency] = useState('COP');
+  // Vacía hasta que se resuelve la moneda base de la organización.
+  const [currency, setCurrency] = useState('');
+  const { code: monedaBase, resuelta: monedaResuelta, paraDocumento } = useMonedaOrganizacion();
+  useEffect(() => {
+    if (monedaResuelta && !currency) setCurrency(monedaBase);
+  }, [monedaResuelta, monedaBase, currency]);
+  const opcionesMoneda = Array.from(new Set([monedaResuelta ? monedaBase : '', currency, ...MONEDAS_CATALOGO].filter(Boolean)));
+  const formatearLinea = (valor: number) => formatMoneda(valor, paraDocumento(currency));
   const [nextContactAt, setNextContactAt] = useState('');
   const [expectedCloseDate, setExpectedCloseDate] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
@@ -92,8 +112,6 @@ export default function BulkActionsDialog({
   const [filterStageId, setFilterStageId] = useState('all');
   const [targetStageId, setTargetStageId] = useState('');
   const [selectedOppIds, setSelectedOppIds] = useState<Set<string>>(new Set());
-  // Tab 3 (F16): WhatsApp masivo a la selección
-  const [composeOpen, setComposeOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -103,6 +121,7 @@ export default function BulkActionsDialog({
       setSelectedCustomerIds(new Set());
       setSelectedOppIds(new Set());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recarga solo al abrir o cambiar de pipeline (comportamiento previo)
   }, [isOpen, pipelineId]);
 
   useEffect(() => {
@@ -136,7 +155,7 @@ export default function BulkActionsDialog({
       opportunitiesService.getSpaces(),
     ]).then(([pr, sr]) => {
       if (pr.status === 'fulfilled') setProducts(pr.value);
-      if (sr.status === 'fulfilled') setSpaces(sr.value as any);
+      if (sr.status === 'fulfilled') setSpaces(sr.value);
     });
     // Cargar miembros para comisionista
     try {
@@ -192,7 +211,7 @@ export default function BulkActionsDialog({
   const addSpaceLine = () => {
     setSpaceLines([...spaceLines, { space_id: '', space_name: '', nights: 1, unit_price: 0 }]);
   };
-  const updateSpaceLine = (index: number, field: keyof SpaceLine, value: any) => {
+  const updateSpaceLine = (index: number, field: keyof SpaceLine, value: string | number) => {
     const updated = [...spaceLines];
     updated[index] = { ...updated[index], [field]: value };
     if (field === 'space_id') {
@@ -209,7 +228,7 @@ export default function BulkActionsDialog({
   const addCustomLine = () => {
     setCustomLines([...customLines, { concept: '', quantity: 1, unit_price: 0 }]);
   };
-  const updateCustomLine = (index: number, field: keyof CustomLine, value: any) => {
+  const updateCustomLine = (index: number, field: keyof CustomLine, value: string | number) => {
     const updated = [...customLines];
     updated[index] = { ...updated[index], [field]: value };
     setCustomLines(updated);
@@ -284,7 +303,8 @@ export default function BulkActionsDialog({
             customer_id: customerId,
             name: oppName.trim(),
             amount: totalAmount,
-            currency,
+            // Sin moneda elegida, el servicio manda NULL y el trigger pone la base.
+            currency: currency || undefined,
             next_contact_at: nextContactAt || undefined,
             expected_close_date: expectedCloseDate || undefined,
             products: productsPayload.length > 0 ? productsPayload : undefined,
@@ -498,9 +518,9 @@ export default function BulkActionsDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="COP">COP</SelectItem>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
+                      {opcionesMoneda.map((code) => (
+                        <SelectItem key={code} value={code}>{code}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -606,7 +626,7 @@ export default function BulkActionsDialog({
                     <CardTitle className="text-sm text-gray-900 dark:text-white">Productos</CardTitle>
                     <ProductSearchDialog
                       mode="sale"
-                      currency={currency}
+                      currency={currency || monedaBase}
                       onProductSelect={handleProductSelect}
                     />
                   </CardHeader>
@@ -648,7 +668,7 @@ export default function BulkActionsDialog({
                             </div>
                           </div>
                           <div className="text-right text-xs font-medium text-gray-700 dark:text-gray-300">
-                            Subtotal: {formatCurrency(line.quantity * line.unit_price)}
+                            Subtotal: {formatearLinea(line.quantity * line.unit_price)}
                           </div>
                         </div>
                       ))
@@ -675,7 +695,7 @@ export default function BulkActionsDialog({
                           <div className="flex items-center gap-2">
                             <div className="flex-1">
                               <SpaceSearchSelect
-                                spaces={spaces as any}
+                                spaces={spaces}
                                 selectedSpaceId={line.space_id}
                                 onSelect={(spaceId) => updateSpaceLine(index, 'space_id', spaceId)}
                                 placeholder="Seleccionar espacio"
@@ -701,7 +721,7 @@ export default function BulkActionsDialog({
                             </div>
                           </div>
                           <div className="text-right text-xs font-medium text-purple-700 dark:text-purple-300">
-                            Subtotal: {formatCurrency(line.nights * line.unit_price)}
+                            Subtotal: {formatearLinea(line.nights * line.unit_price)}
                           </div>
                         </div>
                       ))
@@ -752,7 +772,7 @@ export default function BulkActionsDialog({
                             </div>
                           </div>
                           <div className="text-right text-xs font-medium text-amber-700 dark:text-amber-300">
-                            Subtotal: {formatCurrency(line.quantity * line.unit_price)}
+                            Subtotal: {formatearLinea(line.quantity * line.unit_price)}
                           </div>
                         </div>
                       ))
@@ -763,7 +783,7 @@ export default function BulkActionsDialog({
 
               {hasItems && (
                 <div className="text-right text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Total items: {formatCurrency(calculateItemsTotal())} {currency}
+                  Total items: {formatearLinea(calculateItemsTotal())}
                 </div>
               )}
 

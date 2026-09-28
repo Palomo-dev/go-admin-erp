@@ -16,6 +16,7 @@ const LOCAL_PRINT_JOB_TYPES: ReadonlySet<string> = new Set<PrintJobType>([
   'shipment_guide',
   'electronic_invoice',
   'open_cash_drawer',
+  'product_label',
 ]);
 
 /**

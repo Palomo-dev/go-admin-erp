@@ -1,4 +1,6 @@
 import { createSupabaseClient } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/dateCore';
 
 const createClient = () => createSupabaseClient();
 
@@ -32,7 +34,7 @@ export interface Employment {
   bank_name: string | null;
   bank_account_type: string | null;
   bank_account_number: string | null;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
   // Relaciones expandidas
@@ -63,7 +65,14 @@ export interface EmploymentListItem {
   branch_name: string | null;
   manager_name: string | null;
   base_salary: number | null;
-  currency_code: string;
+  /** Moneda del empleo; null si no la tiene (se pinta en la base de la organización). */
+  currency_code: string | null;
+}
+
+/** Fila `{ id, name }` de departamentos, cargos y sucursales. */
+interface FilaNombre<T> {
+  id: T;
+  name: string;
 }
 
 export interface EmploymentFilters {
@@ -103,7 +112,7 @@ export interface CreateEmploymentDTO {
   bank_name?: string;
   bank_account_type?: string;
   bank_account_number?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface UpdateEmploymentDTO {
@@ -134,7 +143,7 @@ export interface UpdateEmploymentDTO {
   bank_name?: string | null;
   bank_account_type?: string | null;
   bank_account_number?: string | null;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface OrganizationMemberOption {
@@ -263,10 +272,10 @@ export class EmploymentsService {
         : [],
     ]);
 
-    const deptMap = new Map((depts.data || []).map((d: any) => [d.id, d.name]));
-    const posMap = new Map((positions.data || []).map((p: any) => [p.id, p.name]));
-    const branchMap = new Map((branches.data || []).map((b: any) => [b.id, b.name]));
-    const managerMap = new Map((managers || []).map((m: any) => [m.id, m.full_name]));
+    const deptMap = new Map((depts.data || []).map((d: FilaNombre<string>) => [d.id, d.name]));
+    const posMap = new Map((positions.data || []).map((p: FilaNombre<string>) => [p.id, p.name]));
+    const branchMap = new Map((branches.data || []).map((b: FilaNombre<number>) => [b.id, b.name]));
+    const managerMap = new Map((managers || []).map((m: { id: string; full_name: string }) => [m.id, m.full_name]));
 
     // Combinar datos
     let result: EmploymentListItem[] = filteredEmployments.map((e) => {
@@ -289,7 +298,7 @@ export class EmploymentsService {
         branch_name: e.branch_id ? branchMap.get(e.branch_id) || null : null,
         manager_name: e.manager_id ? managerMap.get(e.manager_id) || null : null,
         base_salary: e.base_salary,
-        currency_code: e.currency_code || 'COP',
+        currency_code: e.currency_code || null,
       };
     });
 
@@ -459,7 +468,9 @@ export class EmploymentsService {
         branch_id: dto.branch_id,
         base_salary: dto.base_salary,
         salary_period: dto.salary_period || 'monthly',
-        currency_code: dto.currency_code || 'COP',
+        // Sin moneda elegida no se manda: el trigger
+        // `trg_00_moneda_base_por_defecto` pone la base de la organización.
+        currency_code: dto.currency_code || null,
         work_location: dto.work_location,
         work_hours_per_week: dto.work_hours_per_week || 48,
         eps_code: dto.eps_code,
@@ -496,6 +507,21 @@ export class EmploymentsService {
     return data;
   }
 
+  /**
+   * Zona horaria de la sucursal DUENA de un contrato, con caida a la de la
+   * organizacion. Una consulta de una sola columna, y solo cuando hay que
+   * derivar un dia calendario.
+   */
+  private async zonaDelContrato(employmentId: string): Promise<string> {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('employments')
+      .select('branch_id')
+      .eq('id', employmentId)
+      .maybeSingle();
+    return resolveTimezone(this.organizationId, data?.branch_id ?? null);
+  }
+
   async updateStatus(id: string, status: string, options?: {
     terminationDate?: string;
     terminationReason?: string;
@@ -503,13 +529,19 @@ export class EmploymentsService {
   }): Promise<Employment> {
     const supabase = await createClient();
 
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       status,
       updated_at: new Date().toISOString(),
     };
 
     if (status === 'terminated' && options) {
-      updateData.termination_date = options.terminationDate || new Date().toISOString().split('T')[0];
+      // `employments.termination_date` es `date`. La fecha de retiro es la del
+      // dia laboral de LA SUCURSAL del contrato (ADR-001): un contrato de la
+      // sede de Madrid terminado el 30 a las 23:30 no se retira el 31 porque
+      // quien pulsa el boton este en Bogota. Por eso se lee su `branch_id`
+      // antes de escribir, y solo cuando hace falta calcular «hoy».
+      updateData.termination_date =
+        options.terminationDate || todayInTz(await this.zonaDelContrato(id));
       updateData.termination_reason = options.terminationReason;
       updateData.termination_type = options.terminationType;
     }
@@ -536,7 +568,10 @@ export class EmploymentsService {
 
     if (fetchError) throw fetchError;
 
-    const { id: _, organization_member_id: __, employee_code: ___, created_at: ____, updated_at: _____, ...rest } = original;
+    const rest: Record<string, unknown> = { ...original };
+    for (const campo of ['id', 'organization_member_id', 'employee_code', 'created_at', 'updated_at']) {
+      delete rest[campo];
+    }
 
     const { data, error } = await supabase
       .from('employments')
@@ -545,7 +580,9 @@ export class EmploymentsService {
         organization_member_id: newMemberId,
         employee_code: null, // Debe asignarse nuevo código
         status: 'active',
-        hire_date: new Date().toISOString().split('T')[0],
+        // `hire_date` es `date` NOT NULL: el dia de alta del contrato nuevo es
+        // el de la sucursal del contrato original, que ya viene en `original`.
+        hire_date: todayInTz(await resolveTimezone(this.organizationId, original.branch_id)),
         termination_date: null,
         termination_reason: null,
         termination_type: null,
@@ -721,7 +758,7 @@ export class EmploymentsService {
       ? await supabase.from('job_positions').select('id, name').in('id', posIds)
       : { data: [] };
 
-    const posMap = new Map((positions || []).map((p: any) => [p.id, p.name]));
+    const posMap = new Map((positions || []).map((p: FilaNombre<string>) => [p.id, p.name]));
 
     return validEmployments.map((e) => {
       const userId = memberUserMap.get(e.organization_member_id);
@@ -763,10 +800,10 @@ export class EmploymentsService {
       try {
         await this.create(data[i]);
         result.success++;
-      } catch (error: any) {
+      } catch (error: unknown) {
         result.errors.push({
           row: i + 1,
-          message: error.message || 'Error desconocido',
+          message: (error as { message?: string } | null)?.message || 'Error desconocido',
         });
       }
     }

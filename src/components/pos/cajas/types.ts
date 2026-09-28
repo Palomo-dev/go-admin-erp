@@ -29,6 +29,10 @@ export interface CashMovement {
   cash_session_id: number;
   type: 'in' | 'out';
   concept: string;
+  /** Clave del catálogo único (`src/lib/pos/cajas/conceptos.ts`); NULL en movimientos anteriores. */
+  concept_code?: string | null;
+  /** Número de soporte (recibo, factura del gasto…). */
+  reference?: string | null;
   amount: number;
   user_id: string;
   notes?: string;
@@ -49,13 +53,19 @@ export interface CashCount {
   cash_session_id: number;
   count_type: 'opening' | 'partial' | 'closing';
   counted_amount: number;
-  expected_amount?: number;
-  difference?: number;
+  /** `null` = oculto por cierre ciego (el servidor no lo manda). */
+  expected_amount?: number | null;
+  difference?: number | null;
   denominations?: CashDenominations;
   counted_by: string;
   verified_by?: string;
   notes?: string;
   created_at: string;
+  /**
+   * Arqueo por método calculado en el servidor (`pos_caja_registrar_arqueo`).
+   * `counted_amount`, `expected_amount` y `difference` son solo del efectivo.
+   */
+  method_breakdown?: Record<string, CashCountMethodLine> | null;
   // Campos adicionales para UI
   counted_by_name?: string;
   verified_by_name?: string;
@@ -68,10 +78,24 @@ export interface CashDenominations {
 }
 
 // Datos para crear arqueo
+/** Una línea del arqueo por método: cada medio contra su propio esperado. */
+export interface CashCountMethodLine {
+  /** `null` = oculto por cierre ciego. */
+  esperado: number | null;
+  contado: number | null;
+  diferencia: number | null;
+}
+
+/**
+ * Lo que manda el navegador al guardar un arqueo. El esperado NO viaja: lo
+ * calcula el servidor (`pos_caja_registrar_arqueo` → `pos_caja_esperado`).
+ */
 export interface CreateCashCountData {
   count_type: 'opening' | 'partial' | 'closing';
+  /** Solo el efectivo contado (billetes + monedas). */
   counted_amount: number;
-  expected_amount?: number;
+  /** Lo contado de cada otro método (tarjeta, transferencia…), por código. */
+  counted_by_method?: Record<string, number>;
   denominations?: CashDenominations;
   notes?: string;
 }
@@ -80,6 +104,8 @@ export interface CreateCashCountData {
 export interface CreateCashMovementData {
   type: 'in' | 'out';
   concept: string;
+  concept_code?: string | null;
+  reference?: string | null;
   amount: number;
   notes?: string;
 }
@@ -114,6 +140,11 @@ export interface CashSummary {
   sales_total?: number;
   /** Ventas desglosadas por método de pago (solo ventas, sin abonos ni compras) */
   sales_by_method?: Record<string, number>;
+  /** Pagos de venta en efectivo que componen `sales_cash` (sin abonos ni compras). */
+  sales_cash_count?: number;
+  /** Movimientos manuales de entrada y de salida de la sesión. */
+  cash_in_count?: number;
+  cash_out_count?: number;
 }
 
 // Detalle de un movimiento pagado durante la sesion de caja
@@ -146,43 +177,40 @@ export interface OpenCashSessionData {
 }
 
 export interface CloseCashSessionData {
+  /** Efectivo contado. */
   final_amount: number;
   notes?: string;
+  /** Lo contado de cada otro método (el servidor lo guarda en el arqueo de cierre). */
+  counted_by_method?: Record<string, number>;
+  denominations?: CashDenominations;
 }
 
 export interface CashMovementData {
   type: 'in' | 'out';
   concept: string;
+  concept_code?: string | null;
+  reference?: string | null;
   amount: number;
   notes?: string;
 }
 
-export interface CashSessionReport {
-  session: CashSession;
-  movements: CashMovement[];
-  summary: CashSummary;
-  sales_summary: {
-    total_sales: number;
-    cash_sales: number;
-    card_sales: number;
-    other_sales: number;
-  };
-}
+/** Resultado del cierre según la diferencia entre lo contado y lo esperado. */
+export type ResultadoCierre = 'faltante' | 'sobrante' | 'cuadrada';
 
-// Estados y filtros
-export interface CashSessionFilter {
+export type CampoOrdenHistorial = 'opened_at' | 'closed_at' | 'difference';
+
+/**
+ * Filtros del historial de sesiones (pestaña «Historial» de /app/pos/cajas).
+ * `desde`/`hasta` son instantes ISO ya calculados con la zona horaria de la
+ * organización: `desde` inclusivo, `hasta` exclusivo, sobre `opened_at`.
+ */
+export interface CashHistoryFilters {
   status?: 'open' | 'closed' | 'all';
-  date_from?: string;
-  date_to?: string;
-  branch_id?: number;
-}
-
-// Para la generación de PDFs
-export interface CashReportData {
-  session: CashSession;
-  movements: CashMovement[];
-  summary: CashSummary;
-  organization_name: string;
-  branch_name: string;
-  user_name: string;
+  branchId?: number;
+  desde?: string;
+  hasta?: string;
+  /** Número de caja o nombre del cajero que la abrió. */
+  busqueda?: string;
+  resultado?: ResultadoCierre;
+  orden?: { campo: CampoOrdenHistorial; direccion: 'asc' | 'desc' };
 }

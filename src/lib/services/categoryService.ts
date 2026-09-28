@@ -21,7 +21,7 @@ export interface Category {
   display_order: number;
   meta_title: string | null;
   meta_description: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   station: string | null;
   requires_preparation: boolean;
   created_at: string;
@@ -47,7 +47,7 @@ export interface CategoryFormData {
   display_order: number;
   meta_title: string;
   meta_description: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   station: string | null;
   requires_preparation: boolean;
 }
@@ -73,6 +73,77 @@ export interface CategoryImportRow {
   requires_preparation?: boolean;
   meta_title?: string;
   meta_description?: string;
+}
+
+/** Fila de `categorias_listado`: la categoría con sus conteos. */
+export interface CategoriaListado extends Category {
+  /** Productos visibles del catálogo con esta categoría como principal (sin variantes ni borrados). */
+  productos: number;
+  /** Productos que llegan por reglas y no la tienen como principal. */
+  productos_regla: number;
+  hijas: number;
+}
+
+export interface ResumenProductosCategorias {
+  productos_total: number;
+  productos_sin_categoria: number;
+}
+
+export interface ListadoCategorias {
+  categorias: CategoriaListado[];
+  resumen: ResumenProductosCategorias;
+}
+
+export interface ConexionesCategoria {
+  productos: number;
+  por_regla: number;
+  adicionales: number;
+  reglas: number;
+  promociones: number;
+  paginas_web: number;
+  menus_web: number;
+  favorita: boolean;
+  /** Posición entre sus hermanas (1-indexada) y cuántas son. */
+  posicion: number | null;
+  hermanas: number;
+}
+
+interface ProductoFila {
+  id: number;
+  uuid: string;
+  name: string;
+  sku: string | null;
+  status: string | null;
+}
+
+export interface ProductoDeCategoria extends ProductoFila {
+  origen: 'principal' | 'regla' | 'adicional';
+}
+
+/**
+ * Error de las RPC de categorías con el motivo legible y el código del
+ * servidor (`hint`): `CATEGORIA_CICLO`, `CATEGORIA_CON_PRODUCTOS`,
+ * `CATEGORIA_NO_ENCONTRADA`… `sinPermiso` = la BD negó el acceso a la
+ * organización (`fn_assert_acceso_org`, 42501) o RLS rechazó la operación.
+ */
+export class ErrorCategoria extends Error {
+  codigo: string | null;
+  sinPermiso: boolean;
+  slugDuplicado: boolean;
+
+  constructor(error: { message?: string; code?: string; hint?: string | null; details?: string | null }) {
+    const slugDuplicado =
+      error.code === '23505' && `${error.message ?? ''} ${error.details ?? ''}`.includes('slug');
+    super(
+      slugDuplicado
+        ? 'Ya existe una categoría con esa dirección (slug) en tu organización'
+        : error.message || 'No se pudo completar la operación',
+    );
+    this.name = 'ErrorCategoria';
+    this.codigo = error.hint ?? null;
+    this.sinPermiso = error.code === '42501' && this.codigo !== 'CATEGORIA_NO_ENCONTRADA';
+    this.slugDuplicado = slugDuplicado;
+  }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -159,7 +230,7 @@ const categoryService = {
       .order('display_order', { ascending: true })
       .order('rank', { ascending: true });
 
-    if (error) throw error;
+    if (error) throw new ErrorCategoria(error);
     return data || [];
   },
 
@@ -171,7 +242,7 @@ const categoryService = {
       .eq('id', id)
       .single();
 
-    if (error) throw error;
+    if (error) throw new ErrorCategoria(error);
     return data;
   },
 
@@ -183,7 +254,7 @@ const categoryService = {
       .eq('uuid', uuid)
       .single();
 
-    if (error) throw error;
+    if (error) throw new ErrorCategoria(error);
     return data;
   },
 
@@ -195,10 +266,10 @@ const categoryService = {
       .eq('organization_id', organizationId)
       .not('category_id', 'is', null);
 
-    if (error) throw error;
+    if (error) throw new ErrorCategoria(error);
 
     const counts: Record<number, number> = {};
-    (data || []).forEach((p: any) => {
+    (data || []).forEach((p: { category_id: number }) => {
       counts[p.category_id] = (counts[p.category_id] || 0) + 1;
     });
     return counts;
@@ -229,13 +300,13 @@ const categoryService = {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw new ErrorCategoria(error);
     return data;
   },
 
   /** Actualiza una categoría por ID (int) */
   async update(id: number, formData: Partial<CategoryFormData>): Promise<Category> {
-    const updateData: Record<string, any> = { updated_at: new Date().toISOString() };
+    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
     if (formData.name !== undefined) updateData.name = formData.name.trim();
     if (formData.slug !== undefined) updateData.slug = formData.slug;
@@ -260,16 +331,21 @@ const categoryService = {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw new ErrorCategoria(error);
     return data;
   },
 
   /** Actualiza una categoría por UUID */
   async updateByUuid(uuid: string, formData: Partial<CategoryFormData>): Promise<Category> {
-    const updateData: Record<string, any> = { updated_at: new Date().toISOString() };
+    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
     if (formData.name !== undefined) updateData.name = formData.name.trim();
-    if (formData.slug !== undefined) updateData.slug = formData.slug;
+    // Un slug vacío no se guarda: `slug` es NOT NULL y la dirección pública de
+    // la categoría. Se deriva del nombre, igual que al crear.
+    if (formData.slug !== undefined) {
+      updateData.slug = formData.slug.trim() || generateSlug(formData.name ?? '') || undefined;
+      if (updateData.slug === undefined) delete updateData.slug;
+    }
     if (formData.parent_id !== undefined) updateData.parent_id = formData.parent_id;
     if (formData.rank !== undefined) updateData.rank = formData.rank;
     if (formData.icon !== undefined) updateData.icon = formData.icon || null;
@@ -291,7 +367,7 @@ const categoryService = {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw new ErrorCategoria(error);
     return data;
   },
 
@@ -308,7 +384,7 @@ const categoryService = {
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) throw new ErrorCategoria(error);
   },
 
   /** Elimina una categoría por UUID */
@@ -324,7 +400,7 @@ const categoryService = {
       .delete()
       .eq('uuid', uuid);
 
-    if (error) throw error;
+    if (error) throw new ErrorCategoria(error);
   },
 
   /** Duplica una categoría */
@@ -333,7 +409,8 @@ const categoryService = {
 
     return this.create(organizationId, {
       name: `${original.name} (copia)`,
-      slug: `${original.slug}-copia-${Date.now()}`,
+      // Primer slug libre («bebidas-copia», «bebidas-copia-2»…), no un epoch ilegible.
+      slug: await this.sugerirSlug(organizationId, `${original.slug}-copia`),
       parent_id: original.parent_id,
       rank: original.rank + 1,
       icon: original.icon || 'Package',
@@ -356,7 +433,8 @@ const categoryService = {
 
     return this.create(organizationId, {
       name: `${original.name} (copia)`,
-      slug: `${original.slug}-copia-${Date.now()}`,
+      // Primer slug libre («bebidas-copia», «bebidas-copia-2»…), no un epoch ilegible.
+      slug: await this.sugerirSlug(organizationId, `${original.slug}-copia`),
       parent_id: original.parent_id,
       rank: original.rank + 1,
       icon: original.icon || 'Package',
@@ -380,7 +458,7 @@ const categoryService = {
       .update({ parent_id: parentId, rank, updated_at: new Date().toISOString() })
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) throw new ErrorCategoria(error);
   },
 
   /** Toggle activo/inactivo */
@@ -390,7 +468,7 @@ const categoryService = {
       .update({ is_active: isActive, updated_at: new Date().toISOString() })
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) throw new ErrorCategoria(error);
   },
 
   /** Toggle activo/inactivo por UUID */
@@ -400,7 +478,160 @@ const categoryService = {
       .update({ is_active: isActive, updated_at: new Date().toISOString() })
       .eq('uuid', uuid);
 
-    if (error) throw error;
+    if (error) throw new ErrorCategoria(error);
+  },
+
+  // ─── Rediseño (RPC 20260923191636_categorias_arbol_sin_ciclos_y_rpc) ──────
+
+  /**
+   * Árbol con conteos calculados en la BD (principal, por regla, hijas) y el
+   * resumen de los KPI. Sustituye a `getAll` + `getProductCounts`, que
+   * descargaba una fila por producto solo para contar.
+   */
+  async getListado(organizationId: number): Promise<ListadoCategorias> {
+    const { data, error } = await supabase.rpc('categorias_listado', { p_org: organizationId });
+    if (error) throw new ErrorCategoria(error);
+    const r = (data ?? {}) as { categorias?: CategoriaListado[]; resumen?: ResumenProductosCategorias };
+    return {
+      categorias: r.categorias ?? [],
+      resumen: r.resumen ?? { productos_total: 0, productos_sin_categoria: 0 },
+    };
+  },
+
+  /**
+   * Mueve una o varias categorías bajo `parentId` (`null` = raíz) en una sola
+   * transacción. El servidor rechaza ciclos y padres de otra organización.
+   */
+  async moverCategorias(organizationId: number, ids: number[], parentId: number | null): Promise<number> {
+    const { data, error } = await supabase.rpc('mover_categorias', {
+      p_org: organizationId,
+      p_ids: ids,
+      p_padre: parentId,
+    });
+    if (error) throw new ErrorCategoria(error);
+    return (data as number) ?? 0;
+  },
+
+  /**
+   * Elimina una categoría. Si tiene productos y no se indica `destinoId`, el
+   * servidor lo bloquea (`ErrorCategoria.codigo === 'CATEGORIA_CON_PRODUCTOS'`).
+   * Las subcategorías suben al padre de la eliminada.
+   */
+  async eliminarCategoria(
+    organizationId: number,
+    id: number,
+    destinoId: number | null = null,
+  ): Promise<{ productos_movidos: number; subcategorias_movidas: number }> {
+    const { data, error } = await supabase.rpc('eliminar_categoria', {
+      p_org: organizationId,
+      p_id: id,
+      p_destino: destinoId,
+    });
+    if (error) throw new ErrorCategoria(error);
+    return (data as { productos_movidos: number; subcategorias_movidas: number }) ?? {
+      productos_movidos: 0,
+      subcategorias_movidas: 0,
+    };
+  },
+
+  /** Conteos de «Cómo se conecta» del detalle. */
+  async getConexiones(organizationId: number, id: number): Promise<ConexionesCategoria> {
+    const { data, error } = await supabase.rpc('categoria_conexiones', { p_org: organizationId, p_id: id });
+    if (error) throw new ErrorCategoria(error);
+    return data as ConexionesCategoria;
+  },
+
+  /** Activa o desactiva varias categorías de la organización de una vez. */
+  async setActivas(organizationId: number, ids: number[], isActive: boolean): Promise<void> {
+    if (!ids.length) return;
+    const { error } = await supabase
+      .from('categories')
+      .update({ is_active: isActive, updated_at: new Date().toISOString() })
+      .eq('organization_id', organizationId)
+      .in('id', ids);
+    if (error) throw new ErrorCategoria(error);
+  },
+
+  /** ¿El slug está libre en la organización? (`categories_organization_id_slug_key`). */
+  async slugDisponible(organizationId: number, slug: string, excluirId?: number): Promise<boolean> {
+    let q = supabase.from('categories').select('id').eq('organization_id', organizationId).eq('slug', slug).limit(1);
+    if (excluirId) q = q.neq('id', excluirId);
+    const { data, error } = await q;
+    if (error) throw new ErrorCategoria(error);
+    return !data || data.length === 0;
+  },
+
+  /** Primer slug libre a partir de `base`: `base`, `base-2`, `base-3`… */
+  async sugerirSlug(organizationId: number, base: string, excluirId?: number): Promise<string> {
+    const limpio = generateSlug(base) || 'categoria';
+    let q = supabase
+      .from('categories')
+      .select('slug')
+      .eq('organization_id', organizationId)
+      .like('slug', `${limpio}%`);
+    if (excluirId) q = q.neq('id', excluirId);
+    const { data, error } = await q;
+    if (error) throw new ErrorCategoria(error);
+    const usados = new Set((data ?? []).map((r: { slug: string }) => r.slug));
+    if (!usados.has(limpio)) return limpio;
+    for (let n = 2; n < 1000; n++) {
+      const candidato = `${limpio}-${n}`;
+      if (!usados.has(candidato)) return candidato;
+    }
+    return `${limpio}-${usados.size + 1}`;
+  },
+
+  /** Marca o quita la categoría como favorita del POS (`category_favorites`). */
+  async setFavorita(organizationId: number, categoryId: number, favorita: boolean): Promise<void> {
+    if (favorita) {
+      const { error } = await supabase
+        .from('category_favorites')
+        .upsert({ organization_id: organizationId, category_id: categoryId }, { onConflict: 'organization_id,category_id' });
+      if (error) throw new ErrorCategoria(error);
+      return;
+    }
+    const { error } = await supabase
+      .from('category_favorites')
+      .delete()
+      .eq('organization_id', organizationId)
+      .eq('category_id', categoryId);
+    if (error) throw new ErrorCategoria(error);
+  },
+
+  /**
+   * Productos de la categoría: los que la tienen como principal y los que
+   * llegan por `product_category_relations` (regla o asignación manual).
+   */
+  async getProductosDeCategoria(organizationId: number, categoryId: number): Promise<ProductoDeCategoria[]> {
+    const [principales, relaciones] = await Promise.all([
+      supabase
+        .from('products')
+        .select('id, uuid, name, sku, status')
+        .eq('organization_id', organizationId)
+        .eq('category_id', categoryId)
+        .is('parent_product_id', null)
+        .or('status.is.null,status.neq.deleted')
+        .order('name'),
+      supabase
+        .from('product_category_relations')
+        .select('assigned_by_rule, products!inner(id, uuid, name, sku, status)')
+        .eq('organization_id', organizationId)
+        .eq('category_id', categoryId),
+    ]);
+    if (principales.error) throw new ErrorCategoria(principales.error);
+    if (relaciones.error) throw new ErrorCategoria(relaciones.error);
+
+    const salida = new Map<number, ProductoDeCategoria>();
+    for (const p of (principales.data ?? []) as ProductoFila[]) {
+      salida.set(p.id, { ...p, origen: 'principal' });
+    }
+    type FilaRelacion = { assigned_by_rule: boolean; products: ProductoFila | ProductoFila[] | null };
+    for (const r of (relaciones.data ?? []) as unknown as FilaRelacion[]) {
+      const p = Array.isArray(r.products) ? r.products[0] : r.products;
+      if (!p || salida.has(p.id) || p.status === 'deleted') continue;
+      salida.set(p.id, { ...p, origen: r.assigned_by_rule ? 'regla' : 'adicional' });
+    }
+    return [...salida.values()];
   },
 
   /** Exporta las categorías a CSV (string) */

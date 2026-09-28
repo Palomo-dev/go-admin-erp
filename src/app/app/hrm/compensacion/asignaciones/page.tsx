@@ -4,6 +4,7 @@ import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/component
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import EmploymentCompensationService from '@/lib/services/employmentCompensationService';
 import type { EmploymentCompensation, CreateAssignmentDTO, UpdateAssignmentDTO } from '@/lib/services/employmentCompensationService';
 import { AssignmentsTable, AssignmentForm } from '@/components/hrm/compensacion/asignaciones';
@@ -42,6 +43,9 @@ import {
 export default function AsignacionesCompensacionPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
+  // `employment_compensation.effective_to` es `date`: el fin de vigencia
+  // salarial es un dia de la organizacion, no el dia UTC del navegador.
+  const { getToday } = useFormatDate();
 
   const [assignments, setAssignments] = useState<EmploymentCompensation[]>([]);
   const [stats, setStats] = useState({ total: 0, active: 0, pending: 0, ended: 0 });
@@ -53,7 +57,7 @@ export default function AsignacionesCompensacionPage() {
   const [editingAssignment, setEditingAssignment] = useState<EmploymentCompensation | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [endAssignmentId, setEndAssignmentId] = useState<string | null>(null);
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(() => getToday());
   
   // Helper data
   const [employees, setEmployees] = useState<{ id: string; name: string; code: string | null }[]>([]);
@@ -170,7 +174,7 @@ export default function AsignacionesCompensacionPage() {
       await service.endAssignment(endAssignmentId, endDate);
       toast({ title: 'Vigencia finalizada' });
       setEndAssignmentId(null);
-      setEndDate(new Date().toISOString().split('T')[0]);
+      setEndDate(getToday());
       await loadData();
     } catch (error: any) {
       toast({

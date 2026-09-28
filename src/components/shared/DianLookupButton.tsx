@@ -20,6 +20,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Search, Loader2, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useKitT } from '@/components/kit/useIdiomaKit';
 import type { DianNormalizedData } from '@/lib/services/dianLookupService';
 
 interface DianLookupButtonProps {
@@ -41,15 +42,17 @@ export function DianLookupButton({
   variant = 'button',
   disabled = false,
   className = '',
-  label = 'Consultar DIAN',
+  label: labelProp,
 }: DianLookupButtonProps) {
+  const t = useKitT();
+  const label = labelProp ?? t('consultaDian.consultar');
   const [loading, setLoading] = useState(false);
 
   const puedeConsultar = !disabled && !loading && documentNumber && documentNumber.length >= 4;
 
   const handleConsultar = async () => {
     if (!documentNumber || documentNumber.length < 4) {
-      toast.error('Ingrese un numero de documento valido (minimo 4 digitos)');
+      toast.error(t('consultaDian.documentoInvalido'));
       return;
     }
 
@@ -64,7 +67,7 @@ export function DianLookupButton({
       const data = await res.json();
 
       if (!data.success) {
-        toast.error(data.error || 'No se encontro informacion para este documento');
+        toast.error(data.error || t('consultaDian.sinResultados'));
         return;
       }
 
@@ -72,13 +75,12 @@ export function DianLookupButton({
         : data.provider === 'coresoft' ? 'CoreSoft'
         : data.provider === 'factus' ? 'Factus'
         : data.provider;
-      const cacheLabel = data.fromCache ? ' (cache)' : '';
-      toast.success(`Datos obtenidos desde ${providerLabel}${cacheLabel}`);
+      toast.success(t(data.fromCache ? 'consultaDian.obtenidosCache' : 'consultaDian.obtenidos', { proveedor: providerLabel }));
 
       onResult(data.data, data.provider, data.fromCache);
     } catch (err: unknown) {
       console.error('Error consultando DIAN:', err);
-      toast.error('Error de conexion al consultar DIAN/RUES');
+      toast.error(t('consultaDian.errorConexion'));
     } finally {
       setLoading(false);
     }
@@ -117,7 +119,7 @@ export function DianLookupButton({
       {loading ? (
         <>
           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          Consultando...
+          {t('consultaDian.consultando')}
         </>
       ) : (
         <>
@@ -140,6 +142,7 @@ interface HabeasDataCheckboxProps {
 }
 
 export function HabeasDataCheckbox({ checked, onChange, className = '' }: HabeasDataCheckboxProps) {
+  const t = useKitT();
   return (
     <label className={`flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer ${className}`}>
       <input
@@ -148,10 +151,7 @@ export function HabeasDataCheckbox({ checked, onChange, className = '' }: Habeas
         onChange={(e) => onChange(e.target.checked)}
         className="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
       />
-      <span>
-        Autorizo la consulta de mi informacion en DIAN y RUES para fines de
-        facturacion electronica y cumplimiento tributario (Ley 1581 de 2012).
-      </span>
+      <span>{t('consultaDian.habeasData')}</span>
     </label>
   );
 }

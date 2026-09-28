@@ -14,7 +14,7 @@ import {
   Clock,
   XCircle,
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 export interface Payment {
   id: string;
@@ -87,6 +87,7 @@ export function SessionPayments({
   isLoading,
   onRegisterPayment,
 }: SessionPaymentsProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const totalPaid = payments
     .filter((p) => p.status === 'completed')
     .reduce((sum, p) => sum + p.amount, 0);

@@ -1,319 +1,120 @@
 'use client';
 
+/**
+ * Diálogo «Registrar movimiento» (Figma `D-Movimiento` `360:145278`) de «Mi
+ * caja» y del POS: envoltura de diálogo del formulario único
+ * `MovimientoCajaForm` (la página «Nuevo movimiento» es la otra envoltura).
+ *
+ * Registra en la caja ACTIVA de quien lo usa (`CajasService.addMovement`): con
+ * red en `cash_movements`, sin red (Desktop) en el outbox. API conservada:
+ * controlado (`open`/`onOpenChange`, la pantalla pone su botón) o con su propio
+ * disparador.
+ */
 import { useState } from 'react';
-import { ArrowUpCircle, ArrowDownCircle, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { createPortal } from 'react-dom';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { formatCurrency } from '@/utils/Utils';
-import { CajasService } from './CajasService';
-import type { CashMovement, CashMovementData } from './types';
+import { useTranslations } from 'next-intl';
+import { ArrowLeftRight, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { Dialogo } from '@/components/kit';
+import { Button } from '@/components/ui/button';
+import { CajasService } from './CajasService';
+import { useMensajeErrorCaja, useMonedaCaja } from './comunesCaja';
+import { useResumenCaja } from './useResumenCaja';
+import { EfectoEnCaja, MovimientoCajaForm, datosParaGuardar, useMovimientoCajaForm } from './movimientos/MovimientoCajaForm';
+import type { CashMovement, CashSession } from './types';
 
 interface MovimientosDialogProps {
   onMovementAdded: (movement: CashMovement) => void;
   disabled?: boolean;
+  /** Modo controlado: la pantalla pone su propio botón y no se dibuja el disparador. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Caja activa (para el efecto en el esperado); sin ella el efecto no se muestra. */
+  sesion?: CashSession | null;
 }
 
-const CONCEPTS_IN = [
-  'Fondo adicional',
-  'Préstamo',
-  'Devolución',
-  'Cambio de billetes',
-  'Venta contado especial',
-  'Otro ingreso'
-];
-
-const CONCEPTS_OUT = [
-  'Gastos menores',
-  'Retiro de efectivo',
-  'Compra insumos',
-  'Cambio de billetes',
-  'Préstamo a empleado',
-  'Otro egreso'
-];
-
-export function MovimientosDialog({ onMovementAdded, disabled }: MovimientosDialogProps) {
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('in');
-  const [formData, setFormData] = useState<CashMovementData>({
-    type: 'in',
-    concept: '',
-    amount: 0,
-    notes: ''
+export function MovimientosDialog({ onMovementAdded, disabled, open: controlledOpen, onOpenChange, sesion }: MovimientosDialogProps) {
+  const t = useTranslations('cajas.mov');
+  const { simbolo, formatear } = useMonedaCaja();
+  const mensajeError = useMensajeErrorCaja();
+  const [internalOpen, setInternalOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
+  const form = useMovimientoCajaForm();
+  const [guardando, setGuardando] = useState(false);
+  const { resumen } = useResumenCaja(sesion ? (sesion.id > 0 ? sesion.uuid : sesion.id) : null, {
+    ventas: false,
+    sesionLocal: sesion ?? null,
+    activo: open && !!sesion,
   });
 
-  const handleInputChange = (field: keyof CashMovementData, value: CashMovementData[keyof CashMovementData]) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const cerrar = (v: boolean) => {
+    if (guardando) return;
+    setOpen(v);
+    if (!v) form.reiniciar();
   };
 
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    setFormData(prev => ({
-      ...prev,
-      type: value as 'in' | 'out',
-      concept: '',
-      amount: 0,
-      notes: ''
-    }));
-  };
-
-  const handleConceptSelect = (concept: string) => {
-    setFormData(prev => ({
-      ...prev,
-      concept: concept === 'Otro ingreso' || concept === 'Otro egreso' ? '' : concept
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.concept.trim()) {
-      toast.error('El concepto es requerido');
-      return;
-    }
-
-    if (formData.amount <= 0) {
-      toast.error('El monto debe ser mayor a cero');
-      return;
-    }
-
-    setLoading(true);
+  const guardar = async () => {
+    if (!form.validar()) return;
+    setGuardando(true);
     try {
-      const movement = await CajasService.addMovement(formData);
-      toast.success(`${formData.type === 'in' ? 'Ingreso' : 'Egreso'} registrado${movement.pending_sync ? ' sin conexión' : ''}`, {
-        description: `${formData.concept}: ${formatCurrency(formData.amount)}${movement.pending_sync ? ' · pendiente de sincronizar' : ''}`
+      const datos = datosParaGuardar(form.datos);
+      const movimiento = await CajasService.addMovement(datos);
+      const pendiente = movimiento.pending_sync ? 'si' : 'no';
+      toast.success(t(datos.type === 'in' ? 'ingresoGuardado' : 'egresoGuardado'), {
+        description: t('guardadoDescripcionPendiente', { monto: formatear(datos.amount), pendiente }),
       });
-      
-      onMovementAdded(movement);
+      onMovementAdded(movimiento);
+      setGuardando(false);
       setOpen(false);
-      
-      // Resetear formulario
-      setFormData({
-        type: 'in',
-        concept: '',
-        amount: 0,
-        notes: ''
-      });
-      setActiveTab('in');
-    } catch (error) {
-      console.error('Error adding movement:', error);
-      toast.error('Error al registrar movimiento', {
-        description: (error as Error)?.message
-      });
-    } finally {
-      setLoading(false);
+      form.reiniciar();
+    } catch (e) {
+      const codigo = (e as { codigo?: string })?.codigo;
+      toast.error(t('errorGuardar'), { description: mensajeError(codigo, (e as Error)?.message) });
+      setGuardando(false);
     }
   };
 
   return (
     <>
-      <Button 
-        size="lg"
-        variant="outline"
-        disabled={disabled}
-        className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-        onClick={() => setOpen(true)}
-      >
-        <Plus className="h-5 w-5 mr-2" />
-        Registrar Movimiento
-      </Button>
-      {open && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
-          <div className="min-h-screen px-1 sm:px-4 py-2 sm:py-8 flex items-center justify-center">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[97vh] sm:max-h-[90vh] overflow-hidden relative animate-in fade-in-0 zoom-in-95 duration-300 dark:bg-gray-800">
-              <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center space-x-2">
-                  <Plus className="h-5 w-5 text-blue-600" />
-                  <span>Registrar Movimiento</span>
-                </h2>
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700" onClick={() => setOpen(false)}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="overflow-y-auto max-h-[calc(90vh-80px)] bg-gray-50 dark:bg-gray-900">
-                <div className="p-4 sm:p-6">
-                  <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 dark:bg-gray-700">
-            <TabsTrigger 
-              value="in" 
-              className="data-[state=active]:bg-green-600 data-[state=active]:text-white"
-            >
-              <ArrowUpCircle className="h-4 w-4 mr-2" />
-              Ingreso
-            </TabsTrigger>
-            <TabsTrigger 
-              value="out"
-              className="data-[state=active]:bg-red-600 data-[state=active]:text-white"
-            >
-              <ArrowDownCircle className="h-4 w-4 mr-2" />
-              Egreso
-            </TabsTrigger>
-          </TabsList>
-
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-            <TabsContent value="in" className="space-y-4 mt-0">
-              <Card className="dark:bg-gray-700 dark:border-gray-600 bg-green-50 border-green-200">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm text-green-600 dark:text-green-400">
-                    Ingreso de Efectivo
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {/* Conceptos predefinidos */}
-                  <div className="space-y-2">
-                    <Label className="dark:text-gray-200 text-gray-700">Concepto</Label>
-                    <div className="grid grid-cols-1 gap-2">
-                      {CONCEPTS_IN.map((concept) => (
-                        <Button
-                          key={concept}
-                          type="button"
-                          variant={formData.concept === concept ? "default" : "outline"}
-                          size="sm"
-                          className="justify-start text-left h-auto py-2"
-                          onClick={() => handleConceptSelect(concept)}
-                        >
-                          {concept}
-                        </Button>
-                      ))}
-                    </div>
-                    {(formData.concept === '' || !CONCEPTS_IN.includes(formData.concept)) && (
-                      <Input
-                        placeholder="Especificar otro concepto..."
-                        value={formData.concept}
-                        onChange={(e) => handleInputChange('concept', e.target.value)}
-                        className="dark:bg-gray-600 dark:border-gray-500 dark:text-white"
-                        required
-                      />
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="out" className="space-y-4 mt-0">
-              <Card className="dark:bg-gray-700 dark:border-gray-600 bg-red-50 border-red-200">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm text-red-600 dark:text-red-400">
-                    Egreso de Efectivo
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {/* Conceptos predefinidos */}
-                  <div className="space-y-2">
-                    <Label className="dark:text-gray-200 text-gray-700">Concepto</Label>
-                    <div className="grid grid-cols-1 gap-2">
-                      {CONCEPTS_OUT.map((concept) => (
-                        <Button
-                          key={concept}
-                          type="button"
-                          variant={formData.concept === concept ? "default" : "outline"}
-                          size="sm"
-                          className="justify-start text-left h-auto py-2"
-                          onClick={() => handleConceptSelect(concept)}
-                        >
-                          {concept}
-                        </Button>
-                      ))}
-                    </div>
-                    {(formData.concept === '' || !CONCEPTS_OUT.includes(formData.concept)) && (
-                      <Input
-                        placeholder="Especificar otro concepto..."
-                        value={formData.concept}
-                        onChange={(e) => handleInputChange('concept', e.target.value)}
-                        className="dark:bg-gray-600 dark:border-gray-500 dark:text-white"
-                        required
-                      />
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Monto - común para ambas tabs */}
-            <div className="space-y-2">
-              <Label htmlFor="amount" className="dark:text-gray-200 text-gray-700">
-                Monto *
-              </Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={formData.amount || ''}
-                onChange={(e) => handleInputChange('amount', parseFloat(e.target.value) || 0)}
-                className="dark:bg-gray-600 dark:border-gray-500 dark:text-white bg-white border-gray-300"
-                required
-              />
-              {formData.amount > 0 && (
-                <p className="text-sm dark:text-gray-400 text-gray-500">
-                  Equivale a: <span className={`font-medium ${activeTab === 'in' ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatCurrency(formData.amount)}
-                  </span>
-                </p>
-              )}
-            </div>
-
-            {/* Notas */}
-            <div className="space-y-2">
-              <Label htmlFor="notes" className="dark:text-gray-200 text-gray-700">
-                Observaciones (Opcional)
-              </Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => handleInputChange('notes', e.target.value)}
-                placeholder="Detalles adicionales..."
-                className="dark:bg-gray-600 dark:border-gray-500 dark:text-white bg-white border-gray-300"
-                rows={2}
-              />
-            </div>
-
-            {/* Botones */}
-            <div className="flex space-x-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                onClick={() => setOpen(false)}
-                disabled={loading}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                className={`flex-1 ${activeTab === 'in' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                    Registrando...
-                  </>
-                ) : (
-                  `Registrar ${activeTab === 'in' ? 'Ingreso' : 'Egreso'}`
-                )}
-              </Button>
-            </div>
-          </form>
-                  </Tabs>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
+      {!controlled && (
+        <Button variant="outline" className="h-10 gap-2" disabled={disabled} onClick={() => setOpen(true)}>
+          <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+          {t('registrar')}
+        </Button>
       )}
+      <Dialogo
+        abierto={open}
+        onAbiertoChange={cerrar}
+        titulo={t('registrar')}
+        descripcion={t('dialogoDescripcion')}
+        icono={ArrowLeftRight}
+        ancho={560}
+        primario={{
+          etiqueta: guardando ? t('guardando') : form.datos.tipo === 'in' ? t('guardarIngreso') : t('guardarEgreso'),
+          onClick: () => void guardar(),
+          cargando: guardando,
+        }}
+      >
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void guardar();
+          }}
+        >
+          <MovimientoCajaForm datos={form.datos} onCambiar={form.cambiar} errorVisible={form.errorVisible} simbolo={simbolo} deshabilitado={guardando} variante="dialogo" />
+          {sesion && (
+            <EfectoEnCaja
+              compacto
+              esperado={resumen?.verImportes ? resumen.esperado.efectivo_esperado : null}
+              tipo={form.datos.tipo}
+              monto={form.datos.monto}
+              formatear={formatear}
+            />
+          )}
+        </form>
+      </Dialogo>
     </>
   );
 }

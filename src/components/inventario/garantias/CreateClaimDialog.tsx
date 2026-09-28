@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ import {
   getCurrentUserId,
 } from '@/lib/hooks/useOrganization';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useEtiquetaEstadoSerial } from '@/components/inventario/productos/detalle/inventario/seriales/piezas';
 
 interface SerialSearchResult {
   id: number;
@@ -62,6 +64,8 @@ export function CreateClaimDialog({
   preselectedSerialId,
   onCreated,
 }: CreateClaimDialogProps) {
+  const t = useTranslations('productoDetalle.seriales.reclamo');
+  const etiquetaEstado = useEtiquetaEstadoSerial();
   const { toast } = useToast();
   const { formatDate } = useFormatDate();
   const organizationId = getOrganizationId();
@@ -90,14 +94,7 @@ export function CreateClaimDialog({
     }
   }, [open]);
 
-  // Cargar serial pre-seleccionado
-  useEffect(() => {
-    if (open && preselectedSerialId) {
-      loadSerialById(preselectedSerialId);
-    }
-  }, [open, preselectedSerialId]);
-
-  const loadSerialById = async (serialId: number) => {
+  const loadSerialById = useCallback(async (serialId: number) => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -106,7 +103,7 @@ export function CreateClaimDialog({
           id, serial, status, warranty_start, warranty_end, warranty_months,
           sale_date, sold_to_customer_id, product_id,
           products!fk_serial_product ( name, sku, brand ),
-          customers!serial_numbers_sold_to_customer_id_fkey ( id, full_name, phone, email )
+          customers!fk_serial_customer ( id, full_name, phone, email )
         `)
         .eq('id', serialId)
         .eq('organization_id', organizationId)
@@ -114,17 +111,24 @@ export function CreateClaimDialog({
 
       if (error) throw error;
       setSelectedSerial(data as unknown as SerialSearchResult);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error cargando serial:', err);
       toast({
-        title: 'Error',
-        description: 'No se pudo cargar el serial seleccionado',
+        title: t('errorTitulo'),
+        description: t('errorCargar'),
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [organizationId, toast, t]);
+
+  // Cargar serial pre-seleccionado
+  useEffect(() => {
+    if (open && preselectedSerialId) {
+      void loadSerialById(preselectedSerialId);
+    }
+  }, [open, preselectedSerialId, loadSerialById]);
 
   // Búsqueda de seriales (debounced)
   useEffect(() => {
@@ -143,7 +147,7 @@ export function CreateClaimDialog({
             id, serial, status, warranty_start, warranty_end, warranty_months,
             sale_date, sold_to_customer_id, product_id,
             products!fk_serial_product ( name, sku, brand ),
-            customers!serial_numbers_sold_to_customer_id_fkey ( id, full_name, phone, email )
+            customers!fk_serial_customer ( id, full_name, phone, email )
           `)
           .eq('organization_id', organizationId)
           .or(`serial.ilike.%${searchTerm}%`)
@@ -151,7 +155,7 @@ export function CreateClaimDialog({
 
         if (error) throw error;
         setSearchResults((data || []) as unknown as SerialSearchResult[]);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error buscando seriales:', err);
       } finally {
         setSearching(false);
@@ -171,11 +175,11 @@ export function CreateClaimDialog({
 
   const handleSubmit = async () => {
     if (!selectedSerial) {
-      toast({ title: 'Selecciona un serial', variant: 'destructive' });
+      toast({ title: t('seleccionaSerial'), variant: 'destructive' });
       return;
     }
     if (!claimReason.trim()) {
-      toast({ title: 'El motivo del reclamo es obligatorio', variant: 'destructive' });
+      toast({ title: t('motivoObligatorio'), variant: 'destructive' });
       return;
     }
 
@@ -196,17 +200,17 @@ export function CreateClaimDialog({
       if (error) throw error;
 
       toast({
-        title: 'Reclamo creado',
-        description: `Reclamo #${data?.id?.substring(0, 8) || 'N/A'} registrado correctamente`,
+        title: t('creado'),
+        description: t('creadoDetalle', { id: data?.id?.substring(0, 8) || t('sinDato') }),
       });
 
       onOpenChange(false);
       onCreated?.();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creando reclamo:', err);
       toast({
-        title: 'Error',
-        description: err?.message || 'No se pudo crear el reclamo',
+        title: t('errorTitulo'),
+        description: (err as Error)?.message || t('errorCrear'),
         variant: 'destructive',
       });
     } finally {
@@ -218,10 +222,8 @@ export function CreateClaimDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Nuevo Reclamo de Garantía</DialogTitle>
-          <DialogDescription>
-            Registra un reclamo de garantía para un serial vendido.
-          </DialogDescription>
+          <DialogTitle>{t('titulo')}</DialogTitle>
+          <DialogDescription>{t('descripcion')}</DialogDescription>
         </DialogHeader>
 
         {loading ? (
@@ -234,11 +236,11 @@ export function CreateClaimDialog({
             {/* Búsqueda de serial (solo si no hay pre-seleccionado) */}
             {!preselectedSerialId && !selectedSerial && (
               <div className="space-y-2">
-                <Label>Buscar serial</Label>
+                <Label>{t('buscar')}</Label>
                 <div className="relative">
                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <Input
-                    placeholder="Ingresa el número de serial (mín. 3 caracteres)..."
+                    placeholder={t('buscarPlaceholder')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-9"
@@ -247,11 +249,11 @@ export function CreateClaimDialog({
                 </div>
                 {searching && (
                   <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Loader2 size={12} className="animate-spin" /> Buscando...
+                    <Loader2 size={12} className="animate-spin" /> {t('buscando')}
                   </p>
                 )}
                 {!searching && searchTerm.length >= 3 && searchResults.length === 0 && (
-                  <p className="text-xs text-gray-500">No se encontraron seriales.</p>
+                  <p className="text-xs text-gray-500">{t('sinResultados')}</p>
                 )}
                 {searchResults.length > 0 && (
                   <div className="space-y-1 max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
@@ -267,7 +269,7 @@ export function CreateClaimDialog({
                               {s.serial}
                             </span>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {s.products?.name || 'N/A'} · SKU: {s.products?.sku || 'N/A'}
+                              {s.products?.name || t('sinDato')} · {t('sku', { sku: s.products?.sku || t('sinDato') })}
                             </p>
                           </div>
                           <Badge
@@ -278,7 +280,7 @@ export function CreateClaimDialog({
                                 : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
                             }
                           >
-                            {s.status === 'sold' ? 'Vendido' : s.status}
+                            {etiquetaEstado(s.status)}
                           </Badge>
                         </div>
                       </button>
@@ -293,7 +295,7 @@ export function CreateClaimDialog({
               <div className="space-y-3">
                 <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">Serial</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{t('serial')}</span>
                     {!preselectedSerialId && (
                       <Button
                         variant="ghost"
@@ -304,7 +306,7 @@ export function CreateClaimDialog({
                           setSearchTerm('');
                         }}
                       >
-                        Cambiar
+                        {t('cambiar')}
                       </Button>
                     )}
                   </div>
@@ -320,10 +322,10 @@ export function CreateClaimDialog({
                     <Package size={14} className="text-gray-400 mt-0.5" />
                     <div className="text-xs">
                       <p className="text-gray-900 dark:text-white font-medium">
-                        {selectedSerial.products?.name || 'N/A'}
+                        {selectedSerial.products?.name || t('sinDato')}
                       </p>
                       <p className="text-gray-500 dark:text-gray-400">
-                        SKU: {selectedSerial.products?.sku || 'N/A'}
+                        {t('sku', { sku: selectedSerial.products?.sku || t('sinDato') })}
                         {selectedSerial.products?.brand ? ` · ${selectedSerial.products.brand}` : ''}
                       </p>
                     </div>
@@ -338,7 +340,7 @@ export function CreateClaimDialog({
                           {selectedSerial.customers.full_name}
                         </p>
                         <p className="text-gray-500 dark:text-gray-400">
-                          {selectedSerial.customers.phone || selectedSerial.customers.email || 'Sin contacto'}
+                          {selectedSerial.customers.phone || selectedSerial.customers.email || t('sinContacto')}
                         </p>
                       </div>
                     </div>
@@ -346,15 +348,13 @@ export function CreateClaimDialog({
                   {!selectedSerial.customers && (
                     <div className="flex items-start gap-2 pt-1">
                       <AlertTriangle size={14} className="text-amber-500 mt-0.5" />
-                      <p className="text-xs text-amber-600 dark:text-amber-400">
-                        Este serial no tiene cliente asociado (no ha sido vendido)
-                      </p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400">{t('sinCliente')}</p>
                     </div>
                   )}
 
                   {/* Estado garantía */}
                   <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">Garantía</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{t('garantia')}</span>
                     {selectedSerial.warranty_end ? (
                       <Badge
                         className={
@@ -366,23 +366,23 @@ export function CreateClaimDialog({
                         {warrantyValid ? (
                           <>
                             <CheckCircle2 size={12} />
-                            Vigente ({warrantyDaysLeft} días)
+                            {t('vigente', { count: warrantyDaysLeft })}
                           </>
                         ) : (
                           <>
                             <AlertTriangle size={12} />
-                            Vencida
+                            {t('vencida')}
                           </>
                         )}
                       </Badge>
                     ) : (
-                      <Badge variant="secondary">Sin garantía</Badge>
+                      <Badge variant="secondary">{t('sinGarantia')}</Badge>
                     )}
                   </div>
 
                   {selectedSerial.sale_date && (
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Fecha de venta: {formatDate(selectedSerial.sale_date)}
+                      {t('fechaVenta', { fecha: formatDate(selectedSerial.sale_date) })}
                     </p>
                   )}
                 </div>
@@ -390,22 +390,22 @@ export function CreateClaimDialog({
                 {/* Formulario reclamo */}
                 <div className="space-y-2">
                   <Label htmlFor="claim-reason">
-                    Motivo del reclamo <span className="text-red-500">*</span>
+                    {t('motivo')} <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="claim-reason"
-                    placeholder="Ej: Producto defectuoso, no enciende..."
+                    placeholder={t('motivoPlaceholder')}
                     value={claimReason}
                     onChange={(e) => setClaimReason(e.target.value)}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="claim-description">Descripción (opcional)</Label>
+                  <Label htmlFor="claim-description">{t('descripcionCampo')}</Label>
                   <RichTextEditor
                     value={description}
                     onChange={(html) => setDescription(html)}
-                    placeholder="Describe el problema en detalle..."
+                    placeholder={t('descripcionPlaceholder')}
                     minHeight={60}
                   />
                 </div>
@@ -416,7 +416,7 @@ export function CreateClaimDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            Cancelar
+            {t('cancelar')}
           </Button>
           <Button
             onClick={handleSubmit}
@@ -425,12 +425,12 @@ export function CreateClaimDialog({
             {submitting ? (
               <>
                 <Loader2 size={16} className="mr-2 animate-spin" />
-                Creando...
+                {t('creando')}
               </>
             ) : (
               <>
                 <ShieldCheck size={16} className="mr-2" />
-                Crear Reclamo
+                {t('crear')}
               </>
             )}
           </Button>

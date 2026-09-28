@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { CompensationPackage, CreatePackageDTO, UpdatePackageDTO } from '@/lib/services/compensationPackagesService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,16 +32,16 @@ export function PackageForm({
   package: pkg,
   currencies,
   salaryPeriods,
-  positions,
   onSubmit,
   onCancel,
-  isLoading,
 }: PackageFormProps) {
+  const { code: monedaBase, resuelta } = useMonedaOrganizacion();
   const [formData, setFormData] = useState<CreatePackageDTO>({
     code: '',
     name: '',
     description: '',
-    currency_code: 'COP',
+    // Vacía hasta conocer la moneda base de la organización (ver efecto abajo).
+    currency_code: '',
     base_salary: undefined,
     salary_period: 'monthly',
     applicable_levels: [],
@@ -50,6 +51,18 @@ export function PackageForm({
     is_active: true,
   });
   const [submitting, setSubmitting] = useState(false);
+
+  // Paquete nuevo: la moneda por defecto es la base de la organización, nunca COP fijo.
+  useEffect(() => {
+    if (!pkg && resuelta && !formData.currency_code) {
+      setFormData((prev) => ({ ...prev, currency_code: monedaBase }));
+    }
+  }, [pkg, resuelta, monedaBase, formData.currency_code]);
+
+  // Catálogo del servicio + la moneda base + la del paquete, sin repetir.
+  const opcionesMoneda = Array.from(
+    new Set([...(resuelta ? [monedaBase] : []), ...currencies, ...(formData.currency_code ? [formData.currency_code] : [])])
+  );
 
   useEffect(() => {
     if (pkg) {
@@ -81,7 +94,7 @@ export function PackageForm({
     }
   };
 
-  const handleChange = (field: keyof CreatePackageDTO, value: any) => {
+  const handleChange = <K extends keyof CreatePackageDTO>(field: K, value: CreatePackageDTO[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -166,7 +179,7 @@ export function PackageForm({
                   <SelectValue placeholder="Seleccionar moneda" />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-gray-800">
-                  {currencies.map((curr) => (
+                  {opcionesMoneda.map((curr) => (
                     <SelectItem key={curr} value={curr}>
                       {curr}
                     </SelectItem>

@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { QuickActionsBar, type QuickActionKind } from '@/components/crm/shared/QuickActionsBar';
 import { ALL_QUICK_ACTIONS } from '@/components/crm/shared/quickActionsConfig';
 import { TemperatureDot } from '@/components/crm/pipeline/TemperatureDot';
@@ -37,6 +39,9 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 
 export function DetailHeader({ opportunity, customer, stages, displayAmount, busy, onStageClick, onWon, onLost, onDuplicate, onDelete, onActionCompleted }: DetailHeaderProps) {
   const router = useRouter();
+  // Importes en la moneda de la oportunidad; si no la trae, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatearDoc = (valor: number) => formatMoneda(valor, paraDocumento(opportunity.currency));
   const st = STATUS[opportunity.status] ?? { label: opportunity.status, cls: '' };
   const barCustomer = customer ? { id: customer.id, full_name: customer.full_name, email: customer.email, phone: customer.phone } : opportunity.customer ?? null;
 
@@ -55,7 +60,7 @@ export function DetailHeader({ opportunity, customer, stages, displayAmount, bus
               <div className="flex items-center gap-3 mt-2 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
                 <span className="flex items-center gap-1"><Target className="h-3.5 w-3.5" />{opportunity.pipeline?.name}</span>
                 <span className="text-gray-300 dark:text-gray-600">|</span>
-                <span className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" />{formatCurrency(displayAmount)}</span>
+                <span className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" />{formatearDoc(displayAmount)}</span>
                 {opportunity.expected_close_date && (
                   <><span className="text-gray-300 dark:text-gray-600">|</span><span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{format(new Date(opportunity.expected_close_date), 'dd MMM yyyy', { locale: es })}</span></>
                 )}

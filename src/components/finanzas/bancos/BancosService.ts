@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import type { EstadoMovimientoBancario, TipoMovimientoBancario } from '@/lib/finanzas/movimientoBancario';
 
 export interface BankAccount {
   id: number;
@@ -30,8 +32,9 @@ export interface BankTransaction {
   amount: number;
   reference: string | null;
   matched_journal_line_id: number | null;
-  transaction_type: 'debit' | 'credit';
-  status: string | null;
+  /** CHECK de la base. El sentido lo da el signo de `amount` (`esEntradaBancaria`). */
+  transaction_type: TipoMovimientoBancario;
+  status: EstadoMovimientoBancario | null;
   import_source: string | null;
   import_id: string | null;
   created_at: string;
@@ -168,7 +171,9 @@ export class BancosService {
           account_number: cuenta.account_number,
           bank_name: cuenta.bank_name,
           account_type: cuenta.account_type || 'checking',
-          currency: cuenta.currency || 'COP',
+          // Sin moneda elegida, la base de la organización la pone el trigger
+          // `trg_00_moneda_base_por_defecto` (nunca COP supuesto).
+          currency: cuenta.currency || null,
           balance: cuenta.initial_balance || 0,
           initial_balance: cuenta.initial_balance || 0,
           is_active: true,
@@ -187,14 +192,22 @@ export class BancosService {
   }
 
   static async actualizarCuentaBancaria(accountId: number, updates: Partial<BankAccount>): Promise<void> {
+    const organizationId = this.getOrganizationId();
+    // El saldo lo mueven los movimientos (disparador de 20260928160000) y la
+    // organización no se reasigna: ninguno de los dos viaja en la edición.
+    const editables: Partial<BankAccount> = { ...updates };
+    delete editables.balance;
+    delete editables.organization_id;
+    delete editables.id;
     try {
       const { error } = await supabase
         .from('bank_accounts')
         .update({
-          ...updates,
+          ...editables,
           updated_at: new Date().toISOString()
         })
-        .eq('id', accountId);
+        .eq('id', accountId)
+        .eq('organization_id', organizationId);
 
       if (error) throw error;
     } catch (error) {
@@ -204,6 +217,7 @@ export class BancosService {
   }
 
   static async toggleActivoCuenta(accountId: number, isActive: boolean): Promise<void> {
+    const organizationId = this.getOrganizationId();
     try {
       const { error } = await supabase
         .from('bank_accounts')
@@ -211,7 +225,8 @@ export class BancosService {
           is_active: isActive,
           updated_at: new Date().toISOString()
         })
-        .eq('id', accountId);
+        .eq('id', accountId)
+        .eq('organization_id', organizationId);
 
       if (error) throw error;
     } catch (error) {
@@ -268,8 +283,23 @@ export class BancosService {
     }
   }
 
-  static async crearTransaccion(transaction: Partial<BankTransaction>): Promise<BankTransaction> {
+  /**
+   * Movimiento manual de la cuenta. `amount` llega positivo y el signo lo pone
+   * `transaction_type` (deposit entra, withdrawal sale). El saldo NO se toca
+   * aquí: lo mueve el disparador `trg_bank_tx_saldo` en la misma transacción
+   * del INSERT (antes era un leer-y-escribir desde el navegador sin filtro de
+   * organización, y el INSERT fallaba igual por 'credit'/'pending').
+   */
+  static async crearTransaccion(transaction: {
+    bank_account_id: number;
+    transaction_type: 'deposit' | 'withdrawal';
+    amount: number;
+    description?: string | null;
+    reference?: string | null;
+    trans_date?: string;
+  }): Promise<BankTransaction> {
     const organizationId = this.getOrganizationId();
+    const monto = Math.abs(transaction.amount);
 
     try {
       const { data, error } = await supabase
@@ -279,58 +309,18 @@ export class BancosService {
           bank_account_id: transaction.bank_account_id,
           trans_date: transaction.trans_date || new Date().toISOString(),
           description: transaction.description,
-          amount: transaction.amount,
+          amount: transaction.transaction_type === 'deposit' ? monto : -monto,
           reference: transaction.reference,
           transaction_type: transaction.transaction_type,
-          status: 'pending',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          status: 'unmatched',
         })
         .select()
         .single();
 
       if (error) throw error;
-
-      // Actualizar balance de la cuenta
-      await this.actualizarBalanceCuenta(transaction.bank_account_id!, transaction.amount!, transaction.transaction_type!);
-
-      return data;
+      return { ...data, amount: parseFloat(data.amount) };
     } catch (error) {
       console.error('Error creando transacción:', error);
-      throw error;
-    }
-  }
-
-  private static async actualizarBalanceCuenta(
-    accountId: number,
-    amount: number,
-    type: 'debit' | 'credit'
-  ): Promise<void> {
-    try {
-      const { data: account, error: fetchError } = await supabase
-        .from('bank_accounts')
-        .select('balance')
-        .eq('id', accountId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      const currentBalance = parseFloat(account.balance || 0);
-      const newBalance = type === 'credit' 
-        ? currentBalance + amount 
-        : currentBalance - amount;
-
-      const { error } = await supabase
-        .from('bank_accounts')
-        .update({
-          balance: newBalance,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', accountId);
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error actualizando balance:', error);
       throw error;
     }
   }
@@ -345,7 +335,7 @@ export class BancosService {
         .from('bank_reconciliations')
         .select(`
           *,
-          bank_accounts:bank_account_id(id, name, bank_name, account_number)
+          bank_accounts:bank_account_id(id, name, bank_name, account_number, currency)
         `)
         .eq('organization_id', organizationId)
         .order('period_end', { ascending: false });
@@ -373,14 +363,16 @@ export class BancosService {
   }
 
   static async obtenerConciliacion(reconciliationId: string): Promise<BankReconciliation | null> {
+    const organizationId = this.getOrganizationId();
     try {
       const { data, error } = await supabase
         .from('bank_reconciliations')
         .select(`
           *,
-          bank_accounts:bank_account_id(id, name, bank_name, account_number, balance)
+          bank_accounts:bank_account_id(id, name, bank_name, account_number, balance, currency)
         `)
         .eq('id', reconciliationId)
+        .eq('organization_id', organizationId)
         .single();
 
       if (error) {
@@ -439,6 +431,7 @@ export class BancosService {
   }
 
   static async cerrarConciliacion(reconciliationId: string): Promise<void> {
+    const organizationId = this.getOrganizationId();
     try {
       const { error } = await supabase
         .from('bank_reconciliations')
@@ -447,7 +440,8 @@ export class BancosService {
           closed_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
-        .eq('id', reconciliationId);
+        .eq('id', reconciliationId)
+        .eq('organization_id', organizationId);
 
       if (error) throw error;
     } catch (error) {
@@ -487,12 +481,14 @@ export class BancosService {
     matchType: 'payment' | 'journal' | 'manual',
     matchedId?: string | number
   ): Promise<void> {
+    const organizationId = this.getOrganizationId();
     try {
-      // Obtener transacción
+      // Obtener transacción (de la organización)
       const { data: tx, error: txError } = await supabase
         .from('bank_transactions')
         .select('amount')
         .eq('id', transactionId)
+        .eq('organization_id', organizationId)
         .single();
 
       if (txError) throw txError;
@@ -515,10 +511,12 @@ export class BancosService {
       if (error) throw error;
 
       // Actualizar transacción como matched
-      await supabase
+      const { error: statusError } = await supabase
         .from('bank_transactions')
         .update({ status: 'matched', updated_at: new Date().toISOString() })
-        .eq('id', transactionId);
+        .eq('id', transactionId)
+        .eq('organization_id', organizationId);
+      if (statusError) throw statusError;
 
     } catch (error) {
       console.error('Error haciendo match:', error);
@@ -527,6 +525,7 @@ export class BancosService {
   }
 
   static async unmatchTransaccion(itemId: string, transactionId: number): Promise<void> {
+    const organizationId = this.getOrganizationId();
     try {
       // Eliminar item
       const { error } = await supabase
@@ -536,11 +535,13 @@ export class BancosService {
 
       if (error) throw error;
 
-      // Actualizar transacción como unmatched
-      await supabase
+      // Actualizar transacción como unmatched ('pending' no existe en el CHECK)
+      const { error: statusError } = await supabase
         .from('bank_transactions')
-        .update({ status: 'pending', updated_at: new Date().toISOString() })
-        .eq('id', transactionId);
+        .update({ status: 'unmatched', updated_at: new Date().toISOString() })
+        .eq('id', transactionId)
+        .eq('organization_id', organizationId);
+      if (statusError) throw statusError;
 
     } catch (error) {
       console.error('Error deshaciendo match:', error);
@@ -621,6 +622,11 @@ export class BancosService {
 
   static async obtenerMonedasOrganizacion(): Promise<{ code: string; name: string; symbol: string }[]> {
     const organizationId = this.getOrganizationId();
+    // Respaldo: la moneda base resuelta de la organización (resolveOrgCurrency no lanza).
+    const soloLaBase = async () => {
+      const base = await resolveOrgCurrency(supabase, organizationId);
+      return [{ code: base.code, name: base.code, symbol: base.symbol || '$' }];
+    };
 
     try {
       const { data: orgCurrencies, error: orgError } = await supabase
@@ -631,7 +637,7 @@ export class BancosService {
       if (orgError) throw orgError;
 
       if (!orgCurrencies || orgCurrencies.length === 0) {
-        return [{ code: 'COP', name: 'Peso Colombiano', symbol: '$' }];
+        return await soloLaBase();
       }
 
       const codes = orgCurrencies.map(c => c.currency_code);
@@ -642,10 +648,10 @@ export class BancosService {
 
       if (currError) throw currError;
 
-      return currencies || [{ code: 'COP', name: 'Peso Colombiano', symbol: '$' }];
+      return currencies && currencies.length > 0 ? currencies : await soloLaBase();
     } catch (error) {
       console.error('Error obteniendo monedas:', error);
-      return [{ code: 'COP', name: 'Peso Colombiano', symbol: '$' }];
+      return await soloLaBase();
     }
   }
 }

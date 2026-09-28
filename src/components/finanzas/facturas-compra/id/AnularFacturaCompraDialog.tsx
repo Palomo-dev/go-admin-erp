@@ -14,7 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { FacturasCompraService } from '../FacturasCompraService';
 import { InvoicePurchase } from '../types';
 
@@ -43,6 +44,8 @@ export function AnularFacturaCompraDialog({
 }: AnularFacturaCompraDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [motivo, setMotivo] = useState('');
+  // Los pagos registrados se muestran en la moneda de la factura de compra.
+  const { paraDocumento } = useMonedaOrganizacion();
 
   const total = Number(factura?.total) || 0;
   const balance = Number(factura?.balance) || 0;
@@ -66,9 +69,9 @@ export function AnularFacturaCompraDialog({
       onOpenChange(false);
       setMotivo('');
       if (onSuccess) onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error al anular la factura de compra:', error);
-      toastError('Error', `No se pudo anular la factura: ${error?.message || 'Error desconocido'}`);
+      toastError('Error', `No se pudo anular la factura: ${(error as { message?: string } | null)?.message || 'Error desconocido'}`);
     } finally {
       setIsLoading(false);
     }
@@ -90,7 +93,7 @@ export function AnularFacturaCompraDialog({
         <div className="grid gap-3 py-2">
           {tienePagos && (
             <div className="rounded-md border border-yellow-300 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900/30 p-3 text-sm text-yellow-800 dark:text-yellow-200">
-              La factura ya tiene pagos registrados ({formatCurrency(total - balance)}). No puede anularse.
+              La factura ya tiene pagos registrados ({formatMoneda(total - balance, paraDocumento(factura?.currency))}). No puede anularse.
             </div>
           )}
 

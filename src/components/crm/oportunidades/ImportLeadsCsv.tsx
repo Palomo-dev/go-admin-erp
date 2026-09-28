@@ -300,7 +300,8 @@ export function ImportLeadsCsv({
             customer_id: customer.id,
             name: `Lead - ${row.name}`,
             amount: 0,
-            currency: 'COP',
+            // NULL: el trigger `trg_00_moneda_base_por_defecto` pone la moneda base.
+            currency: null,
             status: 'open',
             metadata: {
               recordType: 'lead',

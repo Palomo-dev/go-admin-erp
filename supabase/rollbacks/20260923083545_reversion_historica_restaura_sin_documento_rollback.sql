@@ -1,0 +1,11 @@
+-- Rollback de 20260923083545_reversion_historica_restaura_sin_documento.sql
+--
+-- Las restauraciones son contra-asientos publicados: no se borran. Para
+-- deshacerlas se revierte cada restauración con la misma función, lo que vuelve
+-- a dejar neutralizado el devengo original (ver el procedimiento, §4):
+--
+--   SELECT fn_revertir_asiento(restored_entry_id, categoria, 'rollback-restauracion')
+--   FROM journal_reversals WHERE restored_entry_id IS NOT NULL;
+--
+-- Las columnas añadidas se conservan: son el rastro de la restauración.
+select 1;

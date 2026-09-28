@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/utils/orgId';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 /**
  * Servicio CRM para gestión de seguimientos y tareas accionables.
@@ -102,6 +103,8 @@ class FollowupService {
 
       if (!data || data.length === 0) return [];
 
+      // Respaldo de moneda: la base de la organización, nunca 'COP' cableado.
+      const monedaBase = (await resolveOrgCurrency(supabase, orgId)).code;
       const results: OverdueFollowup[] = [];
 
       for (const row of data as Array<Record<string, unknown>>) {
@@ -148,7 +151,7 @@ class FollowupService {
             stage_name: stage?.name || 'Sin etapa',
             stage_color: stage?.color || '#94a3b8',
             amount: row.amount as number,
-            currency: (row.currency as string) || 'COP',
+            currency: (row.currency as string) || monedaBase,
             next_contact_at: nextContactAt,
             days_in_stage: daysInStage,
             sla_days: slaDays,
@@ -198,6 +201,8 @@ class FollowupService {
 
       if (error || !opps || opps.length === 0) return [];
 
+      // Respaldo de moneda: la base de la organización, nunca 'COP' cableado.
+      const monedaBase = (await resolveOrgCurrency(supabase, orgId)).code;
       const results: StaleOpportunity[] = [];
 
       for (const opp of opps as Array<Record<string, unknown>>) {
@@ -241,7 +246,7 @@ class FollowupService {
             stage_name: stage?.name || 'Sin etapa',
             stage_color: stage?.color || '#94a3b8',
             amount: opp.amount as number,
-            currency: (opp.currency as string) || 'COP',
+            currency: (opp.currency as string) || monedaBase,
             days_without_activity: daysWithoutActivity,
             last_activity_at: lastActivityAt,
           });
@@ -287,6 +292,8 @@ class FollowupService {
 
       if (error || !opps || opps.length === 0) return [];
 
+      // Respaldo de moneda: la base de la organización, nunca 'COP' cableado.
+      const monedaBase = (await resolveOrgCurrency(supabase, orgId)).code;
       const results: LeadWithoutContact[] = [];
 
       for (const opp of opps as Array<Record<string, unknown>>) {
@@ -322,7 +329,7 @@ class FollowupService {
             stage_name: stage?.name || 'Sin etapa',
             stage_color: stage?.color || '#94a3b8',
             amount: opp.amount as number,
-            currency: (opp.currency as string) || 'COP',
+            currency: (opp.currency as string) || monedaBase,
             created_at: createdAt,
             hours_since_creation: Math.floor(
               (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60)

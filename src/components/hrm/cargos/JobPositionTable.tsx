@@ -30,7 +30,7 @@ import {
   DollarSign,
   Briefcase,
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { CopyableId } from '@/components/common/CopyableId';
 
@@ -64,13 +64,14 @@ export function JobPositionTable({
   onDelete,
 }: JobPositionTableProps) {
   const router = useRouter();
+  const { formatear } = useMonedaOrganizacion();
   const formatSalaryRange = (min: number | null, max: number | null) => {
     if (min === null && max === null) return '-';
     if (min !== null && max !== null) {
-      return `${formatCurrency(min)} - ${formatCurrency(max)}`;
+      return `${formatear(min)} - ${formatear(max)}`;
     }
-    if (min !== null) return `Desde ${formatCurrency(min)}`;
-    return `Hasta ${formatCurrency(max!)}`;
+    if (min !== null) return `Desde ${formatear(min)}`;
+    return `Hasta ${formatear(max!)}`;
   };
 
   const [currentPage, setCurrentPage] = useState(1);

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { 
   Clock, 
@@ -16,7 +17,6 @@ import { cn } from '@/utils/Utils';
 import {
   type EInvoiceStatus,
   getEInvoiceStatusColor,
-  getEInvoiceStatusText,
 } from '@/lib/services/electronicInvoicingService';
 import {
   Tooltip,
@@ -24,6 +24,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+
+const ESTADOS_BADGE = new Set<string>(['pending', 'processing', 'sent', 'accepted', 'rejected', 'failed', 'cancelled']);
 
 interface FactusStatusBadgeProps {
   status: EInvoiceStatus | null | undefined;
@@ -65,7 +67,9 @@ export function FactusStatusBadge({
   className,
 }: FactusStatusBadgeProps) {
   const colorClass = getEInvoiceStatusColor(status);
-  const statusText = getEInvoiceStatusText(status);
+  const t = useTranslations('facturacionElectronica.estadosBadge');
+  // El estado viene de la API (clave técnica); sin estado conocido, «Sin FE».
+  const statusText = t((status && ESTADOS_BADGE.has(status) ? status : 'sinFe') as never);
 
   const sizeClasses = {
     sm: 'text-xs px-1.5 py-0.5',

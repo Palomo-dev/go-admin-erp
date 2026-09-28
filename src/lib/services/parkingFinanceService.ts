@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 export interface InvoiceData {
   id: string;
@@ -114,7 +115,8 @@ class ParkingFinanceService {
         number: invoiceNumber?.number || `PKG-${Date.now()}`,
         issue_date: now,
         due_date: now,
-        currency: 'COP',
+        // Sin `currency`: el trigger `trg_00_moneda_base_por_defecto` pone la
+        // moneda base de la organización (parking no tiene moneda propia).
         subtotal: data.amount,
         tax_total: 0,
         total: data.amount,
@@ -227,7 +229,9 @@ class ParkingFinanceService {
       created_by,
     } = params;
 
-    // 1. Registrar el pago
+    // 1. Registrar el pago. `payments.currency` es NOT NULL y no tiene
+    // trigger: va la moneda base de la organización.
+    const { code: currency } = await resolveOrgCurrency(supabase, organization_id);
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .insert({
@@ -237,7 +241,7 @@ class ParkingFinanceService {
         source_id,
         method: payment_method_code,
         amount,
-        currency: 'COP',
+        currency,
         status: 'completed',
         created_by,
       })

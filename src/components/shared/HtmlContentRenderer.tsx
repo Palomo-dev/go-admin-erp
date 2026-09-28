@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { cn } from '@/utils/Utils';
+import { useKitT } from '@/components/kit/useIdiomaKit';
 
 /**
  * Renderiza contenido HTML generado por <RichTextEditor /> respetando el formato
@@ -54,6 +55,7 @@ export function HtmlContentRenderer({
   collapsible = false,
   collapsedHeight = 120,
 }: HtmlContentRendererProps) {
+  const t = useKitT();
   const [isExpanded, setIsExpanded] = useState(false);
   const content = useMemo(() => {
     if (!html) return '';
@@ -98,7 +100,7 @@ export function HtmlContentRenderer({
           className="mt-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline focus:outline-none"
           aria-expanded={isExpanded}
         >
-          {isExpanded ? 'Ver menos' : 'Ver más'}
+          {isExpanded ? t('editorTexto.verMenos') : t('editorTexto.verMas')}
         </button>
       </div>
     );

@@ -22,7 +22,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { BankAccount } from './BancosService';
 import { RealTimeBalanceWidget } from './RealTimeBalanceWidget';
 import { CopyableId } from '@/components/common/CopyableId';
@@ -34,6 +35,7 @@ interface BankAccountCardProps {
 
 export function BankAccountCard({ account, onToggleActive }: BankAccountCardProps) {
   const router = useRouter();
+  const { paraDocumento } = useMonedaOrganizacion();
   const [hasOpenFinanceLink, setHasOpenFinanceLink] = useState(false);
 
   // Verifica al cargar si la cuenta tiene vinculacion Open Finance
@@ -171,7 +173,7 @@ export function BankAccountCard({ account, onToggleActive }: BankAccountCardProp
                 ? 'text-green-600 dark:text-green-400' 
                 : 'text-red-600 dark:text-red-400'
             }`}>
-              {formatCurrency(account.balance, account.currency || 'COP')}
+              {formatMoneda(account.balance, paraDocumento(account.currency))}
             </p>
           </div>
 

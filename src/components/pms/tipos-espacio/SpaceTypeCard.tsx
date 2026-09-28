@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { SpaceType } from '@/lib/services/spaceTypesService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface SpaceTypeCardProps {
   spaceType: SpaceType;
@@ -43,6 +43,7 @@ export function SpaceTypeCard({
   onDelete,
   onToggleActive,
 }: SpaceTypeCardProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const categoryColor = getCategoryColor(spaceType.category_code);
 
   return (

@@ -10,7 +10,8 @@ import {
 } from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import Link from 'next/link';
 import { requireOrgId } from '../useEquipoData';
 import { memberName } from '../types';
@@ -29,6 +30,7 @@ interface PerfRow {
 
 export function PerformanceTab() {
   const { toast } = useToast();
+  const { code: monedaBase, formatear, paraDocumento } = useMonedaOrganizacion();
   const [members, setMembers] = useState<SalesTeamMember[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +73,7 @@ export function PerformanceTab() {
     const lost = memberOpps.filter((o) => o.status === 'lost').length;
     const pipelineAmount = memberOpps.filter((o) => !['won', 'lost'].includes(o.status || '')).reduce((s, o) => s + (Number(o.amount) || 0), 0);
     const wonAmount = memberOpps.filter((o) => o.status === 'won').reduce((s, o) => s + (Number(o.amount) || 0), 0);
-    return { member: m, active, won, lost, pipelineAmount, wonAmount, quota: Number(m.quota_amount) || 0, currency: m.quota_currency || 'COP' };
+    return { member: m, active, won, lost, pipelineAmount, wonAmount, quota: Number(m.quota_amount) || 0, currency: m.quota_currency || monedaBase };
   });
 
   // Stats agregadas
@@ -138,7 +140,7 @@ export function PerformanceTab() {
               </div>
               <div className="min-w-0">
                 <div className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate">
-                  {formatCurrency(totalPipeline, 'COP')}
+                  {formatear(totalPipeline)}
                 </div>
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Pipeline</p>
               </div>
@@ -153,7 +155,7 @@ export function PerformanceTab() {
               </div>
               <div className="min-w-0">
                 <div className="text-xs sm:text-sm font-bold text-green-600 dark:text-green-400 truncate">
-                  {formatCurrency(totalWonAmount, 'COP')}
+                  {formatear(totalWonAmount)}
                 </div>
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Ganado</p>
               </div>
@@ -198,9 +200,9 @@ export function PerformanceTab() {
                     <TableCell className="text-xs"><Badge variant="secondary">{r.active}</Badge></TableCell>
                     <TableCell className="text-xs"><span className="text-green-600">{r.won}</span></TableCell>
                     <TableCell className="text-xs"><span className="text-red-500">{r.lost}</span></TableCell>
-                    <TableCell className="text-xs">{formatCurrency(r.pipelineAmount, r.currency)}</TableCell>
-                    <TableCell className="text-xs font-medium text-green-600">{formatCurrency(r.wonAmount, r.currency)}</TableCell>
-                    <TableCell className="text-xs">{r.quota > 0 ? formatCurrency(r.quota, r.currency) : '—'}</TableCell>
+                    <TableCell className="text-xs">{formatMoneda(r.pipelineAmount, paraDocumento(r.currency))}</TableCell>
+                    <TableCell className="text-xs font-medium text-green-600">{formatMoneda(r.wonAmount, paraDocumento(r.currency))}</TableCell>
+                    <TableCell className="text-xs">{r.quota > 0 ? formatMoneda(r.quota, paraDocumento(r.currency)) : '—'}</TableCell>
                     <TableCell className={`text-xs font-bold ${pctColor}`}>{r.quota > 0 ? `${pct}%` : '—'}</TableCell>
                   </TableRow>
                 );

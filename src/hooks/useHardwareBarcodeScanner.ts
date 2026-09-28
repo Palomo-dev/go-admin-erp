@@ -6,7 +6,25 @@ import { BarcodeWedgeDetector, type BarcodeWedgeOptions } from '@/lib/pos/barcod
 interface Options extends BarcodeWedgeOptions {
   /** Se llama con el código escaneado. */
   onScan: (code: string) => void;
+  /**
+   * Se llama cuando un escaneo se descarta porque hay un diálogo abierto (el
+   * cobro, variantes, caja): la pantalla avisa en vez de callarse (D10).
+   */
+  onDescartado?: (code: string) => void;
   enabled?: boolean;
+}
+
+/** Detectores activos (uno por pantalla montada con el lector). */
+const detectoresActivos = new Set<BarcodeWedgeDetector>();
+
+/**
+ * ¿El lector está a mitad de una ráfaga? (≥ 2 teclas seguidas dentro del
+ * margen del detector). Los atajos de una sola tecla (`useAtajos({ hayRafaga })`)
+ * lo consultan: 13 dígitos + Enter son un escaneo, no atajos (POS-PLAN R4).
+ */
+export function hayRafagaDelLector(): boolean {
+  for (const d of detectoresActivos) if (d.pending.length >= 2) return true;
+  return false;
 }
 
 function isEditable(el: Element | null): el is HTMLInputElement | HTMLTextAreaElement {
@@ -33,9 +51,12 @@ function stripFromActiveInput(code: string): void {
   el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-/** Con un diálogo abierto (variantes, cobro, caja) el escaneo no debe colarse en el carrito. */
-function dialogOpen(): boolean {
-  return !!document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]');
+/**
+ * Con un diálogo abierto (variantes, cobro, caja) el escaneo no debe colarse en el carrito.
+ * Exportada (L19 de docs/implementacion/POS-PLAN.md) para probarla con un documento simulado.
+ */
+export function dialogOpen(doc: Pick<Document, 'querySelector'> = document): boolean {
+  return !!doc.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]');
 }
 
 /**
@@ -43,19 +64,25 @@ function dialogOpen(): boolean {
  * un lector físico (ver `BarcodeWedgeDetector`). Funciona con el foco en
  * cualquier sitio: buscador, cliente o ningún campo.
  */
-export function useHardwareBarcodeScanner({ onScan, enabled = true, ...detectorOptions }: Options): void {
+export function useHardwareBarcodeScanner({ onScan, onDescartado, enabled = true, ...detectorOptions }: Options): void {
   const onScanRef = useRef(onScan);
   onScanRef.current = onScan;
+  const onDescartadoRef = useRef(onDescartado);
+  onDescartadoRef.current = onDescartado;
   const optsRef = useRef(detectorOptions);
 
   useEffect(() => {
     if (!enabled) return;
     const detector = new BarcodeWedgeDetector(optsRef.current);
+    detectoresActivos.add(detector);
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
     const emit = (code: string) => {
       stripFromActiveInput(code);
-      if (dialogOpen()) return;
+      if (dialogOpen()) {
+        onDescartadoRef.current?.(code);
+        return;
+      }
       onScanRef.current(code);
     };
 
@@ -87,6 +114,7 @@ export function useHardwareBarcodeScanner({ onScan, enabled = true, ...detectorO
     window.addEventListener('keydown', onKeyDown, true);
     return () => {
       window.removeEventListener('keydown', onKeyDown, true);
+      detectoresActivos.delete(detector);
       if (idleTimer) clearTimeout(idleTimer);
     };
   }, [enabled]);

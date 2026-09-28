@@ -15,8 +15,7 @@ import {
   DollarSign,
   Package,
   CheckCircle,
-  XCircle,
-  Users
+  XCircle
 } from 'lucide-react';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
@@ -38,7 +37,7 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { PromotionsService } from '@/components/pos/promociones/promotionsService';
 import { PromotionWizard } from '@/components/pos/promociones/nuevo';
 import { Promotion, PROMOTION_TYPE_LABELS, APPLIES_TO_LABELS, WEEK_DAYS } from '@/components/pos/promociones/types';
-import { formatCurrency, cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
 
 export default function PromocionDetallePage() {
@@ -46,6 +45,7 @@ export default function PromocionDetallePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoading: orgLoading } = useOrganization();
+  const { formatear } = useMonedaOrganizacion();
   
   const promotionId = params?.id as string;
   const isEditMode = searchParams?.get('edit') === 'true';
@@ -62,7 +62,7 @@ export default function PromocionDetallePage() {
     try {
       const data = await PromotionsService.getById(promotionId);
       setPromotion(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading promotion:', error);
       toast.error('Error al cargar la promoción');
     } finally {
@@ -79,8 +79,8 @@ export default function PromocionDetallePage() {
       await PromotionsService.delete(promotionId);
       toast.success('Promoción eliminada correctamente');
       router.push('/app/pos/promociones');
-    } catch (error: any) {
-      toast.error(error.message || 'Error al eliminar la promoción');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al eliminar la promoción');
     }
   };
 
@@ -89,8 +89,8 @@ export default function PromocionDetallePage() {
       await PromotionsService.duplicate(promotionId);
       toast.success('Promoción duplicada correctamente');
       router.push('/app/pos/promociones');
-    } catch (error: any) {
-      toast.error(error.message || 'Error al duplicar la promoción');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al duplicar la promoción');
     }
   };
 
@@ -101,8 +101,8 @@ export default function PromocionDetallePage() {
       await PromotionsService.toggleActive(promotionId);
       toast.success(promotion.is_active ? 'Promoción desactivada' : 'Promoción activada');
       loadPromotion();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al cambiar estado');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string } | null)?.message || 'Error al cambiar estado');
     } finally {
       setToggling(false);
     }
@@ -122,11 +122,11 @@ export default function PromocionDetallePage() {
     switch (promo.promotion_type) {
       case 'percentage':
         return `${promo.discount_value}%`;
-      case 'fixed_amount':        return formatCurrency(promo.discount_value || 0);
+      case 'fixed_amount':        return formatear(promo.discount_value || 0);
       case 'buy_x_get_y':
         return `Compra ${promo.buy_quantity}, Lleva ${promo.get_quantity}`;
       case 'bundle':
-        return formatCurrency(promo.discount_value || 0);
+        return formatear(promo.discount_value || 0);
       default:
         return '-';
     }
@@ -364,7 +364,7 @@ export default function PromocionDetallePage() {
                   <Separator className="dark:bg-gray-700" />
                   <div>
                     <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Compra Mínima</h4>
-                    <p className="dark:text-white">{formatCurrency(promotion.min_purchase_amount)}</p>
+                    <p className="dark:text-white">{formatear(promotion.min_purchase_amount)}</p>
                   </div>
                 </>
               )}
@@ -372,7 +372,7 @@ export default function PromocionDetallePage() {
               {promotion.max_discount_amount && (
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Descuento Máximo</h4>
-                  <p className="dark:text-white">{formatCurrency(promotion.max_discount_amount)}</p>
+                  <p className="dark:text-white">{formatear(promotion.max_discount_amount)}</p>
                 </div>
               )}
 

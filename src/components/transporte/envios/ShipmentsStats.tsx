@@ -2,6 +2,7 @@
 
 import { Card } from '@/components/ui/card';
 import { Package, CheckCircle, Truck, XCircle, Clock, DollarSign, AlertCircle, RotateCcw, ClipboardList, Scale, CalendarDays, UserX, TrendingUp } from 'lucide-react';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface ShipmentsStatsProps {
   stats: {
@@ -24,11 +25,8 @@ interface ShipmentsStatsProps {
 }
 
 export function ShipmentsStats({ stats }: ShipmentsStatsProps) {
-  const fmtCOP = (v: number) => new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-  }).format(v || 0);
+  // Totales agregados: en la moneda base de la organización.
+  const { formatear: fmtCOP } = useMonedaOrganizacion();
 
   const fmtNum = (v: number) => new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 }).format(v || 0);
 

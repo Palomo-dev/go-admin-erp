@@ -32,7 +32,7 @@
  */
 
 import { cookies, headers } from 'next/headers';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getServerUserClient } from '@/lib/supabase/server-user';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { verifyCronSecret, WebhookError } from '@/lib/security/webhookSignatures';
@@ -230,6 +230,37 @@ async function contextForOrg(
 export async function getServerOrgContextFor(organizationId: number): Promise<ServerOrgContext> {
   const supabase = await getServerUserClient();
   const user = await requireSessionUser(supabase);
+  return contextForOrg(supabase, user, organizationId);
+}
+
+/** Access token de `Authorization: Bearer …`, o null si la petición no lo trae. */
+export function bearerTokenOf(req: Request): string | null {
+  const m = /^Bearer\s+(\S+)$/i.exec(req.headers.get('authorization') ?? '');
+  return m ? m[1] : null;
+}
+
+/**
+ * Contexto a partir del access token de Supabase en `Authorization: Bearer`,
+ * para clientes que no llevan las cookies de la web (el proceso principal de
+ * Go Admin Desktop, cuya ventana se sirve desde 127.0.0.1). Mismo criterio que
+ * la sesión por cookies —Auth valida el token (401) y la membresía activa se
+ * comprueba con RLS del propio usuario (403)— pero la organización tiene que
+ * venir EXPLÍCITA en `X-Organization-Id` (400 si falta): sin cookies no hay
+ * organización activa que adivinar.
+ */
+export async function getBearerOrgContext(req: Request, token: string): Promise<ServerOrgContext> {
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    throw new OrgContextError('Token de acceso inválido o vencido', 401, 'UNAUTHENTICATED');
+  }
+  const organizationId = parseOrgId(req.headers.get(ORG_HEADER));
+  if (!organizationId) {
+    throw new OrgContextError('Indica la organización (header X-Organization-Id)', 400, 'ORG_AMBIGUOUS');
+  }
   return contextForOrg(supabase, user, organizationId);
 }
 
@@ -448,12 +479,15 @@ export type OrgRouteHandler = (
  * Envuelve un handler exigiendo sesión + org activa. Convierte
  * `OrgContextError` en 401/403/400 JSON. `opts.admin` exige admin
  * (`requireOrgAdminOrPermission`: super admin, rol 1/2 o el permiso
- * `admin.full_access` por rol/cargo).
+ * `admin.full_access` por rol/cargo). `opts.bearer` acepta además
+ * `Authorization: Bearer <access token>` (`getBearerOrgContext`); solo para
+ * rutas que llaman clientes sin las cookies de la web.
  */
-export function withOrg(handler: OrgRouteHandler, opts?: { admin?: boolean }) {
+export function withOrg(handler: OrgRouteHandler, opts?: { admin?: boolean; bearer?: boolean }) {
   return async (req: Request, routeParams: RouteParams): Promise<Response> => {
     try {
-      const ctx = await getServerOrgContext(req);
+      const token = opts?.bearer ? bearerTokenOf(req) : null;
+      const ctx = token ? await getBearerOrgContext(req, token) : await getServerOrgContext(req);
       if (opts?.admin) await requireOrgAdminOrPermission(ctx);
       return await handler(ctx, req, routeParams);
     } catch (err) {

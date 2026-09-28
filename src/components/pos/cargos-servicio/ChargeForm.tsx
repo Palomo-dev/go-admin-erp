@@ -23,12 +23,13 @@ import {
 import { 
   ServiceCharge, 
   CreateServiceChargeData, 
-  ChargeType,
   AppliesTo,
-  CHARGE_TYPE_LABELS, 
-  APPLIES_TO_LABELS 
+  CHARGE_TYPES,
+  APPLIES_TO_VALUES
 } from './types';
 import { CargosServicioService } from './cargosServicioService';
+import { codigoErrorCargo } from './cargosLogica';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/Utils';
 import { toast } from 'sonner';
 
@@ -47,17 +48,18 @@ export function ChargeForm({
   branches,
   onSuccess 
 }: ChargeFormProps) {
+  const t = useTranslations('posCargosServicio');
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<CreateServiceChargeData>({
     name: '',
     charge_type: 'percentage',
     charge_value: 10,
-    min_amount: undefined,
-    min_guests: undefined,
+    min_amount: null,
+    min_guests: null,
     applies_to: 'all',
     is_taxable: false,
     is_optional: false,
-    branch_id: undefined
+    branch_id: null
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -70,24 +72,24 @@ export function ChargeForm({
           name: charge.name,
           charge_type: charge.charge_type,
           charge_value: charge.charge_value,
-          min_amount: charge.min_amount || undefined,
-          min_guests: charge.min_guests || undefined,
+          min_amount: charge.min_amount ?? null,
+          min_guests: charge.min_guests ?? null,
           applies_to: charge.applies_to,
           is_taxable: charge.is_taxable,
           is_optional: charge.is_optional,
-          branch_id: charge.branch_id || undefined
+          branch_id: charge.branch_id ?? null
         });
       } else {
         setFormData({
           name: '',
           charge_type: 'percentage',
           charge_value: 10,
-          min_amount: undefined,
-          min_guests: undefined,
+          min_amount: null,
+          min_guests: null,
           applies_to: 'all',
           is_taxable: false,
           is_optional: false,
-          branch_id: undefined
+          branch_id: null
         });
       }
       setErrors({});
@@ -98,15 +100,15 @@ export function ChargeForm({
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'El nombre es requerido';
+      newErrors.name = t('formulario.errores.nombre');
     }
 
     if (!formData.charge_value || formData.charge_value <= 0) {
-      newErrors.charge_value = 'El valor debe ser mayor a 0';
+      newErrors.charge_value = t('formulario.errores.valor');
     }
 
     if (formData.charge_type === 'percentage' && formData.charge_value > 100) {
-      newErrors.charge_value = 'El porcentaje no puede ser mayor a 100%';
+      newErrors.charge_value = t('formulario.errores.porcentajeMaximo');
     }
 
     setErrors(newErrors);
@@ -122,21 +124,21 @@ export function ChargeForm({
     try {
       if (isEditing && charge) {
         await CargosServicioService.update(charge.id, formData);
-        toast.success('Cargo actualizado correctamente');
+        toast.success(t('toast.actualizado'));
       } else {
         await CargosServicioService.create(formData);
-        toast.success('Cargo creado correctamente');
+        toast.success(t('toast.creado'));
       }
       onSuccess();
       onOpenChange(false);
-    } catch (error: any) {
-      toast.error(error.message || 'Error al guardar el cargo');
+    } catch (error: unknown) {
+      toast.error(t(`errores.${codigoErrorCargo(error)}`));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (field: keyof CreateServiceChargeData, value: any) => {
+  const handleChange = <K extends keyof CreateServiceChargeData>(field: K, value: CreateServiceChargeData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -148,7 +150,7 @@ export function ChargeForm({
       <DialogContent className="sm:max-w-[500px] dark:bg-gray-800 dark:border-gray-700 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="dark:text-white">
-            {isEditing ? 'Editar Cargo de Servicio' : 'Nuevo Cargo de Servicio'}
+            {isEditing ? t('formulario.tituloEditar') : t('formulario.tituloNuevo')}
           </DialogTitle>
         </DialogHeader>
 
@@ -156,12 +158,12 @@ export function ChargeForm({
           {/* Nombre */}
           <div className="space-y-2">
             <Label className="dark:text-gray-200">
-              Nombre <span className="text-red-500">*</span>
+              {t('formulario.nombre')} <span className="text-red-500">*</span>
             </Label>
             <Input
               value={formData.name}
               onChange={(e) => handleChange('name', e.target.value)}
-              placeholder="Ej: Cargo por servicio 10%"
+              placeholder={t('formulario.nombrePlaceholder')}
               className={cn(
                 "dark:bg-gray-700 dark:border-gray-600 dark:text-white",
                 errors.name && "border-red-500"
@@ -175,9 +177,9 @@ export function ChargeForm({
 
           {/* Tipo de cargo */}
           <div className="space-y-2">
-            <Label className="dark:text-gray-200">Tipo de Cargo</Label>
+            <Label className="dark:text-gray-200">{t('formulario.tipo')}</Label>
             <div className="grid grid-cols-2 gap-2">
-              {(Object.entries(CHARGE_TYPE_LABELS) as [ChargeType, string][]).map(([type, label]) => (
+              {CHARGE_TYPES.map((type) => (
                 <button
                   key={type}
                   type="button"
@@ -210,7 +212,7 @@ export function ChargeForm({
                       ? "text-blue-600 dark:text-blue-400"
                       : "text-gray-600 dark:text-gray-300"
                   )}>
-                    {label}
+                    {t(`tiposCargo.${type}`)}
                   </span>
                 </button>
               ))}
@@ -220,7 +222,7 @@ export function ChargeForm({
           {/* Valor */}
           <div className="space-y-2">
             <Label className="dark:text-gray-200">
-              Valor <span className="text-red-500">*</span>
+              {t('formulario.valor')} <span className="text-red-500">*</span>
             </Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -248,13 +250,13 @@ export function ChargeForm({
           {/* Condiciones */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="dark:text-gray-200">Monto Mínimo (opcional)</Label>
+              <Label className="dark:text-gray-200">{t('formulario.montoMinimo')}</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                 <Input
                   type="number"
                   value={formData.min_amount || ''}
-                  onChange={(e) => handleChange('min_amount', e.target.value ? parseFloat(e.target.value) : undefined)}
+                  onChange={(e) => handleChange('min_amount', e.target.value ? parseFloat(e.target.value) : null)}
                   min={0}
                   step={1000}
                   placeholder="0"
@@ -264,11 +266,11 @@ export function ChargeForm({
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="dark:text-gray-200">Personas Mínimas (opcional)</Label>
+              <Label className="dark:text-gray-200">{t('formulario.personasMinimas')}</Label>
               <Input
                 type="number"
                 value={formData.min_guests || ''}
-                onChange={(e) => handleChange('min_guests', e.target.value ? parseInt(e.target.value) : undefined)}
+                onChange={(e) => handleChange('min_guests', e.target.value ? parseInt(e.target.value, 10) : null)}
                 min={0}
                 placeholder="0"
                 className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -279,7 +281,7 @@ export function ChargeForm({
 
           {/* Aplica a */}
           <div className="space-y-2">
-            <Label className="dark:text-gray-200">Aplica a</Label>
+            <Label className="dark:text-gray-200">{t('formulario.aplicaA')}</Label>
             <Select
               value={formData.applies_to}
               onValueChange={(value) => handleChange('applies_to', value as AppliesTo)}
@@ -288,8 +290,8 @@ export function ChargeForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                {Object.entries(APPLIES_TO_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                {APPLIES_TO_VALUES.map((key) => (
+                  <SelectItem key={key} value={key}>{t(`aplicaA.${key}`)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -297,16 +299,16 @@ export function ChargeForm({
 
           {/* Sucursal */}
           <div className="space-y-2">
-            <Label className="dark:text-gray-200">Sucursal (opcional)</Label>
+            <Label className="dark:text-gray-200">{t('formulario.sucursal')}</Label>
             <Select
               value={formData.branch_id?.toString() || 'global'}
-              onValueChange={(value) => handleChange('branch_id', value === 'global' ? undefined : parseInt(value))}
+              onValueChange={(value) => handleChange('branch_id', value === 'global' ? null : parseInt(value, 10))}
             >
               <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                <SelectValue placeholder="Global (todas)" />
+                <SelectValue placeholder={t('formulario.sucursalPlaceholder')} />
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                <SelectItem value="global">Global (todas las sucursales)</SelectItem>
+                <SelectItem value="global">{t('global')}</SelectItem>
                 {branches.map((branch) => (
                   <SelectItem key={branch.id} value={branch.id.toString()}>
                     {branch.name}
@@ -320,9 +322,9 @@ export function ChargeForm({
           <div className="space-y-4 pt-2">
             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <div>
-                <Label className="dark:text-gray-200">Gravado con impuesto</Label>
+                <Label className="dark:text-gray-200">{t('formulario.gravado')}</Label>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  El cargo se incluirá en la base gravable
+                  {t('formulario.gravadoAyuda')}
                 </p>
               </div>
               <Switch
@@ -334,9 +336,9 @@ export function ChargeForm({
 
             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <div>
-                <Label className="dark:text-gray-200">Cargo opcional</Label>
+                <Label className="dark:text-gray-200">{t('formulario.opcional')}</Label>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  El cliente puede rechazar este cargo
+                  {t('formulario.opcionalAyuda')}
                 </p>
               </div>
               <Switch
@@ -356,7 +358,7 @@ export function ChargeForm({
               className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600"
             >
               <X className="h-4 w-4 mr-2" />
-              Cancelar
+              {t('formulario.cancelar')}
             </Button>
             <Button 
               type="submit" 
@@ -364,7 +366,7 @@ export function ChargeForm({
               className="bg-blue-600 hover:bg-blue-700"
             >
               <Save className="h-4 w-4 mr-2" />
-              {loading ? 'Guardando...' : isEditing ? 'Actualizar' : 'Crear'}
+              {loading ? t('formulario.guardando') : isEditing ? t('formulario.actualizar') : t('formulario.crear')}
             </Button>
           </DialogFooter>
         </form>

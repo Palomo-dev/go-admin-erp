@@ -10,6 +10,8 @@
  * codigo de `printing/` se compila tanto con el tsconfig del agente como con
  * el de Next.js.
  */
+import type { MoneyFormat } from './money';
+
 
 export interface KitchenTicketItemModifier {
   name: string;
@@ -46,6 +48,8 @@ export interface SaleTicketItemPayload {
   discountAmount?: number;
   variantData?: Record<string, string> | null;
   modifiers?: Array<{ name: string; extraPrice: number }> | null;
+  /** Nota de la línea PARA EL CLIENTE. La de cocina nunca viaja en un ticket de venta. */
+  note?: string | null;
 }
 
 export interface SaleTicketPayment {
@@ -98,7 +102,7 @@ export interface SaleTicketDeliveryInfo {
   instructions?: string;
 }
 
-export interface SaleTicketPrintPayload {
+export interface SaleTicketPrintPayload extends MoneyFormat {
   saleId: string;
   saleNumber?: string;
   customerName?: string;
@@ -157,7 +161,7 @@ export type TicketKind = 'kitchen_ticket' | 'pre_cuenta' | 'sale_ticket' | 'ship
  * Datos de una factura electrónica validada por DIAN para impresión.
  * Contiene campos específicos como CUFE, QR, número de validación y entorno.
  */
-export interface ElectronicInvoicePrintPayload {
+export interface ElectronicInvoicePrintPayload extends MoneyFormat {
   /** Número de factura asignado por Factus/DIAN (ej: FE1234). */
   invoiceNumber: string;
   /** CUFE - Código Único de Factura Electrónica. */
@@ -241,7 +245,7 @@ export interface ShipmentGuideDriverPayload {
   licenseCategory?: string;
 }
 
-export interface ShipmentGuidePrintPayload {
+export interface ShipmentGuidePrintPayload extends MoneyFormat {
   shipmentId: string;
   trackingNumber?: string;
   shipmentNumber?: string;
@@ -285,7 +289,6 @@ export interface ShipmentGuidePrintPayload {
   insuranceCost?: number;
   codAmount?: number;
   totalCost?: number;
-  currency?: string;
 
   notes?: string;
 }
@@ -294,7 +297,7 @@ export interface ShipmentGuidePrintPayload {
  * Tipo de trabajo tal como lo acepta `printToDevice`: los documentos de
  * `TicketKind` mas la apertura de cajon, que no imprime nada.
  */
-export type PrintJobType = TicketKind | 'open_cash_drawer';
+export type PrintJobType = TicketKind | 'open_cash_drawer' | 'product_label';
 
 /**
  * Sobre que el POS envia al agente local por `POST /print` (Go Admin Desktop:

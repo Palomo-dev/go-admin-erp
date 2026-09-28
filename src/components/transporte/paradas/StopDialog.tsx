@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono, telefonoOpcionalValido } from '@/components/ui/phone-input';
 import { Loader2, Search, MapPin } from 'lucide-react';
 import { TransportStop } from '@/lib/services/transportService';
 import { googleMapsService, PlaceAutocompleteResult } from '@/lib/services/googleMapsService';
@@ -42,7 +42,10 @@ const stopSchema = z.object({
   latitude: z.coerce.number().optional(),
   longitude: z.coerce.number().optional(),
   contact_name: z.string().optional(),
-  contact_phone: z.string().optional(),
+  contact_phone: z
+    .string()
+    .optional()
+    .refine((v) => telefonoOpcionalValido(v), (v) => ({ message: mensajeErrorTelefono(v) ?? 'Teléfono no válido' })),
   branch_id: z.coerce.number().optional(),
   is_active: z.boolean(),
 });
@@ -416,8 +419,8 @@ export function StopDialog({
                 <PhoneInput
                   id="contact_phone"
                   value={watch('contact_phone') || ''}
-                  onChange={(v) => setValue('contact_phone', v)}
-                  placeholder="300 123 4567"
+                  onChange={(v) => setValue('contact_phone', v, { shouldValidate: true })}
+                  error={errors.contact_phone?.message}
                 />
               </div>
             </div>

@@ -18,13 +18,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { DisplayCart, DisplayLine } from '@/lib/pos/display/protocol';
-import { formatCurrency } from '@/utils/Utils';
 import {
   HIGHLIGHT_MS,
   counterReservePx,
   estimateRowHeightPx,
   fitLastLines,
+  formatDisplayMoney,
   parseHexColor,
+  resolveTaxRowKind,
   subLineCount,
   taxLabelKind,
   trimLines,
@@ -43,6 +44,15 @@ interface OrderViewProps {
    */
   highlightUntil: number;
   brand: DisplayBrand;
+  /** Etiqueta BCP 47 con la que se formatean los importes (F4, PLAN §4.5). */
+  locale?: string;
+  /**
+   * Ajuste `showTaxBreakdown` (F4): apagado, un carrito con impuesto INCLUIDO
+   * muestra solo «IVA incluido»; encendido, también el importe, como en el
+   * recibo. Con el impuesto sumado al subtotal el importe se muestra siempre
+   * (si no, subtotal + nada no daría el total). Ver `resolveTaxRowKind`.
+   */
+  showTaxBreakdown?: boolean;
 }
 
 interface ViewportMetrics {
@@ -124,7 +134,7 @@ function useOverflowCorrection(ref: React.RefObject<HTMLDivElement | null>, key:
   return extra;
 }
 
-export function OrderView({ cart, highlightUntil, brand }: OrderViewProps) {
+export function OrderView({ cart, highlightUntil, brand, locale, showTaxBreakdown = false }: OrderViewProps) {
   const t = useTranslations('posDisplay');
   const linesRef = useRef<HTMLDivElement | null>(null);
   const probeRef = useRef<HTMLSpanElement | null>(null);
@@ -157,8 +167,9 @@ export function OrderView({ cart, highlightUntil, brand }: OrderViewProps) {
   const highlightBg = highlightRgb ? `rgba(${highlightRgb.r}, ${highlightRgb.g}, ${highlightRgb.b}, 0.14)` : 'rgba(0,0,0,0.06)';
 
   const taxKind = taxLabelKind(cart);
+  const taxRow = resolveTaxRowKind(taxKind, showTaxBreakdown);
   const currency = cart.currency;
-  const money = (value: number) => formatCurrency(value, currency);
+  const money = (value: number) => formatDisplayMoney(value, currency, locale);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -233,10 +244,10 @@ export function OrderView({ cart, highlightUntil, brand }: OrderViewProps) {
               <dd className="shrink-0 tabular-nums">−{money(cart.discountTotal)}</dd>
             </div>
           ) : null}
-          {taxKind !== 'none' ? (
-            <div className="flex justify-between gap-6">
+          {taxRow !== 'none' ? (
+            <div className="flex justify-between gap-6" data-tax-row={taxRow}>
               <dt>{t(taxKind === 'included' ? 'taxIncluded' : taxKind === 'mixed' ? 'taxMixed' : 'taxes')}</dt>
-              <dd className="tabular-nums">{money(cart.taxTotal)}</dd>
+              {taxRow === 'amount' ? <dd className="tabular-nums">{money(cart.taxTotal)}</dd> : null}
             </div>
           ) : null}
         </dl>

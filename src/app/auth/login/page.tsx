@@ -24,19 +24,22 @@ import {
   isBiometricAvailable,
   canUseBiometricLogin,
   getBiometricEmail,
-  getBiometricPassword,
+  getBiometricRefreshToken,
+  saveBiometricCredentials,
+  purgeLegacyStoredPassword,
 } from '@/lib/services/biometricService';
 import { supabase } from '@/lib/supabase/config';
+import { destinoInternoSeguro, registrarIntentoRecuperacion } from '@/lib/auth/recuperacionSesion';
 import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
+import { Firma, Isotipo } from '@/components/shell/marca/Firma';
 
 function LoginContent() {
   const t = useTranslations('auth.login');
   const tc = useTranslations('common');
-  const tErr = useTranslations('auth.errors');
   const locale = useLocale();
   const router = useRouter();
   const { isMobileApp, authResult, oauthError: mobileOAuthError } = useMobileAuth();
-  const { checkBiometricAvailable, authenticateBiometric } = useMobileNative();
+  const { authenticateBiometric } = useMobileNative();
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState<string | null>(null);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
@@ -52,7 +55,7 @@ function LoginContent() {
   const [orgSearchQuery, setOrgSearchQuery] = useState('');
   const [showGeolocationModal, setShowGeolocationModal] = useState(false);
   const [emailNotConfirmed, setEmailNotConfirmed] = useState(false);
-  const [resendingEmail, setResendingEmail] = useState(false);
+  const [, setResendingEmail] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const searchParams = useSearchParams();
   
@@ -64,8 +67,8 @@ function LoginContent() {
     if (errorParam) {
       setError(
         errorParam === 'auth-callback-failed' 
-          ? 'Error al iniciar sesión con proveedor externo' 
-          : 'Error al iniciar sesión'
+          ? t('errorExternalProvider')
+          : t('errorGeneric')
       );
     }
     
@@ -73,7 +76,7 @@ function LoginContent() {
     const messageParam = searchParams.get('message');
     if (messageParam === 'email-not-confirmed') {
       setEmailNotConfirmed(true);
-      setError('Tu cuenta aún no ha sido verificada.');
+      setError(t('emailNotVerified'));
     }
     
     // Check for redirectTo parameter
@@ -95,7 +98,7 @@ function LoginContent() {
       setRememberMe(false);
       
       // Show a message about the expired session
-      setError('Tu sesión anterior ha expirado. Por favor, inicia sesión nuevamente.');
+      setError(t('sessionExpired'));
     }
     
     // Check for success messages (email confirmation)
@@ -108,12 +111,12 @@ function LoginContent() {
     // Check for corrupted session errors
     const error = searchParams.get('error');
     if (error === 'corrupted-session') {
-      setError('Tu sesión estaba corrupta y ha sido limpiada. Por favor, inicia sesión nuevamente.');
+      setError(t('sessionCorrupted'));
     } else if (error === 'session-parse-error') {
-      setError('Hubo un problema con tu sesión anterior. Por favor, inicia sesión nuevamente.');
+      setError(t('sessionParseError'));
     } else if (error === 'auth-failed') {
       const details = searchParams.get('details');
-      setError('Error en la autenticación: ' + (details ? decodeURIComponent(details) : 'Error desconocido'));
+      setError(t('authFailed', { details: details ? decodeURIComponent(details) : t('unknownError') }));
     }
     
     // Verificar si necesitamos mostrar el modal de geolocalización
@@ -123,7 +126,34 @@ function LoginContent() {
         setShowGeolocationModal(true)
       }, 1000)
     }
-  }, [searchParams, userOrganizations]);
+  }, [searchParams, userOrganizations, t]);
+
+  // Sesión vencida (GO-sec 2026-09-24): el middleware verifica la firma del
+  // JWT y ya no deja pasar un access token vencido; manda aquí con
+  // reason=expired. getSession() refresca con el refresh token del dispositivo
+  // y escribe la cookie nueva; si hay sesión se vuelve a redirectTo con una
+  // navegación completa (para que el middleware lea la cookie nueva). Un
+  // intento por pestaña cada 30 s: sin bucles si el refresco no llega a la cookie.
+  useEffect(() => {
+    if (!searchParams || searchParams.get('reason') !== 'expired') return;
+    if (searchParams.get('addAccount') === '1') return;
+    const storage = typeof window !== 'undefined' ? window.sessionStorage : null;
+    if (!registrarIntentoRecuperacion(storage)) return;
+    const destino = destinoInternoSeguro(searchParams.get('redirectTo'));
+    // Sin cancelación en el cleanup a propósito: el intento ya quedó
+    // registrado y en modo estricto el segundo montaje no lo repite.
+    setLoading(true);
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (data.session) {
+          window.location.replace(destino);
+          return;
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [searchParams]);
 
   // Procesar resultado de OAuth via deep link (móvil Capacitor)
   useEffect(() => {
@@ -168,38 +198,40 @@ function LoginContent() {
     setError(null);
     try {
       // authenticateBiometric espera objeto { reason?: string }
-      const result = await authenticateBiometric({ reason: 'Inicia sesión para continuar' });
+      const result = await authenticateBiometric({ reason: t('biometric.reason') });
       if (!result?.verified) {
-        setError(result?.reason || 'Autenticación biométrica fallida');
+        setError(result?.reason || t('biometric.failed'));
         setLoading(false);
         return;
       }
 
-      // Recuperar credenciales guardadas via biometricService (mismo formato que rememberMe)
+      // Restaurar la sesión con el refresh token guardado (nunca con la
+      // contraseña, que ya no se almacena en el dispositivo).
       const email = getBiometricEmail();
-      const password = getBiometricPassword();
-      if (!email || !password) {
-        setError('No hay credenciales guardadas. Inicia sesión con contraseña primero y activa "Recordarme".');
+      const refreshToken = getBiometricRefreshToken();
+      if (!email || !refreshToken) {
+        setError(t('biometric.noCredentials'));
         setLoading(false);
         return;
       }
 
-      // Login con Supabase usando credenciales guardadas
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { data, error: signInError } = await supabase.auth.refreshSession({
+        refresh_token: refreshToken,
       });
       if (signInError || !data.session) {
-        setError(signInError?.message || 'No se pudo restaurar la sesión');
+        setError(signInError?.message || t('biometric.restoreFailed'));
         setLoading(false);
         return;
       }
+
+      // Los refresh tokens rotan: se guarda el nuevo para el próximo desbloqueo.
+      saveBiometricCredentials(email, data.session.refresh_token);
 
       // Proceder con el flujo normal de post-login
       proceedWithLogin(true, email);
     } catch (err) {
       console.error('[biometricLogin] Error:', err);
-      setError('Error en autenticación biométrica');
+      setError(t('biometric.error'));
     } finally {
       setLoading(false);
     }
@@ -223,20 +255,24 @@ function LoginContent() {
 
     // Si el usuario está registrado con OAuth, bloquear login con contraseña
     if (oauthProvider) {
-      setError(`Esta cuenta está registrada con ${getProviderLabel(oauthProvider)}. Por favor, inicia sesión con ese proveedor.`);
+      setError(t('oauthAccountBlocked', { provider: getProviderLabel(oauthProvider) }));
       return;
     }
 
-    // Guardar o eliminar credenciales segun rememberMe
+    // Guardar o eliminar credenciales segun rememberMe.
+    // Solo el CORREO: la contraseña nunca se guarda en el dispositivo. Antes se
+    // escribía en `userPassword` con `btoa()` + reverse, que se revierte en una
+    // línea, y la pantalla de sesión expirada no la borraba
+    // (auditoría de acceso, 2026-09-22). El desbloqueo biométrico usa ahora un
+    // refresh token revocable, que se guarda más abajo tras abrir sesión.
     if (rememberMe) {
       localStorage.setItem('userEmail', btoa(email).split('').reverse().join(''));
-      localStorage.setItem('userPassword', btoa(password).split('').reverse().join(''));
       localStorage.setItem('rememberMe', 'true');
     } else {
       localStorage.removeItem('userEmail');
-      localStorage.removeItem('userPassword');
       localStorage.removeItem('rememberMe');
     }
+    localStorage.removeItem('userPassword');
 
     await handleEmailLogin({
       email,
@@ -297,16 +333,16 @@ function LoginContent() {
   // Badge de estado de la organización
   const getOrgStatusBadge = useCallback((status?: string) => {
     if (!status || status === 'active') {
-      return { label: 'Activa', className: 'bg-green-100 text-green-700' };
+      return { label: t('orgStatus.active'), className: 'bg-green-100 text-green-700' };
     }
     if (status === 'suspended' || status === 'frozen') {
-      return { label: 'Congelada', className: 'bg-red-100 text-red-700' };
+      return { label: t('orgStatus.frozen'), className: 'bg-red-100 text-red-700' };
     }
     if (status === 'deleted') {
-      return { label: 'Eliminada', className: 'bg-gray-200 text-gray-600' };
+      return { label: t('orgStatus.deleted'), className: 'bg-gray-200 text-gray-600' };
     }
-    return { label: 'Inactiva', className: 'bg-amber-100 text-amber-700' };
-  }, []);
+    return { label: t('orgStatus.inactive'), className: 'bg-amber-100 text-amber-700' };
+  }, [t]);
 
   // Organizaciones ordenadas: favoritas primero, luego filtradas por búsqueda
   const sortedOrganizations = useMemo(() => {
@@ -378,22 +414,15 @@ function LoginContent() {
         const decodedEmail = atob(savedEmail.split('').reverse().join(''));
         setEmail(decodedEmail);
         setRememberMe(true);
-      } catch (e) {
+      } catch {
         // Si hay un error al decodificar, limpiar el valor corrupto
         localStorage.removeItem('userEmail');
       }
     }
 
-    // Cargar contraseña guardada si rememberMe estaba activo
-    const savedPassword = localStorage.getItem('userPassword');
-    if (savedPassword) {
-      try {
-        const decodedPassword = atob(savedPassword.split('').reverse().join(''));
-        setPassword(decodedPassword);
-      } catch (e) {
-        localStorage.removeItem('userPassword');
-      }
-    }
+    // La contraseña ya no se guarda ni se rellena: se purga la que hubieran
+    // dejado versiones anteriores en este dispositivo.
+    purgeLegacyStoredPassword();
     
     // Limpiar cualquier token de Supabase que pudiera estar en localStorage
     // para asegurar que solo se usen cookies para la autenticación
@@ -408,7 +437,7 @@ function LoginContent() {
     if (projectRef) {
       localStorage.removeItem(`sb-${projectRef}-auth-token`);
     }
-  }, []);
+  }, [searchParams]);
   
   return (
     <div className="min-h-screen flex items-stretch justify-center bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black relative overflow-hidden">
@@ -418,14 +447,9 @@ function LoginContent() {
       {/* Panel de branding - solo desktop */}
       <div className="hidden lg:flex lg:w-2/5 items-center justify-center p-10 relative z-10">
         <div className="relative z-10 max-w-md text-white">
-          {/* Logo grande */}
+          {/* Firma del manual de marca, variante sobre fondo azul */}
           <div className="mb-8">
-            <div className="inline-flex items-center justify-center bg-white/15 backdrop-blur-sm rounded-2xl p-5 shadow-2xl ring-1 ring-white/20">
-              <div className="flex flex-col items-center justify-center space-y-0.5">
-                <div className="text-4xl font-black text-white tracking-tight leading-none">GO</div>
-                <div className="text-sm font-medium text-blue-100 tracking-wide uppercase">Admin</div>
-              </div>
-            </div>
+            <Firma invertido />
           </div>
           <h1 className="text-3xl xl:text-4xl font-bold mb-4 leading-tight">
             {t('welcomeBack')}
@@ -441,7 +465,7 @@ function LoginContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </span>
-              <span className="text-sm">Gestiona tu negocio en un solo lugar</span>
+              <span className="text-sm">{t('features.onePlace')}</span>
             </li>
             <li className="flex items-center gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
@@ -449,7 +473,7 @@ function LoginContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </span>
-              <span className="text-sm">POS, inventario, CRM y más en una sola plataforma</span>
+              <span className="text-sm">{t('features.allInOne')}</span>
             </li>
             <li className="flex items-center gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
@@ -457,7 +481,7 @@ function LoginContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </span>
-              <span className="text-sm">Reportes y analítica en tiempo real</span>
+              <span className="text-sm">{t('features.realtime')}</span>
             </li>
           </ul>
         </div>
@@ -467,26 +491,9 @@ function LoginContent() {
       <div className="w-full lg:w-3/5 flex items-center justify-center py-6 sm:py-8 md:py-12 px-4 sm:px-6 md:px-8 lg:px-10 relative z-10">
       <div className="max-w-md w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white dark:bg-gray-800 p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100 dark:border-gray-700 lg:my-6 lg:p-8 lg:max-w-md">
         <div className="flex flex-col items-center">
-          {/* Logo GO Admin con diseño moderno */}
+          {/* Isotipo del manual de marca (en desktop lo lleva el panel azul) */}
           <div className="mb-3 sm:mb-4 lg:hidden">
-            <div className="relative">
-              {/* Círculo decorativo con gradiente de fondo */}
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-lg sm:rounded-xl blur-md sm:blur-lg opacity-30 animate-pulse"></div>
-              
-              {/* Contenedor del logo */}
-              <div className="relative bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-lg">
-                <div className="flex flex-col items-center justify-center space-y-0.5">
-                  {/* Texto GO con estilo bold */}
-                  <div className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none">
-                    GO
-                  </div>
-                  {/* Texto Admin con estilo más ligero */}
-                  <div className="text-xs sm:text-sm font-medium text-blue-100 tracking-wide uppercase">
-                    Admin
-                  </div>
-                </div>
-              </div>
-            </div>
+            <Isotipo tamano={40} />
           </div>
           
           {/* Título mejorado */}
@@ -506,7 +513,7 @@ function LoginContent() {
             {error.includes('El usuario no existe') && (
               <div className="mt-2">
                 <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
-                  Crear una cuenta nueva
+                  {t('createAccount')}
                 </Link>
               </div>
             )}
@@ -532,15 +539,16 @@ function LoginContent() {
               <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                 <div>
                   <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    Selecciona una organización
+                    {t('orgPicker.title')}
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Tu cuenta está asociada a múltiples organizaciones.
+                    {t('orgPicker.subtitle')}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowOrgPopup(false)}
+                  aria-label={tc('close')}
                   className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
                 >
                   <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -560,7 +568,7 @@ function LoginContent() {
                       type="text"
                       value={orgSearchQuery}
                       onChange={(e) => setOrgSearchQuery(e.target.value)}
-                      placeholder="Buscar organización..."
+                      placeholder={t('orgPicker.searchPlaceholder')}
                       className="w-full pl-9 pr-3 py-2 text-sm rounded-md bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
@@ -571,7 +579,7 @@ function LoginContent() {
               <div className="flex-1 overflow-y-auto p-3 space-y-2">
                 {sortedOrganizations.length === 0 ? (
                   <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
-                    No se encontraron organizaciones.
+                    {t('orgPicker.empty')}
                   </p>
                 ) : (
                   sortedOrganizations.map((org) => {
@@ -588,7 +596,7 @@ function LoginContent() {
                           type="button"
                           onClick={(e) => toggleFavoriteOrg(e, org.id)}
                           className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                          title={isFav ? 'Quitar de favoritas' : 'Marcar como favorita'}
+                          title={isFav ? t('orgPicker.removeFavorite') : t('orgPicker.addFavorite')}
                         >
                           <svg
                             className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${isFav ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600 group-hover:text-gray-400'}`}
@@ -604,6 +612,7 @@ function LoginContent() {
                         {/* Logo */}
                         <div className="flex-shrink-0">
                           {org.logo_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- logo de la organización en URL externa (Storage)
                             <img
                               src={org.logo_url}
                               alt={`${org.name} logo`}
@@ -644,7 +653,7 @@ function LoginContent() {
               {/* Footer del popup */}
               <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
                 <p className="text-[11px] text-center text-gray-400 dark:text-gray-500">
-                  Las organizaciones marcadas con ★ aparecen primero
+                  {t('orgPicker.favoritesFirst')}
                 </p>
               </div>
             </div>
@@ -673,7 +682,7 @@ function LoginContent() {
                       onClick={() => setSuccessMessage(null)}
                       className="inline-flex rounded-md bg-green-50 p-1.5 text-green-500 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 focus:ring-offset-green-50"
                     >
-                      <span className="sr-only">Cerrar</span>
+                      <span className="sr-only">{tc('close')}</span>
                       <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                       </svg>
@@ -711,7 +720,7 @@ function LoginContent() {
                 <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M8.485 2.495c.671-1.167 2.357-1.167 3.028 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                 </svg>
-                <span>Esta cuenta está registrada con <strong>{getProviderLabel(oauthProvider)}</strong>. Usa el botón de {getProviderLabel(oauthProvider)} para iniciar sesión.</span>
+                <span>{t.rich('oauthAccountHint', { provider: getProviderLabel(oauthProvider), strong: (chunks) => <strong>{chunks}</strong> })}</span>
               </div>
             )}
             <div className="relative">
@@ -736,7 +745,7 @@ function LoginContent() {
                   type="button" 
                   onClick={() => setShowPassword(!showPassword)}
                   className="pr-2 sm:pr-3 text-blue-500 hover:text-blue-700 transition-colors"
-                  title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  title={showPassword ? t('hidePassword') : t('showPassword')}
                 >
                   {showPassword ? (
                     // Icono de ojo tachado (ocultar)
@@ -847,7 +856,7 @@ function LoginContent() {
                 <span className="mr-2 text-base">
                   {biometricType === 'faceId' ? '👤' : '👆'}
                 </span>
-                Entrar con {biometricType === 'faceId' ? 'Face ID' : 'Huella'}
+                {t('biometric.signInWith', { method: biometricType === 'faceId' ? t('biometric.faceId') : t('biometric.fingerprint') })}
               </button>
             )}
           </div>

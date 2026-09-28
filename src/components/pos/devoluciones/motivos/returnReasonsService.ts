@@ -7,6 +7,36 @@ import {
   ReturnReasonFilters 
 } from '../types';
 
+/** Errores de negocio que la pantalla traduce: `posDevoluciones.motivos.errores.<codigo>`. */
+export type CodigoErrorMotivo = 'codigoDuplicado' | 'enUso' | 'noEncontrado';
+
+/** Contexto de la acción fallida: da el texto de respaldo cuando el error no es de negocio. */
+export type AccionMotivo = 'guardar' | 'eliminar' | 'duplicar' | 'cambiarEstado' | 'importar';
+
+/**
+ * Error con código estable. El `message` en español queda para los registros;
+ * la pantalla muestra la traducción del código.
+ */
+export class ErrorMotivoDevolucion extends Error {
+  constructor(
+    public readonly codigo: CodigoErrorMotivo,
+    message: string,
+    public readonly valores: Record<string, string> = {},
+  ) {
+    super(message);
+    this.name = 'ErrorMotivoDevolucion';
+  }
+}
+
+/** Clave (dentro de `posDevoluciones.motivos.errores`) y variables del mensaje a mostrar. */
+export function claveErrorMotivo(
+  error: unknown,
+  accion: AccionMotivo,
+): { clave: CodigoErrorMotivo | AccionMotivo; valores: Record<string, string> } {
+  if (error instanceof ErrorMotivoDevolucion) return { clave: error.codigo, valores: error.valores };
+  return { clave: accion, valores: {} };
+}
+
 export class ReturnReasonsService {
   private static getOrganizationId(): number {
     const org = obtenerOrganizacionActiva();
@@ -100,7 +130,7 @@ export class ReturnReasonsService {
         .single();
 
       if (existing) {
-        throw new Error(`Ya existe un motivo con el código "${data.code}"`);
+        throw new ErrorMotivoDevolucion('codigoDuplicado', `Ya existe un motivo con el código "${data.code}"`, { codigo: data.code });
       }
 
       const insertData = {
@@ -150,11 +180,11 @@ export class ReturnReasonsService {
           .single();
 
         if (existing) {
-          throw new Error(`Ya existe un motivo con el código "${data.code}"`);
+          throw new ErrorMotivoDevolucion('codigoDuplicado', `Ya existe un motivo con el código "${data.code}"`, { codigo: data.code });
         }
       }
 
-      const updateData: any = { ...data };
+      const updateData: UpdateReturnReasonData = { ...data };
       if (data.code) {
         updateData.code = data.code.toUpperCase();
       }
@@ -194,7 +224,7 @@ export class ReturnReasonsService {
         .limit(1);
 
       if (usedInReturns && usedInReturns.length > 0) {
-        throw new Error('No se puede eliminar el motivo porque está siendo usado en devoluciones existentes. Puede desactivarlo en su lugar.');
+        throw new ErrorMotivoDevolucion('enUso', 'No se puede eliminar el motivo porque está siendo usado en devoluciones existentes. Puede desactivarlo en su lugar.');
       }
 
       const { error } = await supabase
@@ -221,7 +251,7 @@ export class ReturnReasonsService {
       const original = await this.getById(id);
       
       if (!original) {
-        throw new Error('Motivo no encontrado');
+        throw new ErrorMotivoDevolucion('noEncontrado', 'Motivo no encontrado');
       }
 
       // Generar nuevo código
@@ -250,7 +280,7 @@ export class ReturnReasonsService {
       const reason = await this.getById(id);
       
       if (!reason) {
-        throw new Error('Motivo no encontrado');
+        throw new ErrorMotivoDevolucion('noEncontrado', 'Motivo no encontrado');
       }
 
       return this.update(id, { is_active: !reason.is_active });
@@ -285,16 +315,18 @@ export class ReturnReasonsService {
   /**
    * Importar motivos desde CSV/JSON
    */
-  static async importFromData(data: CreateReturnReasonData[]): Promise<{ success: number; errors: string[] }> {
-    const errors: string[] = [];
+  static async importFromData(
+    data: CreateReturnReasonData[],
+  ): Promise<{ success: number; errors: { code: string; error: unknown }[] }> {
+    const errors: { code: string; error: unknown }[] = [];
     let success = 0;
 
     for (const item of data) {
       try {
         await this.create(item);
         success++;
-      } catch (error: any) {
-        errors.push(`${item.code}: ${error.message}`);
+      } catch (error) {
+        errors.push({ code: item.code, error });
       }
     }
 

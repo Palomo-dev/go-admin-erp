@@ -1,6 +1,7 @@
 'use client';
  
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -28,6 +29,7 @@ import {
  
 export default function FacturacionElectronicaPage() {
   const { toast } = useToast();
+  const t = useTranslations('facturacionElectronica.envios');
   const [organizationId, setOrganizationId] = useState<number>(0);
  
   // Estados de datos
@@ -78,12 +80,12 @@ export default function FacturacionElectronicaPage() {
     } catch (error) {
       console.error('Error:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los jobs de facturación',
+        title: t('toast.errorTitulo'),
+        description: t('toast.errorCarga'),
         variant: 'destructive',
       });
     }
-  }, [organizationId, statusFilter, page, toast]);
+  }, [organizationId, statusFilter, page, toast, t]);
  
   const loadStats = useCallback(async () => {
     if (!organizationId) return;
@@ -137,8 +139,8 @@ export default function FacturacionElectronicaPage() {
     await Promise.all([loadJobs(), loadStats()]);
     setIsRefreshing(false);
     toast({
-      title: 'Actualizado',
-      description: 'Los datos se han actualizado correctamente',
+      title: t('toast.actualizadoTitulo'),
+      description: t('toast.actualizadoDescripcion'),
     });
   };
  
@@ -153,16 +155,16 @@ export default function FacturacionElectronicaPage() {
       if (!response.ok) throw new Error('Error reintentando job');
  
       toast({
-        title: 'Reintento programado',
-        description: 'El job se ha marcado para reintento',
+        title: t('toast.reintentoTitulo'),
+        description: t('toast.reintentoDescripcion'),
       });
  
       loadJobs();
       loadStats();
-    } catch (error) {
+    } catch {
       toast({
-        title: 'Error',
-        description: 'No se pudo programar el reintento',
+        title: t('toast.errorTitulo'),
+        description: t('toast.errorReintento'),
         variant: 'destructive',
       });
     }
@@ -177,16 +179,16 @@ export default function FacturacionElectronicaPage() {
       if (!response.ok) throw new Error('Error cancelando job');
  
       toast({
-        title: 'Job cancelado',
-        description: 'El job se ha cancelado correctamente',
+        title: t('toast.canceladoTitulo'),
+        description: t('toast.canceladoDescripcion'),
       });
  
       loadJobs();
       loadStats();
-    } catch (error) {
+    } catch {
       toast({
-        title: 'Error',
-        description: 'No se pudo cancelar el job',
+        title: t('toast.errorTitulo'),
+        description: t('toast.errorCancelar'),
         variant: 'destructive',
       });
     }
@@ -201,15 +203,18 @@ export default function FacturacionElectronicaPage() {
     try {
       const factusNumber = job.response_payload?.data?.number;
       const invoiceNumber = factusNumber || job.invoice?.number;
-      if (!invoiceNumber) {
-        throw new Error('No hay número de factura disponible');
+      // El servidor resuelve el número DIAN a partir de la factura (GO-sec):
+      // se envía el id de la factura, nunca un número.
+      const invoiceId = job.invoice_id || job.invoice?.id;
+      if (!invoiceId) {
+        throw new Error(t('toast.sinFactura'));
       }
- 
+
       const response = await fetch(
-        `/api/factus/download?type=${type}&invoiceNumber=${invoiceNumber}`
+        `/api/factus/download?type=${type}&invoiceId=${encodeURIComponent(invoiceId)}`
       );
  
-      if (!response.ok) throw new Error(`Error descargando ${type.toUpperCase()}`);
+      if (!response.ok) throw new Error(t('toast.errorDescarga', { tipo: type.toUpperCase() }));
  
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -222,13 +227,13 @@ export default function FacturacionElectronicaPage() {
       URL.revokeObjectURL(url);
  
       toast({
-        title: 'Descarga completada',
-        description: `El archivo ${type.toUpperCase()} se ha descargado`,
+        title: t('toast.descargaTitulo'),
+        description: t('toast.descargaDescripcion', { tipo: type.toUpperCase() }),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: 'Error',
-        description: error.message || `No se pudo descargar el ${type.toUpperCase()}`,
+        title: t('toast.errorTitulo'),
+        description: (error instanceof Error && error.message) || t('toast.noDescargado', { tipo: type.toUpperCase() }),
         variant: 'destructive',
       });
     }
@@ -256,16 +261,17 @@ export default function FacturacionElectronicaPage() {
           <Link 
             href="/app/finanzas"
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label={t('volver')}
           >
             <ChevronLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Zap className="h-7 w-7 text-blue-600 dark:text-blue-400" />
-              Facturación Electrónica
+              {t('titulo')}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Monitoreo y gestión de facturas electrónicas DIAN
+              {t('subtitulo')}
             </p>
           </div>
         </div>
@@ -279,12 +285,12 @@ export default function FacturacionElectronicaPage() {
             className="h-9"
           >
             <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
-            Actualizar
+            {t('actualizar')}
           </Button>
           <Link href="/app/finanzas/facturacion-electronica/configuracion">
             <Button variant="outline" size="sm" className="h-9">
               <Settings className="h-4 w-4 mr-2" />
-              Configuración
+              {t('configuracion')}
             </Button>
           </Link>
           <a
@@ -294,7 +300,7 @@ export default function FacturacionElectronicaPage() {
             className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
           >
             <ExternalLink className="h-4 w-4" />
-            Docs API
+            {t('docsApi')}
           </a>
         </div>
       </div>
@@ -308,7 +314,7 @@ export default function FacturacionElectronicaPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <FileCheck className="h-5 w-5 text-blue-600" />
-              Cola de Facturación Electrónica
+              {t('cola')}
             </CardTitle>
  
             <JobFilters
@@ -338,7 +344,7 @@ export default function FacturacionElectronicaPage() {
           {total > pageSize && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t dark:border-gray-700">
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Mostrando {page * pageSize + 1} - {Math.min((page + 1) * pageSize, total)} de {total}
+                {t('mostrando', { desde: page * pageSize + 1, hasta: Math.min((page + 1) * pageSize, total), total })}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -347,7 +353,7 @@ export default function FacturacionElectronicaPage() {
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
                 >
-                  Anterior
+                  {t('anterior')}
                 </Button>
                 <Button
                   variant="outline"
@@ -355,7 +361,7 @@ export default function FacturacionElectronicaPage() {
                   onClick={() => setPage((p) => p + 1)}
                   disabled={(page + 1) * pageSize >= total}
                 >
-                  Siguiente
+                  {t('siguiente')}
                 </Button>
               </div>
             </div>

@@ -18,12 +18,11 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from '@/components/ui/use-toast';
 import { CalendarIcon, Plus, Trash2, Loader2, ArrowLeft, User, Percent } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/utils/Utils';
-import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-import { toPlainDate } from '@/lib/utils/timezone';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { diaCalendarioADate, dateADiaCalendario } from './formDates';
 import { opportunitiesService } from './opportunitiesService';
 import { Pipeline, Stage, Customer, CreateOpportunityInput, Opportunity } from './types';
 import { CustomerSearchSelect } from './CustomerSearchSelect';
@@ -43,6 +42,16 @@ interface OpportunityFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   hideHeader?: boolean;
+}
+
+/** Miembro de la organización con su perfil embebido (objeto o arreglo). */
+interface PerfilMiembro {
+  first_name: string | null;
+  last_name: string | null;
+}
+interface MiembroConPerfiles {
+  user_id: string;
+  profiles: PerfilMiembro | PerfilMiembro[] | null;
 }
 
 interface ProductLine {
@@ -69,12 +78,30 @@ interface CustomLine {
   unit_price: number;
 }
 
+/** Etiquetas conocidas; una moneda que no esté aquí se muestra por su código. */
+const NOMBRE_MONEDA: Record<string, string> = {
+  COP: 'Peso Colombiano',
+  USD: 'Dólar',
+  EUR: 'Euro',
+  MXN: 'Peso Mexicano',
+};
+
+/** Milisegundos de espera antes de buscar clientes contra el servidor. */
+const DEBOUNCE_BUSQUEDA_MS = 300;
+
 export function OpportunityForm({ opportunity, initialPipelineId, initialStageId, initialCustomerId, onSuccess, onCancel, hideHeader }: OpportunityFormProps) {
-  const { timezone } = useOrgTimezone();
+  // Fechas: SIEMPRE por la capa canónica. `formatPlain` para la columna `date`
+  // (no convierte), `formatDate`/`toInstant` para el `timestamptz`.
+  const { formatPlain, toDate, toInstant } = useFormatDate();
+  // Moneda base de la organización (`organization_currencies.is_base`), por el
+  // mismo hook que ya usan comisiones, inventario y cuotas. Nunca un literal.
+  // `resuelta` es false mientras `code` es el marcador inicial: hasta entonces
+  // el formulario no toma la moneda base como valor por defecto.
+  const { code: monedaBase, resuelta: monedaResuelta, paraDocumento } = useMonedaOrganizacion();
   const router = useRouter();
   const isEditing = !!opportunity;
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Data para selects
@@ -90,9 +117,20 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
   const [customerId, setCustomerId] = useState(opportunity?.customer_id || initialCustomerId || '');
   const [name, setName] = useState(opportunity?.name || '');
   const [amount, setAmount] = useState(opportunity?.amount?.toString() || '');
-  const [currency, setCurrency] = useState(opportunity?.currency || 'COP');
-  const [expectedCloseDate, setExpectedCloseDate] = useState<Date | undefined>(
-    opportunity?.expected_close_date ? new Date(opportunity.expected_close_date) : undefined
+  // La moneda de una oportunidad que ya existe manda sobre cualquier defecto.
+  // En una nueva, el defecto es la moneda base de la organización y llega en el
+  // efecto de abajo (el hook resuelve de forma asíncrona).
+  const [currency, setCurrency] = useState(opportunity?.currency || '');
+  const [monedaTocada, setMonedaTocada] = useState(false);
+  /**
+   * Día calendario `YYYY-MM-DD` tal cual está en la columna `date`. Se guarda
+   * como cadena, no como `Date`, precisamente para que ningún paso lo convierta
+   * de zona horaria; el `Date` solo se construye para pintar el calendario.
+   */
+  const [expectedCloseDate, setExpectedCloseDate] = useState<string>(
+    opportunity?.expected_close_date
+      ? dateADiaCalendario(diaCalendarioADate(opportunity.expected_close_date))
+      : ''
   );
   const [productLines, setProductLines] = useState<ProductLine[]>([]);
   const [spaceLines, setSpaceLines] = useState<SpaceLine[]>([]);
@@ -101,23 +139,100 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
   // Estados para comisión
   const [salespersonId, setSalespersonId] = useState<string>(opportunity?.salesperson_id || '');
   const [commissionRate, setCommissionRate] = useState<number>(Number(opportunity?.commission_rate) || 0);
-  const [commissionType, setCommissionType] = useState<'salesperson' | 'intermediation_sale' | 'none'>(opportunity?.commission_type || 'salesperson');
+  const [commissionType] = useState<'salesperson' | 'intermediation_sale' | 'none'>(opportunity?.commission_type || 'salesperson');
   const [organizationMembers, setOrganizationMembers] = useState<{ id: string; name: string }[]>([]);
   const [membersError, setMembersError] = useState<string | null>(null);
 
   // Campos nuevos: source, vertical, proximo contacto
   const [source, setSource] = useState<string>(opportunity?.source || '');
   const [verticalId, setVerticalId] = useState<string>(opportunity?.vertical_id || '');
+  /**
+   * `next_contact_at` SÍ es `timestamptz`: el valor de la base se traduce al día
+   * de la organización para enseñarlo, y al guardar se vuelve a convertir en un
+   * instante con el offset real (`toInstant`). Guardarlo como `YYYY-MM-DD`
+   * desnudo lo dejaba en medianoche UTC, o sea el día anterior en Bogotá.
+   */
   const [nextContactAt, setNextContactAt] = useState<string>(
-    opportunity?.next_contact_at
-      ? toPlainDate(new Date(opportunity.next_contact_at), timezone)
-      : ''
+    opportunity?.next_contact_at ? toDate(new Date(opportunity.next_contact_at)) : ''
   );
   const [verticals, setVerticals] = useState<{ id: string; name: string }[]>([]);
 
+  // Selector de clientes contra el servidor (encargo: organizaciones grandes).
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
+  const [customerSearchError, setCustomerSearchError] = useState<string | null>(null);
+
   useEffect(() => {
     loadInitialData();
+    // Carga inicial única (comportamiento previo).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Moneda por defecto = moneda base de la organización. Solo se aplica al
+  // crear y mientras el usuario no haya elegido otra.
+  useEffect(() => {
+    if (isEditing || monedaTocada) return;
+    if (monedaResuelta && monedaBase) setCurrency(monedaBase);
+  }, [monedaBase, monedaResuelta, isEditing, monedaTocada]);
+
+  // La lista siempre contiene la moneda base y la de la oportunidad, aunque no
+  // estén en el catálogo corto: si no, el selector se vería vacío.
+  const monedasDisponibles = Array.from(
+    new Set([monedaResuelta ? monedaBase : null, opportunity?.currency, currency, 'USD', 'EUR'].filter(Boolean) as string[]),
+  );
+  /** Importes del formulario en la moneda elegida (o la base de la organización). */
+  const formatearDoc = (valor: number) => formatMoneda(valor, paraDocumento(currency));
+
+  /**
+   * Búsqueda de clientes CONTRA EL SERVIDOR con debounce. `getCustomers()`
+   * traía la organización entera y PostgREST corta en 1.000 filas: hay 4
+   * organizaciones por encima (la mayor, ~18.000 clientes), así que el filtrado
+   * en memoria no veía al resto. El entrecomillado del `.or()` lo hace
+   * `ilikeAnyOf` dentro del servicio.
+   */
+  useEffect(() => {
+    const termino = customerSearch.trim();
+    if (!termino) {
+      setIsSearchingCustomers(false);
+      setCustomerSearchError(null);
+      return;
+    }
+
+    let cancelado = false;
+    setIsSearchingCustomers(true);
+    setCustomerSearchError(null);
+
+    const temporizador = setTimeout(() => {
+      opportunitiesService
+        .searchCustomers(termino)
+        .then((encontrados) => {
+          if (cancelado) return;
+          // El cliente ya elegido se conserva en la lista: si no, el selector
+          // se quedaría sin poder pintar su nombre mientras se busca otro.
+          const seleccionado = customers.find((c) => c.id === customerId);
+          const mezcla =
+            seleccionado && !encontrados.some((c) => c.id === seleccionado.id)
+              ? [seleccionado, ...encontrados]
+              : encontrados;
+          setCustomers(mezcla);
+        })
+        .catch((e) => {
+          if (cancelado) return;
+          logError('[OpportunityForm] buscar clientes', e);
+          setCustomerSearchError(describeError(e));
+        })
+        .finally(() => {
+          if (!cancelado) setIsSearchingCustomers(false);
+        });
+    }, DEBOUNCE_BUSQUEDA_MS);
+
+    return () => {
+      cancelado = true;
+      clearTimeout(temporizador);
+    };
+    // `customers`/`customerId` se leen dentro, no deben reiniciar la búsqueda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerSearch]);
 
   // Cargar verticales desde verticalsService (con fallback silencioso)
   useEffect(() => {
@@ -149,7 +264,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
         if (error) throw error;
         setMembersError(null);
         // El embebido a-uno llega como objeto; el array se acepta por compatibilidad.
-        const formatted = (members || []).map((m: any) => {
+        const formatted = ((members || []) as unknown as MiembroConPerfiles[]).map((m) => {
           const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
           return {
             id: m.user_id,
@@ -170,12 +285,14 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
     if (pipelineId) {
       loadStages(pipelineId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pipelineId]);
 
   useEffect(() => {
     if (opportunity?.id) {
       loadOpportunityRelations();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opportunity?.id]);
 
   const loadInitialData = async () => {
@@ -184,16 +301,29 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
 
     // Cargar pipelines y customers primero (son los más urgentes para el form)
     try {
-      const [pipelinesResult, customersResult] = await Promise.allSettled([
+      // Clientes: solo una primera página. El resto llega por búsqueda contra
+      // el servidor (`searchCustomers`), no trayendo la organización entera.
+      const [pipelinesResult, customersResult, seleccionadoResult] = await Promise.allSettled([
         opportunitiesService.getPipelines(),
-        opportunitiesService.getCustomers(),
+        opportunitiesService.searchCustomers(''),
+        customerId
+          ? opportunitiesService.getCustomerDetails(customerId)
+          : Promise.resolve(null),
       ]);
 
       const pipelinesData = pipelinesResult.status === 'fulfilled' ? pipelinesResult.value : [];
       const customersData = customersResult.status === 'fulfilled' ? customersResult.value : [];
+      const seleccionado =
+        seleccionadoResult.status === 'fulfilled' ? seleccionadoResult.value : null;
 
       setPipelines(pipelinesData);
-      setCustomers(customersData);
+      // El cliente ya vinculado tiene que estar en la lista aunque no entre en
+      // la primera página: si no, el selector enseñaría «Sin cliente».
+      setCustomers(
+        seleccionado && !customersData.some((c) => c.id === seleccionado.id)
+          ? [seleccionado as Customer, ...customersData]
+          : customersData,
+      );
 
       // Solo establecer pipeline por defecto si no hay uno inicial
       if (pipelinesData.length > 0 && !pipelineId && !initialPipelineId) {
@@ -245,7 +375,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
       // Cargar espacios
       const spacesData = await opportunitiesService.getOpportunitySpaces(opportunity.id);
       setSpaceLines(
-        spacesData.map((s: any) => ({
+        spacesData.map((s) => ({
           id: s.id,
           space_id: s.space_id,
           space_name: s.space?.label || 'Espacio',
@@ -269,7 +399,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
     }
   };
 
-  const updateProductLine = (index: number, field: keyof ProductLine, value: any) => {
+  const updateProductLine = (index: number, field: keyof ProductLine, value: ProductLine[keyof ProductLine]) => {
     const updated = [...productLines];
     updated[index] = { ...updated[index], [field]: value };
 
@@ -315,7 +445,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
     ]);
   };
 
-  const updateSpaceLine = (index: number, field: keyof SpaceLine, value: any) => {
+  const updateSpaceLine = (index: number, field: keyof SpaceLine, value: SpaceLine[keyof SpaceLine]) => {
     const updated = [...spaceLines];
     updated[index] = { ...updated[index], [field]: value };
 
@@ -343,7 +473,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
     ]);
   };
 
-  const updateCustomLine = (index: number, field: keyof CustomLine, value: any) => {
+  const updateCustomLine = (index: number, field: keyof CustomLine, value: CustomLine[keyof CustomLine]) => {
     const updated = [...customLines];
     updated[index] = { ...updated[index], [field]: value };
     setCustomLines(updated);
@@ -372,8 +502,23 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
       return;
     }
 
+    // Sin moneda base resuelta no se inventa un literal: se pide elegir.
+    if (!currency) {
+      toast({
+        title: 'Falta la moneda',
+        description: 'La organización no tiene moneda base configurada: elige una moneda.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSaving(true);
     try {
+      // `expected_close_date` es `date`: viaja el día calendario tal cual.
+      // `next_contact_at` es `timestamptz`: el día elegido se convierte en un
+      // instante con el offset real de la organización.
+      const cierreEsperado = expectedCloseDate || undefined;
+      const proximoContacto = nextContactAt ? toInstant(nextContactAt) : undefined;
       const totalAmount = productLines.length > 0 ? calculateTotal() : parseFloat(amount) || 0;
 
       if (isEditing && opportunity) {
@@ -383,15 +528,13 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
           customer_id: customerId || undefined,
           amount: totalAmount,
           currency,
-          expected_close_date: expectedCloseDate
-            ? format(expectedCloseDate, 'yyyy-MM-dd')
-            : undefined,
+          expected_close_date: cierreEsperado,
           salesperson_id: salespersonId && salespersonId !== '__none__' ? salespersonId : null,
           commission_rate: commissionRate || 0,
           commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none',
           source: source || undefined,
           vertical_id: verticalId || undefined,
-          next_contact_at: nextContactAt || undefined,
+          next_contact_at: proximoContacto,
           products: productLines
             .filter((p) => p.product_id > 0)
             .map((p) => ({
@@ -426,15 +569,13 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
           name,
           amount: totalAmount,
           currency,
-          expected_close_date: expectedCloseDate
-            ? format(expectedCloseDate, 'yyyy-MM-dd')
-            : undefined,
+          expected_close_date: cierreEsperado,
           salesperson_id: salespersonId && salespersonId !== '__none__' ? salespersonId : undefined,
           commission_rate: commissionRate || 0,
           commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none',
           source: source || undefined,
           vertical_id: verticalId || undefined,
-          next_contact_at: nextContactAt || undefined,
+          next_contact_at: proximoContacto,
           products: productLines
             .filter((p) => p.product_id > 0)
             .map((p) => ({
@@ -585,6 +726,9 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                   onSelect={setCustomerId}
                   label="Cliente"
                   placeholder="Buscar cliente..."
+                  onSearchChange={setCustomerSearch}
+                  isSearching={isSearchingCustomers}
+                  searchError={customerSearchError}
                 />
               </div>
 
@@ -656,16 +800,15 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {expectedCloseDate
-                        ? format(expectedCloseDate, 'dd/MM/yyyy', { locale: es })
-                        : 'Seleccionar fecha'}
+                      {/* Columna `date`: se pinta con formatPlain, que NO convierte de zona. */}
+                      {expectedCloseDate ? formatPlain(expectedCloseDate) : 'Seleccionar fecha'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                     <Calendar
                       mode="single"
-                      selected={expectedCloseDate}
-                      onSelect={setExpectedCloseDate}
+                      selected={diaCalendarioADate(expectedCloseDate)}
+                      onSelect={(d: Date | undefined) => setExpectedCloseDate(dateADiaCalendario(d))}
                       initialFocus
                     />
                   </PopoverContent>
@@ -693,14 +836,22 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                   <Label htmlFor="currency" className="text-gray-700 dark:text-gray-300">
                     Moneda
                   </Label>
-                  <Select value={currency} onValueChange={setCurrency}>
+                  <Select
+                    value={currency}
+                    onValueChange={(v) => {
+                      setMonedaTocada(true);
+                      setCurrency(v);
+                    }}
+                  >
                     <SelectTrigger className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700">
-                      <SelectValue />
+                      <SelectValue placeholder="Selecciona una moneda" />
                     </SelectTrigger>
                     <SelectContent className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
-                      <SelectItem value="COP">COP - Peso Colombiano</SelectItem>
-                      <SelectItem value="USD">USD - Dólar</SelectItem>
-                      <SelectItem value="EUR">EUR - Euro</SelectItem>
+                      {monedasDisponibles.map((codigo) => (
+                        <SelectItem key={codigo} value={codigo}>
+                          {NOMBRE_MONEDA[codigo] ? `${codigo} - ${NOMBRE_MONEDA[codigo]}` : codigo}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -765,7 +916,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                     Comisión estimada ({commissionRate}%):
                   </span>
                   <span className="font-semibold text-blue-700 dark:text-blue-400">
-                    {formatCurrency(
+                    {formatearDoc(
                       (productLines.length > 0 || spaceLines.length > 0 || customLines.length > 0
                         ? calculateTotal()
                         : parseFloat(amount) || 0) * commissionRate / 100
@@ -785,7 +936,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
               <CardTitle className="text-gray-900 dark:text-white text-sm">Productos</CardTitle>
               <ProductSearchDialog
                 mode="sale"
-                currency={currency}
+                currency={currency || monedaBase}
                 onProductSelect={handleProductSelect}
               />
             </CardHeader>
@@ -842,7 +993,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                       </div>
                     </div>
                     <div className="text-right text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Subtotal: {formatCurrency(line.quantity * line.unit_price)}
+                      Subtotal: {formatearDoc(line.quantity * line.unit_price)}
                     </div>
                   </div>
                 ))
@@ -923,7 +1074,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                       </div>
                     </div>
                     <div className="text-right text-sm font-medium text-purple-700 dark:text-purple-300">
-                      Subtotal: {formatCurrency(line.nights * line.unit_price)}
+                      Subtotal: {formatearDoc(line.nights * line.unit_price)}
                     </div>
                   </div>
                 ))
@@ -1002,7 +1153,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                       </div>
                     </div>
                     <div className="text-right text-sm font-medium text-amber-700 dark:text-amber-300">
-                      Subtotal: {formatCurrency(line.quantity * line.unit_price)}
+                      Subtotal: {formatearDoc(line.quantity * line.unit_price)}
                     </div>
                   </div>
                 ))
@@ -1017,7 +1168,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                 <div className="flex justify-between items-center text-lg font-bold">
                   <span className="text-blue-700 dark:text-blue-300">Total General:</span>
                   <span className="text-blue-900 dark:text-blue-100">
-                    {formatCurrency(calculateTotal())}
+                    {formatearDoc(calculateTotal())}
                   </span>
                 </div>
               </CardContent>

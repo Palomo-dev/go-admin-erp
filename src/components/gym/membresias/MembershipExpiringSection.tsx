@@ -22,12 +22,12 @@ export function MembershipExpiringSection({
   isLoading,
   onRenew 
 }: MembershipExpiringSectionProps) {
-  const { formatDate } = useFormatDate();
+  const { formatDate, timezone } = useFormatDate();
   const expiringMemberships = React.useMemo(() => {
     return memberships
       .filter(m => {
         if (m.status !== 'active') return false;
-        const days = getDaysRemaining(m.end_date);
+        const days = getDaysRemaining(m.end_date, timezone);
         return days >= 0 && days <= 7;
       })
       .sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime())
@@ -64,7 +64,7 @@ export function MembershipExpiringSection({
       <CardContent>
         <div className="space-y-2">
           {expiringMemberships.map(membership => {
-            const daysRemaining = getDaysRemaining(membership.end_date);
+            const daysRemaining = getDaysRemaining(membership.end_date, timezone);
             const customer = membership.customers;
             const plan = membership.membership_plans;
 

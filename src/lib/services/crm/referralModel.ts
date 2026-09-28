@@ -6,6 +6,7 @@
 
 import { REFERRAL_STATUSES, type ReferralStatus } from './referralStateMachine';
 import type { ReferralView } from './referralsService';
+import { mensajeErrorTelefono } from '@/lib/utils/telefono';
 
 export interface ReferralListFilters {
   status: ReferralStatus | 'all';
@@ -65,6 +66,8 @@ export function validateRegisterForm(form: RegisterReferralForm): FormError[] {
   else if (name.length > REFERRED_NAME_MAX) errors.push({ field: 'referred_name', message: `Máximo ${REFERRED_NAME_MAX} caracteres` });
   const email = form.referred_email.trim();
   if (email && !EMAIL_RE.test(email)) errors.push({ field: 'referred_email', message: 'El correo no tiene un formato válido' });
+  const phoneError = mensajeErrorTelefono(form.referred_phone);
+  if (phoneError) errors.push({ field: 'referred_phone', message: phoneError });
   return errors;
 }
 

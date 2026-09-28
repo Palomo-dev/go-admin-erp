@@ -31,7 +31,12 @@ export const DRAIN_SCHEDULE = `*/${DRAIN_INTERVAL_MIN} * * * *`;
  * 08:30 UTC = 03:30 Bogotá (Vercel y pg_cron usan UTC).
  */
 export const VERCEL_SCHEDULE_KINDS: Readonly<Record<string, readonly ScheduledKind[]>> = {
-  '*/5 * * * *': ['campaign_batch'],
+  // `voice_campaigns` (F6) viaja en el cron que YA existe: no se añade una
+  // entrada nueva a `crons` de `vercel.json` (el número de crons está limitado)
+  // y el drenaje de `campaign_batch` no se toca. Es una `ScheduledTask`, así que
+  // `splitScheduledKinds` la aparta de los kinds de cola: el runner no intenta
+  // drenar nada con ese nombre.
+  '*/5 * * * *': ['campaign_batch', 'voice_campaigns'],
   '30 8 * * *': ['recording_cleanup', 'maintenance', 'health_recalculate', 'renewals_sync'],
 };
 

@@ -1,0 +1,216 @@
+import { existsSync } from 'fs';
+import { join } from 'path';
+import { Target } from 'lucide-react';
+import { CATALOGO_NAV, moduloPorCodigo } from '../catalog';
+import { filtrarNavegacion, rutaActiva, type AccesoNav } from '../filtrar';
+
+const todosLosModulos = CATALOGO_NAV.map((m) => m.codigo).filter((c): c is string => c !== null);
+
+function acceso(parcial: Partial<AccesoNav> = {}): AccesoNav {
+  return {
+    modulosActivos: todosLosModulos,
+    paginasOcultas: {},
+    modulosCargo: null,
+    paginasCargo: null,
+    capacidades: new Set(),
+    ...parcial,
+  };
+}
+
+function modulosVisibles(a: AccesoNav): string[] {
+  return filtrarNavegacion(a).flatMap((s) => s.modulos.map((m) => m.modulo.id));
+}
+
+describe('catálogo de navegación', () => {
+  test('cada módulo con código aparece una sola vez', () => {
+    const codigos = todosLosModulos;
+    expect(new Set(codigos).size).toBe(codigos.length);
+  });
+
+  test('ningún href de página se repite entre módulos', () => {
+    const hrefs = CATALOGO_NAV.flatMap((m) => m.paginas.map((p) => p.href));
+    const repetidos = hrefs.filter((h, i) => hrefs.indexOf(h) !== i);
+    expect(repetidos).toEqual([]);
+  });
+
+  test('toda página vive bajo una de las rutas de su módulo', () => {
+    const fuera = CATALOGO_NAV.flatMap((m) =>
+      m.paginas
+        .filter((p) => !m.rutas.some((r) => p.href === r || p.href.startsWith(r + '/')))
+        .map((p) => `${m.id}: ${p.href}`)
+    );
+    expect(fuera).toEqual([]);
+  });
+
+  test('el CRM trae todas sus páginas de crmNav (antes el panel tenía 10 y el sidebar 16)', () => {
+    expect(moduloPorCodigo('crm')!.paginas.length).toBeGreaterThanOrEqual(16);
+  });
+});
+
+describe('CRM: módulo propio del menú lateral', () => {
+  const crm = moduloPorCodigo('crm')!;
+  const existe = (href: string) => existsSync(join(process.cwd(), 'src/app', href.replace(/^\//, ''), 'page.tsx'));
+
+  test('es un ítem propio de la sección Ventas, con su ícono, y no una página de Clientes', () => {
+    expect(crm).toMatchObject({ id: 'crm', etiqueta: 'crm', seccion: 'ventas', rutas: ['/app/crm'], icono: Target });
+    expect(moduloPorCodigo('clientes')!.paginas.some((p) => p.href.startsWith('/app/crm'))).toBe(false);
+  });
+
+  test('trae las páginas del CRM que existen en src/app/app/crm (pipeline, oportunidades, leads, actividades, clientes, identidades…)', () => {
+    const hrefs = crm.paginas.map((p) => p.href);
+    for (const seccion of ['pipeline', 'oportunidades', 'leads', 'actividades', 'clientes', 'identidades', 'llamadas', 'campanas']) {
+      expect(hrefs).toContain(`/app/crm/${seccion}`);
+    }
+    expect(hrefs.filter((h) => !existe(h))).toEqual([]);
+  });
+
+  test('toda página del CRM tiene grupo y los grupos van seguidos (el panel agrupa en orden)', () => {
+    expect(crm.paginas.filter((p) => !p.grupo).map((p) => p.href)).toEqual([]);
+    const orden = crm.paginas.map((p) => p.grupo);
+    const cerrados = new Set<string>();
+    const saltados = orden.filter((g, i) => {
+      if (i > 0 && orden[i - 1] !== g) cerrados.add(orden[i - 1]!);
+      return cerrados.has(g!);
+    });
+    expect(saltados).toEqual([]);
+    expect(new Set(orden).size).toBeGreaterThan(1);
+  });
+
+  test('se ve solo si la organización tiene el módulo crm (plan), y abre su panel de submenú', () => {
+    const sinCrm = modulosVisibles(acceso({ modulosActivos: todosLosModulos.filter((c) => c !== 'crm') }));
+    expect(sinCrm).not.toContain('crm');
+    expect(sinCrm).toContain('clientes');
+
+    const ventas = filtrarNavegacion(acceso()).find((s) => s.codigo === 'ventas')!;
+    const visible = ventas.modulos.find((m) => m.modulo.id === 'crm')!;
+    expect(visible.tieneSubmenu).toBe(true);
+    // El enlace del módulo sigue siendo su primera página (antes también «Clientes»).
+    expect(visible.href).toBe('/app/crm/clientes');
+  });
+
+  test('una ruta de detalle del CRM marca el módulo CRM, no Clientes', () => {
+    expect(rutaActiva('/app/crm/oportunidades/123')?.modulo.id).toBe('crm');
+    expect(rutaActiva('/app/crm/clientes/45')?.pagina?.href).toBe('/app/crm/clientes');
+  });
+});
+
+describe('filtrarNavegacion', () => {
+  test('Inicio siempre se ve, aunque la organización no tenga ningún módulo', () => {
+    expect(modulosVisibles(acceso({ modulosActivos: [] }))).toEqual(['inicio']);
+  });
+
+  test('un módulo que la organización no tiene activo no aparece', () => {
+    const visibles = modulosVisibles(acceso({ modulosActivos: ['pos', 'inventory'] }));
+    expect(visibles).toEqual(expect.arrayContaining(['inicio', 'pos', 'inventario']));
+    expect(visibles).not.toContain('finanzas');
+  });
+
+  test('el cargo puede ocultar un módulo activo', () => {
+    const visibles = modulosVisibles(acceso({ modulosCargo: ['pos'] }));
+    expect(visibles).toContain('pos');
+    expect(visibles).not.toContain('inventario');
+  });
+
+  test('solo las páginas marcadas is_active = false se ocultan', () => {
+    // La lista dice qué se ESCONDE, no qué se ve: se apagan todas menos dos.
+    const todasLasDePos = moduloPorCodigo('pos')!.paginas.map((p) => p.href);
+    const ocultas = todasLasDePos.filter((h) => h !== '/app/pos' && h !== '/app/pos/cajas');
+    const [ventas] = filtrarNavegacion(
+      acceso({ modulosActivos: ['pos'], paginasOcultas: { pos: ocultas } })
+    ).filter((s) => s.codigo === 'ventas');
+    const pos = ventas.modulos.find((m) => m.modulo.id === 'pos')!;
+    expect(pos.paginas.map((p) => p.href)).toEqual(['/app/pos', '/app/pos/cajas']);
+    expect(pos.tieneSubmenu).toBe(true);
+  });
+
+  test('con una sola página visible el módulo es un enlace directo a esa página', () => {
+    const ocultas = moduloPorCodigo('inventory')!
+      .paginas.map((p) => p.href)
+      .filter((h) => h !== '/app/inventario/stock');
+    const secciones = filtrarNavegacion(
+      acceso({ modulosActivos: ['inventory'], paginasOcultas: { inventory: ocultas } })
+    );
+    const inv = secciones.flatMap((s) => s.modulos).find((m) => m.modulo.id === 'inventario')!;
+    expect(inv.tieneSubmenu).toBe(false);
+    expect(inv.href).toBe('/app/inventario/stock');
+  });
+
+  test('los módulos de una sola página no se filtran por página (como el sidebar viejo)', () => {
+    const visibles = modulosVisibles(
+      acceso({ paginasCargo: ['/app/pos'], paginasOcultas: { clientes: ['/app/clientes'] } })
+    );
+    expect(visibles).toEqual(expect.arrayContaining(['clientes', 'reportes', 'configuracion']));
+  });
+
+  test('las páginas fuera del menú no se listan, pero siguen en el catálogo', () => {
+    const chat = filtrarNavegacion(acceso()).flatMap((s) => s.modulos).find((m) => m.modulo.id === 'chat')!;
+    expect(chat.paginas.map((p) => p.href)).not.toContain('/app/chat/ia/configuracion');
+    expect(moduloPorCodigo('chat')!.paginas.map((p) => p.href)).toContain('/app/chat/ia/configuracion');
+  });
+
+  test('un módulo sin ninguna página visible desaparece', () => {
+    const todasLasDeFinanzas = moduloPorCodigo('finance')!.paginas.map((p) => p.href);
+    const visibles = modulosVisibles(
+      acceso({ modulosActivos: ['finance'], paginasOcultas: { finance: todasLasDeFinanzas } })
+    );
+    expect(visibles).not.toContain('finanzas');
+  });
+
+  test('sin el permiso de gestionar notificaciones solo queda la bandeja, y el módulo entra directo a ella', () => {
+    const notif = filtrarNavegacion(acceso())
+      .flatMap((s) => s.modulos)
+      .find((m) => m.modulo.id === 'notificaciones')!;
+    expect(notif.paginas.map((p) => p.href)).toEqual(['/app/notificaciones/bandeja']);
+    expect(notif.href).toBe('/app/notificaciones/bandeja');
+  });
+
+  test('con el permiso se ven las siete páginas de notificaciones', () => {
+    const notif = filtrarNavegacion(acceso({ capacidades: new Set(['gestionarNotificaciones']) }))
+      .flatMap((s) => s.modulos)
+      .find((m) => m.modulo.id === 'notificaciones')!;
+    expect(notif.paginas).toHaveLength(7);
+    expect(notif.href).toBe('/app/notificaciones');
+  });
+
+  test('las secciones salen en el orden del diseño y sin secciones vacías', () => {
+    const codigos = filtrarNavegacion(acceso({ modulosActivos: ['pos', 'configuracion'] })).map((s) => s.codigo);
+    expect(codigos).toEqual(['principal', 'ventas', 'organizacion']);
+  });
+});
+
+describe('rutaActiva', () => {
+  test('gana la página más específica', () => {
+    expect(rutaActiva('/app/finanzas/contabilidad/asientos')?.pagina?.nombre).toBe('Asientos');
+    expect(rutaActiva('/app/finanzas/contabilidad')?.pagina?.nombre).toBe('Contabilidad');
+  });
+
+  test('un detalle dentro de una página marca esa página', () => {
+    const r = rutaActiva('/app/pos/ventas/abc-123');
+    expect(r?.modulo.id).toBe('pos');
+    expect(r?.pagina?.href).toBe('/app/pos/ventas');
+  });
+
+  test('la raíz del POS no se confunde con sus subpáginas', () => {
+    expect(rutaActiva('/app/pos')?.pagina?.href).toBe('/app/pos');
+    expect(rutaActiva('/app/pos/cajas')?.pagina?.href).toBe('/app/pos/cajas');
+  });
+
+  test('una ruta del módulo sin página propia activa el módulo sin página', () => {
+    const r = rutaActiva('/app/finanzas');
+    expect(r?.modulo.id).toBe('finanzas');
+    expect(r?.pagina).toBeNull();
+  });
+
+  test('una página fuera del menú resalta la página que la contiene', () => {
+    expect(rutaActiva('/app/chat/ia/configuracion')?.pagina?.href).toBe('/app/chat/ia');
+  });
+
+  test('/app/admin pertenece a Roles', () => {
+    expect(rutaActiva('/app/admin/usuarios')?.modulo.id).toBe('roles');
+  });
+
+  test('una ruta fuera del catálogo no activa nada', () => {
+    expect(rutaActiva('/app/perfil')).toBeNull();
+    expect(rutaActiva(null)).toBeNull();
+  });
+});

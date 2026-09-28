@@ -1,4 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/dateCore';
+import { getDayRange } from '@/lib/utils/dateRanges';
 
 export interface ParkingZone {
   id: string;
@@ -241,19 +244,27 @@ class ParkingService {
         throw new Error(`Error obteniendo estadísticas: ${error.message}`);
       }
 
-      const today = new Date().toISOString().split('T')[0];
-      
+      // `parking_sessions.exit_at` es **timestamptz**. Comparar por prefijo de
+      // cadena (`exit_at.startsWith(hoy)`) equivale a preguntar por el dia UTC:
+      // en Bogota, la caja de "hoy" empezaba a las 19:00 de ayer y se cortaba a
+      // las 18:59. Dos errores que se cancelaban (dia UTC contra prefijo UTC) y
+      // que dejan de cancelarse en cuanto uno de los dos lados se arregla.
+      const zona = await resolveTimezone(organizationId ?? 0, branchId ?? null);
+      const { start, end } = getDayRange(todayInTz(zona), zona);
+      const desde = new Date(start).getTime();
+      const hasta = new Date(end).getTime();
+      const salioHoy = (s: { exit_at?: string | null }): boolean => {
+        if (!s.exit_at) return false;
+        const t = new Date(s.exit_at).getTime();
+        return !isNaN(t) && t >= desde && t <= hasta;
+      };
+
       return {
         total_sessions: data?.length || 0,
         active_sessions: data?.filter(s => s.status === 'open').length || 0,
-        completed_today: data?.filter(s => 
-          s.status === 'closed' && 
-          s.exit_at?.startsWith(today)
-        ).length || 0,
-        revenue_today: data?.filter(s => 
-          s.status === 'closed' && 
-          s.exit_at?.startsWith(today)
-        ).reduce((sum, s) => sum + Number(s.amount || 0), 0) || 0,
+        completed_today: data?.filter(s => s.status === 'closed' && salioHoy(s)).length || 0,
+        revenue_today: data?.filter(s => s.status === 'closed' && salioHoy(s))
+          .reduce((sum, s) => sum + Number(s.amount || 0), 0) || 0,
       };
     } catch (error: any) {
       console.error('Error obteniendo estadísticas:', error.message || error);
@@ -836,6 +847,11 @@ class ParkingService {
    */
   async checkPlateHasActivePass(organizationId: number, plate: string): Promise<ParkingPass | null> {
     try {
+      // `parking_passes.end_date` es `date` y la tabla NO tiene `branch_id`:
+      // el abono es de la organizacion. Un pase que vence hoy debe seguir
+      // abriendo la talanquera hoy, y con el dia UTC dejaba de hacerlo a las
+      // 19:00 del dia anterior en Bogota.
+      const hoy = todayInTz(await resolveTimezone(organizationId));
       const { data, error } = await supabase
         .from('parking_pass_vehicles')
         .select(`
@@ -849,7 +865,7 @@ class ParkingService {
         .eq('vehicle.plate', plate.toUpperCase())
         .eq('pass.organization_id', organizationId)
         .eq('pass.status', 'active')
-        .gte('pass.end_date', new Date().toISOString().split('T')[0])
+        .gte('pass.end_date', hoy)
         .limit(1)
         .maybeSingle();
 

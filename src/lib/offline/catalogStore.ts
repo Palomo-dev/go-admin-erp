@@ -194,6 +194,8 @@ export interface CatalogPaymentMethod {
   is_active: boolean | null;
   settings: Record<string, unknown> | null;
   payment_methods: { name: string } | null;
+  /** Orden propio de la organización (el POS lo respeta también sin red). */
+  website_display_order?: number | null;
 }
 
 export interface CatalogOrganizationTax {
@@ -206,8 +208,12 @@ export interface CatalogOrganizationTax {
   is_default: boolean | null;
   is_active: boolean | null;
   tax_included: boolean | null;
+  /** Clase: 'tax' o 'withholding' (retención, no se cobra en la venta). Ausente en réplicas anteriores a la columna. */
+  kind?: string | null;
   created_at: string | null;
   updated_at: string | null;
+  /** Código de la plantilla (embebido al replicar): respaldo para distinguir retenciones (RETE_*) cuando falta `kind`. */
+  tax_templates?: { code: string | null } | null;
 }
 
 export interface CatalogProductTaxRelation {

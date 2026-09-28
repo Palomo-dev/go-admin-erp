@@ -134,6 +134,49 @@ export async function getQrSessionByReference(
 }
 
 /**
+ * Sesion QR que un webhook YA VERIFICADO puede tocar: la de `reference` creada
+ * con ESA conexion y en la organizacion de esa conexion.
+ *
+ * GO-sec (2026-09-24): los webhooks de Bre-B, Redeban y Bancolombia buscaban
+ * la sesion solo por `reference`. Una firma valida de la conexion A (la de
+ * cualquier organizacion que configure su propio secreto) podia marcar pagada
+ * la sesion de la organizacion B con solo conocer o adivinar la referencia
+ * (`POS-<timestamp>-<orgId>`); y con referencias repetidas entre
+ * organizaciones `maybeSingle` fallaba. La firma se verifica con el secreto de
+ * `connectionId`, asi que el alcance correcto es esa conexion.
+ *
+ * @returns La sesion, o null si la conexion no existe o la sesion no es suya.
+ */
+export async function getQrSessionForWebhook(
+  connectionId: string,
+  reference: string,
+): Promise<QrSession | null> {
+  if (!connectionId || !reference) return null;
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data: connection, error: connError } = await supabase
+      .from('integration_connections')
+      .select('id, organization_id')
+      .eq('id', connectionId)
+      .maybeSingle();
+    if (connError || !connection) return null;
+
+    const { data, error } = await supabase
+      .from('payment_qr_sessions')
+      .select('*')
+      .eq('organization_id', connection.organization_id)
+      .eq('integration_connection_id', connectionId)
+      .eq('reference', reference)
+      .maybeSingle();
+    if (error || !data) return null;
+    return data as QrSession;
+  } catch (err) {
+    console.error('[qrSessionService] Excepcion al buscar sesion QR del webhook:', err instanceof Error ? err.message : String(err));
+    return null;
+  }
+}
+
+/**
  * Actualiza el estado de una sesion QR.
  * @param id ID de la sesion
  * @param status Nuevo estado

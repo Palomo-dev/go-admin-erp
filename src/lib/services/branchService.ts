@@ -1,11 +1,13 @@
 import { supabase } from '@/lib/supabase/config';
 import { Branch, OpeningHours, DayHours } from '@/types/branch';
-import { GeocodingService } from './geocodingService';
+import { GeocodingService, type GeocodingError } from './geocodingService';
 import { validateWebIdentityFormat } from '@/lib/utils/webIdentityValidation';
+import { ORG_ADMIN_ROLE_IDS } from '@/lib/utils/orgAdmin';
 
 // Helper function to normalize opening hours format
-const normalizeOpeningHours = (openingHours: any): OpeningHours | null => {
-  if (!openingHours) return null;
+const normalizeOpeningHours = (entrada: unknown): OpeningHours | null => {
+  if (!entrada || typeof entrada !== 'object') return null;
+  const openingHours = entrada as Record<string, Partial<DayHours> | undefined>;
   
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const normalized: OpeningHours = {};
@@ -24,6 +26,15 @@ const normalizeOpeningHours = (openingHours: any): OpeningHours | null => {
   
   return normalized;
 };
+
+/** Perfil del gerente que trae `getBranchesWithManagers`. */
+export interface GerenteSucursal {
+  id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  avatar_url?: string | null;
+}
 
 export const branchService = {
   /**
@@ -108,16 +119,9 @@ export const branchService = {
       return { branches: all, canSelectAll: all.length > 1 };
     }
 
-    let isAdmin = member.is_super_admin === true;
-    if (!isAdmin && member.role_id) {
-      const { data: role } = await supabase
-        .from('roles')
-        .select('name')
-        .eq('id', member.role_id)
-        .maybeSingle();
-      const roleName = role?.name;
-      isAdmin = roleName === 'Super Admin' || roleName === 'Admin de organización';
-    }
+    // Regla 6: nunca por el nombre del rol. Mismo criterio que el servidor
+    // (`isOrgAdminLike`) y que `GET /api/me/capacidades`.
+    const isAdmin = member.is_super_admin === true || ORG_ADMIN_ROLE_IDS.includes(Number(member.role_id));
 
     if (isAdmin) {
       return { branches: all, canSelectAll: all.length > 1 };
@@ -128,9 +132,9 @@ export const branchService = {
       .select('branch_id')
       .eq('organization_member_id', member.id);
 
-    const allowedIds = new Set((assignments || []).map((a: any) => a.branch_id));
+    const allowedIds = new Set((assignments || []).map((a: { branch_id: number }) => a.branch_id));
     // Fail-open: sin asignaciones mostramos todas (coincide con RLS legacy)
-    const branches = allowedIds.size > 0 ? all.filter((b) => allowedIds.has(b.id)) : all;
+    const branches = allowedIds.size > 0 ? all.filter((b) => b.id != null && allowedIds.has(b.id)) : all;
 
     return { branches, canSelectAll: branches.length > 1 };
   },
@@ -240,12 +244,13 @@ export const branchService = {
       }
 
       return data;
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error in createBranch:', err);
-      if (err.message.includes('invalid input syntax for type uuid')) {
+      const mensaje = err instanceof Error ? err.message : '';
+      if (mensaje.includes('invalid input syntax for type uuid')) {
         throw new Error('Error: El ID del gerente debe ser un UUID válido o estar vacío');
       }
-      throw new Error(err.message || 'Error al crear la sucursal');
+      throw new Error(mensaje || 'Error al crear la sucursal');
     }
   },
 
@@ -285,7 +290,7 @@ export const branchService = {
     }
 
     // Format branch data - only include columns that exist in DB
-    const formattedBranch: any = {};
+    const formattedBranch: Record<string, unknown> = {};
     
     // Only include fields that are provided and exist in the database
     if (branch.name !== undefined) formattedBranch.name = branch.name;
@@ -635,7 +640,7 @@ export const branchService = {
   /**
    * Get branches with their manager information
    */
-  async getBranchesWithManagers(organizationId: number): Promise<(Branch & { manager?: any })[]> {
+  async getBranchesWithManagers(organizationId: number): Promise<(Branch & { manager?: GerenteSucursal | null })[]> {
     const { data, error } = await supabase
       .from('branches')
       .select(`
@@ -676,7 +681,7 @@ export const branchService = {
   async geocodeOrganizationBranches(
     organizationId: number,
     onProgress?: (current: number, total: number, branchName: string) => void
-  ): Promise<{ success: Branch[], errors: any[] }> {
+  ): Promise<{ success: Branch[], errors: GeocodingError[] }> {
     try {
       const branches = await this.getBranches(organizationId);
       const branchesWithoutCoords = branches.filter(b => !b.latitude || !b.longitude);

@@ -15,6 +15,7 @@ import {
   ForecastData,
   OpportunityProduct,
   OpportunityCustomLine,
+  OpportunitySpace,
   OpportunityTask,
   OpportunityNote,
   CustomerDetails,
@@ -25,6 +26,33 @@ import {
   normalizeTaskPriority,
   normalizeTaskStatus,
 } from '@/lib/services/crm/taskService';
+// Cerrar como ganada pasa por el MISMO PATCH del servidor que usan el detalle,
+// el drawer y el tablero. No hay una segunda implementación del cierre.
+import { requestStageChange } from '@/components/crm/pipeline/drawer/StageSelect';
+
+/** Fila de `organization_members` con el perfil embebido. */
+interface MiembroConPerfil {
+  user_id: string;
+  profiles: { first_name: string | null; last_name: string | null } | null;
+}
+
+/** Fila de `products` con precio e imagen embebidos (numeric llega como texto). */
+interface ProductoConPrecio {
+  id: number;
+  name: string;
+  sku: string | null;
+  product_prices: Array<{ price: number | string | null }> | null;
+  product_images: Array<{ storage_path: string | null }> | null;
+}
+
+/** Fila de `spaces` con su tipo embebido. */
+interface EspacioConTipo {
+  id: string;
+  label: string;
+  floor_zone?: string;
+  status: string;
+  space_types: { name: string; base_rate: number | string | null } | null;
+}
 
 class OpportunitiesService {
   private getOrganizationId(): number {
@@ -47,7 +75,7 @@ class OpportunitiesService {
         return [];
       }
       return data || [];
-    } catch (err) {
+    } catch {
       console.warn('Advertencia en getPipelines');
       return [];
     }
@@ -67,7 +95,7 @@ class OpportunitiesService {
         return [];
       }
       return data || [];
-    } catch (err) {
+    } catch {
       console.warn('Advertencia en getStages');
       return [];
     }
@@ -91,7 +119,7 @@ class OpportunitiesService {
         return [];
       }
       return data || [];
-    } catch (err) {
+    } catch {
       console.warn('Advertencia en getCustomers');
       return [];
     }
@@ -146,7 +174,7 @@ class OpportunitiesService {
       .eq('is_active', true);
 
     if (error) throw error;
-    return (data || []).map((m: any) => ({
+    return ((data || []) as unknown as MiembroConPerfil[]).map((m) => ({
       id: m.user_id,
       email: '',
       full_name: `${m.profiles?.first_name || ''} ${m.profiles?.last_name || ''}`.trim() || 'Usuario',
@@ -253,7 +281,9 @@ class OpportunitiesService {
         customer_id: input.customer_id || null,
         name: input.name,
         amount: input.amount,
-        currency: input.currency || 'COP',
+        // Sin moneda elegida, NULL: el trigger `trg_00_moneda_base_por_defecto`
+        // pone la moneda base de la organización.
+        currency: input.currency || null,
         expected_close_date: input.expected_close_date || null,
         status: 'open',
         created_by: userData.user?.id || null,
@@ -362,52 +392,107 @@ class OpportunitiesService {
 
     if (error) throw error;
 
-    // Sincronizar productos: eliminar los existentes y insertar los nuevos
+    // Sincronizar líneas. NUNCA se envía `total_price`: en las tres tablas es
+    // `GENERATED ALWAYS` y Postgres rechaza el insert con 428C9 (verificado por
+    // MCP el 2026-09-23). Antes ese error no se miraba y las líneas quedaban
+    // borradas: editar una oportunidad le vaciaba el detalle.
     if (input.products !== undefined) {
-      await supabase.from('opportunity_products').delete().eq('opportunity_id', id);
-      if (input.products.length > 0) {
-        const productsToInsert = input.products.map((p) => ({
+      await this.reemplazarLineas(
+        'opportunity_products',
+        id,
+        input.products.map((p) => ({
           opportunity_id: id,
           product_id: p.product_id,
           quantity: p.quantity,
           unit_price: p.unit_price,
-          total_price: p.quantity * p.unit_price,
-        }));
-        await supabase.from('opportunity_products').insert(productsToInsert);
-      }
+        })),
+      );
     }
 
-    // Sincronizar espacios
     if (input.spaces !== undefined) {
-      await supabase.from('opportunity_spaces').delete().eq('opportunity_id', id);
-      if (input.spaces.length > 0) {
-        const spacesToInsert = input.spaces.map((s) => ({
+      await this.reemplazarLineas(
+        'opportunity_spaces',
+        id,
+        input.spaces.map((s) => ({
           opportunity_id: id,
           space_id: s.space_id,
           nights: s.nights,
           unit_price: s.unit_price,
-          total_price: s.nights * s.unit_price,
-        }));
-        await supabase.from('opportunity_spaces').insert(spacesToInsert);
-      }
+        })),
+      );
     }
 
-    // Sincronizar conceptos personalizados
     if (input.customLines !== undefined) {
-      await supabase.from('opportunity_custom_lines').delete().eq('opportunity_id', id);
-      if (input.customLines.length > 0) {
-        const customToInsert = input.customLines.map((c) => ({
+      await this.reemplazarLineas(
+        'opportunity_custom_lines',
+        id,
+        input.customLines.map((c) => ({
           opportunity_id: id,
           concept: c.concept,
           quantity: c.quantity,
           unit_price: c.unit_price,
-          total_price: c.quantity * c.unit_price,
-        }));
-        await supabase.from('opportunity_custom_lines').insert(customToInsert);
-      }
+        })),
+      );
     }
 
     return data;
+  }
+
+  /**
+   * Reemplaza las líneas de una oportunidad en una tabla hija: borra las
+   * actuales e inserta las nuevas, comprobando el `error` de CADA llamada.
+   *
+   * No es atómico: desde el navegador no hay transacción. Lo más que se puede
+   * hacer es guardar una foto antes de borrar y devolverla si el insert falla,
+   * que es lo que hace este método. El arreglo definitivo es una RPC
+   * transaccional (`crm_replace_opportunity_lines`); está propuesta en el
+   * informe de esta ronda y la aplicará quien tenga la base a su cargo.
+   */
+  private async reemplazarLineas(
+    tabla: 'opportunity_products' | 'opportunity_spaces' | 'opportunity_custom_lines',
+    opportunityId: string,
+    filas: Record<string, unknown>[],
+  ): Promise<void> {
+    const { data: previas, error: errorLeer } = await supabase
+      .from(tabla)
+      .select('*')
+      .eq('opportunity_id', opportunityId);
+    if (errorLeer) {
+      throw new Error(`No se pudieron leer las líneas de ${tabla}: ${errorLeer.message}`);
+    }
+
+    const { error: errorBorrar } = await supabase
+      .from(tabla)
+      .delete()
+      .eq('opportunity_id', opportunityId);
+    if (errorBorrar) {
+      throw new Error(`No se pudieron borrar las líneas de ${tabla}: ${errorBorrar.message}`);
+    }
+
+    if (filas.length === 0) return;
+
+    const { error: errorInsertar } = await supabase.from(tabla).insert(filas);
+    if (!errorInsertar) return;
+
+    // El insert falló y las anteriores ya no están: intentar devolverlas.
+    // `total_price` es generada, así que se quita antes de reinsertar.
+    const restaurables = (previas ?? []).map((fila) => {
+      const copia = { ...(fila as Record<string, unknown>) };
+      delete copia.total_price;
+      return copia;
+    });
+    let restaurado = true;
+    if (restaurables.length > 0) {
+      const { error: errorRestaurar } = await supabase.from(tabla).insert(restaurables);
+      restaurado = !errorRestaurar;
+    }
+
+    throw new Error(
+      `No se pudieron guardar las líneas de ${tabla}: ${errorInsertar.message}. ` +
+        (restaurado
+          ? 'Las líneas anteriores se restauraron.'
+          : 'ATENCIÓN: las líneas anteriores NO se pudieron restaurar.'),
+    );
   }
 
   async deleteOpportunity(id: string): Promise<void> {
@@ -445,14 +530,87 @@ class OpportunitiesService {
     return newOpportunity;
   }
 
-  async markAsWon(id: string): Promise<Opportunity> {
-    return this.updateOpportunity(id, { status: 'won' });
+  /**
+   * Etapa ganadora de un pipeline (`stages.is_won`), la de menor posición si
+   * hubiera varias. `is_won`/`is_lost` son la fuente de verdad del cierre.
+   */
+  async getWinningStage(pipelineId: string): Promise<Stage | null> {
+    const { data, error } = await supabase
+      .from('stages')
+      .select('*')
+      .eq('pipeline_id', pipelineId)
+      .eq('is_won', true)
+      .order('position')
+      .limit(1);
+
+    if (error) throw error;
+    return data?.[0] ?? null;
+  }
+
+  /**
+   * Marca la oportunidad como ganada por el MISMO camino que el flujo completo:
+   * el PATCH de etapa del servidor. Antes hacía `update({status:'won'})` a pelo
+   * desde el navegador, así que la oportunidad quedaba cerrada **sin moverse de
+   * etapa**, saltándose el gate, la exigencia de `win_data` y el devengo de la
+   * comisión (regla 7 de CLAUDE.md: una sola implementación del negocio).
+   *
+   * Si el servidor exige la ficha de venta devuelve `needs_won`: quien llame
+   * desde la interfaz debe abrir `ClosedWonDialog` (ver `MarkWonFlow`), no
+   * insistir sin datos.
+   */
+  async markAsWon(id: string, winData: Record<string, unknown> = {}): Promise<Opportunity> {
+    const actual = await this.getOpportunityById(id);
+    if (!actual) throw new Error('Oportunidad no encontrada');
+
+    const etapaGanadora = await this.getWinningStage(actual.pipeline_id);
+    if (!etapaGanadora) {
+      throw new Error(
+        'El pipeline no tiene ninguna etapa marcada como ganadora. Configúrala antes de cerrar la oportunidad.',
+      );
+    }
+
+    const resultado = await requestStageChange(id, {
+      stage_id: etapaGanadora.id,
+      won_data: winData,
+    });
+
+    if (!resultado.ok) {
+      switch (resultado.reason) {
+        case 'needs_won':
+          throw new Error('Para cerrar como ganada hace falta la ficha de venta.');
+        case 'gate':
+          throw new Error('La etapa ganadora tiene criterios de salida sin cumplir.');
+        case 'needs_lost':
+          throw new Error('El servidor pidió un motivo de pérdida para esta etapa.');
+        default:
+          throw new Error(resultado.message);
+      }
+    }
+
+    const cerrada = await this.getOpportunityById(id);
+    if (!cerrada) throw new Error('Oportunidad no encontrada tras cerrarla');
+    return cerrada;
   }
 
   async markAsLost(id: string, data: LossReasonData): Promise<Opportunity> {
     // Guardar etiqueta visible en loss_reason (string) y datos estructurados
     // en las nuevas columnas de FASE 2.
     const lossReasonLabel = data.lossReasonLabel || data.lossReasonId;
+
+    // El `metadata` de la oportunidad se FUSIONA, nunca se reemplaza: ahí viven
+    // también `gate_overrides` (las excepciones de gate auditadas) y los datos
+    // de onboarding y renovación. Reemplazarlo los borraba.
+    const { data: previa, error: errorLeer } = await supabase
+      .from('opportunities')
+      .select('metadata')
+      .eq('id', id)
+      .single();
+    if (errorLeer) throw errorLeer;
+
+    const metadataPrevio =
+      previa?.metadata && typeof previa.metadata === 'object' && !Array.isArray(previa.metadata)
+        ? (previa.metadata as Record<string, unknown>)
+        : {};
 
     const { data: updated, error } = await supabase
       .from('opportunities')
@@ -464,6 +622,16 @@ class OpportunitiesService {
         competitor_price: data.competitorPrice || null,
         missing_features: data.missingFeatures || null,
         recontact_at: data.recontactDate || null,
+        metadata: {
+          ...metadataPrevio,
+          lossReasonId: data.lossReasonId,
+          lossReasonLabel: data.lossReasonLabel,
+          competitor: data.competitor || null,
+          competitorPrice: data.competitorPrice || null,
+          missingFeatures: data.missingFeatures || null,
+          recontactDate: data.recontactDate || null,
+          notes: data.notes || null,
+        },
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -471,27 +639,6 @@ class OpportunitiesService {
       .single();
 
     if (error) throw error;
-
-    // Guardar también en metadata como respaldo (best-effort)
-    try {
-      await supabase
-        .from('opportunities')
-        .update({
-          metadata: {
-            lossReasonId: data.lossReasonId,
-            lossReasonLabel: data.lossReasonLabel,
-            competitor: data.competitor || null,
-            competitorPrice: data.competitorPrice || null,
-            missingFeatures: data.missingFeatures || null,
-            recontactDate: data.recontactDate || null,
-            notes: data.notes || null,
-          },
-        })
-        .eq('id', id);
-    } catch (err) {
-      console.warn('No se pudo guardar metadata de pérdida:', err);
-    }
-
     return updated;
   }
 
@@ -523,9 +670,14 @@ class OpportunitiesService {
     const won = opportunities.filter((o) => o.status === 'won').length;
     const lost = opportunities.filter((o) => o.status === 'lost').length;
     const totalAmount = opportunities.reduce((sum, o) => sum + (o.amount || 0), 0);
+    // `stages.probability` es un porcentaje 0-100 (integer; verificado por MCP
+    // el 2026-09-23: min 0, max 100). Multiplicar sin dividir entre 100 inflaba
+    // el KPI ×100. Y solo se pondera lo ABIERTO: una ganada o una perdida ya no
+    // es pronóstico, es resultado — el mismo criterio que getForecastByPeriod.
     const weightedAmount = opportunities.reduce((sum, o) => {
-      const probability = (o.stage?.probability || 0);
-      return sum + (o.amount || 0) * probability;
+      if (o.status !== 'open') return sum;
+      const probability = o.stage?.probability || 0;
+      return sum + (o.amount || 0) * (probability / 100);
     }, 0);
     const avgDealSize = total > 0 ? totalAmount / total : 0;
     const winRate = won + lost > 0 ? (won / (won + lost)) * 100 : 0;
@@ -618,7 +770,7 @@ class OpportunitiesService {
         product_id: productId,
         quantity,
         unit_price: unitPrice,
-        total_price: quantity * unitPrice,
+        // `total_price` es GENERATED ALWAYS: enviarla devuelve 428C9.
       })
       .select()
       .single();
@@ -640,7 +792,7 @@ class OpportunitiesService {
     try {
       // Paginar porque Supabase devuelve máximo 1000 filas por defecto
       const PAGE_SIZE = 1000;
-      let allData: any[] = [];
+      let allData: ProductoConPrecio[] = [];
       let offset = 0;
       while (true) {
         const { data: pageData, error: pageError } = await supabase
@@ -666,19 +818,19 @@ class OpportunitiesService {
           break;
         }
         if (!pageData || pageData.length === 0) break;
-        allData = allData.concat(pageData);
+        allData = allData.concat(pageData as unknown as ProductoConPrecio[]);
         if (pageData.length < PAGE_SIZE) break;
         offset += PAGE_SIZE;
       }
       
-      return (allData || []).map((p: any) => ({
+      return (allData || []).map((p) => ({
         id: p.id,
         name: p.name,
         sku: p.sku || '',
-        price: parseFloat(p.product_prices?.[0]?.price) || 0,
+        price: parseFloat(String(p.product_prices?.[0]?.price ?? '')) || 0,
         image: p.product_images?.[0]?.storage_path || undefined,
       }));
-    } catch (err) {
+    } catch {
       console.warn('Advertencia en getProducts');
       return [];
     }
@@ -715,15 +867,15 @@ class OpportunitiesService {
         return [];
       }
       
-      return (data || []).map((s: any) => ({
+      return ((data || []) as unknown as EspacioConTipo[]).map((s) => ({
         id: s.id,
         label: s.label,
         floor_zone: s.floor_zone,
         status: s.status,
         type_name: s.space_types?.name,
-        base_rate: parseFloat(s.space_types?.base_rate) || 0,
+        base_rate: parseFloat(String(s.space_types?.base_rate ?? '')) || 0,
       }));
-    } catch (err) {
+    } catch {
       console.warn('Advertencia en getSpaces');
       return [];
     }
@@ -744,13 +896,13 @@ class OpportunitiesService {
         return [];
       }
       return (data || []).map(b => b.id);
-    } catch (err) {
+    } catch {
       console.warn('Advertencia en getBranchIds');
       return [];
     }
   }
 
-  async getOpportunitySpaces(opportunityId: string): Promise<any[]> {
+  async getOpportunitySpaces(opportunityId: string): Promise<OpportunitySpace[]> {
     const { data, error } = await supabase
       .from('opportunity_spaces')
       .select(`
@@ -760,7 +912,7 @@ class OpportunitiesService {
       .eq('opportunity_id', opportunityId);
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as OpportunitySpace[];
   }
 
   async addSpace(
@@ -768,7 +920,7 @@ class OpportunitiesService {
     spaceId: string,
     nights: number,
     unitPrice: number
-  ): Promise<any> {
+  ): Promise<OpportunitySpace> {
     const { data, error } = await supabase
       .from('opportunity_spaces')
       .insert({
@@ -781,7 +933,7 @@ class OpportunitiesService {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as OpportunitySpace;
   }
 
   async removeSpace(spaceLineId: string): Promise<void> {

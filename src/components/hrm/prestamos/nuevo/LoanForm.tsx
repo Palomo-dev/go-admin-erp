@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import type { CreateLoanDTO } from '@/lib/services/employeeLoansService';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { toPlainDate } from '@/lib/utils/timezone';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,14 +36,15 @@ export function LoanForm({
   currencies,
   onSubmit,
   onCancel,
-  isLoading,
 }: LoanFormProps) {
   const { timezone } = useOrgTimezone();
+  const { code: monedaBase, resuelta, paraDocumento } = useMonedaOrganizacion();
   const [formData, setFormData] = useState<CreateLoanDTO>({
     employment_id: '',
     loan_type: 'general',
     description: '',
-    currency_code: 'COP',
+    // Vacía hasta conocer la moneda base de la organización (ver efecto abajo).
+    currency_code: '',
     principal: 0,
     interest_rate: 0,
     installments_total: 12,
@@ -52,6 +54,17 @@ export function LoanForm({
     notes: '',
   });
   const [submitting, setSubmitting] = useState(false);
+
+  // La moneda por defecto es la base de la organización, nunca COP fijo.
+  useEffect(() => {
+    if (resuelta && !formData.currency_code) {
+      setFormData((prev) => ({ ...prev, currency_code: monedaBase }));
+    }
+  }, [resuelta, monedaBase, formData.currency_code]);
+
+  // Catálogo del servicio + la moneda base, sin repetir.
+  const opcionesMoneda = Array.from(new Set([...(resuelta ? [monedaBase] : []), ...currencies]));
+  const monedaPrestamo = paraDocumento(formData.currency_code);
 
   // Calculated values
   const [calculated, setCalculated] = useState({
@@ -87,6 +100,8 @@ export function LoanForm({
         first_payment_date: toPlainDate(nextMonth, timezone),
       }));
     }
+    // Solo al montar, a propósito: si el usuario borra la fecha no se rellena de nuevo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,7 +116,7 @@ export function LoanForm({
     }
   };
 
-  const handleChange = (field: keyof CreateLoanDTO, value: any) => {
+  const handleChange = <K extends keyof CreateLoanDTO>(field: K, value: CreateLoanDTO[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -174,7 +189,7 @@ export function LoanForm({
                   <SelectValue placeholder="Seleccionar moneda" />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-gray-800">
-                  {currencies.map((curr) => (
+                  {opcionesMoneda.map((curr) => (
                     <SelectItem key={curr} value={curr}>
                       {curr}
                     </SelectItem>
@@ -261,25 +276,25 @@ export function LoanForm({
               <div>
                 <p className="text-blue-700 dark:text-blue-300">Principal</p>
                 <p className="font-semibold text-blue-900 dark:text-blue-100">
-                  {formatCurrency(formData.principal || 0, formData.currency_code)}
+                  {formatMoneda(formData.principal || 0, monedaPrestamo)}
                 </p>
               </div>
               <div>
                 <p className="text-blue-700 dark:text-blue-300">Interés Total</p>
                 <p className="font-semibold text-blue-900 dark:text-blue-100">
-                  {formatCurrency(calculated.totalInterest, formData.currency_code)}
+                  {formatMoneda(calculated.totalInterest, monedaPrestamo)}
                 </p>
               </div>
               <div>
                 <p className="text-blue-700 dark:text-blue-300">Total a Pagar</p>
                 <p className="font-semibold text-blue-900 dark:text-blue-100">
-                  {formatCurrency(calculated.totalAmount, formData.currency_code)}
+                  {formatMoneda(calculated.totalAmount, monedaPrestamo)}
                 </p>
               </div>
               <div>
                 <p className="text-blue-700 dark:text-blue-300">Cuota Mensual</p>
                 <p className="font-semibold text-blue-900 dark:text-blue-100">
-                  {formatCurrency(calculated.installmentAmount, formData.currency_code)}
+                  {formatMoneda(calculated.installmentAmount, monedaPrestamo)}
                 </p>
               </div>
             </div>

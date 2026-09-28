@@ -3,8 +3,10 @@
 // ============================================================
 
 import crypto from 'crypto';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 import { getWompiBaseUrl, WOMPI_CREDENTIAL_PURPOSES } from './wompiConfig';
+import { verificarChecksumWompi } from './wompiFirma';
 import type {
   WompiCredentials,
   WompiEnvironment,
@@ -28,9 +30,14 @@ class WompiService {
   /**
    * Obtiene las credenciales de Wompi para una conexión.
    * Lee de integration_credentials vinculadas al connection_id.
+   *
+   * GO-sec (2026-09-24): en el SERVIDOR, `supabase` (config) es anónimo y RLS
+   * no le deja leer la conexión ni sus credenciales; las rutas pasan
+   * `getServiceClient()` DESPUÉS de verificar que la conexión es de la
+   * organización de la sesión.
    */
-  async getCredentials(connectionId: string): Promise<WompiCredentials | null> {
-    const { data: connection, error: connError } = await supabase
+  async getCredentials(connectionId: string, db: SupabaseClient = supabase): Promise<WompiCredentials | null> {
+    const { data: connection, error: connError } = await db
       .from('integration_connections')
       .select('environment')
       .eq('id', connectionId)
@@ -41,7 +48,7 @@ class WompiService {
       return null;
     }
 
-    const { data: creds, error } = await supabase
+    const { data: creds, error } = await db
       .from('integration_credentials')
       .select('credential_type, purpose, secret_ref, key_prefix, status')
       .eq('connection_id', connectionId)
@@ -407,36 +414,12 @@ class WompiService {
   // ----------------------------------------------------------
 
   /**
-   * Verifica la autenticidad de un evento webhook de Wompi.
+   * Verifica la autenticidad de un evento webhook de Wompi (checksum SHA-256
+   * en tiempo constante; sin secreto → falso). Una sola implementación:
+   * `wompiFirma.ts`, que también usa el webhook.
    */
   verifyWebhookEvent(event: WompiWebhookEvent, eventsSecret: string): boolean {
-    try {
-      // Paso 1: Obtener valores de las propiedades indicadas
-      const values = event.signature.properties.map((prop) => {
-        const keys = prop.split('.');
-        let value: unknown = event.data;
-        for (const key of keys) {
-          value = (value as Record<string, unknown>)[key];
-        }
-        return value;
-      });
-
-      // Paso 2: Concatenar valores + timestamp + secreto
-      const concatenated = values.join('') + event.timestamp + eventsSecret;
-
-      // Paso 3: SHA256
-      const calculatedChecksum = crypto
-        .createHash('sha256')
-        .update(concatenated)
-        .digest('hex')
-        .toUpperCase();
-
-      // Paso 4: Comparar
-      return calculatedChecksum === event.signature.checksum;
-    } catch (err) {
-      console.error('[Wompi] Error verificando webhook:', err);
-      return false;
-    }
+    return verificarChecksumWompi(event, eventsSecret);
   }
 
   // ----------------------------------------------------------
@@ -447,12 +430,12 @@ class WompiService {
    * Verifica que las credenciales de Wompi sean válidas
    * consultando el endpoint de merchant.
    */
-  async healthCheck(connectionId: string): Promise<{
+  async healthCheck(connectionId: string, db: SupabaseClient = supabase): Promise<{
     ok: boolean;
     message: string;
     merchantName?: string;
   }> {
-    const credentials = await this.getCredentials(connectionId);
+    const credentials = await this.getCredentials(connectionId, db);
     if (!credentials) {
       return { ok: false, message: 'No se encontraron credenciales' };
     }
@@ -466,7 +449,7 @@ class WompiService {
 
       if (!response.ok) {
         // Actualizar estado de la conexión a error
-        await supabase
+        await db
           .from('integration_connections')
           .update({
             last_health_check_at: new Date().toISOString(),
@@ -486,7 +469,7 @@ class WompiService {
       const data: WompiMerchantResponse = await response.json();
 
       // Actualizar health check exitoso
-      await supabase
+      await db
         .from('integration_connections')
         .update({
           last_health_check_at: new Date().toISOString(),
@@ -504,7 +487,7 @@ class WompiService {
       const errorMsg =
         err instanceof Error ? err.message : 'Error de conexión';
 
-      await supabase
+      await db
         .from('integration_connections')
         .update({
           last_health_check_at: new Date().toISOString(),

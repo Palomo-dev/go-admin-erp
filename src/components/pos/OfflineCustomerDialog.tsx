@@ -16,6 +16,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { WifiOff } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,14 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { POSService } from '@/lib/services/posService';
 import type { Customer } from './types';
 
-const DOC_TYPES: Array<{ code: string; label: string }> = [
-  { code: 'CC', label: 'Cédula de ciudadanía' },
-  { code: 'CE', label: 'Cédula de extranjería' },
-  { code: 'NIT', label: 'NIT' },
-  { code: 'TI', label: 'Tarjeta de identidad' },
-  { code: 'PP', label: 'Pasaporte' },
-  { code: 'PEP', label: 'Permiso especial de permanencia' },
-];
+// El nombre de cada tipo sale de `posVenta.clienteSinConexion.tiposDocumento.<code>`.
+const DOC_TYPES = ['CC', 'CE', 'NIT', 'TI', 'PP', 'PEP'] as const;
 
 interface OfflineCustomerDialogProps {
   open: boolean;
@@ -40,6 +35,7 @@ interface OfflineCustomerDialogProps {
 }
 
 export function OfflineCustomerDialog({ open, onOpenChange, onCreated }: OfflineCustomerDialogProps) {
+  const t = useTranslations('posVenta.clienteSinConexion');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [docType, setDocType] = useState('CC');
@@ -62,7 +58,7 @@ export function OfflineCustomerDialog({ open, onOpenChange, onCreated }: Offline
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!firstName.trim()) {
-      setError('El nombre es obligatorio');
+      setError(t('nombreObligatorio'));
       return;
     }
     setSaving(true);
@@ -80,7 +76,7 @@ export function OfflineCustomerDialog({ open, onOpenChange, onCreated }: Offline
       reset();
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo registrar el cliente');
+      setError(err instanceof Error ? err.message : t('errorRegistrar'));
     } finally {
       setSaving(false);
     }
@@ -96,54 +92,51 @@ export function OfflineCustomerDialog({ open, onOpenChange, onCreated }: Offline
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Nuevo cliente (sin conexión)</DialogTitle>
+          <DialogTitle>{t('titulo')}</DialogTitle>
           <DialogDescription className="flex items-start gap-2">
             <WifiOff className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" aria-hidden="true" />
-            <span>
-              Se guarda en este equipo y se enviará a Go Admin al volver la red, antes que las ventas que lo usen. Los demás datos
-              (dirección, municipio, responsabilidades fiscales) se completan después desde Clientes.
-            </span>
+            <span>{t('descripcion')}</span>
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3" noValidate>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label htmlFor="offline-customer-first-name">Nombres *</Label>
+              <Label htmlFor="offline-customer-first-name">{t('nombres')}</Label>
               <Input id="offline-customer-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} autoFocus required autoComplete="off" />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="offline-customer-last-name">Apellidos</Label>
+              <Label htmlFor="offline-customer-last-name">{t('apellidos')}</Label>
               <Input id="offline-customer-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="off" />
             </div>
           </div>
           <div className="grid grid-cols-[9rem_1fr] gap-3">
             <div className="space-y-1">
-              <Label htmlFor="offline-customer-doc-type">Tipo de documento</Label>
+              <Label htmlFor="offline-customer-doc-type">{t('tipoDocumento')}</Label>
               <Select value={docType} onValueChange={setDocType}>
-                <SelectTrigger id="offline-customer-doc-type" aria-label="Tipo de documento">
+                <SelectTrigger id="offline-customer-doc-type" aria-label={t('tipoDocumento')}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {DOC_TYPES.map((d) => (
-                    <SelectItem key={d.code} value={d.code}>
-                      {d.code} · {d.label}
+                  {DOC_TYPES.map((code) => (
+                    <SelectItem key={code} value={code}>
+                      {code} · {t(`tiposDocumento.${code}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="offline-customer-doc-number">Número de documento</Label>
+              <Label htmlFor="offline-customer-doc-number">{t('numeroDocumento')}</Label>
               <Input id="offline-customer-doc-number" value={docNumber} onChange={(e) => setDocNumber(e.target.value)} inputMode="numeric" autoComplete="off" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label htmlFor="offline-customer-email">Email</Label>
+              <Label htmlFor="offline-customer-email">{t('email')}</Label>
               <Input id="offline-customer-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="offline-customer-phone">Teléfono</Label>
+              <Label htmlFor="offline-customer-phone">{t('telefono')}</Label>
               <Input id="offline-customer-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="off" />
             </div>
           </div>
@@ -154,10 +147,10 @@ export function OfflineCustomerDialog({ open, onOpenChange, onCreated }: Offline
           )}
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-              Cancelar
+              {t('cancelar')}
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? 'Guardando…' : 'Guardar cliente'}
+              {saving ? t('guardando') : t('guardar')}
             </Button>
           </DialogFooter>
         </form>

@@ -9,6 +9,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe/server';
+import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion';
+import { routeErrorResponse } from '@/lib/security/orgGuards';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -36,24 +38,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const cookieHeader = request.headers.get('cookie') || '';
-    let userId: string | null = null;
-
-    const userIdMatch = cookieHeader.match(/sb-user-id=([^;]+)/);
-    if (userIdMatch) {
-      try {
-        userId = decodeURIComponent(userIdMatch[1]);
-      } catch {
-        userId = userIdMatch[1];
-      }
+    let body: { organizationId?: unknown; addonType?: unknown; quantity?: unknown };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
     }
 
-    const effectiveUserId = userId || '00000000-0000-0000-0000-000000000000';
+    // GO-sec (2026-09-24): sesión + membresía + permiso de facturación. Antes
+    // no había autenticación (`/api/stripe/` está fuera del middleware) y el
+    // usuario salía de una cookie `sb-user-id` que controla el navegador.
+    const ctx = await contextoDeFacturacion(body.organizationId, 'stripe/create-addon-subscription');
+    const organizationId = ctx.organizationId;
+    const effectiveUserId = ctx.userId;
+    const addonType = typeof body.addonType === 'string' ? body.addonType : '';
+    const quantity = Number(body.quantity);
+
+    // Service role SOLO después de la comprobación.
     const supabase = createSupabaseClient();
 
-    const { organizationId, addonType, quantity } = await request.json();
-
-    if (!organizationId || !addonType || !quantity || quantity < 1) {
+    if (!addonType || !Number.isInteger(quantity) || quantity < 1) {
       return NextResponse.json(
         { error: 'Parámetros inválidos: organizationId, addonType y quantity (min 1) son requeridos' },
         { status: 400 }
@@ -221,11 +225,7 @@ export async function POST(request: NextRequest) {
       sessionId: session.id,
       url: session.url,
     });
-  } catch (error: any) {
-    console.error('❌ Error creando checkout session para addon:', error);
-    return NextResponse.json(
-      { error: error.message || 'Error interno del servidor' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return routeErrorResponse('stripe/create-addon-subscription', error);
   }
 }

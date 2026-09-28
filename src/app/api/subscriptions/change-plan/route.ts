@@ -1,52 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion';
+import { routeErrorResponse } from '@/lib/security/orgGuards';
 
+type PlanRow = { id: number; code: string; name: string; max_modules: number | null; trial_days: number | null; price_usd_month: number; price_usd_year: number; stripe_price_monthly_id: string | null };
+type ModuloRow = { code: string; is_core: boolean };
+type ModuloOrgRow = { id: number; module_code: string; is_active: boolean };
+
+/**
+ * GO-sec (2026-09-24): sesión verificada (`auth.getUser`, no `getSession`),
+ * membresía activa y permiso de facturación resuelto en el servidor
+ * (`contextoDeFacturacion`: admin o `billing_management`), en lugar de
+ * `role_id !== 2`, que dejaba fuera al rol 1 y a los cargos con permiso.
+ */
 export async function POST(request: NextRequest) {
   try {
-    // Crear cliente de Supabase con cookies para autenticación del servidor
-    const supabase = createRouteHandlerClient({ cookies });
-    
-    // Verificar autenticación
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      );
+    let body: { organizationId?: unknown; newPlanCode?: unknown; billingPeriod?: unknown };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
     }
 
-    const { organizationId, newPlanCode, billingPeriod } = await request.json();
+    const ctx = await contextoDeFacturacion(body.organizationId, 'subscriptions/change-plan');
+    const supabase = ctx.supabase;
+    const organizationId = ctx.organizationId;
+    const newPlanCode = typeof body.newPlanCode === 'string' ? body.newPlanCode : '';
+    const billingPeriod = body.billingPeriod === 'yearly' ? 'yearly' : body.billingPeriod === 'monthly' ? 'monthly' : null;
 
     // Validar parámetros requeridos
-    if (!organizationId || !newPlanCode || !billingPeriod) {
+    if (!newPlanCode || !billingPeriod) {
       return NextResponse.json(
-        { error: 'Parámetros faltantes: organizationId, newPlanCode, billingPeriod son requeridos' },
+        { error: 'Parámetros faltantes: newPlanCode, billingPeriod son requeridos' },
         { status: 400 }
-      );
-    }
-
-    // Verificar que el usuario tiene permisos para cambiar el plan de esta organización
-    const { data: memberData, error: memberError } = await supabase
-      .from('organization_members')
-      .select('role_id, is_super_admin')
-      .eq('organization_id', organizationId)
-      .eq('user_id', session.user.id)
-      .eq('is_active', true)
-      .single();
-
-    if (memberError || !memberData) {
-      return NextResponse.json(
-        { error: 'No tienes permisos para modificar esta organización' },
-        { status: 403 }
-      );
-    }
-
-    // Solo admins y super admins pueden cambiar planes
-    if (memberData.role_id !== 2 && !memberData.is_super_admin) {
-      return NextResponse.json(
-        { error: 'Solo los administradores pueden cambiar el plan' },
-        { status: 403 }
       );
     }
 
@@ -165,7 +151,7 @@ export async function POST(request: NextRequest) {
         } else {
           console.warn('⚠️ Error actualizando Stripe:', stripeResult.error);
         }
-      } catch (stripeError: any) {
+      } catch (stripeError: unknown) {
         console.error('⚠️ Error en integración con Stripe:', stripeError);
         // No lanzar error, el cambio en Supabase ya se realizó
       }
@@ -180,17 +166,13 @@ export async function POST(request: NextRequest) {
       stripeUpdated: stripeResult?.success || false
     });
 
-  } catch (error: any) {
-    console.error('Error changing plan:', error);
-    return NextResponse.json(
-      { error: error.message || 'Error interno del servidor' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return routeErrorResponse('subscriptions/change-plan', error);
   }
 }
 
 // Función auxiliar para actualizar módulos según el plan
-async function updateOrganizationModules(organizationId: number, newPlan: any, supabase: any) {
+async function updateOrganizationModules(organizationId: number, newPlan: Pick<PlanRow, 'max_modules'>, supabase: SupabaseClient) {
   try {
     // Obtener todos los módulos
     const { data: allModules, error: modulesError } = await supabase
@@ -210,8 +192,10 @@ async function updateOrganizationModules(organizationId: number, newPlan: any, s
     if (currentError) throw currentError;
 
     // Determinar qué módulos debería tener según el nuevo plan
-    const coreModules = allModules.filter((m: any) => m.is_core);
-    const optionalModules = allModules.filter((m: any) => !m.is_core);
+    const modulos = (allModules ?? []) as ModuloRow[];
+    const actuales = (currentOrgModules ?? []) as ModuloOrgRow[];
+    const coreModules = modulos.filter((m) => m.is_core);
+    const optionalModules = modulos.filter((m) => !m.is_core);
     
     // Los módulos core siempre están disponibles
     let allowedModules = [...coreModules];
@@ -224,13 +208,13 @@ async function updateOrganizationModules(organizationId: number, newPlan: any, s
       }
     } else {
       // Plan ilimitado
-      allowedModules = allModules;
+      allowedModules = modulos;
     }
 
     // Desactivar módulos que ya no están permitidos
-    const allowedCodes = allowedModules.map((m: any) => m.code);
-    const modulesToDisable = currentOrgModules.filter(
-      (om: any) => !allowedCodes.includes(om.module_code) && om.is_active
+    const allowedCodes = allowedModules.map((m) => m.code);
+    const modulesToDisable = actuales.filter(
+      (om) => !allowedCodes.includes(om.module_code) && om.is_active
     );
 
     for (const moduleToDisable of modulesToDisable) {
@@ -244,8 +228,8 @@ async function updateOrganizationModules(organizationId: number, newPlan: any, s
     }
 
     // Activar módulos que ahora están permitidos
-    const currentCodes = currentOrgModules.map((om: any) => om.module_code);
-    const modulesToAdd = allowedModules.filter((m: any) => !currentCodes.includes(m.code));
+    const currentCodes = actuales.map((om) => om.module_code);
+    const modulesToAdd = allowedModules.filter((m) => !currentCodes.includes(m.code));
 
     for (const moduleToAdd of modulesToAdd) {
       await supabase
@@ -259,8 +243,8 @@ async function updateOrganizationModules(organizationId: number, newPlan: any, s
     }
 
     // Reactivar módulos que estaban desactivados pero ahora están permitidos
-    const modulesToReactivate = currentOrgModules.filter(
-      (om: any) => allowedCodes.includes(om.module_code) && !om.is_active
+    const modulesToReactivate = actuales.filter(
+      (om) => allowedCodes.includes(om.module_code) && !om.is_active
     );
 
     for (const moduleToReactivate of modulesToReactivate) {

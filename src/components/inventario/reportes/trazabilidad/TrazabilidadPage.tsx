@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { TrazabilidadService, type TrazabilidadEntry, type FiltrosTrazabilidad } from './TrazabilidadService';
 import { useToast } from '@/components/ui/use-toast';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBranch, ALL_BRANCHES } from '@/lib/context/BranchContext';
@@ -50,6 +51,9 @@ const sourceLabels: Record<string, string> = {
 
 export function TrazabilidadPage() {
   const { toast } = useToast();
+  // Dia de la organizacion para el nombre de descarga: el reporte se mira
+  // completo (todas las sucursales), asi que no hay sucursal que pasar.
+  const { getToday } = useFormatDate();
   const { branchFilter, setSelectedBranch } = useBranch();
   const [data, setData] = useState<TrazabilidadEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -137,7 +141,7 @@ export function TrazabilidadPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `trazabilidad_${new Date().toISOString().split('T')[0]}.csv`;
+      link.download = `trazabilidad_${getToday()}.csv`;
       link.click();
       URL.revokeObjectURL(url);
       toast({ title: 'CSV exportado', description: `${result.data.length} registros exportados` });

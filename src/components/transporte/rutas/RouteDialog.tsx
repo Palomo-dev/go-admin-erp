@@ -24,6 +24,7 @@ import { Loader2, Route, Navigation, AlertCircle, CheckCircle2 } from 'lucide-re
 import { TransportRoute, TransportStop, RouteInput, transportRoutesService } from '@/lib/services/transportRoutesService';
 import { googleMapsService } from '@/lib/services/googleMapsService';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface RouteDialogProps {
@@ -60,7 +61,7 @@ export function RouteDialog({
     estimated_duration_minutes: undefined,
     base_fare: undefined,
     base_shipping_fee: undefined,
-    currency: 'COP',
+    currency: undefined,
     is_active: true,
   });
 
@@ -94,7 +95,7 @@ export function RouteDialog({
         estimated_duration_minutes: route.estimated_duration_minutes,
         base_fare: route.base_fare,
         base_shipping_fee: route.base_shipping_fee,
-        currency: route.currency || 'COP',
+        currency: route.currency || undefined,
         is_active: route.is_active,
       });
     } else {
@@ -109,11 +110,20 @@ export function RouteDialog({
         estimated_duration_minutes: undefined,
         base_fare: undefined,
         base_shipping_fee: undefined,
-        currency: 'COP',
+        currency: undefined,
         is_active: true,
       });
     }
   }, [route, open]);
+
+  // Moneda por defecto: la base de la organización, en cuanto se conoce (no
+  // antes: mientras `resuelta` es false el código es solo un marcador). Si
+  // se envía vacía, la base la pone el trigger `trg_00_moneda_base_por_defecto`.
+  const { code: monedaBase, resuelta: monedaResuelta } = useMonedaOrganizacion();
+  useEffect(() => {
+    if (!monedaResuelta) return;
+    setFormData((prev) => (prev.currency ? prev : { ...prev, currency: monedaBase }));
+  }, [monedaResuelta, monedaBase, route, open]);
 
   // Calcular ruta con Google Maps
   const calculateRoute = async () => {
@@ -166,7 +176,7 @@ export function RouteDialog({
 
     setIsSubmitting(true);
     try {
-      await onSave({ ...formData, branch_id: branchId || undefined } as RouteInput);
+      await onSave({ ...formData, currency: formData.currency || undefined, branch_id: branchId || undefined } as RouteInput);
       onOpenChange(false);
     } catch (error) {
       console.error('Error saving route:', error);
@@ -409,9 +419,9 @@ export function RouteDialog({
               <Label htmlFor="currency">Moneda</Label>
               <Input
                 id="currency"
-                value={formData.currency || 'COP'}
+                value={formData.currency || ''}
                 onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                placeholder="COP"
+                placeholder={monedaBase}
                 maxLength={3}
               />
             </div>

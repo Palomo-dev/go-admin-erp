@@ -33,14 +33,35 @@ export interface StageRoleContext {
 }
 
 export const STAGE_MANAGER_ROLE_IDS: readonly number[] = [1, 2, 5];
+
+/**
+ * Solo para textos y mensajes. **Nunca** para decidir: ver `isStageManager`.
+ */
 export const STAGE_MANAGER_ROLE_NAMES: readonly string[] = ['Super Admin', 'Admin de organización', 'Manager'];
 
+/**
+ * El permiso se resuelve por **identificador de rol**, nunca por su nombre
+ * (regla dura 6 de CLAUDE.md). El nombre es un texto editable y ni siquiera
+ * identifica: hoy los roles son globales (`roles`: 1 Super Admin, 2 Admin de
+ * organización, 3 Cliente, 4 Empleado, 5 Manager; verificado por MCP el
+ * 2026-09-23), pero en cuanto exista un rol nuevo llamado «Manager» con otro
+ * id, comparar por nombre le regalaría el permiso de jefatura comercial.
+ *
+ * `roleId` e `isSuperAdmin` salen de `getServerOrgContext`, que los lee de
+ * `organization_members` del usuario de la sesión; ninguno viene del cliente.
+ *
+ * PENDIENTE (requiere cambio de datos, no se aplica desde aquí): el catálogo
+ * `permissions` no tiene ningún código para etapas ni pipelines — solo
+ * `crm.customers.*`, `crm.contacts.*`, `crm.leads.*` y `crm.jobs.*`
+ * (verificado por MCP). Mientras no existan `crm.stages.manage` y
+ * `crm.stages.override_gate` en `permissions` + `role_permissions`, la lista
+ * de ids es el criterio de servidor que ya comparten seis módulos
+ * (`commissionTransitions`, `f10RouteHelpers`, `f12RouteSupport`,
+ * `sellerDashboardModel`, y las rutas de `stages` y de gate). El SQL propuesto
+ * está en el informe de esta ronda.
+ */
 function isStageManager(ctx: StageRoleContext): boolean {
-  return (
-    ctx.isSuperAdmin === true ||
-    STAGE_MANAGER_ROLE_NAMES.includes(ctx.roleName) ||
-    STAGE_MANAGER_ROLE_IDS.includes(ctx.roleId)
-  );
+  return ctx.isSuperAdmin === true || STAGE_MANAGER_ROLE_IDS.includes(ctx.roleId);
 }
 
 /** ¿Puede saltarse el gate de etapa (`override`)? (F9-36) */

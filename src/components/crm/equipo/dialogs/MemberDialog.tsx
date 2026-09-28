@@ -10,6 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import type { SalesRole, Territory, OrgMember } from '../types';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface MemberForm {
   user_id: string;
@@ -31,9 +32,19 @@ interface MemberDialogProps {
   saving: boolean;
 }
 
+/**
+ * Monedas extra del selector. La base de la organización y la del formulario
+ * se añaden siempre; no se cablea ninguna moneda local.
+ */
+const MONEDAS_CATALOGO = ['USD'];
+
 export function MemberDialog({
   open, onOpenChange, roles, territories, orgMembers, form, onFormChange, onAdd, saving,
 }: MemberDialogProps) {
+  const { code: monedaBase, resuelta: monedaResuelta } = useMonedaOrganizacion();
+  const opcionesMoneda = Array.from(
+    new Set([monedaResuelta ? monedaBase : '', form.quota_currency, ...MONEDAS_CATALOGO].filter(Boolean)),
+  );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -108,8 +119,9 @@ export function MemberDialog({
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="COP">COP</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
+                  {opcionesMoneda.map((code) => (
+                    <SelectItem key={code} value={code}>{code}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

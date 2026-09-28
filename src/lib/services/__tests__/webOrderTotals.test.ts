@@ -10,9 +10,14 @@
  */
 import type { WebOrder, WebOrderItem } from '../webOrdersService';
 import {
+  facturaWebConImpuestoIncluido,
   lineasFacturaDesdePedidoWeb,
+  lineasFacturaWebConImpuesto,
+  lineasNotaCreditoWeb,
   repartirTotalesPedidoWeb,
+  type ResolverImpuestoLinea,
 } from '../webOrderTotals';
+import { resolveLineTaxWith, type TaxResolverClient } from '../taxResolverCore';
 
 function item(parcial: Partial<WebOrderItem> & { quantity: number; unit_price: number }): WebOrderItem {
   return {
@@ -194,5 +199,112 @@ describe('repartirTotalesPedidoWeb', () => {
   it('un componente desconocido queda visible en `diferencia`, no se esconde', () => {
     const order = pedido({ subtotal: 10000, total: 12345, items: [item({ quantity: 1, unit_price: 10000 })] });
     expect(repartirTotalesPedidoWeb(order).diferencia).toBe(2345);
+  });
+});
+
+/**
+ * F-42: las líneas de factura y de nota crédito de pedidos web pasan por el
+ * resolver único. El resolver se inyecta; aquí se usa el real con un cliente
+ * falso cuya organización tiene IVA 19 por defecto.
+ */
+const clienteConIvaPorDefecto = {
+  from(tabla: string) {
+    const filas: Record<string, unknown>[] = tabla === 'organization_taxes'
+      ? [{ id: 'iva19', rate: 19, tax_templates: { code: 'IVA_19' } }]
+      : [];
+    const builder = {
+      select: () => builder,
+      eq: () => builder,
+      in: () => builder,
+      then: (resolve: (r: { data: unknown[]; error: null }) => unknown) => resolve({ data: filas, error: null }),
+    };
+    return builder;
+  },
+} as unknown as TaxResolverClient;
+const resolver: ResolverImpuestoLinea = (input) => resolveLineTaxWith(clienteConIvaPorDefecto, input);
+
+describe('lineasFacturaWebConImpuesto', () => {
+  it('IVA incluido cobrado por el sitio: tarifa 19 incluida y el total no se mueve', async () => {
+    const order = pedido({
+      subtotal: 119000,
+      tax_total: 19000,
+      delivery_fee: 5000,
+      total: 124000,
+      items: [item({ quantity: 1, unit_price: 119000, tax_amount: 19000 })],
+    });
+    const reparto = repartirTotalesPedidoWeb(order);
+    expect(facturaWebConImpuestoIncluido(reparto)).toBe(true);
+    const lineas = await lineasFacturaWebConImpuesto(order, 'inv', resolver, reparto);
+    // web_order_items no guarda código: va NULL y el disparador de invoice_items lo deriva de la tarifa.
+    expect(lineas[0]).toMatchObject({ tax_rate: 19, tax_code: null, tax_included: true, total_line: 119000 });
+    expect(lineas[1]).toMatchObject({ description: 'Envío (Delivery)', tax_rate: 0, tax_included: true, total_line: 5000 });
+    expect(sumaLineas(lineas)).toBe(124000);
+  });
+
+  it('impuesto sobre la base: la tarifa cobrada es definitiva y el total es el cobrado', async () => {
+    const order = pedido({
+      subtotal: 100000,
+      tax_total: 19000,
+      total: 119000,
+      items: [item({ quantity: 1, unit_price: 100000, tax_amount: 19000 })],
+    });
+    const reparto = repartirTotalesPedidoWeb(order);
+    expect(facturaWebConImpuestoIncluido(reparto)).toBe(false);
+    const [linea] = await lineasFacturaWebConImpuesto(order, 'inv', resolver, reparto);
+    expect(linea).toMatchObject({ tax_rate: 19, tax_included: false, total_line: 119000 });
+  });
+
+  it('pedido sin impuesto: el resolver extrae el IVA por defecto del precio cobrado sin cambiar el total', async () => {
+    const order = pedido({ subtotal: 50000, total: 50000, items: [item({ quantity: 2, unit_price: 25000 })] });
+    const lineas = await lineasFacturaWebConImpuesto(order, 'inv', resolver);
+    expect(lineas[0]).toMatchObject({ tax_rate: 19, tax_code: 'IVA_19', tax_included: true, total_line: 50000 });
+    expect(sumaLineas(lineas)).toBe(50000);
+  });
+
+  it('ítem sin impuesto dentro de un pedido que sí lo trae: exento, 0 definitivo', async () => {
+    const order = pedido({
+      subtotal: 129000,
+      tax_total: 19000,
+      total: 129000,
+      items: [
+        item({ product_id: 1, quantity: 1, unit_price: 119000, tax_amount: 19000 }),
+        item({ product_id: 2, quantity: 1, unit_price: 10000, tax_amount: 0 }),
+      ],
+    });
+    const lineas = await lineasFacturaWebConImpuesto(order, 'inv', resolver);
+    expect(lineas[1]).toMatchObject({ tax_rate: 0, tax_code: null, total_line: 10000 });
+    expect(sumaLineas(lineas)).toBe(129000);
+  });
+});
+
+describe('lineasNotaCreditoWeb', () => {
+  const originales = [
+    { id: 'a', product_id: 10, description: 'Caldero', qty: 2, unit_price: 50000, discount_amount: 10000, tax_rate: 19, tax_code: 'IVA_19', total_line: 90000 },
+    { id: 'b', product_id: 11, description: 'Libro', qty: 1, unit_price: 20000, discount_amount: 0, tax_rate: 0, tax_code: null, total_line: 20000 },
+    { id: 'c', product_id: null, description: 'Envío (Delivery)', qty: 1, unit_price: 8000, discount_amount: 0, tax_rate: 0, tax_code: null, total_line: 8000 },
+  ];
+  const base = { creditNoteId: 'nc', organizationId: 135, orderNumber: 'WO-TEST', lineasOriginales: originales, taxIncluded: true };
+
+  it('reembolso total: copia todas las líneas con su tarifa y código, y suma lo facturado', async () => {
+    const lineas = await lineasNotaCreditoWeb(base, resolver);
+    expect(lineas).toHaveLength(3);
+    expect(lineas[0]).toMatchObject({ invoice_type: 'sale', tax_rate: 19, tax_code: 'IVA_19', total_line: 90000, discount_amount: 10000 });
+    // La línea exenta sigue exenta: no toma el IVA por defecto de la organización.
+    expect(lineas[1]).toMatchObject({ tax_rate: 0, tax_code: null, total_line: 20000 });
+    expect(sumaLineas(lineas)).toBe(118000);
+  });
+
+  it('parcial por ítems: unidades devueltas y parte proporcional del descuento', async () => {
+    const lineas = await lineasNotaCreditoWeb({ ...base, itemsParciales: [{ product_id: 10, quantity: 1 }] }, resolver);
+    expect(lineas).toEqual([
+      expect.objectContaining({ product_id: 10, qty: 1, discount_amount: 5000, tax_rate: 19, total_line: 45000 }),
+    ]);
+  });
+
+  it('parcial por valor: una línea de concepto por el importe, sin impuesto', async () => {
+    const lineas = await lineasNotaCreditoWeb({ ...base, montoParcial: 15000 }, resolver);
+    expect(lineas).toEqual([
+      expect.objectContaining({ product_id: null, qty: 1, unit_price: 15000, tax_rate: 0, tax_code: null, total_line: 15000 }),
+    ]);
   });
 });

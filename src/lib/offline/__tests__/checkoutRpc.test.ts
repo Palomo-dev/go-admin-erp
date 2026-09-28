@@ -225,7 +225,7 @@ describe('checkout atómico por RPC (pos_checkout_v1)', () => {
     expect(env.promotion_ids).toEqual(['promo-1']);
     expect(env.items).toHaveLength(2);
     expect(env.items[0]).toMatchObject({ product_id: 1001, product_name: 'A', quantity: 2, unit_price: 5000, discount_amount: 1000, tax_rate: 19, tax_included: true, serial_ids: [] });
-    expect(env.items[0].modifiers).toEqual([{ name: 'Queso' }]);
+    expect(env.items[0].modifiers).toEqual([{ name: 'Queso', modifier_id: 5 }]);
     expect(env.items[1]).toMatchObject({ product_id: 1002, quantity: 1, unit_price: 3000, tax_rate: 0, serial_ids: [501] });
     // Totales calculados en el cliente: 9000 (10000-1000, IVA incluido) + 3000 + propina 500.
     expect(env.totals.total).toBe(12500);
@@ -281,36 +281,26 @@ describe('checkout atómico por RPC (pos_checkout_v1)', () => {
     expect(fake.ops.filter((o) => o.action === 'insert' || o.action === 'update')).toHaveLength(0);
   });
 
-  test('RPC ausente (PGRST202): respaldo de N inserts y un único aviso por sesión', async () => {
+  test('RPC ausente (PGRST202): la venta falla visible, sin N inserts y con un único aviso por sesión', async () => {
     installWindow({ desktop: true });
     seedCarts();
     fake.setHandler((op) => {
       if (op.table === RPC_TABLE) {
         return { error: { code: 'PGRST202', message: `Could not find the function public.${POS_CHECKOUT_RPC}(p_envelope) in the schema cache` } };
       }
-      if (op.action === 'insert') {
-        const row = Array.isArray(op.payload) ? op.payload[0] : (op.payload as Record<string, unknown>);
-        return { data: { id: (row.id as string) || `${op.table}-new`, ...row, balance: 0 } };
-      }
-      if (op.countOnly) return { count: 0 };
-      if (op.table === 'products') return { data: [{ id: 1001, name: 'A' }, { id: 1002, name: 'B' }] };
       return { data: null };
     });
 
-    const first = await POSService.checkout(makeCheckout({ saleId: SALE_ID, createdAt: CREATED_AT }));
-    expect(first.id).toBe(SALE_ID);
+    await expect(POSService.checkout(makeCheckout({ saleId: SALE_ID, createdAt: CREATED_AT }))).rejects.toThrow(/servicio de cobro no está disponible/);
     expect(isCheckoutRpcAvailable()).toBe(false);
-    expect(fake.ops.filter((o) => o.table === 'sales' && o.action === 'insert')).toHaveLength(1);
-    expect(fake.ops.filter((o) => o.table === 'payments' && o.action === 'insert')).toHaveLength(2);
-    expect(generateInvoiceNumber).toHaveBeenCalledTimes(1);
-    const avisos = warnSpy.mock.calls.filter((c) => String(c[0]).includes('pos_checkout_v1 no existe'));
-    expect(avisos).toHaveLength(1);
+    expect(fake.ops.filter((o) => o.action === 'insert' || o.action === 'update')).toHaveLength(0);
+    expect(generateInvoiceNumber).not.toHaveBeenCalled();
 
-    // Segunda venta en la misma sesión: ni se intenta la RPC ni se repite el aviso.
+    // Segunda venta en la misma sesión: tampoco se degrada a N inserts.
     seedCarts();
     fake.reset();
-    await POSService.checkout(makeCheckout({ saleId: '33333333-3333-4333-8333-333333333333' }));
-    expect(rpcCalls()).toHaveLength(0);
+    await expect(POSService.checkout(makeCheckout({ saleId: '33333333-3333-4333-8333-333333333333' }))).rejects.toThrow(/La venta NO se guardó/);
+    expect(fake.ops.filter((o) => o.action === 'insert' || o.action === 'update')).toHaveLength(0);
     expect(warnSpy.mock.calls.filter((c) => String(c[0]).includes('pos_checkout_v1 no existe'))).toHaveLength(1);
   });
 
@@ -336,27 +326,31 @@ describe('checkout atómico por RPC (pos_checkout_v1)', () => {
     expect(emitter.onCartsSaved).not.toHaveBeenCalled();
   });
 
-  test('cobro de deuda (cart.sale_id + invoice_id): no pasa por la RPC, sigue el camino de siempre', async () => {
+  // Punto 6 (2026-09-24): el cobro de una deuda ya no escribe venta, factura,
+  // pagos y propina desde el navegador: es UNA llamada a la RPC en modo
+  // 'settle', idempotente por la llave del intento de cobro.
+  test('cobro de deuda (cart.sale_id + invoice_id): una llamada a la RPC en modo settle, sin escrituras del cliente', async () => {
     installWindow({ desktop: true });
     seedCarts();
-    fake.setHandler((op) => {
-      if (op.table === RPC_TABLE) throw new Error('El cobro de deuda no debe ir por la RPC');
-      if (op.action === 'update') return { data: { id: op.filters.id, balance: 0, total: 12500, number: 'FACT-0009' } };
-      if (op.action === 'insert') {
-        const row = op.payload as Record<string, unknown>;
-        return { data: { id: `${op.table}-new`, ...row } };
-      }
-      return { data: null };
-    });
-    const data = makeCheckout({ saleId: SALE_ID });
+    const KEY = '55555555-5555-4555-8555-555555555555';
+    fake.setHandler(rpcHandler((envelope) => ({
+      data: {
+        sale: { id: envelope.sale_id, total: 12500, status: 'paid' },
+        invoice: { id: 'factura-deuda' }, payments: [], replayed: false, completed: [], warnings: [],
+      },
+    })));
+    const data = makeCheckout({ saleId: SALE_ID, attemptId: KEY });
     data.cart.sale_id = 'venta-deuda';
     data.cart.invoice_id = 'factura-deuda';
 
     const sale = await POSService.checkout(data);
 
-    expect(rpcCalls()).toHaveLength(0);
+    expect(rpcCalls()).toHaveLength(1);
+    const envelope = (rpcCalls()[0].payload as { p_envelope: CheckoutEnvelope }).p_envelope;
+    expect(envelope).toMatchObject({ mode: 'settle', payment_key: KEY, sale_id: 'venta-deuda', branch_id: 7 });
+    // En el cobro de una venta existente no se reevalúan promociones.
+    expect(envelope.promotion_ids).toEqual([]);
     expect(sale.id).toBe('venta-deuda');
-    expect(fake.ops.filter((o) => o.table === 'sales' && o.action === 'update')).toHaveLength(1);
   });
 
   test('salesSync reproduce cada sobre con UNA llamada a la RPC y marca synced también si ya existía', async () => {

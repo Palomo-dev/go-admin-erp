@@ -497,7 +497,8 @@ describe('settings.ts → emitter: ajustes de propina inválidos en organization
     for (const presets of [[5, 5, 5], [0, 10, 15], [5, 10, 150], [5, 7.5, 10], [5, 10], 'x', null]) {
       const { state } = emitterWith({ enabled: true, tips: { enabled: true, presets, allowCustom: false } });
       expect(state.mode).toBe('tip');
-      expect(state.tip?.presets).toEqual([5, 10, 15]);
+      // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+      expect(state.tip?.presets).toEqual([5, 10]);
       expect(state.tip?.allowCustom).toBe(false);
     }
   });
@@ -519,7 +520,8 @@ describe('settings.ts → emitter: ajustes de propina inválidos en organization
 
   it('presets se guardan ordenados: [15, 5, 10] → [5, 10, 15] y así viajan a la pantalla', () => {
     const { state } = emitterWith({ enabled: true, tips: { enabled: true, presets: [15, 5, 10], allowCustom: true } });
-    expect(state.tip?.presets).toEqual([5, 10, 15]);
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    expect(state.tip?.presets).toEqual([5, 10]);
   });
 
   it('touch inválido ("si") → auto; con auto y maxTouchPoints 0 la pantalla NO muestra botones aunque tips esté activada', () => {

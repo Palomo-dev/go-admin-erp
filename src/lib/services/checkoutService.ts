@@ -1,5 +1,8 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { resolveLineTax, type ResolveTaxInput } from '@/lib/services/taxResolver';
+import { sinRetenciones } from '@/lib/services/taxResolverCore';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 export interface CheckoutReservation {
   id: string;
@@ -44,7 +47,17 @@ export interface CheckoutReservation {
     reference: string;
     created_at: string;
   }>;
-  metadata: any;
+  metadata: Record<string, unknown>;
+}
+
+/** Fila de `reservation_spaces` con su espacio (el cliente Supabase no está tipado). */
+interface FilaEspacioCheckout {
+  spaces: {
+    id: string | null;
+    label: string | null;
+    floor_zone: string | null;
+    space_types: { name: string | null } | null;
+  } | null;
 }
 
 export interface CheckoutStats {
@@ -137,7 +150,7 @@ class CheckoutService {
 
     // Transformar datos
     const departures: CheckoutReservation[] = await Promise.all(
-      (data || []).map(async (reservation: any) => {
+      (data || []).map(async (reservation) => {
         // Obtener folio para esta reserva
         let folioData = null;
         const { data: folios } = await supabase
@@ -176,7 +189,7 @@ class CheckoutService {
         }
 
         const customer = (Array.isArray(reservation.customers) ? reservation.customers[0] : reservation.customers) || {};
-        const spaces = (reservation.reservation_spaces || []).map((rs: any) => ({
+        const spaces = ((reservation.reservation_spaces || []) as unknown as FilaEspacioCheckout[]).map((rs) => ({
           id: rs.spaces?.id || '',
           label: rs.spaces?.label || '',
           space_type_name: rs.spaces?.space_types?.name || '',
@@ -214,7 +227,7 @@ class CheckoutService {
             status: reservation.status,
             spaces,
             folio: folioData,
-            deposit_payments: (depositPayments || []).map((p: any) => ({
+            deposit_payments: (depositPayments || []).map((p) => ({
               id: p.id,
               amount: Number(p.amount),
               method: p.method,
@@ -308,7 +321,7 @@ class CheckoutService {
     }
 
     const customer = (Array.isArray(reservation.customers) ? reservation.customers[0] : reservation.customers) || {};
-    const spaces = (reservation.reservation_spaces || []).map((rs: any) => ({
+    const spaces = ((reservation.reservation_spaces || []) as unknown as FilaEspacioCheckout[]).map((rs) => ({
       id: rs.spaces?.id || '',
       label: rs.spaces?.label || '',
       space_type_name: rs.spaces?.space_types?.name || '',
@@ -346,7 +359,7 @@ class CheckoutService {
       status: reservation.status,
       spaces,
       folio: folioData,
-      deposit_payments: (depositPayments || []).map((p: any) => ({
+      deposit_payments: (depositPayments || []).map((p) => ({
         id: p.id,
         amount: Number(p.amount),
         method: p.method,
@@ -539,7 +552,7 @@ class CheckoutService {
    * se cobran las noches extra al folio.
    */
   async performCheckout(data: CheckoutData): Promise<void> {
-    const { reservationId, userId, notes, generateInvoice, generateReceipt, updateCheckoutDate } = data;
+    const { reservationId, userId, notes, generateInvoice, updateCheckoutDate } = data;
 
     // Las noches extra ya se aplicaron antes del pago via applyExtraNightsCharge
     // Solo aplicar si no se aplicaron antes (caso de deuda sin pago previo)
@@ -689,6 +702,8 @@ class CheckoutService {
     folioId: string,
     reservationId: string,
     userId?: string,
+    // Posicional: lo pasan los llamadores, pero en checkout la factura se genera siempre.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     generateInvoice: boolean = false,
     paymentData?: {
       payments?: { method: string; amount: number }[];
@@ -730,7 +745,7 @@ class CheckoutService {
 
     // Filtrar: solo items room_charge y paid (los direct_payment ya tienen su propia venta en POS)
     const saleableItems = folioItems.filter(
-      (item: any) => item.charge_type === 'room_charge' || (!item.charge_type && item.payment_status !== 'paid')
+      (item) => item.charge_type === 'room_charge' || (!item.charge_type && item.payment_status !== 'paid')
     );
 
     if (saleableItems.length === 0) {
@@ -741,15 +756,6 @@ class CheckoutService {
     const branchId = reservation.branch_id || getCurrentBranchId();
     console.log('createSaleFromFolio: Iniciando venta', { folioId, reservationId, branchId, itemsCount: saleableItems.length });
 
-    // Obtener el balance real del folio
-    const { data: folioData } = await supabase
-      .from('folios')
-      .select('balance')
-      .eq('id', folioId)
-      .single();
-
-    const folioBalance = Number(folioData?.balance || 0);
-
     // Calcular impuestos usando la utilidad compartida con POS
     const { calculateCartTaxes } = await import('@/lib/utils/taxCalculations');
     const { generateInvoiceNumber } = await import('@/lib/utils/invoiceUtils');
@@ -757,11 +763,12 @@ class CheckoutService {
     // Obtener impuestos de la organización
     const { data: orgTaxes } = await supabase
       .from('organization_taxes')
-      .select('id, name, rate, is_default, is_active')
+      .select('id, name, rate, is_default, is_active, kind, tax_templates(code)')
       .eq('organization_id', reservation.organization_id)
       .eq('is_active', true);
 
-    const organizationTaxes = (orgTaxes || []).map((t: any) => ({
+    // Una retención no se suma a la venta del folio.
+    const organizationTaxes = sinRetenciones(orgTaxes ?? []).map((t) => ({
       id: t.id,
       name: t.name,
       rate: Number(t.rate),
@@ -770,7 +777,7 @@ class CheckoutService {
     }));
 
     // Construir items para cálculo de impuestos
-    const taxCalcItems = saleableItems.map((item: any) => ({
+    const taxCalcItems = saleableItems.map((item) => ({
       quantity: Number(item.quantity) || 1,
       unit_price: Number(item.unit_price) || Number(item.amount),
       product_id: Number(item.product_id) || 0,
@@ -830,7 +837,7 @@ class CheckoutService {
     console.log('createSaleFromFolio: Sale creada', sale.id);
 
     // Crear sale_items solo desde los items vendibles
-    const saleItems = saleableItems.map((item: any) => ({
+    const saleItems = saleableItems.map((item) => ({
       sale_id: sale.id,
       product_id: item.product_id || null,
       quantity: Number(item.quantity) || 1,
@@ -852,20 +859,16 @@ class CheckoutService {
 
     console.log('createSaleFromFolio: Sale_items creados', saleItems.length);
 
-    // Registrar pagos en tabla payments
-    const { data: baseCurrency } = await supabase
-      .from('currencies')
-      .select('code')
-      .eq('organization_id', reservation.organization_id)
-      .eq('is_base', true)
-      .maybeSingle();
-
-    const currencyCode = baseCurrency?.code || 'COP';
+    // Registrar pagos en tabla payments. La reserva no tiene moneda propia:
+    // pagos y factura van en la moneda base de la organización. (Antes se
+    // consultaba `currencies` por organization_id/is_base, columnas que ese
+    // catálogo no tiene: la consulta fallaba y todo salía en COP.)
+    const { code: currencyCode } = await resolveOrgCurrency(supabase, reservation.organization_id);
     let changeAssigned = false;
 
     for (const payment of payments) {
       if (payment.amount > 0) {
-        const paymentData: any = {
+        const paymentData: Record<string, unknown> = {
           organization_id: reservation.organization_id,
           branch_id: branchId,
           amount: payment.amount,
@@ -920,19 +923,66 @@ class CheckoutService {
         console.error('createSaleFromFolio: Error generando factura:', invoiceError);
         throw invoiceError;
       } else {
-        // Crear invoice_items
-        const invoiceItems = saleableItems.map((item: any) => ({
-          invoice_id: invoice.id,
-          invoice_type: 'sale',
-          invoice_sales_id: invoice.id,
-          product_id: item.product_id || null,
-          description: item.description?.substring(0, 255) || 'Cargo',
-          qty: Number(item.quantity) || 1,
-          unit_price: Number(item.unit_price) || Number(item.amount),
-          tax_rate: 0,
-          total_line: Number(item.amount),
-          discount_amount: 0,
-          tax_included: taxIncluded,
+        // Crear invoice_items.
+        // F-42: la tarifa de cada línea sale del resolver único, con los
+        // impuestos aplicados en el diálogo de checkout como impuestos del
+        // documento (los mismos con los que se calculó la cabecera). Si el
+        // documento no lleva ningún impuesto, la línea queda en 0 de forma
+        // definitiva: la cabecera se calculó sin impuesto y la línea no puede
+        // añadir uno que el huésped no pagó.
+        const appliedDocTaxes: NonNullable<ResolveTaxInput['appliedTaxes']> = {};
+        const appliedDocTaxTotals: NonNullable<ResolveTaxInput['appliedTaxTotals']> = {};
+        for (const tax of (orgTaxes || []) as Array<{
+          id: string;
+          name: string;
+          rate: number | string;
+          tax_templates?: { code?: string | null } | { code?: string | null }[] | null;
+        }>) {
+          if (!appliedTaxes[tax.id]) continue;
+          const rate = Number(tax.rate) || 0;
+          const template = Array.isArray(tax.tax_templates) ? tax.tax_templates[0] : tax.tax_templates;
+          const key = template?.code || `TAX_${rate}`;
+          appliedDocTaxes[key] = true;
+          const previous = appliedDocTaxTotals[key];
+          appliedDocTaxTotals[key] = {
+            rate: (previous?.rate || 0) + rate,
+            base: 0,
+            amount: 0,
+            name: tax.name,
+            included: taxIncluded,
+          };
+        }
+        const documentoSinImpuesto = !Object.values(appliedDocTaxTotals).some((t) => t.rate > 0);
+
+        const invoiceItems = await Promise.all(saleableItems.map(async (item: { product_id?: number | null; description?: string | null; quantity?: number | string | null; unit_price?: number | string | null; amount?: number | string | null }) => {
+          const qty = Number(item.quantity) || 1;
+          const unitPrice = Number(item.unit_price) || Number(item.amount);
+          const resolved = await resolveLineTax({
+            itemTaxRate: 0,
+            itemTaxIsFinal: documentoSinImpuesto,
+            appliedTaxes: appliedDocTaxes,
+            appliedTaxTotals: appliedDocTaxTotals,
+            productId: item.product_id || null,
+            organizationId: reservation.organization_id,
+            taxIncluded,
+            qty,
+            unitPrice,
+            discountAmount: 0,
+          });
+          return {
+            invoice_id: invoice.id,
+            invoice_type: 'sale',
+            invoice_sales_id: invoice.id,
+            product_id: item.product_id || null,
+            description: item.description?.substring(0, 255) || 'Cargo',
+            qty,
+            unit_price: unitPrice,
+            tax_rate: resolved.tax_rate,
+            tax_code: resolved.tax_code,
+            total_line: resolved.total_line,
+            discount_amount: 0,
+            tax_included: resolved.tax_included,
+          };
         }));
 
         await supabase.from('invoice_items').insert(invoiceItems);

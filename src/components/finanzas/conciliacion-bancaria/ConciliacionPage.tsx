@@ -15,13 +15,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConciliacionService, ConciliacionStats } from './ConciliacionService';
 import { BankReconciliation, BankAccount } from '../bancos/BancosService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { CopyableId } from '@/components/common/CopyableId';
 import { useBranch } from '@/lib/context/BranchContext';
 
 export function ConciliacionPage() {
   const router = useRouter();
   const { branchFilter } = useBranch();
+  const { paraDocumento } = useMonedaOrganizacion();
   const [reconciliations, setReconciliations] = useState<BankReconciliation[]>([]);
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [stats, setStats] = useState<ConciliacionStats | null>(null);
@@ -295,7 +297,10 @@ export function ConciliacionPage() {
                           ? 'text-green-600 dark:text-green-400' 
                           : 'text-red-600 dark:text-red-400'
                       }`}>
-                        {formatCurrency(rec.difference || 0)}
+                        {formatMoneda(
+                          rec.difference || 0,
+                          paraDocumento(accounts.find((a) => a.id === rec.bank_account_id)?.currency),
+                        )}
                       </p>
                     </div>
                     {getStatusBadge(rec.status)}

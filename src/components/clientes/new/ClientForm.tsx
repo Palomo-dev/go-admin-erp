@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { Alert } from '@/components/ui/alert';
@@ -9,11 +10,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
-import { ToastAction } from '@/components/ui/toast';
 import { useToast, toastSuccess, toastError } from '@/components/ui/use-toast';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
 import { MergeModal } from './MergeModal';
-import { CompanyContactsManager } from '@/components/clientes/CompanyContactsManager';
+import { CompanyContactsManager, type PendingContact } from '@/components/clientes/CompanyContactsManager';
+import { useKitT } from '@/components/kit/useIdiomaKit';
+import { useEtiquetasCatalogo } from './useEtiquetasCatalogo';
 import LocationSelector, { type LocationData } from '@/components/common/LocationSelector';
 import { cn } from '@/utils/Utils';
 import { User, Mail, Phone, MapPin, FileText, Tag, Building2, CreditCard, Users, Loader2, Save, X, Check, Camera, ChevronDown, Search } from 'lucide-react';
@@ -29,7 +31,7 @@ interface ClientFormProps {
   clientId?: string; // Si se proporciona, es modo edición
   mode?: 'create' | 'edit';
   /** Cuando se provee, tras crear/actualizar se llama en lugar de navegar (uso en diálogos) */
-  onSuccess?: (customer: any) => void;
+  onSuccess?: (customer: ClienteGuardado) => void;
   /** Callback para el botón cancelar cuando se usa embebido */
   onCancel?: () => void;
   /** Modo embebido: oculta redirecciones y usa callbacks (para diálogos) */
@@ -51,10 +53,26 @@ interface DocumentTypeOption {
   forPerson: boolean;
 }
 
-interface CustomerRole {
-  value: string;
-  label: string;
-  description?: string;
+/** Fila de `customers` que se devuelve a `onSuccess` (creada o actualizada). */
+type ClienteGuardado = { id: string; [campo: string]: unknown };
+
+/** Cliente existente con el mismo documento o correo (fila de `customers`). */
+interface ClienteDuplicado {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email?: string;
+  doc_number?: string;
+  phone?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  roles?: string[];
+}
+
+/** Mensaje de un error de Supabase o de JS; cadena vacía si no trae. */
+function mensajeDe(err: unknown): string {
+  if (err && typeof err === 'object' && 'message' in err && typeof err.message === 'string') return err.message;
+  return '';
 }
 
 type CustomerType = 'person' | 'company';
@@ -70,6 +88,9 @@ const fallbackDocumentTypes: DocumentTypeOption[] = [
 export function ClientForm({ organizationId, branchId, clientId, mode = 'create', onSuccess, onCancel, embedded = false, initialValues }: ClientFormProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const t = useTranslations('clientes.formulario');
+  const tk = useKitT();
+  const etiquetas = useEtiquetasCatalogo();
   const isEditMode = mode === 'edit' && !!clientId;
   
   // Estados del formulario
@@ -101,7 +122,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
   const [customerType, setCustomerType] = useState<CustomerType>(initialValues?.customerType ?? 'person');
   // Empresa padre (para clientes persona vinculados a una empresa)
   const [parentCustomerId, setParentCustomerId] = useState<string>('');
-  const [companies, setCompanies] = useState<{id: string; name: string}[]>([]);
+  const [companies, setCompanies] = useState<{id: string; name: string | null}[]>([]);
   // Tipos de documento según país de la organización
   const [documentTypes, setDocumentTypes] = useState<DocumentTypeOption[]>(fallbackDocumentTypes);
   
@@ -119,12 +140,12 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
   const [loadingData, setLoadingData] = useState(isEditMode); // Solo carga inicial en modo edición
   const [error, setError] = useState('');
   const [duplicateFound, setDuplicateFound] = useState(false);
-  const [duplicateClient, setDuplicateClient] = useState<any>(null);
-  const [originalData, setOriginalData] = useState<any>(null); // Para auditoría en edición
+  const [duplicateClient, setDuplicateClient] = useState<ClienteDuplicado | null>(null);
+  const [, setOriginalData] = useState<unknown>(null); // Para auditoría en edición
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
-  const [pendingContacts, setPendingContacts] = useState<any[]>([]);
+  const [pendingContacts, setPendingContacts] = useState<PendingContact[]>([]);
 
   // Autorizacion de tratamiento de datos (Habeas Data - Ley 1581/2012)
   const [habeasDataAuth, setHabeasDataAuth] = useState(true);
@@ -206,7 +227,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
         setCompanies(
           data
             .filter(c => !clientId || c.id !== clientId)
-            .map(c => ({ id: c.id, name: c.company_name || c.trade_name || c.full_name || 'Empresa sin nombre' }))
+            .map(c => ({ id: c.id, name: c.company_name || c.trade_name || c.full_name || null }))
         );
       }
     }
@@ -243,7 +264,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           .single();
         
         if (clientError) throw clientError;
-        if (!clientData) throw new Error('No se encontró el cliente');
+        if (!clientData) throw new Error(t('avisos.clienteNoEncontrado'));
         
         // Guardar datos originales para auditoría
         setOriginalData(clientData);
@@ -296,12 +317,12 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
         setSelectedRoles(clientData.roles || ['cliente', 'huesped']);
         setSelectedFiscal(clientData.fiscal_responsibilities || ['R-99-PN']);
         
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error al cargar datos del cliente:', err);
-        setError('No se pudo cargar la información del cliente. ' + (err.message || ''));
+        setError(t('avisos.cargaCliente', { detalle: mensajeDe(err) }));
         toast({
-          title: "Error al cargar datos",
-          description: err.message || 'Ha ocurrido un error inesperado',
+          title: t('avisos.errorCargarDatos'),
+          description: mensajeDe(err) || t('avisos.errorInesperado'),
           variant: "destructive",
         });
       } finally {
@@ -376,14 +397,13 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
       const json = await res.json();
       if (json.success && json.data) {
         handleDianResult(json.data);
-        const cacheLabel = json.fromCache ? ' (cache)' : '';
-        toastSuccess('Autocompletado', `Datos obtenidos desde DIAN${cacheLabel}`);
+        toastSuccess(t('avisos.autocompletado'), json.fromCache ? t('avisos.datosDianCache') : t('avisos.datosDian'));
       } else if (json.error) {
-        toastError('Sin resultados', json.error);
+        toastError(t('avisos.sinResultados'), json.error);
       }
     } catch (err) {
       console.error('Error consulta DIAN:', err);
-      toastError('Error', 'No se pudo consultar DIAN');
+      toastError(t('avisos.error'), t('avisos.errorDian'));
     } finally {
       setConsultandoDian(false);
     }
@@ -402,11 +422,11 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      toast({ title: 'Error', description: 'Solo se permiten imágenes', variant: 'destructive' });
+      toast({ title: t('avisos.error'), description: t('avisos.soloImagenes'), variant: 'destructive' });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: 'Error', description: 'La imagen no debe superar 5MB', variant: 'destructive' });
+      toast({ title: t('avisos.error'), description: t('avisos.imagenGrande'), variant: 'destructive' });
       return;
     }
 
@@ -428,9 +448,9 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
       const newUrl = `${publicUrl}?t=${Date.now()}`;
       await supabase.from('customers').update({ avatar_url: newUrl }).eq('id', clientId);
       setAvatarUrl(newUrl);
-      toast({ title: 'Avatar actualizado' });
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      toast({ title: t('avisos.avatarActualizado') });
+    } catch (err) {
+      toast({ title: t('avisos.error'), description: mensajeDe(err), variant: 'destructive' });
     } finally {
       setUploadingAvatar(false);
       if (avatarInputRef.current) avatarInputRef.current.value = '';
@@ -486,6 +506,11 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
   // Envío del formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errorTelefono = mensajeErrorTelefono(formData.phone);
+    if (errorTelefono) {
+      setError(t('avisos.telefonoInvalido', { error: errorTelefono }));
+      return;
+    }
     setLoading(true);
     setError('');
     
@@ -521,10 +546,10 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
         if (updateError) throw updateError;
         
         toast({
-          title: "Cliente actualizado",
-          description: customerType === 'company'
-            ? `Se ha actualizado la información de ${formData.companyName}`
-            : `Se ha actualizado la información de ${formData.firstName} ${formData.lastName}`,
+          title: t('avisos.actualizado.titulo'),
+          description: t('avisos.actualizado.descripcion', {
+            nombre: customerType === 'company' ? formData.companyName : `${formData.firstName} ${formData.lastName}`,
+          }),
           variant: "default",
         });
         
@@ -620,10 +645,10 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
         }
         
         toast({
-          title: "Cliente creado con éxito",
-          description: customerType === 'company' 
-            ? `Se ha registrado la empresa ${formData.companyName}.`
-            : `Se ha registrado a ${formData.firstName} ${formData.lastName} como cliente.`,
+          title: t('avisos.creado.titulo'),
+          description: customerType === 'company'
+            ? t('avisos.creado.empresa', { nombre: formData.companyName })
+            : t('avisos.creado.persona', { nombre: `${formData.firstName} ${formData.lastName}` }),
           variant: "default",
         });
         
@@ -636,12 +661,12 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           router.push('/app/clientes');
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(`Error al ${isEditMode ? 'actualizar' : 'crear'} cliente:`, err);
-      setError(err.message || `Error al ${isEditMode ? 'actualizar' : 'crear'} el cliente`);
+      setError(mensajeDe(err) || (isEditMode ? t('avisos.errorActualizar.detalle') : t('avisos.errorCrear.detalle')));
       toast({
-        title: `Error al ${isEditMode ? 'actualizar' : 'crear'} cliente`,
-        description: err.message || 'Ocurrió un error al procesar la solicitud',
+        title: isEditMode ? t('avisos.errorActualizar.titulo') : t('avisos.errorCrear.titulo'),
+        description: mensajeDe(err) || t('avisos.errorSolicitud'),
         variant: "destructive",
       });
     } finally {
@@ -651,6 +676,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
   
   // Manejar fusión de clientes
   const handleMerge = async (mergeType: 'keep-existing' | 'update-existing' | 'create-new') => {
+    if (!duplicateClient) return;
     setLoading(true);
     
     try {
@@ -680,8 +706,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
         if (updateError) throw updateError;
         
         toast({
-          title: "Cliente actualizado",
-          description: "Se ha actualizado la información del cliente existente.",
+          title: t('avisos.actualizado.titulo'),
+          description: t('avisos.existenteActualizado'),
           variant: "default",
         });
         
@@ -716,8 +742,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
       if (insertError) throw insertError;
       
       toast({
-        title: "Cliente duplicado creado",
-        description: "Se ha creado el cliente como un registro separado.",
+        title: t('avisos.duplicadoCreado.titulo'),
+        description: t('avisos.duplicadoCreado.descripcion'),
         variant: "default",
       });
       
@@ -726,9 +752,9 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
       } else {
         router.push('/app/clientes');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error en operación de fusión:', err);
-      setError(err.message || 'Error al procesar la operación');
+      setError(mensajeDe(err) || t('avisos.errorOperacion'));
     } finally {
       setLoading(false);
       setDuplicateFound(false);
@@ -786,8 +812,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Información Personal</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Datos básicos de identificación del cliente</p>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('secciones.personal.titulo')}</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('secciones.personal.descripcion')}</p>
                 </div>
               </div>
               <ChevronDown className={cn("h-5 w-5 text-gray-400 dark:text-gray-500 transition-transform", openSections.personal && "rotate-180")} />
@@ -799,7 +825,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 <div className="flex flex-wrap items-center gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
                   <div className="relative group cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
                     <UserAvatar
-                      name={customerType === 'company' ? (formData.companyName || 'Nueva Empresa') : `${formData.firstName} ${formData.lastName}`.trim() || 'Nuevo Cliente'}
+                      name={customerType === 'company' ? (formData.companyName || t('campos.avatarNuevaEmpresa')) : `${formData.firstName} ${formData.lastName}`.trim() || t('campos.avatarNuevoCliente')}
                       avatarUrl={avatarUrl}
                       size="lg"
                       className="w-20 h-20"
@@ -820,9 +846,9 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                     />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Foto del cliente</p>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{t('campos.foto')}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {isEditMode ? 'Haz clic para cambiar la foto (máx. 5MB)' : 'Puedes agregar una foto después de crear el cliente'}
+                      {isEditMode ? t('campos.fotoEditar') : t('campos.fotoCrear')}
                     </p>
                   </div>
                 </div>
@@ -831,7 +857,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 <div className="space-y-2">
                   <Label className="text-sm font-medium flex flex-wrap items-center gap-2">
                     <Users className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                    Tipo de Cliente
+                    {t('campos.tipoCliente')}
                   </Label>
                   <div className="grid grid-cols-2 gap-3 max-w-md">
                     <div
@@ -844,7 +870,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                       onClick={() => setCustomerType('person')}
                     >
                       <User className="h-4 w-4" />
-                      <span className="text-sm font-medium">Persona</span>
+                      <span className="text-sm font-medium">{t('campos.persona')}</span>
                     </div>
                     <div
                       className={cn(
@@ -856,7 +882,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                       onClick={() => setCustomerType('company')}
                     >
                       <Building2 className="h-4 w-4" />
-                      <span className="text-sm font-medium">Empresa</span>
+                      <span className="text-sm font-medium">{t('campos.empresa')}</span>
                     </div>
                   </div>
                 </div>
@@ -867,7 +893,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                     <div className="space-y-2">
                       <Label htmlFor="companyName" className="text-sm font-medium flex flex-wrap items-center gap-2">
                         <Building2 className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                        Razón Social <span className="text-red-500">*</span>
+                        {t('campos.razonSocial')} <span className="text-red-500">*</span>
                       </Label>
                       <Input 
                         id="companyName" 
@@ -875,19 +901,19 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                         value={formData.companyName}
                         onChange={handleChange}
                         required
-                        placeholder="Ej: Empresa S.A.S."
+                        placeholder={t('campos.razonSocialPlaceholder')}
                         className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                       />
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="tradeName" className="text-sm font-medium">Nombre Comercial</Label>
+                      <Label htmlFor="tradeName" className="text-sm font-medium">{t('campos.nombreComercial')}</Label>
                       <Input 
                         id="tradeName" 
                         name="tradeName" 
                         value={formData.tradeName}
                         onChange={handleChange}
-                        placeholder="Ej: Mi Negocio"
+                        placeholder={t('campos.nombreComercialPlaceholder')}
                         className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                       />
                     </div>
@@ -899,7 +925,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName" className="text-sm font-medium flex flex-wrap items-center gap-1">
-                      Nombre <span className="text-red-500">*</span>
+                      {t('campos.nombre')} <span className="text-red-500">*</span>
                     </Label>
                     <Input 
                       id="firstName" 
@@ -907,14 +933,14 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                       value={formData.firstName}
                       onChange={handleChange}
                       required
-                      placeholder="Ej: Juan Carlos"
+                      placeholder={t('campos.nombrePlaceholder')}
                       className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="lastName" className="text-sm font-medium flex flex-wrap items-center gap-1">
-                      Apellido <span className="text-red-500">*</span>
+                      {t('campos.apellido')} <span className="text-red-500">*</span>
                     </Label>
                     <Input 
                       id="lastName" 
@@ -922,7 +948,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                       value={formData.lastName}
                       onChange={handleChange}
                       required
-                      placeholder="Ej: García López"
+                      placeholder={t('campos.apellidoPlaceholder')}
                       className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
@@ -934,7 +960,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   <div className="space-y-2">
                     <Label htmlFor="parentCustomer" className="text-sm font-medium flex flex-wrap items-center gap-2">
                       <Building2 className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                      Empresa a la que pertenece (opcional)
+                      {t('campos.empresaPadre')}
                     </Label>
                     <select
                       id="parentCustomer"
@@ -942,12 +968,12 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                       onChange={(e) => setParentCustomerId(e.target.value)}
                       className="h-10 w-full rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 ring-offset-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:ring-offset-gray-950"
                     >
-                      <option value="">Sin empresa asociada</option>
+                      <option value="">{t('campos.sinEmpresa')}</option>
                       {companies.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
+                        <option key={c.id} value={c.id}>{c.name || t('campos.empresaSinNombre')}</option>
                       ))}
                     </select>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Vincula esta persona como cliente hijo de una empresa</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t('campos.empresaPadreAyuda')}</p>
                   </div>
                 )}
                 
@@ -956,7 +982,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   <div className="space-y-2">
                     <Label htmlFor="documentType" className="text-sm font-medium flex flex-wrap items-center gap-2">
                       <CreditCard className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                      Tipo de Documento
+                      {t('campos.tipoDocumento')}
                     </Label>
                     <select
                       id="documentType"
@@ -967,14 +993,14 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                     >
                       {visibleDocumentTypes.map((type) => (
                         <option key={type.value} value={type.value}>
-                          {type.label}
+                          {etiquetas.tipoDocumento(type.value, type.label)}
                         </option>
                       ))}
                     </select>
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="documentNumber" className="text-sm font-medium">Número de Documento</Label>
+                    <Label htmlFor="documentNumber" className="text-sm font-medium">{t('campos.numeroDocumento')}</Label>
                     <div className="flex gap-2">
                       <Input
                         id="documentNumber"
@@ -982,7 +1008,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                         value={formData.documentNumber}
                         onChange={handleChange}
                         onBlur={() => consultarDocumento()}
-                        placeholder="Ej: 12345678"
+                        placeholder={t('campos.numeroDocumentoPlaceholder')}
                         className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                       />
                       <Button
@@ -992,8 +1018,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                         onClick={() => consultarDocumento()}
                         disabled={!habeasDataAuth || consultandoDian || !formData.documentNumber || formData.documentNumber.length < 4}
                         className="h-10 w-10 shrink-0 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/50 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-40 disabled:bg-gray-50 dark:disabled:bg-gray-900 disabled:border-gray-200 dark:disabled:border-gray-700 disabled:text-gray-400"
-                        title="Consultar DIAN/RUES"
-                        aria-label="Consultar DIAN/RUES"
+                        title={t('campos.consultarDian')}
+                        aria-label={t('campos.consultarDian')}
                       >
                         {consultandoDian ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -1016,7 +1042,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                       name="dv" 
                       value={formData.dv}
                       onChange={handleChange}
-                      placeholder="Ej: 3"
+                      placeholder={t('campos.dvPlaceholder')}
                       maxLength={1}
                       className="h-10 w-20 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                     />
@@ -1038,8 +1064,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Clasificación y Roles</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Roles y responsabilidades fiscales del cliente</p>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('secciones.clasificacion.titulo')}</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('secciones.clasificacion.descripcion')}</p>
                 </div>
               </div>
               <ChevronDown className={cn("h-5 w-5 text-gray-400 dark:text-gray-500 transition-transform", openSections.classification && "rotate-180")} />
@@ -1051,7 +1077,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 <div className="space-y-3 pt-2">
                   <Label className="text-sm font-medium flex flex-wrap items-center gap-2">
                     <Users className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                    Roles del Cliente
+                    {t('campos.roles')}
                   </Label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                     {customerRoles.map((role) => (
@@ -1074,7 +1100,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                           {selectedRoles.includes(role.code) && <Check className="h-3 w-3" />}
                         </div>
                         <span className="cursor-pointer text-sm">
-                          {role.label}
+                          {etiquetas.rol(role.code, role.label)}
                         </span>
                       </div>
                     ))}
@@ -1085,7 +1111,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 <div className="space-y-3 pt-2">
                   <Label className="text-sm font-medium flex flex-wrap items-center gap-2">
                     <CreditCard className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                    Responsabilidad Fiscal (DIAN)
+                    {t('campos.responsabilidadFiscal')}
                   </Label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {fiscalOptions.map((fiscal) => (
@@ -1115,7 +1141,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                         </div>
                         <span className="cursor-pointer text-sm">
                           <span className="font-medium">{fiscal.code}</span>
-                          <span className="text-gray-500 dark:text-gray-400 ml-1 text-xs">- {fiscal.description}</span>
+                          <span className="text-gray-500 dark:text-gray-400 ml-1 text-xs">- {etiquetas.fiscal(fiscal.code, fiscal.description)}</span>
                         </span>
                       </div>
                     ))}
@@ -1137,8 +1163,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   <Phone className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Datos de Contacto</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Información para comunicarnos con el cliente</p>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('secciones.contacto.titulo')}</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('secciones.contacto.descripcion')}</p>
                 </div>
               </div>
               <ChevronDown className={cn("h-5 w-5 text-gray-400 dark:text-gray-500 transition-transform", openSections.contact && "rotate-180")} />
@@ -1151,7 +1177,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-sm font-medium flex flex-wrap items-center gap-2">
                       <Mail className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                      Correo Electrónico
+                      {t('campos.correo')}
                     </Label>
                     <Input 
                       id="email" 
@@ -1159,7 +1185,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                       type="email"
                       value={formData.email}
                       onChange={handleChange}
-                      placeholder="cliente@ejemplo.com"
+                      placeholder={t('campos.correoPlaceholder')}
                       className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
@@ -1167,14 +1193,14 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   <div className="space-y-2">
                     <Label htmlFor="phone" className="text-sm font-medium flex flex-wrap items-center gap-2">
                       <Phone className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                      Teléfono
+                      {t('campos.telefono')}
                     </Label>
                     <PhoneInput
                       id="phone"
                       name="phone"
                       value={formData.phone}
                       onChange={(v) => setFormData(prev => ({ ...prev, phone: v }))}
-                      inputClassName="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                      inputClassName="h-10"
                     />
                   </div>
                 </div>
@@ -1183,14 +1209,14 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 <div className="space-y-2">
                   <Label htmlFor="address" className="text-sm font-medium flex flex-wrap items-center gap-2">
                     <MapPin className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                    Dirección
+                    {t('campos.direccion')}
                   </Label>
                   <Input 
                     id="address" 
                     name="address" 
                     value={formData.address}
                     onChange={handleChange}
-                    placeholder="Calle 123 #45-67, Apartamento 101"
+                    placeholder={t('campos.direccionPlaceholder')}
                     className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -1199,7 +1225,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 <div className="space-y-3">
                   <Label className="text-sm font-medium flex flex-wrap items-center gap-2">
                     <MapPin className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                    Ubicación
+                    {t('campos.ubicacion')}
                   </Label>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <LocationSelector
@@ -1248,8 +1274,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   <Tag className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Información Adicional</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Etiquetas y notas para categorizar al cliente</p>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('secciones.adicional.titulo')}</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('secciones.adicional.descripcion')}</p>
                 </div>
               </div>
               <ChevronDown className={cn("h-5 w-5 text-gray-400 dark:text-gray-500 transition-transform", openSections.additional && "rotate-180")} />
@@ -1261,18 +1287,18 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 <div className="space-y-2">
                   <Label htmlFor="tags" className="text-sm font-medium flex flex-wrap items-center gap-2">
                     <Tag className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                    Etiquetas
+                    {t('campos.etiquetas')}
                   </Label>
                   <Input 
                     id="tags" 
                     name="tags" 
                     value={formData.tags}
                     onChange={handleChange}
-                    placeholder="premium, frecuente, corporativo (separadas por comas)"
+                    placeholder={t('campos.etiquetasPlaceholder')}
                     className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Separa las etiquetas con comas para organizar mejor tus clientes
+                    {t('campos.etiquetasAyuda')}
                   </p>
                 </div>
                 
@@ -1280,17 +1306,17 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 <div className="space-y-2">
                   <Label htmlFor="notes" className="text-sm font-medium flex flex-wrap items-center gap-2">
                     <FileText className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                    Notas Internas
+                    {t('campos.notas')}
                   </Label>
                   <RichTextEditor
                     value={formData.notes}
                     onChange={(html) => setFormData(prev => ({ ...prev, notes: html }))}
-                    placeholder="Información relevante sobre el cliente, preferencias, historial, etc."
+                    placeholder={t('campos.notasPlaceholder')}
                     minHeight={150}
                     className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Estas notas son solo para uso interno y no son visibles para el cliente
+                    {t('campos.notasAyuda')}
                   </p>
                 </div>
               </CardContent>
@@ -1304,7 +1330,9 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           <CardContent className="py-4">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Los campos marcados con <span className="text-red-500">*</span> son obligatorios
+                {t.rich('acciones.obligatorios', {
+                  asterisco: (partes) => <span className="text-red-500">{partes}</span>,
+                })}
               </p>
               <div className="flex gap-3">
                 <Button
@@ -1315,7 +1343,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   className="min-w-[100px]"
                 >
                   <X className="h-4 w-4 mr-2" />
-                  Cancelar
+                  {tk('comun.cancelar')}
                 </Button>
                 
                 <Button 
@@ -1329,12 +1357,12 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   {loading ? (
                     <div className="flex flex-wrap items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>{isEditMode ? 'Actualizando...' : 'Guardando...'}</span>
+                      <span>{isEditMode ? t('acciones.actualizando') : t('acciones.guardando')}</span>
                     </div>
                   ) : (
                     <div className="flex flex-wrap items-center gap-2">
                       <Save className="h-4 w-4" />
-                      <span>{isEditMode ? 'Guardar Cambios' : 'Guardar Cliente'}</span>
+                      <span>{isEditMode ? t('acciones.guardarCambios') : t('acciones.guardarCliente')}</span>
                     </div>
                   )}
                 </Button>

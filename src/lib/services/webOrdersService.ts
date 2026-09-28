@@ -544,12 +544,18 @@ class WebOrdersService {
     paymentReference?: string
   ): Promise<WebOrder> {
     try {
+      // `payment_reference` solo se escribe si llega: mandarlo `undefined`
+      // hacía que PostgREST guardara `null` y BORRABA la referencia que ya
+      // tuviera el pedido (p. ej. al usar «Marcar pagados» en lote desde el
+      // listado). Auditoría de pedidos online, 2026-09-22.
+      const cambios: Record<string, unknown> = { payment_status: paymentStatus };
+      if (paymentReference !== undefined) {
+        cambios.payment_reference = paymentReference;
+      }
+
       const { error } = await supabase
         .from('web_orders')
-        .update({ 
-          payment_status: paymentStatus,
-          payment_reference: paymentReference 
-        })
+        .update(cambios)
         .eq('id', orderId)
         .eq('organization_id', this.organizationId);
 

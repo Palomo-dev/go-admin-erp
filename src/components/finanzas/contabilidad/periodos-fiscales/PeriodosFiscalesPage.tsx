@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import {CalendarClock, Plus, Lock, Unlock, Ban, CheckCircle2} from 'lucide-react';
+import {CalendarClock, Plus, Unlock, Ban, CheckCircle2} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +29,7 @@ export function PeriodosFiscalesPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [showGenerate, setShowGenerate] = useState(false);
   const [newYear, setNewYear] = useState(new Date().getFullYear());
-  const [newPeriodType, setNewPeriodType] = useState<'monthly' | 'annual'>('monthly');
+  const [newPeriodType, setNewPeriodType] = useState<'monthly' | 'yearly'>('monthly');
   const [closePeriod, setClosePeriod] = useState<FiscalPeriod | null>(null);
   const [closeNotes, setCloseNotes] = useState('');
 
@@ -82,6 +82,7 @@ export function PeriodosFiscalesPage() {
   };
 
   const handleReopen = async (periodo: FiscalPeriod) => {
+    if (!confirm(`¿Reabrir ${getPeriodLabel(periodo)}? Se podrán volver a registrar asientos con fecha en ese periodo.`)) return;
     try {
       await PeriodosFiscalesService.reabrirPeriodo(periodo.id);
       toast.success('Período reabierto');
@@ -92,32 +93,21 @@ export function PeriodosFiscalesPage() {
     }
   };
 
-  const handleLock = async (periodo: FiscalPeriod) => {
-    try {
-      await PeriodosFiscalesService.bloquearPeriodo(periodo.id);
-      toast.success('Período bloqueado');
-      loadPeriodos();
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error al bloquear período');
-    }
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'open':
         return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Abierto</Badge>;
       case 'closed':
         return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Cerrado</Badge>;
-      case 'locked':
-        return <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Bloqueado</Badge>;
+      case 'closing':
+        return <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">En cierre</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
   const getPeriodLabel = (periodo: FiscalPeriod) => {
-    if (periodo.period_type === 'annual') return `Año ${periodo.year}`;
+    if (periodo.period_type === 'yearly') return `Año ${periodo.year}`;
     if (periodo.month) return `${MESES[periodo.month - 1]} ${periodo.year}`;
     return `${periodo.year}`;
   };
@@ -181,7 +171,7 @@ export function PeriodosFiscalesPage() {
                     <div className="text-sm text-gray-500 dark:text-gray-400">
                       <p>Inicio: {new Date(periodo.start_date).toLocaleDateString('es')}</p>
                       <p>Fin: {new Date(periodo.end_date).toLocaleDateString('es')}</p>
-                      <p>Tipo: {periodo.period_type === 'annual' ? 'Anual' : 'Mensual'}</p>
+                      <p>Tipo: {periodo.period_type === 'yearly' ? 'Anual' : periodo.period_type === 'quarterly' ? 'Trimestral' : 'Mensual'}</p>
                       {periodo.closed_at && (
                         <p>Cerrado: {new Date(periodo.closed_at).toLocaleDateString('es')}</p>
                       )}
@@ -201,24 +191,14 @@ export function PeriodosFiscalesPage() {
                         </Button>
                       )}
                       {periodo.status === 'closed' && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleReopen(periodo)}
-                          >
-                            <Unlock className="h-3.5 w-3.5 mr-1" />
-                            Reabrir
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleLock(periodo)}
-                          >
-                            <Lock className="h-3.5 w-3.5 mr-1" />
-                            Bloquear
-                          </Button>
-                        </>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleReopen(periodo)}
+                        >
+                          <Unlock className="h-3.5 w-3.5 mr-1" />
+                          Reabrir
+                        </Button>
                       )}
                     </div>
                   </CardContent>
@@ -245,13 +225,13 @@ export function PeriodosFiscalesPage() {
             </div>
             <div className="space-y-2">
               <Label>Tipo de Período</Label>
-              <Select value={newPeriodType} onValueChange={(v: 'monthly' | 'annual') => setNewPeriodType(v)}>
+              <Select value={newPeriodType} onValueChange={(v: 'monthly' | 'yearly') => setNewPeriodType(v)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="monthly">Mensuales (12 períodos)</SelectItem>
-                  <SelectItem value="annual">Anual (1 período)</SelectItem>
+                  <SelectItem value="yearly">Anual (1 período)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -18,11 +18,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Wallet, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { formatCurrency, parseLocalDate } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { saldosAFavorService, SaldoAFavor } from './saldosAFavorService';
+import { saldosAFavorService, SaldoAFavor, ErrorPeticionSaldoFavor } from './saldosAFavorService';
 import { NuevoSaldoFavorDialog } from './NuevoSaldoFavorDialog';
 import { AplicarSaldoFavorDialog } from './AplicarSaldoFavorDialog';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
@@ -37,8 +37,15 @@ const statusMap: Record<string, { label: string; className: string }> = {
 export function SaldosAFavorPage() {
   const [organizationId, setOrganizationId] = useState<number>(0);
   const { branchFilter } = useBranch();
+  const t = useTranslations('saldosAFavor');
+  // expiry_date es timestamptz: se muestra en la zona de la organización.
+  const { formatDate } = useFormatDate();
+  // Los saldos a favor no traen moneda propia: se muestran en la moneda base de la organización.
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const [saldos, setSaldos] = useState<SaldoAFavor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // El error de carga se muestra: una tabla vacía no debe parecer "sin saldos".
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [dialogNuevoOpen, setDialogNuevoOpen] = useState(false);
   const [dialogAplicarOpen, setDialogAplicarOpen] = useState(false);
   const [saldoSel, setSaldoSel] = useState<SaldoAFavor | null>(null);
@@ -46,16 +53,18 @@ export function SaldosAFavorPage() {
   const cargar = useCallback(async (orgId: number, branchId?: number | null) => {
     if (!orgId) return;
     setIsLoading(true);
+    setErrorCarga(null);
     try {
-      const data = await saldosAFavorService.listar(orgId, branchId);
+      const data = await saldosAFavorService.listar(branchId);
       setSaldos(data);
     } catch (error) {
-      console.error('Error al cargar saldos a favor:', error);
       setSaldos([]);
+      const codigo = error instanceof ErrorPeticionSaldoFavor ? error.codigo : 'error_desconocido';
+      setErrorCarga(t.has(`errores.${codigo}`) && codigo !== 'error_desconocido' ? t(`errores.${codigo}`) : t('errorCarga'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const orgId = getOrganizationId();
@@ -72,14 +81,7 @@ export function SaldosAFavorPage() {
     setDialogAplicarOpen(true);
   };
 
-  const formatFecha = (fecha: string | null) => {
-    if (!fecha) return '—';
-    try {
-      return format(parseLocalDate(fecha), 'dd MMM yyyy', { locale: es });
-    } catch {
-      return '—';
-    }
-  };
+  const formatFecha = (fecha: string | null) => (fecha ? formatDate(fecha) || '—' : '—');
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
@@ -133,6 +135,15 @@ export function SaldosAFavorPage() {
                     <Loader2 className="h-5 w-5 animate-spin inline" />
                   </TableCell>
                 </TableRow>
+              ) : errorCarga ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-red-600 dark:text-red-400">
+                    {errorCarga}{' '}
+                    <Button variant="link" size="sm" onClick={() => cargar(organizationId, branchFilter)}>
+                      {t('reintentar')}
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ) : saldos.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -141,7 +152,10 @@ export function SaldosAFavorPage() {
                 </TableRow>
               ) : (
                 saldos.map((s) => {
-                  const st = statusMap[s.status] || { label: s.status, className: '' };
+                  const st =
+                    s.status === 'cancelled'
+                      ? { label: t('estadoAnulado'), className: statusMap.used.className }
+                      : statusMap[s.status] || { label: s.status, className: '' };
                   return (
                     <TableRow key={s.id}>
                       <TableCell className="font-medium">{s.customer_name || 'N/A'}</TableCell>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { Clock, AlertTriangle, XCircle, X, CreditCard, ArrowRight, Ban } from 'lucide-react';
 
@@ -10,14 +11,15 @@ interface TrialBannerProps {
   orgId: string | null;
 }
 
-interface SubscriptionInfo {
+/** Fila de `subscriptions` con el nombre del plan, tal como la pide el banner. */
+interface FilaSuscripcion {
   status: string;
   trial_start: string | null;
   trial_end: string | null;
   stripe_subscription_id: string | null;
   stripe_customer_id: string | null;
   current_period_end: string | null;
-  plan_name: string;
+  plans: { name: string | null } | { name: string | null }[] | null;
 }
 
 type BannerState = 'trial_active' | 'trial_warning' | 'trial_expired' | 'payment_past_due' | 'subscription_canceled' | 'hidden';
@@ -25,15 +27,14 @@ type BannerState = 'trial_active' | 'trial_warning' | 'trial_expired' | 'payment
 const DISMISS_KEY = 'trial_banner_dismissed_at';
 
 export function TrialBanner({ orgId }: TrialBannerProps) {
+  const t = useTranslations('header.trialBanner');
+  const tHeader = useTranslations('header');
   const pathname = usePathname();
   const [bannerState, setBannerState] = useState<BannerState>('hidden');
   const [daysLeft, setDaysLeft] = useState(0);
   const [planName, setPlanName] = useState('');
   const [dismissed, setDismissed] = useState(false);
   const [loaded, setLoaded] = useState(false);
-
-  // No mostrar el banner en la página de cuenta congelada
-  if (pathname?.startsWith('/app/cuenta-congelada')) return null;
 
   useEffect(() => {
     if (!orgId) return;
@@ -58,9 +59,9 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
         return;
       }
 
-      const sub = data as any;
-      const name = sub.plans?.name || 'Plan';
-      setPlanName(name);
+      const sub = data as unknown as FilaSuscripcion;
+      const plan = Array.isArray(sub.plans) ? sub.plans[0] : sub.plans;
+      setPlanName(plan?.name || '');
 
       // Determinar estado del banner
       const now = new Date();
@@ -131,7 +132,9 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
     fetchSubscription();
   }, [orgId]);
 
-  // No mostrar si: está oculto, no cargado, o descartado temporalmente
+  // No mostrar en la página de cuenta congelada, ni si está oculto, sin
+  // cargar o descartado temporalmente.
+  if (pathname?.startsWith('/app/cuenta-congelada')) return null;
   if (!loaded || bannerState === 'hidden') return null;
   if (dismissed) return null;
 
@@ -140,6 +143,9 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
     setDismissed(true);
   };
 
+  // Sin nombre de plan se habla de «tu plan» en lugar de dejar un hueco.
+  const plan = planName || t('yourPlan');
+
   const config = {
     trial_active: {
       bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
@@ -147,8 +153,8 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
       subtext: 'text-blue-600 dark:text-blue-400',
       icon: Clock,
       iconColor: 'text-blue-500 dark:text-blue-400',
-      message: `Estás en período de prueba gratis del ${planName}`,
-      detail: `Te quedan ${daysLeft} día${daysLeft !== 1 ? 's' : ''} de prueba`,
+      message: t('trialActive', { plan }),
+      detail: t('trialActiveDetail', { days: daysLeft }),
       canDismiss: true,
       showCTA: false,
     },
@@ -158,8 +164,8 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
       subtext: 'text-amber-600 dark:text-amber-400',
       icon: AlertTriangle,
       iconColor: 'text-amber-500 dark:text-amber-400',
-      message: `Tu prueba gratis del ${planName} vence pronto`,
-      detail: `${daysLeft} día${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''}. Vincula un método de pago para no perder acceso.`,
+      message: t('trialWarning', { plan }),
+      detail: t('trialWarningDetail', { days: daysLeft }),
       canDismiss: true,
       showCTA: true,
     },
@@ -169,8 +175,8 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
       subtext: 'text-red-600 dark:text-red-400',
       icon: XCircle,
       iconColor: 'text-red-500 dark:text-red-400',
-      message: `Tu período de prueba del ${planName} ha finalizado`,
-      detail: 'Activa tu plan para seguir usando todas las funcionalidades.',
+      message: t('trialExpired', { plan }),
+      detail: t('trialExpiredDetail'),
       canDismiss: true,
       showCTA: true,
     },
@@ -180,8 +186,8 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
       subtext: 'text-orange-600 dark:text-orange-400',
       icon: AlertTriangle,
       iconColor: 'text-orange-500 dark:text-orange-400',
-      message: 'Tu pago falló',
-      detail: 'Actualiza tu método de pago para evitar la suspensión de tu cuenta.',
+      message: t('pastDue'),
+      detail: t('pastDueDetail'),
       canDismiss: true,
       showCTA: true,
     },
@@ -191,8 +197,8 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
       subtext: 'text-red-600 dark:text-red-400',
       icon: Ban,
       iconColor: 'text-red-500 dark:text-red-400',
-      message: 'Tu suscripción ha sido cancelada',
-      detail: 'Renueva tu plan para recuperar el acceso completo a la plataforma.',
+      message: t('canceled'),
+      detail: t('canceledDetail'),
       canDismiss: true,
       showCTA: true,
     },
@@ -222,8 +228,8 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
             <Link href="/app/plan">
               <button className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors">
                 <CreditCard className="h-3 w-3" />
-                <span className="hidden sm:inline">Gestionar Plan</span>
-                <span className="sm:hidden">Plan</span>
+                <span className="hidden sm:inline">{t('managePlan')}</span>
+                <span className="sm:hidden">{t('plan')}</span>
                 <ArrowRight className="h-3 w-3" />
               </button>
             </Link>
@@ -233,7 +239,7 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
             <button
               onClick={handleDismiss}
               className={`p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors ${c.subtext}`}
-              aria-label="Cerrar"
+              aria-label={tHeader('close')}
             >
               <X className="h-3.5 w-3.5" />
             </button>

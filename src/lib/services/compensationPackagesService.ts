@@ -1,6 +1,7 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 export interface CompensationPackage {
   id: string;
@@ -16,7 +17,7 @@ export interface CompensationPackage {
   is_active: boolean;
   valid_from: string | null;
   valid_to: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   // Computed fields
@@ -38,7 +39,7 @@ export interface CompensationComponent {
   frequency: string | null;
   is_taxable: boolean;
   affects_social_security: boolean;
-  conditions: Record<string, any> | null;
+  conditions: Record<string, unknown> | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -58,7 +59,7 @@ export interface CreatePackageDTO {
   is_active?: boolean;
 }
 
-export interface UpdatePackageDTO extends Partial<CreatePackageDTO> {}
+export type UpdatePackageDTO = Partial<CreatePackageDTO>;
 
 export interface CreateComponentDTO {
   package_id: string;
@@ -73,16 +74,36 @@ export interface CreateComponentDTO {
   frequency?: string;
   is_taxable?: boolean;
   affects_social_security?: boolean;
-  conditions?: Record<string, any>;
+  conditions?: Record<string, unknown>;
   is_active?: boolean;
 }
 
-export interface UpdateComponentDTO extends Partial<Omit<CreateComponentDTO, 'package_id'>> {}
+export type UpdateComponentDTO = Partial<Omit<CreateComponentDTO, 'package_id'>>;
 
 export interface PackageFilters {
   search?: string;
   is_active?: boolean;
   currency_code?: string;
+}
+
+/**
+ * Códigos de las monedas asignadas a la organización (RPC
+ * `get_organization_currencies`), la base primero. Lista vacía si no tiene
+ * ninguna o si la lectura falla: los formularios de HRM añaden siempre la
+ * moneda base (`useMonedaOrganizacion`), así que nunca quedan sin opción.
+ */
+export async function monedasDeLaOrganizacion(organizationId: number): Promise<string[]> {
+  const { data, error } = await supabase.rpc('get_organization_currencies', {
+    p_organization_id: organizationId,
+  });
+  if (error || !Array.isArray(data)) return [];
+  const filas = data as { code: string | null; is_base: boolean | null }[];
+  const codigos = [...filas]
+    .sort((a, b) => Number(Boolean(b.is_base)) - Number(Boolean(a.is_base)))
+    // `currencies.code` es `character`: viene con relleno a la derecha.
+    .map((fila) => (fila.code ?? '').trim().toUpperCase())
+    .filter((code) => /^[A-Z]{3}$/.test(code));
+  return Array.from(new Set(codigos));
 }
 
 class CompensationPackagesService {
@@ -130,10 +151,16 @@ class CompensationPackagesService {
   }
 
   async create(dto: CreatePackageDTO): Promise<CompensationPackage> {
+    // `compensation_packages.currency_code` es NOT NULL y no tiene trigger de
+    // moneda base: sin moneda elegida, la base de la organización (nunca COP fijo).
+    const currencyCode =
+      dto.currency_code?.trim() || (await resolveOrgCurrency(supabase, this.organizationId)).code;
+
     const { data, error } = await supabase
       .from('compensation_packages')
       .insert({
         ...dto,
+        currency_code: currencyCode,
         organization_id: this.organizationId,
         is_active: dto.is_active ?? true,
       })
@@ -317,8 +344,12 @@ class CompensationPackagesService {
     return data || [];
   }
 
+  /**
+   * Opciones de moneda del formulario: las monedas asignadas a la
+   * organización. El valor por defecto (la moneda base) lo pone el formulario.
+   */
   async getCurrencies(): Promise<string[]> {
-    return ['COP', 'USD', 'EUR', 'MXN'];
+    return monedasDeLaOrganizacion(this.organizationId);
   }
 
   async getSalaryPeriods(): Promise<{ value: string; label: string }[]> {

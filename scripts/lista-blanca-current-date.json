@@ -1,0 +1,9 @@
+{
+  "adr": "docs/adr/ADR-004-dia-utc-en-el-catalogo-global-de-tasas.md",
+  "porQue": "VACIA A PROPOSITO. Ninguna funcion de public decide un dia calendario con CURRENT_DATE. Las 7 que quedaban (el catalogo global de tasas, public.currency_rates) pasaron a public.fn_today_system() el 2026-09-23: ver la migracion 20260923235500_tasas_catalogo_dia_del_sistema.sql y el ADR-004 reescrito. El motivo no fue estetico: la tabla tenia DOS criterios de dia a la vez, porque su columna rate_date tiene DEFAULT fn_today_system() (dia del SaaS, America/Bogota) mientras las funciones escribian con CURRENT_DATE (dia UTC en este servidor), y los dos cron diarios corren a las 02:00 UTC, dentro de la ventana 00:00-05:00 UTC en la que discrepan. Con la lista vacia el inventario afirma algo mas fuerte y sin excepciones que mantener. Volver a poner una firma aqui no es un tramite: exige justificarla antes en el ADR-004, y hoy no hay ningun caso que lo justifique, porque fn_today_system() existe precisamente para el dato que no es de ninguna organizacion.",
+  "comprobadaPor": [
+    "scripts/verificar-current-date-en-postgres.mjs (base viva, en CI)",
+    "src/__tests__/timezone/diaDeLaOrganizacionEnPostgres.test.ts (repositorio, en jest)"
+  ],
+  "firmas": []
+}

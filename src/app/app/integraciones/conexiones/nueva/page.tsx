@@ -814,24 +814,10 @@ export default function NuevaConexionPage() {
             console.warn('No se pudieron guardar las credenciales de Meta Marketing');
           }
 
-          // Setup automático: crear catálogo + pixel + sync productos
+          // Setup automático: crear catálogo + pixel + sync productos.
+          // La organización, su nombre y el dominio de la tienda los resuelve el
+          // servidor desde la sesión (regla dura 5): no se mandan en el body.
           try {
-            const { data: orgData } = await supabase
-              .from('organizations')
-              .select('id, name, subdomain')
-              .eq('id', organizationId || 0)
-              .single();
-
-            const { data: domainData } = await supabase
-              .from('organization_domains')
-              .select('host')
-              .eq('organization_id', orgData?.id || 0)
-              .eq('is_primary', true)
-              .eq('is_active', true)
-              .maybeSingle();
-
-            const domain = domainData?.host || `${orgData?.subdomain || 'shop'}.goadmin.io`;
-
             const setupResponse = await fetch('/api/integrations/meta/setup', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -841,14 +827,13 @@ export default function NuevaConexionPage() {
                 app_secret: parsedCreds.app_secret || '',
                 business_id: parsedCreds.business_id,
                 ad_account_id: parsedCreds.ad_account_id || '',
-                organization_id: orgData?.id,
-                organization_name: orgData?.name || 'Mi Negocio',
-                domain,
               }),
             });
 
-            const setupData = await setupResponse.json();
-            if (setupData.success) {
+            const setupData = await setupResponse.json().catch(() => ({}));
+            if (setupResponse.status === 401 || setupResponse.status === 403) {
+              console.warn('Meta setup rechazado (sesión o permisos); la conexión se guardó:', setupData.error);
+            } else if (setupData.success) {
               console.log('Meta setup completo:', setupData.message);
             } else {
               console.warn('Meta setup parcial:', setupData.error);
@@ -870,24 +855,9 @@ export default function NuevaConexionPage() {
             console.warn('No se pudieron guardar las credenciales de TikTok Marketing');
           }
 
-          // Setup automático: crear pixel + catálogo + sync productos
+          // Setup automático: crear pixel + catálogo + sync productos.
+          // La organización, su nombre y el dominio los resuelve el servidor.
           try {
-            const { data: orgData } = await supabase
-              .from('organizations')
-              .select('id, name, subdomain')
-              .eq('id', organizationId || 0)
-              .single();
-
-            const { data: domainData } = await supabase
-              .from('organization_domains')
-              .select('host')
-              .eq('organization_id', orgData?.id || 0)
-              .eq('is_primary', true)
-              .eq('is_active', true)
-              .maybeSingle();
-
-            const domain = domainData?.host || `${orgData?.subdomain || 'shop'}.goadmin.io`;
-
             const setupResponse = await fetch('/api/integrations/tiktok/setup', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -896,14 +866,13 @@ export default function NuevaConexionPage() {
                 access_token: parsedCreds.access_token,
                 app_secret: parsedCreds.app_secret || '',
                 advertiser_id: parsedCreds.advertiser_id,
-                organization_id: orgData?.id,
-                organization_name: orgData?.name || 'Mi Negocio',
-                domain,
               }),
             });
 
-            const setupData = await setupResponse.json();
-            if (setupData.success) {
+            const setupData = await setupResponse.json().catch(() => ({}));
+            if (setupResponse.status === 401 || setupResponse.status === 403) {
+              console.warn('TikTok setup rechazado (sesión o permisos); la conexión se guardó:', setupData.error);
+            } else if (setupData.success) {
               console.log('TikTok setup completo:', setupData.message);
             } else {
               console.warn('TikTok setup parcial:', setupData.error);

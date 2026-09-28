@@ -22,7 +22,8 @@ import {
 } from '@/components/ui/select';
 import { Loader2, LogOut, Clock, DollarSign, AlertTriangle, CreditCard, Banknote, Receipt, FileText, Calendar, Plus } from 'lucide-react';
 import CustomerSearchInput, { type Customer } from '../shared/CustomerSearchInput';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { ActiveSession } from './ActiveSessionsPanel';
 import type { ParkingRate } from './RatesPanel';
 import type { OrganizationPaymentMethod } from '@/lib/services/parkingPaymentService';
@@ -79,6 +80,7 @@ export function ExitDialog({
   isLoading,
   onRateCreated,
 }: ExitDialogProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [isLostTicket, setIsLostTicket] = useState(false);
   const [isException, setIsException] = useState(false);

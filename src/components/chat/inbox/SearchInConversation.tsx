@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Kbd } from '@/components/kit/Kbd';
 import {
   Sheet,
   SheetContent,
@@ -289,16 +290,16 @@ export default function SearchInConversation({
         <div className="pt-4 border-t dark:border-gray-800 mt-auto">
           <div className="flex items-center justify-center gap-4 text-xs text-gray-500 dark:text-gray-400">
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[10px]">↑</kbd>
-              <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[10px]">↓</kbd>
+              <Kbd tecla="↑" />
+              <Kbd tecla="↓" />
               navegar
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[10px]">Enter</kbd>
+              <Kbd tecla="Enter" />
               ir al mensaje
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[10px]">Esc</kbd>
+              <Kbd tecla="Esc" />
               cerrar
             </span>
           </div>

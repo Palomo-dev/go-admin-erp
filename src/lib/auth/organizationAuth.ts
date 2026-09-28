@@ -1,4 +1,5 @@
 import { supabase, ensureSessionSynced } from '@/lib/supabase/config';
+import { saveBiometricCredentials } from '@/lib/services/biometricService';
 import { guardarOrganizacionActiva, invalidateBranchIdCache } from '@/lib/hooks/useOrganization';
 
 // Define Organization type
@@ -92,6 +93,17 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
     throw new Error('No se pudo obtener la información de la sesión');
   }
   
+  // Desbloqueo biométrico (app móvil): se guarda el REFRESH TOKEN de esta
+  // sesión, nunca la contraseña. Antes el biométrico reabría sesión con la
+  // contraseña guardada en `localStorage` codificada con btoa() + reverse
+  // (auditoría de acceso, 2026-09-22). Un refresh token es revocable y caduca.
+  if (rememberMe && sessionData.session.refresh_token) {
+    saveBiometricCredentials(
+      email || sessionData.session.user?.email || '',
+      sessionData.session.refresh_token
+    );
+  }
+
   // La sesión ya está autenticada y establecida
   console.log('✅ [DEBUG] Usando sesión activa. Saltando refresh para evitar problemas.');
   

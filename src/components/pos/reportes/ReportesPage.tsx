@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -25,18 +24,44 @@ import {
   RefreshCw,
   ArrowLeft,
   Calendar,
-  Users,
   Wallet,
   FileText,
+  Smile,
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz, toPlainDate } from '@/lib/utils/timezone';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { ReportesService, SalesReport, ProductReport, PaymentMethodReport, DailySalesData } from './reportesService';
 import { useBranch } from '@/lib/context/BranchContext';
+import { CampoFecha } from '@/components/kit/CampoFecha';
+
+/**
+ * Lo que esta página LEE de `ReportesService.getCashReport` (que devuelve
+ * `any`). Se declara aquí, del lado del consumidor, para no tipar de golpe un
+ * servicio que usan más pantallas: cada campo es opcional porque la consulta
+ * de sesiones puede fallar y devolver la forma vacía.
+ */
+interface CashSessionView {
+  id: string | number;
+  opened_at?: string | null;
+  opening_balance?: number | null;
+  closing_balance?: number | null;
+  difference?: number | null;
+  status?: string | null;
+  cash_registers?: { name?: string | null } | null;
+}
+
+interface CashReportView {
+  sessions?: CashSessionView[];
+  totalVentas?: number;
+  totalIngresos?: number;
+  totalEgresos?: number;
+  balance?: number;
+}
 
 export function ReportesPage() {
+  const { formatear } = useMonedaOrganizacion();
   const { toast } = useToast();
   const { branchFilter, setSelectedBranch: setGlobalBranch } = useBranch();
   const { formatDate } = useFormatDate();
@@ -65,7 +90,7 @@ export function ReportesPage() {
   const [topProducts, setTopProducts] = useState<ProductReport[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodReport[]>([]);
   const [dailySales, setDailySales] = useState<DailySalesData[]>([]);
-  const [cashReport, setCashReport] = useState<any>(null);
+  const [cashReport, setCashReport] = useState<CashReportView | null>(null);
 
   const loadData = useCallback(async (showRefresh = false) => {
     if (showRefresh) {
@@ -114,21 +139,23 @@ export function ReportesPage() {
     loadData();
   }, [loadData]);
 
-  const handleExportSales = () => {
+  // `exportToCSV` es async desde que el dia del nombre de archivo lo resuelve
+  // el servicio con la zona de la organizacion.
+  const handleExportSales = async () => {
     if (dailySales.length === 0) {
       toast({ title: 'Sin datos', description: 'No hay datos para exportar' });
       return;
     }
-    ReportesService.exportToCSV(dailySales, 'ventas_diarias');
+    await ReportesService.exportToCSV(dailySales, 'ventas_diarias');
     toast({ title: 'Exportado', description: 'Archivo CSV descargado' });
   };
 
-  const handleExportProducts = () => {
+  const handleExportProducts = async () => {
     if (topProducts.length === 0) {
       toast({ title: 'Sin datos', description: 'No hay datos para exportar' });
       return;
     }
-    ReportesService.exportToCSV(topProducts, 'productos_mas_vendidos');
+    await ReportesService.exportToCSV(topProducts, 'productos_mas_vendidos');
     toast({ title: 'Exportado', description: 'Archivo CSV descargado' });
   };
 
@@ -178,6 +205,13 @@ export function ReportesPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Pantalla del cliente (Fase 4): informe de lo que el cliente calificó en caja. */}
+          <Link href="/app/pos/reportes/satisfaccion">
+            <Button variant="outline">
+              <Smile className="h-4 w-4 mr-2" />
+              Satisfacción en caja
+            </Button>
+          </Link>
           <Button variant="outline" size="icon" onClick={() => loadData(true)} disabled={isRefreshing}>
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
@@ -218,20 +252,20 @@ export function ReportesPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <div>
               <Label className="text-gray-700 dark:text-gray-300">Fecha Inicio</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="mt-1 dark:bg-gray-900 dark:border-gray-600 dark:[color-scheme:dark]"
+              <CampoFecha
+                aria-label="Fecha Inicio"
+                valor={startDate}
+                onValorChange={setStartDate}
+                className="mt-1"
               />
             </div>
             <div>
               <Label className="text-gray-700 dark:text-gray-300">Fecha Fin</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="mt-1 dark:bg-gray-900 dark:border-gray-600 dark:[color-scheme:dark]"
+              <CampoFecha
+                aria-label="Fecha Fin"
+                valor={endDate}
+                onValorChange={setEndDate}
+                className="mt-1"
               />
             </div>
             <div>
@@ -270,7 +304,7 @@ export function ReportesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(salesSummary?.total_sales || 0)}
+                  {formatear(salesSummary?.total_sales || 0)}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Ventas Totales</p>
               </div>
@@ -302,7 +336,7 @@ export function ReportesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(salesSummary?.average_ticket || 0)}
+                  {formatear(salesSummary?.average_ticket || 0)}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Ticket Promedio</p>
               </div>
@@ -359,7 +393,7 @@ export function ReportesPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-gray-900 dark:text-white">{product.quantity_sold} uds</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{formatCurrency(product.total_revenue)}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{formatear(product.total_revenue)}</p>
                     </div>
                   </div>
                 ))
@@ -389,7 +423,7 @@ export function ReportesPage() {
                       <p className="font-medium text-gray-900 dark:text-white">{getPaymentMethodName(pm.method)}</p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">{pm.count} transacciones</p>
                     </div>
-                    <p className="font-semibold text-gray-900 dark:text-white">{formatCurrency(pm.total)}</p>
+                    <p className="font-semibold text-gray-900 dark:text-white">{formatear(pm.total)}</p>
                   </div>
                 ))
               )}
@@ -412,25 +446,25 @@ export function ReportesPage() {
             <div className="p-3 sm:p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
               <p className="text-xs sm:text-sm text-emerald-600 dark:text-emerald-400">Ventas</p>
               <p className="text-lg sm:text-2xl font-bold text-emerald-700 dark:text-emerald-300 break-all">
-                {formatCurrency(cashReport?.totalVentas || 0)}
+                {formatear(cashReport?.totalVentas || 0)}
               </p>
             </div>
             <div className="p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
               <p className="text-xs sm:text-sm text-green-600 dark:text-green-400">+ Ingresos</p>
               <p className="text-lg sm:text-2xl font-bold text-green-700 dark:text-green-300 break-all">
-                {formatCurrency(cashReport?.totalIngresos || 0)}
+                {formatear(cashReport?.totalIngresos || 0)}
               </p>
             </div>
             <div className="p-3 sm:p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
               <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">- Egresos</p>
               <p className="text-lg sm:text-2xl font-bold text-red-700 dark:text-red-300 break-all">
-                {formatCurrency(cashReport?.totalEgresos || 0)}
+                {formatear(cashReport?.totalEgresos || 0)}
               </p>
             </div>
             <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="text-xs sm:text-sm text-blue-600 dark:text-blue-400">= Balance Total</p>
               <p className="text-lg sm:text-2xl font-bold text-blue-700 dark:text-blue-300 break-all">
-                {formatCurrency(cashReport?.balance || 0)}
+                {formatear(cashReport?.balance || 0)}
               </p>
             </div>
           </div>
@@ -456,7 +490,7 @@ export function ReportesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {cashReport?.sessions?.slice(0, 5).map((session: any) => (
+                    {cashReport?.sessions?.slice(0, 5).map((session) => (
                       <tr key={session.id} className="border-b border-gray-100 dark:border-gray-800">
                         <td className="py-2 px-3 text-gray-900 dark:text-white">
                           {session.cash_registers?.name || 'Caja'}
@@ -465,17 +499,17 @@ export function ReportesPage() {
                           {formatDate(session.opened_at)}
                         </td>
                         <td className="py-2 px-3 text-right text-gray-900 dark:text-white">
-                          {formatCurrency(session.opening_balance || 0)}
+                          {formatear(session.opening_balance || 0)}
                         </td>
                         <td className="py-2 px-3 text-right text-gray-900 dark:text-white">
-                          {formatCurrency(session.closing_balance || 0)}
+                          {formatear(session.closing_balance || 0)}
                         </td>
                         <td className={`py-2 px-3 text-right font-medium ${
                           (session.difference || 0) >= 0 
                             ? 'text-green-600 dark:text-green-400' 
                             : 'text-red-600 dark:text-red-400'
                         }`}>
-                          {formatCurrency(session.difference || 0)}
+                          {formatear(session.difference || 0)}
                         </td>
                         <td className="py-2 px-3 text-center">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -507,7 +541,7 @@ export function ReportesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(salesSummary?.total_taxes || 0)}
+                  {formatear(salesSummary?.total_taxes || 0)}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Total Impuestos</p>
               </div>
@@ -523,7 +557,7 @@ export function ReportesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(salesSummary?.total_discounts || 0)}
+                  {formatear(salesSummary?.total_discounts || 0)}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Total Descuentos</p>
               </div>

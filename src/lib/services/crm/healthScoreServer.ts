@@ -1,4 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
+import type { ContextoMoneda } from '@/lib/utils/moneda';
 import {
   bandForScore,
   buildHealthAlerts,
@@ -105,13 +107,19 @@ export function scoreOf(row: HealthRpcRow, config: HealthConfigJson | null): { s
 }
 
 /** Resultado para la UI: dimensiones configurables (o campos de la RPC), `raw` y `alerts`. */
-export function composeHealthResult(row: HealthRpcRow, config: HealthConfigJson | null, customerName: string): HealthScoreResult {
+export function composeHealthResult(
+  row: HealthRpcRow,
+  config: HealthConfigJson | null,
+  customerName: string,
+  /** Moneda de la organización para los importes de las alertas. */
+  moneda?: ContextoMoneda | string,
+): HealthScoreResult {
   const scored = config ? scoreFromConfig(config, row) : null;
   const indicators = scored
     ? scored.indicators.map((i) => ({ ...i, label: honestIndicatorLabel(i.key, i.label), value: i.value ?? -1 }))
     : RPC_INDICATOR_LABELS.map(([key, label]) => ({ key, label, weight: 0, value: row[key] == null ? -1 : Number(row[key]), score: 0, weightedScore: 0 }));
   const { score, band } = scoreOf(row, config);
-  return { customer_id: row.customer_id, customer_name: customerName, score, band, indicators, raw: row, alerts: buildHealthAlerts(row) };
+  return { customer_id: row.customer_id, customer_name: customerName, score, band, indicators, raw: row, alerts: buildHealthAlerts(row, { moneda }) };
 }
 
 export interface OrgHealthSettings {
@@ -218,18 +226,19 @@ export async function snapshotCustomerHealth(
   sb: SupabaseClient,
   now: Date = new Date(),
 ): Promise<CustomerSnapshotResult | null> {
-  const [settings, rpc, customer, lastSnap] = await Promise.all([
+  const [settings, rpc, customer, lastSnap, moneda] = await Promise.all([
     getOrgHealthSettings(orgId, sb),
     sb.rpc('fn_customer_health', { p_org_id: orgId, p_customer_id: customerId }),
     sb.from('customers').select('id, full_name, health_score').eq('id', customerId).eq('organization_id', orgId).maybeSingle(),
     sb.from('health_score_snapshots').select('score, created_at').eq('organization_id', orgId).eq('customer_id', customerId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    resolverContextoMoneda(sb, orgId),
   ]);
   if (rpc.error) throw new Error(`fn_customer_health: ${rpc.error.message}`);
   const raw = Array.isArray(rpc.data) ? rpc.data[0] : rpc.data;
   if (!raw) return null;
   const cust = customer.data as { full_name: string | null; health_score: number | null } | null;
   const row = toHealthRpcRow(raw as Record<string, unknown>);
-  const result = composeHealthResult(row, settings.active ? settings.config : null, cust?.full_name || 'Sin nombre');
+  const result = composeHealthResult(row, settings.active ? settings.config : null, cust?.full_name || 'Sin nombre', moneda);
 
   const last = (lastSnap.data as { score: number; created_at: string } | null) ?? null;
   let snapshotWritten = false;

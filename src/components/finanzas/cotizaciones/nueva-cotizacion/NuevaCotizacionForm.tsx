@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Loader2, Save } from 'lucide-react';
-import { useToast, toastSuccess, toastError } from '@/components/ui/use-toast';
-import { getOrganizationId, obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
-import { formatCurrency } from '@/utils/Utils';
+import { toastSuccess, toastError } from '@/components/ui/use-toast';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useOpcionesMoneda } from '@/components/transporte/useOpcionesMoneda';
 import { supabase } from '@/lib/supabase/config';
 import { describeError, logError } from '@/lib/utils/errorMessage';
-import { CotizacionesService, type QuotationItem } from '@/lib/services/cotizacionesService';
+import { CotizacionesService, type QuotationInput, type QuotationItem } from '@/lib/services/cotizacionesService';
+import { todayInTz } from '@/lib/utils/dateDisplay';
+import { sumarDiasCalendario } from '@/lib/utils/taskReminderDates';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { ClienteSelector } from '@/components/finanzas/facturas-venta/nueva-factura/ClienteSelector';
 import { ItemsFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ItemsFactura';
 import { ImpuestosFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ImpuestosFactura';
@@ -23,17 +28,33 @@ import type { InvoiceItem } from '@/components/finanzas/facturas-venta/nueva-fac
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 import { PageBackHeader } from './PageBackHeader';
+import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
+import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
+import { CampoFecha } from '@/components/kit/CampoFecha';
+
+/** Totales por impuesto que entrega `ImpuestosFactura`. */
+interface TotalImpuesto {
+  rate: number;
+  base: number;
+  amount: number;
+  name: string;
+  included: boolean;
+}
 
 interface NuevaCotizacionFormProps {
   cotizacionId?: string;
   mode?: 'create' | 'edit';
 }
 
+/** Perfil embebido del vendedor (`organization_members` → `profiles`). */
+interface ProfileVendedor {
+  first_name: string | null;
+  last_name: string | null;
+}
+
 export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCotizacionFormProps) {
   const router = useRouter();
-  const { toast } = useToast();
   const organizationId = getOrganizationId();
-  const org = obtenerOrganizacionActiva();
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -42,17 +63,23 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
   const [serialSelections, setSerialSelections] = useState<Record<number, number[]>>({});
   const [taxIncluded, setTaxIncluded] = useState(false);
   const [appliedTaxes, setAppliedTaxes] = useState<{ [key: string]: boolean }>({});
-  const [taxTotals, setTaxTotals] = useState<{ [key: string]: any }>({});
+  const [taxTotals, setTaxTotals] = useState<{ [key: string]: TotalImpuesto }>({});
   const [subtotal, setSubtotal] = useState(0);
   const [taxTotal, setTaxTotal] = useState(0);
   const [total, setTotal] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentTerms, setPaymentTerms] = useState(30);
-  const [validUntil, setValidUntil] = useState<string>(
-    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  );
-  const [issueDate, setIssueDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [currency, setCurrency] = useState('COP');
+  const { timezone } = useOrgTimezone();
+  const [validUntil, setValidUntil] = useState<string>(() => sumarDiasCalendario(todayInTz(timezone), 30));
+  const [issueDate, setIssueDate] = useState<string>(() => todayInTz(timezone));
+  // Moneda de la cotización: vacía hasta conocer la base (nunca COP supuesto).
+  const [currency, setCurrency] = useState('');
+  const { code: monedaBase, resuelta: monedaResuelta, paraDocumento } = useMonedaOrganizacion();
+  const { opciones: opcionesMoneda } = useOpcionesMoneda(currency); // siempre incluye la base y la de la cotización
+  useEffect(() => {
+    if (monedaResuelta && !currency) setCurrency(monedaBase);
+  }, [monedaResuelta, monedaBase, currency]);
+  const monedaCotizacion = paraDocumento(currency || monedaBase);
   const [notes, setNotes] = useState('');
   const [termsConditions, setTermsConditions] = useState('');
   const [salespersonId, setSalespersonId] = useState<string>('none');
@@ -63,6 +90,23 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
   const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   const [opportunities, setOpportunities] = useState<{ id: string; name: string; customer_id?: string | null }[]>([]);
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string>('none');
+
+  // Advertencia previa a guardar: líneas que `resolveLineTax` dejará en 0 por
+  // falta de impuesto en el producto y de tarifa por defecto. La cotización no
+  // pasa los impuestos del documento al resolver, así que aquí tampoco cuentan.
+  const lineasParaAviso = useMemo(
+    () => items.map((it) => ({
+      nombre: it.description || it.product_name || '',
+      productId: it.product_id ?? null,
+      taxRate: it.tax_rate ?? null,
+      taxCode: it.tax_code ?? null,
+    })),
+    [items],
+  );
+  const { sinImpuesto: lineasSinImpuesto, indices: indicesSinImpuesto } = useLineasSinImpuesto(
+    organizationId ? Number(organizationId) : null,
+    lineasParaAviso,
+  );
 
   useEffect(() => {
     if (organizationId) {
@@ -93,7 +137,7 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
       setSalespeopleError(null);
       setSalespeople(
         (data || [])
-          .map((m: any) => {
+          .map((m: { user_id: string; profiles: ProfileVendedor | ProfileVendedor[] | null }) => {
             // Embebido a-uno: objeto. El array se acepta por compatibilidad.
             const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
             return {
@@ -141,15 +185,15 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
       if (oppError || !oppProducts || oppProducts.length === 0) return;
 
       // Obtener nombres de productos
-      const productIds = oppProducts.map((op: any) => op.product_id);
+      const productIds = oppProducts.map((op: { product_id: number }) => op.product_id);
       const { data: products } = await supabase
         .from('products')
         .select('id, name')
         .in('id', productIds);
 
-      const productMap = new Map((products || []).map((p: any) => [p.id, p.name] as [number, string]));
+      const productMap = new Map((products || []).map((p: { id: number; name: string }) => [p.id, p.name] as [number, string]));
 
-      const newItems: InvoiceItem[] = oppProducts.map((op: any) => ({
+      const newItems: InvoiceItem[] = oppProducts.map((op: { product_id: number; quantity: number | string | null; unit_price: number | string | null; total_price: number | string | null }) => ({
         invoice_type: 'sale' as const,
         product_id: op.product_id,
         description: productMap.get(op.product_id) || '',
@@ -189,9 +233,16 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
     try {
       setLoading(true);
       const cot = await CotizacionesService.getQuotationById(cotizacionId!);
-      if (!cot) return;
+      if (!cot) {
+        toastError('Error', 'No se pudo cargar la cotización');
+        return;
+      }
 
       setCustomerId(cot.customer_id);
+      // Antes no se cargaban: en modo «Todas» las sucursales la edición fallaba
+      // y la oportunidad se perdía al guardar.
+      setBranchId(cot.branch_id ?? null);
+      setSelectedOpportunityId(cot.opportunity_id ?? 'none');
       setIssueDate(cot.issue_date);
       setValidUntil(cot.valid_until || '');
       setCurrency(cot.currency);
@@ -200,7 +251,7 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
       setNotes(cot.notes || '');
       setTermsConditions(cot.terms_conditions || '');
       setSalespersonId(cot.salesperson_id || 'none');
-      setTaxIncluded(cot.quotation_items?.[0]?.tax_included || false);
+      setTaxIncluded(cot.tax_included ?? cot.quotation_items?.[0]?.tax_included ?? false);
 
       if (cot.quotation_items) {
         const mappedItems: InvoiceItem[] = cot.quotation_items.map((item) => ({
@@ -243,12 +294,6 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
     try {
       setSaving(true);
 
-      const { data: userData } = await supabase.auth.getUser();
-      const quotationNumber =
-        mode === 'create'
-          ? await CotizacionesService.generateQuotationNumber(organizationId)
-          : '';
-
       const quotationItems: QuotationItem[] = items.map((item) => ({
         product_id: item.product_id,
         description: item.description,
@@ -257,57 +302,40 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
         discount_amount: item.discount_amount || 0,
         tax_code: item.tax_code || null,
         tax_rate: item.tax_rate || 0,
-        tax_included: item.tax_included,
+        tax_included: taxIncluded,
         total_line: item.total_line,
       }));
 
-      const quotationData = {
-        organization_id: organizationId,
-        branch_id: branchId,
-        number: quotationNumber,
+      // Cabecera completa, sin organización ni número ni totales: los pone el
+      // servidor (fn_cotizacion_guardar), con la moneda base si no se eligió.
+      const datos: QuotationInput = {
         customer_id: customerId,
-        issue_date: issueDate,
+        branch_id: branchId,
+        issue_date: issueDate || null,
         valid_until: validUntil || null,
-        currency,
-        subtotal,
-        tax_total: taxTotal,
-        discount_total: items.reduce((sum, i) => sum + (i.discount_amount || 0), 0),
-        total,
-        status: 'draft' as const,
+        currency: currency || monedaBase || null,
         payment_terms: paymentTerms,
         payment_method: paymentMethod || null,
         notes: notes || null,
         terms_conditions: termsConditions || null,
         salesperson_id: salespersonId !== 'none' ? salespersonId : null,
         opportunity_id: selectedOpportunityId !== 'none' ? selectedOpportunityId : null,
-        created_by: userData.user?.id || null,
+        tax_included: taxIncluded,
       };
+      const contexto = { appliedTaxes, appliedTaxTotals: taxTotals };
 
       if (mode === 'edit' && cotizacionId) {
-        await CotizacionesService.updateQuotation(cotizacionId, {
-          issue_date: issueDate,
-          valid_until: validUntil || null,
-          currency,
-          subtotal,
-          tax_total: taxTotal,
-          discount_total: items.reduce((sum, i) => sum + (i.discount_amount || 0), 0),
-          total,
-          payment_terms: paymentTerms,
-          payment_method: paymentMethod || null,
-          notes: notes || null,
-          terms_conditions: termsConditions || null,
-          salesperson_id: salespersonId !== 'none' ? salespersonId : null,
-        }, quotationItems);
+        await CotizacionesService.updateQuotation(cotizacionId, datos, quotationItems, contexto);
         toastSuccess('Cotización actualizada', 'Los cambios se guardaron correctamente');
         router.push(`/app/finanzas/cotizaciones/${cotizacionId}`);
       } else {
-        const created = await CotizacionesService.createQuotation(quotationData, quotationItems);
-        toastSuccess('Cotización creada', `Cotización ${created.number} creada exitosamente`);
+        const created = await CotizacionesService.createQuotation(datos, quotationItems, contexto);
+        toastSuccess('Cotización creada', `Cotización ${created.numero} creada exitosamente`);
         router.push(`/app/finanzas/cotizaciones/${created.id}`);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving quotation:', error);
-      toastError('Error', error.message || 'Error al guardar');
+      toastError('Error', (error as { message?: string } | null)?.message || 'Error al guardar');
     } finally {
       setSaving(false);
     }
@@ -342,20 +370,18 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Fecha de Emisión</Label>
-                <Input
-                  type="date"
-                  value={issueDate}
-                  onChange={(e) => setIssueDate(e.target.value)}
-                  className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
+                <CampoFecha
+                  aria-label="Fecha de Emisión"
+                  valor={issueDate}
+                  onValorChange={setIssueDate}
                 />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Válida hasta</Label>
-                <Input
-                  type="date"
-                  value={validUntil}
-                  onChange={(e) => setValidUntil(e.target.value)}
-                  className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
+                <CampoFecha
+                  aria-label="Válida hasta"
+                  valor={validUntil}
+                  onValorChange={setValidUntil}
                 />
               </div>
             </div>
@@ -368,9 +394,11 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-gray-800">
-                  <SelectItem value="COP">COP - Peso Colombiano</SelectItem>
-                  <SelectItem value="USD">USD - Dólar</SelectItem>
-                  <SelectItem value="EUR">EUR - Euro</SelectItem>
+                  {opcionesMoneda.map((opcion) => (
+                    <SelectItem key={opcion.code} value={opcion.code}>
+                      {opcion.code} - {opcion.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -452,6 +480,8 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
             branchId={branchId ?? undefined}
             serialSelections={serialSelections}
             onSerialSelectionsChange={setSerialSelections}
+            lineasSinImpuesto={indicesSinImpuesto}
+            currency={monedaCotizacion.code}
           />
         </Card>
 
@@ -486,15 +516,15 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
             <div className="w-full sm:w-72 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">{formatCurrency(subtotal)}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{formatMoneda(subtotal, monedaCotizacion)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600 dark:text-gray-400">Impuestos:</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">{formatCurrency(taxTotal)}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{formatMoneda(taxTotal, monedaCotizacion)}</span>
               </div>
               <div className="flex justify-between text-lg font-bold border-t pt-2 border-gray-200 dark:border-gray-700">
                 <span className="text-gray-900 dark:text-gray-100">Total:</span>
-                <span className="text-blue-600 dark:text-blue-400">{formatCurrency(total)}</span>
+                <span className="text-blue-600 dark:text-blue-400">{formatMoneda(total, monedaCotizacion)}</span>
               </div>
             </div>
           </div>
@@ -536,6 +566,8 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
             </div>
           </div>
         </Card>
+
+        <AvisoSinImpuesto lineas={lineasSinImpuesto} accion="se cotizará" />
 
         {/* Botones */}
         <div className="flex justify-end gap-3 pb-6">

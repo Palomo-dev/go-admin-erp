@@ -50,12 +50,35 @@ import {
   CreditCard
 } from 'lucide-react';
 import { SerialCaptureSection } from '@/components/shared/SerialCaptureSection';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface OrdenCompraDetalleProps {
   orderUuid: string;
+}
+
+/** Campos de serial que el ítem puede traer además de los tipados en PurchaseOrderItem. */
+interface ItemConSeriales {
+  serials_received?: string[] | null;
+  requires_serial?: boolean | null;
+  products?: { track_serial?: boolean | null } | null;
+}
+
+/** Factura de compra vinculada a la orden; su moneda es la del documento. */
+interface FacturaVinculada {
+  id: number;
+  number_ext: string;
+  total: number;
+  status: string;
+  currency: string | null;
+}
+
+interface CuentaPorPagarVinculada {
+  id: number;
+  balance: number;
+  status: string;
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -69,6 +92,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
   const router = useRouter();
   const { formatDate } = useFormatDate();
+  const { formatear, paraDocumento } = useMonedaOrganizacion();
 
   // Estados
   const [order, setOrder] = useState<PurchaseOrderWithItems | null>(null);
@@ -80,8 +104,8 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
   const [productsWithSerial, setProductsWithSerial] = useState<Set<number>>(new Set());
 
   // Estados para factura y cuenta por pagar vinculadas
-  const [linkedInvoice, setLinkedInvoice] = useState<{ id: number; number_ext: string; total: number; status: string } | null>(null);
-  const [linkedPayable, setLinkedPayable] = useState<{ id: number; balance: number; status: string } | null>(null);
+  const [linkedInvoice, setLinkedInvoice] = useState<FacturaVinculada | null>(null);
+  const [linkedPayable, setLinkedPayable] = useState<CuentaPorPagarVinculada | null>(null);
 
   // Cargar datos
   const loadData = useCallback(async () => {
@@ -106,8 +130,9 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
       const serialProducts = new Set<number>();
       data.items.forEach(item => {
         quantities[item.id] = item.received_quantity || 0;
-        serialsMap[item.id] = (item as any).serials_received || [];
-        if ((item as any).requires_serial || (item.products as any)?.track_serial) {
+        const conSeriales = item as unknown as ItemConSeriales;
+        serialsMap[item.id] = conSeriales.serials_received || [];
+        if (conSeriales.requires_serial || conSeriales.products?.track_serial) {
           serialProducts.add(item.id);
         }
       });
@@ -119,23 +144,23 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
       if (data.id) {
         const { data: invoice } = await supabase
           .from('invoice_purchase')
-          .select('id, number_ext, total, status')
+          .select('id, number_ext, total, status, currency')
           .eq('po_id', data.id)
           .single();
-        setLinkedInvoice(invoice as any);
+        setLinkedInvoice(invoice as FacturaVinculada | null);
 
         if (invoice) {
           const { data: payable } = await supabase
             .from('accounts_payable')
             .select('id, balance, status')
-            .eq('invoice_id', (invoice as any).id)
+            .eq('invoice_id', (invoice as FacturaVinculada).id)
             .single();
-          setLinkedPayable(payable as any);
+          setLinkedPayable(payable as CuentaPorPagarVinculada | null);
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error cargando orden:', error);
-      toastError('Error', error?.message || 'No se pudo cargar la orden');
+      toastError('Error', (error as { message?: string } | null)?.message || 'No se pudo cargar la orden');
       router.push('/app/inventario/ordenes-compra');
     } finally {
       setIsLoading(false);
@@ -165,8 +190,8 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
       toastSuccess('Estado actualizado', `La orden ha sido ${statusLabels[newStatus]}`);
 
       loadData();
-    } catch (error: any) {
-      toastError('Error', error?.message || 'No se pudo actualizar el estado');
+    } catch (error: unknown) {
+      toastError('Error', (error as { message?: string } | null)?.message || 'No se pudo actualizar el estado');
     } finally {
       setIsProcessing(false);
     }
@@ -187,8 +212,8 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
       if (data) {
         router.push(`/app/inventario/ordenes-compra/${data.uuid}/editar`);
       }
-    } catch (error: any) {
-      toastError('Error', error?.message || 'No se pudo duplicar la orden');
+    } catch (error: unknown) {
+      toastError('Error', (error as { message?: string } | null)?.message || 'No se pudo duplicar la orden');
     } finally {
       setIsProcessing(false);
     }
@@ -211,7 +236,7 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
       const hasSerialItems = itemsToReceive.some(i => i.serials && i.serials.length > 0);
       const { error, stock } = hasSerialItems
         ? await purchaseOrderService.receiveItemsWithSerials(order.uuid, organizationId, itemsToReceive)
-        : await purchaseOrderService.receiveItems(order.uuid, organizationId, itemsToReceive.map(({ serials, ...rest }) => rest));
+        : await purchaseOrderService.receiveItems(order.uuid, organizationId, itemsToReceive.map(({ itemId, quantity }) => ({ itemId, quantity })));
 
       if (error) throw error;
 
@@ -232,8 +257,8 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
 
       setShowReceiveDialog(false);
       loadData();
-    } catch (error: any) {
-      toastError('Error', error?.message || 'No se pudo registrar la recepción');
+    } catch (error: unknown) {
+      toastError('Error', (error as { message?: string } | null)?.message || 'No se pudo registrar la recepción');
     } finally {
       setIsProcessing(false);
     }
@@ -393,10 +418,10 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
                           </span>
                         </TableCell>
                         <TableCell className="text-right text-gray-900 dark:text-white">
-                          {formatCurrency(item.unit_cost)}
+                          {formatear(item.unit_cost)}
                         </TableCell>
                         <TableCell className="text-right font-medium text-gray-900 dark:text-white">
-                          {formatCurrency(item.subtotal)}
+                          {formatear(item.subtotal)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -465,7 +490,7 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
               <div className="flex justify-between items-center py-2">
                 <span className="text-gray-600 dark:text-gray-400 font-medium">Total</span>
                 <span className="text-xl font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(order.total || 0)}
+                  {formatear(order.total || 0)}
                 </span>
               </div>
 
@@ -518,7 +543,7 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
                         Cuenta por Pagar
                       </span>
                       <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
-                        {formatCurrency(linkedPayable.balance)}
+                        {formatMoneda(linkedPayable.balance, paraDocumento(linkedInvoice.currency))}
                       </span>
                     </Link>
                   )}

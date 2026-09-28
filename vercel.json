@@ -56,6 +56,10 @@
     {
       "path": "/api/cron/expire-old-notifications",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/factus/process-pending",
+      "schedule": "*/2 * * * *"
     }
   ],
   "headers": [

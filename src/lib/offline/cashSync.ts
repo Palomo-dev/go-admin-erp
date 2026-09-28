@@ -15,8 +15,9 @@
  *  - `movement`: necesita el id real de su sesión (`resolveSessionServerId`):
  *    si la apertura aún no se sincronizó, se deja `pending` SIN consumir
  *    intentos. Idempotente por `cash_movements.uuid`.
- *  - `close`: mismo requisito; `UPDATE cash_sessions SET status='closed', …
- *    WHERE id = <real>`. Si la fila ya está `closed`, se da por hecha.
+ *  - `close`: mismo requisito; RPC `pos_caja_cerrar` (la misma del cierre con
+ *    red: arqueo de cierre, esperado y diferencia en el servidor, con la hora
+ *    real del cierre). Si la caja ya está cerrada responde `ya_cerrada`.
  *  - Éxito → `synced`; error → `attempts++`, backoff, y a los `MAX_ATTEMPTS`
  *    → `needs_review`. Nunca se borra un registro.
  *  - Una sola sincronización a la vez (llamadas concurrentes comparten la
@@ -27,6 +28,8 @@
  */
 
 import { isDesktop } from '@/lib/utils/desktop';
+import { parametrosCierre } from '@/lib/pos/cajas/arqueo';
+import { RPC_MOVIMIENTO_CAJA, parametrosMovimiento } from '@/lib/pos/cajas/movimientoRpc';
 import { isAppOnline } from '@/lib/utils/offlineCache';
 import {
   MAX_ATTEMPTS,
@@ -47,6 +50,8 @@ import {
 export interface CashSyncClient {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   from: (table: string) => any;
+  /** `pos_caja_cerrar` (cierre transaccional en el servidor). */
+  rpc?: (fn: string, args: object) => PromiseLike<{ data: unknown; error: unknown }>;
 }
 
 export interface CashSyncResult {
@@ -149,49 +154,58 @@ async function replayMovement(client: CashSyncClient, record: CashMovementRecord
   const { data: found, error: findError } = await client.from('cash_movements').select('id').eq('organization_id', org).eq('uuid', record.id).maybeSingle();
   if (findError) throw findError;
   if (found?.id) return Number(found.id);
-  const { data, error } = await client
-    .from('cash_movements')
-    .insert({
-      uuid: record.id,
-      organization_id: org,
-      cash_session_id: sessionId,
-      branch_id: record.branch_id,
-      type: record.payload.type,
-      concept: record.payload.concept,
-      amount: record.payload.amount,
-      user_id: record.payload.user_id,
-      notes: record.payload.notes,
-      created_at: record.payload.created_at,
-    })
-    .select('id')
-    .single();
+  // Por la RPC (caja abierta, autor = sesión, idempotente por uuid, hora sin
+  // red respetada si cae dentro de la caja): ya no hay INSERT directo.
+  if (!client.rpc) throw new Error('El cliente de Supabase no permite RPC para registrar el movimiento');
+  const { data, error } = await client.rpc(
+    RPC_MOVIMIENTO_CAJA,
+    parametrosMovimiento(
+      sessionId,
+      {
+        type: record.payload.type,
+        amount: record.payload.amount,
+        concept: record.payload.concept,
+        concept_code: record.payload.concept_code ?? null,
+        reference: record.payload.reference ?? null,
+        notes: record.payload.notes ?? null,
+      },
+      { uuid: record.id, creadoEn: record.payload.created_at },
+    ),
+  );
   if (error && (error as PgError).code !== '23505') throw error;
-  if (data?.id) return Number(data.id);
+  const fila = data as { id?: number | string } | null;
+  if (fila?.id) return Number(fila.id);
   const again = await client.from('cash_movements').select('id').eq('organization_id', org).eq('uuid', record.id).maybeSingle();
   if (again.data?.id) return Number(again.data.id);
   throw error ?? new Error('El movimiento no devolvió id');
 }
 
+/**
+ * Cierre por `pos_caja_cerrar`, la misma RPC transaccional que el cierre con
+ * red: el servidor comprueba el permiso, guarda el arqueo `closing` con el
+ * conteo por método y calcula el esperado y la diferencia con la hora real del
+ * cierre (`p_cerrada_en`). La diferencia calculada sin red (la del outbox) ya
+ * no se escribe (R10 de docs/implementacion/CAJAS-VENTAS-PLAN.md). Idempotente:
+ * si la caja ya estaba cerrada, la RPC responde `ya_cerrada` y se da por hecho.
+ */
 async function replayClose(client: CashSyncClient, record: CashCloseRecord, sessionId: number): Promise<number> {
   const org = record.organization_id;
-  const { data: current, error: findError } = await client.from('cash_sessions').select('id, status').eq('organization_id', org).eq('id', sessionId).maybeSingle();
-  if (findError) throw findError;
-  if (!current) throw new Error(`La sesión de caja ${sessionId} no existe en el servidor`);
-  if (String(current.status) !== 'closed') {
-    const { error } = await client
-      .from('cash_sessions')
-      .update({
-        closed_at: record.payload.closed_at,
-        closed_by: record.payload.closed_by,
-        final_amount: record.payload.final_amount,
-        difference: record.payload.difference,
+  if (!client.rpc) throw new Error('El cliente de Supabase no permite RPC para cerrar la caja');
+  const { data, error } = await client.rpc(
+    'pos_caja_cerrar',
+    parametrosCierre(
+      sessionId,
+      {
+        counted_amount: record.payload.final_amount,
+        counted_by_method: record.payload.counted_by_method,
+        denominations: record.payload.denominations ?? undefined,
         notes: record.payload.notes ?? undefined,
-        status: 'closed',
-      })
-      .eq('organization_id', org)
-      .eq('id', sessionId);
-    if (error) throw error;
-  }
+      },
+      record.payload.closed_at,
+    ),
+  );
+  if (error) throw error;
+  if (!data) throw new Error(`El cierre de la caja ${sessionId} no devolvió respuesta`);
   // La réplica ya puede mandar: el estado local de la sesión sobra.
   await removeLocalCashSession(org, record.session_uuid);
   return sessionId;

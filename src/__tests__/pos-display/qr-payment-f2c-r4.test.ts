@@ -19,6 +19,7 @@
  * ficticia (org 120), sin nombres reales.
  */
 
+import { execFileSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import type { Cart, CartItem } from '@/components/pos/types';
@@ -45,7 +46,13 @@ import {
 } from '@/components/pos-display/retryBackoff';
 
 const SRC = join(process.cwd(), 'src');
-const EMVCO = '000201010212' + '26580014CO.COM.BREB.QR0136' + 'b'.repeat(36) + '52045411530317054061000.05802CO5910COMERCIO Y6006BOGOTA63047B1D';
+/**
+ * Lee un fuente normalizado a LF. En Windows con core.autocrlf=true un
+ * checkout o stash deja el árbol en CRLF aunque el índice esté en LF; los
+ * guardarraíles estáticos comparan contenido, no fin de línea (ronda 7).
+ */
+const readSrc = (rel: string): string => readFileSync(join(SRC, rel), 'utf8').replace(/\r\n/g, '\n');
+const EMVCO ='000201010212' + '26580014CO.COM.BREB.QR0136' + 'b'.repeat(36) + '52045411530317054061000.05802CO5910COMERCIO Y6006BOGOTA63047B1D';
 const TERMINAL = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 const NOW = Date.UTC(2026, 8, 21, 16, 0, 0);
 
@@ -256,7 +263,7 @@ describe('C1 · tras «Pago QR confirmado» la fase de propina queda decidida: p
   });
 
   it('CheckoutDialog (estático): onPaid llama a getPosDisplayEmitter().skipTip() y es la única llamada a skipTip del archivo', () => {
-    const src = readFileSync(join(SRC, 'components/pos/CheckoutDialog.tsx'), 'utf8');
+    const src = readSrc('components/pos/CheckoutDialog.tsx');
     const start = src.indexOf('onPaid={() => {');
     expect(start).toBeGreaterThan(0);
     const onPaid = src.slice(start, src.indexOf('}}', start) + 2);
@@ -302,7 +309,7 @@ describe('C2 · resolveQrChargeAmount: el QR se genera por la propia entrada, ac
   });
 
   it('CheckoutDialog (estático): un solo cálculo del importe (resolveQrChargeAmount con la entrada) compartido por proveedor, modal, pantalla y onPaid', () => {
-    const src = readFileSync(join(SRC, 'components/pos/CheckoutDialog.tsx'), 'utf8');
+    const src = readSrc('components/pos/CheckoutDialog.tsx');
     expect(src).toContain('const [qrAmount, setQrAmount] = useState<number | undefined>();');
     // Ronda 5 (QA-1): la entrada viaja con su id para excluirla de `othersTotal`.
     expect(src).toContain('const handleQrPayment = async (methodCode: string, entryId?: string, entryAmount?: number) => {');
@@ -413,7 +420,7 @@ describe('C4 · retryDelayFor / markRenderHealthy', () => {
   });
 
   it('cableado (estático): error.tsx usa retryDelayFor(error) con setTimeout(reset, delay); CustomerDisplay marca sana la pantalla al confirmar un state', () => {
-    const errorPage = readFileSync(join(SRC, 'app/pos-display/error.tsx'), 'utf8');
+    const errorPage = readSrc('app/pos-display/error.tsx');
     expect(errorPage).toContain("import { retryDelayFor } from '@/components/pos-display/retryBackoff';");
     expect(errorPage).toContain('const delay = retryDelayFor(error);');
     expect(errorPage).toMatch(/setTimeout\(reset, delay\)/);
@@ -421,7 +428,7 @@ describe('C4 · retryDelayFor / markRenderHealthy', () => {
     const exported = errorPage.match(/^export .*$/gm) ?? [];
     expect(exported).toHaveLength(1);
 
-    const display = readFileSync(join(SRC, 'components/pos-display/CustomerDisplay.tsx'), 'utf8');
+    const display = readSrc('components/pos-display/CustomerDisplay.tsx');
     expect(display).toContain("import { markRenderHealthy } from './retryBackoff';");
     expect(display).toMatch(/useEffect\(\(\) => \{\s*if \(state !== null\) markRenderHealthy\(\);\s*\}, \[state\]\);/);
   });
@@ -431,7 +438,29 @@ describe('C4 · retryDelayFor / markRenderHealthy', () => {
 // C5 · LF en los archivos nuevos de la parte
 // ---------------------------------------------------------------------------
 
-describe('C5 · archivos nuevos de la Parte C en LF (sin CR)', () => {
+/**
+ * Ronda 7: lo que importa es el ÍNDICE de git (lo que viaja en el commit y
+ * ve CI), no el checkout local. En Windows con core.autocrlf=true un stash o
+ * checkout deja el árbol en CRLF aunque el índice esté en LF, y la versión
+ * anterior de este guard («el archivo no contiene \r») fallaba por eso en la
+ * máquina del dueño y en cualquier clon fresco. Ahora se consulta
+ * `git ls-files --eol` y se exige `i/lf` (o `i/none`, archivo vacío). Un
+ * archivo que git aún no rastrea no tiene índice: ahí sí se miran los bytes
+ * del árbol, que es lo único que hay. `.gitattributes` (`* text=auto eol=lf`)
+ * hace que también el checkout salga en LF.
+ */
+function indexEol(relToSrc: string): string | null {
+  let out = '';
+  try {
+    out = execFileSync('git', ['ls-files', '--eol', '--', join('src', relToSrc)], { cwd: process.cwd(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  } catch {
+    return null; // sin git o sin repositorio: se miran los bytes del árbol
+  }
+  const m = out.match(/^i\/(\S+)/);
+  return m ? m[1] : null;
+}
+
+describe('C5 · archivos nuevos de la Parte C en LF (en el índice de git)', () => {
   const files = [
     'components/pos-display/retryBackoff.ts',
     'app/pos-display/error.tsx',
@@ -442,8 +471,19 @@ describe('C5 · archivos nuevos de la Parte C en LF (sin CR)', () => {
     '__tests__/pos-display/tester-f2c-r2.test.ts',
     '__tests__/pos-display/tester-f2c-r3.test.ts',
   ];
-  it.each(files)('%s no contiene \\r', (rel) => {
+  it.each(files)('%s está en LF en el índice (o, si no está rastreado aún, en el árbol)', (rel) => {
+    const eol = indexEol(rel);
+    if (eol !== null) {
+      expect(['lf', 'none']).toContain(eol);
+      return;
+    }
+    // Sin índice (archivo nuevo sin `git add`): los bytes del árbol son lo único que hay.
     const src = readFileSync(join(SRC, rel), 'utf8');
     expect(src.includes('\r')).toBe(false);
+  });
+
+  it('.gitattributes fija LF para todo el repositorio (text=auto eol=lf): un checkout o stash en Windows ya no deja el árbol en CRLF', () => {
+    const attrs = readFileSync(join(process.cwd(), '.gitattributes'), 'utf8').replace(/\r\n/g, '\n');
+    expect(attrs).toMatch(/^\* text=auto eol=lf$/m);
   });
 });

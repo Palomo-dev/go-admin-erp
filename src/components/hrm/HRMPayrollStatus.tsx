@@ -3,7 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import {
   DollarSign,
@@ -85,6 +86,7 @@ export function HRMPayrollStatus({
   isLoading,
 }: HRMPayrollStatusProps) {
   const { formatDate } = useFormatDate();
+  const { formatear } = useMonedaOrganizacion();
   if (isLoading) {
     return (
       <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
@@ -186,7 +188,7 @@ export function HRMPayrollStatus({
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500 shrink-0" />
                 <span className="text-gray-600 dark:text-gray-300 font-medium">
-                  {formatCurrency(currentPeriod.totalNet)}
+                  {formatear(currentPeriod.totalNet)}
                 </span>
               </div>
             )}

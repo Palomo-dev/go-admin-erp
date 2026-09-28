@@ -17,6 +17,8 @@
  * service role) filtrando SIEMPRE por organization_id.
  */
 
+import { formatMoneda, LOCALE_RESPALDO } from '@/lib/utils/moneda';
+
 export interface ContactCtx {
   id?: string;
   first_name?: string;
@@ -140,11 +142,10 @@ export function escapeHtml(s: string): string {
 function formatMoney(value: unknown, currency: string): string {
   const n = typeof value === 'number' ? value : Number(String(value).replace(/[^0-9.-]/g, ''));
   if (!Number.isFinite(n)) return String(value ?? '');
-  try {
-    return new Intl.NumberFormat('es-CO', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
-  } catch {
-    return `${currency} ${n.toLocaleString('es-CO')}`;
-  }
+  // Sin moneda conocida (contexto sin organización) sale el número sin símbolo:
+  // nunca se supone 'COP'. Con moneda, sus decimales reales (`formatMoneda`).
+  if (!currency) return n.toLocaleString(LOCALE_RESPALDO, { maximumFractionDigits: 0 });
+  return formatMoneda(n, currency);
 }
 
 function formatDate(value: unknown, style: 'long' | 'short', timeZone: string): string {
@@ -187,8 +188,9 @@ function isEmpty(v: unknown): boolean {
 const FILTERS = new Set(['money', 'date', 'upper', 'lower', 'raw']);
 
 function currencyFor(ctx: RenderContext, path: string): string {
-  if (path.startsWith('quote.')) return ctx.quote?.currency || ctx.opportunity?.currency || ctx.org.currency || 'COP';
-  return ctx.opportunity?.currency || ctx.org.currency || 'COP';
+  // `ctx.org.currency` ya viene resuelta (`buildContext` → `resolveOrgCurrency`).
+  if (path.startsWith('quote.')) return ctx.quote?.currency || ctx.opportunity?.currency || ctx.org.currency || '';
+  return ctx.opportunity?.currency || ctx.org.currency || '';
 }
 
 export interface InterpolateResult {

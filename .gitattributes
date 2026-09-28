@@ -1,0 +1,39 @@
+# Fin de línea del repositorio: LF en el índice y en el checkout, en todas las
+# plataformas. Sin esto, en Windows con core.autocrlf=true cualquier checkout,
+# stash o clon fresco deja el árbol en CRLF y los guardarraíles que leen el
+# fuente en crudo (src/__tests__/pos-display) rompen. Lo que git detecte como
+# binario queda fuera (text=auto).
+* text=auto eol=lf
+
+# Scripts de Windows: cmd.exe procesa `goto`/etiquetas de forma poco fiable
+# con LF; se conservan en CRLF (mobile/android/gradlew.bat, print-agent/*.bat).
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binarios explícitos: nunca se normalizan (electron/build lleva icon.ico,
+# installer-*.bmp, brand/*.ttf e icon.png: tratados como texto corrompen el
+# instalador). *.nsh queda como texto LF (NSIS lo acepta).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.bmp binary
+*.webp binary
+*.svgz binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary
+*.pdf binary
+*.zip binary
+*.exe binary
+*.blockmap binary
+*.dll binary
+*.node binary
+*.asar binary
+*.mp3 binary
+*.mp4 binary
+*.webm binary

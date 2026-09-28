@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface ComandasPaginationProps {
   currentPage: number;
@@ -28,6 +29,7 @@ export function ComandasPagination({
   onPageChange,
   onPageSizeChange,
 }: ComandasPaginationProps) {
+  const t = useTranslations('posComandas.paginacion');
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalItems);
 
@@ -36,7 +38,7 @@ export function ComandasPagination({
       {/* Items per page */}
       <div className="flex items-center gap-2">
         <span className="text-sm text-gray-600 dark:text-gray-400">
-          Mostrar
+          {t('mostrar')}
         </span>
         <Select
           value={pageSize.toString()}
@@ -54,20 +56,21 @@ export function ComandasPagination({
           </SelectContent>
         </Select>
         <span className="text-sm text-gray-600 dark:text-gray-400">
-          por página
+          {t('porPagina')}
         </span>
       </div>
 
       {/* Info */}
       <div className="text-sm text-gray-600 dark:text-gray-400">
         {totalItems > 0 ? (
-          <>
-            Mostrando <span className="font-medium">{startItem}</span> a{' '}
-            <span className="font-medium">{endItem}</span> de{' '}
-            <span className="font-medium">{totalItems}</span> comandas
-          </>
+          t.rich('rango', {
+            desde: startItem,
+            hasta: endItem,
+            total: totalItems,
+            b: (chunks) => <span className="font-medium">{chunks}</span>,
+          })
         ) : (
-          'Sin comandas'
+          t('sinComandas')
         )}
       </div>
 

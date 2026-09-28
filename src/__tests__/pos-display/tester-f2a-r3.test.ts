@@ -18,9 +18,10 @@
  *    ventana está visible; la aserción ya afirma el contrato nuevo
  *    (activeInstanceId sigue siendo la del cajero) y se añade el caso de
  *    una única pestaña oculta que responde al need_snapshot.
- *    También se documenta que `setSession` y `start()` repetidos desde una
- *    pestaña oculta sí resaludan (decisión del builder: son datos de ESTA
- *    caja), con el mismo efecto colateral.
+ *    También se documenta que `start()` repetido desde una pestaña oculta
+ *    sí resaluda (decisión del builder: son datos de ESTA caja). `setSession`
+ *    lo hacía igual hasta F2-B ronda 5 (defecto F2B-R4-1): ya no saluda con
+ *    la ventana oculta y su prueba afirma el contrato nuevo.
  * 2. settings.ts · entradas raras que llegan de `organization_settings`:
  *    `settings` guardado como STRING JSON (fila escrita a mano), presets
  *    como cadenas («5»), `touch` en mayúsculas, `locale` con espacios,
@@ -319,7 +320,7 @@ describe('emitter.ts · visibilidad y dos pestañas de /app/pos con la MISMA ter
     sola.stop();
   });
 
-  it('documentado (decisión del builder): setSession con cambio de cajero desde la pestaña OCULTA resaluda y releva a la visible', async () => {
+  it('revisado en F2-B ronda 5 (defecto F2B-R4-1): setSession con cambio de cajero desde la pestaña OCULTA ya NO resaluda ni releva a la visible', async () => {
     const display = track(new BroadcastChannelReceiver({ terminalId: TERMINAL }));
     const enabled = { value: true };
     const fondo = caja([INSTANCE_B], 'cart-fondo', { value: false }, enabled);
@@ -328,10 +329,10 @@ describe('emitter.ts · visibilidad y dos pestañas de /app/pos con la MISMA ter
     await waitFor(() => display.activeInstanceId === INSTANCE_A);
 
     fondo.setSession({ cashier: { name: 'Otro cajero' } });
-    await waitFor(() => display.activeInstanceId === INSTANCE_B);
-    expect(display.activeInstanceId).toBe(INSTANCE_B);
+    await tick(6);
+    expect(display.activeInstanceId).toBe(INSTANCE_A); // la oculta guarda la sesión y no saluda
 
-    // start() repetido (misma organización) desde la visible la recupera sin depender de la visibilidad.
+    // start() repetido (misma organización) desde la visible sigue sin depender de la visibilidad.
     cajero.start({ organizationId: 120, currency: 'COP', sessionOpen: true });
     await waitFor(() => display.activeInstanceId === INSTANCE_A);
     cajero.stop();

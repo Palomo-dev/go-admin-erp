@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-  const title = payload.record.payload.title || "GoAdmin ERP";
+  const title = payload.record.payload.title || "GO Admin ERP";
   const body = payload.record.payload.body || "";
   const data = payload.record.payload.data;
   const url = data?.url || "/";

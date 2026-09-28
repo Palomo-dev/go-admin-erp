@@ -1,0 +1,302 @@
+'use client';
+
+import { useMemo, type ReactNode } from 'react';
+import { CircleAlert, Package, Trash2 } from 'lucide-react';
+import { cn } from '@/utils/Utils';
+import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { CampoNumero } from '../CampoNumero';
+import { DataTable, type ColumnaTabla, type EstadoTabla } from '../DataTable';
+import type { EmptyStateProps } from '../EmptyState';
+import type { AccionFila } from '../acciones';
+import { formatearTarifa } from '../resumenTotalesLogica';
+import { useKitT, useLocaleIntl } from '../useIdiomaKit';
+import {
+  decimalesCantidad,
+  limitesRecepcion,
+  simboloMoneda,
+  textoImpuestosLinea,
+  type CambioLinea,
+  type LineaDocumento,
+  type ModoLineas,
+} from './documentoLineasLogica';
+
+/**
+ * Líneas de un documento (Figma `DocumentLinesTable`, Mode lectura · edición ·
+ * recepción × Layout table · cards): factura de venta y de compra, nota
+ * crédito, cotización, recepción de una orden de compra.
+ *
+ * - `lectura`: producto (SKU, variante, nota, seriales), cantidad, precio,
+ *   descuento, impuestos («IVA 19 % · Incluido»), total.
+ * - `edicion`: cantidad, precio y descuento editables con `CampoNumero` y
+ *   «Quitar». Cada cambio sale por `onCambiar`; **el total de la línea lo
+ *   recalcula el servicio** y vuelve en `lineas`.
+ * - `recepcion`: pedida, pendiente y «Recibida» (0 … pendiente).
+ *
+ * Sobre `DataTable`: tabla en escritorio, tarjetas por debajo de `lg`.
+ */
+export interface DocumentoLineasProps {
+  lineas: readonly LineaDocumento[];
+  modo?: ModoLineas;
+  moneda: ContextoMoneda | string;
+  etiqueta?: string;
+  onCambiar?: (id: string, cambio: CambioLinea) => void;
+  onQuitar?: (id: string) => void;
+  /** Menú «⋯» por línea (nota, seriales, excluir impuesto). */
+  accionesLinea?: (linea: LineaDocumento) => readonly AccionFila[];
+  /** Oculta columnas que el documento no usa. */
+  ocultar?: readonly ('sku' | 'descuento' | 'impuestos')[];
+  estado?: EstadoTabla;
+  vacio?: Partial<EmptyStateProps>;
+  /** Fila bajo la tabla: «Buscar producto» · «Agregar ítem manual». */
+  pie?: ReactNode;
+  /** Decimales de la cantidad; por defecto, los que traigan las líneas. */
+  decimalesCant?: number;
+  className?: string;
+}
+
+export function DocumentoLineas({
+  lineas,
+  modo = 'lectura',
+  moneda,
+  etiqueta,
+  onCambiar,
+  onQuitar,
+  accionesLinea,
+  ocultar = [],
+  estado = 'listo',
+  vacio,
+  pie,
+  decimalesCant,
+  className,
+}: DocumentoLineasProps) {
+  const t = useKitT();
+  const locale = useLocaleIntl();
+  const formatear = useMemo(() => crearFormateadorMoneda(moneda), [moneda]);
+  const simbolo = useMemo(() => simboloMoneda(moneda), [moneda]);
+  const decimalesMoneda = typeof moneda === 'string' ? undefined : moneda.decimals;
+  const decCant = decimalesCant ?? decimalesCantidad(lineas);
+  const cantidadTexto = (n: number | null | undefined) =>
+    new Intl.NumberFormat(locale, { maximumFractionDigits: Math.max(decCant, 3) }).format(n ?? 0);
+  const tarifa = (x: number | null | undefined) => formatearTarifa(x, locale);
+  const oculta = (c: 'sku' | 'descuento' | 'impuestos') => ocultar.includes(c);
+  const editable = modo === 'edicion' && !!onCambiar;
+
+  const producto = (l: LineaDocumento) => (
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <span className="truncate font-medium text-fg">{l.descripcion}</span>
+      {(l.variante || (!oculta('sku') && l.sku)) && (
+        <span className="truncate text-xs text-fg-muted">
+          {[l.variante, !oculta('sku') && l.sku ? `${t('documento.lineas.sku')} ${l.sku}` : null].filter(Boolean).join(' · ')}
+        </span>
+      )}
+      {l.nota && <span className="truncate text-xs italic text-fg-secondary">{l.nota}</span>}
+      {l.seriales && l.seriales.length > 0 && (
+        <span className="truncate font-mono text-[11px] text-fg-muted" title={l.seriales.join(', ')}>
+          {t('documento.lineas.seriales', { n: l.seriales.length })}: {l.seriales.slice(0, 3).join(', ')}
+          {l.seriales.length > 3 ? '…' : ''}
+        </span>
+      )}
+      {l.error && (
+        <span role="alert" className="flex items-center gap-1 text-xs text-danger-text">
+          <CircleAlert aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={1.5} />
+          {l.error}
+        </span>
+      )}
+    </div>
+  );
+
+  const impuestos = (l: LineaDocumento) => {
+    const r = textoImpuestosLinea(l.impuestos, tarifa);
+    if (!r.texto) return <span className="text-fg-muted">{t('documento.lineas.sinImpuesto')}</span>;
+    return (
+      <span className="flex flex-col">
+        <span className="truncate">{r.texto}</span>
+        {r.incluido !== null && (
+          <span className="text-xs text-fg-muted">{r.incluido ? t('documento.lineas.incluido') : t('documento.lineas.adicional')}</span>
+        )}
+      </span>
+    );
+  };
+
+  const campoCantidad = (l: LineaDocumento) =>
+    editable ? (
+      <CampoNumero
+        tamano="sm"
+        valor={l.cantidad}
+        decimales={Math.max(decCant, 0)}
+        minimo={0}
+        aria-label={t('documento.lineas.cantidadDe', { producto: l.descripcion })}
+        onValorChange={(v) => onCambiar?.(l.id, { cantidad: v ?? 0 })}
+        className="w-24"
+      />
+    ) : (
+      <span>
+        {cantidadTexto(l.cantidad)}
+        {l.unidad ? <span className="ml-1 text-xs text-fg-muted">{l.unidad}</span> : null}
+      </span>
+    );
+
+  const campoPrecio = (l: LineaDocumento) =>
+    editable ? (
+      <CampoNumero
+        tamano="sm"
+        prefijo={simbolo}
+        valor={l.precioUnitario}
+        decimales={decimalesMoneda ?? 2}
+        minimo={0}
+        aria-label={t('documento.lineas.precioDe', { producto: l.descripcion })}
+        onValorChange={(v) => onCambiar?.(l.id, { precioUnitario: v ?? 0 })}
+        className="w-32"
+      />
+    ) : (
+      formatear(l.precioUnitario)
+    );
+
+  const campoDescuento = (l: LineaDocumento) =>
+    editable ? (
+      <CampoNumero
+        tamano="sm"
+        prefijo={simbolo}
+        valor={l.descuento ?? null}
+        decimales={decimalesMoneda ?? 2}
+        minimo={0}
+        aria-label={t('documento.lineas.descuentoDe', { producto: l.descripcion })}
+        onValorChange={(v) => onCambiar?.(l.id, { descuento: v })}
+        className="w-28"
+      />
+    ) : l.descuento ? (
+      <span className="text-success-text">−{formatear(l.descuento)}</span>
+    ) : (
+      <span className="text-fg-muted">—</span>
+    );
+
+  const campoRecibida = (l: LineaDocumento) => {
+    const { minimo, maximo } = limitesRecepcion(l);
+    return (
+      <CampoNumero
+        tamano="sm"
+        valor={l.cantidadRecibida ?? null}
+        decimales={Math.max(decCant, 0)}
+        minimo={minimo}
+        maximo={maximo}
+        disabled={!onCambiar || maximo === 0}
+        aria-label={t('documento.lineas.recibidaDe', { producto: l.descripcion, maximo: cantidadTexto(maximo) })}
+        onValorChange={(v) => onCambiar?.(l.id, { cantidadRecibida: v })}
+        className="w-24"
+      />
+    );
+  };
+
+  const columnas: ColumnaTabla<LineaDocumento>[] = [
+    { id: 'producto', encabezado: t('documento.lineas.producto'), celda: producto },
+  ];
+  if (modo === 'recepcion') {
+    columnas.push(
+      { id: 'pedida', encabezado: t('documento.lineas.pedida'), alinear: 'derecha', celda: (l) => cantidadTexto(l.cantidad), ancho: 96 },
+      { id: 'pendiente', encabezado: t('documento.lineas.pendiente'), alinear: 'derecha', celda: (l) => cantidadTexto(limitesRecepcion(l).maximo), ancho: 96 },
+      { id: 'recibida', encabezado: t('documento.lineas.recibida'), alinear: 'derecha', celda: campoRecibida, ancho: 120 },
+    );
+  } else {
+    columnas.push(
+      { id: 'cantidad', encabezado: t('documento.lineas.cantidad'), alinear: 'derecha', celda: campoCantidad, ancho: editable ? 112 : 96 },
+      { id: 'precio', encabezado: t('documento.lineas.precio'), variante: 'importe', celda: campoPrecio, ancho: editable ? 148 : 128 },
+    );
+    if (!oculta('descuento')) {
+      columnas.push({ id: 'descuento', encabezado: t('documento.lineas.descuento'), variante: 'importe', celda: campoDescuento, ocultarDebajo: 'xl', ancho: editable ? 132 : 112 });
+    }
+    if (!oculta('impuestos')) {
+      columnas.push({ id: 'impuestos', encabezado: t('documento.lineas.impuestos'), celda: impuestos, ocultarDebajo: 'xl' });
+    }
+    columnas.push({ id: 'total', encabezado: t('documento.lineas.total'), variante: 'importe', celda: (l) => <span className="font-medium">{formatear(l.total)}</span>, ancho: 128 });
+    if (editable && onQuitar) {
+      columnas.push({
+        id: 'quitar',
+        encabezado: t('documento.lineas.quitar'),
+        alinear: 'centro',
+        ancho: 56,
+        celda: (l) => (
+          <button
+            type="button"
+            aria-label={t('documento.lineas.quitarDe', { producto: l.descripcion })}
+            onClick={() => onQuitar(l.id)}
+            className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-danger-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
+          </button>
+        ),
+      });
+    }
+  }
+
+  const tarjeta = (l: LineaDocumento) => (
+    <div className={cn('flex flex-col gap-3 rounded-xl border bg-surface p-4', l.error ? 'border-line-danger' : 'border-line')}>
+      <div className="flex items-start justify-between gap-3">
+        {producto(l)}
+        {modo !== 'recepcion' && <span className="shrink-0 font-semibold tabular-nums text-fg">{formatear(l.total)}</span>}
+      </div>
+      {modo === 'recepcion' ? (
+        <div className="flex items-center justify-between gap-3 text-[13px] text-fg-secondary">
+          <span>
+            {t('documento.lineas.pedida')} {cantidadTexto(l.cantidad)} · {t('documento.lineas.pendiente')} {cantidadTexto(limitesRecepcion(l).maximo)}
+          </span>
+          {campoRecibida(l)}
+        </div>
+      ) : editable ? (
+        <div className="grid grid-cols-2 gap-2">
+          <label className="flex flex-col gap-1 text-xs text-fg-secondary">
+            {t('documento.lineas.cantidad')}
+            {campoCantidad(l)}
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-fg-secondary">
+            {t('documento.lineas.precio')}
+            {campoPrecio(l)}
+          </label>
+          {!oculta('descuento') && (
+            <label className="flex flex-col gap-1 text-xs text-fg-secondary">
+              {t('documento.lineas.descuento')}
+              {campoDescuento(l)}
+            </label>
+          )}
+          {onQuitar && (
+            <button
+              type="button"
+              onClick={() => onQuitar(l.id)}
+              className="mt-auto flex h-8 items-center justify-center gap-1.5 rounded-lg border border-line-strong text-[13px] font-medium text-fg-secondary hover:bg-hover hover:text-danger-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('documento.lineas.quitar')}
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[13px] tabular-nums text-fg-secondary">
+          <span>
+            {cantidadTexto(l.cantidad)}
+            {l.unidad ? ` ${l.unidad}` : ''} × {formatear(l.precioUnitario)}
+            {l.descuento ? <span className="text-success-text"> · −{formatear(l.descuento)}</span> : null}
+          </span>
+          {!oculta('impuestos') && <span className="text-xs">{impuestos(l)}</span>}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className={cn('flex flex-col gap-3', className)}>
+      <DataTable
+        etiqueta={etiqueta ?? t('documento.lineas.etiqueta')}
+        columnas={columnas}
+        filas={lineas}
+        obtenerId={(l) => l.id}
+        etiquetaFila={(l) => l.descripcion}
+        estado={estado}
+        densidad="compacta"
+        acciones={accionesLinea}
+        tonoFila={(l) => (l.error ? 'peligro' : undefined)}
+        tarjetaMovil={(l) => tarjeta(l)}
+        vacio={{ icono: Package, titulo: t('documento.lineas.vacio'), descripcion: t('documento.lineas.vacioDescripcion'), compacto: true, ...vacio }}
+      />
+      {pie && <div className="flex flex-wrap items-center gap-2">{pie}</div>}
+    </div>
+  );
+}

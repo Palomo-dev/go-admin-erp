@@ -1,15 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+/**
+ * Ficha del cliente (Figma 06 Clientes, DET-*): cabecera del kit
+ * (PageHeader `detail` con migas reales, badge de estado, «Editar»,
+ * «Registrar pago» y el menú «⋯» con las mismas acciones que el listado) y
+ * las pestañas de siempre. Estados de carga y error con el kit.
+ */
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { HandCoins, Pencil, User, Building2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { supabase } from '@/lib/supabase/config';
-import { ArrowLeft, User } from 'lucide-react';
-import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/lib/supabase/config';
+import { EmptyState, PageHeader, RowActionsMenu, StatusBadge } from '@/components/kit';
+import { documentoCliente } from '@/lib/services/clientesListadoService';
+import { construirAccionesCliente } from '@/components/clientes/listado/accionesCliente';
+import { useOperacionesClientes } from '@/components/clientes/listado/useOperacionesClientes';
+import { EliminarClientesDialog } from '@/components/clientes/listado/EliminarClientesDialog';
 
-// Importamos los componentes del perfil del cliente
 import ClienteHeader from '@/components/clientes/id/ClienteHeader';
 import ResumenTab from '@/components/clientes/id/ResumenTab';
 import TimelineTab from '@/components/clientes/id/TimelineTab';
@@ -19,8 +30,8 @@ import TareasSidebar from '@/components/clientes/id/TareasSidebar';
 import InfoTab from '@/components/clientes/id/InfoTab';
 import OportunidadesTab from '@/components/clientes/id/OportunidadesTab';
 import { CompanyContactsManager } from '@/components/clientes/CompanyContactsManager';
+import { mensajeError, useFechasFicha } from '@/components/clientes/id/useFechasFicha';
 
-// Interfaz para los datos del cliente
 interface Cliente {
   id: string;
   organization_id: number;
@@ -28,173 +39,245 @@ interface Cliente {
   last_name: string;
   full_name: string;
   email: string;
-  phone: string;
+  phone: string | null;
   address: string;
   city: string;
   notes: string;
   tags: string[];
-  preferences: any;
+  preferences: unknown;
   created_at: string;
   updated_at: string;
   avatar_url?: string | null;
   customer_type?: string | null;
+  identification_type?: string | null;
+  identification_number?: string | null;
+  dv?: number | null;
+  lifecycle_stage?: string | null;
+  status?: string | null;
 }
+
+/** Por qué no cargó la ficha: un código que se traduce o el mensaje de Supabase. */
+type ErrorFicha = { codigo: 'sinId' | 'noExiste' | 'carga' } | { mensaje: string };
+
+const PESTANA =
+  'min-w-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm text-fg-secondary data-[state=active]:bg-surface data-[state=active]:text-fg data-[state=active]:shadow-sm';
 
 export default function PerfilCliente() {
   const params = useParams();
+  const router = useRouter();
   const id = params?.id as string;
+  const t = useTranslations('clientes.ficha');
+  const tListado = useTranslations('clientes.listado');
+  const { instante } = useFechasFicha();
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Cargar datos del cliente
+  const [error, setError] = useState<ErrorFicha | null>(null);
+  const [recarga, setRecarga] = useState(0);
+  const [eliminarAbierto, setEliminarAbierto] = useState(false);
+
+  const recargar = useCallback(() => setRecarga((n) => n + 1), []);
+  const idsCliente = useMemo(() => (id ? [id] : []), [id]);
+  const { cambiarEstado, copiarId } = useOperacionesClientes(cliente?.organization_id ?? null, recargar);
+
   useEffect(() => {
-    const fetchCliente = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        if (!id) {
-          setError('ID de cliente no encontrado');
-          return;
-        }
-        
-        const { data, error } = await supabase
-          .from('customers')
-          .select('*, avatar_url')
-          .eq('id', id)
-          .single();
-          
-        if (error) {
-          throw error;
-        }
-        
-        if (!data) {
-          setError('Cliente no encontrado');
-          return;
-        }
-        
-        setCliente(data);
-      } catch (err: any) {
-        console.error('Error al cargar datos del cliente:', err);
-        setError(err.message || 'Error al cargar datos del cliente');
-      } finally {
+    let cancelado = false;
+    const cargar = async () => {
+      if (!id) {
+        setError({ codigo: 'sinId' });
         setLoading(false);
+        return;
       }
+      setError(null);
+      const { data, error: err } = await supabase.from('customers').select('*').eq('id', id).maybeSingle();
+      if (cancelado) return;
+      if (err) {
+        const mensaje = mensajeError(err);
+        setError(mensaje ? { mensaje } : { codigo: 'carga' });
+      } else if (!data) setError({ codigo: 'noExiste' });
+      else setCliente(data as Cliente);
+      setLoading(false);
     };
-    
-    fetchCliente();
-  }, [id]);
-  
+    void cargar();
+    return () => {
+      cancelado = true;
+    };
+  }, [id, recarga]);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <PageHeaderSkeleton />
-        <DetailSkeleton />
+      <div className="flex min-h-full flex-col gap-4 bg-canvas p-4 lg:gap-6 lg:p-6" aria-busy="true">
+        <Skeleton className="h-4 w-48" />
+        <div className="flex items-center gap-3">
+          <Skeleton className="size-12 rounded-lg" />
+          <div className="flex flex-1 flex-col gap-2">
+            <Skeleton className="h-6 w-64" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+        </div>
+        <Skeleton className="h-36 w-full rounded-xl" />
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="h-24 rounded-xl" />
+          ))}
+        </div>
       </div>
     );
   }
-  
+
   if (error || !cliente) {
     return (
-      <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <div className="flex flex-wrap items-center gap-3">
-          <Link href="/app/clientes">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Cliente no encontrado</h1>
-        </div>
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
-          <p className="text-red-600 dark:text-red-400 mb-4">{error || 'No se pudo encontrar el cliente solicitado'}</p>
-          <Link href="/app/clientes">
-            <Button variant="outline" className="border-red-300 text-red-700">
-              Volver a clientes
-            </Button>
-          </Link>
+      <div className="flex min-h-full flex-col gap-4 bg-canvas p-4 lg:p-6">
+        <PageHeader
+          titulo={t('pagina.noEncontrado')}
+          variante="detail"
+          icono={User}
+          migas={[
+            { etiqueta: t('pagina.migas.inicio'), href: '/app/inicio' },
+            { etiqueta: t('pagina.migas.clientes'), href: '/app/clientes' },
+          ]}
+          movil={{ titulo: t('pagina.movilTitulo') }}
+          volverA="/app/clientes"
+        />
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState
+            variante="error"
+            titulo={t('pagina.noEncontrado')}
+            descripcion={
+              !error
+                ? t('pagina.noEncontradoDescripcion')
+                : 'mensaje' in error
+                  ? error.mensaje
+                  : t(`pagina.errores.${error.codigo}`)
+            }
+            accion={{ etiqueta: t('pagina.volverClientes'), href: '/app/clientes' }}
+          />
         </div>
       </div>
     );
   }
-  
-  return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header con botón volver */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Link href="/app/clientes">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
-            <User className="h-7 w-7 text-blue-600 dark:text-blue-400" />
-            {cliente.full_name}
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            Clientes / Perfil
-          </p>
-        </div>
-      </div>
 
-      {/* Header del perfil del cliente */}
+  const nombre = cliente.full_name || `${cliente.first_name || ''} ${cliente.last_name || ''}`.trim() || t('comun.sinNombre');
+  const esEmpresa = cliente.customer_type === 'company';
+  const documento = documentoCliente({
+    identification_type: cliente.identification_type ?? null,
+    identification_number: cliente.identification_number ?? null,
+    dv: cliente.dv ?? null,
+  });
+  const desde = instante(cliente.created_at, { day: 'numeric', month: 'short', year: 'numeric' });
+  const subtitulo = [desde && t('pagina.clienteDesde', { fecha: desde }), documento].filter(Boolean).join(' · ');
+
+  const acciones = construirAccionesCliente(
+    { id: cliente.id, nombre, phone: cliente.phone, status: cliente.status ?? 'active' },
+    {
+      navegar: (ruta) => router.push(ruta),
+      onCambiarEstado: (c, estado) => void cambiarEstado([c.id], estado, c.nombre),
+      onEliminar: () => setEliminarAbierto(true),
+      onCopiarId: (c) => void copiarId(c.id),
+      omitirVer: true,
+      t: tListado,
+    },
+  );
+
+  return (
+    <div className="flex min-h-full flex-col gap-4 bg-canvas p-4 lg:gap-6 lg:p-6">
+      <PageHeader
+        titulo={nombre}
+        subtitulo={subtitulo}
+        variante="detail"
+        icono={esEmpresa ? Building2 : User}
+        badge={cliente.status === 'inactive' ? <StatusBadge estado="Inactivo" tamano="md" /> : undefined}
+        migas={[
+          { etiqueta: t('pagina.migas.inicio'), href: '/app/inicio' },
+          { etiqueta: t('pagina.migas.clientes'), href: '/app/clientes' },
+          { etiqueta: nombre },
+        ]}
+        volverA="/app/clientes"
+        acciones={
+          <>
+            <Button asChild variant="outline" className="h-10">
+              <Link href={`/app/clientes/${cliente.id}/editar`}>
+                <Pencil aria-hidden="true" className="mr-2 size-4" />
+                {t('pagina.editar')}
+              </Link>
+            </Button>
+            <Button className="h-10" disabled title={tListado('motivos.registrarPago')} aria-describedby="motivo-registrar-pago">
+              <HandCoins aria-hidden="true" className="mr-2 size-4" />
+              {t('pagina.registrarPago')}
+            </Button>
+            <span id="motivo-registrar-pago" className="sr-only">
+              {tListado('motivos.registrarPago')}
+            </span>
+            <RowActionsMenu acciones={acciones} orientacion="horizontal" tamano="md" titulo={nombre} />
+          </>
+        }
+        movil={{
+          titulo: nombre,
+          subtitulo: documento ?? undefined,
+          accion: <RowActionsMenu acciones={acciones} orientacion="horizontal" titulo={nombre} />,
+        }}
+      />
+
       <ClienteHeader cliente={cliente} />
-      
-      {/* Contenido principal con pestañas y barra lateral */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Sección principal con pestañas */}
-        <div className="col-span-1 lg:col-span-2">
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="col-span-1 min-w-0 lg:col-span-2">
           <Tabs defaultValue="resumen" className="w-full">
-            <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1 h-auto mb-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-1 rounded-lg">
-              <TabsTrigger value="resumen" className="text-xs sm:text-sm h-auto py-1.5 px-2 whitespace-normal min-w-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Resumen</TabsTrigger>
-              <TabsTrigger value="info" className="text-xs sm:text-sm h-auto py-1.5 px-2 whitespace-normal min-w-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Información</TabsTrigger>
-              <TabsTrigger value="oportunidades" className="text-xs sm:text-sm h-auto py-1.5 px-2 whitespace-normal min-w-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Oportunidades</TabsTrigger>
-              <TabsTrigger value="timeline" className="text-xs sm:text-sm h-auto py-1.5 px-2 whitespace-normal min-w-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Timeline</TabsTrigger>
-              <TabsTrigger value="cuentas" className="text-xs sm:text-sm h-auto py-1.5 px-2 whitespace-normal min-w-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Cuentas por cobrar</TabsTrigger>
-              <TabsTrigger value="notas" className="text-xs sm:text-sm h-auto py-1.5 px-2 whitespace-normal min-w-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Notas y archivos</TabsTrigger>
-              {cliente.customer_type === 'company' && (
-                <TabsTrigger value="contactos" className="text-xs sm:text-sm h-auto py-1.5 px-2 whitespace-normal min-w-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Contactos</TabsTrigger>
+            <TabsList className="mb-6 flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-lg border border-line bg-subtle p-1">
+              <TabsTrigger value="resumen" className={PESTANA}>{t('pestanas.resumen')}</TabsTrigger>
+              <TabsTrigger value="info" className={PESTANA}>{t('pestanas.info')}</TabsTrigger>
+              <TabsTrigger value="oportunidades" className={PESTANA}>{t('pestanas.oportunidades')}</TabsTrigger>
+              <TabsTrigger value="timeline" className={PESTANA}>{t('pestanas.actividad')}</TabsTrigger>
+              <TabsTrigger value="cuentas" className={PESTANA}>{t('pestanas.cuentas')}</TabsTrigger>
+              <TabsTrigger value="notas" className={PESTANA}>{t('pestanas.notas')}</TabsTrigger>
+              {esEmpresa && (
+                <TabsTrigger value="contactos" className={PESTANA}>{t('pestanas.contactos')}</TabsTrigger>
               )}
             </TabsList>
-            
+
             <TabsContent value="resumen">
               <ResumenTab clienteId={cliente.id} organizationId={cliente.organization_id} />
             </TabsContent>
-            
             <TabsContent value="info">
               <InfoTab clienteId={cliente.id} organizationId={cliente.organization_id} />
             </TabsContent>
-            
             <TabsContent value="oportunidades">
               <OportunidadesTab clienteId={cliente.id} organizationId={cliente.organization_id} />
             </TabsContent>
-            
             <TabsContent value="timeline">
               <TimelineTab clienteId={cliente.id} organizationId={cliente.organization_id} />
             </TabsContent>
-            
             <TabsContent value="cuentas">
               <CuentasTab clienteId={cliente.id} organizationId={cliente.organization_id} />
             </TabsContent>
-            
             <TabsContent value="notas">
               <NotasArchivosTab clienteId={cliente.id} organizationId={cliente.organization_id} />
             </TabsContent>
-            
-            {cliente.customer_type === 'company' && (
+            {esEmpresa && (
               <TabsContent value="contactos">
                 <CompanyContactsManager companyId={cliente.id} organizationId={cliente.organization_id} />
               </TabsContent>
             )}
           </Tabs>
         </div>
-        
-        {/* Barra lateral con tareas pendientes */}
-        <div className="col-span-1 lg:col-span-1">
+
+        <div className="col-span-1">
           <TareasSidebar clienteId={cliente.id} organizationId={cliente.organization_id} />
         </div>
       </div>
+
+      <EliminarClientesDialog
+        abierto={eliminarAbierto}
+        onAbiertoChange={setEliminarAbierto}
+        organizationId={cliente.organization_id}
+        ids={idsCliente}
+        nombre={nombre}
+        onHecho={({ eliminados }) => {
+          if (eliminados > 0) router.push('/app/clientes');
+          else recargar();
+        }}
+      />
     </div>
   );
 }
+

@@ -111,3 +111,38 @@ que los tests puedan cargar `printJobsService`.
    Al volver la red, la fila aparece en `print_jobs` con `status: 'printed'`.
 3. Detener el agente embebido y cobrar: la fila queda `pending` y se imprime
    al arrancarlo de nuevo.
+
+## Incidente 2026-09-28: el agente no arrancaba en el Desktop 0.2.x
+
+**Síntoma.** Panel del agente «Desconectado» y «No se pudo generar el código
+de vinculación del agente» al pulsar «Iniciar agente» (Desktop 0.2.6).
+
+**Causa.** Desde la fase 3 la ventana se sirve desde el Next embebido
+(`http://127.0.0.1:47800`). El hook `useDesktopAgent` pedía el código con
+`fetch('/api/desktop/agent-session')` relativo, es decir, a ese servidor local,
+que por diseño no lleva `SUPABASE_SERVICE_ROLE_KEY` (el instalador es público).
+`getSupabaseAdmin()` fallaba, la ruta respondía 500 sin cuerpo JSON y la web
+mostraba el mensaje genérico. En la web y en el Desktop 0.1.x (que cargaba
+app.goadmin.io) funcionaba; por eso no se vio antes.
+
+**Arreglo (Desktop 0.2.7 + despliegue web).**
+- Proceso principal: `startAgentWithAccessToken` (`agentRunner.ts`), IPC
+  `agent:start-session` y `startAgentWithSession` en el preload. Pide el código
+  a app.goadmin.io con `Authorization: Bearer <access token>` y
+  `X-Organization-Id`; el proceso principal no tiene CORS. El access token
+  solo sirve para esa petición: el agente sigue con su propia familia de
+  refresh tokens (`verifyOtp`).
+- Ruta: `withOrg(..., { bearer: true })` → `getBearerOrgContext` (Auth valida
+  el token, membresía activa con RLS del propio usuario, organización
+  explícita obligatoria). Sin clave de servicio responde 503 JSON
+  `SIN_CLAVE_SERVIDOR`. Excluida del middleware, que respondía 401 a una
+  petición sin cookies antes de llegar al handler.
+- Hook: usa `startAgentWithSession` si el bridge lo trae y, si no, el camino
+  anterior mostrando el código HTTP cuando no hay cuerpo JSON.
+
+**Qué exige.** Las dos piezas: desplegar la web (la ruta con Bearer y la
+exclusión del middleware) y publicar el Desktop 0.2.7 (el bridge nuevo y el
+hook, que viaja dentro del instalador). El 0.2.6 no se puede arreglar desde el
+servidor: su hook llama al servidor local.
+
+Pruebas: `src/__tests__/services/desktopAgentSession.test.ts`.

@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/utils/orgId';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 /**
  * Servicio CRM para gestionar verticales (líneas de negocio) por organización.
@@ -339,7 +340,7 @@ const VERTICAL_TEMPLATES: VerticalTemplate[] = [
     color: '#f97316',
     sort_order: 1,
     positioning: { value_proposition: 'POS + inventario + facturación electrónica', key_pain: 'Control de mesas y comandas' },
-    metadata: { default_currency: 'COP', billing_cycle: 'monthly' },
+    metadata: { billing_cycle: 'monthly' },
   },
   {
     name: 'Hoteles',
@@ -348,7 +349,7 @@ const VERTICAL_TEMPLATES: VerticalTemplate[] = [
     color: '#8b5cf6',
     sort_order: 2,
     positioning: { value_proposition: 'PMS + channel manager + POS', key_pain: 'Gestión de reservas y disponibilidad' },
-    metadata: { default_currency: 'COP', billing_cycle: 'monthly' },
+    metadata: { billing_cycle: 'monthly' },
   },
   {
     name: 'Retail',
@@ -357,7 +358,7 @@ const VERTICAL_TEMPLATES: VerticalTemplate[] = [
     color: '#3b82f6',
     sort_order: 3,
     positioning: { value_proposition: 'POS + inventario multi-sucursal + e-commerce', key_pain: 'Sincronización de inventario entre sucursales' },
-    metadata: { default_currency: 'COP', billing_cycle: 'monthly' },
+    metadata: { billing_cycle: 'monthly' },
   },
   {
     name: 'Supermercados',
@@ -366,7 +367,7 @@ const VERTICAL_TEMPLATES: VerticalTemplate[] = [
     color: '#22c55e',
     sort_order: 4,
     positioning: { value_proposition: 'POS + pesaje + inventario + fidelización', key_pain: 'Gestión de perecederos y lotes' },
-    metadata: { default_currency: 'COP', billing_cycle: 'monthly' },
+    metadata: { billing_cycle: 'monthly' },
   },
   {
     name: 'Servicios',
@@ -375,7 +376,7 @@ const VERTICAL_TEMPLATES: VerticalTemplate[] = [
     color: '#06b6d4',
     sort_order: 5,
     positioning: { value_proposition: 'Facturación + CRM + gestión de proyectos', key_pain: 'Control de horas y billables' },
-    metadata: { default_currency: 'COP', billing_cycle: 'monthly' },
+    metadata: { billing_cycle: 'monthly' },
   },
   {
     name: 'Multisucursal',
@@ -384,7 +385,7 @@ const VERTICAL_TEMPLATES: VerticalTemplate[] = [
     color: '#ec4899',
     sort_order: 6,
     positioning: { value_proposition: 'Consolidación multi-sucursal + reportes centrales', key_pain: 'Visibilidad consolidada y control central' },
-    metadata: { default_currency: 'COP', billing_cycle: 'monthly' },
+    metadata: { billing_cycle: 'monthly' },
   },
 ];
 
@@ -401,6 +402,9 @@ export async function importVerticalTemplate(
   supabaseClient: SupabaseClient
 ): Promise<number> {
   let createdCount = 0;
+  // `metadata.default_currency` = moneda base de la organización que importa
+  // la plantilla (antes se escribía 'COP' en todas).
+  const monedaBase = (await resolveOrgCurrency(supabaseClient, orgId)).code;
 
   for (const template of VERTICAL_TEMPLATES) {
     // Verificar si ya existe un vertical con ese slug para la org
@@ -426,7 +430,7 @@ export async function importVerticalTemplate(
         color: template.color,
         sort_order: template.sort_order,
         positioning: template.positioning,
-        metadata: template.metadata,
+        metadata: { ...template.metadata, default_currency: monedaBase },
       });
 
     if (error) {

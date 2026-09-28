@@ -11,26 +11,15 @@ import {
   AlertTriangle,
   CheckCircle 
 } from 'lucide-react';
-import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
-
-interface CuentaPorPagar {
-  id: string;
-  amount: number;
-  balance: number;
-  due_date: string;
-  status: string;
-  days_overdue: number | null;
-  created_at: string;
-  supplier?: {
-    id: number;
-    name: string;
-    nit: string;
-  };
-}
+import { formatDate, parseLocalDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
+import type { CuentaPorPagarFacturaCompra } from '../FacturasCompraService';
 
 interface CuentaPorPagarInfoProps {
-  cuentaPorPagar: CuentaPorPagar | null;
-  currency: string;
+  cuentaPorPagar: CuentaPorPagarFacturaCompra | null;
+  /** Moneda de la factura de compra; sin ella, la base de la organización. */
+  currency?: string | null;
   loading?: boolean;
 }
 
@@ -39,6 +28,9 @@ export function CuentaPorPagarInfo({
   currency, 
   loading = false 
 }: CuentaPorPagarInfoProps) {
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = crearFormateadorMoneda(paraDocumento(currency));
+
   if (loading) {
     return (
       <Card className="dark:bg-gray-800/50 dark:border-gray-700 border-gray-200">
@@ -145,13 +137,13 @@ export function CuentaPorPagarInfo({
           <div>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Monto Original</p>
             <p className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
-              {formatCurrency(cuentaPorPagar.amount, currency)}
+              {formatCurrency(cuentaPorPagar.amount)}
             </p>
           </div>
           <div>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Saldo Pendiente</p>
             <p className="text-base sm:text-lg font-semibold text-red-600 dark:text-red-400">
-              {formatCurrency(cuentaPorPagar.balance, currency)}
+              {formatCurrency(cuentaPorPagar.balance)}
             </p>
           </div>
         </div>
@@ -166,7 +158,7 @@ export function CuentaPorPagarInfo({
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Fecha de Vencimiento</p>
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                 <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
-                  {formatDate(parseLocalDate(cuentaPorPagar.due_date))}
+                  {formatDate(parseLocalDate(cuentaPorPagar.due_date ?? ''))}
                 </p>
                 {diasVencimiento !== null && cuentaPorPagar.balance > 0 && (
                   <Badge 
@@ -192,7 +184,7 @@ export function CuentaPorPagarInfo({
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Monto Pagado</p>
               <p className="text-sm sm:text-base font-medium text-green-600 dark:text-green-400">
-                {formatCurrency(cuentaPorPagar.amount - cuentaPorPagar.balance, currency)}
+                {formatCurrency(cuentaPorPagar.amount - cuentaPorPagar.balance)}
               </p>
             </div>
           </div>

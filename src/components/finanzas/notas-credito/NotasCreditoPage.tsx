@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Plus,
   Download,
@@ -19,6 +20,7 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  Printer,
 } from 'lucide-react';
 import {
   PageHeaderSkeleton,
@@ -52,8 +54,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { notasCreditoService, NotaCredito } from '@/lib/services/notasCreditoService';
+import { abrirDocumento, imprimirDocumento } from '@/lib/documents/cliente';
 import { CopyableId } from '@/components/common/CopyableId';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 
@@ -67,15 +72,8 @@ const statusColors: Record<string, string> = {
   paid: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
 };
 
-const statusLabels: Record<string, string> = {
-  draft: 'Borrador',
-  pending: 'Pendiente',
-  sent: 'Enviada',
-  accepted: 'Aceptada DIAN',
-  rejected: 'Rechazada',
-  void: 'Anulada',
-  paid: 'Pagada',
-};
+/** Estados con etiqueta en `notasCredito.estados`. */
+const ESTADOS_CONOCIDOS = new Set(['draft', 'pending', 'sent', 'accepted', 'rejected', 'void', 'paid']);
 
 const statusIcons: Record<string, React.ReactNode> = {
   draft: <FileText className="h-3 w-3" />,
@@ -87,8 +85,21 @@ const statusIcons: Record<string, React.ReactNode> = {
   paid: <CheckCircle className="h-3 w-3" />,
 };
 
+/** Cada nota es una fila de `invoice_sales` (select *): trae su propia `currency`. */
+type NotaConMoneda = NotaCredito & { currency?: string | null };
+
 export function NotasCreditoPage() {
   const router = useRouter();
+  // KPIs que suman varias notas: moneda base. Cada nota: su propia moneda.
+  const { formatear, paraDocumento } = useMonedaOrganizacion();
+  const t = useTranslations('notasCredito');
+  // Imprimir y PDF: motor único de documentos (plantilla de marca, datos leídos en el servidor).
+  const ta = useTranslations('accionesDocumento');
+  // issue_date es timestamptz: el día sale en la zona de la organización.
+  const { formatDate, getToday } = useFormatDate();
+  const etiquetaEstado = (estado: string) => (ESTADOS_CONOCIDOS.has(estado) ? t(`estados.${estado}`) : estado);
+  const nombreCliente = (nota: NotaCredito) =>
+    (nota.customer ? `${nota.customer.first_name || ''} ${nota.customer.last_name || ''}`.trim() : '') || t('comun.sinCliente');
   const [notas, setNotas] = useState<NotaCredito[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -121,47 +132,54 @@ export function NotasCreditoPage() {
     } catch (error) {
       console.error('Error loading data:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las notas de crédito',
+        title: t('comun.error'),
+        description: t('listado.errorCarga'),
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, searchTerm]);
+  }, [statusFilter, searchTerm, t]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   const handleAnular = async (id: string) => {
-    if (!confirm('¿Está seguro de anular esta nota de crédito?')) return;
+    if (!confirm(t('anular.confirmar'))) return;
     
-    const reason = prompt('Motivo de la anulación:');
+    const reason = prompt(t('anular.motivo'));
     try {
       const result = await notasCreditoService.anularNotaCredito(id, reason || undefined);
       if (result.success) {
-        toast({ title: 'Éxito', description: 'Nota de crédito anulada correctamente' });
+        toast({ title: t('comun.exito'), description: t('anular.hecho') });
         loadData();
       } else {
-        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        toast({ title: t('comun.error'), description: result.error || t('anular.error'), variant: 'destructive' });
       }
-    } catch (error) {
-      toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
+    } catch {
+      toast({ title: t('comun.error'), description: t('anular.error'), variant: 'destructive' });
     }
   };
 
   const handleExport = () => {
     const csv = [
-      ['Número', 'Fecha', 'Cliente', 'Factura Origen', 'Total', 'Estado'].join(','),
+      [
+        t('listado.columnas.numero'),
+        t('listado.columnas.fecha'),
+        t('listado.columnas.cliente'),
+        t('listado.columnas.facturaOrigen'),
+        t('listado.columnas.total'),
+        t('listado.columnas.estado'),
+      ].join(','),
       ...notas.map(n => 
         [
           n.number,
           formatDate(n.issue_date),
-          n.customer ? `${n.customer.first_name || ''} ${n.customer.last_name || ''}`.trim() || 'Sin cliente' : 'Sin cliente',
+          nombreCliente(n),
           n.related_invoice?.number || '-',
           n.total,
-          statusLabels[n.status] || n.status
+          etiquetaEstado(n.status)
         ].join(',')
       ),
     ].join('\n');
@@ -170,7 +188,7 @@ export function NotasCreditoPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `notas_credito_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `${t('listado.archivoExportacion')}_${getToday()}.csv`;
     a.click();
   };
 
@@ -190,7 +208,7 @@ export function NotasCreditoPage() {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link href="/app/finanzas">
-            <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800">
+            <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800" aria-label={t('listado.volver')}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
@@ -199,10 +217,10 @@ export function NotasCreditoPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Notas de Crédito
+              {t('listado.titulo')}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Gestión de notas crédito emitidas
+              {t('listado.subtitulo')}
             </p>
           </div>
         </div>
@@ -212,11 +230,11 @@ export function NotasCreditoPage() {
             className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Nueva Nota Crédito
+            {t('listado.nueva')}
           </Button>
           <Button variant="outline" onClick={handleExport} className="dark:border-gray-700">
             <Download className="h-4 w-4 mr-2" />
-            Exportar
+            {t('listado.exportar')}
           </Button>
         </div>
       </div>
@@ -227,31 +245,31 @@ export function NotasCreditoPage() {
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              Total Emitido
+              {t('listado.kpis.totalEmitido')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {formatCurrency(stats.total)}
+              {formatear(stats.total)}
             </div>
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              Este Mes
+              {t('listado.kpis.esteMes')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {formatCurrency(stats.thisMonth)}
+              {formatear(stats.thisMonth)}
             </div>
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              Total Notas
+              {t('listado.kpis.totalNotas')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -263,7 +281,7 @@ export function NotasCreditoPage() {
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              En Borrador
+              {t('listado.kpis.enBorrador')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -279,7 +297,7 @@ export function NotasCreditoPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Buscar por número o notas..."
+            placeholder={t('listado.buscar')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
@@ -288,20 +306,20 @@ export function NotasCreditoPage() {
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
             <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Estado" />
+            <SelectValue placeholder={t('listado.filtroEstado')} />
           </SelectTrigger>
           <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="draft">Borrador</SelectItem>
-            <SelectItem value="sent">Enviada</SelectItem>
-            <SelectItem value="accepted">Aceptada</SelectItem>
-            <SelectItem value="rejected">Rechazada</SelectItem>
-            <SelectItem value="void">Anulada</SelectItem>
+            <SelectItem value="all">{t('listado.filtros.todos')}</SelectItem>
+            <SelectItem value="draft">{t('estados.draft')}</SelectItem>
+            <SelectItem value="sent">{t('estados.sent')}</SelectItem>
+            <SelectItem value="accepted">{t('listado.filtros.aceptada')}</SelectItem>
+            <SelectItem value="rejected">{t('estados.rejected')}</SelectItem>
+            <SelectItem value="void">{t('estados.void')}</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" onClick={loadData} className="dark:border-gray-700">
           <RefreshCw className="h-4 w-4 mr-2" />
-          Actualizar
+          {t('listado.actualizar')}
         </Button>
       </div>
 
@@ -311,20 +329,20 @@ export function NotasCreditoPage() {
           <Table>
             <TableHeader>
               <TableRow className="dark:border-gray-700">
-                <TableHead className="dark:text-gray-400">Número</TableHead>
-                <TableHead className="dark:text-gray-400">Fecha</TableHead>
-                <TableHead className="dark:text-gray-400">Cliente</TableHead>
-                <TableHead className="dark:text-gray-400">Factura Origen</TableHead>
-                <TableHead className="dark:text-gray-400 text-right">Total</TableHead>
-                <TableHead className="dark:text-gray-400">Estado</TableHead>
-                <TableHead className="dark:text-gray-400 text-right">Acciones</TableHead>
+                <TableHead className="dark:text-gray-400">{t('listado.columnas.numero')}</TableHead>
+                <TableHead className="dark:text-gray-400">{t('listado.columnas.fecha')}</TableHead>
+                <TableHead className="dark:text-gray-400">{t('listado.columnas.cliente')}</TableHead>
+                <TableHead className="dark:text-gray-400">{t('listado.columnas.facturaOrigen')}</TableHead>
+                <TableHead className="dark:text-gray-400 text-right">{t('listado.columnas.total')}</TableHead>
+                <TableHead className="dark:text-gray-400">{t('listado.columnas.estado')}</TableHead>
+                <TableHead className="dark:text-gray-400 text-right">{t('listado.columnas.acciones')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {notas.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    No hay notas de crédito registradas
+                    {t('listado.vacio')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -349,7 +367,7 @@ export function NotasCreditoPage() {
                         <User className="h-4 w-4 text-gray-400" />
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">
-                            {nota.customer ? `${nota.customer.first_name || ''} ${nota.customer.last_name || ''}`.trim() || 'Sin cliente' : 'Sin cliente'}
+                            {nombreCliente(nota)}
                           </p>
                           {nota.customer?.identification_number && (
                             <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -372,18 +390,18 @@ export function NotasCreditoPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right font-semibold text-red-600 dark:text-red-400">
-                      {formatCurrency(Number(nota.total))}
+                      {formatMoneda(Number(nota.total), paraDocumento((nota as NotaConMoneda).currency))}
                     </TableCell>
                     <TableCell>
                       <Badge className={`${statusColors[nota.status]} flex items-center gap-1 w-fit`}>
                         {statusIcons[nota.status]}
-                        {statusLabels[nota.status] || nota.status}
+                        {etiquetaEstado(nota.status)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t('listado.masAcciones', { numero: nota.number })}>
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -393,7 +411,15 @@ export function NotasCreditoPage() {
                             className="cursor-pointer"
                           >
                             <Eye className="h-4 w-4 mr-2" />
-                            Ver Detalle
+                            {t('listado.verDetalle')}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => imprimirDocumento('nota-credito', nota.id)} className="cursor-pointer">
+                            <Printer className="h-4 w-4 mr-2" />
+                            {ta('imprimir')}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => abrirDocumento('nota-credito', nota.id)} className="cursor-pointer">
+                            <FileText className="h-4 w-4 mr-2" />
+                            {ta('verPdf')}
                           </DropdownMenuItem>
                           {nota.status !== 'void' && nota.status !== 'accepted' && (
                             <>
@@ -403,7 +429,7 @@ export function NotasCreditoPage() {
                                 className="cursor-pointer text-red-600 dark:text-red-400"
                               >
                                 <XCircle className="h-4 w-4 mr-2" />
-                                Anular
+                                {t('listado.anular')}
                               </DropdownMenuItem>
                             </>
                           )}

@@ -5,7 +5,15 @@ import { deliveryIntegrationService } from './deliveryIntegrationService';
 import { stockMovementService } from './stockMovementService';
 import { generateInvoiceNumber } from '@/lib/utils/invoiceUtils';
 import type { WebOrder } from './webOrdersService';
-import { avisarSiNoCuadra, lineasFacturaDesdePedidoWeb, repartirTotalesPedidoWeb } from './webOrderTotals';
+import {
+  avisarSiNoCuadra,
+  facturaWebConImpuestoIncluido,
+  lineasFacturaWebConImpuesto,
+  repartirTotalesPedidoWeb,
+} from './webOrderTotals';
+import { resolveLineTax } from './taxResolver';
+import { resolveOrgCurrency } from './monedaOrganizacion';
+import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
 
 /**
  * Sub-métodos de Wompi (pasarela de pago del website).
@@ -24,7 +32,10 @@ function mapWebPaymentMethodToInvoice(method: string | null | undefined): string
 
 export interface ConfirmOrderResult {
   saleId: string;
-  kitchenTicketId: number;
+  /** Sin comanda cuando el pedido ya estaba confirmado por otro camino. */
+  kitchenTicketId?: number;
+  /** El pedido ya tenía venta (p. ej. la creó el webhook de la pasarela): no se creó nada. */
+  yaConfirmado?: boolean;
   tipId?: string;
   shipmentId?: string;
   couponRedemptionId?: string;
@@ -72,8 +83,12 @@ class WebOrderConfirmationService {
     const effectivePaymentStatus = markAsPaid ? 'paid' : order.payment_status;
     const orderForSale = markAsPaid ? { ...order, payment_status: 'paid' as const } : order;
 
-    // 1. Crear sale (venta POS)
-    const saleId = await this.createSale(orderForSale, userId);
+    // 1. Crear la venta, una sola vez por pedido (ADR-CC-011). Si el webhook
+    //    de la pasarela ya la creó, se devuelve esa venta y no se crea nada más.
+    const { saleId, creada } = await this.createSale(orderForSale, userId);
+    if (!creada) {
+      return { saleId, yaConfirmado: true };
+    }
 
     // 2. Crear sale_items y obtener los IDs insertados
     const insertedSaleItems = await this.createSaleItems(order, saleId);
@@ -149,7 +164,7 @@ class WebOrderConfirmationService {
 
       // 8. Crear registro de pago (payments) asociado a la factura
       if (invoiceId) {
-        paymentId = await this.createPayment(order, invoiceId, userId);
+        paymentId = await this.createPayment(order, invoiceId, userId, invoiceResult.invoiceCurrency);
       }
 
       // 9. Crear cuenta por cobrar si hay cliente y balance pendiente
@@ -193,38 +208,28 @@ class WebOrderConfirmationService {
    * source='web' e include_in_cash_register=false para que no aparezca en caja POS.
    * sale_date usa la fecha original del pedido, no la fecha de confirmación.
    */
-  private async createSale(order: WebOrder, userId: string): Promise<string> {
-    const saleDate = order.created_at || new Date().toISOString();
-    const { data: sale, error } = await supabase
-      .from('sales')
-      .insert({
-        organization_id: order.organization_id,
-        branch_id: order.branch_id,
-        customer_id: order.customer_id || null,
-        user_id: userId,
-        sale_date: saleDate,
-        total: order.total,
-        subtotal: order.subtotal,
-        tax_total: order.tax_total,
-        discount_total: order.discount_total,
-        delivery_fee: Number(order.delivery_fee) || 0,
-        tip_amount: Number(order.tip_amount) || 0,
-        balance: order.payment_status === 'paid' ? 0 : order.total,
-        status: order.payment_status === 'paid' ? 'paid' : 'pending',
-        payment_status: order.payment_status || 'pending',
-        source: 'web',
-        include_in_cash_register: false,
-        notes: `Pedido web: ${order.order_number}`,
-      })
-      .select('id')
-      .single();
+  private async createSale(
+    order: WebOrder,
+    userId: string
+  ): Promise<{ saleId: string; creada: boolean }> {
+    // fn_confirmar_pedido_web toma el pedido con FOR UPDATE: si otro camino ya
+    // creó la venta, la devuelve con creada=false. El usuario lo toma la base de
+    // la sesión; aquí solo se pasa para el caso sin sesión.
+    const { data, error } = await supabase.rpc('fn_confirmar_pedido_web', {
+      p_order_id: order.id,
+      p_customer_id: order.customer_id || null,
+      p_user_id: userId,
+      p_pagado: order.payment_status === 'paid',
+    });
 
     if (error) {
       console.error('Error creando sale:', error);
       throw new Error(`Error al crear venta: ${error.message}`);
     }
 
-    return sale.id;
+    const { sale_id: saleId, creada } = (data ?? {}) as { sale_id?: string; creada?: boolean };
+    if (!saleId) throw new Error(`El pedido ${order.order_number} no devolvió venta`);
+    return { saleId, creada: creada === true };
   }
 
   /**
@@ -305,12 +310,29 @@ class WebOrderConfirmationService {
       throw new Error(`Error al crear comanda: ${ticketError.message}`);
     }
 
+    // Estación efectiva de cada producto (propia → del padre → de la categoría).
+    // Si la consulta falla, la comanda sale igual sin estación (como antes).
+    const estacionPorProducto = new Map<number, string | null>();
+    const productIds = Array.from(new Set(saleItems.map(i => i.product_id).filter((id): id is number => id !== null)));
+    if (productIds.length > 0) {
+      const { data: estaciones, error: estacionesError } = await supabase.rpc('fn_estaciones_efectivas', {
+        p_organization_id: order.organization_id,
+        p_product_ids: productIds,
+      });
+      if (estacionesError) {
+        console.warn('No se pudo resolver la estación de cocina de los productos:', estacionesError);
+      }
+      for (const e of (estaciones ?? []) as Array<{ product_id: number; station: string | null }>) {
+        estacionPorProducto.set(Number(e.product_id), e.station || null);
+      }
+    }
+
     // Crear items del ticket
     const ticketItems = saleItems.map(item => ({
       organization_id: order.organization_id,
       kitchen_ticket_id: ticket.id,
       sale_item_id: item.id,
-      station: null,
+      station: item.product_id !== null ? estacionPorProducto.get(item.product_id) ?? null : null,
       notes: null,
       status: 'pending',
     }));
@@ -415,7 +437,7 @@ class WebOrderConfirmationService {
     order: WebOrder,
     saleId: string,
     userId: string
-  ): Promise<{ invoiceId: string; invoiceNumber: string }> {
+  ): Promise<{ invoiceId: string; invoiceNumber: string; invoiceCurrency: string | null }> {
     try {
       const invoiceNumber = await generateInvoiceNumber(order.organization_id, 'FACT');
       const now = new Date().toISOString();
@@ -426,6 +448,7 @@ class WebOrderConfirmationService {
       const discountTotal = Number(order.discount_total) || 0;
       const deliveryFee = Number(order.delivery_fee) || 0;
       const total = Number(order.total) || (subtotal + taxTotal - discountTotal + deliveryFee);
+      const reparto = repartirTotalesPedidoWeb(order);
 
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoice_sales')
@@ -437,7 +460,9 @@ class WebOrderConfirmationService {
           number: invoiceNumber,
           issue_date: now,
           due_date: now,
-          currency: 'COP',
+          // Sin moneda: el pedido web no la trae y el trigger
+          // trg_00_moneda_base_por_defecto pone la base de la organización.
+          currency: null,
           subtotal,
           tax_total: taxTotal,
           total,
@@ -445,22 +470,26 @@ class WebOrderConfirmationService {
           status: 'paid',
           payment_method: mapWebPaymentMethodToInvoice(order.payment_method),
           payment_terms: 0,
+          // El trigger fn_recalc_invoice_totals deriva la base con el modo de la
+          // cabecera: tiene que ser el mismo de las líneas (F-42).
+          tax_included: facturaWebConImpuestoIncluido(reparto),
           created_by: userId,
           notes: `Factura generada automáticamente desde pedido web ${order.order_number}`,
         })
-        .select('id, number')
+        .select('id, number, currency')
         .single();
 
       if (invoiceError) {
         console.error('Error creando invoice_sales:', invoiceError);
-        return { invoiceId: '', invoiceNumber: '' };
+        return { invoiceId: '', invoiceNumber: '', invoiceCurrency: null };
       }
 
       // Líneas de la factura. El trigger fn_recalc_invoice_totals pisa
       // invoice_sales.total con SUM(total_line): las líneas deben reproducir
       // order.total (descuento de pedido prorrateado, envío y propina como
-      // líneas). Ver `webOrderTotals.ts`.
-      const invoiceItems = lineasFacturaDesdePedidoWeb(order, invoice.id);
+      // líneas). Ver `webOrderTotals.ts`. Tarifa, código y modo de cada línea
+      // salen del resolver único (F-42).
+      const invoiceItems = await lineasFacturaWebConImpuesto(order, invoice.id, resolveLineTax, reparto);
 
       if (invoiceItems.length > 0) {
         const { error: itemsError } = await supabase
@@ -473,10 +502,10 @@ class WebOrderConfirmationService {
       }
 
       console.log(`📄 Factura creada: ${invoice.number} para pedido web ${order.order_number}`);
-      return { invoiceId: invoice.id, invoiceNumber: invoice.number };
+      return { invoiceId: invoice.id, invoiceNumber: invoice.number, invoiceCurrency: invoice.currency ?? null };
     } catch (error) {
       console.error('Error en createInvoice:', error);
-      return { invoiceId: '', invoiceNumber: '' };
+      return { invoiceId: '', invoiceNumber: '', invoiceCurrency: null };
     }
   }
 
@@ -487,7 +516,8 @@ class WebOrderConfirmationService {
   private async createPayment(
     order: WebOrder,
     invoiceId: string,
-    userId: string
+    userId: string,
+    invoiceCurrency: string | null = null
   ): Promise<string> {
     try {
       // Verificar si ya existe un pago para este web_order (creado por webhook/website).
@@ -546,7 +576,11 @@ class WebOrderConfirmationService {
           source_id: invoiceId,
           amount: Number(order.total) || 0,
           method: mapWebPaymentMethodToInvoice(order.payment_method),
-          currency: 'COP',
+          // payments.currency es NOT NULL y no tiene trigger: la moneda de la
+          // factura que se paga y, si no la trae, la base de la organización.
+          currency:
+            normalizarCodigoMoneda(invoiceCurrency) ??
+            (await resolveOrgCurrency(supabase, order.organization_id)).code,
           status: 'completed',
           created_by: userId,
         })
@@ -670,26 +704,32 @@ class WebOrderConfirmationService {
         .eq('branch_id', order.branch_id)
         .eq('tip_type', 'online')
         .ilike('notes', `%${order.order_number}%`)
-        .single();
+        .is('voided_at', null)
+        .limit(1)
+        .maybeSingle();
 
       if (existingTip) {
         // UPDATE: completar con sale_id y server_id reales
-        await supabase
+        const { error: updateError } = await supabase
           .from('tips')
           .update({ sale_id: saleId, server_id: userId })
-          .eq('id', existingTip.id);
+          .eq('id', existingTip.id)
+          .eq('organization_id', order.organization_id);
+        if (updateError) throw updateError;
 
         console.log(`✅ Tip online actualizado con sale_id: ${saleId}, server_id: ${userId}`);
         return existingTip.id;
       }
 
-      // FALLBACK: website no creó tip → crear nuevo
+      // FALLBACK: website no creó tip → crear nuevo, en la sucursal del
+      // pedido (no en la sucursal activa de quien confirma).
       const tip = await PropinasService.create({
         sale_id: saleId,
         server_id: userId,
         amount: order.tip_amount,
         tip_type: 'online',
         notes: `Propina online - Pedido ${order.order_number}`,
+        branch_id: order.branch_id,
       });
       return tip.id;
     } catch (error) {

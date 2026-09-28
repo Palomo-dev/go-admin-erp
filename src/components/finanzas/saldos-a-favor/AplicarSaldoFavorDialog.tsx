@@ -21,8 +21,15 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
-import { saldosAFavorService, SaldoAFavor, FacturaPendiente } from './saldosAFavorService';
+import { useTranslations } from 'next-intl';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import {
+  saldosAFavorService,
+  SaldoAFavor,
+  FacturaPendiente,
+  ErrorPeticionSaldoFavor,
+  nuevaClaveIdempotencia,
+} from './saldosAFavorService';
 
 interface AplicarSaldoFavorDialogProps {
   open: boolean;
@@ -40,10 +47,16 @@ export function AplicarSaldoFavorDialog({
   onSuccess,
 }: AplicarSaldoFavorDialogProps) {
   const { toast } = useToast();
+  const t = useTranslations('saldosAFavor');
+  // Saldos y facturas pendientes sin moneda propia en la consulta: moneda base de la organización.
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const [isLoading, setIsLoading] = useState(false);
   const [facturas, setFacturas] = useState<FacturaPendiente[]>([]);
   const [invoiceId, setInvoiceId] = useState('');
   const [amount, setAmount] = useState<number>(0);
+  // Una clave por apertura: un doble clic o un reintento no aplica dos veces.
+  const [clave, setClave] = useState('');
+  const [errorFacturas, setErrorFacturas] = useState(false);
 
   const facturaSel = facturas.find((f) => f.id === invoiceId);
 
@@ -51,18 +64,24 @@ export function AplicarSaldoFavorDialog({
     if (open && saldo && organizationId) {
       setInvoiceId('');
       setAmount(0);
+      setClave(nuevaClaveIdempotencia('aplicar'));
+      setErrorFacturas(false);
       saldosAFavorService
-        .listarFacturasPendientes(organizationId, saldo.customer_id)
+        .listarFacturasPendientes(saldo.customer_id)
         .then(setFacturas)
-        .catch(() => setFacturas([]));
+        .catch(() => {
+          setFacturas([]);
+          setErrorFacturas(true);
+        });
     }
   }, [open, saldo, organizationId]);
 
-  useEffect(() => {
-    if (facturaSel && saldo) {
-      setAmount(Math.min(Number(facturaSel.balance), Number(saldo.balance)));
-    }
-  }, [invoiceId]);
+  // Al elegir la factura se propone lo que alcance: el menor entre su saldo y el disponible.
+  const elegirFactura = (id: string) => {
+    setInvoiceId(id);
+    const factura = facturas.find((f) => f.id === id);
+    if (factura && saldo) setAmount(Math.min(Number(factura.balance), Number(saldo.balance)));
+  };
 
   const handleSubmit = async () => {
     if (!saldo) return;
@@ -85,14 +104,15 @@ export function AplicarSaldoFavorDialog({
 
     setIsLoading(true);
     try {
-      await saldosAFavorService.aplicar({ creditId: saldo.id, invoiceId, amount });
+      await saldosAFavorService.aplicar({ creditId: saldo.id, invoiceId, amount, claveIdempotencia: clave });
       toast({ title: 'Saldo aplicado', description: 'El saldo a favor se aplicó a la factura.' });
       onOpenChange(false);
       if (onSuccess) onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const codigo = error instanceof ErrorPeticionSaldoFavor ? error.codigo : 'error_desconocido';
       toast({
         title: 'Error',
-        description: error?.message || 'No se pudo aplicar el saldo',
+        description: t.has(`errores.${codigo}`) ? t(`errores.${codigo}`) : t('errores.error_desconocido'),
         variant: 'destructive',
       });
     } finally {
@@ -118,7 +138,7 @@ export function AplicarSaldoFavorDialog({
         <div className="grid gap-3 py-2">
           <div className="grid gap-1.5">
             <Label>Factura pendiente</Label>
-            <Select value={invoiceId} onValueChange={setInvoiceId}>
+            <Select value={invoiceId} onValueChange={elegirFactura}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona una factura" />
               </SelectTrigger>
@@ -130,8 +150,12 @@ export function AplicarSaldoFavorDialog({
                 ))}
               </SelectContent>
             </Select>
-            {facturas.length === 0 && (
-              <p className="text-xs text-muted-foreground">Este cliente no tiene facturas pendientes.</p>
+            {errorFacturas ? (
+              <p className="text-xs text-red-600 dark:text-red-400">{t('errorFacturas')}</p>
+            ) : (
+              facturas.length === 0 && (
+                <p className="text-xs text-muted-foreground">Este cliente no tiene facturas pendientes.</p>
+              )
             )}
           </div>
 

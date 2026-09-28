@@ -6,14 +6,17 @@
  * pantalla es exactamente lo que el cajero aplica con «Aplicar».
  *
  * Reglas:
- * - El importe de un porcentaje es `Math.round(base × pct / 100)`: el MISMO
- *   redondeo que ya usa el modal de cobro (`handleTipPercentage`), así el
- *   flujo existente de propinas (`tip_amount` → tabla `tips`) recibe la
- *   misma cifra que el cliente vio.
- * - `base` es el importe sobre el que se calcula (el total con impuestos,
- *   antes de propina y domicilio: `baseTotal` del modal). PLAN §5.3 lo
- *   ejemplifica con 10 % de 20.250 = 2.025. La caja lo manda en
- *   `DisplayState.tip.base`; si falta, la pantalla usa `cart.total`.
+ * - El importe de un porcentaje es `computeTipAmount` (`Math.round(base ×
+ *   pct / 100)`), y el modal de cobro (`handleTipPercentage`) lo llama desde
+ *   la ronda 5 de F2-B en vez de repetir la fórmula: `Math.round(base * (pct
+ *   / 100))` difería en 1 con presets arbitrarios (25 × 58 % → 14 / 15). Así
+ *   el flujo existente de propinas (`tip_amount` → tabla `tips`) recibe la
+ *   misma cifra que el cliente vio, venga del botón o de la pantalla.
+ * - `base` es el importe sobre el que se calcula. Desde el paso 12 del
+ *   rediseño del POS (decisión D7) es el subtotal SIN impuestos del cobro
+ *   (`baseTip` del modal, `baseDePropina`); antes era el total con impuestos.
+ *   La caja lo manda en `DisplayState.tip.base`; si falta, la pantalla usa
+ *   `cart.total`. Tope: `TOPE_PROPINA_PORCENTAJE` (10 %).
  * - Nada lanza: un preset que no es un entero en [1, 100] se descarta; una
  *   base no finita o negativa cuenta como 0.
  */
@@ -68,6 +71,28 @@ function toBase(value: unknown): number {
 /** ¿Un porcentaje sugerido válido? Entero en [1, 100] (mismo criterio que settings.ts). */
 export function isValidTipPercent(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 100;
+}
+
+/**
+ * Tope de la propina sugerida (decisión D7 del dueño, POS-PLAN §5.3, y la
+ * decisión 6 de cargos de servicio): nunca más del 10 %, calculado ANTES de
+ * impuestos. Es el único sitio donde se fija la oferta: la caja ofrece
+ * `PORCENTAJES_PROPINA_SUGERIDOS` y la pantalla del cliente descarta los
+ * porcentajes configurados por encima del tope (`porcentajesPropinaOfrecidos`),
+ * así con los ajustes por defecto (5/10/15) las dos ofrecen 5 y 10 %.
+ */
+export const TOPE_PROPINA_PORCENTAJE = 10;
+export const PORCENTAJES_PROPINA_SUGERIDOS: readonly number[] = Object.freeze([5, 10]);
+
+/** Porcentajes válidos, sin repetidos y sin pasar del tope, en el orden en que llegan. */
+export function porcentajesPropinaOfrecidos(presets: unknown): number[] {
+  if (!Array.isArray(presets)) return [];
+  return Array.from(new Set(presets.filter((p): p is number => isValidTipPercent(p) && p <= TOPE_PROPINA_PORCENTAJE)));
+}
+
+/** Importe máximo de la propina: el tope sobre la base (antes de impuestos). */
+export function topePropina(base: unknown): number {
+  return computeTipAmount(base, TOPE_PROPINA_PORCENTAJE);
 }
 
 /** `Math.round(base × pct / 100)`, nunca negativo ni NaN. Base o porcentaje inválidos → 0. */

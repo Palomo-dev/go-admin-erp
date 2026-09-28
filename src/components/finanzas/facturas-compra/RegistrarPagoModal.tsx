@@ -22,8 +22,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CreditCard, AlertCircle } from 'lucide-react';
 import { FacturasCompraService } from './FacturasCompraService';
 import { InvoicePurchase, OrganizationPaymentMethod } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { plainDayOfInstant } from '@/lib/services/businessInstant';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface RegistrarPagoModalProps {
   open: boolean;
@@ -50,13 +54,23 @@ export function RegistrarPagoModal({
   const [loading, setLoading] = useState(false);
   const [metodosPago, setMetodosPago] = useState<OrganizationPaymentMethod[]>([]);
   const [montoExcedido, setMontoExcedido] = useState(false);
+  // Importes en la moneda de la factura de compra; sin ella, la base de la organización.
+  // El pago lo escribe `FacturasCompraService.registrarPago` con esa misma moneda.
+  const { paraDocumento } = useMonedaOrganizacion();
   
+  // `payments.payment_date` e `invoice_purchase.issue_date` son timestamptz.
+  // El formulario trabaja con el DIA de la sucursal dueña de la factura; el
+  // instante lo compone el servicio. `issue_date` se lee con la zona, nunca
+  // con `.toISOString()`, que se queda con el dia UTC.
+  const { getToday, timezone } = useFormatDate(factura?.branch_id);
+  const diaEmision = plainDayOfInstant(factura?.issue_date, timezone);
+
   const [formData, setFormData] = useState<FormData>({
     amount: '',
     payment_method: '',
     reference: '',
     notes: '',
-    payment_date: new Date().toISOString().split('T')[0]
+    payment_date: ''
   });
   const [fechaError, setFechaError] = useState(false);
 
@@ -69,7 +83,7 @@ export function RegistrarPagoModal({
         setFormData(prev => ({
           ...prev,
           amount: factura.balance.toString(),
-          payment_date: new Date().toISOString().split('T')[0]
+          payment_date: getToday()
         }));
         setFechaError(false);
       }
@@ -131,7 +145,7 @@ export function RegistrarPagoModal({
       payment_method: metodosPago.length > 0 ? metodosPago[0].payment_method_code : '',
       reference: '',
       notes: '',
-      payment_date: new Date().toISOString().split('T')[0]
+      payment_date: getToday()
     });
     setMontoExcedido(false);
     setFechaError(false);
@@ -160,12 +174,9 @@ export function RegistrarPagoModal({
     }
 
     // Validar que la fecha de pago no sea anterior a la fecha de emisión
-    if (factura.issue_date) {
-      const fechaEmision = new Date(factura.issue_date).toISOString().split('T')[0];
-      if (formData.payment_date < fechaEmision) {
-        alert(`La fecha de pago no puede ser anterior a la fecha de emisión (${fechaEmision})`);
-        return;
-      }
+    if (diaEmision && formData.payment_date < diaEmision) {
+      alert(`La fecha de pago no puede ser anterior a la fecha de emisión (${diaEmision})`);
+      return;
     }
 
     try {
@@ -191,9 +202,9 @@ export function RegistrarPagoModal({
       onPagoRegistrado();
       onOpenChange(false);
       resetForm();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error registrando pago:', error);
-      const mensaje = error?.message || 'Error al registrar el pago. Por favor, inténtelo de nuevo.';
+      const mensaje = (error as { message?: string } | null)?.message || 'Error al registrar el pago. Por favor, inténtelo de nuevo.';
       alert(mensaje);
     } finally {
       setLoading(false);
@@ -226,7 +237,7 @@ export function RegistrarPagoModal({
             <div className="flex justify-between text-xs sm:text-sm">
               <span className="text-blue-600 dark:text-blue-400">Balance pendiente:</span>
               <span className="font-semibold text-blue-800 dark:text-blue-300">
-                {formatCurrency(factura.balance, factura.currency)}
+                {formatMoneda(factura.balance, paraDocumento(factura.currency))}
               </span>
             </div>
           </div>
@@ -252,8 +263,8 @@ export function RegistrarPagoModal({
                 <div className="flex items-start gap-2">
                   <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                   <AlertDescription className="text-xs sm:text-sm text-red-800 dark:text-red-300">
-                    El monto ({formatCurrency(parseFloat(formData.amount), factura.currency)}) 
-                    excede el balance pendiente ({formatCurrency(factura.balance, factura.currency)})
+                    El monto ({formatMoneda(parseFloat(formData.amount), paraDocumento(factura.currency))}) 
+                    excede el balance pendiente ({formatMoneda(factura.balance, paraDocumento(factura.currency))})
                   </AlertDescription>
                 </div>
               </Alert>
@@ -303,20 +314,22 @@ export function RegistrarPagoModal({
             <Label htmlFor="payment_date" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               Fecha de Pago *
             </Label>
-            <Input
+            <CampoFecha
               id="payment_date"
-              type="date"
-              value={formData.payment_date}
-              onChange={(e) => {
-                setFormData(prev => ({ ...prev, payment_date: e.target.value }));
-                if (factura.issue_date) {
-                  const fechaEmision = new Date(factura.issue_date).toISOString().split('T')[0];
-                  setFechaError(e.target.value < fechaEmision);
+              tamano="sm"
+              aria-required
+              aria-invalid={fechaError || undefined}
+              valor={formData.payment_date}
+              onValorChange={(dia) => {
+                setFormData(prev => ({ ...prev, payment_date: dia }));
+                if (diaEmision) {
+                  setFechaError(dia < diaEmision);
                 }
               }}
-              max={new Date().toISOString().split('T')[0]}
-              min={factura.issue_date ? new Date(factura.issue_date).toISOString().split('T')[0] : undefined}
-              className={`h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${fechaError ? 'border-red-500 dark:border-red-500' : ''}`}
+              max={getToday()}
+              min={diaEmision || undefined}
+              hoy={getToday()}
+              className="sm:h-9"
             />
             {fechaError && (
               <p className="text-xs text-red-500 dark:text-red-400">La fecha no puede ser anterior a la emisión de la factura</p>

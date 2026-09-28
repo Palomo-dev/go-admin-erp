@@ -22,7 +22,6 @@ import {
   XCircle,
   CreditCard,
   RefreshCw,
-  CheckCircle2,
   Plus,
   Trash2,
   ArrowLeft,
@@ -43,7 +42,8 @@ import {
 import type { CheckoutReservation } from '@/lib/services/checkoutService';
 import checkoutService from '@/lib/services/checkoutService';
 // type CheckoutReservation.folio.items extended with product_id?, quantity?, unit_price? in checkoutService.ts
-import { formatCurrency, cn } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import foliosService, { type FolioItem } from '@/lib/services/foliosService';
 import { TaxSummary } from '@/components/pos/TaxSummary';
@@ -96,6 +96,8 @@ export function CheckoutDialog({
   reservation,
   onConfirm,
 }: CheckoutDialogProps) {
+  // La reserva no tiene moneda propia: los importes van en la moneda base.
+  const { formatear } = useMonedaOrganizacion();
   const [notes, setNotes] = useState('');
   const [generateInvoice, setGenerateInvoice] = useState(false);
   const [generateReceipt, setGenerateReceipt] = useState(false);
@@ -294,7 +296,7 @@ export function CheckoutDialog({
       setDateWarning({
         type: 'warning',
         title: 'Check-out Tardío',
-        message: `La fecha programada de check-out era el ${formatPlainDate(reservation.checkout, { day: '2-digit', month: 'long', year: 'numeric' })} (hace ${extraNights} ${extraNights === 1 ? 'día' : 'días'}). Estás realizando un check-out tardío. Se cobrarán ${extraNights} ${extraNights === 1 ? 'noche extra' : 'noches extra'} por un total aproximado de ${formatCurrency(extraCharge)}.`,
+        message: `La fecha programada de check-out era el ${formatPlainDate(reservation.checkout, { day: '2-digit', month: 'long', year: 'numeric' })} (hace ${extraNights} ${extraNights === 1 ? 'día' : 'días'}). Estás realizando un check-out tardío. Se cobrarán ${extraNights} ${extraNights === 1 ? 'noche extra' : 'noches extra'} por un total aproximado de ${formatear(extraCharge)}.`,
       });
       // Auto-marcar actualización de fecha para check-out tardío
       setUpdateCheckoutDate(true);
@@ -315,7 +317,7 @@ export function CheckoutDialog({
     } else {
       setFolioBalance(0);
     }
-  }, [reservation, open]);
+  }, [reservation, open, formatear]);
 
   // Recalcular extraNightsCharge cuando se toggle el checkbox
   React.useEffect(() => {
@@ -511,7 +513,6 @@ export function CheckoutDialog({
   const paymentTotal = taxTotals.finalTotal > 0 ? taxTotals.finalTotal : grandTotal;
 
   // Calculados de pago
-  const folioItemsTotal = pendingItems.reduce((sum, item) => sum + Number(item.amount), 0);
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const remaining = Math.max(0, paymentTotal - totalPaid);
   const change = Math.max(0, totalPaid - paymentTotal);
@@ -615,7 +616,7 @@ export function CheckoutDialog({
       } else if (methodCode === 'breb_qr') {
         endpoint = '/api/integrations/breb/create-qr';
         providerLabel = 'Bre-B (Mono)';
-        extraBody = { keyValue: `@org${org.id}` };
+        // La llave Bre-B (a dónde llega el dinero) sale de la conexión, en el servidor.
       } else if (methodCode === 'bancolombia_qr_wompi') {
         endpoint = '/api/integrations/bancolombia/wompi/create-qr';
         providerLabel = 'Bancolombia QR (Wompi)';
@@ -647,7 +648,7 @@ export function CheckoutDialog({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          connectionId: '', // Se resuelve en el backend por organization
+          // La conexión de cobro la resuelve el servidor (organización de la sesión + sucursal).
           amount,
           currency: 'COP',
           reference,
@@ -729,9 +730,9 @@ export function CheckoutDialog({
         change,
       });
       setStep('success');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error procesando pago:', error);
-      const msg = error?.message?.includes('organization_id')
+      const msg = error instanceof Error && error.message.includes('organization_id')
         ? 'Error de configuración: falta el ID de la organización. Contacte al administrador.'
         : 'Error al procesar el pago. Intente nuevamente.';
       setErrorMsg(msg);
@@ -840,11 +841,11 @@ export function CheckoutDialog({
               </AlertTitle>
               <AlertDescription className="text-amber-700 dark:text-amber-300">
                 El huésped tiene un saldo pendiente de{' '}
-                <span className="font-bold">{formatCurrency(grandTotal)}</span>
+                <span className="font-bold">{formatear(grandTotal)}</span>
                 . Puede pagar ahora o dejar como deuda (cuenta por cobrar).
                 {depositTotal > 0 && (
                   <span className="block text-xs mt-1">
-                    Incluye abonos/depósitos aplicados: {formatCurrency(depositTotal)}
+                    Incluye abonos/depósitos aplicados: {formatear(depositTotal)}
                   </span>
                 )}
               </AlertDescription>
@@ -939,13 +940,13 @@ export function CheckoutDialog({
                   <div>
                     <p className="text-gray-500 dark:text-gray-400">Tarifa/noche</p>
                     <p className="font-medium text-gray-900 dark:text-gray-100">
-                      {formatCurrency(reservation.total_estimated / reservation.nights)}
+                      {formatear(reservation.total_estimated / reservation.nights)}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-500 dark:text-gray-400">Total hospedaje</p>
                     <p className="font-medium text-gray-900 dark:text-gray-100">
-                      {formatCurrency(reservation.total_estimated)}
+                      {formatear(reservation.total_estimated)}
                     </p>
                   </div>
                 </div>
@@ -973,7 +974,7 @@ export function CheckoutDialog({
                     <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                       Esta reserva tiene un saldo pendiente de{' '}
                       <span className="font-bold">
-                        {formatCurrency(folioBalance)}
+                        {formatear(folioBalance)}
                       </span>
                       . Puede pagar ahora o dejar como deuda al hacer checkout.
                     </p>
@@ -1004,13 +1005,13 @@ export function CheckoutDialog({
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 dark:text-gray-400">Total de Cargos</span>
                   <span className="font-semibold text-gray-900 dark:text-gray-100">
-                    {formatCurrency(reservation.folio.total_charges)}
+                    {formatear(reservation.folio.total_charges)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 dark:text-gray-400">Total Pagado</span>
                   <span className="font-semibold text-green-600 dark:text-green-400">
-                    {formatCurrency(reservation.folio.total_payments)}
+                    {formatear(reservation.folio.total_payments)}
                   </span>
                 </div>
                 <Separator />
@@ -1025,7 +1026,7 @@ export function CheckoutDialog({
                         : 'text-green-600 dark:text-green-400'
                     }`}
                   >
-                    {formatCurrency(reservation.folio.balance)}
+                    {formatear(reservation.folio.balance)}
                   </span>
                 </div>
               </div>
@@ -1037,8 +1038,9 @@ export function CheckoutDialog({
                   </p>
                   <div className="max-h-48 overflow-y-auto space-y-2">
                     {reservation.folio.items.map((item, index) => {
-                      const isPaid = (item as any).payment_status === 'paid';
-                      const isDirectPayment = (item as any).charge_type === 'direct_payment';
+                      const extra = item as unknown as { payment_status?: string; charge_type?: string };
+                      const isPaid = extra.payment_status === 'paid';
+                      const isDirectPayment = extra.charge_type === 'direct_payment';
                       return (
                         <div
                           key={index}
@@ -1064,7 +1066,7 @@ export function CheckoutDialog({
                             )}
                           </div>
                           <span className="font-medium text-gray-900 dark:text-gray-100">
-                            {formatCurrency(item.amount)}
+                            {formatear(item.amount)}
                           </span>
                         </div>
                       );
@@ -1095,33 +1097,33 @@ export function CheckoutDialog({
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">Hospedaje ({reservation.nights} noches)</span>
-                <span className="font-medium">{formatCurrency(reservation.total_estimated)}</span>
+                <span className="font-medium">{formatear(reservation.total_estimated)}</span>
               </div>
               {extraNightsCharge > 0 && (
                 <div className="flex justify-between">
                   <span className="text-orange-600 dark:text-orange-400">Noches extra</span>
-                  <span className="font-medium text-orange-600 dark:text-orange-400">{formatCurrency(extraNightsCharge)}</span>
+                  <span className="font-medium text-orange-600 dark:text-orange-400">{formatear(extraNightsCharge)}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">Cargos del folio</span>
-                <span className="font-medium">{formatCurrency(reservation.folio?.total_charges || 0)}</span>
+                <span className="font-medium">{formatear(reservation.folio?.total_charges || 0)}</span>
               </div>
               {depositTotal > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Abonos/depósitos</span>
-                  <span className="font-medium text-green-600">- {formatCurrency(depositTotal)}</span>
+                  <span className="font-medium text-green-600">- {formatear(depositTotal)}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">Pagos del folio</span>
-                <span className="font-medium text-green-600">- {formatCurrency(folioPaymentsTotal)}</span>
+                <span className="font-medium text-green-600">- {formatear(folioPaymentsTotal)}</span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-gray-900 dark:text-gray-100">Total Pendiente</span>
                 <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {formatCurrency(grandTotal)}
+                  {formatear(grandTotal)}
                 </span>
               </div>
             </div>
@@ -1288,7 +1290,7 @@ export function CheckoutDialog({
                     </div>
                   </div>
                   <span className="text-sm font-semibold">
-                    {formatCurrency(lodgingTotal)}
+                    {formatear(lodgingTotal)}
                   </span>
                 </div>
               )}
@@ -1309,7 +1311,7 @@ export function CheckoutDialog({
                         </div>
                       </div>
                       <span className="text-sm font-semibold">
-                        {formatCurrency(Number(item.amount))}
+                        {formatear(Number(item.amount))}
                       </span>
                     </div>
                   ))}
@@ -1323,12 +1325,12 @@ export function CheckoutDialog({
                     <span className="text-gray-500 dark:text-gray-400">
                       Subtotal{taxIncluded ? ' (inc. impuestos)' : ''}
                     </span>
-                    <span className="font-medium">{formatCurrency(taxTotals.subtotal)}</span>
+                    <span className="font-medium">{formatear(taxTotals.subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500 dark:text-gray-400">Impuestos</span>
                     <span className="font-medium text-blue-600 dark:text-blue-400">
-                      {formatCurrency(taxTotals.totalTaxAmount)}
+                      {formatear(taxTotals.totalTaxAmount)}
                     </span>
                   </div>
                 </div>
@@ -1338,7 +1340,7 @@ export function CheckoutDialog({
               <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
                 <span className="font-semibold">Total a Pagar:</span>
                 <span className="text-xl font-bold text-amber-600">
-                  {formatCurrency(paymentTotal)}
+                  {formatear(paymentTotal)}
                 </span>
               </div>
             </div>
@@ -1453,18 +1455,18 @@ export function CheckoutDialog({
             <div className="space-y-1.5 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">Total Pagado:</span>
-                <span className="font-semibold text-green-600">{formatCurrency(totalPaid)}</span>
+                <span className="font-semibold text-green-600">{formatear(totalPaid)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">Restante:</span>
                 <span className={cn('font-semibold', remaining > 0 ? 'text-amber-600' : 'text-green-600')}>
-                  {formatCurrency(remaining)}
+                  {formatear(remaining)}
                 </span>
               </div>
               {change > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-gray-400">Cambio:</span>
-                  <span className="font-semibold text-blue-600">{formatCurrency(change)}</span>
+                  <span className="font-semibold text-blue-600">{formatear(change)}</span>
                 </div>
               )}
             </div>
@@ -1498,7 +1500,7 @@ export function CheckoutDialog({
                 ) : (
                   <>
                     <CreditCard className="h-4 w-4 mr-2" />
-                    Pagar {formatCurrency(totalPaid)}
+                    Pagar {formatear(totalPaid)}
                   </>
                 )}
               </Button>
@@ -1526,7 +1528,7 @@ export function CheckoutDialog({
             <p className="text-sm text-gray-500">El pago se ha registrado correctamente</p>
             {change > 0 && (
               <p className="text-sm font-medium text-blue-600">
-                Cambio: {formatCurrency(change)}
+                Cambio: {formatear(change)}
               </p>
             )}
             <Button

@@ -53,7 +53,6 @@ import {
   Copy,
   Loader2,
   AlertTriangle,
-  Calendar,
   Hash,
   Truck,
   Package,
@@ -62,6 +61,7 @@ import {
 import { LotesService } from './LotesService';
 import { Lot, LotsStats, LotFilter } from './types';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function LotesPage() {
@@ -105,7 +105,7 @@ export function LotesPage() {
 
     try {
       const filters: LotFilter = {
-        status: filtroEstado as any,
+        status: filtroEstado as LotFilter['status'],
         productId: filtroProducto !== 'all' ? parseInt(filtroProducto) : undefined,
         search: searchTerm || undefined,
       };
@@ -189,8 +189,8 @@ export function LotesPage() {
       }
       setShowModal(false);
       loadData();
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message || 'No se pudo guardar', variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({ title: 'Error', description: (error as { message?: string } | null)?.message || 'No se pudo guardar', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -201,7 +201,7 @@ export function LotesPage() {
       await LotesService.duplicarLote(id);
       toast({ title: 'Lote duplicado' });
       loadData();
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'No se pudo duplicar', variant: 'destructive' });
     }
   };
@@ -217,8 +217,8 @@ export function LotesPage() {
       await LotesService.eliminarLote(loteToDelete);
       toast({ title: 'Lote eliminado' });
       loadData();
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message || 'No se pudo eliminar', variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({ title: 'Error', description: (error as { message?: string } | null)?.message || 'No se pudo eliminar', variant: 'destructive' });
     } finally {
       setShowDeleteConfirm(false);
       setLoteToDelete(null);
@@ -548,11 +548,10 @@ export function LotesPage() {
             </div>
             <div className="space-y-2">
               <Label className="dark:text-gray-300">Fecha de Vencimiento</Label>
-              <Input
-                type="date"
-                value={formData.expiry_date}
-                onChange={(e) => setFormData(prev => ({ ...prev, expiry_date: e.target.value }))}
-                className="dark:bg-gray-900 dark:border-gray-600"
+              <CampoFecha
+                aria-label="Fecha de Vencimiento"
+                valor={formData.expiry_date}
+                onValorChange={(dia) => setFormData(prev => ({ ...prev, expiry_date: dia }))}
               />
             </div>
             <div className="space-y-2">

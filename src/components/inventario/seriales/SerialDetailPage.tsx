@@ -1,11 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -29,10 +27,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ArrowLeft,
-  Eye,
   Package,
   CheckCircle2,
-  XCircle,
   Truck,
   AlertTriangle,
   Clock,
@@ -45,14 +41,13 @@ import {
   Building2,
   ShoppingCart,
   FileText,
-  Wrench,
   RefreshCw,
   Loader2,
 } from 'lucide-react';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import type { SerialWithDetails, SerialStatus, SerialTrackingEvent } from '@/lib/services/serialTrackingService';
-import { getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
-import { formatCurrency } from '@/utils/Utils';
+import { getOrganizationId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 const STATUS_CONFIG: Record<SerialStatus, { label: string; color: string; icon: React.ReactNode }> = {
@@ -84,12 +79,16 @@ interface SerialDetailPageProps {
   serialId: number;
 }
 
+/** Mensaje de un error de Supabase o de JS, sin suponer su forma. */
+function mensajeDeError(error: unknown): string | undefined {
+  return (error as { message?: string } | null)?.message;
+}
+
 export function SerialDetailPage({ serialId }: SerialDetailPageProps) {
-  const router = useRouter();
   const { toast } = useToast();
   const { formatDate } = useFormatDate();
+  const { formatear } = useMonedaOrganizacion();
   const organizationId = getOrganizationId();
-  const branchId = getCurrentBranchId();
 
   const [serial, setSerial] = useState<SerialWithDetails | null>(null);
   const [events, setEvents] = useState<SerialTrackingEvent[]>([]);
@@ -113,11 +112,11 @@ export function SerialDetailPage({ serialId }: SerialDetailPageProps) {
       if (error) throw error;
       setSerial(data);
       setEvents(data?.events || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error cargando detalle de serial:', err);
       toast({
         title: 'Error',
-        description: err.message || 'No se pudo cargar el serial',
+        description: mensajeDeError(err) || 'No se pudo cargar el serial',
         variant: 'destructive',
       });
     } finally {
@@ -158,8 +157,8 @@ export function SerialDetailPage({ serialId }: SerialDetailPageProps) {
       setShowTransferDialog(false);
       setTransferBranch('');
       fetchSerial();
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Error', description: mensajeDeError(err), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -179,8 +178,8 @@ export function SerialDetailPage({ serialId }: SerialDetailPageProps) {
       setShowDamageDialog(false);
       setDamageNotes('');
       fetchSerial();
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Error', description: mensajeDeError(err), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -199,8 +198,8 @@ export function SerialDetailPage({ serialId }: SerialDetailPageProps) {
       setShowStatusDialog(false);
       setStatusNotes('');
       fetchSerial();
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Error', description: mensajeDeError(err), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -311,7 +310,7 @@ export function SerialDetailPage({ serialId }: SerialDetailPageProps) {
             <InfoRow label="Factura de Compra" value={serial.purchase_invoice_id ? serial.purchase_invoice_id.substring(0, 8) + '...' : 'N/A'} />
             <InfoRow label="Orden de Compra" value={serial.purchase_order_id ? `#${serial.purchase_order_id}` : 'N/A'} />
             <InfoRow label="Lote" value={serial.lot_id ? `#${serial.lot_id}` : 'N/A'} />
-            <InfoRow label="Costo de Compra" value={serial.cost_at_purchase ? formatCurrency(serial.cost_at_purchase, 'COP') : 'N/A'} icon={<DollarSign size={14} />} />
+            <InfoRow label="Costo de Compra" value={serial.cost_at_purchase ? formatear(serial.cost_at_purchase) : 'N/A'} icon={<DollarSign size={14} />} />
             <InfoRow label="Sucursal Recepción" value={serial.branches?.name || 'N/A'} icon={<MapPin size={14} />} />
             <InfoRow label="Fecha Recepción" value={serial.received_date ? formatDate(serial.received_date) : 'N/A'} icon={<Calendar size={14} />} />
           </CardContent>
@@ -329,7 +328,7 @@ export function SerialDetailPage({ serialId }: SerialDetailPageProps) {
             <InfoRow label="Cliente" value={serial.customers?.full_name || 'N/A'} icon={<User size={14} />} />
             <InfoRow label="Vendedor" value={serial.sold_by_user?.email || 'N/A'} />
             <InfoRow label="Sucursal Venta" value={serial.current_branch?.name || 'N/A'} icon={<MapPin size={14} />} />
-            <InfoRow label="Precio de Venta" value={serial.price_at_sale ? formatCurrency(serial.price_at_sale, 'COP') : 'N/A'} icon={<DollarSign size={14} />} />
+            <InfoRow label="Precio de Venta" value={serial.price_at_sale ? formatear(serial.price_at_sale) : 'N/A'} icon={<DollarSign size={14} />} />
             <InfoRow label="Fecha de Venta" value={serial.sale_date ? formatDate(serial.sale_date) : 'N/A'} icon={<Calendar size={14} />} />
             <InfoRow label="Venta ID" value={serial.sale_id || serial.invoice_sale_id || serial.web_order_id || 'N/A'} icon={<FileText size={14} />} />
           </CardContent>
@@ -422,7 +421,7 @@ export function SerialDetailPage({ serialId }: SerialDetailPageProps) {
           <DialogHeader>
             <DialogTitle>Transferir Serial</DialogTitle>
             <DialogDescription>
-              Seleccione la sucursal destino. El serial se marcará como "En Tránsito".
+              Seleccione la sucursal destino. El serial se marcará como &quot;En Tránsito&quot;.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -456,7 +455,7 @@ export function SerialDetailPage({ serialId }: SerialDetailPageProps) {
           <DialogHeader>
             <DialogTitle>Marcar como Dañado</DialogTitle>
             <DialogDescription>
-              Describa el daño. El serial cambiará a estado "Dañado".
+              Describa el daño. El serial cambiará a estado &quot;Dañado&quot;.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">

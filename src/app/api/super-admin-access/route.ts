@@ -4,7 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 export async function POST(request: NextRequest) {
   try {
     const { token } = await request.json();
-    if (!token) {
+    // El token es el uuid de `super_admin_access_tokens` (un solo uso, 5 min).
+    if (typeof token !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
       return NextResponse.json({ error: 'Token requerido' }, { status: 400 });
     }
 
@@ -41,11 +42,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     }
 
-    // Marcar el token como usado
-    await supabaseAdmin
+    // Canje ATÓMICO del token de un solo uso (GO-sec 2026-09-24): solo gana
+    // la petición que lo pasa de `used = false` a `true`. Antes se leía y luego
+    // se marcaba en dos pasos: dos canjes simultáneos devolvían los dos las
+    // credenciales de la sesión.
+    const { data: canjeado, error: canjeError } = await supabaseAdmin
       .from('super_admin_access_tokens')
       .update({ used: true })
-      .eq('id', tokenRecord.id);
+      .eq('id', tokenRecord.id)
+      .eq('used', false)
+      .select('id');
+    if (canjeError || !canjeado || canjeado.length !== 1) {
+      return NextResponse.json({ error: 'Token inválido o expirado' }, { status: 401 });
+    }
 
     // Obtener datos de la organización
     const { data: orgData } = await supabaseAdmin

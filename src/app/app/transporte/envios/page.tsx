@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface Trip {
   id: string;
@@ -44,6 +45,8 @@ export default function EnviosPage() {
   const organizationId = organization?.id;
   const { branchFilter, selectedBranchId } = useBranch();
   const { timezone } = useOrgTimezone();
+  // Moneda base de la organización para las guías impresas (nunca pesos fijos).
+  const moneda = useMonedaOrganizacion();
 
   const [shipments, setShipments] = useState<ShipmentWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -272,6 +275,7 @@ export default function EnviosPage() {
           phone: organization.phone,
         } : undefined,
         timezone,
+        moneda,
       },
       selectedBranchId,
     );
@@ -404,7 +408,7 @@ export default function EnviosPage() {
       phone: organization.phone,
     } : undefined;
     const result = await printShipmentGuidesWithCut(
-      selectedShipments.map((s) => ({ shipment: s, options: { orgInfo, timezone } })),
+      selectedShipments.map((s) => ({ shipment: s, options: { orgInfo, timezone, moneda } })),
       selectedBranchId,
     );
     if (result.method === 'agent') {

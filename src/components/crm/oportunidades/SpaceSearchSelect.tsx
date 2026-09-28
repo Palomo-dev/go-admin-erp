@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface Space {
   id: string;
@@ -47,6 +47,8 @@ export function SpaceSearchSelect({
   onSelect,
   placeholder = 'Seleccionar espacio'
 }: SpaceSearchSelectProps) {
+  // Tarifa base del espacio: moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -165,7 +167,7 @@ export function SpaceSearchSelect({
                   {/* Tarifa */}
                   <div className="shrink-0 text-right">
                     <p className="text-base font-bold text-purple-600 dark:text-purple-400">
-                      {formatCurrency(space.base_rate)}
+                      {formatear(space.base_rate)}
                     </p>
                     <p className="text-xs text-gray-500">/ noche</p>
                   </div>

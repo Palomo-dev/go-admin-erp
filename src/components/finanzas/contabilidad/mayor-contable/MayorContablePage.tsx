@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {BookOpen, Calendar, Search} from 'lucide-react';
+import {BookOpen, Search} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,12 +9,18 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ReportesContablesService, LedgerAccount } from '../ReportesContablesService';
 import { ContabilidadService, ChartAccount } from '../ContabilidadService';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { primerDiaDelAnioDe } from '@/lib/services/fiscalCalendar';
 import { StatsSkeleton, TableSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 
-function formatCurrency(value: number): string {
-  if (Math.abs(value) < 0.01) return '-';
-  return new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
+// Cifra contable en la moneda base de la organizacion (los reportes contables
+// se llevan en moneda base): sin simbolo, con los decimales y el formato de esa
+// moneda; '-' cuando es cero.
+function crearFormatoCifra(moneda: ContextoMoneda): (value: number) => string {
+  return (value) => (Math.abs(value) < 0.01 ? '-' : formatNumeroMoneda(value, moneda));
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -26,16 +32,29 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export function MayorContablePage() {
-  const today = new Date().toISOString().split('T')[0];
-  const firstDay = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
+  const formatCifra = crearFormatoCifra(useMonedaOrganizacion());
+  // `journal_entries.entry_date` es timestamptz: los extremos del filtro se
+  // convierten a instantes DENTRO del servicio, con la zona de la organizacion.
+  // Aqui solo hace falta el dia calendario de esa misma zona, y por eso los
+  // valores por defecto se ponen cuando el contexto ya la sabe (`tzLoading`):
+  // calcularlos en el primer render daria el dia de Bogota para todos.
+  const { getToday, formatDate } = useFormatDate();
+  const { isLoading: tzLoading } = useOrgTimezone();
 
-  const [startDate, setStartDate] = useState(firstDay);
-  const [endDate, setEndDate] = useState(today);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
   const [accounts, setAccounts] = useState<ChartAccount[]>([]);
   const [ledger, setLedger] = useState<LedgerAccount | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
+  const [, setIsLoadingAccounts] = useState(true);
+
+  useEffect(() => {
+    if (tzLoading) return;
+    const hoy = getToday();
+    setStartDate((prev) => prev || primerDiaDelAnioDe(hoy));
+    setEndDate((prev) => prev || hoy);
+  }, [tzLoading, getToday]);
 
   useEffect(() => {
     loadAccounts();
@@ -56,7 +75,7 @@ export function MayorContablePage() {
   };
 
   const loadLedger = async () => {
-    if (!selectedAccount) return;
+    if (!selectedAccount || !startDate || !endDate) return;
     try {
       setIsLoading(true);
       const data = await ReportesContablesService.getLedger(selectedAccount, startDate, endDate);
@@ -68,11 +87,16 @@ export function MayorContablePage() {
     }
   };
 
+  // `fechasListas` solo cambia UNA vez (al resolverse la zona), asi que esto
+  // sigue cargando en el arranque y al cambiar de cuenta, no en cada tecla del
+  // selector de fechas: para eso esta el boton «Generar».
+  const fechasListas = startDate !== '' && endDate !== '';
   useEffect(() => {
-    if (selectedAccount) {
+    if (selectedAccount && fechasListas) {
       loadLedger();
     }
-  }, [selectedAccount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAccount, fechasListas]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -114,7 +138,7 @@ export function MayorContablePage() {
               <Label className="text-gray-700 dark:text-gray-300">Fecha Fin</Label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
             </div>
-            <Button onClick={loadLedger} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => loadLedger()} className="bg-blue-600 hover:bg-blue-700">
               <Search className="h-4 w-4 mr-2" />
               Consultar
             </Button>
@@ -133,25 +157,25 @@ export function MayorContablePage() {
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardContent className="py-3">
                 <div className="text-sm text-gray-600 dark:text-gray-400">Saldo Inicial</div>
-                <div className="text-xl font-bold font-mono text-gray-900 dark:text-white">{formatCurrency(ledger.opening_balance)}</div>
+                <div className="text-xl font-bold font-mono text-gray-900 dark:text-white">{formatCifra(ledger.opening_balance)}</div>
               </CardContent>
             </Card>
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardContent className="py-3">
                 <div className="text-sm text-gray-600 dark:text-gray-400">Total Debito</div>
-                <div className="text-xl font-bold font-mono text-green-600 dark:text-green-400">{formatCurrency(ledger.total_debit)}</div>
+                <div className="text-xl font-bold font-mono text-green-600 dark:text-green-400">{formatCifra(ledger.total_debit)}</div>
               </CardContent>
             </Card>
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardContent className="py-3">
                 <div className="text-sm text-gray-600 dark:text-gray-400">Total Credito</div>
-                <div className="text-xl font-bold font-mono text-red-600 dark:text-red-400">{formatCurrency(ledger.total_credit)}</div>
+                <div className="text-xl font-bold font-mono text-red-600 dark:text-red-400">{formatCifra(ledger.total_credit)}</div>
               </CardContent>
             </Card>
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardContent className="py-3">
                 <div className="text-sm text-gray-600 dark:text-gray-400">Saldo Final</div>
-                <div className="text-xl font-bold font-mono text-gray-900 dark:text-white">{formatCurrency(ledger.closing_balance)}</div>
+                <div className="text-xl font-bold font-mono text-gray-900 dark:text-white">{formatCifra(ledger.closing_balance)}</div>
               </CardContent>
             </Card>
           </div>
@@ -185,17 +209,17 @@ export function MayorContablePage() {
                     <tbody>
                       <tr className="border-b dark:border-gray-700/50 bg-gray-50 dark:bg-gray-700/20 font-medium">
                         <td colSpan={6} className="py-2 px-3 text-gray-600 dark:text-gray-400">Saldo Inicial</td>
-                        <td className="py-2 px-3 text-right font-mono text-gray-900 dark:text-white">{formatCurrency(ledger.opening_balance)}</td>
+                        <td className="py-2 px-3 text-right font-mono text-gray-900 dark:text-white">{formatCifra(ledger.opening_balance)}</td>
                       </tr>
                       {ledger.entries.map((entry, idx) => (
                         <tr key={idx} className="border-b dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                          <td className="py-2 px-3 text-gray-600 dark:text-gray-400">{new Date(entry.entry_date).toLocaleDateString('es-CO')}</td>
+                          <td className="py-2 px-3 text-gray-600 dark:text-gray-400">{formatDate(entry.entry_date)}</td>
                           <td className="py-2 px-3 font-mono text-gray-500 dark:text-gray-500">#{entry.journal_entry_id}</td>
                           <td className="py-2 px-3 text-gray-900 dark:text-white">{entry.memo || '-'}</td>
                           <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{entry.source || '-'}</td>
-                          <td className="py-2 px-3 text-right font-mono text-green-600 dark:text-green-400">{formatCurrency(entry.debit)}</td>
-                          <td className="py-2 px-3 text-right font-mono text-red-600 dark:text-red-400">{formatCurrency(entry.credit)}</td>
-                          <td className="py-2 px-3 text-right font-mono font-medium text-gray-900 dark:text-white">{formatCurrency(entry.running_balance)}</td>
+                          <td className="py-2 px-3 text-right font-mono text-green-600 dark:text-green-400">{formatCifra(entry.debit)}</td>
+                          <td className="py-2 px-3 text-right font-mono text-red-600 dark:text-red-400">{formatCifra(entry.credit)}</td>
+                          <td className="py-2 px-3 text-right font-mono font-medium text-gray-900 dark:text-white">{formatCifra(entry.running_balance)}</td>
                         </tr>
                       ))}
                     </tbody>

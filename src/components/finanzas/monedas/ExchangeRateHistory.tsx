@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +32,7 @@ import {TrendingUp,
   Globe} from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { useToast } from '@/components/ui/use-toast';
-import { actualizarTasasDeCambioGlobal } from '@/lib/services/openexchangerates';
+import { sincronizarTasasDeCambio } from '@/lib/services/tasasCambioCliente';
 import { ExchangeRateHistoryPagination } from './ExchangeRateHistoryPagination';
 import { TableSkeleton } from '@/components/common/PageSkeletons';
 
@@ -50,7 +51,13 @@ interface ExchangeRateHistoryProps {
   organizationId?: number;
 }
 
-export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateHistoryProps) {
+// `organizationId` no se usa: el catálogo de tasas es global.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function ExchangeRateHistory({ organizationId: _organizationId }: ExchangeRateHistoryProps) {
+  // Solo para el nombre del archivo exportado; aun asi sale del dia de la
+  // organizacion, para que dos usuarios que exportan a la vez desde husos
+  // distintos no se manden ficheros con nombres de dias distintos.
+  const { getToday } = useFormatDate();
   const [rates, setRates] = useState<ExchangeRateRecord[]>([]);
   const [filteredRates, setFilteredRates] = useState<ExchangeRateRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,7 +116,7 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
   const handleUpdateRates = async () => {
     setIsUpdating(true);
     try {
-      const result = await actualizarTasasDeCambioGlobal();
+      const result = await sincronizarTasasDeCambio();
       
       if (result.success) {
         toast({
@@ -124,11 +131,11 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
           variant: 'destructive',
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error actualizando tasas:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Error al actualizar tasas de cambio',
+        description: (error instanceof Error ? error.message : '') || 'Error al actualizar tasas de cambio',
         variant: 'destructive',
       });
     } finally {
@@ -178,7 +185,7 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `tasas_cambio_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `tasas_cambio_${getToday()}.csv`;
     link.click();
 
     toast({

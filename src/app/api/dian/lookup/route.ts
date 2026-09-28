@@ -11,17 +11,20 @@
  * - CORESOFT_API_KEY: API key de CoreSoft
  *
  * Seguridad: las API keys viven solo en el server. El cliente llama a esta ruta.
+ * Requiere sesión y membresía activa (`withOrg`): cada consulta cuesta dinero
+ * al proveedor. La organización y el usuario de la auditoría del cache salen
+ * de la sesión; un `organizationId` distinto en el body o la query → 403.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase/config';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
 import { consultarDian, type DianLookupRequest } from '@/lib/services/dianLookupService';
 import { mapearTipoDocADian, calcularDv } from '@/lib/utils/nitDv';
 
-export async function POST(request: NextRequest) {
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const body = await request.json();
-    const { documentType, documentNumber, dv, organizationId } = body;
+    const body = await readOrgBody(ctx, request, { route: 'dian/lookup' });
+    const { documentType, documentNumber, dv } = body ?? {};
 
     if (!documentNumber || typeof documentNumber !== 'string') {
       return NextResponse.json(
@@ -55,24 +58,15 @@ export async function POST(request: NextRequest) {
       if (dvCalculado !== null) dvFinal = String(dvCalculado);
     }
 
-    // Obtener usuario autenticado (para auditoria de cache / Habeas Data)
-    let userId: string | undefined;
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      userId = user?.id;
-    } catch {
-      // Sin usuario autenticado, continuar sin auditoria
-    }
-
     const req: DianLookupRequest = {
       documentType: tipoDocDian,
       documentNumber: numeroLimpio,
       dv: dvFinal,
-      organizationId,
-      userId,
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
     };
 
-    const resultado = await consultarDian(req);
+    const resultado = await consultarDian(req, ctx.supabase);
 
     if (!resultado.success) {
       return NextResponse.json(resultado, { status: 502 });
@@ -80,6 +74,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(resultado);
   } catch (error: unknown) {
+    if (error instanceof OrgContextError) throw error;
     console.error('Error en /api/dian/lookup:', error);
     const message = error instanceof Error ? error.message : 'Error interno del servidor';
     return NextResponse.json(
@@ -87,20 +82,18 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * GET /api/dian/lookup?documentType=31&documentNumber=900123456
  * Variante GET para consultas simples.
  */
-export async function GET(request: NextRequest) {
+export const GET = withOrg(async (ctx, request) => {
+  await readOrgBody(ctx, request, { route: 'dian/lookup' });
   const { searchParams } = new URL(request.url);
   const documentType = searchParams.get('documentType') || '31';
   const documentNumber = searchParams.get('documentNumber') || '';
   const dv = searchParams.get('dv') || undefined;
-  const organizationId = searchParams.get('organizationId')
-    ? Number(searchParams.get('organizationId'))
-    : undefined;
 
   if (!documentNumber) {
     return NextResponse.json(
@@ -112,25 +105,17 @@ export async function GET(request: NextRequest) {
   const tipoDocDian = mapearTipoDocADian(documentType);
   const numeroLimpio = String(documentNumber).replace(/[^0-9]/g, '');
 
-  let userId: string | undefined;
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    userId = user?.id;
-  } catch {
-    // sin usuario
-  }
-
   const resultado = await consultarDian({
     documentType: tipoDocDian,
     documentNumber: numeroLimpio,
     dv,
-    organizationId,
-    userId,
-  });
+    organizationId: ctx.organizationId,
+    userId: ctx.userId,
+  }, ctx.supabase);
 
   if (!resultado.success) {
     return NextResponse.json(resultado, { status: 502 });
   }
 
   return NextResponse.json(resultado);
-}
+});

@@ -1,4 +1,8 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
+import { todayInTz, toPlainDate } from '@/lib/utils/dateDisplay';
+import { getDateRange } from '@/lib/utils/dateRanges';
 
 // =====================================================
 // TIPOS E INTERFACES
@@ -212,15 +216,26 @@ class TransportService {
   // ==================== DASHBOARD ====================
 
   async getStatsWithFilters(organizationId: number, filters?: DashboardFilters): Promise<TransportStats> {
-    const dateFrom = filters?.dateFrom 
-      ? filters.dateFrom.toISOString().split('T')[0] 
-      : new Date().toISOString().split('T')[0];
-    const dateTo = filters?.dateTo 
-      ? filters.dateTo.toISOString().split('T')[0] 
-      : new Date().toISOString().split('T')[0];
-
     // branchId: aplicar filtro de sucursal cuando esté definido y no sea 'all'
     const branchId = filters?.branchId && filters.branchId !== 'all' ? filters.branchId : null;
+
+    // La zona es la de la SUCURSAL seleccionada en el tablero: lo que se cuenta
+    // son los viajes y envios de esa sucursal, y su dia es el suyo. Sin
+    // sucursal, la de la organizacion.
+    const zona = await resolveTimezone(organizationId, branchId ? Number(branchId) : null);
+
+    // `filters.dateFrom`/`dateTo` son `Date` de un datepicker: representan el
+    // dia que el usuario pincho en SU pantalla, asi que su dia calendario se
+    // saca en la zona de la organizacion, no en UTC.
+    const dateFrom = filters?.dateFrom ? toPlainDate(filters.dateFrom, zona) : todayInTz(zona);
+    const dateTo = filters?.dateTo ? toPlainDate(filters.dateTo, zona) : todayInTz(zona);
+
+    // `shipments.created_at` y `trip_tickets.created_at` son **timestamptz**;
+    // el filtro se hacia con `dia + 'T00:00:00'` / `'T23:59:59'`, cadenas SIN
+    // offset que Postgres interpreta en la zona del servidor. `getDateRange`
+    // da los dos extremos con el offset real de cada uno, que no tiene por que
+    // ser el mismo si el rango cruza un cambio de horario.
+    const rango = getDateRange(dateFrom, dateTo, zona);
 
     // Trips stats with filters
     let tripsQuery = supabase
@@ -254,8 +269,8 @@ class TransportService {
       .from('shipments')
       .select('status, carrier_id, created_at')
       .eq('organization_id', organizationId)
-      .gte('created_at', `${dateFrom}T00:00:00`)
-      .lte('created_at', `${dateTo}T23:59:59`)
+      .gte('created_at', rango.start)
+      .lte('created_at', rango.end)
       .in('status', ['ready', 'picked', 'in_transit', 'out_for_delivery', 'delivered', 'failed']);
     
     if (filters?.carrierId && filters.carrierId !== 'all') {
@@ -280,8 +295,8 @@ class TransportService {
       .from('trip_tickets')
       .select('total, status')
       .eq('organization_id', organizationId)
-      .gte('created_at', `${dateFrom}T00:00:00`)
-      .lte('created_at', `${dateTo}T23:59:59`);
+      .gte('created_at', rango.start)
+      .lte('created_at', rango.end);
     
     if (ticketsError) console.warn('Error fetching tickets stats:', ticketsError.message);
 
@@ -330,7 +345,10 @@ class TransportService {
   }
 
   async getStats(organizationId: number, branchId?: number | null): Promise<TransportStats> {
-    const today = new Date().toISOString().split('T')[0];
+    // `trips.trip_date` es `date`: «de hoy en adelante» se mide en el dia de la
+    // sucursal cuyos viajes se cuentan.
+    const zona = await resolveTimezone(organizationId, branchId);
+    const today = todayInTz(zona);
 
     // Trips stats
     let tripsQuery = supabase
@@ -572,9 +590,22 @@ class TransportService {
   }
 
   async getVehiclesWithExpiringDocs(organizationId: number, daysAhead: number = 30) {
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + daysAhead);
-    const dateStr = futureDate.toISOString().split('T')[0];
+    // `vehicles.soat_expiry`, `.techno_expiry`, `.insurance_expiry` y
+    // `.operating_card_expiry` son `date` (verificado en information_schema).
+    // El horizonte se calcula sumando dias calendario al dia de la
+    // organizacion: `Date.setDate` sobre el instante actual contaba 24 h por
+    // dia y daba el dia UTC, que en la franja de la tarde es el de manana.
+    // La consulta es de toda la organizacion (no filtra `vehicles.branch_id`),
+    // asi que la zona es la de la organizacion.
+    //
+    // OJO — deuda verificada por MCP, NO tocada aqui: el `.or()` de abajo
+    // nombra `tech_review_expiry`, columna que **no existe** en `vehicles` (la
+    // real es `techno_expiry`). PostgREST rechaza la consulta entera, asi que
+    // esta funcion hoy lanza siempre. Corregirlo cambia que documentos se
+    // vigilan y no es parte de esta tanda: queda anotado en
+    // docs/PROGRESO-zonas-horarias.md.
+    const zona = await resolveTimezone(organizationId);
+    const dateStr = sumarDiasAlDia(todayInTz(zona), daysAhead);
 
     const { data, error } = await supabase
       .from('vehicles')
@@ -715,9 +746,13 @@ class TransportService {
   }
 
   async getDriversWithExpiringDocs(organizationId: number, daysAhead: number = 30) {
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + daysAhead);
-    const dateStr = futureDate.toISOString().split('T')[0];
+    // `driver_credentials.license_expiry` y `.medical_certificate_expiry` son
+    // `date`. La tabla NO tiene `organization_id` ni `branch_id` (verificado en
+    // information_schema): se llega a la organizacion por
+    // `employment_id -> employments -> organization_members`, que es lo que
+    // hace el filtro de abajo. La zona es, por tanto, la de la organizacion.
+    const zona = await resolveTimezone(organizationId);
+    const dateStr = sumarDiasAlDia(todayInTz(zona), daysAhead);
 
     const { data, error } = await supabase
       .from('driver_credentials')

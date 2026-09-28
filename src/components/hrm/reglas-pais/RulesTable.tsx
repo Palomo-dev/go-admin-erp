@@ -1,7 +1,8 @@
 'use client';
 
 import type { CountryPayrollRules } from '@/lib/services/hrmConfigService';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import {
   Table,
   TableBody,
@@ -57,6 +58,7 @@ export function RulesTable({
   onView,
   isLoading,
 }: RulesTableProps) {
+  const { paraDocumento } = useMonedaOrganizacion();
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -117,7 +119,7 @@ export function RulesTable({
                 {rule.year}
               </TableCell>
               <TableCell className="text-gray-900 dark:text-white">
-                {formatCurrency(rule.minimum_wage || 0, rule.minimum_wage_currency || 'COP')}
+                {formatMoneda(rule.minimum_wage || 0, paraDocumento(rule.minimum_wage_currency))}
               </TableCell>
               <TableCell className="text-gray-600 dark:text-gray-400">
                 {((rule.health_employee_pct || 0) * 100).toFixed(1)}%
@@ -126,7 +128,7 @@ export function RulesTable({
                 {((rule.pension_employee_pct || 0) * 100).toFixed(1)}%
               </TableCell>
               <TableCell className="text-gray-600 dark:text-gray-400">
-                {formatCurrency(rule.transport_allowance || 0, rule.minimum_wage_currency || 'COP')}
+                {formatMoneda(rule.transport_allowance || 0, paraDocumento(rule.minimum_wage_currency))}
               </TableCell>
               <TableCell>
                 {rule.is_active ? (

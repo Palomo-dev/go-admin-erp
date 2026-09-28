@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,20 +8,15 @@ import {
   AlertCircle, 
   ArrowLeft,
   Calendar, 
-  CreditCard, 
   Download, 
   FileText, 
-  Plus,
   RefreshCw,
-  TrendingUp,
-  Users,
   Wallet
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
-import { formatCurrency } from '@/utils/Utils';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { getToday, plainDateToInstant } from '@/lib/utils/timezone';
 
@@ -42,9 +36,7 @@ import {
   PaymentWithRelations
 } from './types';
 
-interface CuentasPorPagarPageProps {}
-
-export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
+export function CuentasPorPagarPage() {
   const { branchFilter } = useBranch();
   const { timezone } = useOrgTimezone();
   // Estados principales
@@ -184,24 +176,6 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
   };
 
   // Handlers de acciones
-  const handlePagoRegistrado = () => {
-    actualizarDatos();
-    cerrarModales();
-    toast({
-      title: "Pago registrado",
-      description: "El pago se ha registrado correctamente",
-    });
-  };
-
-  const handlePagoProgramado = () => {
-    cargarPagosProgramados();
-    cerrarModales();
-    toast({
-      title: "Pago programado",
-      description: "El pago se ha programado para revisión",
-    });
-  };
-
   const handleSeleccionarCuentas = (cuentasIds: string[]) => {
     setCuentasSeleccionadas(cuentasIds);
   };
@@ -216,31 +190,6 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
       return;
     }
     setMostrarModalExportar(true);
-  };
-
-  // Filtros por tab
-  const getFiltrosPorTab = (tab: string): FiltrosCuentasPorPagar => {
-    const baseFilters = { ...filtros };
-    
-    switch (tab) {
-      case 'vencidas':
-        return { ...baseFilters, vencimiento: 'vencidas' };
-      case 'proximas':
-        return { ...baseFilters, vencimiento: 'proximas' };
-      case 'pendientes':
-        return { ...baseFilters, estado: 'pending' };
-      default:
-        return baseFilters;
-    }
-  };
-
-  const cerrarModales = () => {
-    setMostrarModalProgramar(false);
-    setMostrarModalRegistrar(false);
-    setMostrarModalAprobacion(false);
-    setMostrarModalExportar(false);
-    setMostrarModalOpenFinance(false);
-    setCuentaSeleccionada(null);
   };
 
   return (
@@ -520,7 +469,7 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
             setMostrarModalOpenFinance(open);
             if (!open) setCuentaSeleccionada(null);
           }}
-          accountPayableId={Number(cuentaSeleccionada.id)}
+          accountPayableId={String(cuentaSeleccionada.id)}
           supplierName={cuentaSeleccionada.supplier?.name || 'Sin nombre'}
           amount={cuentaSeleccionada.balance}
           dueDate={cuentaSeleccionada.due_date}

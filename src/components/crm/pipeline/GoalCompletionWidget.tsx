@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { Target, TrendingUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from "@/components/ui/use-toast";
@@ -17,6 +18,8 @@ interface GoalCompletionWidgetProps {
 interface GoalData {
   goalAmount: number;
   goalPeriod: 'monthly' | 'quarterly' | 'yearly';
+  /** Moneda de la meta del pipeline (`pipelines.goal_currency`); null = base. */
+  goalCurrency: string | null;
   forecastAmount: number;
   totalAmount: number;
   completionPercentage: number;
@@ -25,6 +28,7 @@ interface GoalData {
 const GoalCompletionWidget: React.FC<GoalCompletionWidgetProps> = ({ pipelineId, className }) => {
   const [loading, setLoading] = useState(true);
   const [goalData, setGoalData] = useState<GoalData | null>(null);
+  const { paraDocumento } = useMonedaOrganizacion();
   const [organizationId, setOrganizationId] = useState<number | null>(null);
 
   // Obtener el ID de organización usando la función canónica
@@ -110,6 +114,7 @@ const GoalCompletionWidget: React.FC<GoalCompletionWidgetProps> = ({ pipelineId,
         setGoalData({
           goalAmount,
           goalPeriod: pipelineData.goal_period || 'monthly',
+          goalCurrency: pipelineData.goal_currency || null,
           forecastAmount: totalForecastAmount,
           totalAmount: totalBrutoAmount,
           completionPercentage
@@ -200,16 +205,16 @@ const GoalCompletionWidget: React.FC<GoalCompletionWidgetProps> = ({ pipelineId,
           <div className="border-r border-gray-200 dark:border-gray-700 pr-4">
             <div className="text-sm text-gray-500 dark:text-gray-400">Objetivo</div>
             <div className="text-xl font-bold text-gray-800 dark:text-gray-200">
-              {formatCurrency(goalData.goalAmount)}
+              {formatMoneda(goalData.goalAmount, paraDocumento(goalData.goalCurrency))}
             </div>
           </div>
           <div className="pl-4">
             <div className="text-sm text-gray-500 dark:text-gray-400">Pronóstico</div>
             <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
-              {formatCurrency(goalData.forecastAmount)}
+              {formatMoneda(goalData.forecastAmount, paraDocumento(goalData.goalCurrency))}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              De {formatCurrency(goalData.totalAmount)} bruto
+              De {formatMoneda(goalData.totalAmount, paraDocumento(goalData.goalCurrency))} bruto
             </div>
           </div>
         </div>

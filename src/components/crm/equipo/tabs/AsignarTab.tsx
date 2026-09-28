@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import Link from 'next/link';
 import { requireOrgId } from '../useEquipoData';
 import type { Opportunity, SalesTeam, OrgMember } from '../types';
@@ -22,6 +23,7 @@ import { describeError, logError } from '@/lib/utils/errorMessage';
 
 export function AsignarTab() {
   const { toast } = useToast();
+  const { paraDocumento } = useMonedaOrganizacion();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [teams, setTeams] = useState<SalesTeam[]>([]);
   const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
@@ -157,7 +159,7 @@ export function AsignarTab() {
                       </Link>
                     </TableCell>
                     <TableCell className="text-xs">{o.customers?.[0]?.full_name || '—'}</TableCell>
-                    <TableCell className="text-xs">{o.amount ? formatCurrency(Number(o.amount), o.currency || 'COP') : '—'}</TableCell>
+                    <TableCell className="text-xs">{o.amount ? formatMoneda(Number(o.amount), paraDocumento(o.currency)) : '—'}</TableCell>
                     <TableCell className="text-xs">{o.stages?.[0]?.name || '—'}</TableCell>
                     <TableCell>
                       <Select value={o.sales_team_id || 'none'} onValueChange={(v) => assignTeam(o.id, v === 'none' ? null : v)}>

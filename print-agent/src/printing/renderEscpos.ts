@@ -1,10 +1,8 @@
 ﻿import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, SaleTicketPayment, ShipmentGuidePrintPayload, ElectronicInvoicePrintPayload } from './types';
+import { moneyFormatter } from './money';
 import type { PaperSpec } from './paper';
 import { writeRasterImage } from './escposImage';
 
-function formatMoney(value: number): string {
-  return value.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
 
 /**
  * Lineas de impuesto a imprimir: el desglose por tipo (IVA, ICA...) si viene
@@ -309,6 +307,7 @@ export function buildPlainTextTicket(payload: KitchenTicketPrintPayload, paper: 
  * Imprime el ticket de venta (recibo de caja) en un dispositivo escpos.
  */
 export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, paper: PaperSpec): void {
+  const formatMoney = moneyFormatter(payload, { symbol: false });
   const chars = paper.charsPerLine;
   // Una linea en doble ancho dispone de la mitad de columnas.
   const doubleChars = Math.floor(chars / 2);
@@ -425,6 +424,10 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, pa
       device.style('normal');
     }
 
+    if (item.note) {
+      for (const line of wrapText(`» ${item.note}`, chars - 2)) device.text(`  ${line}`);
+    }
+
     if (item.taxAmount && item.taxAmount > 0) {
       device.text(`  Imp: ${formatMoney(item.taxAmount)}`);
     }
@@ -517,6 +520,7 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, pa
  * VersiÃ³n en texto plano del ticket de venta, para impresoras 'system'.
  */
 export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper: PaperSpec): string {
+  const formatMoney = moneyFormatter(payload, { symbol: false });
   const chars = paper.charsPerLine;
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
@@ -611,6 +615,8 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
       lines.push(...wrapText(text, chars - 2).map((l) => `  ${l}`));
     }
 
+    if (item.note) lines.push(...wrapText(`» ${item.note}`, chars - 2).map((l) => `  ${l}`));
+
     if (item.taxAmount && item.taxAmount > 0) lines.push(`  Imp: ${formatMoney(item.taxAmount)}`);
     if (item.discountAmount && item.discountAmount > 0) lines.push(`  Desc: -${formatMoney(item.discountAmount)}`);
     lines.push(sepLight(chars));
@@ -661,6 +667,7 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
  * Imprime la guia de envio en un dispositivo ESC/POS con corte automatico.
  */
 export function printShipmentGuide(device: any, payload: ShipmentGuidePrintPayload, paper: PaperSpec): void {
+  const formatMoney = moneyFormatter(payload, { symbol: false });
   const chars = paper.charsPerLine;
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const tracking = payload.trackingNumber || payload.shipmentNumber || payload.shipmentId;
@@ -796,6 +803,7 @@ export function printShipmentGuide(device: any, payload: ShipmentGuidePrintPaylo
  * Version en texto plano de la guia de envio, para impresoras 'system'.
  */
 export function buildPlainTextShipmentGuide(payload: ShipmentGuidePrintPayload, paper: PaperSpec): string {
+  const formatMoney = moneyFormatter(payload, { symbol: false });
   const chars = paper.charsPerLine;
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const tracking = payload.trackingNumber || payload.shipmentNumber || payload.shipmentId;
@@ -908,6 +916,7 @@ export function buildPlainTextShipmentGuide(payload: ShipmentGuidePrintPayload, 
  * Incluye CUFE, QR de validacion y entorno (produccion/pruebas).
  */
 export function printElectronicInvoice(device: any, payload: ElectronicInvoicePrintPayload, paper: PaperSpec): void {
+  const formatMoney = moneyFormatter(payload, { symbol: false });
   const chars = paper.charsPerLine;
   const doubleChars = Math.floor(chars / 2);
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
@@ -1002,6 +1011,10 @@ export function printElectronicInvoice(device: any, payload: ElectronicInvoicePr
       device.style('normal');
     }
 
+    if (item.note) {
+      for (const line of wrapText(`» ${item.note}`, chars - 2)) device.text(`  ${line}`);
+    }
+
     if (item.taxAmount && item.taxAmount > 0) {
       device.text(`  Imp: ${formatMoney(item.taxAmount)}`);
     }
@@ -1090,6 +1103,7 @@ export function printElectronicInvoice(device: any, payload: ElectronicInvoicePr
  * Version en texto plano de la factura electronica, para impresoras 'system'.
  */
 export function buildPlainTextElectronicInvoice(payload: ElectronicInvoicePrintPayload, paper: PaperSpec): string {
+  const formatMoney = moneyFormatter(payload, { symbol: false });
   const chars = paper.charsPerLine;
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);

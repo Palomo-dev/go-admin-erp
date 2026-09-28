@@ -62,7 +62,9 @@ export function ReviewsModerationPanel({ organizationId }: ReviewsModerationPane
       if (productFilter !== 'all') {
         params.set('productId', productFilter);
       }
-      const res = await fetch(`/api/product-reviews?${params}`);
+      const res = await fetch(`/api/product-reviews?${params}`, {
+        headers: { 'X-Organization-Id': String(organizationId) },
+      });
       const data = await res.json();
       if (data.reviews) {
         setReviews(data.reviews);
@@ -95,7 +97,7 @@ export function ReviewsModerationPanel({ organizationId }: ReviewsModerationPane
     try {
       const res = await fetch('/api/product-reviews', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Organization-Id': String(organizationId) },
         body: JSON.stringify({ reviewId, status, rejectionReason }),
       });
       const data = await res.json();
@@ -115,7 +117,7 @@ export function ReviewsModerationPanel({ organizationId }: ReviewsModerationPane
     try {
       const res = await fetch('/api/product-reviews', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Organization-Id': String(organizationId) },
         body: JSON.stringify({ reviewId, replyText: replyText.trim() }),
       });
       const data = await res.json();

@@ -1,6 +1,7 @@
 'use client';
 
 import { createSupabaseClient } from '@/lib/supabase/config';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 const createClient = () => createSupabaseClient();
 
@@ -70,11 +71,36 @@ interface EmploymentData {
   employee_code: string | null;
   base_salary: number;
   salary_period: string;
-  currency_code: string;
+  /** Moneda del empleo; null si no la tiene (la colilla va en la base). */
+  currency_code: string | null;
   branch_id: number | null;
   arl_risk_level: number | null;
   employee_name: string;
   user_id: string | null;
+}
+
+/** Fila de `employments` tal como la trae `getActiveEmployees`. */
+interface FilaEmpleoActivo {
+  id: string;
+  employee_code: string | null;
+  base_salary: number | null;
+  salary_period: string | null;
+  currency_code: string | null;
+  branch_id: number | null;
+  arl_risk_level: number | null;
+  organization_members?: {
+    user_id?: string | null;
+    profiles?: { first_name: string | null; last_name: string | null } | null;
+  } | null;
+}
+
+/** Columnas de `timesheets` que suma `summarizeTimesheets`. */
+interface FilaTimesheet {
+  net_worked_minutes?: number | null;
+  overtime_minutes?: number | null;
+  night_minutes?: number | null;
+  holiday_minutes?: number | null;
+  late_minutes?: number | null;
 }
 
 interface TimesheetSummary {
@@ -89,6 +115,7 @@ interface TimesheetSummary {
 export class PayrollCalculationService {
   private organizationId: number;
   private countryRules: CountryRules | null = null;
+  private monedaBase: string | null = null;
 
   constructor(organizationId: number) {
     this.organizationId = organizationId;
@@ -157,12 +184,12 @@ export class PayrollCalculationService {
           period.period_end
         );
         results.push(result);
-      } catch (err: any) {
+      } catch (err: unknown) {
         results.push({
           employment_id: employee.id,
           employee_name: employee.employee_name,
           status: 'error',
-          message: err.message,
+          message: (err as { message?: string } | null)?.message,
         });
       }
     }
@@ -318,7 +345,9 @@ export class PayrollCalculationService {
       .insert({
         payroll_run_id: runId,
         employment_id: employee.id,
-        currency_code: employee.currency_code || 'COP',
+        // payroll_slips.currency_code es NOT NULL sin trigger: la moneda del
+        // empleo y, si no la tiene, la base de la organización.
+        currency_code: employee.currency_code || (await this.obtenerMonedaBase()),
         base_salary: employee.base_salary,
         salary_period: employee.salary_period || 'monthly',
         basic_salary: basicSalary,
@@ -428,6 +457,16 @@ export class PayrollCalculationService {
   }
 
   /**
+   * Moneda base de la organización (una sola lectura por cálculo).
+   */
+  private async obtenerMonedaBase(): Promise<string> {
+    if (!this.monedaBase) {
+      this.monedaBase = (await resolveOrgCurrency(createClient(), this.organizationId)).code;
+    }
+    return this.monedaBase;
+  }
+
+  /**
    * Obtiene empleados activos de la organización
    */
   private async getActiveEmployees(): Promise<EmploymentData[]> {
@@ -453,12 +492,12 @@ export class PayrollCalculationService {
 
     if (error) throw error;
 
-    return (data || []).map((emp: any) => ({
+    return ((data || []) as FilaEmpleoActivo[]).map((emp) => ({
       id: emp.id,
       employee_code: emp.employee_code,
       base_salary: emp.base_salary || 0,
       salary_period: emp.salary_period || 'monthly',
-      currency_code: emp.currency_code || 'COP',
+      currency_code: emp.currency_code || null,
       branch_id: emp.branch_id,
       arl_risk_level: emp.arl_risk_level,
       employee_name: emp.organization_members?.profiles
@@ -471,7 +510,7 @@ export class PayrollCalculationService {
   /**
    * Suma datos de múltiples timesheets
    */
-  private summarizeTimesheets(timesheets: any[]): TimesheetSummary {
+  private summarizeTimesheets(timesheets: FilaTimesheet[]): TimesheetSummary {
     return {
       total_worked_minutes: timesheets.reduce((sum, t) => sum + (t.net_worked_minutes || 0), 0),
       total_overtime_minutes: timesheets.reduce((sum, t) => sum + (t.overtime_minutes || 0), 0),

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Filter, TrendingDown, Clock, AlertTriangle } from 'lucide-react';
 
 interface FunnelViewProps {
@@ -35,6 +35,8 @@ interface StageMetrics {
  * Tabla: opportunity_stage_history (opportunity_id, stage_id, entered_at, exited_at)
  */
 export function FunnelView({ pipelineId }: FunnelViewProps) {
+  // Importes agregados del embudo: moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   const [loading, setLoading] = useState(true);
   const [stages, setStages] = useState<StageMetrics[]>([]);
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
@@ -241,10 +243,7 @@ export function FunnelView({ pipelineId }: FunnelViewProps) {
           <Card className="p-3 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
             <div className="text-xs text-gray-500 dark:text-gray-400">Valor pipeline</div>
             <div className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-0.5">
-              {formatCurrency(
-                stages.reduce((sum, s) => sum + s.current_amount, 0),
-                'COP'
-              )}
+              {formatear(stages.reduce((sum, s) => sum + s.current_amount, 0))}
             </div>
           </Card>
         </div>
@@ -309,7 +308,7 @@ export function FunnelView({ pipelineId }: FunnelViewProps) {
                       }}
                     >
                       <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
-                        {stage.current_count} · {formatCurrency(stage.current_amount, 'COP')}
+                        {stage.current_count} · {formatear(stage.current_amount)}
                       </span>
                     </div>
                   </div>

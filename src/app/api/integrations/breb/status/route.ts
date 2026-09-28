@@ -1,66 +1,35 @@
 // ============================================================
-// GET /api/integrations/breb/status
-// Consulta el estado de una sesion QR Bre-B (usado por QrPoller).
+// GET /api/integrations/breb/status?reference=
+// Consulta el estado de una sesion QR Bre-B.
+//
+// SEGURIDAD (GO-sec, 2026-09-24): la organizacion sale de la sesion
+// (`withOrg`); un `organizationId` ajeno en la query → 403 y registro. Antes
+// bastaba cualquier sesion y la organizacion de la query.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { getQrSessionByReference } from '@/lib/services/integrations/qrShared/qrSessionService';
 
-export async function GET(request: NextRequest) {
-  try {
-    // Verificar autenticacion
-    const supabase = createRouteHandlerClient({ cookies });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+const RUTA = '/api/integrations/breb/status';
 
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    // Leer query params
-    const { searchParams } = new URL(request.url);
-    const reference = searchParams.get('reference');
-    const organizationIdParam = searchParams.get('organizationId');
-
-    if (!reference || !organizationIdParam) {
-      return NextResponse.json(
-        { error: 'Faltan parametros: reference, organizationId' },
-        { status: 400 }
-      );
-    }
-
-    const organizationId = parseInt(organizationIdParam, 10);
-    if (Number.isNaN(organizationId)) {
-      return NextResponse.json(
-        { error: 'organizationId debe ser un numero valido' },
-        { status: 400 }
-      );
-    }
-
-    // 1. Buscar sesion QR por referencia y organizacion
-    const qrSession = await getQrSessionByReference(organizationId, reference);
-    if (!qrSession) {
-      return NextResponse.json(
-        { error: 'Sesion QR no encontrada' },
-        { status: 404 }
-      );
-    }
-
-    // 2. Retornar estado actual de la sesion
-    return NextResponse.json({
-      status: qrSession.status,
-      reference,
-      amount: qrSession.amount,
-      paid_at: qrSession.paid_at ?? undefined,
-    });
-  } catch (err) {
-    console.error('[API BreB Status] Error:', err);
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    );
+export const GET = withOrg(async (ctx, request) => {
+  await readOrgBody(ctx, request, { route: RUTA });
+  const reference = new URL(request.url).searchParams.get('reference');
+  if (!reference) {
+    return NextResponse.json({ error: 'Falta el parametro reference' }, { status: 400 });
   }
-}
+
+  const qrSession = await getQrSessionByReference(ctx.organizationId, reference);
+  if (!qrSession) {
+    return NextResponse.json({ error: 'Sesion QR no encontrada' }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    status: qrSession.status,
+    reference,
+    amount: qrSession.amount,
+    paid_at: qrSession.paid_at ?? undefined,
+  });
+});

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 import { readOrgBody } from '@/lib/security/organizationBody';
 /**
@@ -157,7 +158,9 @@ async function gatherOpportunityContext(
     // Obtener actividades recientes — filtrar por organización
     const { data: activities } = await supabase
       .from('activities')
-      .select('activity_type, title, occurred_at, description')
+      // `activities` NO tiene `title` ni `description`: el texto vive en
+      // `notes` (columnas verificadas por MCP el 2026-09-23).
+      .select('activity_type, notes, occurred_at')
       .eq('related_id', opportunityId)
       .eq('related_type', 'opportunity')
       .eq('organization_id', organizationId)
@@ -178,7 +181,7 @@ async function gatherOpportunityContext(
     // Obtener notas (actividades de tipo note)
     const notes = activityList
       .filter((a) => a.activity_type === 'note' || a.activity_type === 'call')
-      .map((a) => (a.description as string) || (a.title as string))
+      .map((a) => a.notes as string)
       .filter(Boolean)
       .slice(0, 5);
 
@@ -187,7 +190,8 @@ async function gatherOpportunityContext(
       stage_name: stage?.name || 'Sin etapa',
       stage_probability: stage?.probability || 0,
       amount: (oppData.amount as number) || 0,
-      currency: (oppData.currency as string) || 'COP',
+      // Moneda del documento; si no la trae, la base de la organización.
+      currency: (oppData.currency as string) || (await resolveOrgCurrency(supabase, organizationId)).code,
       days_in_stage: daysInStage,
       days_since_last_activity: daysSinceLastActivity,
       last_activity_type: (lastActivity?.activity_type as string) || null,

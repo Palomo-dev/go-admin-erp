@@ -31,6 +31,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DB_CHECK_ENUMS } from '@/lib/crm/enums';
 import { DRAIN_INTERVAL_MIN, DRAIN_SCHEDULE, JOBS_RUN_PATH, JOBS_RUN_SCHEDULES, VERCEL_SCHEDULE_KINDS } from '@/lib/jobs/schedule';
+import { ORIGENES_MOVIMIENTO_STOCK, esOrigenMovimientoValido } from '@/lib/inventario/origenesMovimientoStock';
 
 const SRC_ROOT = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(SRC_ROOT, '..');
@@ -269,59 +270,23 @@ describe('F0 Guardarraíles', () => {
     ]);
 
     const ALLOWLIST = new Set<string>([
-      'app/api/categorias/reglas/route.ts',
-      'app/api/dian/lookup/route.ts',
-      'app/api/integrations/meta/setup/route.ts',
-      'app/api/integrations/payfac/commission/route.ts', // verifyPlatformAdmin
-      'app/api/integrations/payfac/payouts/route.ts', // verifyPlatformAdmin
-      'app/api/integrations/tiktok/product-sync/route.ts',
-      'app/api/integrations/tiktok/setup/route.ts',
-      'app/api/integrations/whatsapp/oauth/callback/route.ts', // OAuth callback (org en `state` firmado por Meta)
-      'app/api/stripe/create-checkout-session/route.ts',
-      'app/api/facebook-feed/token/route.ts',
-      'app/api/factus/credit-note/route.ts',
-      'app/api/factus/debit-note/route.ts',
-      'app/api/factus/invoice/route.ts',
-      'app/api/factus/support-document/route.ts',
-      'app/api/integrations/bancolombia/create-qr/route.ts',
-      'app/api/integrations/bancolombia/wompi/create-qr/route.ts',
-      'app/api/integrations/bold/create-link/route.ts',
-      'app/api/integrations/bold/create-pos-payment/route.ts',
-      'app/api/integrations/booking/create-connection/route.ts',
-      'app/api/integrations/booking/push-availability/route.ts',
-      'app/api/integrations/breb/create-qr/route.ts',
-      'app/api/integrations/expedia/create-connection/route.ts',
-      'app/api/integrations/expedia/push-availability/route.ts',
-      'app/api/integrations/google-ads/oauth/authorize/route.ts',
-      'app/api/integrations/meta/catalog-sync/route.ts',
-      'app/api/integrations/meta/oauth/authorize/route.ts',
-      'app/api/integrations/meta/product-sync/route.ts',
-      'app/api/integrations/open-finance/consents/route.ts',
-      'app/api/integrations/open-finance/links/route.ts',
-      'app/api/integrations/open-finance/refresh-balances/route.ts',
-      'app/api/integrations/open-finance/sync/route.ts',
-      'app/api/integrations/payfac/payout-accounts/route.ts',
-      'app/api/integrations/qr/auto-match/route.ts',
-      'app/api/integrations/redeban/create-qr/route.ts',
-      'app/api/integrations/tiktok/catalog-sync/route.ts',
-      'app/api/integrations/tiktok/oauth/authorize/route.ts',
-      'app/api/modules/audit/route.ts',
-      'app/api/modules/pages/route.ts',
-      'app/api/modules/route.ts',
-      'app/api/organization/enterprise/route.ts',
-      'app/api/organization/members/route.ts',
-      'app/api/pms/ical/sync/route.ts',
-      'app/api/stripe/confirm-plan-change/route.ts',
-      'app/api/stripe/create-addon-subscription/route.ts',
-      'app/api/stripe/create-payment-intent/route.ts',
-      'app/api/stripe/create-subscription/route.ts',
-      'app/api/stripe/purchase-ai-credits/route.ts',
-      'app/api/subscriptions/billing-portal/route.ts',
-      'app/api/subscriptions/cancel/route.ts',
-      'app/api/subscriptions/change-billing/route.ts',
-      'app/api/subscriptions/change-plan/route.ts',
-      'app/api/subscriptions/payment-methods/route.ts',
-      'app/api/web-orders/route.ts', // x-webhook-secret propio
+      // `integrations/whatsapp/oauth/callback`: salió el 2026-09-24 (GO-sec). El
+      // motivo que tenía aquí («org en `state` firmado por Meta») no era cierto:
+      // no había `state` ni sesión y la organización salía del body. Ahora es
+      // `withOrg({ admin: true })` + `readOrgBody`; ver 27b.
+      // Cobros QR del POS (redeban, breb, bancolombia, bold) y qr/auto-match:
+      // migrados a withOrg + readOrgBody el 2026-09-24 (GO-sec); ver 27b.
+      // `modules`, `modules/pages` y `modules/audit`: migradas el 2026-09-24
+      // (F-76 + la parte pendiente de F-77). Las dos primeras a
+      // `withOrg` + `readOrgBody` (`{ admin: true }` en los POST) y la tercera
+      // a `withPlatformAdmin`. Ya NO están en esta allow-list: si alguien
+      // vuelve a leer la organización del body sin sesión, este caso lo caza.
+      // GO-sec (2026-09-24): salieron de aquí `stripe/*`, `subscriptions/*`,
+      // `organization/enterprise` y `pms/ical/sync` (sesión + membresía +
+      // permiso: `contextoDeFacturacion`, `getServerOrgContext` o `withOrg`), y
+      // `categorias/reglas` y `organization/members`, que se borraron (código
+      // muerto; el segundo dejaba a cualquiera meterse como admin de cualquier
+      // organización). Ver el caso 31.
     ]);
 
     const BODY_ORG_PATTERNS = [
@@ -329,8 +294,16 @@ describe('F0 Guardarraíles', () => {
       /\{[^}]*\b(organizationId|organization_id|orgId)\b[^}]*\}\s*=\s*(await\s+)?(request|req)\.json\(\)/,
       /\{[^}]*\b(organizationId|organization_id|orgId)\b[^}]*\}\s*=\s*body\b/,
     ];
-    const SESSION_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withWhatsAppRoute)\s*\(/;
-    const CRON_RE = /\b(withCron|verifyCronSecret)\s*\(/;
+    // `withPlatformAdmin` (GO-sec 2026-09-23): sesión + admin de PLATAFORMA
+    // verificado con `fn_is_platform_admin()`. Ahí la organización del body es
+    // la organización cliente que la plataforma elige como destino (tarifa,
+    // payout), no la del usuario: rutas `payfac/commission` y `payfac/payouts`.
+    // `contextoDeFacturacion` (GO-sec 2026-09-24, `src/lib/stripe/contextoFacturacion.ts`)
+    // es `getServerOrgContextFor` + permiso de facturación: la organización del
+    // body solo vale si el usuario de la sesión es miembro activo de ella.
+    const SESSION_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withWhatsAppRoute|withPlatformAdmin|contextoDeFacturacion)\s*\(/;
+    // verifyWebOrdersSecret: /api/web-orders/** (tienda web → ERP), fail-closed.
+    const CRON_RE = /\b(withCron|verifyCronSecret|verifyWebOrdersSecret)\s*\(/;
     // Solo verificaciones de FIRMA. `isPlaceholderCredential` no lo es: mencionarla
     // eximía al handler del contrato (tester r2, mutación M17).
     const WEBHOOK_RE = /\b(verifyTwilioWebhook|verifyTwilioRequest|verifyMetaSignature|verifyResendWebhook|constructEvent|verifyDocumensoWebhook|verifyElevenLabsWebhook)\s*\(|webhooks\.constructEvent/;
@@ -507,7 +480,10 @@ describe('F0 Guardarraíles', () => {
           continue;
         }
         const usesBodyOrg = BODY_ORG_PATTERNS.some((p) => p.test(h.text));
-        if (usesBodyOrg && !hasSession) offenders.push(h.method);
+        // Una llamada servidor a servidor con secreto fail-closed (cron, tienda
+        // web → `/api/web-orders`) no tiene sesión de usuario: la organización
+        // viaja en el body porque quien firma es un servidor de confianza.
+        if (usesBodyOrg && !hasSession && !isCron) offenders.push(h.method);
       }
       return offenders;
     }
@@ -554,6 +530,53 @@ describe('F0 Guardarraíles', () => {
         console.error('handlers POST/PUT/PATCH/DELETE sin sesión, sin readOrgBody o con la sobrecarga síncrona sin { request }:\n' + strictViolations.sort().join('\n'));
       }
       expect(strictViolations.sort()).toEqual([]);
+    });
+
+    /**
+     * Rutas de la pantalla del cliente remota (F3): NO tienen sesión —una
+     * tableta emparejada no es un usuario— y por eso están excluidas del
+     * middleware. Lo que las sostiene es que la organización sale de la FILA
+     * de la terminal a la que apunta el token, nunca de la petición. Este
+     * caso vigila las dos mitades: que la exclusión siga escrita en el
+     * middleware y que ninguna de esas rutas lea la organización de lo que
+     * llega. Si alguien retira la exclusión, la ruta deja de responder; si
+     * alguien mete un organizationId del body, salta aquí.
+     */
+    test('las rutas sin sesión de /api/pos/display/** están excluidas del middleware y resuelven la organización desde la terminal', () => {
+      const middleware = fs.readFileSync(path.join(SRC_ROOT, 'middleware.ts'), 'utf8');
+      expect(middleware).toMatch(/\/api\/pos\/display\//);
+
+      const dir = path.join(SRC_ROOT, 'app', 'api', 'pos', 'display');
+      const rutas = walkDir(dir).filter((f) => f.endsWith('route.ts'));
+      expect(rutas.length).toBeGreaterThanOrEqual(4); // pair, bootstrap, heartbeat, revoke
+
+      const ofensores: string[] = [];
+      for (const file of rutas) {
+        const rel = path.relative(SRC_ROOT, file).split(path.sep).join('/');
+        const content = fs.readFileSync(file, 'utf8');
+        // /revoke sí tiene sesión (admin que desempareja): se rige por el
+        // contrato normal. Las demás autentican por token.
+        const conSesion = SESSION_RE.test(content);
+        const tomaOrgDeLaPeticion = BODY_ORG_PATTERNS.some((re) => re.test(content));
+        if (tomaOrgDeLaPeticion && !conSesion) ofensores.push(rel);
+        // Sin sesión solo hay dos credenciales posibles: el token de la
+        // pantalla (bootstrap, heartbeat) o el código de emparejamiento de un
+        // solo uso con rate limit (pair). Cualquier otra cosa es una ruta
+        // abierta detrás de la exclusión del middleware.
+        // `resolveDisplayActor` (F4, `lib/pos/display/server/displayActor.ts`) es
+        // la TERCERA credencial válida y no un agujero: con cabecera Bearer
+        // delega en `authenticateDisplayRequest` (el mismo token de F3) y, sin
+        // ella, exige `getServerOrgContext` y comprueba la terminal contra la
+        // organización de la SESIÓN. En los dos caminos la organización y la
+        // sucursal salen de la fila de `pos_terminals`, nunca de la petición,
+        // que es justo lo que vigila este caso. Se exige el import para que el
+        // nombre no pueda venir de un comentario.
+        const conActor = /from '@\/lib\/pos\/display\/server\/displayActor'/.test(content) && /resolveDisplayActor\s*\(/.test(content);
+        const conToken = conActor || /authenticateDisplayRequest|requireDisplayToken|displayAuth/.test(content);
+        const esCanje = /\bcheckRateLimit\s*\(/.test(content) && /PAIR_RATE_LIMIT|pairing_code/.test(content);
+        if (!conSesion && !conToken && !esCanje) ofensores.push(`${rel} (sin sesión, sin token y sin canje con límite)`);
+      }
+      expect(ofensores.sort()).toEqual([]);
     });
 
     test('la allow-list estricta no contiene entradas obsoletas (ya adoptaron readOrgBody)', () => {
@@ -712,13 +735,6 @@ describe('F0 Guardarraíles', () => {
      * `getServiceClient()` o inyección de cliente y quitarlos de aquí.
      */
     const ALLOWLIST = new Set<string>([
-      'app/api/dian/lookup/route.ts',
-      'app/api/factus/credit-note/route.ts',
-      'app/api/factus/debit-note/route.ts',
-      'app/api/factus/process-pending/route.ts',
-      'app/api/factus/webhook/route.ts',
-      'app/api/integrations/meta/oauth/authorize/route.ts',
-      'app/api/integrations/tiktok/oauth/authorize/route.ts',
       'lib/services/crm/commercialMetricsService.ts',
       'lib/services/crm/commissionService.ts',
       'lib/services/crm/crmIntegrations.ts',
@@ -737,16 +753,6 @@ describe('F0 Guardarraíles', () => {
       'lib/services/crm/scoringService.ts',
       'lib/services/crm/stageGateService.ts',
       'lib/services/crm/verticalsService.ts',
-      'lib/services/integrations/booking/bookingAuthService.ts',
-      'lib/services/integrations/booking/bookingAvailabilityService.ts',
-      'lib/services/integrations/booking/bookingConnectionService.ts',
-      'lib/services/integrations/booking/bookingContentService.ts',
-      'lib/services/integrations/booking/bookingReservationService.ts',
-      'lib/services/integrations/expedia/expediaAuthService.ts',
-      'lib/services/integrations/expedia/expediaAvailabilityService.ts',
-      'lib/services/integrations/expedia/expediaConnectionService.ts',
-      'lib/services/integrations/expedia/expediaProductService.ts',
-      'lib/services/integrations/expedia/expediaReservationService.ts',
       'lib/services/integrations/mercadopago/mercadopagoService.ts',
       'lib/services/integrations/meta/metaMarketingService.ts',
       'lib/services/integrations/paypal/paypalService.ts',
@@ -1522,53 +1528,1422 @@ describe('21. Ningún .ts/.tsx bajo src/ contiene bytes de control (< 0x20 salvo
   });
 });
 
-// === Caso 22: F-52 — las ventas POS escogen la regla contable según saldo ===
-describe('22. F-52: fn_auto_journal_sale_pos discrimina contado y crédito', () => {
-  const migrationPath = path.join(
+// === Caso 22: el asiento de devengo de una venta es uno solo ===
+/**
+ * 22. El asiento de devengo de una venta es UNO, y se ancla al hecho.
+ *
+ * Antes este guardarraíl vigilaba la migración F-52, que exigía tres consultas
+ * de reglas filtrando por `is_credit` y la idempotencia por `(source,
+ * source_id)`. Ese diseño quedó superado el 2026-09-23: la migración del bloque
+ * 1 contable lo sustituye porque, tal cual, **dos organizaciones sin
+ * `conditions` no generaban ningún asiento de venta POS** y la idempotencia por
+ * origen no veía el duplicado —la misma venta contabilizada por `sales` y por
+ * `invoice_sales`—. Se apunta al archivo nuevo y se comprueba el diseño nuevo;
+ * mantenerlo sobre el archivo viejo era vigilar algo que ya no se ejecuta.
+ */
+describe('22. Asiento de venta: un solo hecho, clave natural y respaldo sin conditions', () => {
+  const migracion = path.join(
     REPO_ROOT,
     'supabase',
     'migrations',
-    '20260919235511_f52_sale_pos_is_credit.sql'
+    '20260923040000_asiento_de_venta_unico_por_hecho.sql'
   );
-  const rollbackPath = path.join(
+  const rollback = path.join(
     REPO_ROOT,
     'supabase',
     'rollbacks',
-    '20260919235511_f52_sale_pos_is_credit_rollback.sql'
+    '20260923040000_asiento_de_venta_unico_por_hecho_rollback.sql'
   );
   let sql = '';
 
   beforeAll(() => {
-    expect(fs.existsSync(migrationPath)).toBe(true);
-    expect(fs.existsSync(rollbackPath)).toBe(true);
-    sql = readFile(migrationPath);
+    expect(fs.existsSync(migracion)).toBe(true);
+    expect(fs.existsSync(rollback)).toBe(true);
+    sql = readFile(migracion);
   });
 
-  test('deriva is_credit del saldo y no de payment_status', () => {
-    expect(sql).toMatch(/v_is_credit\s*:=\s*COALESCE\(NEW\.balance,\s*0\)\s*>\s*0/);
+  test('las dos funciones derivan contado/crédito del saldo real', () => {
+    const derivaciones = sql.match(/v_is_credit\s*:=\s*COALESCE\(NEW\.balance,\s*0\)\s*>\s*0/g) ?? [];
+    expect(derivaciones).toHaveLength(2);
+    expect(sql).not.toMatch(/v_is_credit\s*:=\s*\(?NEW\.payment_method/);
     expect(sql).not.toMatch(/v_is_credit\s*:=\s*\(?NEW\.payment_status/);
   });
 
-  test('las tres búsquedas de reglas filtran por is_credit', () => {
-    const filters = sql.match(/\(conditions->>'is_credit'\)::boolean\s*=\s*v_is_credit/g) ?? [];
-    expect(filters).toHaveLength(3);
+  test('una regla sin conditions sirve de respaldo, y la de la condición contraria nunca', () => {
+    const respaldos =
+      sql.match(
+        /conditions->>'is_credit'\s+IS\s+NULL\s+OR\s+\(conditions->>'is_credit'\)::boolean\s*=\s*v_is_credit/g
+      ) ?? [];
+    expect(respaldos).toHaveLength(2);
   });
 
-  test('la idempotencia queda acotada por organización', () => {
-    const idempotencyBlock = sql.match(
-      /SELECT\s+id\s+INTO\s+v_existing_id[\s\S]*?LIMIT\s+1;/
-    )?.[0];
-    expect(idempotencyBlock).toBeDefined();
-    expect(idempotencyBlock).toMatch(/FROM\s+(?:public\.)?journal_entries/);
-    expect(idempotencyBlock).toMatch(/organization_id\s*=\s*NEW\.organization_id/);
-    expect(idempotencyBlock).toMatch(/source\s*=\s*'sales'/);
-    expect(idempotencyBlock).toMatch(/source_id\s*=\s*NEW\.id::text/);
+  test('las dos vías emiten la misma clave del hecho para la misma venta', () => {
+    expect(sql).toMatch(/'accrual:sale:'\s*\|\|\s*NEW\.sale_id::text/);
+    expect(sql).toMatch(/'accrual:sale:'\s*\|\|\s*NEW\.id::text/);
+    const claves = sql.match(/p_fact_key\s*:=\s*v_fact_key/g) ?? [];
+    expect(claves).toHaveLength(2);
   });
 
-  test('la función SECURITY DEFINER fija search_path y no queda ejecutable directamente por roles cliente', () => {
-    expect(sql).toMatch(/SECURITY\s+DEFINER[\s\S]*?SET\s+search_path\s+TO\s+'public',\s*'pg_temp'/);
+  test('el disparador del POS es diferido, para que la factura mande cuando exista', () => {
     expect(sql).toMatch(
-      /REVOKE\s+ALL\s+ON\s+FUNCTION\s+public\.fn_auto_journal_sale_pos\(\)\s+FROM\s+PUBLIC,\s*anon,\s*authenticated/
+      /create\s+constraint\s+trigger\s+trg_auto_journal_sale_pos[\s\S]*?deferrable\s+initially\s+deferred/i
     );
+  });
+
+  test('las dos funciones SECURITY DEFINER fijan search_path', () => {
+    const definidas =
+      sql.match(/security\s+definer\s+set\s+search_path\s+to\s+'public',\s*'pg_temp'/gi) ?? [];
+    expect(definidas).toHaveLength(2);
+  });
+});
+
+/**
+ * 23. El kardex admite exactamente los orígenes que el código escribe.
+ *
+ * Durante catorce meses `stock_movements_source_check` rechazó ocho valores que
+ * el código escribía. Seis fallaban en silencio —el error moría en un
+ * `console.warn` y las existencias quedaban modificadas sin movimiento— y dos
+ * reventaban el traslado. Ninguna recepción de orden de compra ni ningún
+ * traslado llegó al kardex en ese tiempo.
+ *
+ * Este guardarraíl exige que las tres cosas digan lo mismo: la migración del
+ * CHECK, la lista de TypeScript y lo que el código escribe de verdad.
+ */
+describe('23. stock_movements.source: CHECK, lista de TS y código coinciden', () => {
+  // La ÚLTIMA migración que redefine el CHECK manda. Antes se leía siempre
+  // 20260923100000; compras F1 (20260926130000) lo amplió con `purchase_void`,
+  // que `fn_void_purchase_invoice` escribía y el CHECK rechazaba (anular una
+  // compra recibida fallaba siempre). Una ampliación futura se hace igual: la
+  // migración nueva + `origenesMovimientoStock.ts`, en el mismo commit.
+  const DIR_MIGRACIONES = path.join(REPO_ROOT, 'supabase', 'migrations');
+  const migracion = path.join(
+    DIR_MIGRACIONES,
+    fs
+      .readdirSync(DIR_MIGRACIONES)
+      .filter((f) => f.endsWith('.sql'))
+      .sort()
+      .filter((f) => /add\s+constraint\s+stock_movements_source_check/i.test(readFile(path.join(DIR_MIGRACIONES, f))))
+      .pop() ?? '20260923100000_stock_movements_admite_los_origenes_que_el_codigo_escribe.sql'
+  );
+
+  /** Valores del `check (source = any (array[...]))` de la migración. */
+  function origenesDeLaMigracion(): string[] {
+    const sql = readFile(migracion);
+    const bloque = sql.match(/add\s+constraint\s+stock_movements_source_check[\s\S]*?\]\)\)/i)?.[0];
+    expect(bloque).toBeDefined();
+    return Array.from(bloque!.matchAll(/'([a-z_]+)'/g)).map((m) => m[1]);
+  }
+
+  /**
+   * Orígenes que el código escribe: los literales de `source:` en un INSERT a
+   * `stock_movements`, y los que se pasan a `stockMovementService`, que los
+   * formatea siempre como un argumento en su propia línea.
+   */
+  function origenesDelCodigo(): Map<string, string[]> {
+    const encontrados = new Map<string, string[]>();
+    const anota = (valor: string, archivo: string) => {
+      const donde = encontrados.get(valor) ?? [];
+      donde.push(path.relative(REPO_ROOT, archivo));
+      encontrados.set(valor, donde);
+    };
+
+    for (const archivo of walkDir(SRC_ROOT).filter((f) => !f.includes('__tests__'))) {
+      const lineas = readFile(archivo).split('\n');
+
+      for (let i = 0; i < lineas.length; i += 1) {
+        const abreInsert = lineas[i].includes("from('stock_movements')");
+        const abreServicio = /stockMovementService\.\w+\(/.test(lineas[i]);
+        if (!abreInsert && !abreServicio) continue;
+
+        for (let j = i; j < Math.min(i + 20, lineas.length); j += 1) {
+          if (abreInsert) {
+            const m = lineas[j].match(/\bsource:\s*'([a-z_]+)'/);
+            if (m) anota(m[1], archivo);
+          }
+          if (abreServicio) {
+            // El origen viaja como último argumento, solo en su línea.
+            const m = lineas[j].match(/^\s*'([a-z_]+)',?\s*$/);
+            if (m) anota(m[1], archivo);
+          }
+        }
+      }
+    }
+
+    return encontrados;
+  }
+
+  test('la lista de TypeScript es exactamente la de la migración', () => {
+    expect([...ORIGENES_MOVIMIENTO_STOCK].sort()).toEqual(origenesDeLaMigracion().sort());
+  });
+
+  test('todo origen que el código escribe está admitido por el CHECK', () => {
+    const admitidos = new Set(origenesDeLaMigracion());
+    const escritos = origenesDelCodigo();
+
+    // Que el rastreo siga encontrando algo: si un cambio de formato lo deja a
+    // cero, este guardarraíl pasaría sin comprobar nada.
+    expect(escritos.size).toBeGreaterThanOrEqual(10);
+    expect([...escritos.keys()]).toEqual(expect.arrayContaining(['purchase_order', 'transfer_in']));
+
+    const rechazados = [...escritos.entries()]
+      .filter(([valor]) => !admitidos.has(valor))
+      .map(([valor, archivos]) => `${valor} (${archivos.join(', ')})`);
+
+    // Si esto falla: añade el valor a origenesMovimientoStock.ts Y a una
+    // migración que amplíe el CHECK, en el mismo commit. Quitarlo de aquí deja
+    // el movimiento sin escribir y el kardex incompleto, sin ningún error
+    // visible.
+    expect(rechazados).toEqual([]);
+  });
+
+  test('esOrigenMovimientoValido reconoce los que antes se rechazaban', () => {
+    for (const valor of ['purchase_order', 'transfer_out', 'transfer_in', 'invoice_void']) {
+      expect(esOrigenMovimientoValido(valor)).toBe(true);
+    }
+    expect(esOrigenMovimientoValido('no_existe')).toBe(false);
+  });
+});
+
+/**
+ * 24. Los colores salen de Figma, y solo de Figma.
+ *
+ * `src/styles/figma-tokens.json` es la instantánea de las variables de Figma y
+ * `src/styles/tokens.css` se genera de ella con `scripts/generar-tokens-css.mjs`.
+ * Este guardarraíl falla si el CSS se edita a mano, si el JSON cambia sin
+ * regenerar, si el tema de Tailwind apunta a una variable que no existe, o si la
+ * escala azul de Tailwind deja de coincidir con la de Figma (que es la que da el
+ * azul de marca a las ~12.000 clases `*-blue-*` ya existentes).
+ */
+describe('24. Tokens de diseño: Figma → tokens.css → Tailwind', () => {
+  const figma = JSON.parse(readFile(path.join(SRC_ROOT, 'styles', 'figma-tokens.json')));
+  const css = readFile(path.join(SRC_ROOT, 'styles', 'tokens.css'));
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const tema = require(path.join(SRC_ROOT, 'styles', 'tailwind-theme.js'));
+
+  test('tokens.css es exactamente lo que genera el script (no se edita a mano)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { execFileSync } = require('child_process');
+    const generado = execFileSync(
+      process.execPath,
+      [path.join(REPO_ROOT, 'scripts', 'generar-tokens-css.mjs'), '--stdout'],
+      { encoding: 'utf8' }
+    );
+    expect(css.replace(/\r\n/g, '\n')).toBe(generado);
+  });
+
+  test('cada token semántico de Figma existe en modo claro y oscuro', () => {
+    const [claro, oscuro] = css.split('.dark {');
+    for (const token of Object.keys(figma.semanticos)) {
+      const variable = `--${token.replace(/\//g, '-')}:`;
+      expect(claro).toContain(variable);
+      expect(oscuro).toContain(variable);
+    }
+  });
+
+  test('el tema de Tailwind solo referencia variables que tokens.css define', () => {
+    const definidas = new Set(Array.from(css.matchAll(/(--[a-z0-9-]+):/g)).map((m) => m[1]));
+    const usadas = new Set<string>();
+    const recorrer = (valor: unknown) => {
+      if (typeof valor === 'string') {
+        for (const m of valor.matchAll(/var\((--[a-z0-9-]+)\)/g)) usadas.add(m[1]);
+      } else if (valor && typeof valor === 'object') {
+        Object.values(valor as Record<string, unknown>).forEach(recorrer);
+      }
+    };
+    recorrer(tema);
+    const huerfanas = [...usadas].filter((v) => !definidas.has(v));
+    expect(usadas.size).toBeGreaterThan(40);
+    expect(huerfanas).toEqual([]);
+  });
+
+  test('la escala azul de Tailwind es la de Figma, tono por tono', () => {
+    for (const [token, hex] of Object.entries(figma.primitivos as Record<string, string>)) {
+      const m = token.match(/^blue\/(\d+)$/);
+      if (m) expect(tema.colors.blue[m[1]].toLowerCase()).toBe(hex.toLowerCase());
+    }
+    // La marca y la acción, explícitas: son las que más se ven.
+    expect(tema.colors.blue[500]).toBe('#4361ee');
+    expect(tema.colors.blue[600]).toBe('#3651d4');
+  });
+
+  test('los grises de Tailwind son los slate de Figma', () => {
+    for (const [token, hex] of Object.entries(figma.primitivos as Record<string, string>)) {
+      const m = token.match(/^slate\/(\d+)$/);
+      if (m) expect(tema.colors.gray[m[1]].toLowerCase()).toBe(hex.toLowerCase());
+    }
+  });
+
+  test('tailwind.config.js ya no declara colores sueltos: todo sale del tema', () => {
+    const config = readFile(path.join(REPO_ROOT, 'tailwind.config.js'));
+    expect(config).toContain("require('./src/styles/tailwind-theme')");
+    expect(config).not.toMatch(/#0070f3/i);
+  });
+});
+
+describe('25. Shell: un solo catálogo de navegación y nada decidido por el nombre del rol', () => {
+  // El menú tuvo cuatro copias (sidebar, DynamicSidebar, AppLayout y
+  // modulePages) que ya no coincidían entre sí. Desde el rediseño del shell la
+  // única fuente es `src/lib/navigation/catalog.ts`; lo demás se deriva.
+  const shellDirs = ['components/shell', 'components/app-layout'].map((d) => path.join(SRC_ROOT, d));
+  const archivosShell = shellDirs.flatMap((d) => walkDir(d)).filter((f) => !/__tests__/.test(f));
+
+  test('los componentes del shell viejo no vuelven', () => {
+    const retirados = [
+      'components/app-layout/Sidebar',
+      'components/layout/DynamicSidebar.tsx',
+      'components/layout/sidebar',
+      'components/common/BranchSelector.tsx',
+      'components/common/OrganizationSelector.tsx',
+      'components/app-layout/Header/AppHeader.tsx',
+      'components/app-layout/Header/NotificationsMenu.tsx',
+      'components/app-layout/ProfileDropdownMenu.tsx',
+    ];
+    const presentes = retirados.filter((r) => fs.existsSync(path.join(SRC_ROOT, r)));
+    expect(presentes).toEqual([]);
+  });
+
+  test('ningún archivo del shell declara su propia lista de módulos o rutas', () => {
+    const conLista = archivosShell
+      .filter((f) => {
+        const src = readFile(f);
+        const rutas = src.match(/href:\s*['"`]\/app\//g) ?? [];
+        return /(const|let|var)\s+MODULES_WITH_SUBMENU/.test(src) || rutas.length > 3;
+      })
+      .map(rel);
+    expect(conLista).toEqual([]);
+  });
+
+  test('modulePages.ts se deriva del catálogo', () => {
+    const src = readFile(path.join(SRC_ROOT, 'lib/config/modulePages.ts'));
+    expect(src).toMatch(/from '@\/lib\/navigation\/catalog'/);
+    expect(src.match(/href:\s*['"`]\/app\//g) ?? []).toEqual([]);
+  });
+
+  test('el shell y branchService no deciden permisos comparando el nombre del rol', () => {
+    const archivos = [...archivosShell, path.join(SRC_ROOT, 'lib/services/branchService.ts')];
+    // Solo comparaciones con nombres de rol de administración: `message.role ===
+    // 'user'` (rol de un mensaje del chat) no es un permiso.
+    const patron =
+      /(role_?name|\.role|rolename)\s*===?\s*['"`](super admin|admin de organización|administrador|admin|owner|propietario)['"`]|['"`](super admin|admin de organización|administrador|admin|owner|propietario)['"`]\s*===?/i;
+    // El patrón tiene que atrapar lo que se retiró de branchService.
+    expect(patron.test("isAdmin = roleName === 'Super Admin' || roleName === 'Admin de organización';")).toBe(true);
+    expect(patron.test("message.role === 'user'")).toBe(false);
+    const infractores = archivos.filter((f) => patron.test(readFile(f))).map(rel);
+    expect(infractores).toEqual([]);
+  });
+});
+
+describe('26. Compras: un solo asiento por hecho, con la factura (ADR-CC-009)', () => {
+  // La compra se contabiliza solo con la factura del proveedor
+  // (fn_auto_journal_purchase). La cuenta por pagar y la recepción de la orden
+  // generaban asientos del mismo hecho (F-59), y el disparador de ajustes de
+  // inventario trataba las entradas por compra como ajuste.
+  const dirMigraciones = path.join(REPO_ROOT, 'supabase', 'migrations');
+  const migraciones = fs
+    .readdirSync(dirMigraciones)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .map((f) => ({ nombre: f, sql: readFile(path.join(dirMigraciones, f)) }));
+
+  const ultimaQueMenciona = (patron: RegExp) => [...migraciones].reverse().find((m) => patron.test(m.sql));
+
+  test.each(['trg_auto_journal_ap', 'trg_auto_journal_purchase_order'])(
+    '%s queda deshabilitado y ninguna migración posterior lo reactiva',
+    (disparador) => {
+      const patron = String.raw`(enable|disable)\s+trigger\s+` + disparador + String.raw`\b`;
+      const ultima = ultimaQueMenciona(new RegExp(patron, 'i'));
+      expect(ultima?.nombre).toBeDefined();
+      const ordenes = [...ultima!.sql.matchAll(new RegExp(patron, 'gi'))];
+      expect(ordenes[ordenes.length - 1][1].toLowerCase()).toBe('disable');
+    }
+  );
+
+  test('el disparador de ajustes de inventario no contabiliza compras ni traslados', () => {
+    const ultima = ultimaQueMenciona(/function\s+public\.fn_auto_journal_stock_movement\s*\(/i);
+    expect(ultima).toBeDefined();
+    const cuerpo = ultima!.sql.slice(ultima!.sql.search(/function\s+public\.fn_auto_journal_stock_movement\s*\(/i));
+    const exclusion = cuerpo.match(/IF\s+NEW\.source\s+IN\s*\(([^)]*)\)\s*THEN\s*RETURN\s+NEW/i);
+    expect(exclusion).not.toBeNull();
+    // `purchase_void` (compras F1, R7): la anulación de una compra ya revierte el
+    // devengo con el contra-asiento espejo; un asiento de ajuste lo duplicaba.
+    for (const origen of ['purchase_order', 'purchase_invoice', 'purchase_void', 'transfer_out', 'transfer_in', 'purchase', 'transfer', 'initial']) {
+      expect(exclusion![1]).toContain(`'${origen}'`);
+    }
+  });
+
+  test('ningún servicio de compras escribe asientos por su cuenta', () => {
+    // L7 del plan de compras: también los servicios y rutas nuevos de compras y CxP.
+    const nuevos = [
+      ...fs.readdirSync(path.join(SRC_ROOT, 'lib/services/compras')).filter((f) => f.endsWith('.ts')).map((f) => `lib/services/compras/${f}`),
+    ];
+    for (const archivo of ['lib/services/purchaseOrderService.ts', 'components/finanzas/facturas-compra/FacturasCompraService.ts', ...nuevos]) {
+      const src = readFile(path.join(SRC_ROOT, archivo));
+      expect(src).not.toMatch(/from\(\s*['"`]journal_(entries|lines)['"`]\s*\)\s*\.\s*(insert|upsert)/);
+    }
+  });
+});
+
+describe('26b. Compras y CxP: una sola RPC para registrar la compra y nada escrito a mano', () => {
+  // Plan docs/implementacion/FACTURAS-COMPRA-CXP-PLAN.md (F1–F13). Registrar una
+  // compra estaba implementado tres veces (formulario, GO Assistant y generador
+  // desde OC) y cada una escribía la factura, la CxP y el costo a su manera. Hoy
+  // es fn_factura_compra_guardar/confirmar/desde_oc; la CxP nace y se recalcula
+  // por disparador (D2/D4), el costo va por fn_kardex_entrada_compra con vigencia
+  // y el estado de la factura solo lo cambian las RPC.
+  const escritura = (tabla: string) =>
+    new RegExp(String.raw`from\(\s*['"\`]` + tabla + String.raw`['"\`]\s*\)[\s\S]{0,200}?\.(insert|update|upsert|delete)\(`);
+
+  /** Superficie NUEVA de compras y CxP: nada de escrituras directas. */
+  const nuevos = () =>
+    [
+      'lib/services/compras',
+      'components/finanzas/facturas-compra/listado',
+      'components/finanzas/facturas-compra/detalle',
+      'components/finanzas/facturas-compra/formulario',
+      'components/finanzas/cuentas-por-pagar/listado',
+      'components/finanzas/cuentas-por-pagar/detalle',
+    ]
+      .flatMap((d) => walkDir(path.join(SRC_ROOT, d)))
+      .concat(
+        [
+          'RegistrarPagoProveedor.tsx',
+          'ProgramarPagoDialog.tsx',
+          'AprobacionesPanel.tsx',
+          'EstadoCuentaProveedorDialog.tsx',
+          'PlanCuotasDialog.tsx',
+          // BandaAntiguedad.tsx subió al kit (kit/documento/BandaAntiguedad, compartida
+          // con CxC; solo pinta lo que recibe). Los dos diálogos de arriba son ahora
+          // adaptadores de kit/documento/PlanCuotasDialog y EstadoCuentaDialog.
+        ].map((f) => path.join(SRC_ROOT, 'components/finanzas/cuentas-por-pagar', f)),
+      )
+      .filter((f) => !isExcluded(f));
+
+  test('la superficie nueva no escribe tablas: solo llama a las rutas del servidor', () => {
+    const archivos = nuevos();
+    expect(archivos.length).toBeGreaterThan(10);
+    const infractores = archivos.filter((f) => /\.(insert|update|upsert|delete)\(/.test(readFile(f))).map(rel);
+    expect(infractores).toEqual([]);
+  });
+
+  test('nadie fuera de las migraciones escribe accounts_payable, invoice_purchase ni ap_payment_schedules (salvo el servicio viejo)', () => {
+    // FacturasCompraService.ts: servicio anterior al plan, ya sin pantallas que lo
+    // monten (las páginas usan listado/detalle/formulario). Lo fijan las pruebas de
+    // caracterización de src/__tests__/finanzas/compras y lo importan todavía los
+    // modales viejos de CxP; se borra en cuanto esas pruebas apunten a las RPC.
+    // Igual CuentasPorPagarService.ts e id/service.ts (cuotas a mano en
+    // ap_installments): el listado y el detalle viejos de CxP ya no se montan
+    // (plan de cuotas por fn_cxp_crear_plan_cuotas), pero los fijan
+    // antiguedadCxp/planCuotas y la exportación a banca, que otro frente edita.
+    const PERMITIDOS = new Set([
+      'components/finanzas/facturas-compra/FacturasCompraService.ts',
+      'components/finanzas/cuentas-por-pagar/CuentasPorPagarService.ts',
+      'components/finanzas/cuentas-por-pagar/id/service.ts',
+    ]);
+    const infractores = walkDir(SRC_ROOT)
+      .filter((f) => !isExcluded(f) && !PERMITIDOS.has(rel(f)))
+      .filter((f) => {
+        const src = readFile(f);
+        return ['accounts_payable', 'invoice_purchase', 'ap_payment_schedules', 'ap_installments'].some((t) => escritura(t).test(src));
+      })
+      .map(rel);
+    expect(infractores).toEqual([]);
+  });
+
+  test('compras no escribe product_costs: el costo lo pone la base con vigencia', () => {
+    const archivos = [
+      ...nuevos(),
+      path.join(SRC_ROOT, 'lib/services/purchaseOrderService.ts'),
+      path.join(SRC_ROOT, 'components/finanzas/facturas-compra/FacturasCompraService.ts'),
+    ];
+    expect(archivos.filter((f) => escritura('product_costs').test(readFile(f))).map(rel)).toEqual([]);
+  });
+
+  test('el generador desde OC llama a la RPC única y no arma la factura a mano', () => {
+    const src = readFile(path.join(SRC_ROOT, 'lib/services/purchaseOrderService.ts'));
+    expect(src).toMatch(/clienteCompras\.desdeOrden\(/);
+    expect(src).not.toMatch(escritura('invoice_items'));
+  });
+
+  test('las páginas de compras y CxP montan las pantallas nuevas (las URL no cambian)', () => {
+    const paginas: Record<string, RegExp> = {
+      'app/app/finanzas/facturas-compra/page.tsx': /facturas-compra\/listado\/FacturasCompraListado/,
+      'app/app/inventario/facturas-compra/page.tsx': /facturas-compra\/listado\/FacturasCompraListado/,
+      'app/app/finanzas/facturas-compra/nuevo/page.tsx': /facturas-compra\/formulario\/FormularioFacturaCompra/,
+      'app/app/inventario/facturas-compra/nuevo/page.tsx': /facturas-compra\/formulario\/FormularioFacturaCompra/,
+      'app/app/finanzas/facturas-compra/[id]/page.tsx': /facturas-compra\/detalle\/DetalleFacturaCompraV2/,
+      'app/app/inventario/facturas-compra/[id]/page.tsx': /facturas-compra\/detalle\/DetalleFacturaCompraV2/,
+      'app/app/finanzas/facturas-compra/[id]/editar/page.tsx': /facturas-compra\/formulario\/FormularioFacturaCompra/,
+      'app/app/inventario/facturas-compra/[id]/editar/page.tsx': /facturas-compra\/formulario\/FormularioFacturaCompra/,
+      'app/app/finanzas/cuentas-por-pagar/page.tsx': /cuentas-por-pagar\/listado\/CuentasPorPagarListado/,
+      'app/app/finanzas/cuentas-por-pagar/[id]/page.tsx': /cuentas-por-pagar\/detalle\/CuentaPorPagarDetalle/,
+      'app/app/finanzas/cuentas-por-pagar/[id]/cuotas/page.tsx': /redirect\(/,
+    };
+    for (const [pagina, patron] of Object.entries(paginas)) {
+      expect({ pagina, ok: patron.test(readFile(path.join(SRC_ROOT, pagina))) }).toEqual({ pagina, ok: true });
+    }
+  });
+});
+
+describe('27. RLS del catálogo: filas globales de solo lectura y nada abierto a anon', () => {
+  // Auditoría del catálogo (docs/design/AUDITORIA-CATALOGO-PRODUCCION.md):
+  // un administrador de cualquier organización editaba `units` para todas, un
+  // miembro cualquiera borraba las `unit_conversions` globales, `shared_images`
+  // era legible e insertable entre organizaciones, y `categories` y
+  // `product_tags` las leía anon (y cualquier usuario de otra organización).
+  // Se cerró el 2026-09-23 con cuatro migraciones; esto impide reabrirlo.
+  const MIGRACIONES = path.join(REPO_ROOT, 'supabase', 'migrations');
+  const CIERRE = [
+    '20260923133330_unidades_globales_solo_lectura.sql',
+    '20260923133342_shared_images_por_pertenencia.sql',
+    '20260923133353_categories_por_pertenencia.sql',
+    '20260923133403_product_tags_por_pertenencia.sql',
+  ];
+  const TABLAS = ['units', 'unit_conversions', 'shared_images', 'categories', 'product_tags'];
+  const sinComentariosSql = (sql: string) => sql.replace(/--.*$/gm, '');
+
+  /** Sentencias `create policy ... on public.<tabla> ...;` de un .sql. */
+  function politicas(sql: string): { tabla: string; texto: string }[] {
+    const out: { tabla: string; texto: string }[] = [];
+    const re = /create\s+policy\s+("[^"]+"|\w+)\s+on\s+(?:public\.)?(\w+)([\s\S]*?);/gi;
+    for (const m of sinComentariosSql(sql).matchAll(re)) {
+      out.push({ tabla: m[2].toLowerCase(), texto: m[0].replace(/\s+/g, ' ').toLowerCase() });
+    }
+    return out;
+  }
+
+  test('las cuatro migraciones del cierre existen, con su rollback', () => {
+    const faltan = CIERRE.filter(
+      (f) =>
+        !fs.existsSync(path.join(MIGRACIONES, f)) ||
+        !fs.existsSync(path.join(REPO_ROOT, 'supabase', 'rollbacks', f.replace(/\.sql$/, '_rollback.sql'))),
+    );
+    expect(faltan).toEqual([]);
+  });
+
+  test('en el cierre, toda política es para authenticated y va por membresía activa con (select auth.uid())', () => {
+    const malas: string[] = [];
+    for (const f of CIERRE) {
+      for (const p of politicas(readFile(path.join(MIGRACIONES, f)))) {
+        if (!/ to authenticated /.test(p.texto)) malas.push(`${f}: no es "to authenticated": ${p.texto.slice(0, 80)}`);
+        if (/\bexists\s*\(/.test(p.texto)) malas.push(`${f}: EXISTS correlacionado (usar IN): ${p.texto.slice(0, 80)}`);
+        if (/auth\.uid\(\)/.test(p.texto) && !/\(select auth\.uid\(\)\)/.test(p.texto)) {
+          malas.push(`${f}: auth.uid() sin (select ...): ${p.texto.slice(0, 80)}`);
+        }
+        if (/organization_members/.test(p.texto) && !/om\.is_active = true/.test(p.texto)) {
+          malas.push(`${f}: membresía sin is_active: ${p.texto.slice(0, 80)}`);
+        }
+      }
+    }
+    expect(malas).toEqual([]);
+  });
+
+  test('ninguna política de escritura de unit_conversions admite organization_id IS NULL', () => {
+    const sql = readFile(path.join(MIGRACIONES, CIERRE[0]));
+    const escritura = politicas(sql).filter(
+      (p) => p.tabla === 'unit_conversions' && / for (insert|update|delete|all) /.test(p.texto),
+    );
+    expect(escritura.length).toBe(3);
+    for (const p of escritura) expect(p.texto).not.toMatch(/is null/);
+  });
+
+  test('units solo tiene lectura para usuarios: ni política de escritura ni GRANT de escritura', () => {
+    const sql = sinComentariosSql(readFile(path.join(MIGRACIONES, CIERRE[0]))).toLowerCase();
+    const deUnits = politicas(sql).filter((p) => p.tabla === 'units');
+    expect(deUnits.map((p) => / for select /.test(p.texto))).toEqual([true]);
+    expect(sql).toMatch(/revoke insert, update, delete, truncate on public\.units from authenticated/);
+  });
+
+  test('ninguna migración posterior reabre estas tablas (USING/WITH CHECK true fuera de units, rol public o anon, GRANT a anon)', () => {
+    const primera = CIERRE[0].slice(0, 14);
+    const posteriores = fs
+      .readdirSync(MIGRACIONES)
+      .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= primera);
+    const infracciones: string[] = [];
+    for (const f of posteriores) {
+      const sql = readFile(path.join(MIGRACIONES, f));
+      for (const p of politicas(sql).filter((x) => TABLAS.includes(x.tabla))) {
+        const abierta = /(using|with check)\s*\(\s*true\s*\)/.test(p.texto);
+        if (abierta && !(p.tabla === 'units' && / for select /.test(p.texto))) {
+          infracciones.push(`${f}: ${p.texto.slice(0, 90)}`);
+        }
+        if (/ to (public|anon)\b/.test(p.texto) || !/ to /.test(p.texto)) {
+          infracciones.push(`${f}: política sin "to authenticated": ${p.texto.slice(0, 90)}`);
+        }
+      }
+      const grants = sinComentariosSql(sql).match(/grant\s+[^;]+?\s+on\s+(?:table\s+)?(?:public\.)?(\w+)\s+to\s+[^;]*\banon\b[^;]*;/gi) ?? [];
+      for (const g of grants) {
+        const tabla = /on\s+(?:table\s+)?(?:public\.)?(\w+)/i.exec(g)![1].toLowerCase();
+        if (TABLAS.includes(tabla)) infracciones.push(`${f}: ${g.replace(/\s+/g, ' ')}`);
+      }
+    }
+    expect(infracciones).toEqual([]);
+  });
+
+  test('el código no escribe units desde el cliente', () => {
+    const escrituras = walkDir(SRC_ROOT)
+      // Filtro propio y no el helper de exclusión: testerR4 (caso 21) prohíbe
+      // que ese helper aparezca en cualquier punto después del caso 21.
+      .filter((f) => !/__tests__|\.test\.|\.spec\./.test(f.replace(/\\/g, '/')))
+      .filter((f) => /\.from\(\s*['"`]units['"`]\s*\)\s*\.(insert|update|upsert|delete)\(/.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(escrituras).toEqual([]);
+  });
+});
+
+/**
+ * 27b. Integraciones con credenciales de la PLATAFORMA (Open Finance, PayFac,
+ * Factus): cada handler exportado se autentica solo (GO-sec, 2026-09-23;
+ * docs/design/AUDITORIA-INTEGRACIONES-OPENFINANCE-PAYFAC-FACTUS.md).
+ *
+ * La auditoría encontró `GET`/`DELETE /api/factus/support-document?ref=` sin
+ * NINGUNA autenticación en un archivo cuyo `POST` sí la tenía, `POST
+ * open-finance/transfer` con la llave de la plataforma para cualquier sesión, y
+ * 27 rutas de Open Finance con la organización de la query y service role. El
+ * guardarraíl 5 solo mira escrituras que leen la organización del BODY; este
+ * mira TODOS los métodos de estos tres árboles:
+ *   - cada handler exportado (o el helper local que invoca) llama a una de las
+ *     puertas del servidor: `withOrg`/`getServerOrgContext` (sesión +
+ *     organización), `withPlatformAdmin`/`requirePlatformAdmin`/
+ *     `resolverAlcancePayfac` (plataforma verificada con `fn_is_platform_admin`),
+ *     `withCron`/`verifyCronSecret` (Bearer CRON_SECRET) o una verificación de
+ *     firma fail-closed (`verificarTokenWebhookPrometeo`, `safeEqual` del HMAC);
+ *   - nadie usa `createRouteHandlerClient` ni `auth.getSession()` (lee la
+ *     cookie sin validar el JWT) ni resuelve la organización por «la membresía
+ *     más reciente».
+ * `/api/factus/**` está fuera del middleware: sin esto, un handler nuevo sin
+ * guarda queda abierto a internet con la cuenta de la plataforma.
+ *
+ * Ampliado el 2026-09-24 (GO-sec, auditoría del POS) a los cobros QR del POS y
+ * del folio: `redeban`, `breb`, `bancolombia` (incluye `wompi/create-qr`),
+ * `bold` y `qr`. Ahí las rutas usaban `auth.getSession()`, la organización del
+ * body y el `connectionId` del body para leer credenciales con service role.
+ * Puertas adicionales de esos árboles: la firma de los webhooks
+ * (`verifyWebhookSignature`, `verifyJwtNotification`) y un handler SIN
+ * parámetros que responde 401 (webhook de Redeban cerrado hasta implementar
+ * su firma: no puede leer la petición). Además, las rutas de cobro resuelven
+ * la conexión en el servidor (`prepararCobroQr`) y nadie la toma del body.
+ *
+ * Ampliado otra vez el 2026-09-24 (GO-sec) a TODO `src/app/api/integrations/**`.
+ * Quedaban ~40 handlers con `auth.getSession()` o sin guarda (MercadoPago,
+ * PayU, PayPal, Stripe, Wompi, SendGrid, Meta, TikTok, Google Ads,
+ * TripAdvisor, webhook-health, credential-rotation, OAuth de WhatsApp) que
+ * tomaban el `connection_id` o la organización del body/query. Puertas
+ * adicionales, todas fail-closed:
+ *   - firmas de webhook de proveedor: `verifyWebhook` (HMAC de MercadoPago),
+ *     `verifyWebhookEvent` (`constructEvent` de Stripe),
+ *     `verificarChecksumWompi`, `verifyTwilioWebhook`, `verifyMetaSignature`;
+ *   - `verificarSuscripcionWebhook`: el GET de suscripción (token de entorno,
+ *     403 sin él) de Meta, WhatsApp Cloud y TikTok;
+ *   - `acceptMarketingOAuthState`: callbacks OAuth con `state` firmado
+ *     (`src/lib/security/oauthState.ts`);
+ *   - `requireOwnedChannel`: `whatsapp/qr/_shared.ts` (sesión +
+ *     `getServerOrgContext` + canal de la organización).
+ * `SIN_PUERTA_PERMITIDA` es la allow-list documentada para un handler que de
+ * verdad no la necesite; hoy está vacía.
+ */
+describe('27b. Integraciones y Factus: todo handler pasa por una puerta del servidor', () => {
+  const INTEGRACIONES = path.join(SRC_ROOT, 'app', 'api', 'integrations');
+  const OPEN_FINANCE = path.join(INTEGRACIONES, 'open-finance');
+  const RAICES = [INTEGRACIONES, path.join(SRC_ROOT, 'app', 'api', 'factus')];
+  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withPlatformAdmin|requirePlatformAdmin|resolverAlcancePayfac|withCron|verifyCronSecret|verificarTokenWebhookPrometeo|safeEqual|verifyWebhookSignature|verifyJwtNotification|verifyWebhook|verifyWebhookEvent|verificarChecksumWompi|verifyTwilioWebhook|verifyMetaSignature|verificarSuscripcionWebhook|acceptMarketingOAuthState|requireOwnedChannel)\s*\(/;
+  /** `ruta MÉTODO` → motivo. Solo para lo que de verdad no aplique; vacía. */
+  const SIN_PUERTA_PERMITIDA = new Map<string, string>([]);
+  /** `export async function POST() { … 401 … }`: sin parámetros no lee nada de la petición. */
+  const CERRADO_SIN_ENTRADA_RE = /^export\s+(?:async\s+)?function\s+(?:GET|POST|PUT|PATCH|DELETE)\s*\(\s*\)[\s\S]*status:\s*401\b/;
+  const HANDLER_RE = /^export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE)\b/;
+  const TOP_RE = /^(export\s|async function |function |const |let )/;
+
+  function rutas(): string[] {
+    return RAICES.flatMap((r) => (fs.existsSync(r) ? walkDir(r) : [])).filter((f) => /route\.ts$/.test(f));
+  }
+
+  /** Bloques de nivel superior: `{ nombre, texto }` (handlers y helpers locales). */
+  function bloques(content: string): Array<{ nombre: string; metodo: string | null; texto: string }> {
+    const lineas = content.split(/\r?\n/);
+    const inicios: number[] = [];
+    lineas.forEach((l, i) => {
+      if (TOP_RE.test(l)) inicios.push(i);
+    });
+    return inicios.map((ini, k) => {
+      const fin = k + 1 < inicios.length ? inicios[k + 1] : lineas.length;
+      const cabeza = lineas[ini];
+      const metodo = HANDLER_RE.exec(cabeza)?.[1] ?? null;
+      const nombre = /(?:function|const|let)\s+(\w+)/.exec(cabeza)?.[1] ?? '';
+      return { nombre, metodo, texto: lineas.slice(ini, fin).join('\n') };
+    });
+  }
+
+  test('cada handler exportado tiene sesión, plataforma, cron o firma', () => {
+    const sinPuerta: string[] = [];
+    for (const file of rutas()) {
+      const content = stripAllComments(readFile(file));
+      const todos = bloques(content);
+      // Helpers locales con puerta, transitivamente (`GET → procesar → isAuthorizedCron → verifyCronSecret`).
+      const helpers = todos.filter((b) => !b.metodo && b.nombre);
+      const helpersConPuerta = helpers.filter((b) => PUERTA_RE.test(b.texto)).map((b) => b.nombre);
+      for (let cambio = true; cambio; ) {
+        cambio = false;
+        for (const b of helpers) {
+          if (helpersConPuerta.includes(b.nombre)) continue;
+          const cuerpo = b.texto.replace(/^[^=({]*/, '');
+          if (helpersConPuerta.some((n) => new RegExp(`\\b${n}\\s*\\(`).test(cuerpo))) {
+            helpersConPuerta.push(b.nombre);
+            cambio = true;
+          }
+        }
+      }
+      for (const h of todos.filter((b) => b.metodo)) {
+        const directo = PUERTA_RE.test(h.texto) || CERRADO_SIN_ENTRADA_RE.test(h.texto);
+        const porHelper = helpersConPuerta.some((n) => new RegExp(`\\b${n}\\b`).test(h.texto.replace(/^[^=({]*/, '')));
+        const clave = `${rel(file)} ${h.metodo}`;
+        if (!directo && !porHelper && !SIN_PUERTA_PERMITIDA.has(clave)) sinPuerta.push(clave);
+      }
+    }
+    expect(sinPuerta).toEqual([]);
+  });
+
+  test('nadie usa createRouteHandlerClient, auth.getSession() ni «la membresía más reciente»', () => {
+    const infracciones = rutas()
+      .filter((f) => /createRouteHandlerClient|\.auth\.getSession\(|getActiveOrganizationId\(/.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(infracciones).toEqual([]);
+  });
+
+  test('Open Finance no devuelve la clave de sesión bancaria y transfer/pay-supplier no llaman al proveedor', () => {
+    const links = stripAllComments(readFile(path.join(OPEN_FINANCE, 'links', 'route.ts')));
+    expect(links).toMatch(/sinSecretosDeLink/);
+    for (const ruta of ['transfer', 'pay-supplier', 'validate-account']) {
+      const src = stripAllComments(readFile(path.join(OPEN_FINANCE, ruta, 'route.ts')));
+      expect(src).toMatch(/flujoDeshabilitado\(/);
+      expect(src).not.toMatch(/initiateTransfer|paySupplier|validateAccount\(/);
+    }
+  });
+
+  test('cobros QR: la conexión, la organización y la llave de cobro salen del servidor, nunca del body', () => {
+    const COBROS = [
+      'redeban/create-qr',
+      'breb/create-qr',
+      'bancolombia/create-qr',
+      'bancolombia/wompi/create-qr',
+      'bold/create-link',
+      'bold/create-pos-payment',
+    ];
+    const fallos: string[] = [];
+    for (const ruta of COBROS) {
+      const src = stripAllComments(readFile(path.join(SRC_ROOT, 'app', 'api', 'integrations', ruta, 'route.ts')));
+      if (!/\bprepararCobroQr\s*\(/.test(src)) fallos.push(`${ruta}: no llama a prepararCobroQr`);
+      if (!/\breadOrgBody(?:<[^(]*>)?\s*\(\s*ctx\s*,\s*request\b/.test(src)) fallos.push(`${ruta}: no llama a readOrgBody(ctx, request)`);
+      if (/\b(body|payload)\??\.(connectionId|organizationId|organization_id|keyValue|terminal_serial)\b/.test(src)) {
+        fallos.push(`${ruta}: lee conexión, organización, llave o datáfono del body`);
+      }
+    }
+    // Los clientes ya no mandan una conexión que el servidor ignoraría.
+    for (const dialogo of ['components/pos/CheckoutDialog.tsx', 'components/pms/checkout/CheckoutDialog.tsx']) {
+      const src = stripAllComments(readFile(path.join(SRC_ROOT, dialogo)));
+      if (/\bconnectionId\s*:/.test(src)) fallos.push(`${dialogo}: manda connectionId`);
+      if (/\bkeyValue\s*:/.test(src)) fallos.push(`${dialogo}: manda la llave Bre-B`);
+    }
+    expect(fallos).toEqual([]);
+  });
+
+  test('webhooks de cobro QR: la sesión se busca por la conexión que firmó, no solo por referencia', () => {
+    const SERVICIOS = ['breb/monoService.ts', 'bancolombia/bancolombiaService.ts', 'redeban/redebanService.ts', 'bold/boldService.ts'];
+    const fallos: string[] = [];
+    for (const s of SERVICIOS) {
+      const src = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'services', 'integrations', s)));
+      const proceso = /async processWebhook\([\s\S]*?\n {2}\}\n/.exec(src)?.[0] ?? '';
+      if (!/\bgetQrSessionForWebhook\s*\(\s*connectionId\b/.test(proceso)) fallos.push(`${s}: processWebhook no usa getQrSessionForWebhook(connectionId, …)`);
+      if (/from\(\s*['"]payment_qr_sessions['"]\s*\)\s*\.select\(/.test(proceso)) fallos.push(`${s}: processWebhook lee payment_qr_sessions por su cuenta`);
+    }
+    const sesiones = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'services', 'integrations', 'qrShared', 'qrSessionService.ts')));
+    const helper = /export async function getQrSessionForWebhook[\s\S]*?\n\}\n/.exec(sesiones)?.[0] ?? '';
+    expect(helper).toMatch(/\.eq\(\s*'integration_connection_id'\s*,\s*connectionId\s*\)/);
+    expect(helper).toMatch(/\.eq\(\s*'organization_id'\s*,\s*connection\.organization_id\s*\)/);
+    expect(fallos).toEqual([]);
+  });
+
+  test('credenciales de la organización: permiso y conexión resueltos en el servidor, nunca llaves del body', () => {
+    // ruta → permiso exigido (`admin` = `withOrg({ admin: true })`).
+    const RUTAS: Record<string, 'COBRO' | 'EDITAR' | 'VER' | 'admin'> = {
+      'mercadopago/create-payment': 'COBRO',
+      'mercadopago/payment-methods': 'COBRO',
+      'payu/create-payment': 'COBRO',
+      'payu/banks': 'COBRO',
+      'payu/payment-methods': 'COBRO',
+      'paypal/create-order': 'COBRO',
+      'paypal/capture-order': 'COBRO',
+      'stripe/create-payment': 'COBRO',
+      'stripe/checkout-session': 'COBRO',
+      'wompi/create-transaction': 'COBRO',
+      'wompi/institutions': 'COBRO',
+      'meta/send-event': 'EDITAR',
+      'tiktok/send-event': 'EDITAR',
+      'google-ads/upload-audience': 'EDITAR',
+      'google-ads/upload-conversion': 'EDITAR',
+      'google-ads/campaigns': 'VER',
+      'sendgrid/bounces': 'VER',
+      'sendgrid/stats': 'VER',
+      'sendgrid/templates': 'VER',
+      'mercadopago/health-check': 'admin',
+      'payu/health-check': 'admin',
+      'paypal/health-check': 'admin',
+      'stripe/health-check': 'admin',
+      'wompi/health-check': 'admin',
+      'sendgrid/health-check': 'admin',
+      'meta/health-check': 'admin',
+      'tiktok/health-check': 'admin',
+      'google-ads/health-check': 'admin',
+      'tripadvisor/health-check': 'admin',
+      'webhook-health': 'admin',
+      'credential-rotation': 'admin',
+      'whatsapp/oauth/callback': 'admin',
+    };
+    const fallos: string[] = [];
+    for (const [ruta, permiso] of Object.entries(RUTAS)) {
+      const src = stripAllComments(readFile(path.join(INTEGRACIONES, ruta, 'route.ts')));
+      if (!/\breadOrgBody(?:<[^(]*>)?\s*\(\s*ctx\s*,\s*request\b/.test(src)) fallos.push(`${ruta}: no llama a readOrgBody(ctx, request)`);
+      if (permiso === 'admin') {
+        if (!/\}\s*,\s*\{\s*admin:\s*true\s*\}\s*\)\s*;/.test(src)) fallos.push(`${ruta}: no exige administración`);
+      } else if (!new RegExp(`\\bexigirPermiso\\(\\s*ctx\\s*,\\s*PERMISO_(?:INTEGRACIONES_)?${permiso}\\b`).test(src)) {
+        fallos.push(`${ruta}: no exige el permiso ${permiso}`);
+      }
+      // Si la ruta recibe una conexión, la verifica contra la organización.
+      if (/connection_?[iI]d/.test(src) && ruta !== 'webhook-health' && ruta !== 'credential-rotation' && ruta !== 'whatsapp/oauth/callback') {
+        if (!/\bconexionDelProveedor\s*\(/.test(src)) fallos.push(`${ruta}: no verifica la conexión con conexionDelProveedor`);
+      }
+      // Llaves del body: solo en la prueba de credenciales SIN guardar de un health-check.
+      if (permiso !== 'admin' && /\b(body|payload)\??\.(secret_key|access_token|api_key|api_login|client_id|client_secret|apiKey|is_sandbox|is_test|organization_id|organizationId)\b/.test(src)) {
+        fallos.push(`${ruta}: lee llaves, ambiente u organización del body`);
+      }
+      // Las credenciales se leen con el cliente de servidor, no con el de navegador (anónimo en el servidor).
+      if (/\.getCredentials\(\s*[\w.]+\s*\)/.test(src)) fallos.push(`${ruta}: getCredentials sin cliente de servidor`);
+    }
+    expect(fallos).toEqual([]);
+  });
+
+  test('webhooks de proveedores: fail-closed (401) y sin token de suscripción por defecto', () => {
+    const WEBHOOKS = ['mercadopago', 'payu', 'paypal', 'stripe', 'wompi', 'meta', 'tiktok', 'bold', 'breb', 'bancolombia', 'redeban'];
+    const fallos: string[] = [];
+    for (const w of WEBHOOKS) {
+      const src = stripAllComments(readFile(path.join(INTEGRACIONES, w, 'webhook', 'route.ts')));
+      if (!/status:\s*401\b/.test(src)) fallos.push(`${w}: no responde 401 sin firma válida`);
+    }
+    for (const file of rutas()) {
+      const src = stripAllComments(readFile(file));
+      if (/process\.env\.\w*VERIFY_TOKEN\w*\s*\|\|\s*['"`]/.test(src)) fallos.push(`${rel(file)}: token de verificación por defecto`);
+    }
+    const inbound = stripAllComments(readFile(path.join(INTEGRACIONES, 'whatsapp', 'qr', 'inbound', 'route.ts')));
+    if (/if\s*\(\s*expectedKey\s*\)/.test(inbound)) fallos.push('whatsapp/qr/inbound: la apikey de Evolution vuelve a ser opcional');
+    expect(fallos).toEqual([]);
+  });
+
+  test('webhook de Wompi: conexión por la firma, sesión QR por conexión + referencia y columnas reales', () => {
+    const src = stripAllComments(readFile(path.join(INTEGRACIONES, 'wompi', 'webhook', 'route.ts')));
+    expect(src).toMatch(/\bverificarChecksumWompi\s*\(/);
+    expect(src).toMatch(/\bgetQrSessionForWebhook\s*\(\s*f\.id\s*,\s*reference\s*\)/);
+    expect(src).toMatch(/\bconfirmQrPayment\s*\(/);
+    // `payment_qr_sessions.external_payment_id`, `payments.external_id` y `payments.metadata` no existen.
+    expect(src).not.toMatch(/external_payment_id|\bexternal_id\s*:|\bmetadata\s*:/);
+    // La organización no se deduce de la referencia (`GO-<org>-…`; las del POS son `POS-<ts>-<org>`).
+    expect(src).not.toMatch(/reference\w*\.split\(/i);
+  });
+});
+
+/**
+ * 28. Documentos impresos y exportados: ni pesos fijos ni el formateador que
+ * los supone. Regla del dueño (2026-09-23): los montos van en la moneda del
+ * documento o, en su defecto, en la moneda base de la organización
+ * (`src/lib/services/monedaOrganizacion.ts`), con el locale de su país
+ * (`src/lib/utils/moneda.ts`). Un literal 'COP' en un generador es exactamente
+ * el bug que se corrigió: una organización mexicana recibía facturas en pesos
+ * colombianos.
+ */
+describe('28. Generadores de documentos: sin moneda fija', () => {
+  const PRINT_AGENT = path.join(REPO_ROOT, 'print-agent', 'src', 'printing');
+
+  /** Generadores de PDF, tickets, recibos, guías, estados de cuenta y exportaciones. */
+  const GENERADORES = [
+    'lib/services/pdfService.ts',
+    'app/api/facturas-venta/[id]/pdf/route.ts',
+    // Motor único de documentos (fase 2). `app/api/pdf/invoice` se borró: HTML
+    // armado con el body y ningún llamador.
+    'app/api/documentos/[tipo]/[id]/route.ts',
+    'lib/documents/formato.ts',
+    'lib/documents/render/carta.ts',
+    'lib/documents/render/comun.ts',
+    'lib/documents/render/termico.ts',
+    'lib/documents/server/base.ts',
+    'lib/documents/server/cargadores/ventas.ts',
+    'lib/documents/server/cargadores/cotizacion.ts',
+    'lib/documents/server/cargadores/compras.ts',
+    'lib/documents/server/cargadores/pagos.ts',
+    'lib/documents/server/cargadores/estadoCuenta.ts',
+    'lib/documents/server/cargadores/estadoCuentaProveedor.ts',
+    'lib/documents/server/cargadores/estadoCuentaProveedor.ts',
+    'lib/documents/server/cargadores/cajas.ts',
+    'lib/services/reportes/pdfExportService.ts',
+    'lib/services/inicio/dashboardSectionExport.ts',
+    'lib/services/printService.ts',
+    'lib/services/printJobsService.ts',
+    'lib/services/mobileEscposAdapter.ts',
+    'lib/services/parkingTicketService.ts',
+    'lib/services/crm/proposalNarrative.ts',
+    'components/parking/sesiones/SessionReceipt.tsx',
+    // `components/pos/cajas/ReportGenerator.tsx` se retiró (2026-09-24): el reporte de caja lo arma
+    // el motor único (`lib/documents/server/cargadores/cajas.ts`, ya en esta lista).
+    'components/pos/cajas/historialCajas.ts',
+    'components/pos/configuracion/impresiones/sampleData.ts',
+    'components/transporte/envios/shipmentLabelPrinter.ts',
+    'components/crm/propuestas/ProposalPrintView.tsx',
+    // `components/finanzas/facturas-venta/id/DetalleFactura.tsx` se retiró (2026-09-28, paso 7 del POS):
+    // el carrito con deuda muestra `facturas-venta/detalle/DetalleFacturaVenta.tsx`, que no genera
+    // documentos en el navegador (los PDFs van por el motor único).
+    'components/finanzas/cotizaciones/id/DetalleCotizacion.tsx',
+    'components/finanzas/facturas-compra/id/DetalleFacturaCompra.tsx',
+    'components/finanzas/cuentas-por-pagar/id/service.ts',
+    // `components/finanzas/cuentas-por-cobrar/id/CuentaPorCobrarDetailPage.tsx` se retiró (2026-09-24):
+    // el detalle nuevo de CxC no genera documentos; el estado de cuenta lo arma el motor único.
+    'components/finanzas/cuentas-por-pagar/id/CuentaPorPagarDetailPage.tsx',
+    'components/finanzas/egresos/EgresoDetalle.tsx',
+    'components/finanzas/ingresos/IngresoDetalle.tsx',
+    'components/finanzas/transferencias/TransferenciaDetalle.tsx',
+    'app/app/parking/sesiones/[id]/page.tsx',
+    'app/app/pos/pedidos-online/page.tsx',
+  ];
+
+  /**
+   * Allow-list de 'COP' literal, cada una con su motivo:
+   * - money.ts (plantillas del agente): tabla de monedas SIN decimales
+   *   (COP, CLP) para cuando el payload no trae `currencyDecimals`. No elige la
+   *   moneda: solo sabe cuántos decimales tiene.
+   * - mobileEscposAdapter.ts: lista de monedas que se escriben con «$» (el único
+   *   símbolo seguro en CP437). Tampoco elige la moneda.
+   */
+  const PERMITIDOS_COP = new Set(['print-agent/printing/money.ts', 'lib/services/mobileEscposAdapter.ts']);
+
+  function archivos(): Array<{ nombre: string; ruta: string }> {
+    const fijos = GENERADORES.map((r) => ({ nombre: r, ruta: path.join(SRC_ROOT, r) }));
+    const secciones = walkDir(path.join(SRC_ROOT, 'components', 'inicio', 'sections')).map((f) => ({ nombre: rel(f), ruta: f }));
+    const agente = fs
+      .readdirSync(PRINT_AGENT)
+      .filter((f) => f.endsWith('.ts'))
+      .map((f) => ({ nombre: `print-agent/printing/${f}`, ruta: path.join(PRINT_AGENT, f) }));
+    return [...fijos, ...secciones, ...agente];
+  }
+
+  test('la lista de generadores existe (si se mueve un archivo, se actualiza aquí)', () => {
+    const faltan = GENERADORES.filter((r) => !fs.existsSync(path.join(SRC_ROOT, r)));
+    expect(faltan).toEqual([]);
+  });
+
+  test("ningún generador cablea 'COP' (salvo la allow-list documentada)", () => {
+    const infracciones: string[] = [];
+    for (const { nombre, ruta } of archivos()) {
+      if (PERMITIDOS_COP.has(nombre)) continue;
+      const codigo = stripAllComments(readFile(ruta));
+      codigo.split('\n').forEach((linea, i) => {
+        if (/['"`]COP['"`]/.test(linea)) infracciones.push(`${nombre}:${i + 1}: ${linea.trim().slice(0, 100)}`);
+      });
+    }
+    expect(infracciones).toEqual([]);
+  });
+
+  test('ningún generador importa formatCurrency de @/utils/Utils (supone COP y es-CO)', () => {
+    const infracciones = archivos()
+      .filter(({ ruta }) => /import\s*\{[^}]*\bformatCurrency\b[^}]*\}\s*from\s*['"]@\/utils\/Utils['"]/.test(readFile(ruta)))
+      .map(({ nombre }) => nombre);
+    expect(infracciones).toEqual([]);
+  });
+
+  test('ningún generador pega un «$» fijo delante de un importe interpolado', () => {
+    // `$${total.toLocaleString()}` supone que la moneda se escribe con «$» y con
+    // separadores colombianos. mobileEscposAdapter lo hace a propósito, solo
+    // para las monedas de MONEDAS_CON_PESO.
+    const infracciones: string[] = [];
+    for (const { nombre, ruta } of archivos()) {
+      if (nombre === 'lib/services/mobileEscposAdapter.ts') continue;
+      stripAllComments(readFile(ruta))
+        .split('\n')
+        .forEach((linea, i) => {
+          if (/\$\$\{[^}]*toLocaleString/.test(linea)) infracciones.push(`${nombre}:${i + 1}`);
+        });
+    }
+    expect(infracciones).toEqual([]);
+  });
+});
+
+/**
+ * 28b. Moneda fija en TODO el código, no solo en los generadores: una escritura
+ * `currency: 'COP'` (pago, factura, empleo…), un respaldo `x || 'COP'`, un
+ * `useState('COP')` de formulario o un `formatCurrency(x, 'COP')` de pantalla
+ * son el mismo bug que el caso 28 (2026-09-24). La moneda sale del documento o
+ * de la organización: `resolveOrgCurrency` / `useMonedaOrganizacion`, y en la
+ * base el trigger `trg_00_moneda_base_por_defecto` rellena la moneda de un
+ * documento creado sin ella.
+ *
+ * Cualquier literal 'COP' fuera de comentarios cuenta. Allow-list por archivo,
+ * cada uno con su motivo; una entrada que ya no tiene el literal hace fallar el
+ * segundo test (la lista no puede crecer en silencio ni quedarse vieja).
+ */
+describe('28b. Sin moneda fija en escrituras ni pantallas', () => {
+  const PERMITIDOS_COP_GLOBAL: Record<string, string> = {
+    // Fuente única y formateo: tablas de país → moneda y de decimales.
+    'lib/services/monedaOrganizacion.ts': 'MONEDA_POR_PAIS (CO → COP), espejo de la función SQL',
+    'lib/utils/moneda.ts': 'SIN_DECIMALES: cuántos decimales tiene la moneda, no cuál es',
+    'lib/hooks/useOrgCurrency.ts': 'marcador inicial mientras llega la respuesta (resuelta = false)',
+    'utils/Utils.ts': 'formatCurrency (deprecado de hecho) conserva su firma; sus usos se vigilan aparte',
+    'lib/services/mobileEscposAdapter.ts': 'MONEDAS_CON_PESO: monedas que se imprimen con «$» en CP437',
+    'lib/ai/agent/tools/documentos.ts': 'sinDecimales (tabla de decimales) y defaults de firma; ctx.currency llega siempre de resolveOrgCurrency',
+    'lib/ai/agent/systemPrompt.ts': 'default de firma; ctx.currency llega siempre de resolveOrgCurrency (ai-assistant/stream y execute-action)',
+
+    // Catálogos y datos de muestra: listan monedas, no eligen la del documento.
+    'lib/services/hrmConfigService.ts': 'catálogo de respaldo de países y monedas (getAvailableCountries/Currencies)',
+    'lib/services/pmsSettingsService.ts': 'catálogo de opciones del selector; el default sale de resolveOrgCurrency',
+    'lib/services/integrations/tripadvisor/tripadvisorConfig.ts': 'tabla de códigos ISO que acepta TripAdvisor',
+    'lib/services/crm/email/variables.ts': 'valor de EJEMPLO que ve el editor de plantillas',
+    'lib/services/crm/email/variablesContext.ts': 'contexto de MUESTRA para previsualizar plantillas',
+
+    // Rieles de pago que solo operan en pesos colombianos: la moneda es la del riel.
+    'lib/services/integrations/qrShared/cobroQrServidor.ts': 'MONEDA_RIELES_QR: Bre-B, Redeban, Bancolombia, Wompi QR y Bold solo cobran en COP (las rutas create-qr/create-link/create-pos-payment la importan)',
+    'app/api/integrations/wompi/create-transaction/route.ts': 'Wompi: solo COP',
+    'lib/services/integrations/bold/boldTypes.ts': 'Bold: solo COP',
+    'lib/services/integrations/wompi/wompiTypes.ts': 'Wompi: solo COP',
+    'lib/services/integrations/redeban/redebanService.ts': 'Redeban: solo COP',
+    'lib/services/integrations/payfac/payoutService.ts': 'dispersiones payfac: solo COP',
+    'app/app/finanzas/payfac/dispersiones/page.tsx': 'dispersiones payfac: solo COP',
+    'app/app/finanzas/metodos-pago/qr-sessions/page.tsx': 'sesiones QR de rieles colombianos',
+    'components/shared/QrPaymentDialog.tsx': 'diálogo de cobro QR (Bold, Bancolombia, Redeban, Bre-B): solo COP',
+    'components/pms/checkout/CheckoutDialog.tsx': 'solo el cobro QR del folio (rieles COP); los importes van en la moneda base',
+    // paymentInitiationService.ts salió de la lista (2026-09-24, compras y CxP F11): el pago a
+    // proveedor ya usa la moneda de la factura o la base de la organización, no 'COP' fijo.
+    'lib/services/integrations/openFinance/openFinanceService.ts': 'moneda que reporta el agregador bancario',
+    'lib/services/integrations/openFinance/balanceService.ts': 'moneda que reporta el agregador bancario',
+    'lib/services/integrations/openFinance/treasuryService.ts': 'moneda de la cuenta del agregador bancario',
+    'app/api/me/plan/route.ts': 'precio del plan del SaaS, que se cobra en COP (price_cop_month/year)',
+
+    // DEUDA conocida (2026-09-24). Cada una con el motivo por el que no se
+    // corrigió en la ronda de moneda. Al corregirla, se borra de aquí (el
+    // segundo test obliga).
+    'components/finanzas/contabilidad/ContabilidadService.ts': 'DEUDA: respaldo COP del asiento; el archivo lo editaba otra sesión',
+    'components/finanzas/contabilidad/ReportesContablesService.ts': 'DEUDA: getExchangeRate trata COP como base; openFinanceYMonedas.test.ts fija ese contrato',
+    'components/pos/CheckoutDialog.tsx': 'DEUDA: respaldo COP del cobro QR/propina; 48 errores de lint previos sin tsc por archivo',
+    'app/api/pos/display/bootstrap/route.ts': 'DEUDA: pantalla del cliente; lee is_base sin la cadena de resolveOrgCurrency',
+    'components/pos-display/logic.ts': 'DEUDA: respaldo de la pantalla del cliente',
+    'lib/pos/display/emitter.ts': 'DEUDA: respaldo de la pantalla del cliente',
+    'lib/pos/display/posDisplay.ts': 'DEUDA: respaldo de la pantalla del cliente',
+    'lib/pos/display/projection.ts': 'DEUDA: respaldo de la pantalla del cliente',
+    'lib/services/integrations/booking/bookingContentService.ts': 'DEUDA: moneda del XML de Booking con respaldo COP',
+    'lib/services/integrations/meta/metaMarketingConfig.ts': 'DEUDA: default de firma; la ruta ya pasa la moneda resuelta',
+    'lib/services/integrations/meta/metaMarketingService.ts': 'DEUDA: defaults de firma; en edición por la sesión de integraciones Meta/TikTok',
+    'lib/services/integrations/tiktok/tiktokMarketingConfig.ts': 'DEUDA: default de firma; la ruta ya pasa la moneda resuelta',
+    'lib/services/integrations/tiktok/tiktokMarketingService.ts': 'DEUDA: defaults de firma; en edición por la sesión de integraciones Meta/TikTok',
+  };
+
+  function codigoSinComentarios(ruta: string): string[] {
+    return stripAllComments(readFile(ruta)).split('\n');
+  }
+
+  const fuentes = () =>
+    walkDir(SRC_ROOT)
+      // Filtro propio: testerR4 (caso 21) prohíbe el helper de exclusión aquí.
+      .filter((f) => !/__tests__|\.test\.|\.spec\./.test(f.replace(/\\/g, '/')));
+
+  test("ningún archivo cablea 'COP' (salvo la allow-list documentada)", () => {
+    const infracciones: string[] = [];
+    for (const f of fuentes()) {
+      const nombre = rel(f);
+      if (PERMITIDOS_COP_GLOBAL[nombre]) continue;
+      codigoSinComentarios(f).forEach((linea, i) => {
+        if (/['"`]COP['"`]/.test(linea)) infracciones.push(`${nombre}:${i + 1}: ${linea.trim().slice(0, 110)}`);
+      });
+    }
+    expect(infracciones).toEqual([]);
+  });
+
+  test('la allow-list no tiene entradas viejas', () => {
+    const viejas = Object.keys(PERMITIDOS_COP_GLOBAL).filter((nombre) => {
+      const ruta = path.join(SRC_ROOT, nombre);
+      return !fs.existsSync(ruta) || !codigoSinComentarios(ruta).some((l) => /['"`]COP['"`]/.test(l));
+    });
+    expect(viejas).toEqual([]);
+  });
+});
+
+/**
+ * 29. Sesión verificada (GO-sec, auditoría 2026-09-24).
+ *
+ * El middleware aceptaba la cookie de sesión con el JWT DECODIFICADO sin
+ * verificar la firma (`decodeJwt` de jose): una cookie inventada con cualquier
+ * `sub` pasaba la protección de rutas. Ahora la sesión se verifica en
+ * `src/lib/auth/verificarTokenAcceso.ts` (secreto local, JWKS o Auth) y este
+ * guardarraíl impide volver atrás:
+ *  - ni el middleware ni ninguna ruta (`src/app/**`) decodifica un JWT sin
+ *    verificar (`decodeJwt`, `jwt-decode`, `jwtDecode`, `split('.')[1]`);
+ *  - el middleware no importa nada de `jose`: verifica con `verificarTokenAcceso`;
+ *  - dentro del verificador, la lectura sin verificar está en UN solo helper y
+ *    se usa en los DOS sitios documentados (tras confirmar con Auth y la
+ *    excepción del escritorio). Una tercera llamada es una regresión.
+ */
+describe('29. Sesión verificada: nada decodifica un JWT sin verificar en el middleware ni en rutas', () => {
+  const DECODIFICAR_SIN_VERIFICAR_RE = /\bdecodeJwt\s*\(|\bjwtDecode\b|['"]jwt-decode['"]|\.split\(\s*['"]\.['"]\s*\)\s*\[\s*1\s*\]/;
+  const MIDDLEWARE = path.join(SRC_ROOT, 'middleware.ts');
+  const VERIFICADOR = path.join(SRC_ROOT, 'lib', 'auth', 'verificarTokenAcceso.ts');
+
+  test('el middleware verifica con verificarTokenAcceso y no importa jose', () => {
+    const src = stripAllComments(readFile(MIDDLEWARE));
+    expect(src).not.toMatch(DECODIFICAR_SIN_VERIFICAR_RE);
+    expect(src).not.toMatch(/from\s+['"]jose['"]/);
+    expect(src).toMatch(/from\s+['"]@\/lib\/auth\/verificarTokenAcceso['"]/);
+    expect(src).toMatch(/await\s+verificarTokenAcceso\s*\(/);
+  });
+
+  test('ninguna ruta ni página de src/app decodifica un JWT sin verificar', () => {
+    const infracciones = walkDir(path.join(SRC_ROOT, 'app'))
+      .filter((f) => !f.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((f) => DECODIFICAR_SIN_VERIFICAR_RE.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(infracciones).toEqual([]);
+  });
+
+  test('en el verificador, la lectura sin verificar vive en un helper y solo en sus dos usos documentados', () => {
+    const src = stripAllComments(readFile(VERIFICADOR));
+    expect((src.match(/\bdecodeJwt\s*\(/g) ?? []).length).toBe(1);
+    expect(src).toMatch(/function leerPayloadSinVerificar\([^)]*\)[^{]*\{\s*try\s*\{\s*return decodeJwt\(/);
+    // 1 definición + 2 usos: verificarConServidorAuth y sesionHeredadaSoloEscritorio.
+    expect((src.match(/\bleerPayloadSinVerificar\s*\(/g) ?? []).length).toBe(3);
+    // La verificación local exige el algoritmo: nada de aceptar el `alg` que traiga el token.
+    expect(src).toMatch(/algorithms:\s*\[\s*'HS256'\s*\]/);
+  });
+
+  test('la excepción del escritorio exige la marca del servidor embebido y localhost', () => {
+    const src = stripAllComments(readFile(VERIFICADOR));
+    const cuerpo = /export function esServidorEmbebidoEscritorio[\s\S]*?\n\}/.exec(src)?.[0] ?? '';
+    expect(cuerpo).toMatch(/GOADMIN_DESKTOP_EMBEDDED\s*!==\s*'1'/);
+    expect(cuerpo).toMatch(/localhost/);
+  });
+});
+
+/**
+ * 30. Cola de facturación electrónica: el navegador solo lee (GO-sec, 2026-09-24).
+ *
+ * La RLS de `electronic_invoicing_jobs`/`_events` dejaba escribir a cualquier
+ * miembro (crear jobs, cambiar estados, quitar una retención) y el navegador
+ * escribía ahí. Ahora es de solo lectura (migración 20260925120000) y las
+ * escrituras son del servidor: la cola (`colaFacturacion.server.ts`, service
+ * role), las funciones SECURITY DEFINER y `/api/factus/jobs`, que reintenta o
+ * cancela con `fn_einvoicing_accion_manual` tras `withOrg` + permiso.
+ */
+describe('30. Cola de facturación electrónica: nada fuera del servidor la escribe', () => {
+  const ESCRITURA_COLA_RE = /\.from\(\s*['"]electronic_invoicing_(?:jobs|events)['"]\s*\)\s*\.(?:insert|update|upsert|delete)\s*\(/;
+
+  test('ningún archivo de cliente (fuera de src/app/api y *.server.ts) escribe la cola', () => {
+    const infracciones = walkDir(SRC_ROOT)
+      .filter((f) => !f.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((f) => !f.includes(`${path.sep}app${path.sep}api${path.sep}`))
+      .filter((f) => !/\.server\.ts$/.test(f))
+      .filter((f) => ESCRITURA_COLA_RE.test(stripAllComments(readFile(f)).replace(/\s+/g, ' ')))
+      .map(rel);
+    expect(infracciones).toEqual([]);
+  });
+
+  test('/api/factus/jobs escribe solo con fn_einvoicing_accion_manual, no con la sesión del usuario', () => {
+    const src = stripAllComments(readFile(path.join(SRC_ROOT, 'app', 'api', 'factus', 'jobs', 'route.ts')));
+    expect(src.replace(/\s+/g, ' ')).not.toMatch(ESCRITURA_COLA_RE);
+    expect(src).toMatch(/rpc\(\s*'fn_einvoicing_accion_manual'/);
+    expect(src).toMatch(/p_organization_id:\s*ctx\.organizationId/);
+    expect(src).toMatch(/p_actor:\s*ctx\.userId/);
+  });
+
+  test('la migración deja la RLS de la cola en solo lectura y la función solo para service_role', () => {
+    const sql = readFile(path.join(REPO_ROOT, 'supabase', 'migrations', '20260925120000_einvoicing_cola_escritura_solo_servidor.sql'));
+    expect(sql).toMatch(/create policy electronic_invoicing_jobs_select_miembros[\s\S]*?for select[\s\S]*?to authenticated/);
+    expect(sql).toMatch(/create policy electronic_invoicing_events_select_miembros[\s\S]*?for select[\s\S]*?to authenticated/);
+    expect(sql).toMatch(/drop policy if exists electronic_invoicing_jobs_org_isolation/);
+    expect(sql).toMatch(/revoke insert, update, delete, truncate, references, trigger on public\.electronic_invoicing_jobs from anon, authenticated/);
+    expect(sql).toMatch(/revoke all on function public\.fn_einvoicing_accion_manual\(uuid, integer, text, uuid\) from public, anon, authenticated/);
+    // Ninguna sentencia de la migración quita una retención (los comentarios sí la mencionan).
+    expect(sql.replace(/--.*$/gm, '')).not.toMatch(/hold_reason\s*=\s*null/);
+    expect(fs.existsSync(path.join(REPO_ROOT, 'supabase', 'rollbacks', '20260925120000_einvoicing_cola_escritura_solo_servidor_rollback.sql'))).toBe(true);
+  });
+});
+
+/**
+ * 31. Toda ruta de `src/app/api/**` pasa por una puerta del servidor (GO-sec,
+ * auditoría 2026-09-24).
+ *
+ * El middleware no basta: excluye prefijos enteros (`/api/stripe/`, webhooks,
+ * crons…) y cada exclusión es una ruta que se defiende sola o no se defiende.
+ * Así cayeron `stripe/transfer-payment-method` (mover las tarjetas de
+ * cualquier cliente de Stripe), `stripe/confirm-plan-change` (cambiar el plan
+ * de otra organización), `super-admin-cleanup` (borrar membresías ajenas),
+ * `sessions` (sesión sin verificar) y, detrás del middleware pero sin mirar la
+ * organización, `organization/members` (meterse de admin en cualquier
+ * organización) y `subscriptions/billing-portal`.
+ *
+ * Cada handler exportado (GET/POST/PUT/PATCH/DELETE), directamente o por un
+ * helper local (transitivo), llama a una puerta:
+ *   - sesión: `withOrg`, `getServerOrgContext(For)`, `contextoDeFacturacion`,
+ *     `requireSessionUser`, `withWhatsAppRoute`, o `getServerUserClient()` +
+ *     `.auth.getUser()` (verificado por Auth; NO `createClient` sin cookies,
+ *     que es exactamente la «sesión» falsa que tenía `create-subscription`);
+ *   - plataforma: `withPlatformAdmin`, `requirePlatformAdmin`;
+ *   - cron / servidor a servidor: `withCron`, `verifyCronSecret`,
+ *     `verifyWebOrdersSecret`;
+ *   - firma: `constructEvent`, `constructWebhookEvent`, `verifyTwilio*`,
+ *     `verifyMetaSignature`, `verifyResendWebhook`, `safeEqual`;
+ *   - pantalla del POS: `authenticateDisplayRequest`, `resolveDisplayActor`,
+ *     `requireDisplayToken`; feed de catálogo: `validateFeedToken`.
+ * O no lee nada de la petición y responde 401 (`CERRADO_SIN_ENTRADA_RE`).
+ *
+ * `integrations/**` queda fuera: lo vigila el caso 27b (zona de la sesión de
+ * integraciones, con sus propias puertas).
+ *
+ * `SIN_PUERTA` es la allow-list documentada: rutas públicas POR DISEÑO o que
+ * verifican dentro de un servicio. Si una entrada gana puerta o desaparece, el
+ * segundo test pide quitarla. Una reexportación de handler (`export { POST }
+ * from`) esconde el cuerpo: solo se admite en la allow-list.
+ */
+describe('31. Toda ruta de src/app/api pasa por una puerta del servidor', () => {
+  const API = path.join(SRC_ROOT, 'app', 'api');
+  const INTEGRACIONES = path.join(API, 'integrations');
+  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|contextoDeFacturacion|requireSessionUser|withWhatsAppRoute|withPlatformAdmin|requirePlatformAdmin|withCron|verifyCronSecret|verifyWebOrdersSecret|constructEvent|constructWebhookEvent|verifyTwilioWebhook|verifyTwilioRequest|verifyTwilioUrlSignature|verifyMetaSignature|verifyResendWebhook|safeEqual|authenticateDisplayRequest|resolveDisplayActor|requireDisplayToken|validateFeedToken)\s*\(/;
+  const SESION_USUARIO_RE = /\bgetServerUserClient\s*\(\s*\)[\s\S]*?\.auth\.getUser\s*\(/;
+  const CERRADO_SIN_ENTRADA_RE = /^export\s+(?:async\s+)?function\s+(?:GET|POST|PUT|PATCH|DELETE)\s*\(\s*\)[\s\S]*status:\s*401\b/;
+  const HANDLER_RE = /^export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE)\b/;
+  const REEXPORT_RE = /^export\s*\{[^}]*\b(GET|POST|PUT|PATCH|DELETE)\b[^}]*\}\s*from\s*['"][^'"]+['"]/m;
+  const TOP_RE = /^(export\s|async function |function |const |let )/;
+
+  /** `ruta MÉTODO` (o `ruta REEXPORT`) → por qué no necesita puerta en el handler. */
+  const SIN_PUERTA = new Map<string, string>([
+    ['app/api/auth/accept-invitation/route.ts POST', 'pública: crea la cuenta del invitado; valida el código con validate_invitation_by_code y solo cuentas nuevas/huérfanas (estadoCuentaInvitacion)'],
+    ['app/api/auth/check-email/route.ts POST', 'pública para el registro (aún no hay cuenta); límite por IP'],
+    ['app/api/auth/invite/context/route.ts GET', 'pública: se abre desde el correo con el código; límite por IP'],
+    ['app/api/auth/invite/resend/route.ts POST', 'pública: reenvía el enlace validando contra invitations; límite por IP y por correo'],
+    ['app/api/auth/native-callback/route.ts GET', 'puente OAuth de la app móvil: solo redirige al esquema de la app, no lee ni escribe datos'],
+    ['app/api/coupons/validate/route.ts POST', 'detrás del middleware (sesión verificada); solo consulta el catálogo de cupones de la plataforma, sin datos de un tenant'],
+    ['app/api/crm/contracts/webhook/route.ts REEXPORT', 'reexporta el POST de crm/webhooks/documenso (firma verificada allí)'],
+    ['app/api/crm/webhooks/documenso/route.ts POST', 'la firma se verifica dentro de processDocumensoWebhook (contractService, fail-closed)'],
+    ['app/api/crm/webhooks/stripe/route.ts POST', 'la firma se verifica dentro de processStripeWebhook (stripePaymentLinkService, constructEvent)'],
+    ['app/api/csrf/route.ts GET', 'emite el token CSRF del navegador; no lee ni devuelve datos'],
+    ['app/api/email/webhook/route.ts POST', 'verifyResendWebhook dentro de crm/email/webhookService (caso 7)'],
+    ['app/api/modules/public/route.ts GET', 'catálogo público de módulos para el registro; sin datos de un tenant'],
+    ['app/api/pms/ical/[token]/route.ts GET', 'feed iCal público: el token secreto (≥ 32 caracteres) de la conexión es la credencial'],
+    ['app/api/pos/display/pair/route.ts POST', 'canje del código de emparejamiento de un solo uso con límite de intentos (caso 5, pantalla del POS)'],
+    ['app/api/pricing/enterprise/route.ts GET', 'precios públicos del plan Enterprise; sin datos de un tenant'],
+    ['app/api/stripe/setup-intent/route.ts POST', 'paso de tarjeta del alta, sin cuenta aún: siempre un cliente de Stripe nuevo de alta (clienteDeAlta.ts) y límite por IP'],
+    ['app/api/stripe/setup-intent/route.ts GET', 'solo SetupIntents del alta cuyo cliente sigue pendiente (esClienteDeAltaPendiente); límite por IP'],
+    ['app/api/super-admin-access/route.ts POST', 'canje de un token uuid de un solo uso (atómico, 5 min) emitido por go-admin-super para un platform_admin activo'],
+    ['app/api/webhooks/facebook/[channelId]/route.ts POST', 'firma X-Hub-Signature-256 obligatoria con metaMessagingService.verifySignature (401 sin secreto o con firma mala); además el middleware la cubre'],
+    ['app/api/webhooks/instagram/[channelId]/route.ts POST', 'ídem Facebook'],
+  ]);
+
+  function bloques(content: string): Array<{ nombre: string; metodo: string | null; texto: string }> {
+    const lineas = content.split(/\r?\n/);
+    const inicios: number[] = [];
+    lineas.forEach((l, i) => {
+      if (TOP_RE.test(l)) inicios.push(i);
+    });
+    return inicios.map((ini, k) => {
+      const fin = k + 1 < inicios.length ? inicios[k + 1] : lineas.length;
+      const cabeza = lineas[ini];
+      return {
+        nombre: /(?:function|const|let)\s+(\w+)/.exec(cabeza)?.[1] ?? '',
+        metodo: HANDLER_RE.exec(cabeza)?.[1] ?? null,
+        texto: lineas.slice(ini, fin).join('\n'),
+      };
+    });
+  }
+
+  const tienePuerta = (texto: string) => PUERTA_RE.test(texto) || SESION_USUARIO_RE.test(texto);
+
+  /** Handlers sin puerta (`ruta MÉTODO`) de un archivo ya sin comentarios. */
+  function sinPuertaEn(relPath: string, content: string): string[] {
+    const todos = bloques(content);
+    const helpers = todos.filter((b) => !b.metodo && b.nombre);
+    const conPuerta = helpers.filter((b) => tienePuerta(b.texto)).map((b) => b.nombre);
+    for (let cambio = true; cambio; ) {
+      cambio = false;
+      for (const b of helpers) {
+        if (conPuerta.includes(b.nombre)) continue;
+        const cuerpo = b.texto.replace(/^[^=({]*/, '');
+        if (conPuerta.some((n) => new RegExp(`\\b${n}\\s*\\(`).test(cuerpo))) {
+          conPuerta.push(b.nombre);
+          cambio = true;
+        }
+      }
+    }
+    const fallos: string[] = [];
+    for (const h of todos.filter((b) => b.metodo)) {
+      const directo = tienePuerta(h.texto) || CERRADO_SIN_ENTRADA_RE.test(h.texto);
+      const porHelper = conPuerta.some((n) => new RegExp(`\\b${n}\\b`).test(h.texto.replace(/^[^=({]*/, '')));
+      if (!directo && !porHelper) fallos.push(`${relPath} ${h.metodo}`);
+    }
+    if (REEXPORT_RE.test(content)) fallos.push(`${relPath} REEXPORT`);
+    return fallos;
+  }
+
+  let sinPuerta: string[] = [];
+  beforeAll(() => {
+    sinPuerta = walkDir(API)
+      // Sin el helper de exclusión: el tester r4 exige que nada después del
+      // caso 21 lo llame. Los tests viven en __tests__ y no se llaman route.ts.
+      .filter((f) => /route\.ts$/.test(f) && !f.split(path.sep).includes('__tests__') && !f.startsWith(INTEGRACIONES + path.sep))
+      .flatMap((f) => {
+        try {
+          return sinPuertaEn(rel(f), stripAllComments(readFile(f)));
+        } catch (err) {
+          // Archivo transitorio de otra sesión: saltar, no caer.
+          if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
+          throw err;
+        }
+      });
+  });
+
+  test('cada handler tiene sesión, plataforma, cron, firma o está en la allow-list documentada', () => {
+    const ofensores = sinPuerta.filter((k) => !SIN_PUERTA.has(k)).sort();
+    if (ofensores.length > 0) console.error('handlers sin puerta del servidor:\n' + ofensores.join('\n'));
+    expect(ofensores).toEqual([]);
+  });
+
+  test('la allow-list no tiene entradas viejas (ya con puerta o borradas)', () => {
+    const viejas = [...SIN_PUERTA.keys()].filter((k) => !sinPuerta.includes(k)).sort();
+    expect(viejas).toEqual([]);
+  });
+
+  test('el detector reconoce la sesión falsa (cliente sin cookies) y la puerta por helper local', () => {
+    const falsa = [
+      "export async function POST(request: Request) {",
+      "  const supabaseAuth = createClient(url, anon);",
+      "  const { data: { user } } = await supabaseAuth.auth.getUser();",
+      "  return Response.json({ ok: !!user });",
+      "}",
+    ].join('\n');
+    expect(sinPuertaEn('x/route.ts', falsa)).toEqual(['x/route.ts POST']);
+    const porHelper = [
+      "async function ctxDe(req: Request) {",
+      "  return getServerOrgContext(req);",
+      "}",
+      "export async function GET(request: Request) {",
+      "  const ctx = await ctxDe(request);",
+      "  return Response.json(ctx.organizationId);",
+      "}",
+    ].join('\n');
+    expect(sinPuertaEn('y/route.ts', porHelper)).toEqual([]);
+    expect(sinPuertaEn('z/route.ts', "export { POST } from '../otra/route';")).toEqual(['z/route.ts REEXPORT']);
+  });
+
+  test('el middleware ya no excluye rutas borradas ni super-admin-cleanup, y los handlers borrados no vuelven', () => {
+    const mw = readFile(path.join(SRC_ROOT, 'middleware.ts'));
+    const skip = /function shouldSkipRoute[\s\S]*?const skipPatterns = \[([\s\S]*?)\];/.exec(stripAllComments(mw))?.[1] ?? '';
+    for (const prefijo of ["'/api/test'", "'/api/sessions/'", "'/api/super-admin-cleanup'"]) {
+      expect(skip).not.toContain(prefijo);
+    }
+    const matcher = /matcher:\s*\[[\s\S]*?'([^']+)'/.exec(mw)?.[1] ?? '';
+    for (const token of ['api/test|', 'api/sessions|', 'api/super-admin-cleanup|']) expect(matcher).not.toContain(token);
+    for (const muerta of [
+      'stripe/transfer-payment-method',
+      'sessions',
+      'sessions/activity',
+      'test-geolocation',
+      'organization/members',
+      'categorias/reglas',
+      'domains/check-availability',
+    ]) {
+      expect(fs.existsSync(path.join(API, ...muerta.split('/'), 'route.ts'))).toBe(false);
+    }
+  });
+
+  test('confirm-plan-change: organización de la sesión = metadata del Checkout, nunca del body; una sola implementación con el webhook', () => {
+    const ruta = stripAllComments(readFile(path.join(API, 'stripe', 'confirm-plan-change', 'route.ts')));
+    expect(ruta).toMatch(/getServerOrgContext\(\s*request\s*\)/);
+    expect(ruta).toMatch(/exigirPermisoDeFacturacion\(/);
+    expect(ruta).toMatch(/readOrgBody/);
+    expect(ruta).toMatch(/organizacionDelCheckout\(\s*checkout\s*\)\s*;[\s\S]*!==\s*ctx\.organizationId/);
+    expect(ruta).not.toMatch(/\|\|\s*(?:parseInt\()?\s*metadata/);
+    expect(ruta).toMatch(/aplicarCheckoutDePlan\(/);
+    const webhook = stripAllComments(readFile(path.join(API, 'stripe', 'webhook', 'route.ts')));
+    expect(webhook).toMatch(/aplicarCheckoutDePlan\(/);
+    expect(webhook).toMatch(/constructWebhookEvent\(/);
+  });
+});
+
+// ===========================================================================
+// 32. GO-sec 2026-09-28 — La clave de OpenExchangeRates es de servidor y el
+//     catálogo GLOBAL de tasas (`currency_rates`) solo lo escribe la plataforma.
+//
+// La clave con prefijo público iba en el bundle del navegador y en el
+// instalador del escritorio, y con ella el navegador escribía el catálogo que
+// leen todas las organizaciones (RLS abierta a cualquier admin de cualquier
+// organización). Migración 20260928150534_gosec_catalogo_tasas_solo_plataforma.
+describe('32. Tasas de cambio: clave de servidor y catálogo solo de plataforma', () => {
+  // Partida en dos para que este archivo no se delate a sí mismo.
+  const PROHIBIDA = 'NEXT_PUBLIC_' + 'OPENEXCHANGERATES';
+  const SERVIDOR = path.join(SRC_ROOT, 'lib', 'services', 'tasasCambio.server.ts');
+  // Filtro propio, no el helper común: testerR4.f0sec.test.ts exige que desde el
+  // caso 21 hasta el final de este archivo no se use ese helper.
+  const esPrueba = (f: string) => /[\\/]__tests__[\\/]|\.test\.|\.spec\./.test(f);
+
+  test('nadie usa la clave pública de OpenExchangeRates (src, escritorio, .env.example)', () => {
+    const archivos = [
+      ...walkDir(SRC_ROOT).filter((f) => !f.replace(/\\/g, '/').endsWith('__tests__/guardrails.test.ts')),
+      path.join(REPO_ROOT, 'electron', 'scripts', 'build-web.js'),
+      path.join(REPO_ROOT, '.env.example'),
+    ];
+    const conClave = archivos.filter((f) => fs.existsSync(f) && readFile(f).includes(PROHIBIDA)).map(rel);
+    expect(conClave).toEqual([]);
+    expect(readFile(path.join(REPO_ROOT, '.env.example'))).toMatch(/^OPENEXCHANGERATES_API_KEY=/m);
+  });
+
+  test('solo el módulo de servidor habla con openexchangerates.org, y no se puede cargar en el navegador', () => {
+    const llaman = walkDir(SRC_ROOT)
+      .filter((f) => !esPrueba(f))
+      .filter((f) => /https:\/\/openexchangerates\.org/.test(readFile(f)))
+      .map(rel);
+    expect(llaman).toEqual(['lib/services/tasasCambio.server.ts']);
+    const servidor = readFile(SERVIDOR);
+    expect(servidor).toMatch(/process\.env\.OPENEXCHANGERATES_API_KEY/);
+    expect(servidor).toMatch(/assertServerOnly\(\)/);
+  });
+
+  test('ningún archivo de cliente escribe currency_rates', () => {
+    // `guardarTasasDeCambio` (openexchangerates.ts) recibe el cliente del
+    // servidor: el cron y la ruta de plataforma le pasan service role. Con la
+    // RLS cerrada, desde el navegador fallaría igual.
+    const PERMITIDOS = new Set(['lib/services/openexchangerates.ts']);
+    const escriben = walkDir(SRC_ROOT)
+      .filter((f) => !esPrueba(f) && !/[\\/]app[\\/]api[\\/]/.test(f) && !/\.server\.ts$/.test(f))
+      .filter((f) => /from\(\s*['"]currency_rates['"]\s*\)[\s\S]{0,200}?\.(insert|upsert|update|delete)\(/.test(stripAllComments(readFile(f))))
+      .map(rel)
+      .filter((r) => !PERMITIDOS.has(r));
+    expect(escriben).toEqual([]);
+  });
+
+  test('el cron y la ruta manual escriben con service role detrás de su puerta', () => {
+    const cron = stripAllComments(readFile(path.join(SRC_ROOT, 'app', 'api', 'cron', 'update-exchange-rates', 'route.ts')));
+    expect(cron.match(/verifyCronSecret\(request\)/g)).toHaveLength(2);
+    expect(cron.match(/actualizarTasasDeCambioGlobal\(getServiceClient\(\)\)/g)).toHaveLength(2);
+    expect(cron).not.toMatch(/actualizarTasasDeCambioGlobal\(\s*\)/);
+    const manual = stripAllComments(readFile(path.join(SRC_ROOT, 'app', 'api', 'finanzas', 'tasas-cambio', 'sincronizar', 'route.ts')));
+    expect(manual).toMatch(/export const POST = withPlatformAdmin\(/);
+    expect(manual).toMatch(/getServiceClient\(\)/);
+    // Las pantallas piden la sincronización al servidor, no la hacen.
+    for (const pantalla of ['ExchangeRatesTable.tsx', 'ExchangeRatesChart.tsx', 'ExchangeRateHistory.tsx']) {
+      const src = readFile(path.join(SRC_ROOT, 'components', 'finanzas', 'monedas', pantalla));
+      expect(src).toMatch(/sincronizarTasasDeCambio/);
+      expect(src).not.toMatch(/actualizarTasasDeCambioGlobal|obtenerTasasDeCambio|llenarFechasFaltantesConDatosReales/);
+    }
+  });
+
+  test('la migración quita las políticas de escritura y el EXECUTE de las funciones del catálogo', () => {
+    const base = '20260928150534_gosec_catalogo_tasas_solo_plataforma';
+    const sql = readFile(path.join(REPO_ROOT, 'supabase', 'migrations', `${base}.sql`));
+    expect(fs.existsSync(path.join(REPO_ROOT, 'supabase', 'rollbacks', `${base}_rollback.sql`))).toBe(true);
+    expect(sql).toMatch(/drop policy if exists currency_rates_insert_policy/);
+    expect(sql).toMatch(/drop policy if exists currency_rates_update_policy/);
+    expect(sql).toMatch(/revoke insert, update, delete, truncate on table public\.currency_rates from anon, authenticated/);
+    expect(sql).toMatch(/revoke all on function %s from public, anon, authenticated/);
+    for (const f of ['update_global_exchange_rates', 'insert_fallback_rates', 'fill_missing_currency_dates', 'save_global_exchange_rates', 'update_exchange_rates(integer)']) {
+      expect(sql).toContain(f);
+    }
   });
 });

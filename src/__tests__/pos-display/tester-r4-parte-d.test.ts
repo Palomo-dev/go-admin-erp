@@ -391,6 +391,7 @@ describe('estático · el indicador y el hook usan reason', () => {
   });
 
   it('el hook pasa el entorno (getPosDisplayEnvironment) al criterio de presencia', () => {
-    expect(hook).toMatch(/readDisplayPresence\(getPosDisplayEmitter\(\), Date\.now\(\), STALE_AFTER_MS, getPosDisplayEnvironment\(\)\)/);
+    // F3-C ronda 2: una sola lectura (readDisplayPresenceView) con el umbral por origen.
+    expect(hook).toMatch(/readDisplayPresenceView\(getPosDisplayEmitter\(\), Date\.now\(\), DEFAULT_STALE_BY_ORIGIN, getPosDisplayEnvironment\(\)\)/);
   });
 });

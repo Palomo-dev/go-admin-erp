@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { formatCurrency, cn } from '@/utils/Utils';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import type { Product, ProductToAdd, SelectedProductModifier } from './types';
 import { POSService } from '@/lib/services/posService';
+import { estacionEfectiva } from '@/lib/pos/estacionEfectiva';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { VariantSelectorDialog } from '@/components/pos/VariantSelectorDialog';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -56,6 +58,7 @@ export function AddProductDialog({
   selectedRoom,
   includedProductIds,
 }: AddProductDialogProps) {
+  const tNotas = useTranslations('posNotasLinea');
   const [searchTerm, setSearchTerm] = useState('');
   const [chargeType, setChargeType] = useState<'room_charge' | 'direct_payment'>('room_charge');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -158,10 +161,23 @@ export function AddProductDialog({
 
   // Manejar selección de variante (y sus modificadores) desde el diálogo
   const handleVariantSelect = (variant: any, modifiers: SelectedProductModifier[] = []) => {
-    // La variante hereda la estación del producto padre (o la categoría de este) si no tiene una propia
-    const inheritedStation = variant.station || selectedParentProduct?.station || selectedParentProduct?.categories?.station || null;
+    // Propia de la variante → propia del padre → la de la categoría (fn_estacion_efectiva).
+    const inheritedStation = estacionEfectiva({
+      propia: variant.station,
+      propiaPadre: selectedParentProduct?.station,
+      categoria: variant.categories?.station ?? selectedParentProduct?.categories?.station,
+    });
     const inheritedRequiresPreparation = selectedParentProduct?.categories?.requires_preparation ?? false;
-    addToCart({ ...variant, station: inheritedStation, requires_preparation: inheritedRequiresPreparation, categories: selectedParentProduct?.categories }, modifiers);
+    addToCart({
+      ...variant,
+      station: inheritedStation,
+      requires_preparation: inheritedRequiresPreparation,
+      categories: selectedParentProduct?.categories,
+      // Promociones por categoría o sobre el padre (igual que en el mostrador).
+      category_id: variant.category_id ?? selectedParentProduct?.category_id ?? null,
+      parent_product_id: variant.parent_product_id
+        ?? (selectedParentProduct && selectedParentProduct.id !== variant.id ? selectedParentProduct.id : null),
+    }, modifiers);
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
     // Retrasar reset del ref para prevenir race condition en móvil
@@ -257,7 +273,8 @@ export function AddProductDialog({
     if (existing) {
       existing.quantity += 1;
     } else {
-      const station = product.station || product.categories?.station || '';
+      // En variantes `station` ya llega resuelta (handleVariantSelect).
+      const station = estacionEfectiva({ propia: product.station, categoria: product.categories?.station }) ?? '';
       const requires_preparation = product.categories?.requires_preparation ?? false;
       newCart.set(product.id, {
         product_id: product.id,
@@ -270,6 +287,8 @@ export function AddProductDialog({
         guest_number: comensales > 1 ? 1 : undefined,
         variant_data: product.variant_data || null,
         modifiers: modifiers.length > 0 ? modifiers : undefined,
+        category_id: product.category_id ?? product.categories?.id ?? null,
+        parent_product_id: product.parent_product_id ?? null,
       });
     }
 
@@ -304,6 +323,16 @@ export function AddProductDialog({
     const item = newCart.get(productId);
     if (item) {
       item.notes = notes;
+      setCart(newCart);
+    }
+  };
+
+  // Marcar la nota del item como alergia (la cocina debe confirmarla antes de empezar)
+  const updateCartAllergy = (productId: number, isAllergy: boolean) => {
+    const newCart = new Map(cart);
+    const item = newCart.get(productId);
+    if (item) {
+      item.is_allergy = isAllergy;
       setCart(newCart);
     }
   };
@@ -773,6 +802,15 @@ export function AddProductDialog({
                         minHeight={60}
                         className="text-xs"
                       />
+                      <label className="flex items-center gap-1 mt-1 text-xs text-red-700 dark:text-red-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={item.is_allergy === true}
+                          onChange={(e) => updateCartAllergy(item.product_id, e.target.checked)}
+                          className="h-3 w-3 rounded border-gray-300 dark:border-gray-600"
+                        />
+                        {tNotas('alergiaMesa')}
+                      </label>
                     </div>
                   ))}
                 </div>

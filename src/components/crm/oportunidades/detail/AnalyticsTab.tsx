@@ -5,7 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { supabase } from '@/lib/supabase/config';
 import { opportunitiesService } from '../opportunitiesService';
 import type { OpportunityFull } from '@/components/crm/pipeline/hooks/useOpportunityData';
@@ -14,6 +15,9 @@ import type { OpportunityFull } from '@/components/crm/pipeline/hooks/useOpportu
 const LABELS: Record<string, string> = { call: 'Llamada', email: 'Email', meeting: 'Reunión', note: 'Nota', task: 'Tarea', whatsapp: 'WhatsApp', visit: 'Visita', system: 'Sistema', ai_call: 'Llamada IA', sms: 'SMS' };
 
 export function AnalyticsTab({ opportunity, displayAmount, active }: { opportunity: OpportunityFull; displayAmount: number; active: boolean }) {
+  // Importes en la moneda de la oportunidad; si no la trae, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatearDoc = (valor: number) => formatMoneda(valor, paraDocumento(opportunity.currency));
   const [data, setData] = useState<{ tasks: Array<{ status: string }>; byType: Record<string, number> } | null>(null);
 
   useEffect(() => {
@@ -75,8 +79,8 @@ export function AnalyticsTab({ opportunity, displayAmount, active }: { opportuni
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Estado en pipeline</p>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Etapa actual</span><span className="font-medium text-gray-900 dark:text-white">{opportunity.stage?.name || '-'}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Valor estimado</span><span className="font-medium text-gray-900 dark:text-white">{formatCurrency(displayAmount)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Valor ponderado</span><span className="font-medium text-blue-600 dark:text-blue-400">{formatCurrency(displayAmount * (prob > 1 ? prob / 100 : prob))}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Valor estimado</span><span className="font-medium text-gray-900 dark:text-white">{formatearDoc(displayAmount)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Valor ponderado</span><span className="font-medium text-blue-600 dark:text-blue-400">{formatearDoc(displayAmount * (prob > 1 ? prob / 100 : prob))}</span></div>
             {opportunity.expected_close_date && <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Cierre estimado</span><span className="font-medium text-gray-900 dark:text-white">{format(new Date(opportunity.expected_close_date), 'dd/MM/yyyy', { locale: es })}</span></div>}
           </div>
         </div>

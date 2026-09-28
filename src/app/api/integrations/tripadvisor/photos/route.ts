@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { withOrg } from '@/lib/utils/orgContext';
 import { tripadvisorContentService } from '@/lib/services/integrations/tripadvisor';
 
 /**
@@ -6,12 +7,19 @@ import { tripadvisorContentService } from '@/lib/services/integrations/tripadvis
  * Obtener fotos de una ubicación (proxy server-side).
  * Query params: locationId (requerido), language
  */
-export async function GET(request: NextRequest) {
+/*
+ * SEGURIDAD (GO-sec, 2026-09-24): proxy con la API Key de TripAdvisor de la
+ * PLATAFORMA (entorno). Antes el handler no comprobaba nada (solo el
+ * middleware): ahora exige sesión validada y organización activa
+ * (`withOrg`), para que la cuota de la llave no la gaste cualquiera. El
+ * contenido es público y no depende de la organización.
+ */
+export const GET = withOrg(async (_ctx, request) => {
   try {
     const { searchParams } = new URL(request.url);
     const locationId = searchParams.get('locationId');
 
-    if (!locationId) {
+    if (!locationId || !/^\d{1,15}$/.test(locationId)) {
       return NextResponse.json(
         { error: 'locationId es requerido' },
         { status: 400 },
@@ -35,4 +43,4 @@ export async function GET(request: NextRequest) {
     console.error('[API TripAdvisor Photos] Error:', message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

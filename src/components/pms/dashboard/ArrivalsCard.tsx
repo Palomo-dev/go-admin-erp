@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LogIn, ChevronRight, User, DoorOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface TodayArrival {
   id: string;
@@ -33,6 +33,7 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
 };
 
 function ArrivalItem({ arrival, onCheckIn }: { arrival: TodayArrival; onCheckIn?: (id: string) => void }) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const status = statusConfig[arrival.status] || { label: arrival.status, variant: 'secondary' as const };
 
   return (

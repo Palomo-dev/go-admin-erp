@@ -7,11 +7,11 @@
     "no-restricted-syntax": [
       "error",
       {
-        "selector": "CallExpression[callee.object.property.name='toISOString'][callee.property.name='split']",
+        "selector": "CallExpression[callee.property.name='split'][callee.object.callee.property.name='toISOString']",
         "message": "toISOString().split('T') descarta la zona horaria y produce el dia UTC. Usar todayInTz() o toPlainDate() de src/lib/utils/dateDisplay.ts. Ver docs/reglas-fechas-timezone.md."
       },
       {
-        "selector": "CallExpression[callee.object.property.name='toISOString'][callee.property.name='slice']",
+        "selector": "CallExpression[callee.property.name='slice'][callee.object.callee.property.name='toISOString']",
         "message": "toISOString().slice(0,10) descarta la zona horaria. Usar todayInTz() o toPlainDate() de src/lib/utils/dateDisplay.ts. Ver docs/reglas-fechas-timezone.md."
       }
     ],
@@ -29,6 +29,17 @@
     ]
   },
   "overrides": [
+    // Este bloque general va PRIMERO a proposito. En ESLint gana el ultimo
+    // override que casa, asi que declararlo despues degradaba a "warn" todas
+    // las rutas ya cerradas que van debajo: ese fue el defecto que mantuvo el
+    // guardarrail apagado hasta el 2026-09-23. No lo muevas hacia abajo.
+    {
+      "files": ["src/**"],
+      "rules": {
+        "no-restricted-syntax": "warn",
+        "no-restricted-imports": "warn"
+      }
+    },
     {
       "files": [
         "src/components/pos/ventas/**",
@@ -47,7 +58,16 @@
         "src/lib/utils/dateDisplay.ts",
         "src/lib/context/OrganizationTimezoneContext.tsx",
         "src/lib/services/organizationTimezoneService.ts",
-        "src/components/calendario/configuracion/**"
+        "src/components/calendario/configuracion/**",
+        "src/lib/services/pmsDashboardService.ts",
+        "src/lib/services/tapeChartService.ts",
+        "src/lib/services/crm/pmsCrmLink.ts",
+        "src/app/app/pms/calendario/**",
+        "src/app/app/pms/reservas/**",
+        "src/lib/services/parkingDashboardService.ts",
+        "src/lib/services/parkingReportService.ts",
+        "src/components/parking/reportes/**",
+        "src/app/app/parking/reportes/**"
       ],
       "rules": {
         "no-restricted-syntax": "error",
@@ -55,10 +75,29 @@
       }
     },
     {
-      "files": ["src/**"],
+      "files": [
+        "src/app/app/transporte/**",
+        "src/components/transporte/horarios/**",
+        "src/lib/services/fiscalCalendar.ts",
+        "src/lib/services/manifestsService.ts",
+        "src/lib/services/shipmentsService.ts",
+        "src/lib/services/ticketsService.ts",
+        "src/lib/services/trackingService.ts",
+        "src/lib/services/transportRoutesService.ts",
+        "src/lib/services/transportService.ts",
+        "src/lib/services/tripsService.ts",
+        "src/lib/services/integrations/openFinance/**",
+        "src/components/finanzas/bancos/TesoreriaPage.tsx",
+        "src/app/app/finanzas/open-finance/**",
+        "src/lib/services/openexchangerates.ts",
+        "src/lib/services/currencyService.ts",
+        "src/components/finanzas/monedas/**",
+        "src/components/finanzas/contabilidad/ReportesContablesService.ts",
+        "src/lib/utils/dateCore.ts"
+      ],
       "rules": {
-        "no-restricted-syntax": "warn",
-        "no-restricted-imports": "warn"
+        "no-restricted-syntax": "error",
+        "no-restricted-imports": "error"
       }
     }
   ]

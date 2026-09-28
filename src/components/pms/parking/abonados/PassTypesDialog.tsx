@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Edit, Trash2 } from 'lucide-react';
 import ParkingService, { type ParkingPassType } from '@/lib/services/parkingService';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface PassTypesDialogProps {
   open: boolean;
@@ -114,13 +115,8 @@ export function PassTypesDialog({
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  // Moneda base de la organización (la reserva/abono no tiene moneda propia).
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

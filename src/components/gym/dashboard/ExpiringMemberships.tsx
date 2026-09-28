@@ -18,7 +18,7 @@ interface ExpiringMembershipsProps {
 }
 
 export function ExpiringMemberships({ memberships, isLoading, onExport }: ExpiringMembershipsProps) {
-  const { formatDate } = useFormatDate();
+  const { formatDate, timezone } = useFormatDate();
   if (isLoading) {
     return (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -63,7 +63,7 @@ export function ExpiringMemberships({ memberships, isLoading, onExport }: Expiri
         ) : (
           <div className="space-y-2 max-h-[300px] overflow-y-auto">
             {memberships.map((membership) => {
-              const daysRemaining = getDaysRemaining(membership.end_date);
+              const daysRemaining = getDaysRemaining(membership.end_date, timezone);
               const isExpired = daysRemaining < 0;
               
               return (

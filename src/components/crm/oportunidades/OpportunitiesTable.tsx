@@ -30,7 +30,8 @@ import {
   XCircle,
   ArrowUpDown,
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Opportunity } from './types';
@@ -62,6 +63,7 @@ export function OpportunitiesTable({
   onMarkLost,
 }: OpportunitiesTableProps) {
   const router = useRouter();
+  const { paraDocumento } = useMonedaOrganizacion();
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
@@ -231,7 +233,7 @@ export function OpportunitiesTable({
                   </div>
                 </TableCell>
                 <TableCell className="py-2 sm:py-3 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">
-                  {formatCurrency(opportunity.amount || 0)}
+                  {formatMoneda(opportunity.amount || 0, paraDocumento(opportunity.currency))}
                 </TableCell>
                 <TableCell className="py-2 sm:py-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden lg:table-cell">
                   {opportunity.stage?.probability

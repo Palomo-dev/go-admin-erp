@@ -12,6 +12,7 @@ import {
   OpportunitiesFilters,
   OpportunitiesStats,
   LossReasonDialog,
+  MarkWonFlow,
   opportunitiesService,
   Opportunity,
   OpportunityFilters,
@@ -48,6 +49,13 @@ export default function OportunidadesPage() {
 
   const [filters, setFilters] = useState<OpportunityFilters>({});
   const [showLossDialog, setShowLossDialog] = useState(false);
+  // Oportunidad que se está cerrando como ganada: monta `MarkWonFlow`, que
+  // mueve a la etapa ganadora y pide la ficha de venta por el mismo camino que
+  // el detalle y el tablero. Antes la lista la cerraba a pelo.
+  const [wonOpportunity, setWonOpportunity] = useState<Opportunity | null>(null);
+  // Contador para remontar el flujo si el usuario cancela y vuelve a pulsar
+  // «ganada» en la MISMA fila (si no, la clave no cambiaría y no arrancaría).
+  const [wonIntento, setWonIntento] = useState(0);
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -140,25 +148,11 @@ export default function OportunidadesPage() {
     }
   };
 
-  const handleMarkWon = async (id: string) => {
-    setIsProcessing(true);
-    try {
-      await opportunitiesService.markAsWon(id);
-      toast({
-        title: 'Éxito',
-        description: 'Oportunidad marcada como ganada',
-      });
-      loadData();
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar la oportunidad',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsProcessing(false);
-    }
+  const handleMarkWon = (id: string) => {
+    const opp = opportunities.find((o) => o.id === id);
+    if (!opp) return;
+    setWonIntento((n) => n + 1);
+    setWonOpportunity(opp);
   };
 
   const handleMarkLostClick = (id: string) => {
@@ -264,6 +258,17 @@ export default function OportunidadesPage() {
         onConfirm={handleMarkLost}
         isLoading={isProcessing}
       />
+
+      {wonOpportunity && (
+        <MarkWonFlow
+          key={`${wonOpportunity.id}-${wonIntento}`}
+          opportunity={wonOpportunity}
+          onFinished={() => {
+            setWonOpportunity(null);
+            void loadData();
+          }}
+        />
+      )}
     </div>
   );
 }

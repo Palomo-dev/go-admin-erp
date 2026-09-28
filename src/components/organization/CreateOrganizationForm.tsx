@@ -1,10 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
 import LogoUploader from './LogoUploader';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { mensajeErrorTelefono, paisIsoDeOrganizacion } from '@/lib/utils/telefono';
 import { getOrgTypeLabel } from '@/lib/utils/organizationTypes';
+import {
+  OPCIONES_TARIFA_POR_DEFECTO,
+  TARIFA_POR_DEFECTO_INICIAL,
+  setOrganizationDefaultTaxByCode,
+  type CodigoTarifaPorDefecto,
+} from '@/lib/services/defaultTaxService';
 
 interface OrganizationData {
   name: string;
@@ -27,6 +36,9 @@ interface OrganizationData {
   primary_color?: string;
   secondary_color?: string;
   logo_url?: string | null;
+  municipality_id?: string | null;
+  /** Tarifa por defecto para productos sin impuesto (no es columna de organizations). */
+  default_tax_code?: CodigoTarifaPorDefecto;
 }
 
 interface MunicipalityOption {
@@ -57,6 +69,8 @@ interface CreateOrganizationFormProps {
 }
 
 export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEmail = '', isSignupMode = false }: CreateOrganizationFormProps) {
+  const t = useTranslations('org.createOrgForm');
+  const locale = useLocale();
   const [formData, setFormData] = useState({
     name: '',
     legalName: '', 
@@ -80,6 +94,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     primaryColor: '#3B82F6', 
     secondaryColor: '#F59E0B', 
     logoUrl: null as string | null,
+    defaultTaxCode: TARIFA_POR_DEFECTO_INICIAL as CodigoTarifaPorDefecto,
   });
   const [municipalities, setMunicipalities] = useState<MunicipalityOption[]>([]);
   const [loadingMunicipalities, setLoadingMunicipalities] = useState(false);
@@ -220,6 +235,8 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     if (!isSignupMode) {
       fetchPlans();
     }
+    // Solo al montar: el modo (registro o creación directa) no cambia en vida del formulario.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchPlans = async () => {
@@ -252,7 +269,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     console.log(data);
 
     if (error) {
-      setError('Error al cargar los tipos de organización');
+      setError(t('errors.loadTypes'));
     } else {
       setOrganizationTypes(data || []);
     }
@@ -268,7 +285,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
 
     if (error) {
       console.error('Error al cargar países:', error);
-      setError('Error al cargar los países');
+      setError(t('errors.loadCountries'));
     } else {
       setCountries(data || []);
     }
@@ -278,31 +295,33 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     const errors: Record<string, string> = {};
     
     if (currentStep === 1) {
-      if (!formData.name.trim()) errors.name = 'El nombre es requerido';
-      if (!formData.legalName.trim()) errors.legalName = 'El nombre legal es requerido';
-      if (!formData.typeId) errors.typeId = 'Seleccione un tipo de organización';
-      if (!formData.email.trim()) errors.email = 'El correo electrónico es requerido';
+      if (!formData.name.trim()) errors.name = t('errors.nameRequired');
+      if (!formData.legalName.trim()) errors.legalName = t('errors.legalNameRequired');
+      if (!formData.typeId) errors.typeId = t('errors.typeRequired');
+      if (!formData.email.trim()) errors.email = t('errors.emailRequired');
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-        errors.email = 'Ingrese un correo electrónico válido';
+        errors.email = t('errors.emailInvalid');
       }
       // En modo signup, el taxId es opcional ya que se puede completar después
       if (!isSignupMode && !formData.taxId.trim()) {
-        errors.taxId = 'El NIT/RUT es requerido';
+        errors.taxId = t('errors.taxIdRequired');
       }
+      const errorTelefono = mensajeErrorTelefono(formData.phone, paisIsoDeOrganizacion(formData.countryCode, formData.country) ?? undefined);
+      if (errorTelefono) errors.phone = errorTelefono;
     }
     
     if (currentStep === 2) {
       // Validar subdominio
       if (formData.subdomain && subdomainStatus === 'taken') {
-        errors.subdomain = 'El subdominio ya está en uso';
+        errors.subdomain = t('errors.subdomainTaken');
       }
       if (formData.subdomain && formData.subdomain.length < 3) {
-        errors.subdomain = 'El subdominio debe tener al menos 3 caracteres';
+        errors.subdomain = t('errors.subdomainTooShort');
       }
     }
 
     if (currentStep === 3 && !isSignupMode) {
-      if (!selectedPlanId) errors.plan = 'Seleccione un plan';
+      if (!selectedPlanId) errors.plan = t('errors.planRequired');
     }
     
     setFormErrors(errors);
@@ -357,12 +376,12 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
       if (isSignupMode) {
         // In signup flow, just pass data to parent component
         console.log('Signup mode: Pasando datos de organización al componente padre');
-        onSuccess(organizationData);
+        onSuccess({ ...organizationData, default_tax_code: formData.defaultTaxCode });
       } else {
         // In standalone mode, create organization directly in database
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          throw new Error('No se encontró sesión de usuario');
+          throw new Error(t('errors.noSession'));
         }
 
         // Create organization in database
@@ -397,6 +416,15 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           throw new Error(memberError.message);
         }
 
+        // Tarifa por defecto elegida en el paso 2. El disparador de la base ya
+        // sembró los organization_taxes; aquí solo se marca is_default. Si
+        // falla, la organización queda creada y se ajusta en Finanzas › Impuestos.
+        try {
+          await setOrganizationDefaultTaxByCode(supabase, orgData.id, formData.defaultTaxCode);
+        } catch (taxError) {
+          console.warn('No se pudo guardar la tarifa por defecto de la organización:', taxError);
+        }
+
         // Update user's last_org_id
         const { error: profileError } = await supabase
           .from('profiles')
@@ -409,8 +437,9 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
 
         onSuccess(orgData);
       }
-    } catch (err: any) {
-      setError(err.message || 'Error al crear la organización');
+    } catch (err: unknown) {
+      // Los errores de Supabase no son `Error`, pero traen `message`.
+      setError((err as { message?: string } | null)?.message || t('errors.createError'));
     } finally {
       setLoading(false);
     }
@@ -442,10 +471,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
         )}
       </div>
       <div className="flex justify-center mt-2">
-        <span className="text-sm font-medium mx-4 text-center text-gray-700 dark:text-gray-300">Información Básica</span>
-        <span className="text-sm font-medium mx-4 text-center text-gray-700 dark:text-gray-300">Detalles Adicionales</span>
+        <span className="text-sm font-medium mx-4 text-center text-gray-700 dark:text-gray-300">{t('steps.basicInfo')}</span>
+        <span className="text-sm font-medium mx-4 text-center text-gray-700 dark:text-gray-300">{t('steps.additionalDetails')}</span>
         {totalSteps === 3 && (
-          <span className="text-sm font-medium mx-4 text-center text-gray-700 dark:text-gray-300">Plan</span>
+          <span className="text-sm font-medium mx-4 text-center text-gray-700 dark:text-gray-300">{t('steps.plan')}</span>
         )}
       </div>
     </div>
@@ -502,14 +531,15 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
       hex = hex.replace(/^#/, '');
       
       // Parse the hex values
-      let r = parseInt(hex.substring(0, 2), 16) / 255;
-      let g = parseInt(hex.substring(2, 4), 16) / 255;
-      let b = parseInt(hex.substring(4, 6), 16) / 255;
+      const r = parseInt(hex.substring(0, 2), 16) / 255;
+      const g = parseInt(hex.substring(2, 4), 16) / 255;
+      const b = parseInt(hex.substring(4, 6), 16) / 255;
       
       // Find the min and max values to calculate lightness
       const max = Math.max(r, g, b);
       const min = Math.min(r, g, b);
-      let h, s, l = (max + min) / 2;
+      let h, s;
+      const l = (max + min) / 2;
       
       if (max === min) {
         // Achromatic
@@ -584,7 +614,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
   const renderStep1 = () => (
     <div className="space-y-4 sm:space-y-6">
       <div className="bg-white dark:bg-gray-800 px-6 py-8 shadow-md sm:rounded-lg">
-        <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100 mb-6">Información Básica</h3>
+        <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100 mb-6">{t('steps.basicInfo')}</h3>
         
         <div className="mb-8 flex justify-center">
           <LogoUploader
@@ -595,12 +625,12 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
         </div>
         
         <div className="grid grid-cols-6 gap-4 sm:gap-6">
-          {renderFormField('name', 'Nombre de la Organización', 'text', true, 'col-span-6')}
-          {renderFormField('legalName', 'Nombre Legal', 'text', true, 'col-span-6')}
+          {renderFormField('name', t('fields.name'), 'text', true, 'col-span-6')}
+          {renderFormField('legalName', t('fields.legalName'), 'text', true, 'col-span-6')}
           
           <div className="col-span-6">
             <label htmlFor="typeId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Tipo de Organización <span className="text-red-500 dark:text-red-400">*</span>
+              {t('fields.type')} <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <select
               id="typeId"
@@ -615,10 +645,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               }}
               className={`block w-full rounded-lg border ${formErrors.typeId ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200 dark:focus:border-red-400 dark:focus:ring-red-400' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400'} shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900`}
             >
-              <option value="">Seleccionar...</option>
+              <option value="">{t('fields.select')}</option>
               {organizationTypes.map((type) => (
                 <option key={type.id} value={type.id}>
-                  {getOrgTypeLabel(type.name, typeof navigator !== 'undefined' ? navigator.language : 'es')}
+                  {getOrgTypeLabel(type.name, locale)}
                 </option>
               ))}
             </select>
@@ -632,7 +662,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           {/* Always show email field, but if defaultEmail is provided, show it as disabled/readonly */}
           <div className="col-span-6 sm:col-span-4">
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Correo Electrónico <span className="text-red-500 dark:text-red-400">*</span>
+              {t('fields.email')} <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <div className="relative">
               <input
@@ -667,14 +697,14 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
             )}
             {!!defaultEmail && (
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Usando el correo electrónico de tu cuenta
+                {t('fields.usingAccountEmail')}
               </p>
             )}
           </div>
           
           <div className="col-span-6 sm:col-span-3">
             <label htmlFor="taxId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              NIT/RUT <span className="text-red-500 dark:text-red-400">*</span>
+              {t('fields.taxId')} <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <div className="relative">
               <input
@@ -698,7 +728,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   }
                 }}
                 className={`block w-full rounded-lg border ${formErrors.taxId ? 'border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200 dark:placeholder-red-400 dark:focus:border-red-400 dark:focus:ring-red-400' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400'} shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900`}
-                placeholder="Ej: 900123456"
+                placeholder={t('fields.taxIdPlaceholder')}
               />
               {formErrors.taxId && (
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
@@ -728,19 +758,34 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 setFormData({ ...formData, dv: e.target.value });
               }}
               className="block w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 dark:focus:border-blue-400 dark:focus:ring-blue-400"
-              placeholder="Auto"
+              placeholder={t('fields.dvPlaceholder')}
             />
             <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-              {dvManuallyEdited ? 'Editado manualmente' : 'Calculado desde el NIT'}
+              {dvManuallyEdited ? t('fields.dvManual') : t('fields.dvAuto')}
             </p>
           </div>
 
-          {renderFormField('phone', 'Teléfono', 'tel', false, 'col-span-6 sm:col-span-2')}
+          <div className="col-span-6 sm:col-span-2">
+            <label htmlFor="phone" className="block text-sm font-medium text-fg-secondary mb-1">
+              {t('fields.phone')}
+            </label>
+            <PhoneInput
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={(v) => {
+                setFormData({ ...formData, phone: v });
+                if (formErrors.phone) setFormErrors({ ...formErrors, phone: '' });
+              }}
+              defaultIso={paisIsoDeOrganizacion(formData.countryCode, formData.country) ?? undefined}
+              error={formErrors.phone || undefined}
+            />
+          </div>
           
           {/* Color selector */}
           <div className="col-span-6">
             <label htmlFor="primaryColor" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Color Primario
+              {t('fields.primaryColor')}
             </label>
             <div className="mt-2">
               <div className="flex flex-wrap gap-2 mb-3">
@@ -763,7 +808,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                       formData.primaryColor === color ? 'ring-2 ring-offset-2 ring-gray-500 dark:ring-gray-400' : 'border-gray-300 dark:border-gray-600'
                     }`}
                     style={{ backgroundColor: color }}
-                    aria-label={`Color ${color}`}
+                    aria-label={t('fields.colorOption', { color })}
                   />
                 ))}
                 
@@ -781,7 +826,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                     htmlFor="primaryColor"
                     className="flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 cursor-pointer bg-white dark:border-gray-600 dark:bg-gray-800"
                   >
-                    <span className="sr-only">Personalizado</span>
+                    <span className="sr-only">{t('fields.customColor')}</span>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-500 dark:text-gray-400">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
@@ -799,7 +844,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               </div>
               
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Este color se usará en la interfaz de tu organización
+                {t('fields.colorHint')}
               </p>
             </div>
           </div>
@@ -807,7 +852,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           {/* Secondary color selector */}
           <div className="col-span-6">
             <label htmlFor="secondaryColor" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Color Secundario
+              {t('fields.secondaryColor')}
             </label>
             <div className="mt-2">
               <div className="flex flex-wrap gap-2 mb-3">
@@ -821,7 +866,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                       formData.secondaryColor === color ? 'ring-2 ring-offset-2 ring-gray-500 dark:ring-gray-400' : 'border-gray-300 dark:border-gray-600'
                     }`}
                     style={{ backgroundColor: color }}
-                    aria-label={`Color ${color}`}
+                    aria-label={t('fields.colorOption', { color })}
                   />
                 ))}
                 
@@ -839,7 +884,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                     htmlFor="secondaryColor"
                     className="flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 cursor-pointer bg-white dark:border-gray-600 dark:bg-gray-800"
                   >
-                    <span className="sr-only">Personalizado</span>
+                    <span className="sr-only">{t('fields.customColor')}</span>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-500 dark:text-gray-400">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
@@ -857,7 +902,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               </div>
               
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Este color se usará en la interfaz de tu organización
+                {t('fields.colorHint')}
               </p>
             </div>
           </div>
@@ -869,13 +914,13 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
   const renderStep2 = () => (
     <div className="space-y-4 sm:space-y-6">
       <div className="bg-white dark:bg-gray-800 px-6 py-8 shadow-md sm:rounded-lg">
-        <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100 mb-6">Detalles Adicionales</h3>
+        <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100 mb-6">{t('steps.additionalDetails')}</h3>
         
         <div className="space-y-4 sm:space-y-6">
           {/* Descripción */}
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Descripción
+              {t('fields.description')}
             </label>
             <textarea
               id="description"
@@ -889,12 +934,12 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
 
           {/* Dirección */}
           <div className="grid grid-cols-2 gap-4 sm:gap-6">
-            {renderFormField('address', 'Dirección', 'text', false, 'col-span-2')}
+            {renderFormField('address', t('fields.address'), 'text', false, 'col-span-2')}
             
             {/* País */}
             <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                País
+                {t('fields.country')}
               </label>
               <select
                 value={formData.countryCode}
@@ -912,7 +957,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 }}
                 className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 dark:focus:border-blue-400 dark:focus:ring-blue-400"
               >
-                <option value="">Seleccionar país...</option>
+                <option value="">{t('fields.selectCountry')}</option>
                 {countries.map((c) => (
                   <option key={c.code} value={c.code}>{c.name}</option>
                 ))}
@@ -922,7 +967,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
             {/* Estado/Departamento */}
             <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Estado / Provincia / Departamento
+                {t('fields.state')}
               </label>
               <select
                 value={formData.stateCode}
@@ -940,7 +985,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 disabled={loadingMunicipalities}
                 className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 disabled:opacity-50 dark:focus:border-blue-400 dark:focus:ring-blue-400"
               >
-                <option value="">Seleccionar...</option>
+                <option value="">{t('fields.select')}</option>
                 {Array.from(new Map(municipalities.map(m => [m.state_name, m])).values()).map((m) => (
                   <option key={m.state_name} value={m.code?.substring(0, 2) || m.state_name}>{m.state_name}</option>
                 ))}
@@ -950,7 +995,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
             {/* Ciudad/Municipio */}
             <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Ciudad / Municipio
+                {t('fields.city')}
               </label>
               <select
                 value={formData.municipalityId}
@@ -958,7 +1003,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 disabled={loadingMunicipalities || !formData.stateCode}
                 className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 disabled:opacity-50 dark:focus:border-blue-400 dark:focus:ring-blue-400"
               >
-                <option value="">Seleccionar...</option>
+                <option value="">{t('fields.select')}</option>
                 {municipalities
                   .filter(m => !formData.stateCode || m.code?.substring(0, 2) === formData.stateCode)
                   .map((m) => (
@@ -967,13 +1012,13 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               </select>
             </div>
             
-            {renderFormField('postalCode', 'Código Postal', 'text', false, 'col-span-1')}
+            {renderFormField('postalCode', t('fields.postalCode'), 'text', false, 'col-span-1')}
           </div>
           
           {/* Subdominio con preview y validación */}
           <div className="col-span-2">
             <label htmlFor="subdomain" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Subdominio de tu sitio web
+              {t('fields.subdomain')}
             </label>
             <div className="mt-1 flex rounded-lg shadow-sm">
               <input
@@ -986,7 +1031,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   setFormData({ ...formData, subdomain: value });
                   setSubdomainManuallyEdited(true);
                 }}
-                placeholder="miempresa"
+                placeholder={t('fields.subdomainPlaceholder')}
                 className={`block w-full rounded-l-lg border px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 ${
                   subdomainStatus === 'taken' 
                     ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:focus:border-red-400 dark:focus:ring-red-400' 
@@ -1008,7 +1053,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Verificando disponibilidad...
+                  {t('fields.checkingAvailability')}
                 </div>
               )}
               {subdomainStatus === 'available' && formData.subdomain && (
@@ -1016,7 +1061,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  ¡Disponible! Tu sitio será: <span className="font-medium ml-1">{formData.subdomain}.goadmin.io</span>
+                  {t('fields.subdomainAvailable')} <span className="font-medium ml-1">{formData.subdomain}.goadmin.io</span>
                 </div>
               )}
               {subdomainStatus === 'taken' && (
@@ -1024,13 +1069,13 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  Este subdominio ya está en uso. Intenta con otro.
+                  {t('fields.subdomainTakenHint')}
                 </div>
               )}
             </div>
             
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Este será el enlace de tu sitio web público. Solo letras y números, sin espacios ni caracteres especiales.
+              {t('fields.subdomainHint')}
               {subdomainManuallyEdited && (
                 <button 
                   type="button"
@@ -1040,13 +1085,41 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   }}
                   className="ml-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
                 >
-                  Restaurar sugerencia
+                  {t('fields.restoreSuggestion')}
                 </button>
               )}
             </p>
           </div>
           
-          {renderFormField('website', 'Sitio Web Externo (opcional)', 'url')}
+          {renderFormField('website', t('fields.website'), 'url')}
+
+          {/* Tarifa por defecto para productos sin impuesto asignado */}
+          <fieldset aria-describedby="default-tax-help">
+            <legend className="block text-sm font-medium text-fg mb-1">
+              {t('fields.defaultTax')}
+            </legend>
+            <p id="default-tax-help" className="text-xs text-fg-secondary mb-2">
+              {t('fields.defaultTaxHint')}
+            </p>
+            <div className="space-y-2">
+              {OPCIONES_TARIFA_POR_DEFECTO.map((opcion) => (
+                <label
+                  key={opcion.value}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-fg has-[:checked]:border-line-brand has-[:checked]:bg-brand-tint"
+                >
+                  <input
+                    type="radio"
+                    name="defaultTaxCode"
+                    value={opcion.value}
+                    checked={formData.defaultTaxCode === opcion.value}
+                    onChange={() => setFormData({ ...formData, defaultTaxCode: opcion.value })}
+                    className="h-4 w-4 accent-brand-action"
+                  />
+                  {t(`taxOptions.${opcion.value}`)}
+                </label>
+              ))}
+            </div>
+          </fieldset>
         </div>
       </div>
     </div>
@@ -1055,7 +1128,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
   const renderStep3 = () => (
     <div className="space-y-4 sm:space-y-6">
       <div className="bg-white dark:bg-gray-800 px-6 py-8 shadow-md sm:rounded-lg">
-        <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100 mb-6">Selecciona tu Plan</h3>
+        <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100 mb-6">{t('steps.selectPlan')}</h3>
 
         <div className="grid grid-cols-1 gap-2 sm:gap-4">
           {plans.map((plan) => (
@@ -1076,16 +1149,16 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">{plan.name}</h4>
                   {plan.trial_days > 0 && (
                     <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      Incluye {plan.trial_days} días de prueba
+                      {t('trialIncluded', { days: plan.trial_days })}
                     </p>
                   )}
                 </div>
                 <div className="text-right">
                   <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
-                    {plan.price_usd_month ? `$${plan.price_usd_month}` : 'Personalizado'}
+                    {plan.price_usd_month ? `$${plan.price_usd_month}` : t('customPrice')}
                   </span>
                   {plan.price_usd_month && (
-                    <span className="text-sm text-gray-500 dark:text-gray-400">/mes</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{t('perMonth')}</span>
                   )}
                 </div>
               </div>
@@ -1127,7 +1200,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           onClick={step === 1 ? onCancel : prevStep}
           className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-2 px-4 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-blue-400"
         >
-          {step === 1 ? 'Cancelar' : 'Atrás'}
+          {step === 1 ? t('cancel') : t('back')}
         </button>
         
         <button
@@ -1142,14 +1215,14 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              {step === totalSteps && !isSignupMode ? 'Creando...' : 'Siguiente...'}
+              {step === totalSteps && !isSignupMode ? t('creating') : t('nextLoading')}
             </>
           ) : subdomainStatus === 'checking' && step === 2 ? (
-            'Verificando...'
+            t('verifying')
           ) : step === totalSteps && !isSignupMode ? (
-            'Crear Organización'
+            t('create')
           ) : (
-            'Siguiente'
+            t('next')
           )}
         </button>
       </div>

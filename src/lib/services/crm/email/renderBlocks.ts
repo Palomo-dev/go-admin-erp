@@ -138,7 +138,8 @@ export function renderBlock(block: Block, ctx: RenderContext, settings: BlockSet
         acc.missing.add('quote');
         return { html: cell(`<p style="font-family:${font};font-size:14px;color:#6b7280">Sin cotización asociada</p>`), text: 'Sin cotización' };
       }
-      const cur = ctx.quote.currency || 'COP';
+      // Moneda de la cotización → de la oportunidad → base de la organización (ya resuelta en el contexto).
+      const cur = ctx.quote.currency || ctx.opportunity?.currency || ctx.org.currency || '';
       // `custom.__amt` es una variable interna del formateador: NO debe entrar
       // en `used` (alimenta `templates.variables[]` y la UI). Tester r1 #15.
       // `escape` distingue el importe del HTML (`&nbsp;`/`&` de `Intl` escapados)
@@ -148,7 +149,7 @@ export function renderBlock(block: Block, ctx: RenderContext, settings: BlockSet
         ? (ctx.quote.items ?? []).map((it) => `<tr><td style="padding:6px 8px;border-bottom:1px solid #f3f4f6">${escapeHtml(it.description)} × ${it.qty}</td><td align="right" style="padding:6px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap">${fmt(it.total_line)}</td></tr>`).join('')
         : '';
       const total = fmt(ctx.quote.total ?? 0);
-      const html = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:${font};font-size:14px;color:#1f2937;border:1px solid #e5e7eb;border-radius:8px"><tr><td colspan="2" style="padding:10px 8px;font-weight:700;background:#f9fafb;border-radius:8px 8px 0 0">${title}</td></tr>${rows}<tr><td style="padding:10px 8px;font-weight:700">Total (${escapeHtml(cur)})</td><td align="right" style="padding:10px 8px;font-weight:700;color:${brand}">${total}</td></tr></table>${
+      const html = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:${font};font-size:14px;color:#1f2937;border:1px solid #e5e7eb;border-radius:8px"><tr><td colspan="2" style="padding:10px 8px;font-weight:700;background:#f9fafb;border-radius:8px 8px 0 0">${title}</td></tr>${rows}<tr><td style="padding:10px 8px;font-weight:700">Total${cur ? ` (${escapeHtml(cur)})` : ''}</td><td align="right" style="padding:10px 8px;font-weight:700;color:${brand}">${total}</td></tr></table>${
         p.cta_label ? `<p style="margin:12px 0 0;text-align:center"><a href="${safeUrl(vars(p.cta_href, ctx, acc, false))}" target="_blank" rel="noopener" style="display:inline-block;padding:10px 20px;border-radius:6px;background:${brand};color:#fff;font-family:${font};font-size:14px;font-weight:600;text-decoration:none">${textProp(p.cta_label, ctx, acc)}</a></p>` : ''
       }`;
       return { html: cell(html, 'padding-top:8px;padding-bottom:8px'), text: `${titleText}: total ${fmt(ctx.quote.total ?? 0, false)}` };

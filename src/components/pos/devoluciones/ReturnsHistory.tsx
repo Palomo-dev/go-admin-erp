@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { History, Calendar, DollarSign, Filter, RefreshCw, Eye, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,11 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { DevolucionesService } from './devolucionesService';
 import { Return, ReturnSearchFilters } from './types';
-import { formatCurrency, cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { toast } from 'sonner';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface ReturnsHistoryProps {
   refreshTrigger?: number;
@@ -23,6 +25,13 @@ interface ReturnsHistoryProps {
 }
 
 export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryProps) {
+  const { formatear } = useMonedaOrganizacion();
+  const t = useTranslations('posDevoluciones.historial');
+  const tComun = useTranslations('posDevoluciones.comun');
+  const { formatDate, getToday } = useFormatDate();
+  // Estado conocido se traduce; uno desconocido se muestra tal cual (es un dato).
+  const nombreEstado = (estado: string): string =>
+    t.has(`estados.${estado}`) ? t(`estados.${estado}`) : estado;
   const [returns, setReturns] = useState<Return[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedReturn, setSelectedReturn] = useState<Return | null>(null);
@@ -36,6 +45,8 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
 
   useEffect(() => {
     cargarHistorial();
+    // Se recarga solo al pedirlo el padre o al cambiar de sucursal; los filtros se aplican con «Filtrar».
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTrigger, branchFilter]);
 
   const cargarHistorial = async () => {
@@ -45,7 +56,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
       setReturns(response.data);
     } catch (error) {
       console.error('Error cargando historial:', error);
-      toast.error('Error al cargar el historial de devoluciones');
+      toast.error(t('errorCarga'));
     } finally {
       setLoading(false);
     }
@@ -70,15 +81,15 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
     const variants = {
       processed: { 
         className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200", 
-        label: "Procesado" 
+        label: t('estados.processed')
       },
       pending: { 
         className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200", 
-        label: "Pendiente" 
+        label: t('estados.pending')
       },
       cancelled: { 
         className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200", 
-        label: "Cancelado" 
+        label: t('estados.cancelled')
       }
     };
 
@@ -94,12 +105,12 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
   const exportarCSV = async () => {
     try {
       const csvData = returns.map(returnItem => ({
-        'Fecha': new Date(returnItem.return_date).toLocaleDateString(),
-        'ID Venta': returnItem.sale_id,
-        'Total Reembolso': returnItem.refund_total_with_tax,
-        'Motivo': returnItem.reason,
-        'Estado': returnItem.status,
-        'Items': returnItem.return_items.length
+        [tComun('fecha')]: formatDate(returnItem.return_date),
+        [tComun('idVenta')]: returnItem.sale_id,
+        [tComun('totalReembolso')]: returnItem.refund_total_with_tax,
+        [tComun('motivo')]: returnItem.reason,
+        [tComun('estado')]: nombreEstado(returnItem.status),
+        [tComun('items')]: returnItem.return_items.length
       }));
 
       const csvContent = [
@@ -111,13 +122,13 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.setAttribute('href', url);
-      a.setAttribute('download', `historial-devoluciones-${new Date().toISOString().split('T')[0]}.csv`);
+      a.setAttribute('download', `historial-devoluciones-${getToday()}.csv`);
       a.click();
       window.URL.revokeObjectURL(url);
       
-      toast.success('Historial exportado exitosamente');
-    } catch (error) {
-      toast.error('Error al exportar el historial');
+      toast.success(t('exportado'));
+    } catch {
+      toast.error(t('errorExportar'));
     }
   };
 
@@ -132,7 +143,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Devoluciones</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('totalDevoluciones')}</p>
                 <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{returns.length}</p>
               </div>
               <History className="h-8 w-8 text-blue-600 dark:text-blue-400" />
@@ -144,7 +155,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Procesadas</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('procesadas')}</p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">{devolucionesProcesadas}</p>
               </div>
               <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
@@ -158,8 +169,8 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Reembolsado</p>
-                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{formatCurrency(totalReembolsado)}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('totalReembolsado')}</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{formatear(totalReembolsado)}</p>
               </div>
               <DollarSign className="h-8 w-8 text-red-600 dark:text-red-400" />
             </div>
@@ -172,14 +183,14 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center space-x-2 text-lg dark:text-white">
             <Filter className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            <span>Filtros</span>
+            <span>{t('filtros')}</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
             <div>
               <Input
-                placeholder="Buscar por ID venta..."
+                placeholder={t('buscarPlaceholder')}
                 value={filters.search}
                 onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                 onKeyPress={handleKeyPress}
@@ -187,21 +198,19 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
               />
             </div>
             <div>
-              <Input
-                type="date"
-                placeholder="Fecha desde"
-                value={filters.dateFrom || ''}
-                onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
+              <CampoFecha
+                aria-label={tComun('fechaDesde')}
+                placeholder={tComun('fechaDesde')}
+                valor={filters.dateFrom || ''}
+                onValorChange={(dia) => setFilters(prev => ({ ...prev, dateFrom: dia }))}
               />
             </div>
             <div>
-              <Input
-                type="date"
-                placeholder="Fecha hasta"
-                value={filters.dateTo || ''}
-                onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
+              <CampoFecha
+                aria-label={tComun('fechaHasta')}
+                placeholder={tComun('fechaHasta')}
+                valor={filters.dateTo || ''}
+                onValorChange={(dia) => setFilters(prev => ({ ...prev, dateTo: dia }))}
               />
             </div>
             <div>
@@ -210,13 +219,13 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
                 onValueChange={(value) => setFilters(prev => ({ ...prev, status: value === 'all' ? '' : value }))}
               >
                 <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600">
-                  <SelectValue placeholder="Estado" />
+                  <SelectValue placeholder={t('estadoPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                  <SelectItem value="all">Todos los estados</SelectItem>
-                  <SelectItem value="processed">Procesado</SelectItem>
-                  <SelectItem value="pending">Pendiente</SelectItem>
-                  <SelectItem value="cancelled">Cancelado</SelectItem>
+                  <SelectItem value="all">{t('todosEstados')}</SelectItem>
+                  <SelectItem value="processed">{t('estados.processed')}</SelectItem>
+                  <SelectItem value="pending">{t('estados.pending')}</SelectItem>
+                  <SelectItem value="cancelled">{t('estados.cancelled')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -231,7 +240,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
                 ) : (
                   <Filter className="h-4 w-4 mr-2" />
                 )}
-                Filtrar
+                {t('filtrar')}
               </Button>
             </div>
           </div>
@@ -244,7 +253,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center space-x-2 dark:text-white">
               <History className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <span>Historial de Devoluciones</span>
+              <span>{tComun('historialDevoluciones')}</span>
             </CardTitle>
             <Button
               variant="outline"
@@ -254,7 +263,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
               className="dark:border-gray-600 dark:text-gray-300"
             >
               <Download className="h-4 w-4 mr-2" />
-              Exportar
+              {tComun('exportar')}
             </Button>
           </div>
         </CardHeader>
@@ -276,13 +285,13 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
               <Table>
                 <TableHeader>
                   <TableRow className="dark:border-gray-700">
-                    <TableHead className="dark:text-gray-300">Fecha</TableHead>
-                    <TableHead className="dark:text-gray-300">ID Venta</TableHead>
-                    <TableHead className="dark:text-gray-300">Reembolso</TableHead>
-                    <TableHead className="dark:text-gray-300">Items</TableHead>
-                    <TableHead className="dark:text-gray-300">Motivo</TableHead>
-                    <TableHead className="dark:text-gray-300">Estado</TableHead>
-                    <TableHead className="dark:text-gray-300">Acciones</TableHead>
+                    <TableHead className="dark:text-gray-300">{tComun('fecha')}</TableHead>
+                    <TableHead className="dark:text-gray-300">{tComun('idVenta')}</TableHead>
+                    <TableHead className="dark:text-gray-300">{tComun('reembolso')}</TableHead>
+                    <TableHead className="dark:text-gray-300">{tComun('items')}</TableHead>
+                    <TableHead className="dark:text-gray-300">{tComun('motivo')}</TableHead>
+                    <TableHead className="dark:text-gray-300">{tComun('estado')}</TableHead>
+                    <TableHead className="dark:text-gray-300">{tComun('acciones')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -294,7 +303,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
                       <TableCell className="dark:text-gray-300">
                         <div className="flex items-center space-x-2">
                           <Calendar className="h-4 w-4 text-gray-400" />
-                          <span>{new Date(returnItem.return_date).toLocaleDateString()}</span>
+                          <span>{formatDate(returnItem.return_date)}</span>
                         </div>
                       </TableCell>
                       <TableCell className="dark:text-gray-300">
@@ -305,19 +314,18 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
                       <TableCell className="dark:text-gray-300">
                         <div className="space-y-1">
                           <div className="text-lg font-bold text-red-600 dark:text-red-400">
-                            {formatCurrency(returnItem.refund_total_with_tax)}
+                            {formatear(returnItem.refund_total_with_tax)}
                           </div>
                           {returnItem.refund_tax_amount > 0 && (
                             <div className="text-xs text-gray-500 dark:text-gray-400">
-                              Subtotal: {formatCurrency(returnItem.total_refund)} +
-                              Impuestos: {formatCurrency(returnItem.refund_tax_amount)}
+                              {tComun('subtotalMasImpuestos', { subtotal: formatear(returnItem.total_refund), impuestos: formatear(returnItem.refund_tax_amount) })}
                             </div>
                           )}
                         </div>
                       </TableCell>
                       <TableCell className="dark:text-gray-300">
                         <Badge variant="outline" className="dark:border-blue-500 dark:text-blue-400">
-                          {returnItem.return_items.length} items
+                          {tComun('conteoItems', { n: returnItem.return_items.length })}
                         </Badge>
                       </TableCell>
                       <TableCell className="dark:text-gray-300">
@@ -333,6 +341,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
                           size="sm"
                           variant="outline"
                           onClick={() => verDetalles(returnItem)}
+                          aria-label={t('verDetalles')}
                           className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                         >
                           <Eye className="h-4 w-4" />
@@ -343,7 +352,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
                   {returns.length === 0 && !loading && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 dark:text-gray-400">
-                        No se encontraron devoluciones
+                        {t('sinResultados')}
                       </TableCell>
                     </TableRow>
                   )}
@@ -358,55 +367,54 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="max-w-4xl dark:bg-gray-800 dark:border-gray-700">
           <DialogHeader>
-            <DialogTitle className="dark:text-white">Detalles de la Devolución</DialogTitle>
+            <DialogTitle className="dark:text-white">{t('detalleTitulo')}</DialogTitle>
           </DialogHeader>
           {selectedReturn && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Fecha</div>
-                  <div className="dark:text-gray-200">{new Date(selectedReturn.return_date).toLocaleDateString()}</div>
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">{tComun('fecha')}</div>
+                  <div className="dark:text-gray-200">{formatDate(selectedReturn.return_date)}</div>
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">ID Venta</div>
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">{tComun('idVenta')}</div>
                   <div className="font-mono dark:text-gray-200">{selectedReturn.sale_id.slice(-8)}</div>
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Reembolso</div>
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">{tComun('totalReembolso')}</div>
                   <div className="space-y-1">
                     <div className="text-lg font-bold text-red-600 dark:text-red-400">
-                      {formatCurrency(selectedReturn.refund_total_with_tax)}
+                      {formatear(selectedReturn.refund_total_with_tax)}
                     </div>
                     {selectedReturn.refund_tax_amount > 0 && (
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Subtotal: {formatCurrency(selectedReturn.total_refund)} +
-                        Impuestos: {formatCurrency(selectedReturn.refund_tax_amount)}
+                        {tComun('subtotalMasImpuestos', { subtotal: formatear(selectedReturn.total_refund), impuestos: formatear(selectedReturn.refund_tax_amount) })}
                       </div>
                     )}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Estado</div>
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">{tComun('estado')}</div>
                   {getStatusBadge(selectedReturn.status)}
                 </div>
               </div>
 
               <div>
-                <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Motivo</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{tComun('motivo')}</div>
                 <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-md dark:text-gray-200">
                   {selectedReturn.reason}
                 </div>
               </div>
 
               <div>
-                <h4 className="font-medium mb-2 dark:text-white">Items Devueltos</h4>
+                <h4 className="font-medium mb-2 dark:text-white">{t('itemsDevueltos')}</h4>
                 <Table>
                   <TableHeader>
                     <TableRow className="dark:border-gray-700">
-                      <TableHead className="dark:text-gray-300">Producto</TableHead>
-                      <TableHead className="dark:text-gray-300">Cantidad</TableHead>
-                      <TableHead className="dark:text-gray-300">Reembolso</TableHead>
-                      <TableHead className="dark:text-gray-300">Motivo</TableHead>
+                      <TableHead className="dark:text-gray-300">{tComun('producto')}</TableHead>
+                      <TableHead className="dark:text-gray-300">{tComun('cantidad')}</TableHead>
+                      <TableHead className="dark:text-gray-300">{tComun('reembolso')}</TableHead>
+                      <TableHead className="dark:text-gray-300">{tComun('motivo')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -416,7 +424,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
                           <div className="font-medium">{item.product_name}</div>
                         </TableCell>
                         <TableCell className="dark:text-gray-300">{item.return_quantity}</TableCell>
-                        <TableCell className="dark:text-gray-300">{formatCurrency(item.refund_amount)}</TableCell>
+                        <TableCell className="dark:text-gray-300">{formatear(item.refund_amount)}</TableCell>
                         <TableCell className="dark:text-gray-300">{item.reason}</TableCell>
                       </TableRow>
                     ))}
@@ -430,7 +438,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
                   onClick={() => setShowDetails(false)}
                   className="dark:border-gray-600 dark:text-gray-300"
                 >
-                  Cerrar
+                  {tComun('cerrar')}
                 </Button>
               </div>
             </div>

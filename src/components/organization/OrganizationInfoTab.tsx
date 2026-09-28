@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { OrganizationInfoSkeleton } from './OrganizationSkeletons';
 import { useTranslations } from 'next-intl';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
+import { paisIsoDeOrganizacion } from '@/lib/utils/telefono';
 
 interface OrganizationProps {
   id: number;
@@ -214,6 +215,11 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errorTelefono = mensajeErrorTelefono(formData.phone, paisIsoDeOrganizacion(null, formData.country) ?? undefined);
+    if (errorTelefono) {
+      setError(`Teléfono: ${errorTelefono}`);
+      return;
+    }
     
     try {
       setSaving(true);
@@ -496,7 +502,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                   name="phone"
                   value={formData.phone || ''}
                   onChange={(v) => setFormData((prev) => ({ ...prev, phone: v }))}
-                  className="sm:text-sm [&_button]:border-gray-300 [&_input]:border-gray-300 [&_button]:dark:border-gray-600 [&_input]:dark:border-gray-600"
+                  defaultIso={paisIsoDeOrganizacion(null, formData.country) ?? undefined}
                 />
               </dd>
             </div>

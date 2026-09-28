@@ -21,6 +21,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Loader2, DollarSign } from 'lucide-react';
 import { ParkingRate, VehicleType, RateUnit } from './types';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface TarifaDialogProps {
   open: boolean;
@@ -51,6 +52,8 @@ export function TarifaDialog({
   onSave,
   defaultVehicleType,
 }: TarifaDialogProps) {
+  // Las tarifas de parking no tienen moneda propia: precio en la moneda base.
+  const { code: monedaBase } = useMonedaOrganizacion();
   const [rateName, setRateName] = useState('');
   const [vehicleType, setVehicleType] = useState<VehicleType>('car');
   const [unit, setUnit] = useState<RateUnit>('hour');
@@ -160,7 +163,7 @@ export function TarifaDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="price">Precio (COP)</Label>
+              <Label htmlFor="price">Precio ({monedaBase})</Label>
               <Input
                 id="price"
                 type="number"
@@ -185,7 +188,7 @@ export function TarifaDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="lostTicketFee">Tarifa por Ticket Perdido (COP)</Label>
+            <Label htmlFor="lostTicketFee">Tarifa por Ticket Perdido ({monedaBase})</Label>
             <Input
               id="lostTicketFee"
               type="number"

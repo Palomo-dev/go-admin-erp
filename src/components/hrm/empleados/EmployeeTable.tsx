@@ -31,7 +31,8 @@ import {
   XCircle,
   Users,
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { CopyableId } from '@/components/common/CopyableId';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
@@ -51,7 +52,8 @@ export interface EmployeeRow {
   branch_name: string | null;
   manager_name: string | null;
   base_salary: number | null;
-  currency_code: string;
+  /** Moneda del empleo; null = la base de la organización. */
+  currency_code: string | null;
 }
 
 interface EmployeeTableProps {
@@ -101,6 +103,7 @@ export function EmployeeTable({
   onChangeStatus,
 }: EmployeeTableProps) {
   const router = useRouter();
+  const { paraDocumento } = useMonedaOrganizacion();
   const formatDate = (dateStr: string) => {
     return formatPlainDate(dateStr, { year: 'numeric', month: 'short', day: 'numeric' });
   };
@@ -219,7 +222,7 @@ export function EmployeeTable({
                 <TableCell className="py-2 sm:py-3 text-right hidden md:table-cell">
                   <span className="font-medium text-xs sm:text-sm text-gray-900 dark:text-white">
                     {employee.base_salary
-                      ? formatCurrency(employee.base_salary, employee.currency_code)
+                      ? formatMoneda(employee.base_salary, paraDocumento(employee.currency_code))
                       : '-'}
                   </span>
                 </TableCell>

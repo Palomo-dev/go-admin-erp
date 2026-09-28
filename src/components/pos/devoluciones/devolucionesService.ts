@@ -1,20 +1,39 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
-import { formatCurrency } from '@/utils/Utils';
-import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
-import { serialTrackingService } from '@/lib/services/serialTrackingService';
-import { warrantyClaimsService } from '@/lib/services/warrantyClaimsService';
+import { parametrosProcesarDevolucion, type ResultadoProcesarDevolucion } from '@/lib/pos/devoluciones/procesarDevolucion';
 import { 
   Return,
   SaleForReturn, 
   RefundData,
-  CreditNote,
   ReturnSearchFilters,
   SaleSearchFilters,
   PaginatedReturnResponse,
   PaginatedSaleResponse,
   SoldSerialInfo
 } from './types';
+
+/** Filas leídas de Supabase (cliente sin tipos generados): solo los campos que se usan. */
+interface ClienteFila {
+  id: string;
+  full_name: string;
+  email?: string;
+  phone?: string;
+}
+
+interface ProductoFila {
+  id: number;
+  name: string;
+  sku: string;
+  track_serial?: boolean | null;
+}
+
+interface VentaFila {
+  id: string;
+  customer_id: string | null;
+  total: number | string | null;
+  subtotal: number | string | null;
+  tax_total: number | string | null;
+}
 
 // Función helper para obtener URL pública de imagen
 const getStorageImageUrl = (storagePath: string): string => {
@@ -44,7 +63,6 @@ export class DevolucionesService {
         search = '',
         dateFrom,
         dateTo,
-        status,
         customerId,
         branchId,
         limit = 20,
@@ -156,7 +174,7 @@ export class DevolucionesService {
       
       // Obtener customers
       const customerIds = availableSales.map(sale => sale.customer_id).filter(Boolean);
-      let customersData: any[] = [];
+      let customersData: ClienteFila[] = [];
       if (customerIds.length > 0) {
         const { data: customers, error: customersError } = await supabase
           .from('customers')
@@ -191,8 +209,8 @@ export class DevolucionesService {
 
       // Obtener productos para los items
       const productIds = (saleItemsData || []).map(item => item.product_id).filter(Boolean);
-      let productsData: any[] = [];
-      let productImages: Record<string | number, string> = {};
+      let productsData: ProductoFila[] = [];
+      const productImages: Record<string | number, string> = {};
       
       if (productIds.length > 0) {
         // Obtener datos básicos de productos
@@ -215,7 +233,7 @@ export class DevolucionesService {
           .eq('is_primary', true);
           
         if (!imagesError && images) {
-          images.forEach((img: any) => {
+          images.forEach((img) => {
             if (img.storage_path) {
               productImages[img.product_id] = img.storage_path;
             }
@@ -262,7 +280,7 @@ export class DevolucionesService {
               track_serial: product.track_serial || false
             } : {
               id: 0,
-              name: 'Producto no encontrado',
+              name: '', // la pantalla muestra «producto no encontrado» traducido
               sku: '',
               image: null,
               track_serial: false
@@ -289,7 +307,7 @@ export class DevolucionesService {
           tax_total: parseFloat(sale.tax_total || '0'),
           status: sale.status,
           payment_status: sale.payment_status,
-          payment_method: invoice?.payment_method || 'No especificado',
+          payment_method: invoice?.payment_method || undefined, // sin método: la pantalla lo traduce
           invoice_number: invoice?.number || null,
           sale_date: sale.sale_date,
           customer: customer ? {
@@ -398,7 +416,7 @@ export class DevolucionesService {
       }
 
       // Obtener customer si existe
-      let customerData: any = null;
+      let customerData: ClienteFila | null = null;
       if (saleData.customer_id) {
         const { data: customer } = await supabase
           .from('customers')
@@ -421,8 +439,8 @@ export class DevolucionesService {
 
       // Obtener productos e imágenes
       const productIds = (saleItems || []).map(item => item.product_id).filter(Boolean);
-      let productsData: any[] = [];
-      let productImages: Record<string | number, string> = {};
+      let productsData: ProductoFila[] = [];
+      const productImages: Record<string | number, string> = {};
       
       if (productIds.length > 0) {
         // Obtener productos
@@ -440,7 +458,7 @@ export class DevolucionesService {
           .eq('is_primary', true);
           
         if (images) {
-          images.forEach((img: any) => {
+          images.forEach((img) => {
             if (img.storage_path) {
               productImages[img.product_id] = img.storage_path;
             }
@@ -478,10 +496,10 @@ export class DevolucionesService {
         tax_total: Number(saleData.tax_total),
         status: saleData.status,
         payment_status: saleData.payment_status,
-        payment_method: invoice?.payment_method || 'No especificado',
+        payment_method: invoice?.payment_method || undefined, // sin método: la pantalla lo traduce
         invoice_number: invoice?.number || null,
         sale_date: saleData.sale_date,
-        items: (saleItems || []).map((item: any) => {
+        items: (saleItems || []).map((item) => {
           const product = productsData.find(p => p.id === item.product_id);
           return {
             id: item.id,
@@ -495,7 +513,7 @@ export class DevolucionesService {
               track_serial: product.track_serial || false
             } : {
               id: 0,
-              name: 'Producto no encontrado',
+              name: '', // la pantalla muestra «producto no encontrado» traducido
               sku: '',
               image: null,
               track_serial: false
@@ -509,7 +527,7 @@ export class DevolucionesService {
             serials: [] as SoldSerialInfo[]
           };
         }),
-        payments: (payments || []).map((payment: any) => ({
+        payments: (payments || []).map((payment) => ({
           id: payment.id,
           method: payment.method,
           amount: Number(payment.amount),
@@ -585,482 +603,35 @@ export class DevolucionesService {
   }
 
   /**
-   * Procesar devolución
+   * Procesar devolución.
+   *
+   * Todo en una transacción en el servidor (`procesar_devolucion`): la
+   * devolución y sus líneas con motivo, el stock por kardex (seriales
+   * incluidos), la salida de la caja abierta que corresponde —o el bloqueo si
+   * no hay caja (decisión del dueño 2026-09-23)—, el saldo a favor y la nota
+   * crédito contable. Antes eran N llamadas desde el navegador: el stock solo
+   * volvía para serializados, la salida de caja fallaba en silencio (insert
+   * sin organization_id) y reason_id quedaba vacío.
+   *
+   * `idempotencyKey`: una por intento de la pantalla; reintentar con la misma
+   * clave devuelve la devolución ya hecha en vez de duplicarla.
+   *
+   * La nota crédito ELECTRÓNICA no se envía todavía (`nc_electronica:
+   * 'no_enviada'`): el enganche es encolar `credit_note_invoice_id` en
+   * electronic_invoicing_jobs desde el servidor cuando se decida.
    */
-  static async procesarDevolucion(saleId: string, refundData: RefundData): Promise<Return> {
-    try {
-      const organizationId = this.getOrganizationId();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
-      if (authError || !user) {
-        throw new Error('Usuario no autenticado');
-      }
-
-      // Obtener información completa de la venta original
-      const { data: saleData, error: saleError } = await supabase
-        .from('sales')
-        .select('id, branch_id, total, balance, status, customer_id')
-        .eq('id', saleId)
-        .single();
-
-      if (saleError || !saleData) {
-        throw new Error('No se pudo encontrar la venta original');
-      }
-
-      console.log('Procesando devolución:', {
-        type: refundData.type,
-        saleTotal: saleData.total,
-        refundAmount: refundData.total_refund,
-        isFullRefund: Number(saleData.total) === Number(refundData.total_refund)
-      });
-
-      // ===============================
-      // DEVOLUCIÓN TOTAL (usar nota de crédito completa)
-      // ===============================
-      if (refundData.type === 'full' || Number(saleData.total) === Number(refundData.total_refund)) {
-        console.log('📝 Procesando devolución TOTAL - usando nota de crédito completa');
-        
-        // Para devoluciones totales, usar la funcionalidad de nota de crédito completa
-        // que ya salda todos los balances a cero automáticamente
-        await this.procesarDevolucionTotal(saleId, refundData);
-      } 
-      // ===============================
-      // DEVOLUCIÓN PARCIAL (ajustar balances proporcionalmente)
-      // ===============================
-      else {
-        console.log('📏 Procesando devolución PARCIAL - ajustando balances');
-        
-        // Para devoluciones parciales, ajustar balances proporcionalmente
-        await this.procesarDevolucionParcial(saleId, refundData);
-      }
-
-      // Crear registro de devolución para historial
-      const returnData = {
-        organization_id: organizationId,
-        branch_id: saleData.branch_id,
-        sale_id: saleId,
-        user_id: user.id,
-        total_refund: refundData.total_refund,
-        reason: refundData.reason,
-        status: 'processed',
-        return_items: refundData.items.map(item => ({
-          id: item.sale_item_id,
-          product_id: item.product_id,
-          return_quantity: item.return_quantity,
-          refund_amount: item.refund_amount,
-          reason: item.reason
-        }))
-      };
-
-      const { data: returnResult, error: returnError } = await supabase
-        .from('returns')
-        .insert([returnData])
-        .select()
-        .single();
-
-      if (returnError) {
-        console.error('Error creando devolución:', returnError);
-        throw returnError;
-      }
-
-      // Actualizar stock y seriales
-      await this.actualizarStockDevolucion(refundData.items, saleId, saleData.customer_id);
-
-      console.log('✅ Devolución procesada exitosamente');
-      return returnResult;
-
-    } catch (error) {
+  static async procesarDevolucion(
+    saleId: string,
+    refundData: RefundData,
+    idempotencyKey: string = crypto.randomUUID(),
+  ): Promise<ResultadoProcesarDevolucion> {
+    const params = parametrosProcesarDevolucion(this.getOrganizationId(), saleId, refundData, idempotencyKey);
+    const { data, error } = await supabase.rpc('procesar_devolucion', params);
+    if (error) {
       console.error('Error en procesarDevolucion:', error);
       throw error;
     }
-  }
-
-  /**
-   * Crear movimiento de caja para el reembolso
-   */
-  private static async crearMovimientoCaja(branchId: number, amount: number, concept: string) {
-    try {
-      // Buscar sesión de caja activa
-      const { data: session } = await supabase
-        .from('cash_sessions')
-        .select('id')
-        .eq('branch_id', branchId)
-        .eq('status', 'open')
-        .single();
-
-      if (session) {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        await supabase
-          .from('cash_movements')
-          .insert([{
-            cash_session_id: session.id,
-            type: 'out',
-            concept: `Devolución: ${concept}`,
-            amount: amount,
-            user_id: user?.id
-          }]);
-      }
-    } catch (error) {
-      console.error('Error creando movimiento de caja:', error);
-      // No lanzar error para no interrumpir el proceso principal
-    }
-  }
-
-  /**
-   * Registrar pago de reembolso
-   */
-  private static async registrarPagoReembolso(saleId: string, amount: number, method: string) {
-    try {
-      const organizationId = this.getOrganizationId();
-      const { data: { user } } = await supabase.auth.getUser();
-
-      await supabase
-        .from('payments')
-        .insert([{
-          organization_id: organizationId,
-          source: 'sale',
-          source_id: saleId,
-          method: method === 'original_method' ? 'cash' : method, // Simplificar por ahora
-          amount: -amount, // Negativo para indicar reembolso
-          reference: `Reembolso-${saleId.slice(-8)}`,
-          status: 'completed',
-          created_by: user?.id
-        }]);
-
-    } catch (error) {
-      console.error('Error registrando pago de reembolso:', error);
-    }
-  }
-
-  /**
-   * Crear nota de crédito
-   */
-  private static async crearNotaCredito(customerId: string, amount: number, notes?: string): Promise<string | null> {
-    try {
-      const organizationId = this.getOrganizationId();
-      
-      // Calcular fecha de expiración (por ejemplo, 1 año)
-      const expiryDate = new Date();
-      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-
-      const { data, error } = await supabase
-        .from('credit_notes')
-        .insert([{
-          organization_id: organizationId,
-          customer_id: customerId,
-          amount: amount,
-          balance: amount,
-          expiry_date: expiryDate.toISOString(),
-          status: 'active',
-          notes: notes || 'Nota de crédito por devolución'
-        }])
-        .select('id')
-        .single();
-
-      if (error) {
-        console.error('Error creando nota de crédito:', error);
-        return null;
-      }
-      
-      return data.id;
-
-    } catch (error) {
-      console.error('Error creando nota de crédito:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Actualizar stock y seriales por devolución
-   */
-  private static async actualizarStockDevolucion(
-    items: RefundData['items'],
-    saleId?: string,
-    customerId?: string
-  ) {
-    try {
-      const organizationId = this.getOrganizationId();
-      const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id;
-
-      for (const item of items) {
-        if (!item.product_id) continue;
-
-        // Verificar si el producto tiene tracking de seriales
-        const { data: product } = await supabase
-          .from('products')
-          .select('track_serial')
-          .eq('id', item.product_id)
-          .maybeSingle();
-
-        if (!product?.track_serial) continue;
-
-        // Si se pasaron serial_number_ids explícitos, usarlos; si no, buscar por venta
-        let soldSerials: { id: number; serial: string; status: string; sold_to_customer_id: string | null }[] | null = null;
-
-        if (item.serial_number_ids && item.serial_number_ids.length > 0) {
-          const { data: explicitSerials, error: explicitError } = await supabase
-            .from('serial_numbers')
-            .select('id, serial, status, sold_to_customer_id')
-            .eq('organization_id', organizationId)
-            .in('id', item.serial_number_ids);
-
-          if (explicitError) {
-            console.warn(`Error obteniendo seriales explícitos para product_id ${item.product_id}:`, explicitError);
-            continue;
-          }
-          soldSerials = explicitSerials;
-        } else {
-          // Buscar seriales vendidos asociados a esta venta y producto
-          let serialQuery = supabase
-            .from('serial_numbers')
-            .select('id, serial, status, sold_to_customer_id')
-            .eq('organization_id', organizationId)
-            .eq('product_id', item.product_id)
-            .eq('status', 'sold');
-
-          if (saleId) {
-            serialQuery = serialQuery.eq('sale_id', saleId);
-          }
-
-          const { data: foundSerials, error: serialError } = await serialQuery.limit(item.return_quantity);
-          if (serialError) {
-            console.warn(`Error buscando seriales para product_id ${item.product_id}:`, serialError);
-            continue;
-          }
-          soldSerials = foundSerials;
-        }
-
-        if (!soldSerials || soldSerials.length === 0) {
-          console.warn(`No se encontraron seriales vendidos para product_id ${item.product_id}`);
-          continue;
-        }
-
-        const isWarrantyReason = ['garantia', 'defectuoso', 'dañado'].includes(item.reason);
-
-        for (const serial of soldSerials) {
-          if (isWarrantyReason) {
-            // Cambiar estado a warranty_claim y crear reclamo
-            await serialTrackingService.updateStatus(serial.id, 'warranty_claim', {
-              event_type: 'warranty_claim',
-              source_table: 'returns',
-              source_id: saleId ?? undefined,
-              notes: `Devolución por ${item.reason}`,
-              performed_by: userId,
-            });
-
-            await warrantyClaimsService.createClaim({
-              organization_id: organizationId,
-              serial_number_id: serial.id,
-              customer_id: serial.sold_to_customer_id ?? customerId ?? null,
-              claim_date: new Date().toISOString(),
-              claim_reason: item.reason,
-              description: `Reclamo creado automáticamente desde devolución. Sale: ${saleId ?? 'N/A'}`,
-              status: 'pending',
-              created_by: userId ?? null,
-            });
-
-            console.log(`✅ Serial ${serial.serial} movido a warranty_claim y reclamo creado`);
-          } else {
-            // Devolución normal: cambiar estado a returned y luego a in_stock
-            await serialTrackingService.returnSerial(serial.id, item.reason, userId);
-
-            // Limpiar datos de venta y devolver a stock
-            await supabase
-              .from('serial_numbers')
-              .update({
-                status: 'in_stock',
-                sold_to_customer_id: null,
-                sold_by_user_id: null,
-                sale_id: null,
-                web_order_id: null,
-                invoice_sale_id: null,
-                sale_channel: 'in_stock',
-                sale_date: null,
-                updated_at: new Date().toISOString(),
-                updated_by: userId ?? null,
-              })
-              .eq('id', serial.id);
-
-            console.log(`✅ Serial ${serial.serial} devuelto a stock`);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error actualizando stock y seriales:', error);
-    }
-  }
-
-  /**
-   * Crear factura de nota de crédito
-   */
-  private static async crearFacturaNotaCredito(saleId: string, creditNoteId: string, totalRefund: number, saleDetail: SaleForReturn) {
-    try {
-      const organizationId = this.getOrganizationId();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // Buscar factura original
-      const { data: originalInvoice } = await supabase
-        .from('invoice_sales')
-        .select('id')
-        .eq('sale_id', saleId)
-        .single();
-      
-      // Crear factura de nota de crédito
-      const { data: invoice, error } = await supabase
-        .from('invoice_sales')
-        .insert([{
-          organization_id: organizationId,
-          branch_id: saleDetail.branch_id,
-          customer_id: saleDetail.customer_id,
-          number: `NC-${Date.now()}`,
-          issue_date: new Date().toISOString(),
-          currency: 'COP',
-          subtotal: totalRefund / 1.19, // Asumiendo 19% de IVA
-          tax_total: totalRefund - (totalRefund / 1.19),
-          total: totalRefund,
-          balance: totalRefund,
-          status: 'issued',
-          document_type: 'credit_note',
-          related_invoice_id: originalInvoice?.id || null,
-          created_by: user?.id,
-          tax_included: true,
-          description: `Nota de crédito por devolución - Venta ${saleId}`
-        }])
-        .select('id')
-        .single();
-
-      if (error) {
-        console.error('Error creando factura de nota de crédito:', error);
-      }
-
-      return invoice?.id;
-      
-    } catch (error) {
-      console.error('Error en crearFacturaNotaCredito:', error);
-    }
-  }
-
-  /**
-   * Actualizar balance de factura original
-   */
-  private static async actualizarBalanceFactura(saleId: string, refundAmount: number) {
-    try {
-      console.log(`Actualizando balance para venta ${saleId} con monto ${refundAmount}`);
-      
-      // Buscar factura relacionada con la venta
-      const { data: invoice, error: findError } = await supabase
-        .from('invoice_sales')
-        .select('id, balance, total, status')
-        .eq('sale_id', saleId)
-        .single();
-
-      if (findError) {
-        console.error('Error buscando factura:', findError);
-        console.warn('No se encontró factura para actualizar balance:', saleId);
-        return;
-      }
-      
-      if (!invoice) {
-        console.warn('Factura no encontrada para venta:', saleId);
-        return;
-      }
-
-      console.log('Factura encontrada:', {
-        id: invoice.id,
-        balance: invoice.balance,
-        total: invoice.total,
-        status: invoice.status
-      });
-
-      // Verificar si la factura ya fue procesada (balance negativo indica devolución previa)
-      const currentBalance = Number(invoice.balance);
-      const originalTotal = Number(invoice.total);
-      
-      // Si el balance ya es negativo, significa que ya se procesó una devolución
-      if (currentBalance < 0) {
-        console.log('Balance ya es negativo, posible devolución previa detectada');
-        // Usar el total original como base para calcular el nuevo balance
-        const newBalance = originalTotal - refundAmount;
-        const newStatus = newBalance <= 0 ? 'void' : 'paid';
-        
-        console.log(`Recalculando desde total original: ${originalTotal} - ${refundAmount} = ${newBalance}`);
-        console.log(`Nuevo estado: ${newStatus}`);
-        
-        // Actualizar con el balance correcto
-        const { error: updateError } = await supabase
-          .from('invoice_sales')
-          .update({ 
-            balance: newBalance,
-            status: newStatus
-          })
-          .eq('id', invoice.id);
-
-        if (updateError) {
-          console.error('Error actualizando balance de factura:', updateError);
-          throw new Error(`Error actualizando factura: ${updateError.message}`);
-        } else {
-          console.log(`Balance de factura corregido: ${currentBalance} -> ${newBalance}`);
-        }
-        return;
-      }
-      
-      // Proceso normal para facturas sin devoluciones previas
-      const newBalance = currentBalance - refundAmount;
-      const newStatus = newBalance <= 0 ? 'void' : 'paid';
-      
-      console.log(`Calculando balance: ${currentBalance} - ${refundAmount} = ${newBalance}`);
-      console.log(`Nuevo estado: ${newStatus}`);
-
-      // Actualizar balance de la factura
-      const { error: updateError } = await supabase
-        .from('invoice_sales')
-        .update({ 
-          balance: newBalance,
-          status: newStatus
-        })
-        .eq('id', invoice.id);
-
-      if (updateError) {
-        console.error('Error actualizando balance de factura:', updateError);
-        throw new Error(`Error actualizando factura: ${updateError.message}`);
-      } else {
-        console.log(`Balance de factura actualizado exitosamente: ${currentBalance} -> ${newBalance}`);
-      }
-
-    } catch (error) {
-      console.error('Error en actualizarBalanceFactura:', error);
-      // No lanzar error para no interrumpir el proceso principal de devolución
-    }
-  }
-
-  /**
-   * Actualizar estado de venta
-   */
-  private static async actualizarEstadoVenta(saleId: string, newStatus: string) {
-    try {
-      console.log(`🔄 Actualizando estado de venta ${saleId} a: ${newStatus}`);
-      
-      const { error } = await supabase
-        .from('sales')
-        .update({ 
-          status: newStatus,
-          payment_status: 'refunded' // Valor válido según constraint: pending, paid, partial, refunded
-        })
-        .eq('id', saleId);
-
-      if (error) {
-        console.error('❌ Error actualizando estado de venta:', error);
-        throw new Error(`Error al actualizar estado de venta: ${error.message || JSON.stringify(error)}`);
-      }
-      
-      console.log(`✅ Estado de venta ${saleId} actualizado exitosamente a: ${newStatus}`);
-
-    } catch (error) {
-      console.error('❌ Error en actualizarEstadoVenta:', error);
-      throw error; // Re-lanzar el error para que se propague
-    }
+    return data as ResultadoProcesarDevolucion;
   }
 
   /**
@@ -1072,11 +643,9 @@ export class DevolucionesService {
       console.log('Obteniendo historial para organización:', organizationId);
       
       const {
-        search = '',
         dateFrom,
         dateTo,
         status,
-        refundMethod,
         branchId
       } = filters;
 
@@ -1127,8 +696,8 @@ export class DevolucionesService {
 
       // Obtener información de ventas relacionadas con impuestos
       const saleIds = returnsData.map(ret => ret.sale_id).filter(Boolean);
-      let salesData: any[] = [];
-      let customersData: any[] = [];
+      let salesData: VentaFila[] = [];
+      let customersData: ClienteFila[] = [];
       
       if (saleIds.length > 0) {
         const { data: sales, error: salesError } = await supabase
@@ -1222,348 +791,6 @@ export class DevolucionesService {
 
     } catch (error) {
       console.error('Error en obtenerHistorialDevoluciones:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Procesar devolución TOTAL - Crear nota de crédito completa
-   * Usa la funcionalidad de POSService.cancelDebtWithCreditNote()
-   */
-  private static async procesarDevolucionTotal(saleId: string, refundData: RefundData) {
-    try {
-      console.log('📝 Iniciando devolución total con nota de crédito');
-      
-      // Procesar pagos/movimientos según el método de reembolso
-      if (refundData.refund_method === 'cash' || refundData.refund_method === 'original_method') {
-        const { data: saleData } = await supabase
-          .from('sales')
-          .select('branch_id')
-          .eq('id', saleId)
-          .single();
-        
-        if (saleData) {
-          // Crear movimiento de caja (salida)
-          await this.crearMovimientoCaja(saleData.branch_id, refundData.total_refund, refundData.reason);
-          
-          // Registrar pago de reembolso
-          await this.registrarPagoReembolso(saleId, refundData.total_refund, refundData.refund_method);
-        }
-      }
-      
-      // Importar POSService dinámicamente para crear nota de crédito completa
-      const { POSService } = await import('@/lib/services/posService');
-      
-      // Encontrar el carrito asociado (si existe) para usar cancelDebtWithCreditNote
-      // Si no existe carrito, crear nota de crédito manualmente
-      try {
-        // Buscar si existe un carrito con hold_with_debt para esta venta
-        const cartsData = localStorage.getItem(`pos_carts_${this.getOrganizationId()}`);
-        if (cartsData) {
-          const allCarts = JSON.parse(cartsData);
-          const cart = allCarts.find((c: any) => c.status === 'hold_with_debt' && c.sale_id === saleId);
-          
-          if (cart) {
-            console.log('📝 Usando POSService.cancelDebtWithCreditNote para carrito:', cart.id);
-            await POSService.cancelDebtWithCreditNote(cart.id);
-            return;
-          }
-        }
-      } catch (error) {
-        console.warn('No se pudo usar cancelDebtWithCreditNote, creando nota manualmente:', error);
-      }
-      
-      // Si no hay carrito, crear nota de crédito manualmente
-      console.log('📝 Creando nota de crédito manual para devolución total');
-      await this.crearNotaCreditoCompleta(saleId, refundData.total_refund, refundData.reason);
-      
-      // Actualizar estado de venta a 'void' (anulado por devolución total)
-      await this.actualizarEstadoVenta(saleId, 'void');
-      
-      console.log('✅ Devolución total procesada exitosamente');
-      
-    } catch (error) {
-      console.error('Error en procesarDevolucionTotal:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Procesar devolución PARCIAL - Ajustar balances proporcionalmente
-   */
-  private static async procesarDevolucionParcial(saleId: string, refundData: RefundData) {
-    try {
-      console.log('📏 Iniciando devolución parcial');
-      
-      // Procesar pagos/movimientos según el método de reembolso
-      if (refundData.refund_method === 'cash' || refundData.refund_method === 'original_method') {
-        const { data: saleData } = await supabase
-          .from('sales')
-          .select('branch_id')
-          .eq('id', saleId)
-          .single();
-        
-        if (saleData) {
-          // Crear movimiento de caja (salida)
-          await this.crearMovimientoCaja(saleData.branch_id, refundData.total_refund, refundData.reason);
-          
-          // Registrar pago de reembolso
-          await this.registrarPagoReembolso(saleId, refundData.total_refund, refundData.refund_method);
-        }
-      } else if (refundData.refund_method === 'credit_note') {
-        // Para devoluciones parciales con nota de crédito, crear nota parcial
-        const saleDetail = await this.obtenerDetalleVenta(saleId);
-        if (saleDetail.customer_id) {
-          const creditNoteId = await this.crearNotaCredito(saleDetail.customer_id, refundData.total_refund, refundData.notes);
-          if (creditNoteId) {
-            await this.crearFacturaNotaCredito(saleId, creditNoteId, refundData.total_refund, saleDetail);
-          }
-        }
-      }
-      
-      // Actualizar balances en TODAS las tablas proporcionalmente
-      await this.actualizarBalancesDevolucionParcial(saleId, refundData.total_refund);
-      
-      console.log('✅ Devolución parcial procesada exitosamente');
-      
-    } catch (error) {
-      console.error('Error en procesarDevolucionParcial:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Crear nota de crédito completa para devolución total
-   */
-  private static async crearNotaCreditoCompleta(saleId: string, totalRefund: number, reason: string) {
-    try {
-      console.log('🔍 Buscando factura original para sale_id:', saleId);
-      
-      let { data: originalInvoice, error: invoiceError } = await supabase
-        .from('invoice_sales')
-        .select('*')
-        .eq('sale_id', saleId)
-        .eq('document_type', 'invoice')
-        .single();
-
-      // Si no se encuentra con document_type 'invoice', buscar con document_type null
-      if (invoiceError || !originalInvoice) {
-        console.log('📋 No se encontró factura con document_type="invoice", buscando con document_type=null');
-        
-        const { data: invoiceWithNullType, error: nullTypeError } = await supabase
-          .from('invoice_sales')
-          .select('*')
-          .eq('sale_id', saleId)
-          .is('document_type', null)
-          .single();
-          
-        if (nullTypeError || !invoiceWithNullType) {
-          console.error('❌ Error buscando factura:', { invoiceError, nullTypeError });
-          throw new Error('No se encontró la factura original');
-        }
-        
-        originalInvoice = invoiceWithNullType;
-        console.log('✅ Factura encontrada con document_type=null:', originalInvoice.id);
-      } else {
-        console.log('✅ Factura encontrada con document_type="invoice":', originalInvoice.id);
-      }
-
-      // Obtener items de la factura original
-      const { data: originalItems } = await supabase
-        .from('invoice_items')
-        .select('*')
-        .eq('invoice_sales_id', originalInvoice.id);
-
-      // Generar número de nota de crédito usando servicio centralizado
-    const creditNoteNumber = await CreditNoteNumberService.generateNextCreditNoteNumber(
-      String(this.getOrganizationId())
-    );
-
-      // Crear nota de crédito completa
-      const currentDate = new Date().toISOString();
-      const { data: creditNoteData, error: creditNoteError } = await supabase
-        .from('invoice_sales')
-        .insert({
-          organization_id: this.getOrganizationId(),
-          branch_id: originalInvoice.branch_id,
-          customer_id: originalInvoice.customer_id,
-          sale_id: originalInvoice.sale_id,
-          number: creditNoteNumber,
-          issue_date: currentDate,
-          due_date: currentDate,
-          currency: originalInvoice.currency,
-          subtotal: -originalInvoice.subtotal,
-          tax_total: -originalInvoice.tax_total,
-          total: -originalInvoice.total,
-          balance: 0,
-          status: 'issued',
-          document_type: 'credit_note',
-          related_invoice_id: originalInvoice.id,
-          tax_included: originalInvoice.tax_included,
-          payment_method: originalInvoice.payment_method || 'credit',
-          description: `Nota de crédito por devolución total - ${reason}`,
-          created_by: (await supabase.auth.getUser()).data.user?.id
-        })
-        .select()
-        .single();
-
-      if (creditNoteError) {
-        throw new Error('Error al crear la nota de crédito: ' + creditNoteError.message);
-      }
-
-      // Crear items de nota de crédito
-      if (originalItems && originalItems.length > 0) {
-        const creditNoteItems = originalItems.map(item => ({
-          invoice_id: creditNoteData.id,
-          invoice_sales_id: creditNoteData.id,
-          invoice_type: 'sale',
-          product_id: item.product_id,
-          description: item.description || 'Item de nota de crédito',
-          qty: -item.qty,
-          unit_price: item.unit_price,
-          total_line: -item.total_line,
-          tax_rate: item.tax_rate || 0,
-          discount_amount: item.discount_amount ? -item.discount_amount : 0,
-          tax_included: item.tax_included || false
-        }));
-
-        const { error: itemsError } = await supabase
-          .from('invoice_items')
-          .insert(creditNoteItems);
-
-        if (itemsError) {
-          throw new Error('Error al crear items de nota de crédito: ' + itemsError.message);
-        }
-      }
-
-      // Saldar todos los balances a cero (devolución total)
-      await this.saldarBalancesCompletos(saleId, originalInvoice.id);
-      
-    } catch (error) {
-      console.error('Error en crearNotaCreditoCompleta:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Saldar todos los balances a cero para devolución total
-   */
-  private static async saldarBalancesCompletos(saleId: string, invoiceId: string) {
-    try {
-      // Actualizar factura original
-      await supabase
-        .from('invoice_sales')
-        .update({
-          balance: 0,
-          status: 'paid',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', invoiceId);
-
-      // Actualizar venta original
-      await supabase
-        .from('sales')
-        .update({
-          balance: 0,
-          status: 'paid',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', saleId);
-
-      // Actualizar cuentas por cobrar
-      await supabase
-        .from('accounts_receivable')
-        .update({
-          balance: 0,
-          status: 'paid',
-          updated_at: new Date().toISOString()
-        })
-        .eq('invoice_id', invoiceId);
-        
-      console.log('✅ Todos los balances saldados a cero');
-      
-    } catch (error) {
-      console.error('Error saldando balances completos:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Actualizar balances proporcionalmente para devolución parcial
-   */
-  private static async actualizarBalancesDevolucionParcial(saleId: string, refundAmount: number) {
-    try {
-      console.log(`📏 Actualizando balances para devolución parcial: $${refundAmount}`);
-      
-      // Actualizar balance en sales
-      const { data: saleData, error: saleError } = await supabase
-        .from('sales')
-        .select('balance')
-        .eq('id', saleId)
-        .single();
-
-      if (!saleError && saleData) {
-        const newSaleBalance = Math.max(0, Number(saleData.balance) - refundAmount);
-        await supabase
-          .from('sales')
-          .update({
-            balance: newSaleBalance,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', saleId);
-        
-        console.log(`✅ Balance de venta actualizado: ${saleData.balance} → ${newSaleBalance}`);
-      }
-      
-      // Actualizar balance en invoice_sales
-      const { data: invoiceData, error: invoiceError } = await supabase
-        .from('invoice_sales')
-        .select('id, balance')
-        .eq('sale_id', saleId)
-        .eq('document_type', 'invoice')
-        .single();
-
-      if (!invoiceError && invoiceData) {
-        const newInvoiceBalance = Math.max(0, Number(invoiceData.balance) - refundAmount);
-        const newStatus = newInvoiceBalance <= 0 ? 'paid' : 'partial';
-        
-        await supabase
-          .from('invoice_sales')
-          .update({
-            balance: newInvoiceBalance,
-            status: newStatus,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', invoiceData.id);
-        
-        console.log(`✅ Balance de factura actualizado: ${invoiceData.balance} → ${newInvoiceBalance}`);
-        
-        // Actualizar balance en accounts_receivable
-        const { data: arData, error: arError } = await supabase
-          .from('accounts_receivable')
-          .select('balance')
-          .eq('invoice_id', invoiceData.id)
-          .single();
-
-        if (!arError && arData) {
-          const newArBalance = Math.max(0, Number(arData.balance) - refundAmount);
-          const newArStatus = newArBalance <= 0 ? 'paid' : 'current';
-          
-          await supabase
-            .from('accounts_receivable')
-            .update({
-              balance: newArBalance,
-              status: newArStatus,
-              updated_at: new Date().toISOString()
-            })
-            .eq('invoice_id', invoiceData.id);
-          
-          console.log(`✅ Balance de cuenta por cobrar actualizado: ${arData.balance} → ${newArBalance}`);
-        }
-      }
-      
-    } catch (error) {
-      console.error('Error actualizando balances de devolución parcial:', error);
       throw error;
     }
   }

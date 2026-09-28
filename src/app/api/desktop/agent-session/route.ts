@@ -23,8 +23,21 @@ export const dynamic = 'force-dynamic';
  * canjea con `verifyOtp({ token_hash, type: 'magiclink' })` y recibe una
  * familia de tokens independiente. No se envía ningún correo. Caduca según
  * el tiempo de vida de OTP del proyecto y sirve una sola vez.
+ *
+ * Desde el Desktop 0.2.x la ventana se sirve desde el servidor Next embebido
+ * (127.0.0.1), que no lleva la clave de servicio: allí esta ruta responde 503
+ * `SIN_CLAVE_SERVIDOR` y el código lo pide el proceso principal del Desktop a
+ * app.goadmin.io con `Authorization: Bearer <access token>` y
+ * `X-Organization-Id` (por eso `bearer: true` y la exclusión en el
+ * middleware: sin cookies, el middleware respondía 401 antes del handler).
  */
 export const POST = withOrg(async (ctx) => {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json(
+      { error: 'Este servidor no puede generar el código de vinculación', code: 'SIN_CLAVE_SERVIDOR' },
+      { status: 503 },
+    );
+  }
   if (!ctx.userEmail) {
     return NextResponse.json({ error: 'La sesión no tiene correo asociado' }, { status: 400 });
   }
@@ -47,4 +60,4 @@ export const POST = withOrg(async (ctx) => {
     organization_id: ctx.organizationId,
     organization_name: ctx.organizationName,
   });
-});
+}, { bearer: true });

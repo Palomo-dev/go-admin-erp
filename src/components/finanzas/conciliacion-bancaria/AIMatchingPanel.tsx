@@ -20,7 +20,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConciliacionService } from './ConciliacionService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { esEntradaBancaria } from '@/lib/finanzas/movimientoBancario';
 
 // ==================== Tipos ====================
 
@@ -66,11 +68,16 @@ interface SuggestedMatch {
 interface AIMatchingPanelProps {
   reconciliationId: string;
   onMatchComplete: () => void;
+  /** Moneda de la cuenta conciliada; sin ella, la base de la organizacion. */
+  monedaCuenta?: string | null;
 }
 
 // ==================== Componente ====================
 
-export function AIMatchingPanel({ reconciliationId, onMatchComplete }: AIMatchingPanelProps) {
+export function AIMatchingPanel({ reconciliationId, onMatchComplete, monedaCuenta }: AIMatchingPanelProps) {
+  // Movimiento bancario: en la moneda de la cuenta. Pago candidato: el dato
+  // no trae moneda, va en la base.
+  const { formatear, paraDocumento } = useMonedaOrganizacion();
   const [suggestions, setSuggestions] = useState<SuggestedMatch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAutoMatching, setIsAutoMatching] = useState(false);
@@ -318,11 +325,11 @@ export function AIMatchingPanel({ reconciliationId, onMatchComplete }: AIMatchin
                       </span>
                     </div>
                     <p className={`text-sm font-semibold mt-1 ${
-                      sug.transaction.transaction_type === 'credit'
+                      esEntradaBancaria(sug.transaction)
                         ? 'text-green-600 dark:text-green-400'
                         : 'text-red-600 dark:text-red-400'
                     }`}>
-                      {formatCurrency(Math.abs(sug.transaction.amount))}
+                      {formatMoneda(Math.abs(sug.transaction.amount), paraDocumento(monedaCuenta))}
                     </p>
                   </div>
 
@@ -341,7 +348,7 @@ export function AIMatchingPanel({ reconciliationId, onMatchComplete }: AIMatchin
                       </span>
                     </div>
                     <p className="text-sm font-semibold text-green-600 dark:text-green-400 mt-1">
-                      {formatCurrency(Math.abs(sug.candidate.amount))}
+                      {formatear(Math.abs(sug.candidate.amount))}
                     </p>
                   </div>
                 </div>

@@ -1,49 +1,43 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+/**
+ * POST /api/subscriptions/billing-portal — sesión del portal de facturación
+ * de Stripe de la organización.
+ *
+ * GO-sec (auditoría 2026-09-24): tenía un «BYPASS activado» sin comprobar
+ * pertenencia y con service role: cualquier usuario con sesión abría el portal
+ * de Stripe de CUALQUIER organización (facturas, tarjetas, cancelar la
+ * suscripción). Ahora exige membresía activa y permiso de facturación en esa
+ * organización (`contextoDeFacturacion`) antes de leer nada.
+ */
+
+import { NextResponse } from 'next/server';
 import { createBillingPortalSession } from '@/lib/stripe/subscriptionService';
+import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion';
+import { routeErrorResponse } from '@/lib/security/orgGuards';
+import { getServiceClient } from '@/lib/supabase/server-service';
 
-export async function POST(request: NextRequest) {
+const RUTA = 'subscriptions/billing-portal';
+
+export async function POST(request: Request) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('❌ Variables de entorno faltantes:', { supabaseUrl: !!supabaseUrl, supabaseServiceKey: !!supabaseServiceKey });
-      return NextResponse.json(
-        { error: 'Configuración del servidor incompleta. Reinicia el servidor.' },
-        { status: 500 }
-      );
-    }
-    
-    // Crear cliente con service role para bypass de RLS
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-
-    const { organizationId } = await request.json();
-
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: 'organizationId es requerido' },
-        { status: 400 }
-      );
+    let body: { organizationId?: unknown };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
     }
 
-    console.log('🔍 API billing-portal - orgId:', organizationId);
+    const ctx = await contextoDeFacturacion(body.organizationId, RUTA);
 
-    // Bypass temporal: permitir acceso sin verificar membership
-    console.log('🔍 API billing-portal - BYPASS activado');
-
-    // Obtener suscripción con stripe_customer_id
-    const { data: subscription, error: subError } = await supabase
+    // Service role solo tras validar la organización: la RLS de
+    // `subscriptions` no se ha revisado para este flujo.
+    const { data: subscription, error: subError } = await getServiceClient()
       .from('subscriptions')
       .select('stripe_customer_id')
-      .eq('organization_id', organizationId)
+      .eq('organization_id', ctx.organizationId)
       .not('stripe_customer_id', 'is', null)
-      .single();
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (subError || !subscription?.stripe_customer_id) {
       return NextResponse.json(
@@ -52,27 +46,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Crear sesión del portal de facturación
     const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.goadmin.io'}/app/plan`;
     const result = await createBillingPortalSession(subscription.stripe_customer_id, returnUrl);
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error || 'Error creando sesión del portal' },
-        { status: 500 }
-      );
+      console.error(`[${RUTA}] no se pudo crear la sesión del portal:`, result.error);
+      return NextResponse.json({ error: 'Error creando sesión del portal' }, { status: 500 });
     }
 
-    return NextResponse.json({
-      success: true,
-      url: result.url
-    });
-
-  } catch (error: any) {
-    console.error('Error creating billing portal session:', error);
-    return NextResponse.json(
-      { error: error.message || 'Error interno del servidor' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, url: result.url });
+  } catch (err) {
+    return routeErrorResponse(RUTA, err);
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { formatCurrency } from "@/utils/Utils";
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Card, CardContent } from "@/components/ui/card";
 import { useOrgTimezone } from "@/lib/context/OrganizationTimezoneContext";
 import { formatDateInTz } from "@/lib/utils/dateDisplay";
@@ -19,6 +19,8 @@ interface KanbanSummaryProps {
 
 export function KanbanSummary({ stages }: KanbanSummaryProps) {
   const { timezone } = useOrgTimezone();
+  // Importes agregados: moneda base de la organización (nunca 'COP' cableado).
+  const { formatear } = useMonedaOrganizacion();
 
   const totalOpportunities = stages.reduce(
     (sum, stage) => sum + stage.count,
@@ -57,12 +59,12 @@ export function KanbanSummary({ stages }: KanbanSummaryProps) {
             </div>
             <div className="flex justify-between text-sm mb-1">
               <span>Valor total:</span>
-              <span className="font-medium">{formatCurrency(totalAmount)}</span>
+              <span className="font-medium">{formatear(totalAmount)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span>Pronóstico:</span>
               <span className="font-medium">
-                {formatCurrency(totalForecast)}
+                {formatear(totalForecast)}
               </span>
             </div>
           </div>
@@ -85,7 +87,7 @@ export function KanbanSummary({ stages }: KanbanSummaryProps) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Valor:</span>
-                  <span>{formatCurrency(stage.totalAmount)}</span>
+                  <span>{formatear(stage.totalAmount)}</span>
                 </div>
               </div>
             ))}
@@ -105,7 +107,7 @@ export function KanbanSummary({ stages }: KanbanSummaryProps) {
               <div key={month} className="flex justify-between text-sm">
                 <span className="capitalize">{month}:</span>
                 <span className="font-medium">
-                  {formatCurrency(monthlyForecasts[index])}
+                  {formatear(monthlyForecasts[index])}
                 </span>
               </div>
             ))}

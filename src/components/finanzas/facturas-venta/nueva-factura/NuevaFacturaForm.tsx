@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,16 +20,20 @@ import { BranchSelectorField } from '@/components/inventario/BranchSelectorField
 import { ItemsFactura } from './ItemsFactura';
 import { ImpuestosFactura } from './ImpuestosFactura';
 import { FormaPagoSelector } from './FormaPagoSelector';
-import { format } from 'date-fns';
-import { Save, FileCheck, ArrowLeft, RefreshCw, Coins, User, Percent, DollarSign, AlertCircle } from 'lucide-react';
-import { DatePicker } from '@/components/ui/date-picker';
+import { Save, ArrowLeft, RefreshCw, Coins, User, Percent, DollarSign, AlertCircle } from 'lucide-react';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { serialTrackingService } from '@/lib/services/serialTrackingService';
+import { ErrorPeticionFactura, guardarFacturaVenta } from '@/lib/finanzas/ventas/clienteFacturas';
 import { resolveLineTax } from '@/lib/services/taxResolver';
+import { tasaImpuestosDelDocumento } from '@/lib/services/taxCoverage';
+import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
+import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
 
 // Tipo para un ítem de factura
 export type InvoiceItem = {
@@ -53,35 +58,111 @@ export type InvoiceItem = {
   product_sku?: string | null; // SKU del producto (para SerialSelectorDialog)
 };
 
-// Tipo para una factura
-interface Invoice {
+/** Línea de una factura guardada (lo que usa el formulario al editar). */
+interface ItemFacturaGuardada {
   id?: string;
-  organization_id: number;
-  branch_id: number; // Campo obligatorio según el esquema de la DB
-  customer_id: string | null; // Cambiado a string para UUID
-  sale_id?: string; // Relación con la tabla sales
+  product_id?: number | null;
+  description?: string | null;
+  qty?: number | string | null;
+  unit_price?: number | string | null;
+  tax_code?: string | null;
+  tax_rate?: number | string | null;
+  tax_included?: boolean | null;
+  total_line?: number | string | null;
+  discount_amount?: number | string | null;
+}
+
+/** Factura que llega para editar (fila de `invoice_sales` con relaciones). */
+export interface FacturaInicialVenta {
+  id?: string;
+  number?: string | null;
+  customer_id?: string | null;
+  currency?: string | null;
+  payment_terms?: number | null;
+  payment_method?: string | null;
+  notes?: string | null;
+  tax_included?: boolean | null;
+  branch_id?: number | null;
+  salesperson_id?: string | null;
+  commission_rate?: number | string | null;
+  commission_type?: 'salesperson' | 'intermediation_sale' | 'none' | null;
+  commission_method?: 'percentage' | 'fixed_amount' | null;
+  issue_date?: string | null;
+  due_date?: string | null;
+  items?: ItemFacturaGuardada[] | null;
+  applied_taxes?: { tax_code: string; is_applied: boolean }[] | null;
+}
+
+/** Totales por impuesto que entrega `ImpuestosFactura`. */
+interface TotalImpuesto {
+  rate: number;
+  base: number;
+  amount: number;
+  name: string;
+  included: boolean;
+}
+
+/** Lo que el formulario entrega en modo edición (ver `datosFactura` en handleSubmit). */
+export interface DatosEdicionFactura {
   number: string;
+  customer_id: string | null;
+  branch_id: number;
   issue_date: string | null;
   due_date: string | null;
   currency: string | null;
-  subtotal: number | null;
-  tax_total: number | null;
-  total: number | null;
-  balance: number | null;
-  status: string;
-  payment_terms: number | null;
+  payment_terms: number;
   payment_method: string | null;
   notes: string | null;
-  tax_included?: boolean; // Indicador si los impuestos están incluidos en los precios
-  opportunity_id?: string | null; // Relación con oportunidad (opcional)
-  created_by?: string; // ID del usuario que crea la factura
-};
+  tax_included: boolean;
+  subtotal: number;
+  tax_total: number;
+  total: number;
+  salesperson_id: string | null;
+  opportunity_id: string | null;
+  commission_rate: number;
+  commission_type: 'salesperson' | 'intermediation_sale' | 'none';
+  commission_method: 'percentage' | 'fixed_amount';
+  commission_amount: number;
+  appliedTaxes: Record<string, boolean>;
+  items: {
+    id?: string;
+    product_id?: number | null;
+    description: string;
+    qty: number;
+    unit_price: number;
+    tax_code?: string | null;
+    tax_rate?: number | null;
+    tax_included: boolean;
+    total_line: number;
+    discount_amount: number;
+  }[];
+  serial_selections?: Record<number, number[]>;
+}
 
 interface NuevaFacturaFormProps {
-  facturaInicial?: any;
-  onSubmit?: (datosFactura: any) => Promise<void>;
+  facturaInicial?: FacturaInicialVenta | null;
+  // Los datos de edición los arma este formulario (ver `datosFactura` en handleSubmit).
+  onSubmit?: (datosFactura: DatosEdicionFactura) => Promise<void>;
   saving?: boolean;
   esEdicion?: boolean;
+}
+
+/**
+ * El formulario guarda las fechas como `Date` a medianoche local (lo que daba
+ * el DatePicker viejo). El campo de marca trabaja con el día plano: estas dos
+ * funciones hacen la ida y vuelta sin correr el día.
+ */
+function diaDeFechaLocal(fecha: Date | undefined): string {
+  if (!fecha) return '';
+  const m = String(fecha.getMonth() + 1).padStart(2, '0');
+  const d = String(fecha.getDate()).padStart(2, '0');
+  return `${fecha.getFullYear()}-${m}-${d}`;
+}
+
+function fechaLocalDeDia(dia: string): Date | undefined {
+  if (!dia) return undefined;
+  const [a, m, d] = dia.split('-').map(Number);
+  return new Date(a, m - 1, d);
 }
 
 export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }: NuevaFacturaFormProps = {}) {
@@ -89,6 +170,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const searchParams = useSearchParams() ?? new URLSearchParams();
   const organizationId = getOrganizationId();
   const { toDate, toInstant } = useFormatDate();
+  const t = useTranslations('facturasVenta');
+  const tk = useTranslations('kit.comun');
   
   // Parámetros de duplicación
   const duplicarId = searchParams.get('duplicar');
@@ -110,7 +193,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   }, [selectedBranchId]);
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
   const [isDuplicateNumber, setIsDuplicateNumber] = useState<boolean>(false);
-  const [isValidatingNumber, setIsValidatingNumber] = useState<boolean>(false);
+  const [, setIsValidatingNumber] = useState<boolean>(false);
   const [issueDate, setIssueDate] = useState<Date | undefined>(new Date());
   const [dueDate, setDueDate] = useState<Date | undefined>(() => {
     // Inicializar fecha de vencimiento basada en fecha actual + 30 días
@@ -137,7 +220,9 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   }, [eInvoiceAlwaysEnabled]);
 
   // Estados para moneda
-  const [currency, setCurrency] = useState<string>('COP');
+  // Moneda de la factura: vacía hasta conocer la de la organización (nunca COP supuesto).
+  const [currency, setCurrency] = useState<string>('');
+  const { code: monedaBase, resuelta: monedaResuelta, paraDocumento } = useMonedaOrganizacion();
   const [currencies, setCurrencies] = useState<{code: string; name: string; symbol: string}[]>([]);
   const [loadingCurrencies, setLoadingCurrencies] = useState<boolean>(false);
 
@@ -152,9 +237,30 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const [organizationMembers, setOrganizationMembers] = useState<{ id: string; name: string }[]>([]);
   const { resolveRate: resolveCommissionRate } = useCommissionRate();
   const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({}); // Indicador de impuestos aplicados
-  const [appliedTaxTotals, setAppliedTaxTotals] = useState<{[key: string]: any}>({}); // Totales de impuestos aplicados
+  const [appliedTaxTotals, setAppliedTaxTotals] = useState<{[key: string]: TotalImpuesto}>({}); // Totales de impuestos aplicados
+
+  // Advertencia previa a emitir: líneas que el resolver dejaría en 0 por falta
+  // de impuesto en el producto y de tarifa por defecto en la organización.
+  const lineasParaAviso = useMemo(
+    () => items.map((it) => ({
+      nombre: it.description || it.product_name || '',
+      productId: it.product_id ?? null,
+      taxRate: it.tax_rate ?? null,
+      taxCode: it.tax_code ?? null,
+    })),
+    [items],
+  );
+  const docTaxRate = useMemo(
+    () => tasaImpuestosDelDocumento(appliedTaxes, appliedTaxTotals),
+    [appliedTaxes, appliedTaxTotals],
+  );
+  const { sinImpuesto: lineasSinImpuesto, indices: indicesSinImpuesto } = useLineasSinImpuesto(
+    organizationId ? Number(organizationId) : null,
+    lineasParaAviso,
+    docTaxRate,
+  );
   const [subtotal, setSubtotal] = useState<number>(0);
-  const [taxTotal, setTaxTotal] = useState<number>(0);
+  const [, setTaxTotal] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
 
   // Estado para selector de oportunidad (opcional)
@@ -210,7 +316,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           
         if (currError) throw currError;
         
-        const currencyList = orgCurrencies.map((item: any) => {
+        const currencyList = orgCurrencies.map((item: { currency_code: string; is_base: boolean | null }) => {
           const details = currencyDetails?.find(c => c.code === item.currency_code);
           return {
             code: item.currency_code,
@@ -221,22 +327,25 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         setCurrencies(currencyList);
         
         // Establecer la moneda base como predeterminada
-        const baseCurrency = orgCurrencies.find((item: any) => item.is_base);
+        // (sin pisar la que ya trae la factura en edición o duplicación)
+        const baseCurrency = orgCurrencies.find((item: { is_base: boolean | null }) => item.is_base);
         if (baseCurrency) {
-          setCurrency(baseCurrency.currency_code);
+          setCurrency(prev => prev || baseCurrency.currency_code);
         } else if (currencyList.length > 0) {
-          setCurrency(currencyList[0].code);
+          setCurrency(prev => prev || currencyList[0].code);
         }
       } else {
-        // Si no hay monedas configuradas, usar COP por defecto
-        setCurrencies([{ code: 'COP', name: 'Peso Colombiano', symbol: '$' }]);
-        setCurrency('COP');
+        // Sin monedas configuradas: la moneda base resuelta de la organización.
+        const base = await resolveOrgCurrency(supabase, Number(organizationId));
+        setCurrencies([{ code: base.code, name: base.code, symbol: base.symbol || '$' }]);
+        setCurrency(prev => prev || base.code);
       }
     } catch (error) {
       console.error('Error al cargar monedas:', error);
-      // Si falla, usar COP por defecto
-      setCurrencies([{ code: 'COP', name: 'Peso Colombiano', symbol: '$' }]);
-      setCurrency('COP');
+      // Si falla, la moneda base resuelta de la organización (resolveOrgCurrency no lanza).
+      const base = await resolveOrgCurrency(supabase, Number(organizationId));
+      setCurrencies([{ code: base.code, name: base.code, symbol: base.symbol || '$' }]);
+      setCurrency(prev => prev || base.code);
     } finally {
       setLoadingCurrencies(false);
     }
@@ -246,6 +355,14 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   useEffect(() => {
     loadCurrencies();
   }, [loadCurrencies]);
+
+  // Respaldo: si aún no hay moneda elegida, la base de la organización.
+  useEffect(() => {
+    if (monedaResuelta && !currency) setCurrency(monedaBase);
+  }, [monedaResuelta, monedaBase, currency]);
+
+  // Moneda con la que se pintan los importes del formulario.
+  const monedaFactura = currency || monedaBase;
 
   // Cargar miembros de la organización para selector de vendedor
   useEffect(() => {
@@ -265,11 +382,11 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
             .in('id', userIds);
 
           const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-          const formatted = members.map((m: any) => {
+          const formatted = members.map((m: { user_id: string }) => {
             const p = profileMap.get(m.user_id);
             return {
               id: m.user_id,
-              name: `${p?.first_name || ''} ${p?.last_name || ''}`.trim() || 'Usuario'
+              name: `${p?.first_name || ''} ${p?.last_name || ''}`.trim() || t('formulario.usuario')
             };
           });
           setOrganizationMembers(formatted);
@@ -279,7 +396,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       }
     };
     loadMembers();
-  }, [organizationId]);
+  }, [organizationId, t]);
 
   // Cargar oportunidades abiertas de la organización
   useEffect(() => {
@@ -316,15 +433,15 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       if (oppError || !oppProducts || oppProducts.length === 0) return;
 
       // Obtener nombres de productos
-      const productIds = oppProducts.map((op: any) => op.product_id);
+      const productIds = oppProducts.map((op: { product_id: number }) => op.product_id);
       const { data: products } = await supabase
         .from('products')
         .select('id, name')
         .in('id', productIds);
 
-      const productMap = new Map((products || []).map((p: any) => [p.id, p.name] as [number, string]));
+      const productMap = new Map((products || []).map((p: { id: number; name: string }) => [p.id, p.name] as [number, string]));
 
-      const newItems: InvoiceItem[] = oppProducts.map((op: any) => ({
+      const newItems: InvoiceItem[] = oppProducts.map((op: { product_id: number; quantity: number | string | null; unit_price: number | string | null; total_price: number | string | null }) => ({
         invoice_type: 'sale' as const,
         product_id: op.product_id,
         description: productMap.get(op.product_id) || '',
@@ -353,7 +470,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
     if (esEdicion && facturaInicial) {
       setInvoiceNumber(facturaInicial.number || '');
       setSelectedCustomerId(facturaInicial.customer_id || null);
-      setCurrency(facturaInicial.currency || 'COP');
+      // Sin moneda en la factura, la base la completa el efecto de respaldo.
+      setCurrency(facturaInicial.currency || '');
       setPaymentTerms(facturaInicial.payment_terms || 30);
       setPaymentMethodCode(facturaInicial.payment_method || '');
       setNotes(facturaInicial.notes || '');
@@ -362,7 +480,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       setSalespersonId(facturaInicial.salesperson_id || '');
       setCommissionRate(Number(facturaInicial.commission_rate) || 0);
       setCommissionType(facturaInicial.commission_type || 'salesperson');
-      setCommissionMethod((facturaInicial as any).commission_method || 'percentage');
+      setCommissionMethod(facturaInicial.commission_method || 'percentage');
 
       if (facturaInicial.issue_date) {
         // Convertir timestamptz a dia calendario de la org, luego a Date para el DatePicker
@@ -376,7 +494,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
 
       // Cargar items de la factura
       if (facturaInicial.items && facturaInicial.items.length > 0) {
-        const itemsFormateados = facturaInicial.items.map((item: any) => ({
+        const itemsFormateados = facturaInicial.items.map((item: ItemFacturaGuardada) => ({
           id: item.id,
           product_id: item.product_id,
           description: item.description || '',
@@ -393,6 +511,9 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       return;
     }
 
+    // «Nueva venta» desde la ficha o el listado de clientes: ?cliente=<id> sin duplicar.
+    if (!duplicarId && clienteParam) setSelectedCustomerId(clienteParam);
+
     // Cargar datos de factura a duplicar
     const cargarDatosDuplicacion = async () => {
       if (!duplicarId || !organizationId) return;
@@ -407,7 +528,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         if (itemsError) throw itemsError;
         
         if (itemsData && itemsData.length > 0) {
-          const itemsFormateados = itemsData.map((item: any) => ({
+          const itemsFormateados = itemsData.map((item: ItemFacturaGuardada & { description: string; qty: number; unit_price: number; total_line: number; tax_rate: number | null; discount_amount: number | null }) => ({
             id: undefined, // Nuevo ID al guardar
             product_id: item.product_id,
             description: item.description,
@@ -429,15 +550,17 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         if (metodoPagoParam) setPaymentMethodCode(metodoPagoParam);
         if (notasParam) setNotes(notasParam);
         
-        toastSuccess("Factura duplicada", "Se han cargado los datos de la factura original. Modifique según necesite.");
+        toastSuccess(t('formulario.avisos.duplicadaTitulo'), t('formulario.avisos.duplicada'));
         
       } catch (error) {
         console.error('Error al cargar datos de duplicación:', error);
-        toastError("Error", "No se pudieron cargar los datos de la factura a duplicar.");
+        toastError(t('comun.error'), t('formulario.avisos.errorDuplicar'));
       }
     };
     
     cargarDatosDuplicacion();
+    // Carga inicial (edición o duplicación): solo al cambiar los parámetros de la URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [duplicarId, organizationId, clienteParam, monedaParam, terminosParam, metodoPagoParam, notasParam]);
 
   // Función para verificar si el número de factura ya existe
@@ -466,7 +589,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       setIsDuplicateNumber(isDuplicate);
       
       if (isDuplicate) {
-        toastError("Número duplicado", "Este número de factura ya existe. Por favor, utilice otro número.");
+        toastError(t('formulario.avisos.numeroDuplicadoTitulo'), t('formulario.avisos.numeroDuplicado'));
       }
       
       return isDuplicate;
@@ -476,12 +599,14 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
     } finally {
       setIsValidatingNumber(false);
     }
-  }, [organizationId]);
+  }, [organizationId, esEdicion, facturaInicial?.id, t]);
 
   useEffect(() => {
     if (organizationId && !esEdicion) {
       generateInvoiceNumber();
     }
+    // Solo al abrir el formulario: generateInvoiceNumber se redefine en cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, esEdicion]);
 
   // Efecto para validar el número de factura cuando cambia
@@ -507,7 +632,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       setIsDuplicateNumber(false); // Resetear el estado de duplicado al generar un nuevo número
     } catch (error) {
       console.error('Error al generar número de factura:', error);
-      toastError("Error", "No se pudo generar el número de factura automáticamente.");
+      toastError(t('comun.error'), t('formulario.avisos.errorGenerarNumero'));
     }
   };
 
@@ -522,12 +647,18 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       // Prioridad 1: impuestos guardados en invoice_applied_taxes
       if (facturaInicial.applied_taxes && facturaInicial.applied_taxes.length > 0) {
         return facturaInicial.applied_taxes
-          .filter((t: any) => t.is_applied)
-          .map((t: any) => t.tax_code);
+          .filter((t) => t.is_applied)
+          .map((t) => t.tax_code);
       }
       // Fallback para facturas viejas: usar tax_code de los items
       if (facturaInicial.items) {
-        const taxCodes = [...new Set(facturaInicial.items.map((item: any) => item.tax_code).filter(Boolean))];
+        const taxCodes = [
+          ...new Set(
+            facturaInicial.items
+              .map((item) => item.tax_code)
+              .filter((code): code is string => Boolean(code))
+          ),
+        ];
         if (taxCodes.length > 0) return taxCodes;
       }
     }
@@ -553,7 +684,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const handleSaveInvoice = async () => {
     // Validar que se tenga el número de factura
     if (!invoiceNumber) {
-      toastError("Error", "Debe ingresar un número de factura.");
+      toastError(t('comun.error'), t('formulario.avisos.faltaNumero'));
       return;
     }
     
@@ -561,27 +692,27 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
     const currentUserId = await getCurrentUserId();
     
     if (!currentUserId) {
-      toastError("Error", "No se pudo obtener la información del usuario actual.");
+      toastError(t('comun.error'), t('formulario.avisos.sinUsuario'));
       return;
     }
     
     if (!organizationId) {
-      toastError("Error", "No se pudo determinar la organización activa.");
+      toastError(t('comun.error'), t('formulario.avisos.sinOrganizacion'));
       return;
     }
 
     if (!branchId) {
-      toastError("Error", "No se pudo determinar la sucursal activa. Seleccione una sucursal.");
+      toastError(t('comun.error'), t('formulario.avisos.sinSucursal'));
       return;
     }
     
     if (!selectedCustomerId) {
-      toastError("Error", "Debe seleccionar un cliente para la factura.");
+      toastError(t('comun.error'), t('formulario.avisos.sinCliente'));
       return;
     }
     
     if (items.length === 0) {
-      toastError("Error", "Debe agregar al menos un ítem a la factura.");
+      toastError(t('comun.error'), t('formulario.avisos.sinItems'));
       return;
     }
 
@@ -593,10 +724,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       (it) => (serialSelections[it.product_id as number]?.length ?? 0) === it.qty
     );
     if (serializedItems.length > 0 && !serialSelectionsComplete) {
-      toastError(
-        "Seriales requeridos",
-        "Hay productos que requieren captura de seriales. Selecciónalos antes de guardar la factura."
-      );
+      toastError(t('formulario.avisos.serialesTitulo'), t('formulario.avisos.seriales'));
       return;
     }
 
@@ -713,7 +841,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         branch_id: branchId,
         issue_date: issueDate ? toInstant(toDate(issueDate)) : null,
         due_date: dueDate ? toInstant(toDate(dueDate)) : null,
-        currency,
+        currency: monedaFactura,
         payment_terms: paymentTerms,
         payment_method: paymentMethodCode || null,
         notes: notes || null,
@@ -750,327 +878,85 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
 
     try {
       setIsLoading(true);
-      
-      // 1. Primero crear el registro en sales
-      // source='invoice' para distinguir de ventas POS y web.
-      // include_in_cash_register se controla con un checkbox (Fase 3).
-      const sale = {
-        organization_id: Number(organizationId),
-        branch_id: branchId,
+
+      // Una sola llamada al servidor (fn_factura_venta_guardar): la base crea en
+      // una transacción la venta ligada, el borrador, sus líneas, los impuestos
+      // aplicados y la comisión; los totales y el saldo los calculan los
+      // disparadores. Los seriales elegidos quedan en las líneas y se venden al
+      // emitir, cuando sale la mercancía.
+      const guardada = await guardarFacturaVenta(null, {
+        number: invoiceNumber || null,
         customer_id: selectedCustomerId || null,
-        user_id: currentUserId,
-        sale_date: issueDate ? toInstant(toDate(issueDate)) : new Date().toISOString(),
-        subtotal: safeSubtotal,
-        tax_total: safeTaxTotal,
-        total: safeTotal,
-        balance: safeTotal, // Al crear, el balance es igual al total
-        status: 'pending', // Estado permitido por la restricción sales_status_check
-        payment_status: 'pending', // Por defecto pendiente de pago
-        source: 'invoice',
-        include_in_cash_register: includeInCashRegister,
-        notes: notes,
-        discount_total: 0 // Valor por defecto
-      };
-      
-      // Guardar venta en Supabase
-      const { data: saleData, error: saleError } = await supabase
-        .from('sales')
-        .insert(sale)
-        .select()
-        .single();
-        
-      if (saleError) throw saleError;
-      
-      // 2. Crear los items de venta
-      const saleItemPromises = evaluatedItems.map(item => {
-        return supabase
-          .from('sale_items')
-          .insert({
-            sale_id: saleData.id,
-            product_id: item.product_id,
-            quantity: item.qty,
-            unit_price: item.unit_price,
-            total: item.total_line,
-            tax_rate: item.tax_rate || 0,
-            tax_amount: (item.total_line * (item.tax_rate || 0)) / 100,
-            discount_amount: item.discount_amount || 0
-          });
-      });
-      
-      // Guardar items de venta
-      const saleItemsResults = await Promise.all(saleItemPromises);
-      
-      // Verificar si alguna promesa tuvo error
-      const saleItemsError = saleItemsResults.find(result => result.error);
-      if (saleItemsError) throw saleItemsError.error;
-
-      // 2.5. Vender seriales si hay productos serializados con seriales seleccionados
-      // (mismo flujo que el POS: serialTrackingService.sellSerials por cada producto)
-      if (serializedItems.length > 0 && serialSelections) {
-        try {
-          for (const item of serializedItems) {
-            const serialIds = serialSelections[item.product_id as number];
-            if (!serialIds || serialIds.length === 0) continue;
-
-            const { success: serialOk, errors: serialErrors } = await serialTrackingService.sellSerials(
-              serialIds,
-              {
-                sale_id: saleData.id,
-                customer_id: selectedCustomerId || undefined,
-                sold_by_user_id: currentUserId,
-                sale_channel: 'invoice',
-                price_at_sale: item.unit_price,
-                branch_id: branchId,
-              },
-              currentUserId
-            );
-
-            if (!serialOk) {
-              console.warn(`⚠️ Errores vendiendo seriales para producto ${item.product_id}:`, serialErrors);
-            }
-          }
-        } catch (serialError) {
-          console.warn('⚠️ Error vendiendo seriales (no bloquea la factura):', serialError);
-        }
-      }
-
-      // 3. Crear objeto de factura con el sale_id
-      const invoice: Invoice = {
-        organization_id: Number(organizationId),
         branch_id: branchId,
-        customer_id: selectedCustomerId || null,
-        sale_id: saleData.id, // Vinculamos con la venta creada
-        number: invoiceNumber,
         issue_date: issueDate ? toInstant(toDate(issueDate)) : null,
         due_date: dueDate ? toInstant(toDate(dueDate)) : null,
-        currency: currency, // Moneda seleccionada por el usuario
-        subtotal: safeSubtotal,
-        tax_total: safeTaxTotal,
-        total: safeTotal,
-        balance: safeTotal, // Al crear, el balance es igual al total
-        status: 'draft', // Por defecto
+        currency: currency || null,
         payment_terms: paymentTerms,
-        payment_method: paymentMethodCode,
-        notes: notes,
-        tax_included: taxIncluded, // Agregamos el campo tax_included
-        created_by: currentUserId, // Asignamos el ID del usuario actual
-      };
-
-      // Añadir opportunity_id si se seleccionó una oportunidad
-      const invoiceWithOpportunity = selectedOpportunityId !== 'none'
-        ? { ...invoice, opportunity_id: selectedOpportunityId }
-        : invoice;
-      
-      // Añadir campos de comisión al insert
-      const commissionAmountCalc = salespersonId && commissionRate > 0
-        ? (commissionMethod === 'fixed_amount' ? commissionRate : Math.round((safeSubtotal > 0 ? safeSubtotal : safeTotal) * commissionRate / 100 * 100) / 100)
-        : 0;
-      const invoiceWithCommission = {
-        ...invoiceWithOpportunity,
+        payment_method: paymentMethodCode || null,
+        notes: notes || null,
+        tax_included: taxIncluded,
         salesperson_id: salespersonId || null,
+        opportunity_id: selectedOpportunityId !== 'none' ? selectedOpportunityId : null,
         commission_rate: commissionRate || 0,
         commission_type: salespersonId && commissionRate > 0 ? commissionType : 'none',
         commission_method: salespersonId && commissionRate > 0 ? commissionMethod : 'percentage',
-        commission_amount: commissionAmountCalc
-      };
-      
-      // 4. Guardar factura en Supabase
-      const { data: invoiceData, error: invoiceError } = await supabase
-        .from('invoice_sales')
-        .insert(invoiceWithCommission)
-        .select()
-        .single();
-        
-      if (invoiceError) throw invoiceError;
-      
-      // 5. Preparar ítems para guardar con el ID de la factura.
-      // IMPORTANTE: se insertan todos en UNA sola llamada (un solo INSERT/transacción)
-      // en vez de una promesa por ítem. El trigger fn_recalc_invoice_totals() recalcula
-      // subtotal/total de invoice_sales sumando invoice_items en cada INSERT; con
-      // inserts paralelos (Promise.all de N .insert() separados = N transacciones
-      // concurrentes) cada trigger solo veía los ítems ya confirmados en ese instante,
-      // y el último en confirmar sobrescribía el total con una suma parcial. Un único
-      // INSERT masivo dispara el trigger dentro de la misma transacción, donde todas
-      // las filas ya son visibles entre sí.
-      // Consultar los números de serial correspondientes a los IDs seleccionados
-      // para guardarlos en invoice_items (para mostrar en detalle y PDF).
-      let serialNumbersMap: Record<number, string[]> = {};
-      const allSerialIds = items.flatMap(item =>
-        item.product_id != null && item.track_serial === true
-          ? (serialSelections[item.product_id] || [])
-          : []
-      );
-      if (allSerialIds.length > 0) {
-        const { data: serialsData } = await supabase
-          .from('product_serials')
-          .select('id, serial_number')
-          .in('id', allSerialIds);
-        if (serialsData) {
-          serialsData.forEach((s: any) => {
-            if (!serialNumbersMap[s.id]) serialNumbersMap[s.id] = [];
-            serialNumbersMap[s.id].push(s.serial_number);
-          });
-        }
-      }
-
-      const invoiceItemsToInsert = evaluatedItems.map(item => {
-        // Obtener los seriales seleccionados para este producto
-        const serialIds = item.product_id != null && item.track_serial === true
-          ? (serialSelections[item.product_id] || [])
-          : [];
-
-        // Mapear IDs a números de serial legibles
-        const serialNumbers = serialIds.length > 0
-          ? serialIds.flatMap(id => serialNumbersMap[id] || [])
-          : null;
-
-        return {
-          invoice_sales_id: invoiceData.id, // Usamos el ID UUID de la factura
-          invoice_id: invoiceData.id, // Por compatibilidad con código existente
-          product_id: item.product_id,
+        include_in_cash_register: includeInCashRegister,
+        applied_taxes: Object.keys(appliedTaxes)
+          .filter((code) => appliedTaxes[code])
+          .map((code) => ({ tax_code: code, tax_rate: appliedTaxTotals[code]?.rate || 0 })),
+        items: evaluatedItems.map((item) => ({
+          product_id: item.product_id ?? null,
           description: item.description,
-          qty: item.qty,
-          unit_price: item.unit_price,
-          tax_code: item.tax_code,
-          tax_rate: item.tax_rate,
-          tax_included: item.tax_included || false, // Guardamos si el impuesto está incluido
-          total_line: item.total_line,
-          discount_amount: item.discount_amount || 0,
-          invoice_type: 'sale', // Tipo de factura (venta)
-          serial_ids: serialIds.length > 0 ? serialIds : null,
-          serial_numbers: serialNumbers,
-        };
+          qty: Number(item.qty) || 0,
+          unit_price: Number(item.unit_price) || 0,
+          tax_code: item.tax_code ?? null,
+          tax_rate: Number(item.tax_rate) || 0,
+          tax_included: item.tax_included || false,
+          total_line: Number(item.total_line) || 0,
+          discount_amount: Number(item.discount_amount) || 0,
+          serial_ids:
+            item.product_id != null && item.track_serial === true ? serialSelections[item.product_id] || [] : undefined,
+        })),
       });
 
-      // 6. Guardar ítems de factura
-      // Si el insert falla por RLS o constraints, la factura queda sin items ni totales
-      // (causa raiz del bug de facturas con total=0). El fallback fn_sync_invoice_items_from_sale
-      // copia desde sale_items via RPC (SECURITY DEFINER, bypassa RLS) y el trigger
-      // fn_recalc_invoice_totals recalcula subtotal/total/balance automaticamente.
-      const { error: itemsError } = await supabase
-        .from('invoice_items')
-        .insert(invoiceItemsToInsert);
-
-      if (itemsError) {
-        console.warn('Insert directo de invoice_items falló, sincronizando desde sale_items:', itemsError);
-        const { data: syncedCount, error: syncError } = await supabase
-          .rpc('fn_sync_invoice_items_from_sale', { p_invoice_id: invoiceData.id });
-        if (syncError) throw syncError;
-        if (!syncedCount || syncedCount === 0) throw itemsError;
-      } else {
-        // Verificar que los items se insertaron realmente (RLS puede filtrar silenciosamente)
-        const { count } = await supabase
-          .from('invoice_items')
-          .select('*', { count: 'exact', head: true })
-          .eq('invoice_sales_id', invoiceData.id);
-        if (!count || count === 0) {
-          console.warn('invoice_items no se insertaron (posible RLS), sincronizando desde sale_items');
-          const { error: syncError } = await supabase
-            .rpc('fn_sync_invoice_items_from_sale', { p_invoice_id: invoiceData.id });
-          if (syncError) throw syncError;
-        }
-      }
-      
-      // 6.5. Guardar impuestos aplicados en invoice_applied_taxes
-      const appliedTaxCodes = Object.keys(appliedTaxes).filter(code => appliedTaxes[code]);
-      if (appliedTaxCodes.length > 0) {
-        const taxRows = appliedTaxCodes.map(code => ({
-          invoice_id: invoiceData.id,
-          tax_code: code,
-          tax_rate: appliedTaxTotals[code]?.rate || 0,
-          is_applied: true
-        }));
-        const { error: taxInsertError } = await supabase
-          .from('invoice_applied_taxes')
-          .insert(taxRows);
-        if (taxInsertError) console.warn('Error guardando impuestos aplicados:', taxInsertError);
+      // Guardar un borrador no compromete inventario: el bloqueo está en la
+      // emisión. Aquí solo se avisa para evitar la sorpresa al final.
+      if (guardada.faltantes.length > 0) {
+        const detalle = guardada.faltantes
+          .map((f) => t('emitir.faltante', { producto: f.producto, requerido: f.requerido, disponible: f.disponible }))
+          .join(' | ');
+        toastError(t('formulario.avisos.faltantesTitulo'), t('formulario.avisos.faltantes', { detalle }));
       }
 
-      // Nota: el asiento contable de devengo se crea automaticamente en la BD
-      // mediante el trigger trg_auto_journal_sale (fn_auto_journal_sale) al
-      // insertar en invoice_sales, usando la tabla accounting_rules.
-
-      // 6.6. Crear registro de comisión si aplica
-      if (salespersonId && commissionRate > 0 && commissionType !== 'none') {
-        try {
-          const salespersonName = organizationMembers.find(m => m.id === salespersonId)?.name || 'N/A';
-          const baseAmount = subtotal > 0 ? subtotal : total;
-
-          const { error: commissionInsertError } = await supabase
-            .from('commissions')
-            .insert({
-              organization_id: Number(organizationId),
-              branch_id: branchId,
-              commission_type: commissionType,
-              source_type: 'invoice_sale',
-              source_id: invoiceData.id,
-              payee_type: 'employee',
-              payee_id: salespersonId,
-              payee_name: salespersonName,
-              base_amount: baseAmount,
-              commission_rate: commissionRate,
-              commission_amount: commissionAmountCalc,
-              currency: currency,
-              status: 'accrued',
-              accrued_at: new Date().toISOString(),
-              created_by: currentUserId,
-              metadata: { invoice_number: invoiceNumber, commission_method: commissionMethod },
-            });
-          if (commissionInsertError) {
-            console.error('Error al crear registro de comisión:', commissionInsertError);
-          }
-        } catch (commissionErr) {
-          console.error('Error al crear registro de comisión (catch):', commissionErr);
-        }
-      }
-
-      // 6.6. Avisar si la factura no tiene existencias para emitirse.
-      // Guardar un borrador no compromete inventario, asi que no se bloquea: el
-      // bloqueo esta en la emision, que es cuando la mercancia sale. Esto solo
-      // evita la sorpresa de descubrirlo al final. La comprobacion corre sobre la
-      // factura ya guardada porque debe expandir las recetas igual que el descuento.
-      try {
-        const { data: faltantes } = await supabase
-          .rpc('fn_invoice_stock_shortages', { p_invoice_id: invoiceData.id });
-
-        if (faltantes && faltantes.length > 0) {
-          const detalle = faltantes
-            .map((f: any) => `${f.product_name}: necesita ${f.required}, hay ${f.available}`)
-            .join(' | ');
-
-          toastError('Guardada, pero sin existencias para emitir', `${detalle}. Repon el inventario antes de emitirla.`);
-        }
-      } catch (stockCheckError) {
-        console.warn('No se pudo verificar el stock de la factura guardada:', stockCheckError);
-      }
-
-      // 7. Si está activada la opción de factura electrónica, enviar a DIAN
+      // Si está activada la opción de factura electrónica, enviar a DIAN
       if (sendToFactus) {
         try {
-          const result = await electronicInvoicingService.sendToFactus(
-            invoiceData.id,
-            Number(organizationId)
-          );
-          
+          const result = await electronicInvoicingService.sendToFactus(guardada.id, Number(organizationId));
           if (result.success) {
-            toastSuccess("Factura creada y enviada a DIAN", `La factura ${invoiceNumber} se ha creado y enviado para validación electrónica.`);
+            toastSuccess(t('formulario.avisos.creadaDianTitulo'), t('formulario.avisos.creadaDian', { numero: invoiceNumber }));
           } else {
-            toastError("Factura creada", `La factura se creó pero hubo un error al enviar a DIAN: ${result.error}`);
+            toastError(t('formulario.avisos.creadaTitulo'), t('formulario.avisos.creadaErrorDian', { error: String(result.error ?? '') }));
           }
         } catch (eInvoiceError) {
           console.error('Error al enviar a Factus:', eInvoiceError);
-          toastSuccess("Factura creada", "La factura se creó correctamente pero no se pudo enviar a DIAN. Puede intentarlo desde el detalle de la factura.");
+          toastSuccess(t('formulario.avisos.creadaTitulo'), t('formulario.avisos.creadaSinDian'));
         }
       } else {
-        toastSuccess("Éxito", "La factura se ha creado correctamente.");
+        toastSuccess(t('comun.exito'), t('formulario.avisos.creada'));
       }
-      
-      // Redireccionar a la vista de la factura
-      router.push(`/app/finanzas/facturas-venta/${invoiceData.id.toString()}`);
-      
+
+      router.push(`/app/finanzas/facturas-venta/${guardada.id}`);
     } catch (error) {
       console.error('Error al guardar la factura:', error);
-      toastError("Error", `Ocurrió un error al guardar la factura: ${JSON.stringify(error)}`);
+      const codigo = error instanceof ErrorPeticionFactura ? error.codigo : null;
+      toastError(
+        t('comun.error'),
+        codigo === 'numero_duplicado'
+          ? t('formulario.avisos.numeroYaExiste')
+          : codigo === 'sin_permiso'
+            ? t('formulario.avisos.sinPermisoCrear')
+            : t('formulario.avisos.errorGuardar'),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -1082,7 +968,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="invoice-number" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Número de Factura
+            {t('formulario.numero')}
           </Label>
           <div className="flex items-center gap-2">
             <Input
@@ -1099,7 +985,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                 }
                 // En modo edición, resetear isDuplicateNumber si la validación pasa
               }}
-              placeholder="Ej: FACT-00001"
+              placeholder={t('formulario.numeroEjemplo')}
               required
               className={`
                 flex-1 text-sm
@@ -1116,7 +1002,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
               size="sm"
               onClick={generateInvoiceNumber}
               disabled={isLoading}
-              title="Generar número automático"
+              title={t('formulario.generarNumero')}
+              aria-label={t('formulario.generarNumero')}
               className="
                 flex-shrink-0 h-9 w-9 p-0
                 bg-white dark:bg-gray-800
@@ -1129,17 +1016,19 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
             </Button>
           </div>
           {isDuplicateNumber && (
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1">Este número de factura ya existe.</p>
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1">{t('formulario.numeroDuplicado')}</p>
           )}
         </div>
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="issue-date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Fecha de Emisión
+            {t('formulario.fechaEmision')}
           </Label>
-          <DatePicker
-            date={issueDate}
-            onSelect={(date) => {
+          <CampoFecha
+            id="issue-date"
+            valor={diaDeFechaLocal(issueDate)}
+            onValorChange={(dia) => {
+              const date = fechaLocalDeDia(dia);
               setIssueDate(date);
 
               if (date) {
@@ -1153,11 +1042,12 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="due-date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Fecha de Vencimiento
+            {t('formulario.fechaVencimiento')}
           </Label>
-          <DatePicker
-            date={dueDate}
-            onSelect={setDueDate}
+          <CampoFecha
+            id="due-date"
+            valor={diaDeFechaLocal(dueDate)}
+            onValorChange={(dia) => setDueDate(fechaLocalDeDia(dia))}
           />
         </div>
 
@@ -1165,7 +1055,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           <Label htmlFor="currency" className="text-sm font-medium text-gray-700 dark:text-gray-300">
             <span className="flex items-center gap-1.5">
               <Coins className="h-3.5 w-3.5" />
-              Moneda
+              {t('formulario.moneda')}
             </span>
           </Label>
           <Select 
@@ -1179,7 +1069,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
               border-gray-300 dark:border-gray-600
               text-gray-900 dark:text-gray-100
             ">
-              <SelectValue placeholder={loadingCurrencies ? "Cargando..." : "Seleccionar moneda"} />
+              <SelectValue placeholder={loadingCurrencies ? t('formulario.cargando') : t('formulario.seleccionarMoneda')} />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               {currencies.map((curr) => (
@@ -1205,7 +1095,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         rounded-lg
       ">
         <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
-          Datos del Cliente
+          {t('formulario.datosCliente')}
         </h3>
         <div className="mb-3">
           <BranchSelectorField
@@ -1229,7 +1119,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           rounded-lg
         ">
           <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
-            Oportunidad (opcional)
+            {t('formulario.oportunidad')}
           </h3>
           <div className="flex flex-col gap-1.5">
             <Select value={selectedOpportunityId} onValueChange={handleOpportunityChange}>
@@ -1239,10 +1129,10 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                 border-gray-300 dark:border-gray-600
                 text-gray-900 dark:text-gray-100
               ">
-                <SelectValue placeholder="Sin oportunidad asociada" />
+                <SelectValue placeholder={t('formulario.sinOportunidad')} />
               </SelectTrigger>
               <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                <SelectItem value="none" className="text-gray-900 dark:text-gray-100">Sin oportunidad asociada</SelectItem>
+                <SelectItem value="none" className="text-gray-900 dark:text-gray-100">{t('formulario.sinOportunidad')}</SelectItem>
                 {opportunities.map((opp) => (
                   <SelectItem key={opp.id} value={opp.id} className="text-gray-900 dark:text-gray-100">
                     {opp.name}
@@ -1252,7 +1142,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
             </Select>
             {selectedOpportunityId !== 'none' && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Al seleccionar una oportunidad, se cargan sus productos y se asocia la factura a ella.
+                {t('formulario.oportunidadAyuda')}
               </p>
             )}
           </div>
@@ -1267,7 +1157,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         rounded-lg
       ">
         <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
-          Items de la Factura
+          {t('formulario.items')}
         </h3>
         <ItemsFactura
           items={items}
@@ -1277,6 +1167,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           organizationId={organizationId ? Number(organizationId) : undefined}
           serialSelections={serialSelections}
           onSerialSelectionsChange={setSerialSelections}
+          lineasSinImpuesto={indicesSinImpuesto}
+          currency={monedaFactura}
         />
       </div>
       
@@ -1290,12 +1182,12 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         rounded-lg
       ">
         <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
-          Condiciones de Pago
+          {t('formulario.condicionesPago')}
         </h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
           <div>
             <Label htmlFor="payment-terms" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-              Términos de Pago
+              {t('formulario.terminosPago')}
             </Label>
             <div className="flex flex-col space-y-2">
               <Select 
@@ -1323,20 +1215,20 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                   border-gray-300 dark:border-gray-600
                   text-gray-900 dark:text-gray-100
                 ">
-                  <SelectValue placeholder="Seleccionar términos">
+                  <SelectValue placeholder={t('formulario.seleccionarTerminos')}>
                     {isCustomPaymentTerm 
-                      ? `Personalizado: ${paymentTerms} días` 
-                      : (paymentTerms === 0 ? 'Contado' : `${paymentTerms} días`)}
+                      ? t('formulario.terminoPersonalizado', { dias: paymentTerms })
+                      : (paymentTerms === 0 ? t('formulario.contado') : t('formulario.dias', { dias: paymentTerms }))}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                  <SelectItem value="0" className="text-gray-900 dark:text-gray-100">Contado</SelectItem>
-                  <SelectItem value="15" className="text-gray-900 dark:text-gray-100">15 días</SelectItem>
-                  <SelectItem value="30" className="text-gray-900 dark:text-gray-100">30 días</SelectItem>
-                  <SelectItem value="45" className="text-gray-900 dark:text-gray-100">45 días</SelectItem>
-                  <SelectItem value="60" className="text-gray-900 dark:text-gray-100">60 días</SelectItem>
-                  <SelectItem value="90" className="text-gray-900 dark:text-gray-100">90 días</SelectItem>
-                  <SelectItem value="custom" className="text-gray-900 dark:text-gray-100">Personalizado</SelectItem>
+                  <SelectItem value="0" className="text-gray-900 dark:text-gray-100">{t('formulario.contado')}</SelectItem>
+                  <SelectItem value="15" className="text-gray-900 dark:text-gray-100">{t('formulario.dias', { dias: 15 })}</SelectItem>
+                  <SelectItem value="30" className="text-gray-900 dark:text-gray-100">{t('formulario.dias', { dias: 30 })}</SelectItem>
+                  <SelectItem value="45" className="text-gray-900 dark:text-gray-100">{t('formulario.dias', { dias: 45 })}</SelectItem>
+                  <SelectItem value="60" className="text-gray-900 dark:text-gray-100">{t('formulario.dias', { dias: 60 })}</SelectItem>
+                  <SelectItem value="90" className="text-gray-900 dark:text-gray-100">{t('formulario.dias', { dias: 90 })}</SelectItem>
+                  <SelectItem value="custom" className="text-gray-900 dark:text-gray-100">{t('formulario.personalizado')}</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -1363,7 +1255,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                       text-gray-900 dark:text-gray-100
                     "
                   />
-                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">días</span>
+                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{t('formulario.diasUnidad')}</span>
                 </div>
               )}
             </div>
@@ -1376,13 +1268,13 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           </div>
           <div className="lg:col-span-2">
             <Label htmlFor="notes" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-              Notas
+              {t('formulario.notas')}
             </Label>
             <Input
               id="notes"
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder="Notas adicionales"
+              placeholder={t('formulario.notasPlaceholder')}
               className="
                 text-sm
                 bg-white dark:bg-gray-900
@@ -1399,10 +1291,10 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
               onCheckedChange={(checked) => setIncludeInCashRegister(checked === true)}
             />
             <Label htmlFor="include_in_cash_register" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-              Incluir en arqueo de caja
+              {t('formulario.incluirArqueo')}
             </Label>
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              (Marca si esta factura debe aparecer en el cuadre de caja POS)
+              {t('formulario.incluirArqueoAyuda')}
             </span>
           </div>
           <div className="lg:col-span-2 pt-2">
@@ -1416,7 +1308,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                 size="md"
               />
               {eInvoiceAlwaysEnabled && (
-                <span className="text-xs text-blue-600 dark:text-blue-400 font-medium ml-2">Global</span>
+                <span className="text-xs text-blue-600 dark:text-blue-400 font-medium ml-2">{t('formulario.global')}</span>
               )}
             </div>
           </div>
@@ -1445,6 +1337,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         onSubtotalCalculated={setSubtotal}
         onTaxTotalCalculated={setTaxTotal}
         onTotalCalculated={setTotal}
+        currency={monedaFactura}
       />
 
       {/* Sección de Comisión de Vendedor */}
@@ -1456,27 +1349,27 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       ">
         <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <User className="h-4 w-4 text-blue-500" />
-          Comisión de Vendedor (opcional)
+          {t('formulario.comision.titulo')}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div>
             <Label htmlFor="salesperson" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-              Vendedor
+              {t('formulario.comision.vendedor')}
             </Label>
             <SearchSelect
               options={organizationMembers.map((m) => ({ value: m.id, label: m.name }))}
               value={salespersonId}
               onValueChange={handleSalespersonChange}
-              placeholder="Seleccionar vendedor"
-              searchPlaceholder="Buscar vendedor..."
-              noneLabel="Sin asignar"
+              placeholder={t('formulario.comision.seleccionarVendedor')}
+              searchPlaceholder={t('formulario.comision.buscarVendedor')}
+              noneLabel={t('formulario.comision.sinAsignar')}
               noneValue="__none__"
               className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-300 dark:border-gray-600"
             />
           </div>
           <div>
             <Label htmlFor="commission-rate" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-              Comisión
+              {t('formulario.comision.comision')}
             </Label>
             <div className="relative">
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none">
@@ -1519,7 +1412,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                 onClick={() => setCommissionMethod('percentage')}
                 className="h-7 px-2 text-xs"
               >
-                <Percent className="h-3 w-3 mr-1" /> Porcentaje
+                <Percent className="h-3 w-3 mr-1" /> {t('formulario.comision.porcentaje')}
               </Button>
               <Button
                 type="button"
@@ -1528,19 +1421,19 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                 onClick={() => setCommissionMethod('fixed_amount')}
                 className="h-7 px-2 text-xs"
               >
-                <DollarSign className="h-3 w-3 mr-1" /> Monto Fijo
+                <DollarSign className="h-3 w-3 mr-1" /> {t('formulario.comision.montoFijo')}
               </Button>
             </div>
             {commissionMethod === 'percentage' && commissionRate > 100 && (
               <p className="text-xs text-red-500 dark:text-red-400 mt-1 flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" />
-                El porcentaje no puede superar 100%
+                {t('formulario.comision.porcentajeExcede')}
               </p>
             )}
             {commissionMethod === 'fixed_amount' && commissionRate > (subtotal > 0 ? subtotal : total) && commissionRate > 0 && (
               <p className="text-xs text-red-500 dark:text-red-400 mt-1 flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" />
-                El monto supera el total de la factura
+                {t('formulario.comision.montoExcede')}
               </p>
             )}
           </div>
@@ -1549,17 +1442,20 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <div className="flex justify-between items-center text-sm">
               <span className="text-blue-700 dark:text-blue-400">
-                Comisión estimada ({commissionMethod === 'percentage' ? `${commissionRate}%` : formatCurrency(commissionRate)}):
+                {t('formulario.comision.estimada', { valor: commissionMethod === 'percentage' ? `${commissionRate}%` : formatMoneda(commissionRate, paraDocumento(monedaFactura)) })}
               </span>
               <span className="font-semibold text-blue-700 dark:text-blue-400">
-                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: currency || 'COP' }).format(
-                  commissionMethod === 'fixed_amount' ? commissionRate : (itemsSubtotalForCommission > 0 ? itemsSubtotalForCommission : itemsTotalForCommission) * commissionRate / 100
+                {formatMoneda(
+                  commissionMethod === 'fixed_amount' ? commissionRate : (itemsSubtotalForCommission > 0 ? itemsSubtotalForCommission : itemsTotalForCommission) * commissionRate / 100,
+                  paraDocumento(monedaFactura)
                 )}
               </span>
             </div>
           </div>
         )}
       </div>
+
+      <AvisoSinImpuesto lineas={lineasSinImpuesto} accion="se facturará" />
 
       {/* Botones de Acción */}
       <div className="
@@ -1581,7 +1477,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           "
         >
           <ArrowLeft className="w-4 h-4 mr-2 flex-shrink-0" />
-          <span className="text-sm">Cancelar</span>
+          <span className="text-sm">{tk('cancelar')}</span>
         </Button>
         <Button
           size="sm"
@@ -1596,7 +1492,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           "
         >
           <Save className="w-4 h-4 mr-2 flex-shrink-0" />
-          <span className="text-sm">{(isLoading || saving) ? 'Guardando...' : esEdicion ? 'Guardar Cambios' : 'Guardar Factura'}</span>
+          <span className="text-sm">{(isLoading || saving) ? t('formulario.guardando') : esEdicion ? t('formulario.guardarCambios') : t('formulario.guardarFactura')}</span>
         </Button>
       </div>
     </div>

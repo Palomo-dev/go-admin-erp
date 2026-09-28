@@ -12,6 +12,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { RenderContext } from './variables';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 export interface ContextRefs {
   customerId?: string | null;
@@ -37,6 +38,8 @@ export async function buildContext(orgId: number, refs: ContextRefs, supabase: S
   const ctx = emptyContext();
   ctx.custom = { ...(refs.custom ?? {}) };
   const base = appUrl();
+  // Moneda base de la organización: respaldo de oportunidad y cotización (nunca 'COP' cableado).
+  const monedaBase = (await resolveOrgCurrency(supabase, orgId)).code;
 
   const { data: org } = await supabase
     .from('organizations')
@@ -53,7 +56,7 @@ export async function buildContext(orgId: number, refs: ContextRefs, supabase: S
       phone: o.phone ?? '',
       website: o.website ?? '',
       email: o.email ?? '',
-      currency: 'COP',
+      currency: monedaBase,
       timezone: 'America/Bogota',
       primary_color: o.primary_color ?? '#2563eb',
     };
@@ -76,7 +79,7 @@ export async function buildContext(orgId: number, refs: ContextRefs, supabase: S
         id: String(o.id),
         name: (o.name as string) ?? '',
         amount: (o.amount as number) ?? null,
-        currency: (o.currency as string) || 'COP',
+        currency: (o.currency as string) || monedaBase,
         expected_close_date: (o.expected_close_date as string) ?? null,
         next_action: (o.next_action as string) ?? null,
         status: (o.status as string) ?? undefined,
@@ -152,9 +155,9 @@ export async function buildContext(orgId: number, refs: ContextRefs, supabase: S
         id: String(r.id),
         number: (r.number as string) ?? '',
         total: (r.total as number) ?? null,
-        currency: (r.currency as string) || ctx.opportunity?.currency || 'COP',
+        currency: (r.currency as string) || ctx.opportunity?.currency || monedaBase,
         valid_until: (r.valid_until as string) ?? null,
-        url: `${base}/app/crm/cotizaciones/${String(r.id)}`,
+        url: `${base}/app/finanzas/cotizaciones/${String(r.id)}`,
         items,
       };
     }
@@ -170,7 +173,7 @@ export function sampleContext(overrides: Partial<RenderContext> = {}): RenderCon
     opportunity: { name: 'Plan Pro Empresa', amount: 1200000, currency: 'COP', expected_close_date: '2026-10-01', stage_name: 'Propuesta', pipeline_name: 'Ventas', next_action: 'Enviar propuesta', url: 'https://app.goadmin.io/app/crm/oportunidades/demo' },
     org: { name: 'ACME S.A.S', logo_url: '', address: 'Cra 7 # 1-1, Bogotá', phone: '+57 1 234 5678', website: 'https://acme.co', email: 'ventas@acme.co', currency: 'COP', timezone: 'America/Bogota', primary_color: '#2563eb' },
     user: { first_name: 'Ana', last_name: 'Gómez', full_name: 'Ana Gómez', email: 'ana@acme.co', phone: '+57 300 000 0000', job_title: 'Ejecutiva comercial' },
-    quote: { number: 'COT-0042', total: 1200000, currency: 'COP', valid_until: '2026-10-15', url: 'https://app.goadmin.io/app/crm/cotizaciones/demo', items: [{ description: 'Plan Pro x 12 meses', qty: 1, unit_price: 1200000, total_line: 1200000 }] },
+    quote: { number: 'COT-0042', total: 1200000, currency: 'COP', valid_until: '2026-10-15', url: 'https://app.goadmin.io/app/finanzas/cotizaciones/demo', items: [{ description: 'Plan Pro x 12 meses', qty: 1, unit_price: 1200000, total_line: 1200000 }] },
     custom: { summary: 'Resumen de la llamada de hoy.', meeting_url: 'https://meet.google.com/abc-defg-hij', demo_date: 'mañana a las 10:00' },
     ...overrides,
   };

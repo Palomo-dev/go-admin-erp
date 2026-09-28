@@ -5,6 +5,7 @@
  */
 
 import type { PartnerTier, PartnerView } from './partnerService';
+import { mensajeErrorTelefono } from '@/lib/utils/telefono';
 
 export interface PartnerForm {
   name: string;
@@ -47,6 +48,8 @@ export function validatePartnerForm(f: PartnerForm): FieldError<keyof PartnerFor
   if (!f.name.trim()) errors.push({ field: 'name', message: 'El nombre es obligatorio' });
   if (!f.email.trim()) errors.push({ field: 'email', message: 'El correo es obligatorio' });
   else if (!EMAIL_RE.test(f.email.trim())) errors.push({ field: 'email', message: 'El correo no tiene un formato válido' });
+  const phoneError = mensajeErrorTelefono(f.phone);
+  if (phoneError) errors.push({ field: 'phone', message: phoneError });
   if (f.commission_rate.trim() !== '') {
     const n = Number(f.commission_rate);
     if (!Number.isFinite(n) || n < 0 || n > 100) errors.push({ field: 'commission_rate', message: 'La tasa debe estar entre 0 y 100' });

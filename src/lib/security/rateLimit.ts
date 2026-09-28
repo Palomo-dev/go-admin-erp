@@ -249,10 +249,27 @@ export async function checkRateLimit(
  * Sin ninguno devuelve `UNKNOWN_CLIENT_IP`: cubo compartido con límite
  * reducido (ver cabecera y `effectiveLimit`).
  */
-export function getClientIp(req: Request): string {
+export function getClientIp(req: Pick<Request, 'headers'>): string {
   const xff = req.headers.get('x-forwarded-for');
   if (xff) return xff.split(',')[0].trim();
   return req.headers.get('x-real-ip') || req.headers.get('cf-connecting-ip') || UNKNOWN_CLIENT_IP;
+}
+
+/**
+ * ¿Está agotado el cubo EN MEMORIA de `key`? No registra nada. Sirve para
+ * cortar ANTES de un trabajo caro (una consulta) cuando la clave solo se
+ * registra en los fallos (p. ej. `pos-display:auth:ip:<ip>`: se registra cada
+ * 401 y se consulta aquí antes de tocar la base). Solo nivel 1: el `store`
+ * persistente no se mira, así que en serverless es por instancia; el hit que
+ * registra el fallo sí pasa por el store. Fail-closed como `checkRateLimits`:
+ * clave vacía o límites inválidos → agotado.
+ */
+export function isRateLimitExhausted(key: string, opts: RateLimitOptions, now: number = Date.now()): boolean {
+  const windowMs = validWindow(opts.windowMs);
+  if (!key || windowMs === null || !validLimit(opts.limit)) return true;
+  const b = buckets.get(key);
+  if (!b || now - b.windowStart >= windowMs) return false;
+  return b.count >= effectiveLimit(key, opts);
 }
 
 /** Solo para tests. */

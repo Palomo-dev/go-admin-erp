@@ -5,7 +5,8 @@ import { Car } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import { toastError } from '@/components/ui/use-toast';
@@ -23,13 +24,13 @@ import type {
   ExportOrganizationInfo,
 } from '@/lib/services/inicio/dashboardSectionExport';
 
-const CURRENCY_CODE = 'COP';
 const PERIODO_LABEL = 'Estado actual';
 
 function buildExportData(
   kpis: ParkingDashboardStats | null,
   sessions: ActiveSession[],
   timezone: string,
+  moneda: ContextoMoneda,
 ): SectionExportData | null {
   if (!kpis) return null;
 
@@ -40,7 +41,7 @@ function buildExportData(
     { label: 'Sesiones activas', value: String(kpis.activeSessions), kind: 'neutro' },
     {
       label: 'Ingresos hoy',
-      value: formatCurrency(kpis.revenueToday, CURRENCY_CODE),
+      value: formatMoneda(kpis.revenueToday, moneda),
       kind: 'ingreso',
     },
     { label: 'Pases activos', value: String(kpis.totalActivePasses), kind: 'neutro' },
@@ -80,6 +81,8 @@ function buildExportData(
 }
 
 export default function ParkingSection() {
+  // Montos en la moneda base de la organización (nunca pesos fijos).
+  const moneda = useMonedaOrganizacion();
   const { timezone } = useOrgTimezone();
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState<ParkingDashboardStats | null>(null);
@@ -146,8 +149,8 @@ export default function ParkingSection() {
   }, [branchFilter]);
 
   const exportData = useMemo(
-    () => buildExportData(kpis, sessions, timezone),
-    [kpis, sessions, timezone],
+    () => buildExportData(kpis, sessions, timezone, moneda),
+    [kpis, sessions, timezone, moneda],
   );
 
   return (
@@ -163,7 +166,7 @@ export default function ParkingSection() {
       isLoading={isLoading}
     >
       <div className="space-y-6">
-        <ParkingKPIs data={kpis} isLoading={isLoading} currencyCode={CURRENCY_CODE} />
+        <ParkingKPIs data={kpis} isLoading={isLoading} currencyCode={moneda.code} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <SesionesActivas

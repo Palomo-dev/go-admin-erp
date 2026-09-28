@@ -3,6 +3,7 @@
 // Encapsula la lógica de API, credenciales, pagos y webhooks
 // ============================================================
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 import { MERCADOPAGO_API_BASE, MERCADOPAGO_CREDENTIAL_PURPOSES } from './mercadopagoConfig';
 import type {
@@ -23,8 +24,11 @@ class MercadoPagoService {
   // ──────────────────────────────────────────────
 
   /** Obtener credenciales de MercadoPago para una conexión */
-  async getCredentials(connectionId: string): Promise<MercadoPagoCredentials | null> {
-    const { data, error } = await supabase
+  // GO-sec (2026-09-24): en el SERVIDOR, `supabase` (config) es anónimo y RLS no le
+  // deja leer `integration_credentials`; las rutas pasan `getServiceClient()` DESPUÉS de
+  // verificar que la conexión es de la organización de la sesión.
+  async getCredentials(connectionId: string, db: SupabaseClient = supabase): Promise<MercadoPagoCredentials | null> {
+    const { data, error } = await db
       .from('integration_credentials')
       .select('purpose, secret_ref')
       .eq('connection_id', connectionId);
@@ -281,7 +285,10 @@ class MercadoPagoService {
         .update(template)
         .digest('hex');
 
-      return calculated === v1;
+      // Tiempo constante (GO-sec 2026-09-24): `===` filtraba cuántos caracteres coincidían.
+      const a = Buffer.from(calculated, 'utf8');
+      const b = Buffer.from(String(v1 ?? ''), 'utf8');
+      return a.length === b.length && crypto.timingSafeEqual(a, b);
     } catch {
       return false;
     }

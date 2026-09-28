@@ -1,23 +1,25 @@
 // ============================================================
 // /api/integrations/open-finance/movements
-// Obtiene movimientos de una cuenta y los persiste
-// GET - obtiene movimientos (query: ?linkId=xxx&accountId=xxx&dateFrom=xxx&dateTo=xxx)
+// Obtiene movimientos de una cuenta de un link de la organizacion y los persiste
+// GET - (query: ?linkId=xxx&accountId=xxx&dateFrom=xxx&dateTo=xxx)
+//
+// SEGURIDAD (GO-sec, 2026-09-23): el link tiene que ser de la organizacion
+// de la sesion (404 si no). Como ademas ESCRIBE transacciones, exige
+// `finance.create`. Ver `openFinance/seguridadRutas.ts`.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { openFinanceService } from '@/lib/services/integrations/openFinance/openFinanceService';
+import { linkDeLaOrganizacion } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-// GET - obtiene movimientos y los guarda en base de datos
-export async function GET(request: NextRequest) {
+const RUTA = 'open-finance/movements';
+
+export const GET = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.CREAR, RUTA);
 
     const { searchParams } = new URL(request.url);
     const linkId = searchParams.get('linkId');
@@ -31,23 +33,13 @@ export async function GET(request: NextRequest) {
         { status: 400 },
       );
     }
+    await linkDeLaOrganizacion(ctx, linkId);
 
-    // Obtener movimientos desde el proveedor
-    const movements = await openFinanceService.getMovements(
-      supabase,
-      linkId,
-      accountId,
-      dateFrom,
-      dateTo,
-    );
-
-    // Persistir transacciones en base de datos
-    const saved = await openFinanceService.saveTransactions(supabase, linkId, accountId, movements);
+    const movements = await openFinanceService.getMovements(null, linkId, accountId, dateFrom, dateTo);
+    const saved = await openFinanceService.saveTransactions(null, linkId, accountId, movements);
 
     return NextResponse.json({ success: true, data: movements, saved });
   } catch (error) {
-    console.error('[Open Finance Movements GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Movements GET', error);
   }
-}
+});

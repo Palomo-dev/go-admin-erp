@@ -3,7 +3,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/utils/Utils';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { Users, Truck, Crown } from 'lucide-react';
 import type { TopClienteProveedor } from './FinanzasDashboardService';
 
@@ -23,7 +24,12 @@ interface TopListProps {
   colorScheme: 'blue' | 'orange';
 }
 
-function TopList({ title, icon, items, isLoading, currencyCode = 'COP', colorScheme }: TopListProps) {
+function TopList({ title, icon, items, isLoading, currencyCode, colorScheme }: TopListProps) {
+  // Agregados del tablero: en la moneda que pasa el padre (la base) o, si no
+  // llega, en la moneda base de la organización. Nunca pesos fijos.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const monedaCtx = paraDocumento(currencyCode);
+  const formatear = crearFormateadorMoneda(monedaCtx);
   const colors = {
     blue: {
       header: 'text-blue-600 dark:text-blue-400',
@@ -82,7 +88,7 @@ function TopList({ title, icon, items, isLoading, currencyCode = 'COP', colorSch
                     </span>
                   </div>
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(item.monto, currencyCode)}
+                    {formatear(item.monto)}
                   </span>
                 </div>
                 <div className={cn('h-2 rounded-full overflow-hidden', scheme.barBg)}>
@@ -100,7 +106,7 @@ function TopList({ title, icon, items, isLoading, currencyCode = 'COP', colorSch
   );
 }
 
-export function TopClientesProveedores({ clientes, proveedores, isLoading, currencyCode = 'COP' }: TopClientesProveedoresProps) {
+export function TopClientesProveedores({ clientes, proveedores, isLoading, currencyCode }: TopClientesProveedoresProps) {
   return (
     <Card className="dark:bg-gray-800/50">
       <CardHeader className="pb-2">

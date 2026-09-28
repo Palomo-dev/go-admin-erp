@@ -4,7 +4,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Dumbbell } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { toastError } from '@/components/ui/use-toast';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -30,7 +31,6 @@ import type {
   ExportOrganizationInfo,
 } from '@/lib/services/inicio/dashboardSectionExport';
 
-const CURRENCY_CODE = 'COP';
 const PERIODO_LABEL = 'Estado actual';
 
 const emptyStats: GymStatsType = {
@@ -46,6 +46,7 @@ function buildExportData(
   stats: GymStatsType | null,
   memberships: Membership[],
   formatDate: (value: string | Date | null | undefined) => string,
+  moneda: ContextoMoneda,
 ): SectionExportData | null {
   if (!stats) return null;
 
@@ -54,8 +55,8 @@ function buildExportData(
     { label: 'Vencen en 7 días', value: String(stats.expiringIn7Days), kind: 'neutro' },
     { label: 'Vencidas', value: String(stats.expiredMemberships), kind: 'neutro' },
     { label: 'Check-ins hoy', value: String(stats.todayCheckins), kind: 'neutro' },
-    { label: 'Ingresos hoy', value: formatCurrency(stats.todayRevenue, CURRENCY_CODE), kind: 'ingreso' },
-    { label: 'Ingresos semana', value: formatCurrency(stats.weekRevenue, CURRENCY_CODE), kind: 'ingreso' },
+    { label: 'Ingresos hoy', value: formatMoneda(stats.todayRevenue, moneda), kind: 'ingreso' },
+    { label: 'Ingresos semana', value: formatMoneda(stats.weekRevenue, moneda), kind: 'ingreso' },
   ];
 
   const filas: SectionDataRow[] = memberships.map((m) => ({
@@ -82,7 +83,9 @@ function buildExportData(
 }
 
 export default function GymSection() {
-  const { formatDate } = useFormatDate();
+  // Montos en la moneda base de la organización (nunca pesos fijos).
+  const moneda = useMonedaOrganizacion();
+  const { formatDate, timezone } = useFormatDate();
   const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<GymStatsType | null>(null);
@@ -154,15 +157,15 @@ export default function GymSection() {
 
   const expiringMemberships = useMemo(
     () => memberships.filter((m) => {
-      const days = getDaysRemaining(m.end_date);
+      const days = getDaysRemaining(m.end_date, timezone);
       return days <= 7 && m.status === 'active';
     }),
     [memberships],
   );
 
   const exportData = useMemo(
-    () => buildExportData(stats, memberships, formatDate),
-    [stats, memberships, formatDate],
+    () => buildExportData(stats, memberships, formatDate, moneda),
+    [stats, memberships, formatDate, moneda],
   );
 
   return (

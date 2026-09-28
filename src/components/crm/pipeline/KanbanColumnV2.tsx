@@ -4,7 +4,8 @@ import { Draggable, Droppable } from '@hello-pangea/dnd';
 import { BarChart3, GripVertical, Plus, Settings, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { OpportunityCardV2 } from './OpportunityCardV2';
 import type { KanbanOpportunity, KanbanStage } from './hooks/useKanbanBoard';
 
@@ -27,6 +28,8 @@ export interface KanbanColumnV2Props {
 
 export function KanbanColumnV2({ stage, index, opportunities, stats, onOpen, onCreate, onEditStage, onDeleteStage, compact }: KanbanColumnV2Props) {
   const color = stage.color || '#3b82f6';
+  // Total de la columna: moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   const tone = stage.is_won ? 'ring-green-200 dark:ring-green-900' : stage.is_lost ? 'ring-red-200 dark:ring-red-900' : '';
 
   return (
@@ -61,7 +64,7 @@ export function KanbanColumnV2({ stage, index, opportunities, stats, onOpen, onC
           </div>
           <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-700/30 flex justify-between items-center text-xs border-b border-gray-200 dark:border-gray-700">
             <span className="flex items-center text-gray-600 dark:text-gray-300"><BarChart3 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 mr-1" />Total</span>
-            <span className="font-medium text-gray-900 dark:text-gray-100">{formatCurrency(stats.total)}</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100">{formatear(stats.total)}</span>
           </div>
           <Droppable droppableId={stage.id} type="OPPORTUNITY">
             {(drop, dropSnap) => (

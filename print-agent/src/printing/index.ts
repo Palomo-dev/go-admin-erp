@@ -52,3 +52,6 @@ export {
 } from './renderEscpos';
 
 export { buildRasterImageCommand, isValidRaster, writeRasterImage } from './escposImage';
+
+export type { MoneyFormat } from './money';
+export { moneyFormatter } from './money';

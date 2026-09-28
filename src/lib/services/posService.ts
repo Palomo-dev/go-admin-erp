@@ -1,15 +1,12 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId, getCurrentBranchId, getCurrentBranchIdWithFallback, getCurrentUserId } from '@/lib/hooks/useOrganization';
-import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
-import { calculateCartTaxesComplete, getTaxIncludedSetting, formatTaxCalculationForLog, type TaxCalculationItem } from '@/lib/utils/taxCalculations';
+import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { getTaxIncludedSetting } from '@/lib/utils/taxCalculations';
 import { resolveLineTax } from '@/lib/services/taxResolver';
-import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
-import { stockMovementService } from '@/lib/services/stockMovementService';
-import { serialTrackingService } from '@/lib/services/serialTrackingService';
+import { sinRetenciones } from '@/lib/services/taxResolverCore';
 import { promotionEngine } from '@/lib/services/promotionEngine';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { enqueueOfflineSale, shouldCheckoutOffline, newLocalUuid, newSaleId } from '@/lib/offline/salesOutbox';
-import { buildCheckoutEnvelope, callCheckoutRpc, isCheckoutRpcAvailable } from '@/lib/offline/checkoutRpc';
+import { buildCheckoutEnvelope, callCheckoutRpc, type LineaMesaSinCobrar } from '@/lib/offline/checkoutRpc';
 import { enqueueOfflineCustomer, findLocalCustomerDuplicate, type OfflineCustomerPayload } from '@/lib/offline/customersOutbox';
 import { posOfflineReads } from '@/lib/offline/posOfflineReads';
 import { isDesktop } from '@/lib/utils/desktop';
@@ -34,6 +31,19 @@ import {
 
 // URL pública de una imagen de Storage (compartida con el replicador del catálogo, fase 4D).
 import { getStorageImageUrl } from '@/lib/utils/storageImageUrl';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { nombreVisibleMetodo, ordenarMetodosDeLaOrganizacion } from '@/lib/finanzas/metodosPagoOrganizacion';
+import { precioVigente, importePrecioVigente, ProductoSinPrecioError } from '@/lib/pos/precioVigente';
+import { calcularLineaVenta, totalesDeLineas } from '@/lib/pos/lineaVenta';
+import { anularVentaEnServidor } from '@/lib/pos/anularVenta';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
+import {
+  aplicarNotaALinea,
+  aplicarRondaAlCarrito,
+  type CambioNotaLinea,
+  type RespuestaRonda,
+} from '@/lib/pos/cocina/lineasCarrito';
 
 export class POSService {
   /**
@@ -375,7 +385,7 @@ export class POSService {
         productIds.length > 0
           ? supabase
               .from('product_prices')
-              .select('product_id, price, compare_price, effective_from')
+              .select('product_id, price, compare_price, effective_from, effective_to')
               .in('product_id', productIds)
           : Promise.resolve({ data: [] as any[], error: null as any }),
 
@@ -478,15 +488,14 @@ export class POSService {
         // la branch actual. Antes se requería hasStockData, pero eso hacía que
         // productos sin registro de stock aparecieran como disponibles.
         const isOutOfStock = product.track_stock === true && stockQty <= 0;
-        // Ordenar precios por effective_from descendente para tomar el mas reciente
-        const sortedPrices = (pricesMap[product.id] || []).sort(
-          (a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime()
-        );
+        // Precio vigente (effective_from <= ahora < effective_to), no el último
+        // registrado: un precio vencido o programado a futuro no se muestra.
+        const vigente = precioVigente(pricesMap[product.id] || []);
         return {
           ...product,
           category: categoriesMap[product.category_id] || null,
-          price: sortedPrices[0]?.price || null,
-          compare_price: sortedPrices[0]?.compare_price || null,
+          price: vigente?.price || null,
+          compare_price: vigente?.compare_price || null,
           product_images: productImagesMap[product.id] || [],
           // Información de variantes
           has_variants: product.is_parent === true,
@@ -540,7 +549,7 @@ export class POSService {
             station,
             requires_preparation
           ),
-          product_prices(price)
+          product_prices(price, effective_from, effective_to)
         `)
         .eq('parent_product_id', parentProductId)
         .eq('status', 'active')
@@ -587,9 +596,7 @@ export class POSService {
 
         return {
           ...variant,
-          price: (variant.product_prices || []).sort(
-            (a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime()
-          )[0]?.price || null,
+          price: precioVigente(variant.product_prices || [])?.price || null,
           product_images: ownImages.length > 0 ? ownImages : (parentImages || []),
           image: resolvedImage
         };
@@ -902,18 +909,54 @@ export class POSService {
     }
   }
 
-  static async getActiveCarts(): Promise<Cart[]> {
+  /**
+   * Carritos vivos (activos o en espera) DE LA SUCURSAL. `pos_carts_<org>`
+   * guarda los carritos de todas las sucursales de la organización en una
+   * sola lista: antes el POS de la sucursal A mostraba (y cobraba o fiaba)
+   * carritos creados en la B, y el efectivo quedaba en la caja equivocada.
+   *
+   * @param branchId sucursal del POS; sin argumento, la seleccionada
+   *   (`getCurrentBranchId`). `null` = «Todas» (no se filtra). Un carrito sin
+   *   `branch_id` (anterior a este filtro) se muestra en cualquier sucursal.
+   */
+  static async getActiveCarts(branchId?: number | null): Promise<Cart[]> {
     try {
-      // Por ahora obtenemos los carritos del localStorage
-      const cartsData = localStorage.getItem(`pos_carts_${this.organizationId}`);
-      if (!cartsData) return [];
-
-      const carts: Cart[] = JSON.parse(cartsData);
-      return carts.filter(cart => cart.status === 'active' || cart.status === 'hold');
+      const sucursal = branchId === undefined ? (getCurrentBranchId() ?? null) : branchId;
+      return this.readAllCarts().filter(
+        (cart) => (cart.status === 'active' || cart.status === 'hold') && this.esDeLaSucursal(cart, sucursal),
+      );
     } catch (error) {
       console.error('Error getting active carts:', error);
       return [];
     }
+  }
+
+  /** true si el carrito pertenece a la sucursal (o si no hay sucursal elegida, o el carrito no la tiene). */
+  static esDeLaSucursal(cart: Pick<Cart, 'branch_id'>, branchId: number | null): boolean {
+    if (branchId === null || branchId === undefined) return true;
+    if (cart.branch_id === null || cart.branch_id === undefined) return true;
+    return Number(cart.branch_id) === Number(branchId);
+  }
+
+  /**
+   * Lista COMPLETA de `pos_carts_<org>` (todas las sucursales y estados). Las
+   * mutaciones leen y guardan esta lista: guardar la filtrada borraba de paso
+   * los carritos en deuda y, con el filtro por sucursal, los de otras sedes.
+   */
+  private static readAllCarts(): Cart[] {
+    try {
+      const data = localStorage.getItem(`pos_carts_${this.organizationId}`);
+      const carts = data ? JSON.parse(data) : [];
+      return Array.isArray(carts) ? carts : [];
+    } catch (error) {
+      console.error('Error leyendo los carritos guardados:', error);
+      return [];
+    }
+  }
+
+  /** Índice de un carrito vivo (activo o en espera) en la lista completa; -1 si no está. */
+  private static indexOfLiveCart(carts: Cart[], cartId: string): number {
+    return carts.findIndex((c) => c.id === cartId && (c.status === 'active' || c.status === 'hold'));
   }
 
   static async addItemToCart(
@@ -923,16 +966,19 @@ export class POSService {
     modifiers?: CartItemModifier[]
   ): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
       
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
       const cart = carts[cartIndex];
       const modifiersKey = (mods?: CartItemModifier[]) =>
         (mods || []).map((m) => m.modifierId).sort().join(',');
+      // Una línea con nota (cocina, cliente o alergia) no absorbe unidades sin
+      // nota: «2 hamburguesas, una sin cebolla» son dos líneas (N4).
       const existingItemIndex = cart.items.findIndex(
         item => item.product_id === product.id && modifiersKey(item.modifiers) === modifiersKey(modifiers)
+          && !item.notes && !item.customer_note && !item.is_allergy
       );
 
       if (existingItemIndex >= 0) {
@@ -941,7 +987,7 @@ export class POSService {
         cart.items[existingItemIndex].total = cart.items[existingItemIndex].quantity * cart.items[existingItemIndex].unit_price;
       } else {
         // Agregar nuevo item
-        const basePrice = await this.getProductPrice(product.id); // Implementar función de precios
+        const basePrice = await this.getProductPrice(product.id, product.name);
         const extraTotal = (modifiers || []).reduce((sum, m) => sum + (m.extraPrice || 0), 0);
         const newItem: CartItem = {
           id: crypto.randomUUID(),
@@ -980,8 +1026,8 @@ export class POSService {
 
   static async removeItemFromCart(cartId: string, itemId: string): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
       
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1005,8 +1051,8 @@ export class POSService {
 
   static async updateCartItemQuantity(cartId: string, itemId: string, quantity: number): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
       
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1039,8 +1085,8 @@ export class POSService {
 
   static async updateCartItemDiscount(cartId: string, itemId: string, discountAmount: number): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
 
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1068,8 +1114,8 @@ export class POSService {
 
   static async updateItemTaxIncluded(cartId: string, itemId: string, taxIncluded: boolean): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
 
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1092,6 +1138,56 @@ export class POSService {
       console.error('Error updating item tax_included:', error);
       throw error;
     }
+  }
+
+  /**
+   * Cambia un carrito guardado en `pos_carts_<org>` y lo guarda. Lee la lista
+   * COMPLETA (no `getActiveCarts()`), para no borrar de paso los carritos
+   * `hold_with_debt` o `cancelled` (misma razón que `removeCart`).
+   */
+  private static mutateStoredCart(cartId: string, mutate: (cart: Cart) => Cart): Cart {
+    const allCarts: Cart[] = JSON.parse(localStorage.getItem(`pos_carts_${this.organizationId}`) || '[]');
+    const cartIndex = allCarts.findIndex(c => c.id === cartId);
+    if (cartIndex === -1) throw new Error('Carrito no encontrado');
+    const updated = { ...mutate(allCarts[cartIndex]), updated_at: new Date().toISOString() };
+    allCarts[cartIndex] = updated;
+    this.saveCartsToStorage(allCarts);
+    return updated;
+  }
+
+  /**
+   * Nota de la línea (cocina, cliente, alergia). Hasta 2026-09-23 vivía solo
+   * en el estado de la pantalla y se perdía con la siguiente operación del
+   * servicio o al recargar (N1). No recalcula: la nota no toca importes.
+   */
+  static async updateCartItemNote(cartId: string, itemId: string, cambio: CambioNotaLinea): Promise<Cart> {
+    return this.mutateStoredCart(cartId, (cart) => {
+      if (!cart.items.some(item => item.id === itemId)) throw new Error('Item no encontrado');
+      return { ...cart, items: cart.items.map(item => (item.id === itemId ? aplicarNotaALinea(item, cambio) : item)) };
+    });
+  }
+
+  /**
+   * «Excluir impuesto» de la línea: se guarda con la línea (N1) con la MISMA
+   * semántica de siempre. No recalcula, igual que antes: `calculateCartTotals`
+   * no lee este flag; lo leen el Resumen y el cobro (análisis en
+   * docs/design/POS-CARRITO-LINEAS-NOTAS.md §7).
+   */
+  static async updateCartItemTaxExcluded(cartId: string, itemId: string, taxExcluded: boolean): Promise<Cart> {
+    return this.mutateStoredCart(cartId, (cart) => {
+      if (!cart.items.some(item => item.id === itemId)) throw new Error('Item no encontrado');
+      return { ...cart, items: cart.items.map(item => (item.id === itemId ? { ...item, tax_excluded: taxExcluded } : item)) };
+    });
+  }
+
+  /** Llave de la ronda «Enviar a cocina» en curso (se reutiliza al reintentar). */
+  static async setCartKitchenRoundKey(cartId: string, roundKey: string | null): Promise<Cart> {
+    return this.mutateStoredCart(cartId, (cart) => ({ ...cart, kitchen_round_key: roundKey }));
+  }
+
+  /** Guarda en el carrito lo que devolvió la ronda: comanda y lo enviado por línea. */
+  static async applyKitchenRound(cartId: string, respuesta: RespuestaRonda): Promise<Cart> {
+    return this.mutateStoredCart(cartId, (cart) => aplicarRondaAlCarrito(cart, respuesta));
   }
 
   static async getFrequentDiscounts(productId: number, organizationId: number): Promise<number[]> {
@@ -1133,8 +1229,8 @@ export class POSService {
 
   static async setCartCustomer(cartId: string, customerId?: string): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
       
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1177,8 +1273,8 @@ export class POSService {
     settings: { tax_included?: boolean; applied_tax_ids?: string[] }
   ): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
 
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1206,8 +1302,8 @@ export class POSService {
 
   static async recalculateCart(cartId: string): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
 
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1227,8 +1323,8 @@ export class POSService {
 
   static async holdCart(cartId: string, reason?: string): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      const carts = this.readAllCarts();
+      const cartIndex = this.indexOfLiveCart(carts, cartId);
       
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
@@ -1276,6 +1372,21 @@ export class POSService {
     }
   }
 
+  /**
+   * Poner el carrito en espera CON DEUDA: venta a crédito con su factura y su
+   * cuenta por cobrar. Desde 2026-09-24 es UNA llamada a `pos_checkout_v1` en
+   * modo 'debt' (antes: sales, invoice_sales, invoice_items, sale_items y
+   * stock en N escrituras desde el navegador, con la sucursal del usuario y sin
+   * idempotencia). La cartera la crea el disparador de la factura.
+   *
+   * - Mismas reglas: exige cliente y carrito activo con total > 0; no exige caja.
+   * - La línea se calcula con la regla única (`calcularLineaVenta`) con la
+   *   tasa y el modo que ya traía la línea, como antes; el servidor valida
+   *   precio, descuento y coherencia (punto 3).
+   * - Idempotente: el id de la venta se guarda en el carrito ANTES de llamar;
+   *   un reintento tras un corte devuelve la deuda ya creada.
+   * - Sucursal: la del carrito.
+   */
   static async holdCartWithDebt(data: {
     cartId: string;
     reason: string;
@@ -1283,376 +1394,124 @@ export class POSService {
     notes?: string;
   }): Promise<{
     cart: Cart;
-    /** Resumen de la factura a crédito. `total` es el recalculado por calculateCartTaxesComplete (puede diferir de cart.total). */
+    /** Resumen de la factura a crédito (fila fresca de la base: su total sale de las líneas). */
     invoice: { id: string; number: string; total: number; due_date: string | null; status: string };
-    accountReceivable: any;
+    accountReceivable: { id: string | null; amount: number; balance: number; due_date: string | null; status: string } | null;
   }> {
-    try {
-      const { cartId, reason, paymentTerms = 30, notes } = data;
-      
-      // PASO 1: Validar carrito
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
-      
-      if (cartIndex === -1) {
-        throw new Error('Carrito no encontrado');
-      }
-      
-      const cart = carts[cartIndex];
-      
-      // Validaciones de negocio
-      if (!cart.customer_id) {
-        throw new Error('El carrito debe tener un cliente asignado para generar deuda');
-      }
-      
-      if (cart.items.length === 0) {
-        throw new Error('El carrito debe tener items para generar deuda');
-      }
-      
-      if (cart.total <= 0) {
-        throw new Error('El total del carrito debe ser mayor a cero');
-      }
-      
-      if (cart.status !== 'active') {
-        throw new Error('Solo se pueden poner en espera carritos activos');
-      }
-      
-      console.log(`💰 Iniciando creación de deuda para carrito ${cartId}:`, {
-        cliente: cart.customer?.full_name,
-        total: cart.total,
-        items: cart.items.length
-      });
-      
-      // PASO 2: Calcular impuestos usando utilidad mejorada
-      const taxCalculationItems: TaxCalculationItem[] = cart.items.map(item => ({
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        product_id: item.product_id,
-        tax_rate: item.tax_rate,
-        tax_included: item.tax_included ?? cart.tax_included,
-        discount_amount: item.discount_amount || 0
-      }));
-      
-      const taxIncluded = cart.tax_included ?? getTaxIncludedSetting(false);
-      
-      const taxCalculation = await calculateCartTaxesComplete(
-        taxCalculationItems,
-        this, // Pasar instancia de POSService
-        taxIncluded
-      );
-      
-      console.log('🚀 Resultado final:', formatTaxCalculationForLog(taxCalculation));
-      
-      // PASO 2.5: Crear venta (sale) PRIMERO para tener sale_id
-      console.log('🔄 Creando venta (sale) antes de factura...');
-      
-      const totalDiscount = cart.items.reduce((sum, item) => sum + (item.discount_amount || 0), 0);
+    const { cartId, reason, paymentTerms = 30, notes } = data;
 
-      const saleData: any = {
-        organization_id: this.organizationId,
-        branch_id: getCurrentBranchId(),
-        customer_id: cart.customer_id,
-        user_id: await getCurrentUserId(), // Campo requerido en tabla sales
-        sale_date: new Date().toISOString(),
-        subtotal: taxCalculation.subtotal,
-        tax_total: taxCalculation.totalTaxAmount,
-        discount_total: totalDiscount,
-        total: taxCalculation.finalTotal, // Agregar campo total requerido
-        balance: taxCalculation.finalTotal,
-        status: 'pending', // Estado pending hasta completar pago
-        payment_status: 'pending',
+    const carts = this.readAllCarts();
+    const cartIndex = this.indexOfLiveCart(carts, cartId);
+    if (cartIndex === -1) {
+      throw new Error('Carrito no encontrado');
+    }
+    const cart = carts[cartIndex];
+    if (!cart.customer_id) {
+      throw new Error('El carrito debe tener un cliente asignado para generar deuda');
+    }
+    if (cart.items.length === 0) {
+      throw new Error('El carrito debe tener items para generar deuda');
+    }
+    if (cart.total <= 0) {
+      throw new Error('El total del carrito debe ser mayor a cero');
+    }
+    if (cart.status !== 'active') {
+      throw new Error('Solo se pueden poner en espera carritos activos');
+    }
+    const branchId = cart.branch_id || getCurrentBranchId();
+    if (!branchId) {
+      throw new Error('No hay sucursal seleccionada: la deuda no se guardó.');
+    }
+
+    // Id de la venta del intento, guardado antes de llamar (reintento = misma deuda).
+    const saleId = cart.debt_attempt_id || newSaleId();
+    if (!cart.debt_attempt_id) {
+      this.mutateStoredCart(cartId, (c) => ({ ...c, debt_attempt_id: saleId }));
+    }
+
+    const taxIncluded = cart.tax_included ?? getTaxIncludedSetting(false);
+    // Misma regla de siempre para la deuda: la tasa de la línea, sin resolver
+    // impuestos por defecto (no cambia ningún cálculo de impuestos).
+    const itemCalcs = cart.items.map((item) => calcularLineaVenta({
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      discount_amount: item.discount_amount || 0,
+      tax_rate: item.tax_rate || 0,
+      tax_included: item.tax_included ?? taxIncluded,
+    }));
+    const totales = totalesDeLineas(itemCalcs);
+
+    const envelope = buildCheckoutEnvelope({
+      checkout: {
+        cart,
+        payments: [],
+        change: 0,
+        total_paid: 0,
         tax_included: taxIncluded,
-        notes: `Venta con deuda - ${reason}`
-      };
-      
-      const { data: sale, error: saleError } = await supabase
-        .from('sales')
-        .insert(saleData)
-        .select()
-        .single();
-      
-      if (saleError) {
-        console.error('Error creando sale:', saleError);
-        throw new Error(`Error creando sale: ${saleError.message}`);
+      },
+      saleId,
+      createdAt: new Date().toISOString(),
+      organizationId: cart.organization_id || this.organizationId,
+      branchId,
+      userId: null,
+      currency: (await this.getBaseCurrency()).code,
+      itemCalcs,
+      subtotal: totales.subtotal,
+      taxTotal: totales.taxTotal,
+      discountTotal: totales.discountTotal,
+      total: totales.total,
+      promotionIds: [],
+      invoiceCommissionAmount: 0,
+      mode: 'debt',
+      debt: { reason, payment_terms: paymentTerms, notes: notes ?? null },
+    });
+    const rpcResult = await callCheckoutRpc(supabase, envelope);
+    if (!rpcResult || !rpcResult.invoice) {
+      throw new Error('No se pudo registrar la deuda: el servicio de cobro no está disponible. Inténtalo de nuevo.');
+    }
+    const invoice = rpcResult.invoice as { id: string; number: string; total: number | string; due_date: string | null; status: string; balance: number | string };
+
+    // Cartera: la creó el disparador de la factura; se lee para devolverla.
+    let accountReceivable: { id: string | null; amount: number; balance: number; due_date: string | null; status: string } | null = null;
+    try {
+      const { data: ar } = await supabase
+        .from('accounts_receivable')
+        .select('id, amount, balance, due_date, status')
+        .eq('invoice_id', invoice.id)
+        .maybeSingle();
+      if (ar) {
+        accountReceivable = { id: ar.id, amount: Number(ar.amount), balance: Number(ar.balance), due_date: ar.due_date, status: ar.status };
       }
-      
-      console.log(`🔄 Venta creada exitosamente:`, {
-        id: sale.id,
-        customer_id: sale.customer_id,
-        total: sale.balance
-      });
-      
-      // PASO 3: Crear invoice_sales con totales calculados
-      const invoiceNumber = await this.generateInvoiceNumber();
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + paymentTerms);
-      
-      const invoiceData: any = {
-        organization_id: this.organizationId,
-        branch_id: getCurrentBranchId(), // Usar branch_id actual del usuario
-        customer_id: cart.customer_id,
-        sale_id: sale.id, // Relacionar factura con venta creada
-        number: invoiceNumber,
-        issue_date: new Date().toISOString(),
-        due_date: dueDate.toISOString(),
-        currency: 'COP', // Debe existir en tabla currencies
-        subtotal: taxCalculation.subtotal,
-        tax_total: taxCalculation.totalTaxAmount,
-        total: taxCalculation.finalTotal,
-        balance: taxCalculation.finalTotal,
-        status: 'issued', // Estado para facturas recién emitidas
-        payment_method: 'credit', // Debe existir en tabla payment_methods
-        tax_included: taxIncluded,
-        payment_terms: paymentTerms,
-        notes: notes || `Carrito puesto en espera: ${reason}`,
-        document_type: 'invoice',
-        created_by: await getCurrentUserId() // Usuario actual que crea la factura
-      };
-      
-      console.log('📄 Creando invoice_sales con datos:', invoiceData);
-      
-      const { data: invoice, error: invoiceError } = await supabase
-        .from('invoice_sales')
-        .insert(invoiceData)
-        .select()
-        .single();
-      
-      if (invoiceError) {
-        console.error('Error creando invoice_sales:', {
-          error: invoiceError,
-          message: invoiceError.message,
-          details: invoiceError.details,
-          hint: invoiceError.hint,
-          code: invoiceError.code,
-          invoiceData: invoiceData
-        });
-        throw new Error(`Error creando invoice_sales: ${invoiceError.message || 'Error desconocido'}`);
-      }
-      
-      console.log(`📄 Factura creada exitosamente:`, {
+    } catch (error) {
+      console.warn('[posService] No se pudo leer la cuenta por cobrar de la deuda (sí se creó):', error);
+    }
+
+    const timezone = await getOrganizationTimezone(cart.organization_id || this.organizationId);
+    const actualizado = this.mutateStoredCart(cartId, (c) => ({
+      ...c,
+      status: 'hold_with_debt',
+      hold_reason: reason,
+      notes: `Factura: ${invoice.number} | Vence: ${formatDateInTz(invoice.due_date, timezone)}`,
+      sale_id: rpcResult.sale.id,
+      invoice_id: invoice.id,
+      debt_attempt_id: null,
+    }));
+
+    return {
+      cart: actualizado,
+      invoice: {
         id: invoice.id,
         number: invoice.number,
-        total: invoice.total
-      });
-      
-      // PASO 4: Crear invoice_items
-      const invoiceItems = cart.items.map(item => {
-        let description = item.product?.name || 'Producto';
-
-        // Agregar modificadores del item (sin mencionar la palabra "modificador")
-        if (item.modifiers && item.modifiers.length > 0) {
-          const modNames = item.modifiers.map((m: any) => m.name).filter(Boolean);
-          if (modNames.length > 0) {
-            description += ` (${modNames.join(', ')})`;
-          }
-        }
-
-        const lineTotal = (item.unit_price || 0) * (item.quantity || 0);
-        const itemDiscount = item.discount_amount || 0;
-        const lineNet = lineTotal - itemDiscount;
-        const itemTaxIncluded = item.tax_included ?? taxIncluded;
-        const itemTaxRate = item.tax_rate || 0;
-        const itemTax = itemTaxIncluded
-          ? lineNet - (lineNet / (1 + itemTaxRate / 100))
-          : lineNet * itemTaxRate / 100;
-
-        return {
-          invoice_id: invoice.id,
-          invoice_type: 'sale',
-          invoice_sales_id: invoice.id,
-          product_id: item.product_id,
-          description: description.substring(0, 255),
-          qty: item.quantity || 0,
-          unit_price: item.unit_price || 0,
-          tax_rate: itemTaxRate,
-          total_line: itemTaxIncluded ? lineNet : lineNet + itemTax,
-          discount_amount: itemDiscount,
-          tax_included: itemTaxIncluded
-        };
-      });
-      
-      console.log('📋 Creando invoice_items con datos:', invoiceItems);
-      
-      const { error: itemsError } = await supabase
-        .from('invoice_items')
-        .insert(invoiceItems);
-      
-      if (itemsError) {
-        console.error('Error creando invoice_items:', {
-          error: itemsError,
-          message: itemsError.message,
-          details: itemsError.details,
-          hint: itemsError.hint,
-          code: itemsError.code,
-          invoiceItems: invoiceItems
-        });
-        throw new Error(`Error creando invoice_items: ${itemsError.message || 'Error desconocido'}`);
-      }
-      
-      console.log(`📋 ${invoiceItems.length} items de factura creados exitosamente`);
-      
-
-      // Calcular tax_amount total por item basado en el resultado de taxCalculation
-      const totalTaxPerItem = taxCalculation.totalTaxAmount / cart.items.length;
-      
-      const saleItems = cart.items.map(item => {
-        const lineTotal = (item.unit_price || 0) * (item.quantity || 1);
-        const itemDiscount = item.discount_amount || 0;
-        const lineNet = lineTotal - itemDiscount;
-        const itemTaxIncluded = item.tax_included ?? taxIncluded;
-        const itemTaxRate = item.tax_rate || 0;
-        const itemTax = itemTaxIncluded
-          ? lineNet - (lineNet / (1 + itemTaxRate / 100))
-          : lineNet * itemTaxRate / 100;
-        return {
-          sale_id: sale.id,
-          product_id: item.product_id,
-          quantity: item.quantity || 1,
-          unit_price: item.unit_price,
-          total: itemTaxIncluded ? lineNet : lineNet + itemTax,
-          discount_amount: itemDiscount,
-          tax_amount: itemTax || totalTaxPerItem
-        };
-      });
-      
-      console.log('🛍️ Creando sale_items con datos:', saleItems);
-      
-      const { error: saleItemsError } = await supabase
-        .from('sale_items')
-        .insert(saleItems);
-      
-      if (saleItemsError) {
-        console.error('Error creando sale_items:', saleItemsError);
-        throw new Error(`Error creando sale_items: ${saleItemsError.message}`);
-      }
-      
-      console.log(`🛍️ ${saleItems.length} items de venta creados exitosamente`);
-
-      // Descontar stock por cada item vendido
-      try {
-        const fallbackBranchId = getCurrentBranchIdWithFallback();
-        if (!fallbackBranchId) {
-          console.warn('⚠️ No se pudo descontar stock: no hay branch_id seleccionado');
-        } else {
-        const stockResult = await stockMovementService.decrementOnSale(
-          this.organizationId,
-          fallbackBranchId,
-          sale.id,
-          cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity, unit_price: item.unit_price })),
-          'sale'
-        );
-        if (stockResult.errors.length > 0) {
-          console.warn('⚠️ Algunos items no descontaron stock:', stockResult.errors);
-        }
-        console.log(`📦 Stock descontado: ${cart.items.length - stockResult.skipped} items procesados`);
-        }
-      } catch (stockError) {
-        console.warn('⚠️ Error descontando stock (no bloquea la venta):', stockError);
-      }
-      
-      // PASO 5: La cuenta por cobrar se crea automáticamente por el trigger tr_create_account_receivable
-      // al insertar la factura con status != 'draft'. Obtenemos la cuenta creada usando RPC:
-      console.log('📃 Obteniendo cuenta por cobrar creada automáticamente por trigger...');
-      
-      // Usar función RPC que maneja correctamente las políticas RLS
-      let accountReceivable = null;
-      let lastError = null;
-      
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        console.log(`Intento ${attempt}/3 obteniendo accounts_receivable con RPC...`);
-        
-        try {
-          const { data, error } = await supabase
-            .rpc('get_accounts_receivable_with_customers', {
-              org_id: this.organizationId
-            });
-          
-          if (data && !error) {
-            // Buscar la cuenta por cobrar para esta factura específica
-            const foundAR = data.find((ar: any) => ar.invoice_id === invoice.id);
-            
-            if (foundAR) {
-              accountReceivable = foundAR;
-              console.log(`👍 Cuenta por cobrar encontrada con RPC:`, {
-                id: foundAR.id,
-                balance: foundAR.balance,
-                customer_name: foundAR.customer_name
-              });
-              break;
-            }
-          }
-          
-          lastError = error || { message: 'Cuenta por cobrar no encontrada en resultados RPC' };
-        } catch (rpcError: any) {
-          lastError = rpcError;
-          console.log(`Error en RPC intento ${attempt}:`, rpcError);
-        }
-        
-        if (attempt < 3) {
-          // Esperar 500ms antes del siguiente intento
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      }
-      
-      if (!accountReceivable) {
-        console.error('Error obteniendo accounts_receivable después de 3 intentos con RPC:', {
-          error: lastError,
-          message: lastError?.message || 'Timeout esperando trigger',
-          invoice_id: invoice.id,
-          organization_id: this.organizationId
-        });
-        throw new Error(`Error obteniendo accounts_receivable: ${lastError?.message || 'Timeout esperando que el trigger cree la cuenta por cobrar'}`);
-      }
-      
-      console.log(`💳 Cuenta por cobrar obtenida exitosamente:`, {
-        id: accountReceivable.id,
-        balance: accountReceivable.balance,
-        due_date: accountReceivable.due_date
-      });
-      
-      // PASO 6: Actualizar carrito
-      cart.status = 'hold_with_debt';
-      cart.hold_reason = reason;
-      cart.notes = `Factura: ${invoice.number} | Vence: ${dueDate.toLocaleDateString()}`;
-      cart.sale_id = sale.id;
-      cart.invoice_id = invoice.id;
-      cart.updated_at = new Date().toISOString();
-      
-      carts[cartIndex] = cart;
-      this.saveCartsToStorage(carts);
-      
-      console.log(`🛒 Carrito actualizado a estado: hold_with_debt`);
-      
-      return {
-        cart,
-        invoice: {
-          id: invoice.id,
-          number: invoice.number,
-          total: invoice.total,
-          due_date: invoice.due_date,
-          status: invoice.status
-        },
-        accountReceivable: {
-          id: accountReceivable.id,
-          amount: accountReceivable.amount,
-          balance: accountReceivable.balance,
-          due_date: accountReceivable.due_date,
-          status: accountReceivable.status
-        }
-      };
-      
-    } catch (error) {
-      console.error('Error en holdCartWithDebt:', error);
-      throw error;
-    }
+        total: Number(invoice.total),
+        due_date: invoice.due_date,
+        status: invoice.status,
+      },
+      accountReceivable,
+    };
   }
 
   // FACTURACIÓN
   // ===============================
-
-  private static async generateInvoiceNumber(): Promise<string> {
-    return await generateInvoiceNumberUtil(this.organizationId, 'FACT');
-  }
 
   // ===============================
   // CHECKOUT Y VENTAS
@@ -1676,6 +1535,10 @@ export class POSService {
       // calculateCartTotals ya dejó el descuento en el ítem antes del checkout,
       // así que el criterio es "la promoción coincide y el ítem tiene descuento".
       let promocionesUsadas: string[] = [];
+      // En el cobro de una venta que ya existe (deuda, mesa) los descuentos ya
+      // quedaron en sus líneas cuando se crearon: no se reevalúan promociones.
+      const cobraVentaExistente = !!(checkoutData.settle?.sale_id || (cart.sale_id && cart.invoice_id));
+      if (!cobraVentaExistente) {
       try {
         const promoResult = await promotionEngine.evaluate({
           channel: 'pos',
@@ -1711,6 +1574,7 @@ export class POSService {
       } catch (promoErr) {
         console.warn('[posService] No se pudieron evaluar promociones:', promoErr);
       }
+      }
 
       // Calcular totales por item resolviendo tax_rate desde los impuestos del producto
       // cuando el item no lo trae (fallback si calculatedTotals falló en el CheckoutDialog)
@@ -1729,55 +1593,71 @@ export class POSService {
         discount: number;
       }> = [];
 
-      for (const item of cart.items) {
-        const lineTotal = (item.unit_price || 0) * (item.quantity || 1);
-        const itemDiscount = item.discount_amount || 0;
-        const lineNet = lineTotal - itemDiscount;
-        const itemTaxIncluded = item.tax_included ?? checkoutTaxIncluded;
-
-        // F-42: Resolver impuestos con el resolver único (mismo orden que NuevaFacturaForm
-        // y cotizacionesService): item → product_tax_relations → org default → 0.
-        let itemTaxRate = Number(item.tax_rate) || 0;
-        let itemTaxCode: string | null = null;
-        if (!itemTaxRate && item.product_id) {
-          try {
-            const resolved = await resolveLineTax({
-              itemTaxRate: item.tax_rate,
-              itemTaxCode: null,
-              productId: item.product_id,
-              organizationId: this.organizationId,
-              taxIncluded: itemTaxIncluded,
-              qty: item.quantity || 1,
-              unitPrice: item.unit_price || 0,
-              discountAmount: itemDiscount,
-            });
-            itemTaxRate = resolved.tax_rate;
-            itemTaxCode = resolved.tax_code;
-          } catch (taxErr) {
-            console.warn('No se pudieron obtener impuestos del producto', item.product_id, taxErr);
-          }
+      // F-42: tasa de la línea con el resolver único (mismo orden que
+      // NuevaFacturaForm y cotizacionesService): item → product_tax_relations
+      // → org default → 0.
+      const tasaDeLinea = async (item: CartItem, itemTaxIncluded: boolean): Promise<number> => {
+        const tasaPropia = Number(item.tax_rate) || 0;
+        if (tasaPropia || !item.product_id) return tasaPropia;
+        // La tarifa 0 que ya decidió el carrito (CheckoutDialog reparte el
+        // impuesto y deja tax_amount en cada línea; la mesa trae el de la BD) es
+        // definitiva: un carrito todo exento no se cobra con la tarifa por
+        // defecto. Solo una línea sin cálculo previo consulta el resolver.
+        const decididaPorElCarrito = typeof item.tax_rate === 'number' && typeof item.tax_amount === 'number';
+        try {
+          const resolved = await resolveLineTax({
+            itemTaxRate: item.tax_rate,
+            itemTaxIsFinal: decididaPorElCarrito,
+            itemTaxCode: null,
+            productId: item.product_id,
+            organizationId: this.organizationId,
+            taxIncluded: itemTaxIncluded,
+            qty: item.quantity || 1,
+            unitPrice: item.unit_price || 0,
+            discountAmount: item.discount_amount || 0,
+          });
+          return resolved.tax_rate;
+        } catch (taxErr) {
+          console.warn('No se pudieron obtener impuestos del producto', item.product_id, taxErr);
+          return 0;
         }
+      };
 
-        const itemTax = itemTaxIncluded
-          ? lineNet - (lineNet / (1 + itemTaxRate / 100))
-          : lineNet * itemTaxRate / 100;
-        const roundedTax = Math.round(itemTax * 100) / 100;
-        const itemTotal = itemTaxIncluded ? lineNet : lineNet + roundedTax;
-
-        itemCalcs.push({
-          lineNet,
-          taxRate: itemTaxRate,
-          taxAmount: roundedTax,
-          total: itemTotal,
-          taxIncluded: itemTaxIncluded,
-          discount: itemDiscount
-        });
-
-        calculatedSubtotal += itemTaxIncluded ? (lineNet - roundedTax) : lineNet;
-        calculatedTaxTotal += roundedTax;
-        calculatedDiscount += itemDiscount;
-        calculatedGrandTotal += itemTotal;
+      for (const item of cart.items) {
+        const itemTaxIncluded = item.tax_included ?? checkoutTaxIncluded;
+        // Regla única de la línea (la misma que valida pos_checkout_v1).
+        itemCalcs.push(calcularLineaVenta({
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          discount_amount: item.discount_amount || 0,
+          tax_rate: await tasaDeLinea(item, itemTaxIncluded),
+          tax_included: itemTaxIncluded,
+        }));
       }
+
+      // Cuenta dividida de una mesa: el resto de líneas sin pagar no se cobra
+      // en este intento, pero el servidor necesita su tasa para recalcular y
+      // validar la cuenta entera (misma resolución que las líneas cobradas).
+      const lineasMesa: LineaMesaSinCobrar[] = [];
+      if (checkoutData.settle?.table_session_id) {
+        for (const item of checkoutData.settle.lineas_sin_cobrar ?? []) {
+          const itemTaxIncluded = item.tax_included ?? checkoutTaxIncluded;
+          lineasMesa.push({
+            sale_item_id: String(item.id),
+            product_id: item.product_id ?? null,
+            quantity: item.quantity,
+            unit_price: item.unit_price || 0,
+            tax_rate: await tasaDeLinea(item, itemTaxIncluded),
+            tax_included: itemTaxIncluded,
+          });
+        }
+      }
+      ({
+        subtotal: calculatedSubtotal,
+        taxTotal: calculatedTaxTotal,
+        discountTotal: calculatedDiscount,
+        total: calculatedGrandTotal,
+      } = totalesDeLineas(itemCalcs));
 
       // Usar los valores del carrito solo si son consistentes; si no, usar los calculados
       const cartSubtotal = Number(cart.subtotal) || 0;
@@ -1799,9 +1679,10 @@ export class POSService {
       const baseTotal = calculatedGrandTotal > 0 ? calculatedGrandTotal : cartTotal;
       const finalTotal = baseTotal + shippingFee + tipAmount;
 
-      // Si el carrito ya tiene sale_id (viene de hold_with_debt), actualizar la venta existente
-      const isDebtCheckout = !!(cart.sale_id && cart.invoice_id);
-      let saleData: any;
+      // Cobro de una venta que YA existe: la deuda (`cart.sale_id` +
+      // `cart.invoice_id`) o la cuenta de una mesa (`checkoutData.settle`).
+      const ventaExistenteId = checkoutData.settle?.sale_id
+        ?? (cart.sale_id && cart.invoice_id ? cart.sale_id : null);
 
       // commission_amount de la factura (misma fórmula en la RPC y en el respaldo)
       const invoiceCommissionAmount = checkoutData.salesperson_id && checkoutData.commission_rate && checkoutData.commission_rate > 0
@@ -1810,615 +1691,62 @@ export class POSService {
             : Math.round((effectiveSubtotal > 0 ? effectiveSubtotal : finalTotal) * checkoutData.commission_rate / 100 * 100) / 100)
         : 0;
 
-      // ── Fase 4E: checkout atómico por RPC ──
+      // ── Checkout atómico por RPC (fase 4E; deuda y mesa desde 2026-09-24) ──
       // Todo lo anterior (promociones, impuestos, totales) se calcula igual;
-      // desde aquí, en vez de N inserts, un solo sobre a `pos_checkout_v1`:
-      // o entra todo o no entra nada, idempotente por `sale_id`. El cobro de
-      // una deuda (`cart.sale_id` + `cart.invoice_id`) actualiza una venta
-      // que ya existe y sigue por el camino de siempre.
-      // Si la RPC no existe en este entorno (PGRST202), `callCheckoutRpc`
-      // devuelve null y se sigue con el respaldo de la fase 4B.
-      if (!isDebtCheckout && isCheckoutRpcAvailable() !== false) {
-        const rpcBranchId = cart.branch_id || getCurrentBranchId();
-        if (!rpcBranchId) {
-          throw new Error('No hay sucursal seleccionada: la venta no se guardó.');
-        }
-        const envelope = buildCheckoutEnvelope({
-          checkout: checkoutData,
-          saleId: checkoutData.saleId || newSaleId(),
-          createdAt: checkoutData.createdAt || new Date().toISOString(),
-          organizationId: cart.organization_id || this.organizationId,
-          branchId: rpcBranchId,
-          userId: checkoutData.userId ?? null,
-          currency: (await this.getBaseCurrency()).code,
-          itemCalcs,
-          subtotal: effectiveSubtotal,
-          taxTotal: effectiveTaxTotal,
-          discountTotal: effectiveDiscount,
-          total: finalTotal,
-          promotionIds: promocionesUsadas,
-          invoiceCommissionAmount,
-        });
-        const rpcResult = await callCheckoutRpc(supabase, envelope);
-        if (rpcResult) {
-          if (rpcResult.warnings.length > 0) {
-            console.warn('[posService] pos_checkout_v1 terminó con avisos (la venta sí se guardó):', rpcResult.warnings);
-          }
-          if (rpcResult.replayed) {
-            console.log(`♻️ Venta ${envelope.sale_id} ya existía: la RPC completó ${rpcResult.completed.length > 0 ? rpcResult.completed.join(', ') : 'nada (ya estaba entera)'}`);
-          }
-          // Mismo cierre de carrito que el camino de siempre (y misma emisión a
-          // la pantalla del cliente desde saveCartsToStorage).
-          await this.removeCart(cart.id);
-          return { ...rpcResult.sale, replayed: rpcResult.replayed };
-        }
+      // desde aquí un solo sobre a `pos_checkout_v1`: o entra todo o no entra
+      // nada. Venta nueva: idempotente por `sale_id`. Cobro de una venta que ya
+      // existe (mode 'settle'): idempotente por la llave del intento de cobro
+      // (`attemptId`), para que un reintento no duplique pagos ni propina.
+      // Si la RPC no está disponible, el cobro falla con un error visible:
+      // degradarse a N inserts en transacciones separadas es lo que dejaba el
+      // asiento a merced del orden de llegada (F-48, docs/decisiones/ADR-CC-002).
+      // La sucursal es la del carrito (la caja donde entra el dinero), no la
+      // seleccionada en otra pestaña.
+      const rpcBranchId = cart.branch_id || getCurrentBranchId();
+      if (!rpcBranchId) {
+        throw new Error('No hay sucursal seleccionada: la venta no se guardó.');
       }
-
-      // ── Respaldo temporal (fase 4B): N inserts desde el cliente ──
-      // Solo se llega aquí si la RPC `pos_checkout_v1` no existe en el
-      // entorno (o en el cobro de una deuda). Se conserva hasta que la
-      // migración esté en producción en todos los entornos; después se
-      // elimina en favor de la RPC.
-      //
-      // Idempotencia por id de cliente: si el POS trajo `saleId` y esa venta
-      // ya existe en la organización (reproducción repetida de un sobre
-      // offline, o un intento anterior que murió a mitad), se reutiliza y
-      // cada bloque hijo comprueba por `sale_id` qué existe antes de
-      // insertar. Sin `saleId` (navegador) no se hace ninguna consulta extra.
-      let resumingExisting = false;
-      const clientSaleId = !isDebtCheckout && checkoutData.saleId ? checkoutData.saleId : null;
-      const saleTimestamp = checkoutData.createdAt || new Date().toISOString();
-      if (clientSaleId) {
-        const { data: existingSale, error: existingError } = await supabase
-          .from('sales')
-          .select('*')
-          .eq('id', clientSaleId)
-          .eq('organization_id', cart.organization_id)
-          .maybeSingle();
-        if (existingError) throw existingError;
-        if (existingSale) {
-          console.log(`♻️ Venta ${clientSaleId} ya existe: se completa lo que falte sin duplicar`);
-          saleData = existingSale;
-          resumingExisting = true;
-        }
-      }
-
-      if (resumingExisting) {
-        // Nada que insertar en `sales`: ya está.
-      } else if (isDebtCheckout) {
-        console.log(`💰 Checkout de deuda existente - sale_id: ${cart.sale_id}, invoice_id: ${cart.invoice_id}`);
-        const { data: updatedSale, error: saleError } = await supabase
-          .from('sales')
-          .update({
-            balance: Math.max(0, finalTotal - checkoutData.total_paid),
-            status: checkoutData.total_paid >= finalTotal ? 'paid' : 'pending',
-            payment_status: checkoutData.total_paid >= finalTotal ? 'paid' : 'partial',
-            tax_included: checkoutData.tax_included || false,
-            tax_breakdown: checkoutData.tax_breakdown || null,
-            salesperson_id: checkoutData.salesperson_id || null,
-            commission_rate: checkoutData.commission_rate || 0,
-            commission_type: checkoutData.commission_type || 'none',
-            delivery_fee: shippingFee > 0 ? shippingFee : 0,
-            tip_amount: tipAmount > 0 ? tipAmount : null
-          })
-          .eq('id', cart.sale_id)
-          .select()
-          .single();
-
-        if (saleError) throw saleError;
-        saleData = updatedSale;
-      } else {
-        // Crear la venta en la base de datos (flujo normal)
-        const { data: newSale, error: saleError } = await supabase
-          .from('sales')
-          .insert({
-            // Id generado en el cliente (fase 4B); sin él, lo pone la BD.
-            ...(clientSaleId ? { id: clientSaleId, created_at: saleTimestamp } : {}),
-            organization_id: cart.organization_id,
-            branch_id: getCurrentBranchId(),
-            customer_id: cart.customer_id,
-            user_id: checkoutData.userId || (await supabase.auth.getUser()).data.user?.id,
-            subtotal: effectiveSubtotal,
-            tax_total: effectiveTaxTotal,
-            discount_total: effectiveDiscount,
-            total: finalTotal,
-            balance: Math.max(0, finalTotal - checkoutData.total_paid),
-            status: checkoutData.total_paid >= finalTotal ? 'paid' : 'pending',
-            payment_status: checkoutData.total_paid >= finalTotal ? 'paid' : 'partial',
-            tax_included: checkoutData.tax_included || false,
-            tax_breakdown: checkoutData.tax_breakdown || null,
-            sale_date: saleTimestamp,
-            salesperson_id: checkoutData.salesperson_id || null,
-            commission_rate: checkoutData.commission_rate || 0,
-            commission_type: checkoutData.commission_type || 'none',
-            delivery_fee: shippingFee > 0 ? shippingFee : 0,
-            tip_amount: tipAmount > 0 ? tipAmount : null
-          })
-          .select()
-          .single();
-
-        if (saleError) {
-          // 23505: otra reproducción insertó el mismo id entre el SELECT y el
-          // INSERT. Se toma la existente y se sigue en modo "completar".
-          if (clientSaleId && (saleError as { code?: string }).code === '23505') {
-            const { data: raced } = await supabase
-              .from('sales')
-              .select('*')
-              .eq('id', clientSaleId)
-              .eq('organization_id', cart.organization_id)
-              .maybeSingle();
-            if (!raced) throw saleError;
-            saleData = raced;
-            resumingExisting = true;
-          } else {
-            throw saleError;
-          }
-        } else {
-          saleData = newSale;
-        }
-      }
-
-      // Al completar una venta existente, cada bloque hijo pregunta por
-      // `sale_id` antes de insertar. Fuera de ese modo no cuesta ninguna
-      // consulta (devuelve false sin ir a la BD).
-      const childExists = async (table: string, filters: Record<string, string | number>): Promise<boolean> => {
-        if (!resumingExisting) return false;
-        const { count, error } = await supabase
-          .from(table)
-          .select('id', { count: 'exact', head: true })
-          .match(filters);
-        if (error) throw error;
-        return (count || 0) > 0;
-      };
-
-      // Registrar el uso de las promociones aplicadas (contador que muestra la
-      // pantalla de promociones). Solo en ventas nuevas: el checkout de deuda
-      // ya contó cuando se creó la venta. RPC atómica (usage_count + 1 en un
-      // UPDATE), filtrada por organización; con RLS, el cajero debe ser miembro
-      // activo. Es estadística: si falla, se registra y la venta sigue.
-      // Al completar una venta existente no se vuelve a contar (no hay forma
-      // de saber si ya se contó): límite documentado de la fase 4B.
-      if (!isDebtCheckout && !resumingExisting && promocionesUsadas.length > 0) {
-        const { error: promoUsageError } = await supabase.rpc('increment_promotion_usage', {
-          p_organization_id: cart.organization_id,
-          p_promotion_ids: promocionesUsadas,
-        });
-        if (promoUsageError) {
-          console.warn('[posService] No se pudo registrar el uso de promociones:', promoUsageError);
-        }
-      }
-
-      // Crear registro de comisión si aplica
-      if (checkoutData.salesperson_id && checkoutData.commission_rate && checkoutData.commission_rate > 0 && checkoutData.commission_type !== 'none'
-          && !(await childExists('commissions', { source_type: 'sale', source_id: saleData.id }))) {
-        try {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', checkoutData.salesperson_id)
-            .single();
-
-          let salespersonName = 'N/A';
-          if (profileData) {
-            salespersonName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'N/A';
-          }
-
-          const { error: commissionInsertError } = await supabase
-            .from('commissions')
-            .insert({
-              organization_id: cart.organization_id,
-              branch_id: getCurrentBranchId(),
-              commission_type: checkoutData.commission_type,
-              source_type: 'sale',
-              source_id: saleData.id,
-              payee_type: 'employee',
-              payee_id: checkoutData.salesperson_id,
-              payee_name: salespersonName,
-              base_amount: cart.subtotal,
-              commission_rate: checkoutData.commission_rate,
-              commission_amount: checkoutData.commission_amount || 0,
-              currency: (await this.getBaseCurrency()).code,
-              status: 'accrued',
-              accrued_at: new Date().toISOString(),
-              created_by: (await supabase.auth.getUser()).data.user?.id,
-              metadata: { sale_id: saleData.id, commission_method: checkoutData.commission_method || 'percentage' },
-            });
-          if (commissionInsertError) {
-            console.error('Error al crear registro de comisión (POS):', commissionInsertError);
-          }
-        } catch (commissionErr) {
-          console.error('Error al crear registro de comisión (POS catch):', commissionErr);
-        }
-      }
-
-      // Crear los items de venta (solo si no es checkout de deuda - ya fueron creados)
-      const saleItemsAlreadyExist = await childExists('sale_items', { sale_id: saleData.id });
-      if (!isDebtCheckout && !saleItemsAlreadyExist) {
-        const saleItems = cart.items.map((item, itemIdx) => {
-          const notesObj: Record<string, any> = { product_name: item.product?.name };
-          if (item.notes) notesObj.extra = item.notes;
-          if (item.modifiers && item.modifiers.length > 0) notesObj.modifiers = item.modifiers;
-
-          const calc = itemCalcs[itemIdx];
-
-          return {
-            sale_id: saleData.id,
-            product_id: item.product_id,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            total: calc ? calc.total : (item.unit_price || 0) * (item.quantity || 1) - (item.discount_amount || 0),
-            tax_amount: calc ? calc.taxAmount : 0,
-            tax_rate: calc ? calc.taxRate : 0,
-            discount_amount: calc ? calc.discount : (item.discount_amount || 0),
-            notes: notesObj
-          };
-        });
-
-        const { error: itemsError } = await supabase
-          .from('sale_items')
-          .insert(saleItems);
-
-        if (itemsError) throw itemsError;
-      }
-
-      // Descontar stock por cada item vendido (solo si no es deuda - ya fue descontado)
-      // Al completar una venta existente, los movimientos ya registrados con
-      // source='sale' y source_id=<venta> marcan que este paso se hizo.
-      if (!isDebtCheckout && !(await childExists('stock_movements', { source: 'sale', source_id: saleData.id }))) {
-        try {
-        const fallbackBranchId = getCurrentBranchIdWithFallback();
-        if (!fallbackBranchId) {
-          console.warn('⚠️ No se pudo descontar stock: no hay branch_id seleccionado');
-        } else {
-          const stockResult = await stockMovementService.decrementOnSale(
-            cart.organization_id,
-            fallbackBranchId,
-            saleData.id,
-            cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity, unit_price: item.unit_price })),
-            'sale'
-          );
-          if (stockResult.errors.length > 0) {
-            console.warn('⚠️ Algunos items no descontaron stock:', stockResult.errors);
-          }
-          console.log(`📦 Stock descontado: ${cart.items.length - stockResult.skipped} items procesados`);
-        }
-        } catch (stockError) {
-          console.warn('⚠️ Error descontando stock (no bloquea la venta):', stockError);
-        }
-
-        // Vender seriales si hay productos serializados con seriales seleccionados.
-        // Va atado al descuento de stock: al completar una venta cuyo stock
-        // ya se descontó, los seriales ya se marcaron como vendidos.
-        if (checkoutData.serial_selections) {
-          try {
-            const serialUserId = await getCurrentUserId();
-            for (const item of cart.items) {
-              const serialIds = checkoutData.serial_selections[item.product_id];
-              if (!serialIds || serialIds.length === 0) continue;
-
-              const { success: serialOk, errors: serialErrors } = await serialTrackingService.sellSerials(
-                serialIds,
-                {
-                  sale_id: saleData.id,
-                  customer_id: cart.customer_id,
-                  sold_by_user_id: serialUserId ?? undefined,
-                  sale_channel: 'pos',
-                  price_at_sale: item.unit_price,
-                  branch_id: cart.branch_id,
-                },
-                serialUserId ?? undefined
-              );
-
-              if (!serialOk) {
-                console.warn(`⚠️ Errores vendiendo seriales para producto ${item.product_id}:`, serialErrors);
-              } else {
-                console.log(`✅ ${serialIds.length} seriales vendidos para producto ${item.product_id}`);
-              }
+      const envelope = buildCheckoutEnvelope({
+        checkout: checkoutData,
+        saleId: ventaExistenteId || checkoutData.saleId || newSaleId(),
+        createdAt: checkoutData.createdAt || new Date().toISOString(),
+        organizationId: cart.organization_id || this.organizationId,
+        branchId: rpcBranchId,
+        userId: checkoutData.userId ?? null,
+        currency: (await this.getBaseCurrency()).code,
+        itemCalcs,
+        subtotal: effectiveSubtotal,
+        taxTotal: effectiveTaxTotal,
+        discountTotal: effectiveDiscount,
+        total: finalTotal,
+        promotionIds: ventaExistenteId ? [] : promocionesUsadas,
+        invoiceCommissionAmount,
+        ...(ventaExistenteId
+          ? {
+              mode: 'settle' as const,
+              paymentKey: checkoutData.attemptId || newSaleId(),
+              settle: checkoutData.settle,
+              lineasMesa,
             }
-          } catch (serialError) {
-            console.warn('⚠️ Error vendiendo seriales (no bloquea la venta):', serialError);
-          }
+          : {}),
+      });
+      const rpcResult = await callCheckoutRpc(supabase, envelope);
+      if (rpcResult) {
+        if (rpcResult.warnings.length > 0) {
+          console.warn('[posService] pos_checkout_v1 terminó con avisos (la venta sí se guardó):', rpcResult.warnings);
         }
-      }
-
-      // Crear o actualizar la factura (invoice_sales)
-      const baseCurrency = await this.getBaseCurrency();
-      let invoiceData: any = null;
-      let invoiceError: any = null;
-
-      // Al completar una venta existente: si ya tiene factura, se reutiliza
-      // (no se consume otro consecutivo).
-      let existingInvoice: Record<string, unknown> | null = null;
-      if (resumingExisting) {
-        const { data: foundInvoice, error: foundInvoiceError } = await supabase
-          .from('invoice_sales')
-          .select('*')
-          .eq('sale_id', saleData.id)
-          .eq('organization_id', cart.organization_id)
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        if (foundInvoiceError) throw foundInvoiceError;
-        existingInvoice = foundInvoice;
-      }
-
-      if (existingInvoice) {
-        invoiceData = existingInvoice;
-      } else if (isDebtCheckout) {
-        // Actualizar factura existente de la deuda
-        const { data: updatedInvoice, error: updateInvError } = await supabase
-          .from('invoice_sales')
-          .update({
-            balance: saleData.balance,
-            status: saleData.balance > 0 ? 'partial' : 'paid',
-            tax_included: checkoutData.tax_included || false,
-            payment_method: payments.length > 0 ? payments[0].method : 'cash',
-            payment_terms: 0,
-            due_date: new Date().toISOString(),
-          })
-          .eq('id', cart.invoice_id)
-          .select()
-          .single();
-
-        invoiceData = updatedInvoice;
-        invoiceError = updateInvError;
-
-        if (updateInvError) {
-          console.error('Error updating debt invoice:', updateInvError);
-        } else {
-          console.log('Debt invoice updated successfully:', invoiceData.number);
+        if (rpcResult.replayed) {
+          console.log(`♻️ Venta ${envelope.sale_id} ya existía: la RPC completó ${rpcResult.completed.length > 0 ? rpcResult.completed.join(', ') : 'nada (ya estaba entera)'}`);
         }
-      } else {
-        // Crear nueva factura (flujo normal)
-        const invoiceNumber = await this.generateInvoiceNumber();
-        const { data: newInvoice, error: newInvError } = await supabase
-          .from('invoice_sales')
-          .insert({
-            organization_id: cart.organization_id,
-            branch_id: getCurrentBranchId(),
-            customer_id: cart.customer_id,
-            sale_id: saleData.id,
-            number: invoiceNumber,
-            issue_date: saleTimestamp,
-            due_date: saleTimestamp,
-            currency: baseCurrency.code,
-            subtotal: effectiveSubtotal,
-            tax_total: effectiveTaxTotal,
-            total: finalTotal,
-            balance: saleData.balance,
-            status: saleData.balance > 0 ? 'partial' : 'paid',
-            tax_included: checkoutData.tax_included || false,
-            payment_method: payments.length > 0 ? payments[0].method : 'cash',
-            payment_terms: 0,
-            created_by: (await supabase.auth.getUser()).data.user?.id,
-            notes: `Factura generada automáticamente desde POS - Venta #${saleData.id}`,
-            salesperson_id: checkoutData.salesperson_id || null,
-            commission_rate: checkoutData.commission_rate || 0,
-            commission_type: checkoutData.salesperson_id && checkoutData.commission_rate && checkoutData.commission_rate > 0 ? (checkoutData.commission_type || 'salesperson') : 'none',
-            commission_method: checkoutData.commission_method || 'percentage',
-            commission_amount: invoiceCommissionAmount
-          })
-          .select()
-          .single();
-
-        invoiceData = newInvoice;
-        invoiceError = newInvError;
-
-        if (newInvError) {
-          console.error('Error creating invoice:', newInvError);
-        } else {
-          console.log('Invoice created successfully:', invoiceData.number);
-        }
+        // Mismo cierre de carrito que el camino de siempre (y misma emisión a
+        // la pantalla del cliente desde saveCartsToStorage).
+        await this.removeCart(cart.id);
+        return { ...rpcResult.sale, replayed: rpcResult.replayed };
       }
-
-      // Crear los pagos - asociar con la factura (invoice_sales)
-      //
-      // IMPORTANTE: los pagos se insertan ANTES de los invoice_items.
-      // El trigger fn_recalc_invoice_totals (en invoice_items) recalcula
-      // balance = total - pagos_completados. Si los items se insertan primero, el
-      // pago todavia no existe y el trigger escribe balance = total, pisando el
-      // balance correcto y dejando la factura como 'paid' con saldo pendiente.
-      const currentUser = await supabase.auth.getUser();
-      const userId = currentUser.data.user?.id;
-
-      // Al completar una venta existente: los pagos se insertan uno a uno, así
-      // que un intento anterior pudo dejar solo algunos. Se cuentan los que ya
-      // hay (por factura o por venta) y se insertan únicamente los que faltan,
-      // en el mismo orden.
-      let paymentsAlreadyInserted = 0;
-      if (resumingExisting) {
-        const paymentFilters = invoiceData && !invoiceError
-          ? { source: 'invoice_sales', source_id: String(invoiceData.id) }
-          : { source: 'sale', source_id: String(saleData.id) };
-        const { count: paymentCount, error: paymentCountError } = await supabase
-          .from('payments')
-          .select('id', { count: 'exact', head: true })
-          .match(paymentFilters);
-        if (paymentCountError) throw paymentCountError;
-        paymentsAlreadyInserted = paymentCount || 0;
-      }
-
-      const changeAmount = checkoutData.change || 0;
-      let changeAssigned = false;
-      let paymentIndex = 0;
-      for (const payment of payments) {
-        if (payment.amount > 0) {
-          const alreadyInserted = paymentIndex < paymentsAlreadyInserted;
-          paymentIndex++;
-          // El cambio se asigna al primer pago en efectivo, exista ya o no.
-          const takesChange = !changeAssigned && changeAmount > 0 && payment.method === 'cash';
-          if (takesChange) changeAssigned = true;
-          if (alreadyInserted) continue;
-          const paymentData: any = {
-            organization_id: cart.organization_id,
-            branch_id: getCurrentBranchId(), // Usar branch_id actual del usuario
-            amount: payment.amount,
-            method: payment.method,
-            currency: baseCurrency.code,
-            status: 'completed',
-            change_amount: takesChange ? changeAmount : 0,
-          };
-
-          // Asociar con la factura si existe, sino con la venta
-          if (invoiceData && !invoiceError) {
-            paymentData.source = 'invoice_sales';
-            paymentData.source_id = invoiceData.id;
-          } else {
-            paymentData.source = 'sale';
-            paymentData.source_id = saleData.id;
-          }
-          
-          // Asignar created_by si hay usuario autenticado
-          if (userId) {
-            paymentData.created_by = userId;
-          }
-          
-          console.log('Creating payment:', paymentData);
-          
-          const { data: paymentResult, error: paymentError } = await supabase
-            .from('payments')
-            .insert(paymentData)
-            .select()
-            .single();
-
-          if (paymentError) {
-            console.error('Error creating payment:', {
-              error: paymentError,
-              paymentData: paymentData
-            });
-            throw paymentError;
-          } else {
-            console.log('Payment created successfully:', paymentResult);
-          }
-        }
-      }
-
-      // Crear los invoice_items basados en cart.items (solo si no es deuda - ya existen)
-      if (invoiceData && !invoiceError && !isDebtCheckout
-          && !(await childExists('invoice_items', { invoice_id: invoiceData.id }))) {
-        try {
-          // Obtener información de productos para las descripciones
-          const productIds = cart.items.map(item => item.product_id).filter(id => id);
-          const { data: productsData } = await supabase
-            .from('products')
-            .select('id, name, description, parent_product_id, parent:products!parent_product_id(name)')
-            .in('id', productIds);
-            
-          const productMap = new Map((productsData || []).map(p => [p.id, p]));
-          
-          const invoiceItems = cart.items.map((cartItem: any, cartItemIdx: number) => {
-            const product = productMap.get(cartItem.product_id);
-            let description = product 
-              ? product.name
-              : `Producto ID: ${cartItem.product_id}`;
-
-            // Si es un producto derivado, incluir el nombre del principal
-            if (product?.parent_product_id && (product as any).parent?.name) {
-              description = `${(product as any).parent.name} - ${description}`;
-            }
-
-            // Agregar modificadores del item (sin mencionar la palabra "modificador")
-            if (cartItem.modifiers && cartItem.modifiers.length > 0) {
-              const modNames = cartItem.modifiers.map((m: any) => m.name).filter(Boolean);
-              if (modNames.length > 0) {
-                description += ` (${modNames.join(', ')})`;
-              }
-            }
-
-            const calc = itemCalcs[cartItemIdx];
-            const fallbackNet = (cartItem.unit_price || 0) * (cartItem.quantity || 0) - (cartItem.discount_amount || 0);
-
-            return {
-              invoice_id: invoiceData.id, // Campo correcto según schema
-              invoice_sales_id: invoiceData.id, // Mantener para relación
-              invoice_type: 'sale',
-              product_id: cartItem.product_id,
-              description: description.substring(0, 255), // Limitar longitud
-              qty: cartItem.quantity,
-              unit_price: cartItem.unit_price,
-              total_line: calc ? calc.total : fallbackNet,
-              tax_rate: calc ? calc.taxRate : (cartItem.tax_rate || 0),
-              tax_included: calc ? calc.taxIncluded : (cartItem.tax_included ?? (checkoutData.tax_included || false)),
-              discount_amount: calc ? calc.discount : (cartItem.discount_amount || 0)
-            };
-          });
-          
-          console.log('Creating invoice items:', invoiceItems);
-          
-          const { error: itemsError } = await supabase
-            .from('invoice_items')
-            .insert(invoiceItems);
-            
-          if (itemsError) {
-            console.error('Error creating invoice items:', {
-              error: itemsError,
-              message: itemsError.message,
-              details: itemsError.details,
-              hint: itemsError.hint,
-              code: itemsError.code,
-              invoiceItems: invoiceItems
-            });
-          } else {
-            console.log(`Invoice items created successfully: ${invoiceItems.length} items`);
-          }
-        } catch (itemsError) {
-          console.error('Exception creating invoice items:', itemsError);
-        }
-      }
-
-      // Si hay balance pendiente, crear cuenta por cobrar (solo si no es deuda - ya existe)
-      if (saleData.balance > 0 && cart.customer_id && !isDebtCheckout
-          && !(await childExists('accounts_receivable', { sale_id: saleData.id }))) {
-        const { error: arError } = await supabase
-          .from('accounts_receivable')
-          .insert({
-            organization_id: cart.organization_id,
-            customer_id: cart.customer_id,
-            sale_id: saleData.id,
-            amount: saleData.total,
-            balance: saleData.balance,
-            due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 días
-            status: 'partial'
-          });
-
-        if (arError) throw arError;
-      }
-
-      // Guardar propina si existe
-      if (checkoutData.tip_amount && checkoutData.tip_amount > 0
-          && !(await childExists('tips', { sale_id: saleData.id }))) {
-        const tipPayment = payments.find(p => p.amount > 0);
-        const tipData = {
-          organization_id: cart.organization_id,
-          branch_id: getCurrentBranchId(),
-          sale_id: saleData.id,
-          server_id: checkoutData.tip_server_id || userId,
-          amount: checkoutData.tip_amount,
-          tip_type: tipPayment?.method === 'card' ? 'card' : 
-                   tipPayment?.method === 'transfer' ? 'transfer' : 'cash',
-          is_distributed: false,
-          notes: `Propina de venta #${saleData.id.slice(-8)}`
-        };
-        
-        const { error: tipError } = await supabase
-          .from('tips')
-          .insert(tipData);
-        
-        if (tipError) {
-          console.error('Error creating tip:', tipError);
-          // No lanzamos error para que no falle todo el checkout
-        } else {
-          console.log('Tip created successfully:', checkoutData.tip_amount);
-        }
-      }
-
-      // Los pagos de ventas POS se registran en la tabla payments.
-      // No se crean cash_movements para evitar doble conteo en el cierre de caja.
-
-      // Eliminar el carrito del localStorage
-      await this.removeCart(cart.id);
-
-      return saleData;
+      throw new Error(
+        'No se pudo registrar la venta: el servicio de cobro no está disponible. '
+        + 'La venta NO se guardó; inténtalo de nuevo en unos segundos.',
+      );
     } catch (error) {
       console.error('Error during checkout:', error);
       throw error;
@@ -2438,6 +1766,9 @@ export class POSService {
     const { cart } = checkoutData;
     if (cart.sale_id && cart.invoice_id) {
       throw new Error('Sin conexión: el cobro de una deuda pendiente necesita internet. La venta no se guardó.');
+    }
+    if (checkoutData.settle) {
+      throw new Error('Sin conexión: el cobro de una cuenta que ya existe (mesa) necesita internet. La venta no se guardó.');
     }
     const branchId = cart.branch_id || getCurrentBranchId();
     if (!branchId) {
@@ -2472,7 +1803,9 @@ export class POSService {
   }): PaymentMethod {
     return {
       id: method.payment_method_code,
-      name: method.payment_methods?.name || method.payment_method_code,
+      // El nombre propio de la organización (settings.display_name) manda sobre
+      // el del catálogo global, que la organización ya no puede renombrar.
+      name: nombreVisibleMetodo(method.settings, method.payment_methods?.name, method.payment_method_code),
       code: method.payment_method_code,
       type: method.payment_method_code === 'cash' ? 'cash' :
             method.payment_method_code === 'card' ? 'card' : 'digital',
@@ -2486,8 +1819,10 @@ export class POSService {
   static async getPaymentMethods(): Promise<PaymentMethod[]> {
     try {
       // Desktop sin red: mismas filas desde el catálogo local, mismo mapeo.
+      // El orden es el de la organización (website_display_order, el que
+      // arrastra en «Métodos de pago»), en línea y sin red.
       if (this.usesLocalCatalog()) {
-        return (await posOfflineReads.getPaymentMethodRows(this.organizationId)).map((m) => this.mapPaymentMethodRow(m));
+        return ordenarMetodosDeLaOrganizacion(await posOfflineReads.getPaymentMethodRows(this.organizationId)).map((m) => this.mapPaymentMethodRow(m));
       }
 
       const { data, error } = await supabase
@@ -2496,16 +1831,20 @@ export class POSService {
           payment_method_code,
           is_active,
           settings,
+          website_display_order,
           payment_methods!inner (
             name
           )
         `)
         .eq('organization_id', this.organizationId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .order('website_display_order', { ascending: true, nullsFirst: false })
+        .order('payment_method_code', { ascending: true });
 
       if (error) throw error;
-      
-      return (data || []).map((method) => this.mapPaymentMethodRow(method as unknown as Parameters<typeof POSService.mapPaymentMethodRow>[0])) || [];
+
+      const filas = (data || []) as unknown as Array<Parameters<typeof POSService.mapPaymentMethodRow>[0] & { website_display_order?: number | null }>;
+      return ordenarMetodosDeLaOrganizacion(filas).map((method) => this.mapPaymentMethodRow(method));
     } catch (error) {
       console.error('Error getting payment methods:', error);
       // Fallback a métodos básicos
@@ -2542,9 +1881,7 @@ export class POSService {
       
       if (!data || data.length === 0) {
         console.warn('No currencies found, using fallback');
-        return [
-          { code: 'COP', name: 'Peso Colombiano', symbol: '$', decimals: 0, is_base: true, is_active: true }
-        ];
+        return [await this.monedaRespaldo()];
       }
       
       return (data as Array<{ code: string; name?: string | null; symbol?: string | null; decimals?: number | null; is_base?: boolean | null }>).map((curr) => ({
@@ -2557,22 +1894,45 @@ export class POSService {
       }));
     } catch (error) {
       console.error('Error getting organization currencies:', error);
-      // Fallback a peso colombiano
-      return [
-        { code: 'COP', name: 'Peso Colombiano', symbol: '$', decimals: 0, is_base: true, is_active: true }
-      ];
+      // Respaldo: la moneda base resuelta (cadena de resolveOrgCurrency).
+      return [await this.monedaRespaldo()];
     }
   }
 
+  /**
+   * Moneda base de la organización. Delega en `resolveOrgCurrency`
+   * (`src/lib/services/monedaOrganizacion.ts`, fuente única). Antes tenía su
+   * propia lista con respaldo 'COP': una organización mexicana sin monedas
+   * configuradas vendía en pesos colombianos.
+   *
+   * Sin red (escritorio) no se puede consultar la base: se usa la moneda
+   * marcada como base en el catálogo local, y si tampoco hay, la que resuelva
+   * `monedaRespaldo`.
+   */
   static async getBaseCurrency(): Promise<Currency> {
+    const orgId = this.organizationId;
+    if (orgId && !this.usesLocalCatalog()) {
+      const base = await resolveOrgCurrency(supabase, orgId);
+      if (base.source !== 'fallback') {
+        return { code: base.code, name: base.code, symbol: base.symbol || '$', decimals: base.decimals, is_base: true, is_active: true };
+      }
+    }
     try {
       const currencies = await this.getCurrencies();
-      return currencies.find(c => c.is_base) || currencies[0] || 
-        { code: 'COP', name: 'Peso Colombiano', symbol: '$', decimals: 0, is_base: true, is_active: true };
+      return currencies.find(c => c.is_base) || currencies[0] || (await this.monedaRespaldo());
     } catch (error) {
       console.error('Error getting base currency:', error);
-      return { code: 'COP', name: 'Peso Colombiano', symbol: '$', decimals: 0, is_base: true, is_active: true };
+      return this.monedaRespaldo();
     }
+  }
+
+  /** Respaldo cuando no hay monedas que listar: la cadena de `resolveOrgCurrency`, no 'COP'. */
+  private static async monedaRespaldo(): Promise<Currency> {
+    const orgId = this.organizationId;
+    const base = orgId
+      ? await resolveOrgCurrency(supabase, orgId)
+      : { code: 'USD', symbol: '$', decimals: 2 };
+    return { code: base.code, name: base.code, symbol: base.symbol || '$', decimals: base.decimals, is_base: true, is_active: true };
   }
 
   // ===============================
@@ -2597,13 +1957,14 @@ export class POSService {
             station,
             requires_preparation
           ),
-          product_prices!inner(
-            price
+          product_prices(
+            price,
+            effective_from,
+            effective_to
           )
         `)
         .eq('id', productId)
         .eq('organization_id', this.organizationId)
-        .eq('product_prices.effective_to', null) // Precio actual
         .single();
 
       if (error) throw error;
@@ -2616,7 +1977,9 @@ export class POSService {
         name: data.name,
         description: data.description,
         barcode: data.barcode,
-        price: parseFloat(data.product_prices?.[0]?.price || '0'),
+        // Vigencia real (antes `.eq('effective_to', null)`, que es `= null` y
+        // nunca coincide: con el `!inner` el producto no se encontraba).
+        price: importePrecioVigente(data.product_prices) ?? 0,
         cost: 0, // TODO: Implementar desde product_costs
         stock_quantity: 0, // TODO: Implementar desde stock_levels
         min_stock_level: 0,
@@ -2637,23 +2000,42 @@ export class POSService {
     }
   }
 
-  private static async getProductPrice(productId: number): Promise<number> {
+  /**
+   * Precio vigente del producto para el carrito. Antes devolvía 0 si la
+   * consulta fallaba o no había fila: el producto entraba GRATIS sin aviso.
+   * Ahora falla con `ProductoSinPrecioError` (la pantalla lo muestra) y aplica
+   * la vigencia real (`effective_from <= ahora < effective_to`); sin red en el
+   * escritorio lee el catálogo local con la misma regla.
+   */
+  private static async getProductPrice(productId: number, productName?: string | null): Promise<number> {
+    let precio: number | null;
     try {
-      const { data, error } = await supabase
-        .from('product_prices')
-        .select('price')
-        .eq('product_id', productId)
-        .is('effective_to', null)
-        .order('effective_from', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) throw error;
-      return parseFloat(data?.price || '0');
+      if (this.usesLocalCatalog()) {
+        precio = importePrecioVigente(await posOfflineReads.getProductPriceRows(this.organizationId, productId));
+      } else {
+        // La vigencia la filtra la consulta; la fila más reciente es la que rige.
+        const ahora = new Date().toISOString();
+        const { data, error } = await supabase
+          .from('product_prices')
+          .select('price, effective_from, effective_to')
+          .eq('product_id', productId)
+          .lte('effective_from', ahora)
+          .or(`effective_to.is.null,effective_to.gt.${ahora}`)
+          .order('effective_from', { ascending: false })
+          .limit(1);
+        if (error) throw error;
+        const fila = (Array.isArray(data) ? data[0] : data) as { price?: number | string | null } | null | undefined;
+        const n = fila ? Number(fila.price) : NaN;
+        precio = fila && fila.price !== null && fila.price !== undefined && Number.isFinite(n) ? n : null;
+      }
     } catch (error) {
-      console.error('Error getting product price:', error);
-      return 0;
+      console.error('Error consultando el precio del producto:', productId, error);
+      throw new ProductoSinPrecioError(productId, 'consulta_fallida', productName);
     }
+    if (precio === null) {
+      throw new ProductoSinPrecioError(productId, 'sin_precio', productName);
+    }
+    return precio;
   }
 
   private static getPaymentMethodIcon(code: string): string {
@@ -2814,7 +2196,9 @@ export class POSService {
         .order('name');
 
       if (error) throw error;
-      return data || [];
+      // Las retenciones (kind = 'withholding') no son impuestos de la venta:
+      // no se ofrecen ni se suman en el POS (taxResolverCore).
+      return sinRetenciones(data ?? []);
     } catch (error) {
       console.error('Error getting organization taxes:', error);
       return [];
@@ -2845,7 +2229,7 @@ export class POSService {
       const taxIds = relations.map(rel => rel.tax_id);
       const { data: taxes, error: taxesError } = await supabase
         .from('organization_taxes')
-        .select('*')
+        .select('*, tax_templates(code)')
         .in('id', taxIds)
         .eq('organization_id', this.organizationId)
         .eq('is_active', true);
@@ -2857,8 +2241,9 @@ export class POSService {
       
       console.log('Tax details:', taxes);
       
-      // Mapear a la estructura esperada
-      const result = taxes?.map(tax => ({
+      // Mapear a la estructura esperada. Una retención relacionada (clase
+      // 'withholding') no es impuesto de la venta: no se suma a la línea (taxResolverCore).
+      const result = sinRetenciones(taxes ?? []).map(tax => ({
         product_id: productId,
         tax_id: tax.id,
         organization_taxes: tax
@@ -2998,282 +2383,39 @@ export class POSService {
    * @param cartId ID del carrito con deuda
    * @returns Carrito actualizado y datos de la nota de crédito
    */
-  static async cancelDebtWithCreditNote(cartId: string): Promise<{
+  static async cancelDebtWithCreditNote(cartId: string, motivo?: string): Promise<{
     cart: Cart;
-    creditNote: any;
+    creditNote: { id: string | null; number: string | null };
+    /** Avisos de la RPC (p. ej. `factura_electronica_sin_nota_credito_dian`). */
+    avisos: string[];
   }> {
-    try {
-      // 1. Obtener el carrito y verificar que tenga deuda
-      const cartsData = localStorage.getItem(`pos_carts_${this.organizationId}`);
-      if (!cartsData) {
-        throw new Error('No se encontraron carritos almacenados');
-      }
-      
-      const allCarts: Cart[] = JSON.parse(cartsData);
-      const cartIndex = allCarts.findIndex(c => c.id === cartId);
-      
-      if (cartIndex === -1) {
-        throw new Error('Carrito no encontrado');
-      }
-      
-      const cart = allCarts[cartIndex];
-      
-      if (cart.status !== 'hold_with_debt') {
-        throw new Error('El carrito no tiene deuda pendiente');
-      }
-
-      // 2. Usar sale_id e invoice_id del carrito (guardados por holdCartWithDebt)
-      if (!cart.sale_id || !cart.invoice_id) {
-        throw new Error('El carrito no tiene sale_id o invoice_id. Es posible que la deuda se haya creado antes de esta corrección.');
-      }
-
-      const { data: saleData, error: saleError } = await supabase
-        .from('sales')
-        .select('*')
-        .eq('id', cart.sale_id)
-        .single();
-
-      if (saleError || !saleData) {
-        throw new Error('No se encontró la venta asociada al carrito');
-      }
-
-      // 3. Obtener la factura original directamente por invoice_id
-      const { data: originalInvoice, error: invoiceError } = await supabase
-        .from('invoice_sales')
-        .select('*')
-        .eq('id', cart.invoice_id)
-        .single();
-
-      if (invoiceError || !originalInvoice) {
-        throw new Error('No se encontró la factura original');
-      }
-
-      // 4. Obtener los items de la factura original
-      const { data: originalItems, error: itemsError } = await supabase
-        .from('invoice_items')
-        .select('*')
-        .eq('invoice_sales_id', originalInvoice.id);
-
-      if (itemsError) {
-        throw new Error('Error al obtener los items de la factura original');
-      }
-
-      // 5. Generar número de nota de crédito usando servicio centralizado
-      const creditNoteNumber = await CreditNoteNumberService.generateNextCreditNoteNumber(
-        String(this.organizationId)
-      );
-
-      // 6. Crear la nota de crédito
-      const currentDate = new Date().toISOString();
-      const { data: creditNoteData, error: creditNoteError } = await supabase
-        .from('invoice_sales')
-        .insert({
-          organization_id: this.organizationId,
-          branch_id: originalInvoice.branch_id,
-          customer_id: originalInvoice.customer_id,
-          sale_id: originalInvoice.sale_id,
-          number: creditNoteNumber,
-          issue_date: currentDate,
-          due_date: currentDate, // Misma fecha que issue_date para notas de crédito
-          currency: originalInvoice.currency,
-          subtotal: -originalInvoice.subtotal, // Valores negativos para anular
-          tax_total: -originalInvoice.tax_total,
-          total: -originalInvoice.total,
-          balance: 0, // La nota de crédito no tiene balance pendiente
-          status: 'issued',
-          document_type: 'credit_note',
-          related_invoice_id: originalInvoice.id,
-          tax_included: originalInvoice.tax_included,
-          payment_method: originalInvoice.payment_method || 'credit', // Usar método de pago original
-          description: `Nota de crédito por anulación de factura ${originalInvoice.number}`,
-          created_by: (await supabase.auth.getUser()).data.user?.id
-        })
-        .select()
-        .single();
-
-      if (creditNoteError) {
-        throw new Error('Error al crear la nota de crédito: ' + creditNoteError.message);
-      }
-
-      // 7. Crear los items de la nota de crédito (valores negativos)
-      const creditNoteItems = originalItems?.map(item => ({
-        invoice_id: creditNoteData.id, // invoice_id requerido
-        invoice_sales_id: creditNoteData.id,
-        invoice_type: 'sale', // invoice_type requerido
-        product_id: item.product_id,
-        description: item.description || 'Item de nota de crédito', // description requerido
-        qty: -item.qty, // qty (no quantity) - cantidad negativa
-        unit_price: item.unit_price,
-        total_line: -item.total_line, // total_line (no total) - total negativo
-        tax_rate: item.tax_rate || 0,
-        discount_amount: item.discount_amount ? -item.discount_amount : 0,
-        tax_included: item.tax_included || false
-      })) || [];
-
-      if (creditNoteItems.length > 0) {
-        const { error: itemsInsertError } = await supabase
-          .from('invoice_items')
-          .insert(creditNoteItems);
-
-        if (itemsInsertError) {
-          console.error('Error insertando items de nota de crédito:', itemsInsertError);
-          console.error('Datos enviados:', creditNoteItems);
-          throw new Error(`Error al crear los items de la nota de crédito: ${itemsInsertError.message}`);
-        }
-      }
-
-      // 8. Fix: El trigger fn_recalc_invoice_totals usa GREATEST(tax, 0) que no permite
-      // tax negativo en NC. Actualizamos tax_total manualmente DESPUÉS de que el trigger corre.
-      const correctTaxTotal = -originalInvoice.tax_total;
-      const correctSubtotal = -originalInvoice.subtotal;
-      const correctTotal = -originalInvoice.total;
-      const { error: fixNcError } = await supabase
-        .from('invoice_sales')
-        .update({
-          subtotal: correctSubtotal,
-          tax_total: correctTaxTotal,
-          total: correctTotal,
-          balance: 0,
-        })
-        .eq('id', creditNoteData.id);
-
-      if (fixNcError) {
-        console.warn('⚠️ No se pudo corregir tax_total de la NC:', fixNcError);
-      }
-
-      // 9. Actualizar la factura original (anulada, no pagada)
-      const { error: updateInvoiceError } = await supabase
-        .from('invoice_sales')
-        .update({
-          balance: 0,
-          status: 'void',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', originalInvoice.id);
-
-      if (updateInvoiceError) {
-        throw new Error('Error al actualizar la factura original');
-      }
-
-      // 10. Actualizar la venta original (cancelada, no pagada)
-      const { error: updateSaleError } = await supabase
-        .from('sales')
-        .update({
-          balance: 0,
-          status: 'void',
-          payment_status: 'refunded',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', saleData.id);
-
-      if (updateSaleError) {
-        throw new Error('Error al actualizar la venta original');
-      }
-
-      // 11. Actualizar las cuentas por cobrar (cancelada, no pagada)
-      const { error: updateARError } = await supabase
-        .from('accounts_receivable')
-        .update({
-          balance: 0,
-          status: 'cancelled',
-          updated_at: new Date().toISOString()
-        })
-        .eq('invoice_id', originalInvoice.id);
-
-      if (updateARError) {
-        throw new Error('Error al actualizar las cuentas por cobrar');
-      }
-
-      // 10.5: Devolver stock al anular la deuda
-      try {
-        const stockItems = (originalItems || []).map(item => ({
-          product_id: item.product_id,
-          quantity: Math.abs(parseFloat(item.qty)),
-          unit_price: parseFloat(item.unit_price) || 0,
-        })).filter(item => item.product_id && item.quantity > 0);
-
-        if (stockItems.length > 0) {
-          const fallbackBranchId = originalInvoice.branch_id || getCurrentBranchIdWithFallback();
-          if (!fallbackBranchId) {
-            console.warn('⚠️ No se pudo devolver stock: no hay branch_id disponible');
-          } else {
-          const stockResult = await stockMovementService.incrementOnPurchase(
-            this.organizationId,
-            fallbackBranchId,
-            creditNoteData.id,
-            stockItems,
-            'credit_note'
-          );
-          if (stockResult.errors.length > 0) {
-            console.warn('⚠️ Algunos items no devolvieron stock:', stockResult.errors);
-          }
-          console.log(`📦 Stock devuelto: ${stockItems.length - stockResult.skipped} items procesados`);
-          }
-        }
-      } catch (stockError) {
-        console.warn('⚠️ Error devolviendo stock (no bloquea la anulación):', stockError);
-      }
-
-      // 10.6: Devolver seriales a stock (cancelación con nota de crédito)
-      try {
-        const { data: soldSerials, error: serialError } = await supabase
-          .from('serial_numbers')
-          .select('id, serial, status, sale_id, sold_to_customer_id')
-          .eq('organization_id', this.organizationId)
-          .eq('sale_id', saleData.id)
-          .eq('status', 'sold');
-
-        if (!serialError && soldSerials && soldSerials.length > 0) {
-          const userId = await getCurrentUserId();
-          for (const serial of soldSerials) {
-            await serialTrackingService.updateStatus(serial.id, 'in_stock', {
-              event_type: 'returned',
-              source_table: 'invoice_sales',
-              source_id: creditNoteData.id,
-              notes: `Cancelación con nota de crédito ${creditNoteData.number}`,
-              performed_by: userId ?? undefined,
-            });
-
-            await supabase
-              .from('serial_numbers')
-              .update({
-                status: 'in_stock',
-                sold_to_customer_id: null,
-                sold_by_user_id: null,
-                sale_id: null,
-                web_order_id: null,
-                invoice_sale_id: null,
-                sale_channel: 'in_stock',
-                sale_date: null,
-                updated_at: new Date().toISOString(),
-                updated_by: userId,
-              })
-              .eq('id', serial.id);
-
-            console.log(`✅ Serial ${serial.serial} devuelto a stock por cancelación`);
-          }
-        }
-      } catch (serialError) {
-        console.warn('⚠️ Error devolviendo seriales (no bloquea la anulación):', serialError);
-      }
-
-      // 11. Actualizar el carrito (cambiar estado a cancelled)
-      cart.status = 'cancelled';
-      cart.hold_reason = 'Deuda anulada con nota de crédito';
-      cart.updated_at = new Date().toISOString();
-      
-      allCarts[cartIndex] = cart;
-      this.saveCartsToStorage(allCarts);
-
-      return {
-        cart,
-        creditNote: creditNoteData
-      };
-      
-    } catch (error) {
-      console.error('Error al anular deuda con nota de crédito:', error);
-      throw error;
+    const allCarts = this.readAllCarts();
+    const cart = allCarts.find((c) => c.id === cartId);
+    if (!cart) {
+      throw new Error('Carrito no encontrado');
     }
+    if (cart.status !== 'hold_with_debt') {
+      throw new Error('El carrito no tiene deuda pendiente');
+    }
+    if (!cart.sale_id || !cart.invoice_id) {
+      throw new Error('El carrito no tiene sale_id o invoice_id. Es posible que la deuda se haya creado antes de esta corrección.');
+    }
+
+    // Una sola RPC transaccional (antes: nota crédito, factura, venta y
+    // cartera escritas a mano desde el navegador, sin permiso). Exige pos.void
+    // en el servidor; la cartera la ajustan los disparadores.
+    const resultado = await anularVentaEnServidor(cart.sale_id, motivo || 'Deuda anulada desde el POS');
+
+    const actualizado = this.mutateStoredCart(cartId, (c) => ({
+      ...c,
+      status: 'cancelled',
+      hold_reason: 'Deuda anulada con nota de crédito',
+    }));
+    return {
+      cart: actualizado,
+      creditNote: { id: resultado.nota_credito_id, number: resultado.nota_credito_numero },
+      avisos: resultado.avisos,
+    };
   }
 
   /**

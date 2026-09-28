@@ -1,13 +1,15 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
+import type { Supplier } from '@/lib/services/supplierService';
 import { NuevoProveedorForm } from '@/components/inventario/proveedores/nuevo';
 
 interface ProveedorFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Se llama con el proveedor creado; el diálogo se cierra automáticamente */
-  onCreated: (supplier: any) => void;
+  onCreated: (supplier: Supplier) => void;
 }
 
 /**
@@ -16,6 +18,7 @@ interface ProveedorFormDialogProps {
  * Usa el mismo patrón visual y funcional del modal de "Nueva Sucursal" (div custom).
  */
 export function ProveedorFormDialog({ open, onOpenChange, onCreated }: ProveedorFormDialogProps) {
+  const t = useTranslations('proveedores.dialogo');
   if (!open) return null;
 
   return (
@@ -26,15 +29,16 @@ export function ProveedorFormDialog({ open, onOpenChange, onCreated }: Proveedor
           <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
             <div>
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-50">
-                Nuevo Proveedor
+                {t('titulo')}
               </h2>
               <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">
-                Registra un nuevo proveedor en el sistema.
+                {t('descripcion')}
               </p>
             </div>
             <button
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700"
               onClick={() => onOpenChange(false)}
+              aria-label={t('cerrar')}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

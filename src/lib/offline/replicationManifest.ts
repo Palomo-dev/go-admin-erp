@@ -223,12 +223,12 @@ export const REPLICATION_MANIFEST: TableManifest[] = [
     hasOrganizationId: false, scope: { kind: 'global' }, maxRows: 2000, indexes: ['code'], fks: [], group: 'catalogos', label: 'Municipios',
   },
   {
-    table: 'tax_templates', pk: 'id', columns: ['id', 'country', 'code', 'name', 'rate', 'description', 'valid_from', 'valid_to', 'created_at', 'updated_at'],
+    table: 'tax_templates', pk: 'id', columns: ['id', 'country', 'code', 'name', 'rate', 'description', 'valid_from', 'valid_to', 'created_at', 'updated_at', 'kind'],
     hasOrganizationId: false, scope: { kind: 'global' }, maxRows: 1000, indexes: ['code'], fks: [], group: 'catalogos', label: 'Plantillas de impuestos',
   },
   {
     table: 'organization_taxes', pk: 'id',
-    columns: ['id', 'organization_id', 'template_id', 'name', 'rate', 'description', 'is_default', 'is_active', 'created_at', 'updated_at', 'tax_included'],
+    columns: ['id', 'organization_id', 'template_id', 'name', 'rate', 'description', 'is_default', 'is_active', 'created_at', 'updated_at', 'tax_included', 'kind'],
     hasOrganizationId: true, scope: { kind: 'org' }, maxRows: 500, incremental: 'updated_at', indexes: [],
     fks: [{ column: 'template_id', table: 'tax_templates', name: 'organization_taxes_template_id_fkey' }],
     group: 'catalogos', label: 'Impuestos',

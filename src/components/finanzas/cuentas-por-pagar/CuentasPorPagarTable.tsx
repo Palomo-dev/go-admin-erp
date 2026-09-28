@@ -39,7 +39,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 
 import { AccountPayable } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import type { SupplierBase } from '../facturas-compra/types';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { getToday, plainDateToInstant } from '@/lib/utils/timezone';
 import { CopyableId } from '@/components/common/CopyableId';
@@ -78,6 +80,10 @@ export function CuentasPorPagarTable({
   const { toast } = useToast();
   const router = useRouter();
   const { formatDate } = useFormatDate();
+  // Cada cuenta se muestra en la moneda de su factura de compra; sin factura,
+  // en la moneda base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const monedaDe = (cuenta: AccountPayable) => paraDocumento(cuenta.invoice_purchase?.currency);
   const { timezone } = useOrgTimezone();
 
   // Estado para selección
@@ -150,7 +156,8 @@ export function CuentasPorPagarTable({
   };
 
   // Handler para copiar información
-  const copiarInfoProveedor = (proveedor: any) => {
+  const copiarInfoProveedor = (proveedor: SupplierBase | undefined) => {
+    if (!proveedor) return;
     const info = `${proveedor.name}\nNIT: ${proveedor.nit || 'N/A'}\nContacto: ${proveedor.contact || 'N/A'}\nTeléfono: ${proveedor.phone || 'N/A'}\nEmail: ${proveedor.email || 'N/A'}`;
     navigator.clipboard.writeText(info);
     toast({
@@ -311,10 +318,10 @@ export function CuentasPorPagarTable({
                     <TableCell className="py-2 sm:py-3">
                       <div className="text-right">
                         <div className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
-                          {formatCurrency(cuenta.amount)}
+                          {formatMoneda(cuenta.amount, monedaDe(cuenta))}
                         </div>
                         <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                          {cuenta.invoice_purchase?.currency || 'COP'}
+                          {monedaDe(cuenta).code}
                         </div>
                       </div>
                     </TableCell>
@@ -322,11 +329,11 @@ export function CuentasPorPagarTable({
                     <TableCell className="py-2 sm:py-3 hidden lg:table-cell">
                       <div className="text-right">
                         <div className="text-sm sm:text-base font-semibold text-blue-600 dark:text-blue-400">
-                          {formatCurrency(cuenta.balance)}
+                          {formatMoneda(cuenta.balance, monedaDe(cuenta))}
                         </div>
                         {cuenta.balance !== cuenta.amount && (
                           <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                            Pagado: {formatCurrency(cuenta.amount - cuenta.balance)}
+                            Pagado: {formatMoneda(cuenta.amount - cuenta.balance, monedaDe(cuenta))}
                           </div>
                         )}
                       </div>

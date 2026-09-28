@@ -24,6 +24,9 @@ import { Loader2 } from 'lucide-react';
 import type { FareWithDetails, CreateFareData } from '@/lib/services/faresService';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { useOpcionesMoneda } from '@/components/transporte/useOpcionesMoneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 interface FareDialogProps {
   open: boolean;
@@ -71,7 +74,7 @@ export function FareDialog({
     from_stop_id: '',
     to_stop_id: '',
     amount: 0,
-    currency: 'COP',
+    currency: undefined,
     discount_percent: 0,
     discount_amount: 0,
     min_age: undefined,
@@ -100,7 +103,7 @@ export function FareDialog({
         from_stop_id: fare.from_stop_id || '',
         to_stop_id: fare.to_stop_id || '',
         amount: fare.amount,
-        currency: fare.currency || 'COP',
+        currency: fare.currency || undefined,
         discount_percent: fare.discount_percent || 0,
         discount_amount: fare.discount_amount || 0,
         min_age: fare.min_age,
@@ -124,7 +127,7 @@ export function FareDialog({
         from_stop_id: '',
         to_stop_id: '',
         amount: 0,
-        currency: 'COP',
+        currency: undefined,
         discount_percent: 0,
         discount_amount: 0,
         min_age: undefined,
@@ -142,6 +145,16 @@ export function FareDialog({
     }
   }, [fare, open]);
 
+  // Moneda por defecto: la base de la organización, en cuanto se conoce (no
+  // antes: mientras `resuelta` es false el código es solo un marcador). Si
+  // se envía vacía, la pone el servicio (moneda de la ruta) o la base.
+  const { opciones: opcionesMoneda, monedaBase, resuelta: monedaResuelta } = useOpcionesMoneda(fare?.currency);
+  const { paraDocumento } = useMonedaOrganizacion();
+  useEffect(() => {
+    if (!monedaResuelta) return;
+    setFormData((prev) => (prev.currency ? prev : { ...prev, currency: monedaBase }));
+  }, [monedaResuelta, monedaBase, fare, open]);
+
   const handleSubmit = async () => {
     if (!formData.fare_name || !formData.amount) return;
     
@@ -151,6 +164,7 @@ export function FareDialog({
       from_stop_id: formData.from_stop_id || undefined,
       to_stop_id: formData.to_stop_id || undefined,
       fare_code: formData.fare_code || undefined,
+      currency: formData.currency || undefined,
       valid_from: formData.valid_from || undefined,
       valid_until: formData.valid_until || undefined,
       applicable_from_time: formData.applicable_from_time || undefined,
@@ -343,16 +357,18 @@ export function FareDialog({
               <div className="space-y-2">
                 <Label>Moneda</Label>
                 <Select
-                  value={formData.currency || 'COP'}
+                  value={formData.currency || ''}
                   onValueChange={(v) => setFormData(prev => ({ ...prev, currency: v }))}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="COP">COP (Peso Colombiano)</SelectItem>
-                    <SelectItem value="USD">USD (Dólar)</SelectItem>
-                    <SelectItem value="EUR">EUR (Euro)</SelectItem>
+                    {opcionesMoneda.map((m) => (
+                      <SelectItem key={m.code} value={m.code}>
+                        {m.name && m.name !== m.code ? `${m.code} (${m.name})` : m.code}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -389,7 +405,10 @@ export function FareDialog({
               <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-gray-400">Precio final:</p>
                 <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-300">
-                  ${(formData.amount - (formData.discount_amount || (formData.amount * (formData.discount_percent || 0)) / 100)).toLocaleString()} {formData.currency}
+                  {formatMoneda(
+                    formData.amount - (formData.discount_amount || (formData.amount * (formData.discount_percent || 0)) / 100),
+                    paraDocumento(formData.currency)
+                  )}
                 </p>
               </div>
             )}

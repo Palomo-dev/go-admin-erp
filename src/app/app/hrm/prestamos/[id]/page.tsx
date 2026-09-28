@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useOrganization, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import EmployeeLoansService from '@/lib/services/employeeLoansService';
 import type { EmployeeLoan, LoanInstallment } from '@/lib/services/employeeLoansService';
 import { InstallmentsTable } from '@/components/hrm/prestamos/[id]';
@@ -79,6 +80,7 @@ export default function PrestamoDetallePage() {
   const loanId = params?.id as string;
 
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { getToday } = useFormatDate();
   const { toast } = useToast();
 
   const [loan, setLoan] = useState<EmployeeLoan | null>(null);
@@ -216,7 +218,10 @@ export default function PrestamoDetallePage() {
   };
 
   const getOverdueCount = () => {
-    const today = new Date().toISOString().split('T')[0];
+    // `loan_installments.due_date` es `date`: la mora se cuenta contra el dia
+    // de la organizacion. Con el dia UTC, una cuota que vence hoy ya figuraba
+    // en mora desde las 19:00 de ayer en Bogota.
+    const today = getToday();
     return installments.filter(i => i.status !== 'paid' && i.due_date < today).length;
   };
 

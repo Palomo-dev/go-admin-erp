@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, Edit3, Package } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import type { UnifiedProduct } from '@/components/shared/product-search';
 import { SerialCaptureSection } from '@/components/shared/SerialCaptureSection';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
@@ -27,7 +28,7 @@ interface SelectedProductsTableProps {
   selectedProducts: SelectedProduct[];
   currency: string;
   errors: Record<string, string>;
-  onProductUpdate: (index: number, field: keyof SelectedProduct, value: any) => void;
+  onProductUpdate: (index: number, field: keyof SelectedProduct, value: unknown) => void;
   onProductRemove: (index: number) => void;
   onProductDescriptionEdit: (index: number, description: string) => void;
   onProductSerialsChange?: (index: number, serials: string[]) => void;
@@ -43,6 +44,9 @@ export function SelectedProductsTable({
   onProductSerialsChange
 }: SelectedProductsTableProps) {
   const { selectedBranchId } = useBranch();
+  // Importes en la moneda de la factura (la base si no la trae).
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = (valor: number, moneda: string) => formatMoneda(valor, paraDocumento(moneda));
 
   const calculateLineTotal = (product: SelectedProduct): number => {
     return (product.quantity * product.unit_cost) - product.discount_amount;

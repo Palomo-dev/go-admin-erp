@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, Car, Bike, Truck } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 export interface ParkingRate {
   id: string;
@@ -70,6 +70,7 @@ function getUnitLabel(unit: string): string {
 }
 
 export function RatesPanel({ rates, isLoading }: RatesPanelProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   // Agrupar tarifas por tipo de vehículo
   const groupedRates = rates.reduce((acc, rate) => {
     if (!acc[rate.vehicle_type]) {

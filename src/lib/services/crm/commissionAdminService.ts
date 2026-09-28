@@ -8,8 +8,10 @@
  * se separa para que los route handlers no arrastren el cliente browser.
  *
  * Dinero: cada transición lee la fila (acotada por organización), valida el
- * estado de partida con `buildTransitionPatch` y escribe exigiendo
- * `.eq('status', from)` — la concurrencia no puede pagar dos veces.
+ * estado de partida con `buildTransitionPatch` y escribe por la RPC
+ * `fn_comision_aplicar_transicion`, que exige `status = from` — la
+ * concurrencia no puede pagar dos veces. La tabla `commissions` solo admite
+ * SELECT para la sesión (20260928213000).
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -19,6 +21,7 @@ import {
   buildTransitionPatch,
   transitionFor,
   type CommissionAction,
+  type CommissionPayment,
 } from './commissionTransitions';
 
 export interface CommissionRow {
@@ -117,6 +120,24 @@ export async function listCommissionSummaryRows(
 }
 
 /**
+ * Rechazos propios de `fn_comision_aplicar_transicion` → el mismo contrato
+ * HTTP que las validaciones del servidor (403/400/409). Otro error sigue
+ * siendo un error de base de datos (502 en la ruta).
+ */
+const RECHAZOS_TRANSICION: Record<string, [string, number, string]> = {
+  sin_permiso: ['Requiere rol de administrador o manager de la organización', 403, 'MANAGER_REQUIRED'],
+  no_autenticado: ['Sesión requerida', 403, 'MANAGER_REQUIRED'],
+  transicion_invalida: ['La transición no es válida para el estado actual de la comisión.', 409, 'INVALID_TRANSITION'],
+  motivo_obligatorio: ['El motivo es obligatorio.', 400, 'REASON_REQUIRED'],
+  cuenta_bancaria_invalida: ['La cuenta bancaria no existe en esta organización o está inactiva.', 400, 'BANK_ACCOUNT_INVALID'],
+};
+
+function rechazoDeLaBase(error: { message?: string }): unknown {
+  const r = error.message ? RECHAZOS_TRANSICION[error.message] : undefined;
+  return r ? new CommissionTransitionError(r[0], r[1], r[2]) : error;
+}
+
+/**
  * Aplica una transición a una comisión de la organización.
  * - `null` → no existe en esta organización (404).
  * - lanza `CommissionTransitionError` (409/400) si el estado no lo permite o falta motivo.
@@ -126,7 +147,7 @@ export async function transitionCommission(
   commissionId: string,
   orgId: number,
   supabase: SupabaseClient,
-  opts: { reason?: string; actorId?: string; now?: string } = {}
+  opts: { reason?: string; actorId?: string; now?: string; payment?: CommissionPayment } = {}
 ): Promise<CommissionRow | null> {
   const { data: row, error: readError } = await supabase
     .from('commissions')
@@ -142,18 +163,19 @@ export async function transitionCommission(
     now,
     reason: opts.reason,
     actorId: opts.actorId,
+    payment: action === 'pay' ? opts.payment : undefined,
   });
 
+  // La tabla ya no admite escritura desde la sesión: la transición va por
+  // fn_comision_aplicar_transicion (20260928213000), que exige gestor, la
+  // transición válida, solo status/paid_at/notes/metadata y la cuenta de la
+  // organización, y escribe con `status = from` (la concurrencia no paga dos veces).
   const { from } = transitionFor(action);
   const { data, error } = await supabase
-    .from('commissions')
-    .update(patch)
-    .eq('id', commissionId)
-    .eq('organization_id', orgId)
-    .eq('status', from)
+    .rpc('fn_comision_aplicar_transicion', { p_org: orgId, p_id: commissionId, p_desde: from, p_cambios: patch })
     .select(COMMISSION_COLUMNS)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw rechazoDeLaBase(error);
   if (!data) {
     // Alguien cambió el estado entre la lectura y la escritura.
     throw new CommissionTransitionError('La comisión cambió de estado mientras se procesaba; recarga la lista.');
@@ -161,8 +183,26 @@ export async function transitionCommission(
   return data as unknown as CommissionRow;
 }
 
-export function payCommission(commissionId: string, orgId: number, supabase: SupabaseClient, actorId?: string) {
-  return transitionCommission('pay', commissionId, orgId, supabase, { actorId });
+/**
+ * La cuenta bancaria elegida debe ser de ESTA organización y estar activa: el
+ * asiento del pago la usa como cuenta de dinero. En lote se valida una vez.
+ */
+export async function assertBankAccountOfOrg(bankAccountId: number | null | undefined, orgId: number, supabase: SupabaseClient): Promise<void> {
+  if (!bankAccountId) return;
+  const { data, error } = await supabase
+    .from('bank_accounts')
+    .select('id')
+    .eq('id', bankAccountId)
+    .eq('organization_id', orgId)
+    .eq('is_active', true)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new CommissionTransitionError('La cuenta bancaria no existe en esta organización o está inactiva.', 400, 'BANK_ACCOUNT_INVALID');
+}
+
+export async function payCommission(commissionId: string, orgId: number, supabase: SupabaseClient, actorId?: string, payment?: CommissionPayment) {
+  await assertBankAccountOfOrg(payment?.bankAccountId, orgId, supabase);
+  return transitionCommission('pay', commissionId, orgId, supabase, { actorId, payment });
 }
 
 export function rejectCommission(commissionId: string, orgId: number, reason: string, supabase: SupabaseClient, actorId?: string) {
@@ -183,13 +223,16 @@ export async function bulkPayCommissions(
   commissionIds: string[],
   orgId: number,
   supabase: SupabaseClient,
-  actorId?: string
+  actorId?: string,
+  payment?: CommissionPayment
 ): Promise<BulkPayResult> {
   const result: BulkPayResult = { paid: [], failed: [] };
   const unique = Array.from(new Set(commissionIds));
+  // Una cuenta ajena o inactiva aborta el lote (400) antes de pagar nada.
+  await assertBankAccountOfOrg(payment?.bankAccountId, orgId, supabase);
   for (const id of unique) {
     try {
-      const row = await payCommission(id, orgId, supabase, actorId);
+      const row = await transitionCommission('pay', id, orgId, supabase, { actorId, payment });
       if (row) result.paid.push(id);
       else result.failed.push({ id, reason: 'No existe en esta organización' });
     } catch (err) {
@@ -198,4 +241,31 @@ export async function bulkPayCommissions(
     }
   }
   return result;
+}
+
+export interface MoneyAccountOption {
+  id: number;
+  name: string;
+  bank_name: string | null;
+  /** Solo los 4 últimos dígitos: la lista viaja al navegador. */
+  last4: string | null;
+  currency: string | null;
+}
+
+/** Cuentas bancarias activas de la organización para elegir de dónde sale el pago. */
+export async function listMoneyAccounts(orgId: number, supabase: SupabaseClient): Promise<MoneyAccountOption[]> {
+  const { data, error } = await supabase
+    .from('bank_accounts')
+    .select('id, name, bank_name, account_number, currency')
+    .eq('organization_id', orgId)
+    .eq('is_active', true)
+    .order('name', { ascending: true });
+  if (error) throw error;
+  return ((data || []) as Array<{ id: number; name: string | null; bank_name: string | null; account_number: string | null; currency: string | null }>).map((a) => ({
+    id: a.id,
+    name: a.name || `#${a.id}`,
+    bank_name: a.bank_name,
+    last4: a.account_number ? a.account_number.replace(/\s+/g, '').slice(-4) : null,
+    currency: a.currency ? a.currency.trim() : null,
+  }));
 }

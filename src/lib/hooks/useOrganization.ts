@@ -777,8 +777,14 @@ export function useOrganization() {
   }>(initOrg());
 
   useEffect(() => {
+    // Guarda de desmontaje (F3-B ronda 2 · 5): el reintento de 1,5 s de abajo
+    // se reprograma solo mientras no hay usuario ni organización local, así
+    // que sin esto seguía vivo —y llamando a setState— despues de desmontar.
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
     // Intentamos recuperar el usuario actual del localStorage y consultar datos actuales
     const fetchOrganizationData = async () => {
+      if (cancelled) return;
       try {
         // Primero intentamos recuperar la organización del almacenamiento local
         const organizacionLocal = obtenerOrganizacionActiva();
@@ -821,7 +827,7 @@ export function useOrganization() {
             error: null
           });
           // Reintentar después de 1.5s para dar tiempo a que Supabase Auth restaure la sesión
-          setTimeout(() => fetchOrganizationData(), 1500);
+          if (!cancelled) retryTimer = setTimeout(() => void fetchOrganizationData(), 1500);
           return;
         }
         
@@ -920,6 +926,11 @@ export function useOrganization() {
     };
     
     fetchOrganizationData();
+
+    return () => {
+      cancelled = true;
+      if (retryTimer !== null) clearTimeout(retryTimer);
+    };
   }, []);
 
   return organizationData;

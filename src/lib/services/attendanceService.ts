@@ -1,4 +1,7 @@
 import { createSupabaseClient } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/dateCore';
+import { getDateRange } from '@/lib/utils/dateRanges';
 
 const createClient = () => createSupabaseClient();
 
@@ -111,12 +114,22 @@ export class AttendanceService {
       query = query.eq('source', filters.source);
     }
 
-    if (filters.dateFrom) {
-      query = query.gte('event_at', `${filters.dateFrom}T00:00:00`);
-    }
+    // `attendance_events.event_at` es **timestamptz**. Pegar `T00:00:00` /
+    // `T23:59:59` al dia sin offset manda una marca SIN zona, que Postgres
+    // interpreta en el `TimeZone` de la sesion (UTC en Supabase): la jornada de
+    // una sede de Bogota empezaba a las 19:00 del dia anterior y terminaba a
+    // las 18:59. `getDateRange` pone el offset real de cada extremo, con DST.
+    //
+    // La zona es la de la SUCURSAL filtrada cuando la hay; sin filtro de
+    // sucursal se usa la de la organizacion, que es lo unico comun a todas.
+    if (filters.dateFrom || filters.dateTo) {
+      const zona = await resolveTimezone(this.organizationId, filters.branchId ?? null);
+      const desde = filters.dateFrom ?? filters.dateTo!;
+      const hasta = filters.dateTo ?? filters.dateFrom!;
+      const rango = getDateRange(desde, hasta, zona);
 
-    if (filters.dateTo) {
-      query = query.lte('event_at', `${filters.dateTo}T23:59:59`);
+      if (filters.dateFrom) query = query.gte('event_at', rango.start);
+      if (filters.dateTo) query = query.lte('event_at', rango.end);
     }
 
     const { data, error } = await query.limit(500);
@@ -135,7 +148,7 @@ export class AttendanceService {
   }
 
   async getTodayEvents(branchId?: number): Promise<AttendanceEventListItem[]> {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayInTz(await resolveTimezone(this.organizationId, branchId ?? null));
     return this.getEvents({
       dateFrom: today,
       dateTo: today,
@@ -287,7 +300,7 @@ export class AttendanceService {
   }
 
   async getAnomalies(date?: string): Promise<AttendanceEventListItem[]> {
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    const targetDate = date || todayInTz(await resolveTimezone(this.organizationId));
     const events = await this.getEvents({
       dateFrom: targetDate,
       dateTo: targetDate,
@@ -309,7 +322,7 @@ export class AttendanceService {
     geoFailed: number;
     withoutCheckout: number;
   }> {
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    const targetDate = date || todayInTz(await resolveTimezone(this.organizationId));
     const events = await this.getEvents({
       dateFrom: targetDate,
       dateTo: targetDate,

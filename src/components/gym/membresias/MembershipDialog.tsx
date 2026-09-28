@@ -26,7 +26,8 @@ import { Loader2, Plus, Package } from 'lucide-react';
 import { getPlans, createMembership, MembershipPlan } from '@/lib/services/gymService';
 import { CustomerSelectorGym, CustomerGym } from './CustomerSelectorGym';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-import { todayInTz, toPlainDate, formatDateInTz } from '@/lib/utils/dateDisplay';
+import { todayInTz, formatPlainDate } from '@/lib/utils/dateDisplay';
+import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
 
 interface MembershipDialogProps {
   open: boolean;
@@ -87,14 +88,17 @@ export function MembershipDialog({ open, onOpenChange, onSave }: MembershipDialo
     try {
       setIsSaving(true);
 
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + plan.duration_days);
+      // `duration_days` son dias de calendario. `new Date('2026-09-23')` es
+      // medianoche UTC, y en Bogota eso es el 22 a las 19:00: sumarle 30 dias y
+      // volver al dia de la organizacion devolvia el 22 de octubre en vez del
+      // 23. Un dia menos de membresia, pagado.
+      const endDate = sumarDiasAlDia(startDate, plan.duration_days);
 
       await createMembership({
         customer_id: selectedCustomer.id,
         membership_plan_id: plan.id,
         start_date: startDate,
-        end_date: toPlainDate(endDate, timezone),
+        end_date: endDate,
         status: 'active',
       });
 
@@ -206,14 +210,7 @@ export function MembershipDialog({ open, onOpenChange, onSave }: MembershipDialo
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Fecha de vencimiento:{' '}
                 <strong>
-                  {formatDateInTz(
-                    new Date(
-                      new Date(startDate).setDate(
-                        new Date(startDate).getDate() + selectedPlan.duration_days
-                      )
-                    ).toISOString(),
-                    timezone,
-                  )}
+                  {formatPlainDate(sumarDiasAlDia(startDate, selectedPlan.duration_days))}
                 </strong>
               </p>
             )}

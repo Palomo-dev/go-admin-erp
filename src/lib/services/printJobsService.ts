@@ -15,6 +15,9 @@ import { readDesktopCache, writeDesktopCache } from '@/lib/utils/desktopLocalCac
 import { rasterizeLogo } from './logoRasterService';
 import { PrintService } from './printService';
 import { getOrganizationTimezone } from './organizationTimezoneService';
+import type { ProductLabelsPrintPayload } from '@printing/labels';
+import { resolverContextoMoneda } from './monedaOrganizacion';
+import type { MoneyFormat } from '@printing';
 
 /** Campos de cabecera que comparten el ticket de venta y la pre-cuenta. */
 interface BusinessHeader {
@@ -116,6 +119,35 @@ async function resolveTimezone(provided?: string): Promise<string> {
   } catch (error) {
     console.warn('No se pudo resolver el timezone de la organizacion:', error);
     return (isDesktop() ? readDesktopCache<string>(cacheKey) : null) ?? 'America/Bogota';
+  }
+}
+
+/**
+ * Moneda de los montos del documento impreso (moneda del documento o, en su
+ * defecto, la base de la organización; nunca pesos fijos).
+ *
+ * Mismo principio que `resolveTimezone`: el agente no tiene contexto de React
+ * y lo que no viaje en el JSON no existe. En Desktop sin red se usa la última
+ * resuelta.
+ */
+async function resolveMoneyFormat(monedaDocumento?: string | null): Promise<MoneyFormat> {
+  const orgId = getOrganizationId();
+  const cacheKey = `org-money-format:${orgId}`;
+  if (isDesktop() && !(await isDesktopOnline())) {
+    const cached = readDesktopCache<MoneyFormat>(cacheKey);
+    if (cached) return monedaDocumento ? { ...cached, currency: monedaDocumento, currencyDecimals: undefined } : cached;
+  }
+  try {
+    const base = await resolverContextoMoneda(supabase, orgId);
+    const baseFmt: MoneyFormat = { currency: base.code, locale: base.locale, currencyDecimals: base.decimals };
+    if (isDesktop()) writeDesktopCache(cacheKey, baseFmt);
+    const doc = (monedaDocumento ?? '').trim().toUpperCase();
+    return /^[A-Z]{3}$/.test(doc) && doc !== base.code
+      ? { currency: doc, locale: base.locale, currencyDecimals: undefined }
+      : baseFmt;
+  } catch (error) {
+    console.warn('No se pudo resolver la moneda de la organizacion:', error);
+    return (isDesktop() ? readDesktopCache<MoneyFormat>(cacheKey) : null) ?? {};
   }
 }
 
@@ -484,6 +516,8 @@ export class PrintJobsService {
     sale: {
       saleId: string;
       saleNumber?: string;
+      /** Moneda de la venta; sin ella se usa la base de la organización. */
+      currency?: string | null;
       customerName?: string;
       customerDocType?: string;
       customerDocNumber?: string;
@@ -498,7 +532,7 @@ export class PrintJobsService {
       discountTotal?: number;
       tipAmount?: number;
       deliveryFee?: number;
-      items: Array<{ productName: string; quantity: number; unitPrice: number; total: number; taxAmount?: number; discountAmount?: number; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null }>;
+      items: Array<{ productName: string; quantity: number; unitPrice: number; total: number; taxAmount?: number; discountAmount?: number; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null; note?: string | null }>;
       payments?: Array<{ method: string; methodName?: string; amount: number }>;
       businessName?: string;
       businessNit?: string;
@@ -526,8 +560,10 @@ export class PrintJobsService {
     const header = await resolveBusinessHeader(sale);
     const logoRasters = await buildLogoRasters(header.businessLogoUrl, printers);
     const timezone = await resolveTimezone();
+    const money = await resolveMoneyFormat(sale.currency);
 
     const payload: SaleTicketPrintPayload = {
+      ...money,
       saleId: sale.saleId,
       saleNumber: sale.saleNumber,
       customerName: sale.customerName,
@@ -615,8 +651,10 @@ export class PrintJobsService {
     const header = await resolveBusinessHeader(preCuenta);
     const logoRasters = await buildLogoRasters(header.businessLogoUrl, printers);
     const timezone = await resolveTimezone();
+    const money = await resolveMoneyFormat();
 
     const payload = {
+      ...money,
       saleId: `pre-${preCuenta.tableId}`,
       title: 'PRE-CUENTA',
       tableName: preCuenta.tableName,
@@ -685,35 +723,25 @@ export class PrintJobsService {
 
     const orgId = getOrganizationId();
 
-    // Consultar categorías de los productos para saber requires_preparation y station
-    const productIds = sale.items.map(i => i.productId);
-    const { data: products, error } = await supabase
-      .from('products')
-      .select('id, category_id, station, categories!left(id, requires_preparation, station)')
-      .in('id', productIds)
-      .eq('organization_id', orgId);
+    // Estación efectiva (propia → del padre → de la categoría) y requires_preparation
+    // de la categoría, resueltas en el servidor (fn_estaciones_efectivas).
+    const productIds = Array.from(new Set(sale.items.map(i => i.productId)));
+    const { data: estaciones, error } = await supabase.rpc('fn_estaciones_efectivas', {
+      p_organization_id: orgId,
+      p_product_ids: productIds,
+    });
 
-    if (error || !products) {
-      console.warn('No se pudo consultar categorías para comanda automática:', error);
+    if (error || !estaciones) {
+      console.warn('No se pudo consultar la estación de los productos para la comanda automática:', error);
       return { enqueued: 0, printedLocally: 0, skippedStations: [] };
     }
 
-    // Mapear product_id -> { requires_preparation, station }
     const productPrepMap = new Map<number, { requiresPreparation: boolean; station: string | null }>();
-    for (const p of products as any[]) {
-      const cat = p.categories;
-      if (cat) {
-        productPrepMap.set(p.id, {
-          requiresPreparation: cat.requires_preparation ?? false,
-          station: cat.station || p.station || null,
-        });
-      } else {
-        // Producto sin categoría: usar station del producto si existe
-        productPrepMap.set(p.id, {
-          requiresPreparation: false,
-          station: p.station || null,
-        });
-      }
+    for (const e of estaciones as Array<{ product_id: number; station: string | null; requires_preparation: boolean | null }>) {
+      productPrepMap.set(Number(e.product_id), {
+        requiresPreparation: e.requires_preparation === true,
+        station: e.station || null,
+      });
     }
 
     // Filtrar items que requieren preparación
@@ -845,6 +873,9 @@ export class PrintJobsService {
 
     const payload: ShipmentGuidePrintPayload = {
       ...guide,
+      // Después de `...guide`: una clave `currency: undefined` no puede
+      // borrar la moneda resuelta.
+      ...(await resolveMoneyFormat(guide.currency)),
       timezone: guide.timezone || (await resolveTimezone()),
       businessName: header.businessName,
       businessNit: header.businessNit,
@@ -895,6 +926,8 @@ export class PrintJobsService {
     invoice: {
       invoiceId: string;
       invoiceNumber: string;
+      /** Moneda de la factura; sin ella se usa la base de la organización. */
+      currency?: string | null;
       cufe: string;
       qrData: string;
       environment: 'production' | 'test';
@@ -906,7 +939,7 @@ export class PrintJobsService {
       discountTotal?: number;
       taxIncluded?: boolean;
       taxLines?: Array<{ name: string; amount: number }> | null;
-      items: Array<{ productName: string; quantity: number; unitPrice: number; total: number; taxAmount?: number; discountAmount?: number; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null }>;
+      items: Array<{ productName: string; quantity: number; unitPrice: number; total: number; taxAmount?: number; discountAmount?: number; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null; note?: string | null }>;
       payments?: Array<{ method: string; methodName?: string; amount: number }>;
       customerName?: string;
       customerDocType?: string;
@@ -939,8 +972,10 @@ export class PrintJobsService {
     const header = await resolveBusinessHeader(invoice);
     const logoRasters = await buildLogoRasters(header.businessLogoUrl, printers);
     const timezone = await resolveTimezone();
+    const money = await resolveMoneyFormat(invoice.currency);
 
     const payload: SharedElectronicInvoicePrintPayload = {
+      ...money,
       internalInvoiceId: invoice.invoiceId,
       invoiceNumber: invoice.invoiceNumber,
       cufe: invoice.cufe,
@@ -1007,6 +1042,42 @@ export class PrintJobsService {
       job_type: 'open_cash_drawer',
       reference_id: null,
       payload: {} as any,
+      status: 'pending' as const,
+    }));
+
+    return dispatchPrintJobs(rows, printers);
+  }
+  /**
+   * Impresoras de la estación de caja de la sucursal (o «todas»): las que
+   * reciben las etiquetas de producto. Vacío = no hay estación y el diálogo
+   * de etiquetas no ofrece enviarlas (sin estación no se encola nada).
+   */
+  static async getProductLabelPrinters(branchId: number): Promise<Printer[]> {
+    return PrintersService.getPrintersByStation(branchId, 'cashier');
+  }
+
+  /**
+   * Encola etiquetas de producto en la estación de caja de la sucursal. El
+   * payload llega resuelto (textos, precios formateados, SVG de las barras):
+   * el agente solo maqueta (`print-agent/src/printing/labels.ts`).
+   */
+  static async enqueueProductLabels(
+    branchId: number,
+    payload: ProductLabelsPrintPayload,
+  ): Promise<EnqueueResult> {
+    const orgId = getOrganizationId();
+    // Una sola impresora: con dos en la estación, las etiquetas saldrían dobles.
+    const printers = (await this.getProductLabelPrinters(branchId)).slice(0, 1);
+    if (printers.length === 0) return { enqueued: 0, printedLocally: 0 };
+
+    const rows: PrintJobInsert[] = printers.map((printer) => ({
+      organization_id: orgId,
+      branch_id: printer.branch_id || branchId,
+      printer_id: printer.id,
+      station: 'cashier',
+      job_type: 'product_label',
+      reference_id: null,
+      payload,
       status: 'pending' as const,
     }));
 

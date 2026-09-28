@@ -14,7 +14,10 @@
  * - Al perder la caja se suelta la instancia activa, se OLVIDA el último
  *   estado y hello (una caja nueva que latiera sin anunciarse no debe
  *   resucitar un carrito viejo) y se vuelve a pedir snapshot cada
- *   resnapshotIntervalMs hasta que alguien conteste.
+ *   resnapshotIntervalMs hasta que alguien conteste; pasado
+ *   disconnectedToIdleMs sin caja, al ritmo más lento de
+ *   idleResnapshotIntervalMs (en local son el mismo; en remoto cada pregunta
+ *   es un mensaje facturado: ronda 4 · QA-1).
  * - Caja viva pero SIN estado aceptado (adoptada por un latido tras bye o
  *   silencio): la vista queda en Conectando (logic.ts · resolveView) y se
  *   sigue pidiendo need_snapshot cada resnapshotIntervalMs a esa instancia
@@ -45,7 +48,13 @@
  *   `touch`, manda uno sin esperar al latido), así la caja se entera antes
  *   del siguiente latido. Un cambio de ajustes en
  *   caliente llega por el resaludo de la caja (hello nuevo) y sigue el mismo
- *   camino.
+ *   camino. Una sola fuente (ronda 5, B1): lo que declara el need_snapshot y
+ *   lo que lleva la presencia es siempre el mismo `touch` resuelto; cuando el
+ *   need_snapshot cambia lo declarado (caja olvidada tras una caída sin
+ *   `bye`), askSnapshot realinea la presencia, y el hello que vuelve con el
+ *   forzado dispara el `display_alive` resuelto en el acto. Para que eso
+ *   valga desde el PRIMER need_snapshot tras la caída, evaluateHealth publica
+ *   la instantánea sin caja (hello: null) antes de pedirlo (ronda 4, QA-4).
  */
 
 import { STALE_AFTER_MS, type DisplayReceiver } from '@/lib/pos/display/transport';
@@ -116,6 +125,16 @@ export interface DisplayLinkOptions {
   now?: () => number;
   staleAfterMs?: number;
   resnapshotIntervalMs?: number;
+  /**
+   * Ritmo del `need_snapshot` una vez la caja lleva `disconnectedToIdleMs`
+   * callada (la vista ya cayó a Reposo). Por defecto el mismo
+   * `resnapshotIntervalMs`: en local un mensaje no cuesta nada y el
+   * comportamiento no cambia. El transporte remoto pasa uno más lento
+   * (REMOTE_IDLE_RESNAPSHOT_INTERVAL_MS): preguntar cada pocos segundos a
+   * una caja que lleva más de un minuto sin contestar no la despierta, y
+   * cada pregunta es un mensaje facturado (ronda 4 · QA-1).
+   */
+  idleResnapshotIntervalMs?: number;
   healthIntervalMs?: number;
   disconnectedToIdleMs?: number;
 }
@@ -165,6 +184,7 @@ export function startDisplayLink(options: DisplayLinkOptions): DisplayLink {
   const now = options.now ?? Date.now;
   const staleAfterMs = options.staleAfterMs ?? STALE_AFTER_MS;
   const resnapshotIntervalMs = options.resnapshotIntervalMs ?? RESNAPSHOT_INTERVAL_MS;
+  const idleResnapshotIntervalMs = options.idleResnapshotIntervalMs ?? resnapshotIntervalMs;
   const healthIntervalMs = options.healthIntervalMs ?? HEALTH_INTERVAL_MS;
   const disconnectedToIdleMs = options.disconnectedToIdleMs ?? DISCONNECTED_TO_IDLE_MS;
 
@@ -203,12 +223,32 @@ export function startDisplayLink(options: DisplayLinkOptions): DisplayLink {
     return raw.touch === resolved ? raw : { ...raw, touch: resolved };
   };
 
+  /**
+   * Pide snapshot con el táctil resuelto. Si lo que se declara difiere de lo
+   * declarado antes (B1, ronda 5 de F2-B: tras olvidar la caja —forgetCashier—
+   * el forzado del hello ya no aplica y se vuelve a la detección cruda), la
+   * presencia del receptor se alinea en el acto: startPresence es idempotente
+   * y, si cambió `touch`, reemite `display_alive`. Así la caja que vuelve sin
+   * `bye` nunca se queda con un `touch` distinto del que la pantalla pinta
+   * hasta el siguiente latido, y el hello que reacepte (con su forzado) sí
+   * provoca el cambio que dispara el nuevo `display_alive`.
+   */
   const askSnapshot = () => {
     lastSnapshotAt = now();
-    receiver.send({ t: 'need_snapshot', capabilities: effectiveCapabilities() });
+    const before = declaredTouch;
+    const declared = effectiveCapabilities();
+    receiver.send({ t: 'need_snapshot', capabilities: declared });
+    if (before !== null && before !== declaredTouch) receiver.startPresence(declared);
   };
 
-  const shouldAskAgain = (at: number) => lastSnapshotAt === null || at - lastSnapshotAt >= resnapshotIntervalMs;
+  /**
+   * ¿Toca repetir el `need_snapshot`? Con la caja callada MÁS de
+   * `disconnectedToIdleMs` (`idle`) se usa el ritmo lento: la pantalla ya
+   * pinta Reposo y seguir preguntando al ritmo corto no la despierta
+   * (ronda 4 · QA-1). En local los dos ritmos son el mismo.
+   */
+  const shouldAskAgain = (at: number, idle = false) =>
+    lastSnapshotAt === null || at - lastSnapshotAt >= (idle ? idleResnapshotIntervalMs : resnapshotIntervalMs);
 
   /** Sin caja no hay estado que mostrar: lo que llegue después será un snapshot completo. Devuelve el parche a publicar. */
   const forgetCashier = (): Partial<DisplayLinkSnapshot> => {
@@ -243,14 +283,21 @@ export function startDisplayLink(options: DisplayLinkOptions): DisplayLink {
         // Que el próximo need_snapshot no vaya dirigido a una pestaña muerta.
         receiver.releaseActiveInstance();
         Object.assign(patch, forgetCashier());
+        // Se publica YA, antes del askSnapshot de abajo: effectiveCapabilities
+        // lee `snapshot.hello`, y con el hello viejo aún en la instantánea el
+        // PRIMER need_snapshot tras la caída declaraba el táctil resuelto con
+        // un forzado que ya no aplica (F2-B ronda 4, QA-4). El publish final
+        // no repite el aviso: sameSnapshot lo deduplica.
+        publish(patch);
       }
     }
 
     if (!alive) {
-      if (shouldAskAgain(at)) askSnapshot();
-      if (disconnectedSince !== null && at - disconnectedSince >= disconnectedToIdleMs) {
-        patch.disconnectedTooLong = true;
-      }
+      // El «lleva demasiado callada» se calcula ANTES de preguntar: es lo que
+      // decide el ritmo del need_snapshot (ronda 4 · QA-1).
+      const idle = disconnectedSince !== null && at - disconnectedSince >= disconnectedToIdleMs;
+      if (idle) patch.disconnectedTooLong = true;
+      if (shouldAskAgain(at, idle)) askSnapshot();
     } else if (fromTimer && previousState === null && shouldAskAgain(at)) {
       // Caja viva (adoptada por latido, o hello cuyo state no llegó) que no
       // ha dicho qué tiene: se le sigue pidiendo el snapshot hasta que

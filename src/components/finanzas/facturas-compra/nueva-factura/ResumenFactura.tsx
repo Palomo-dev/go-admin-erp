@@ -4,7 +4,8 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 interface TaxBreakdown {
   taxId: string;
@@ -36,6 +37,9 @@ export function ResumenFactura({
   // console.log('Props recibidas:', { subtotal, taxTotal, total, currency, taxIncluded, taxBreakdown });
   
   const hasActiveTaxes = taxBreakdown.length > 0 && taxTotal > 0;
+  // Importes en la moneda de la factura (la base si no la trae).
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = (valor: number, moneda: string) => formatMoneda(valor, paraDocumento(moneda));
 
   return (
     <Card className="dark:bg-gray-800/50 dark:border-gray-700 border-gray-200">

@@ -132,5 +132,24 @@ export function createFakeSupabase(db: FakeDb) {
     };
     return chain;
   };
-  return { from };
+  // fn_comision_aplicar_transicion (20260928213000): el mismo UPDATE condicional
+  // que antes hacía Node (id + organización + status = desde), registrado igual
+  // en `writes`; metadata se fusiona con la de la fila y payroll_slip_id no se
+  // puede fijar por aquí, como en la función SQL.
+  const rpc = (fn: string, args: Record<string, unknown>) => {
+    if (fn !== 'fn_comision_aplicar_transicion') throw new Error(`rpc no soportada en el doble: ${fn}`);
+    const cambios = { ...(args.p_cambios as Row) };
+    if (cambios.metadata && typeof cambios.metadata === 'object') {
+      const actual = (db.rows.commissions ?? []).find((r) => r.id === args.p_id && r.organization_id === args.p_org);
+      const entrante = { ...(cambios.metadata as Row) };
+      delete entrante.payroll_slip_id;
+      cambios.metadata = { ...((actual?.metadata as Row | null) ?? {}), ...entrante };
+    }
+    const q = from('commissions') as Record<string, (...a: unknown[]) => unknown>;
+    q.update(cambios);
+    q.eq('id', args.p_id);
+    q.eq('organization_id', args.p_org);
+    return q.eq('status', args.p_desde);
+  };
+  return { from, rpc };
 }

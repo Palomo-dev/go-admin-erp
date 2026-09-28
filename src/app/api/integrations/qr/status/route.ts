@@ -2,25 +2,22 @@
 // GET /api/integrations/qr/status
 // Consulta el estado de una sesion QR (generico para todos los proveedores).
 // Usado por QrPoller para hacer polling del estado de pago.
+//
+// La organización sale de la SESIÓN, no de la query (regla dura 5): el
+// `organizationId` del query string solo dice qué organización reclama el
+// llamante, y `getServerOrgContextFor` exige membresía activa en ESA
+// organización (401 sin sesión, 403 si no pertenece). Antes bastaba tener
+// sesión: con referencias predecibles (`POS-<Date.now()>-<orgId>`) un usuario
+// de otra organización leía status/amount/paid_at de sesiones ajenas
+// (F2 Parte C, ronda 12). El contrato de respuesta no cambia.
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { getServerOrgContextFor, OrgContextError, type ServerOrgContext } from '@/lib/utils/orgContext';
 import { getQrSessionByReference } from '@/lib/services/integrations/qrShared/qrSessionService';
 
 export async function GET(request: NextRequest) {
   try {
-    // Verificar autenticacion
-    const supabase = createRouteHandlerClient({ cookies });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
     // Leer query params
     const { searchParams } = new URL(request.url);
     const reference = searchParams.get('reference');
@@ -41,8 +38,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Buscar sesion QR por referencia y organizacion
-    const qrSession = await getQrSessionByReference(organizationId, reference);
+    // Sesión + membresía activa en la organización reclamada.
+    let ctx: ServerOrgContext;
+    try {
+      ctx = await getServerOrgContextFor(organizationId);
+    } catch (err) {
+      if (!(err instanceof OrgContextError)) throw err;
+      if (err.statusCode === 401) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+      }
+      // Organización ajena en la query: 403 y registro, como hace withOrg.
+      if (err.statusCode === 403) {
+        console.warn('[API QR Status] organizationId ajeno en la query → 403', {
+          organizationId,
+          code: err.code,
+        });
+      }
+      // Cualquier otro OrgContextError viaja con SU código de estado (hoy
+      // `contextForOrg` solo lanza 401/403; si orgContext añadiera un 400/409
+      // no se disfrazaría de 403). Mismo cuerpo que `jsonError` de orgContext.
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
+    }
+
+    // Buscar sesion QR por referencia y organizacion (la de la sesión)
+    const qrSession = await getQrSessionByReference(ctx.organizationId, reference);
     if (!qrSession) {
       return NextResponse.json(
         { error: 'Sesion QR no encontrada' },

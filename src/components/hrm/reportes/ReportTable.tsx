@@ -1,8 +1,15 @@
 'use client';
 
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-import { formatTimeInTz } from '@/lib/utils/dateDisplay';
+// `formatPlainDate` NO convierte de zona, y es lo correcto aqui: las tres
+// fechas de esta tabla vienen de columnas `date` (`timesheets.work_date`,
+// `leave_requests.start_date`/`.end_date`, verificadas por MCP el 2026-09-23),
+// o sea dias calendario ya cerrados. El `formatDate` de `@/utils/Utils` que
+// habia antes los pasaba por `new Date(dia + 'T00:00:00')` y los formateaba
+// con el reloj del NAVEGADOR. En cambio `first_check_in` si es timestamptz y
+// se sigue formateando con `formatTimeInTz` y la zona de la organizacion.
+import { formatPlainDate, formatTimeInTz } from '@/lib/utils/dateDisplay';
 import {
   Table,
   TableBody,
@@ -100,7 +107,7 @@ export function ReportTable({
                   {row.department || '-'}
                 </TableCell>
                 <TableCell className="text-gray-900 dark:text-white">
-                  {formatDate(row.work_date)}
+                  {formatPlainDate(row.work_date)}
                 </TableCell>
                 <TableCell className="text-gray-600 dark:text-gray-400">
                   {row.first_check_in ? formatTimeInTz(row.first_check_in, timezone) : '-'}
@@ -161,10 +168,10 @@ export function ReportTable({
                   {row.leave_type}
                 </TableCell>
                 <TableCell className="text-gray-600 dark:text-gray-400">
-                  {formatDate(row.start_date)}
+                  {formatPlainDate(row.start_date)}
                 </TableCell>
                 <TableCell className="text-gray-600 dark:text-gray-400">
-                  {formatDate(row.end_date)}
+                  {formatPlainDate(row.end_date)}
                 </TableCell>
                 <TableCell className="text-gray-900 dark:text-white font-medium">
                   {row.days}

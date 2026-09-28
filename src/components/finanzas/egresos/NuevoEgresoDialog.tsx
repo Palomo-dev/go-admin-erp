@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,8 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, MinusCircle, Wallet, Building2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
+import { useTranslations } from 'next-intl';
 import { movimientosService, BankAccount } from '@/lib/services/movimientosService';
 import { getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -40,6 +42,7 @@ export function NuevoEgresoDialog({
   onSuccess,
 }: NuevoEgresoDialogProps) {
   const { selectedBranchId } = useBranch();
+  const t = useTranslations('tesoreria');
   const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   const [isLoading, setIsLoading] = useState(false);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
@@ -51,16 +54,31 @@ export function NuevoEgresoDialog({
     bank_account_id: '',
   });
 
+  const loadBankAccounts = useCallback(async (): Promise<void> => {
+    try {
+      const accounts = await movimientosService.getBankAccounts();
+      setBankAccounts(accounts);
+    } catch (error) {
+      console.error('Error loading bank accounts:', error);
+      toast({
+        title: t('errorTitulo'),
+        description: t('errorCarga.cuentasBancarias'),
+        variant: 'destructive',
+        action: (
+          <ToastAction altText={t('reintentar')} onClick={() => void loadBankAccounts()}>
+            {t('reintentar')}
+          </ToastAction>
+        ),
+      });
+    }
+  }, [t]);
+
   useEffect(() => {
     if (open) {
       loadBankAccounts();
     }
-  }, [open]);
+  }, [open, loadBankAccounts]);
 
-  const loadBankAccounts = async () => {
-    const accounts = await movimientosService.getBankAccounts();
-    setBankAccounts(accounts);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,9 +139,9 @@ export function NuevoEgresoDialog({
         });
         onSuccess();
       } else {
-        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        toast({ title: t('errorTitulo'), description: t(`errores.${result.codigo ?? 'desconocido'}`), variant: 'destructive' });
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Error al registrar el egreso', variant: 'destructive' });
     } finally {
       setIsLoading(false);

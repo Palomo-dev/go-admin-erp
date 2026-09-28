@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Filter, MapPin, ChefHat, Snowflake, Wine } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/utils/Utils';
@@ -24,10 +25,11 @@ interface FilterBarProps {
   };
 }
 
-const STATIONS: { key: StationFilter; label: string; icon: typeof ChefHat }[] = [
-  { key: 'hot_kitchen', label: 'Cocina Caliente', icon: ChefHat },
-  { key: 'cold_kitchen', label: 'Cocina Fría', icon: Snowflake },
-  { key: 'bar', label: 'Bar', icon: Wine },
+// La etiqueta sale de `posComandas.estaciones.<key>`.
+const STATIONS: { key: 'hot_kitchen' | 'cold_kitchen' | 'bar'; icon: typeof ChefHat }[] = [
+  { key: 'hot_kitchen', icon: ChefHat },
+  { key: 'cold_kitchen', icon: Snowflake },
+  { key: 'bar', icon: Wine },
 ];
 
 export function FilterBar({
@@ -41,6 +43,7 @@ export function FilterBar({
   statusCounts,
 }: FilterBarProps) {
   const dragScroll = useDragScroll<HTMLDivElement>();
+  const t = useTranslations('posComandas');
 
   return (
     <div className="mt-3 sm:mt-4 flex flex-col gap-2 sm:gap-3">
@@ -63,7 +66,7 @@ export function FilterBar({
           className="shrink-0"
         >
           <Filter className="h-4 w-4 mr-2" />
-          Todas las Zonas
+          {t('filtros.todasZonas')}
         </Button>
         {availableZones.map((zone) => (
           <Button
@@ -87,9 +90,9 @@ export function FilterBar({
           className="shrink-0"
           onClick={() => onStationChange('all')}
         >
-          Todas las Estaciones
+          {t('filtros.todasEstaciones')}
         </Button>
-        {STATIONS.map(({ key, label, icon: Icon }) => (
+        {STATIONS.map(({ key, icon: Icon }) => (
           <Button
             key={key}
             variant={stationFilter === key ? 'default' : 'outline'}
@@ -98,7 +101,7 @@ export function FilterBar({
             className={cn('shrink-0', stationFilter === key ? 'bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800' : '')}
           >
             <Icon className="h-4 w-4 mr-2" />
-            {label}
+            {t(`estaciones.${key}`)}
           </Button>
         ))}
       </div>
@@ -111,7 +114,7 @@ export function FilterBar({
           className="shrink-0"
           onClick={() => onStatusChange('all')}
         >
-          Todos
+          {t('filtros.todos')}
         </Button>
         <Button
           variant={statusFilter === 'new' ? 'default' : 'outline'}
@@ -119,7 +122,7 @@ export function FilterBar({
           className="shrink-0"
           onClick={() => onStatusChange('new')}
         >
-          Nuevos
+          {t('filtros.nuevos')}
           {statusCounts.new > 0 && (
             <Badge variant="secondary" className="ml-2">
               {statusCounts.new}
@@ -132,7 +135,7 @@ export function FilterBar({
           className="shrink-0"
           onClick={() => onStatusChange('preparing')}
         >
-          En Preparación
+          {t('filtros.enPreparacion')}
           {statusCounts.in_progress > 0 && (
             <Badge variant="secondary" className="ml-2">
               {statusCounts.in_progress}
@@ -145,7 +148,7 @@ export function FilterBar({
           className="shrink-0"
           onClick={() => onStatusChange('ready')}
         >
-          Listos
+          {t('filtros.listos')}
           {statusCounts.ready > 0 && (
             <Badge variant="secondary" className="ml-2">
               {statusCounts.ready}
@@ -158,7 +161,7 @@ export function FilterBar({
           onClick={() => onStatusChange('delivered')}
           className={cn('shrink-0', statusFilter === 'delivered' ? 'bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600' : '')}
         >
-          Entregados
+          {t('filtros.entregados')}
           {statusCounts.delivered > 0 && (
             <Badge variant="secondary" className="ml-2">
               {statusCounts.delivered}

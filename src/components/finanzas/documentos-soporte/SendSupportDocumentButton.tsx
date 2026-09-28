@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Send, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
@@ -21,6 +22,7 @@ export function SendSupportDocumentButton({
   onSent,
 }: SendSupportDocumentButtonProps) {
   const { toast } = useToast();
+  const t = useTranslations('documentosSoporte.enviar');
   const [isSending, setIsSending] = useState(false);
 
   const handleSend = async () => {
@@ -40,21 +42,21 @@ export function SendSupportDocumentButton({
       const result = await res.json();
 
       if (!res.ok) {
-        throw new Error(result.error || 'Error enviando documento a Factus');
+        throw new Error(result.error || t('errorEnvio'));
       }
 
       const isValidated = result.data?.is_validated;
       toast({
-        title: isValidated ? 'Documento validado por DIAN' : 'Documento enviado a DIAN',
-        description: `Ref: ${result.data?.reference_code || supportDocumentId.substring(0, 8)}`,
+        title: isValidated ? t('validado') : t('enviado'),
+        description: t('referencia', { referencia: result.data?.reference_code || supportDocumentId.substring(0, 8) }),
       });
 
       if (onSent) onSent();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error enviando documento soporte:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'No se pudo enviar el documento a DIAN',
+        title: t('errorTitulo'),
+        description: (error instanceof Error && error.message) || t('errorDescripcion'),
         variant: 'destructive',
       });
     } finally {
@@ -73,7 +75,7 @@ export function SendSupportDocumentButton({
       ) : (
         <Send className="h-4 w-4 mr-2" />
       )}
-      Enviar a DIAN
+      {t('boton')}
     </Button>
   );
 }

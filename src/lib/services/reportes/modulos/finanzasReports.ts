@@ -11,7 +11,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import { getOrgDateRange } from '@/lib/utils/timezone';
-import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
+import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -149,7 +149,7 @@ export const finanzasReports: ReportDefinition[] = [
       const { data, error } = await db.rpc('fn_reporte_cxc_aging', {
         p_organization_id: orgId,
         p_as_of: periodo.fechaFin,
-        p_branch_id: branchId ?? null,
+        p_branch_id: normalizeBranchParam(branchId),
       });
       if (error) throw error;
 
@@ -264,7 +264,7 @@ export const finanzasReports: ReportDefinition[] = [
       const { data, error } = await db.rpc('fn_reporte_cxp_aging', {
         p_organization_id: orgId,
         p_as_of: periodo.fechaFin,
-        p_branch_id: branchId ?? null,
+        p_branch_id: normalizeBranchParam(branchId),
       });
       if (error) throw error;
 
@@ -406,7 +406,7 @@ export const finanzasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
-        p_branch_id: branchId ?? null,
+        p_branch_id: normalizeBranchParam(branchId),
       });
       if (error) throw error;
 
@@ -450,7 +450,7 @@ export const finanzasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
-        p_branch_id: branchId ?? null,
+        p_branch_id: normalizeBranchParam(branchId),
       });
       if (error) throw error;
 
@@ -738,7 +738,7 @@ export const finanzasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
-        p_branch_id: branchId ?? null,
+        p_branch_id: normalizeBranchParam(branchId),
       });
       if (error) throw error;
 
@@ -778,7 +778,7 @@ export const finanzasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
-        p_branch_id: branchId ?? null,
+        p_branch_id: normalizeBranchParam(branchId),
       });
       if (error) throw error;
 

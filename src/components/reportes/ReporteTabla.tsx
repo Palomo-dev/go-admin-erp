@@ -4,13 +4,14 @@ import { useState, useMemo } from 'react';
 
 import type { ReportData, ReporteColumna } from '@/lib/services/reportes/types';
 import { ReportePagination } from './ReportePagination';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
-const moneda = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
 const numero = new Intl.NumberFormat('es-CO');
 
-function formatCelda(valor: unknown, tipo: ReporteColumna['tipo']): string {
+/** `formatear`: importe en la moneda base de la organización (los informes agregan varios documentos). */
+function formatCelda(valor: unknown, tipo: ReporteColumna['tipo'], formatear: (v: number) => string): string {
   if (valor === null || valor === undefined) return '—';
-  if (tipo === 'moneda') return moneda.format(Number(valor) || 0);
+  if (tipo === 'moneda') return formatear(Number(valor) || 0);
   if (tipo === 'porcentaje') return `${valor}%`;
   if (tipo === 'numero') return numero.format(Number(valor) || 0);
   if (tipo === 'fecha') {
@@ -24,6 +25,7 @@ function formatCelda(valor: unknown, tipo: ReporteColumna['tipo']): string {
 export function ReporteTabla({ data, comparisonData }: { data: ReportData; comparisonData?: ReportData | null }) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
+  const { formatear } = useMonedaOrganizacion();
 
   const { filas, columnas, totales } = data;
   const start = page * pageSize;
@@ -115,7 +117,7 @@ export function ReporteTabla({ data, comparisonData }: { data: ReportData; compa
                           : 'text-gray-700 dark:text-gray-300'
                       } ${alignClass(col.alinear)}`}
                     >
-                      {formatCelda(fila[col.key], col.tipo)}
+                      {formatCelda(fila[col.key], col.tipo, formatear)}
                     </td>
                   ))}
                   {comparisonMap && columnas.filter((c) => isNumeric(c.tipo)).map((col) => (
@@ -123,7 +125,7 @@ export function ReporteTabla({ data, comparisonData }: { data: ReportData; compa
                       key={`${col.key}_prev`}
                       className={`px-3 py-2.5 text-right tabular-nums text-gray-400 dark:text-gray-500 ${alignClass(col.alinear)}`}
                     >
-                      {compRow ? formatCelda(compRow[col.key], col.tipo) : '—'}
+                      {compRow ? formatCelda(compRow[col.key], col.tipo, formatear) : '—'}
                     </td>
                   ))}
                 </tr>
@@ -140,7 +142,7 @@ export function ReporteTabla({ data, comparisonData }: { data: ReportData; compa
                       isNumeric(col.tipo) ? 'text-right tabular-nums' : ''
                     } ${alignClass(col.alinear)}`}
                   >
-                    {totales[col.key] !== undefined ? formatCelda(totales[col.key], col.tipo) : ''}
+                    {totales[col.key] !== undefined ? formatCelda(totales[col.key], col.tipo, formatear) : ''}
                   </td>
                 ))}
                 {comparisonMap && columnas.filter((c) => isNumeric(c.tipo)).map((col) => (
@@ -149,7 +151,7 @@ export function ReporteTabla({ data, comparisonData }: { data: ReportData; compa
                     className={`px-3 py-2.5 text-right tabular-nums text-gray-400 dark:text-gray-500 ${alignClass(col.alinear)}`}
                   >
                     {comparisonData?.totales && comparisonData.totales[col.key] !== undefined
-                      ? formatCelda(comparisonData.totales[col.key], col.tipo)
+                      ? formatCelda(comparisonData.totales[col.key], col.tipo, formatear)
                       : '—'}
                   </td>
                 ))}

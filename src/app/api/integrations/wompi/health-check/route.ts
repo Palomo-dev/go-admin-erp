@@ -1,40 +1,33 @@
 // ============================================================
 // POST /api/integrations/wompi/health-check
-// Verifica que las credenciales de Wompi sean válidas
+// Verifica que las credenciales de una conexión de Wompi sean válidas.
+//
+// SEGURIDAD (GO-sec, 2026-09-24): antes bastaba `auth.getSession()` y
+// cualquier sesión probaba (y marcaba en error) la conexión de otra
+// organización con solo conocer su id. Ahora sesión validada + administración
+// (`withOrg({ admin: true })`), organización ajena en body o query → 403 y
+// registro, y la conexión tiene que ser de la organización y de Wompi (404).
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
+import { OrgContextError } from '@/lib/utils/orgContextError';
+import { getServiceClient } from '@/lib/supabase/server-service';
 import { wompiService } from '@/lib/services/integrations/wompi/wompiService';
+import { CONECTORES, conexionDelProveedor, registrarError } from '@/lib/services/integrations/accesoIntegraciones';
 
-export async function POST(request: NextRequest) {
+const RUTA = '/api/integrations/wompi/health-check';
+
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const { connectionId } = await request.json();
-    if (!connectionId) {
-      return NextResponse.json(
-        { error: 'connectionId es requerido' },
-        { status: 400 }
-      );
-    }
-
-    const result = await wompiService.healthCheck(connectionId);
-
+    const body = await readOrgBody<Record<string, unknown>>(ctx, request, { route: RUTA });
+    const conexion = await conexionDelProveedor(ctx, body.connectionId, CONECTORES.wompi, RUTA);
+    const result = await wompiService.healthCheck(conexion.id, getServiceClient());
     return NextResponse.json(result);
   } catch (err) {
-    console.error('[API Wompi Health] Error:', err);
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    );
+    if (err instanceof OrgContextError) throw err;
+    registrarError(RUTA, err);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
-}
+}, { admin: true });

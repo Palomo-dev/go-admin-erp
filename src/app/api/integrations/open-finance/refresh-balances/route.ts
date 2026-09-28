@@ -1,40 +1,28 @@
 // ============================================================
 // /api/integrations/open-finance/refresh-balances
-// Refresca saldos de todas las cuentas vinculadas de una organizacion
-// POST - body: { organizationId: number }
+// Refresca saldos de las cuentas vinculadas de la organizacion de la sesion
+// POST - sin body obligatorio (un `organizationId` distinto al de la sesion → 403)
+//
+// SEGURIDAD (GO-sec, 2026-09-23): la organizacion salia del body. Ahora sale
+// de la sesion (`withOrg`), el body ajeno responde 403 (`readOrgBody`) y exige
+// `finance.create`.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { balanceService } from '@/lib/services/integrations/openFinance/balanceService';
 
-// POST - refresca saldos de cuentas vinculadas
-export async function POST(request: NextRequest) {
+const RUTA = 'open-finance/refresh-balances';
+
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    await readOrgBody(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.CREAR, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const body = await request.json() as { organizationId?: number };
-    const { organizationId } = body;
-
-    if (!organizationId || typeof organizationId !== 'number') {
-      return NextResponse.json(
-        { error: 'organizationId es requerido y debe ser un numero' },
-        { status: 400 },
-      );
-    }
-
-    const stats = await balanceService.refreshAllBalances(organizationId);
-
+    const stats = await balanceService.refreshAllBalances(ctx.organizationId);
     return NextResponse.json({ success: true, data: stats });
   } catch (error) {
-    console.error('[Open Finance Refresh Balances POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Refresh Balances POST', error);
   }
-}
+});

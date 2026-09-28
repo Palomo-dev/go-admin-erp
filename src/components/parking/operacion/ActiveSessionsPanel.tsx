@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Clock, Car, LogOut, AlertTriangle } from 'lucide-react';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 export interface ActiveSession {
   id: string;
@@ -55,6 +56,7 @@ function SessionRow({
   session: ActiveSession; 
   onSelect: () => void;
 }) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const [duration, setDuration] = useState(formatDuration(session.entry_at));
   const durationMinutes = getDurationMinutes(session.entry_at);
   const isLongStay = durationMinutes > 240; // Más de 4 horas

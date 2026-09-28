@@ -19,7 +19,6 @@ import {
   BarChart3, 
   Bell, 
   Zap, 
-  Bus, 
   Calendar, 
   Activity,
   Crown,
@@ -44,12 +43,13 @@ import { useActiveModules } from '@/hooks/useActiveModules';
 import { useModuleContext } from '@/lib/context/ModuleContext';
 import { moduleManagementService, type Module, type OrganizationModuleStatus } from '@/lib/services/moduleManagementService';
 import { MODULE_PAGES, getModulePages, type ModulePage } from '@/lib/config/modulePages';
+import { paginaActiva } from '@/lib/navigation/paginaActiva';
 import { ModulesSkeleton } from '@/components/organization/OrganizationSkeletons';
 import { useTranslations } from 'next-intl';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
-const moduleIcons: Record<string, React.ComponentType<any>> = {
+const moduleIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   'organizations': Building2,
   'branding': Palette,
   'branches': MapPin,
@@ -87,12 +87,13 @@ export default function ModulesMarketplacePage() {
   
   // Estado local optimista para módulos activos
   const [optimisticActiveModules, setOptimisticActiveModules] = useState<Set<string>>(new Set());
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   // Controlar si la carga inicial ya terminó (para no mostrar loader en toggle)
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  // Estado para páginas activas por módulo: { moduleCode: [pageHref, ...] }
-  const [activeModulePages, setActiveModulePages] = useState<Record<string, string[]>>({});
+  // Páginas APAGADAS a propósito por módulo: { moduleCode: [pageHref, ...] }.
+  // Ausente de este mapa = activa (`src/lib/navigation/paginaActiva.ts`).
+  const [paginasOcultas, setPaginasOcultas] = useState<Record<string, string[]>>({});
   // Módulos expandidos para ver sus submódulos
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   // Loading state para toggle de página individual
@@ -101,8 +102,6 @@ export default function ModulesMarketplacePage() {
   const {
     activeModules,
     organizationStatus,
-    refreshModules,
-    loading: modulesLoading
   } = useActiveModules(organizationId || undefined);
   // Estado local para organizationStatus (cargado en paralelo con todo lo demás)
   const [localOrgStatus, setLocalOrgStatus] = useState<OrganizationModuleStatus | null>(null);
@@ -132,12 +131,12 @@ export default function ModulesMarketplacePage() {
       try {
         const [modules, pages, orgStatus, activeMods] = await Promise.all([
           moduleManagementService.getAllModules(),
-          moduleManagementService.getActiveModulePages(orgId),
+          moduleManagementService.getHiddenModulePages(orgId),
           moduleManagementService.getOrganizationModuleStatus(orgId),
           moduleManagementService.getActiveModules(orgId),
         ]);
         setAllModules(modules);
-        setActiveModulePages(pages);
+        setPaginasOcultas(pages);
         setLocalOrgStatus(orgStatus);
         // Inicializar estado optimista inmediatamente sin esperar al hook
         if (!initialLoadComplete) {
@@ -193,23 +192,24 @@ export default function ModulesMarketplacePage() {
       if (!result.success) {
         // 3. REVERTIR SI FALLA
         setOptimisticActiveModules(previousState);
-        setError(result.message || t('modules.errorToggling'));
+        // Desde la corrección de F-76 la ruta exige administrador de la
+        // organización: un 403 no trae `message`, así que sin este caso el
+        // usuario veía el error genérico y no entendía por qué.
+        setError(
+          response.status === 403
+            ? t('modules.errorSinPermiso')
+            : result.message || t('modules.errorToggling')
+        );
         return;
       }
 
-      // Si se activó, marcar todas las páginas como activas en estado local
-      let newActiveModulePages: Record<string, string[]>;
-      if (!isActive && modulePages && modulePages.length > 0) {
-        newActiveModulePages = { ...activeModulePages, [moduleCode]: modulePages.map(p => p.href) };
-        setActiveModulePages(newActiveModulePages);
-      } else if (isActive) {
-        // Si se desactivó, limpiar páginas del módulo
-        newActiveModulePages = { ...activeModulePages };
-        delete newActiveModulePages[moduleCode];
-        setActiveModulePages(newActiveModulePages);
-      } else {
-        newActiveModulePages = activeModulePages;
-      }
+      // Activar o desactivar el módulo no esconde ninguna página en concreto:
+      // al activarlo vuelven todas (el servicio deja sus filas en true) y al
+      // desactivarlo lo oculta el propio módulo, no la lista. En ambos casos el
+      // módulo deja de tener páginas apagadas.
+      const nuevasOcultas: Record<string, string[]> = { ...paginasOcultas };
+      delete nuevasOcultas[moduleCode];
+      setPaginasOcultas(nuevasOcultas);
 
       // 4. Actualizar sidebar sin recargar página completa
       startTransition(() => {
@@ -221,7 +221,7 @@ export default function ModulesMarketplacePage() {
         ? Array.from(optimisticActiveModules).filter(c => c !== moduleCode)
         : [...Array.from(optimisticActiveModules), moduleCode];
       window.dispatchEvent(new CustomEvent('modules-updated', {
-        detail: { activeModulePages: newActiveModulePages, activeModuleCodes: newActiveCodes }
+        detail: { paginasOcultas: nuevasOcultas, activeModuleCodes: newActiveCodes }
       }));
 
       // 6. Confirmar recargando desde DB (sin detail para que AppLayout recargue)
@@ -237,7 +237,7 @@ export default function ModulesMarketplacePage() {
     } finally {
       setActionLoading(null);
     }
-  }, [organizationId, optimisticActiveModules, moduleContext, activeModulePages]);
+  }, [organizationId, optimisticActiveModules, moduleContext, paginasOcultas]);
 
   // Toggle de página individual (submódulo)
   const handleTogglePage = useCallback(async (moduleCode: string, page: ModulePage, isActive: boolean) => {
@@ -245,24 +245,21 @@ export default function ModulesMarketplacePage() {
     const pageKey = `${moduleCode}:${page.href}`;
     setPageActionLoading(pageKey);
 
-    // Calcular páginas actuales y nuevas páginas
-    let currentPagesList = activeModulePages[moduleCode];
-    if (currentPagesList === undefined) {
-      currentPagesList = (MODULE_PAGES[moduleCode] || []).map(p => p.href);
-    }
+    // Apagar una página = añadirla al mapa de ocultas. Encenderla = quitarla.
+    const ocultasDelModulo = paginasOcultas[moduleCode] ?? [];
+    const nuevasDelModulo = isActive
+      ? [...ocultasDelModulo, page.href]
+      : ocultasDelModulo.filter(href => href !== page.href);
 
-    const newPages = isActive
-      ? currentPagesList.filter(href => href !== page.href)
-      : [...currentPagesList, page.href];
-
-    const willHaveZeroPages = newPages.length === 0;
+    const todasDelModulo = MODULE_PAGES[moduleCode] || [];
+    const willHaveZeroPages = nuevasDelModulo.length >= todasDelModulo.length;
 
     // Construir nuevo estado completo
-    const newActiveModulePages = { ...activeModulePages, [moduleCode]: newPages };
+    const nuevoMapaOcultas = { ...paginasOcultas, [moduleCode]: nuevasDelModulo };
 
     // Actualización optimista local
-    const previousPages = { ...activeModulePages };
-    setActiveModulePages(newActiveModulePages);
+    const previousPages = { ...paginasOcultas };
+    setPaginasOcultas(nuevoMapaOcultas);
 
     // Si al desactivar esta página quedan 0 páginas activas, desactivar el módulo
     if (willHaveZeroPages) {
@@ -273,7 +270,7 @@ export default function ModulesMarketplacePage() {
 
     // Notificar al AppLayout inmediatamente con los datos optimistas
     window.dispatchEvent(new CustomEvent('modules-updated', {
-      detail: { activeModulePages: newActiveModulePages }
+      detail: { paginasOcultas: nuevoMapaOcultas }
     }));
 
     try {
@@ -292,11 +289,15 @@ export default function ModulesMarketplacePage() {
       const result = await response.json();
 
       if (!result.success) {
-        setActiveModulePages(previousPages);
-        setError(result.message || 'Error al cambiar página');
+        setPaginasOcultas(previousPages);
+        setError(
+          response.status === 403
+            ? t('modules.errorSinPermiso')
+            : result.message || t('modules.errorToggling')
+        );
         // Revertir en sidebar también
         window.dispatchEvent(new CustomEvent('modules-updated', {
-          detail: { activeModulePages: previousPages }
+          detail: { paginasOcultas: previousPages }
         }));
         return;
       }
@@ -304,17 +305,17 @@ export default function ModulesMarketplacePage() {
       // Confirmar con recarga desde DB
       window.dispatchEvent(new Event('modules-updated'));
     } catch (err) {
-      setActiveModulePages(previousPages);
+      setPaginasOcultas(previousPages);
       console.error('Error toggling page:', err);
       setError('Error de conexión al cambiar página');
       // Revertir en sidebar
       window.dispatchEvent(new CustomEvent('modules-updated', {
-        detail: { activeModulePages: previousPages }
+        detail: { paginasOcultas: previousPages }
       }));
     } finally {
       setPageActionLoading(null);
     }
-  }, [organizationId, activeModulePages, handleToggleModule]);
+  }, [organizationId, paginasOcultas, handleToggleModule]);
 
   // Expandir/contraer módulo para ver submódulos
   const toggleExpand = useCallback((moduleCode: string) => {
@@ -329,12 +330,17 @@ export default function ModulesMarketplacePage() {
     });
   }, []);
 
-  // Verificar si una página está activa
+  // Verificar si una página está activa. La regla la decide `paginaActiva()` y
+  // solo él: esta pantalla es la que ESCRIBE la lista, y si leyera con otra
+  // regla mostraría apagada una página que el menú sí enseña — que es
+  // exactamente lo que pasaba con cada página nueva del catálogo.
   const isPageActive = useCallback((moduleCode: string, pageHref: string) => {
-    const pages = activeModulePages[moduleCode];
-    if (pages === undefined) return true; // Si no hay datos, asumir activo
-    return pages.includes(pageHref);
-  }, [activeModulePages]);
+    return paginaActiva(moduleCode, pageHref, {
+      // El módulo ya se está listando: aquí solo se decide la página.
+      modulosActivos: [moduleCode],
+      paginasOcultas,
+    });
+  }, [paginasOcultas]);
 
   // Usar estado optimista para verificar si módulo está activo
   const getModuleStatus = useCallback((moduleCode: string) => {
@@ -461,8 +467,7 @@ export default function ModulesMarketplacePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 items-start">
           {coreModules.map((module) => {
             const Icon = moduleIcons[module.code] || Package;
-            const isActive = getModuleStatus(module.code);
-            
+
             return (
               <Card key={module.code} className="relative dark:bg-gray-900 dark:border-gray-800">
                 <CardHeader>
@@ -572,9 +577,10 @@ export default function ModulesMarketplacePage() {
                         </div>
                         <div className="flex items-center gap-2">
                           {(() => {
-                            const modulePageList = activeModulePages[module.code];
                             const totalCount = MODULE_PAGES[module.code].length;
-                            const activeCount = modulePageList === undefined ? totalCount : modulePageList.length;
+                            const activeCount = MODULE_PAGES[module.code].filter(
+                              (p) => isPageActive(module.code, p.href)
+                            ).length;
                             return (
                               <Badge variant="outline" className="text-xs dark:border-gray-700 dark:text-gray-400">
                                 {activeCount}/{totalCount}

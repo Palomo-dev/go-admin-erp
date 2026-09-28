@@ -154,7 +154,9 @@ export async function createLeadWithCustomer(ctx: LeadCreateContext, body: Creat
   const { customerId, createdCustomerId } = ficha;
 
   const amount = Number.isFinite(Number(body.amount)) ? Number(body.amount) : 0;
-  const currency = clean(body.currency) || 'COP';
+  // Sin moneda elegida va NULL: el trigger `trg_00_moneda_base_por_defecto`
+  // pone la moneda base de la organización (nunca 'COP' cableado).
+  const currency = clean(body.currency);
 
   // ── 4. Vendedor: explícito (validado contra la organización) o automático ─
   // El explícito manda: la asignación automática solo entra cuando el cuerpo

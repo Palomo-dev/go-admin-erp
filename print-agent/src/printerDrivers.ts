@@ -4,6 +4,7 @@ import { getPaperSpec } from './printing/paper';
 import { printKitchenTicket, buildPlainTextTicket, printSaleTicket, buildPlainTextSaleTicket, printShipmentGuide, buildPlainTextShipmentGuide, printElectronicInvoice, buildPlainTextElectronicInvoice } from './printing/renderEscpos';
 import { buildSaleTicketHTML, buildKitchenTicketHTML, buildShipmentGuideHTML, buildElectronicInvoiceHTML } from './printing/renderHtml';
 import { buildEscposBuffer, buildCashDrawerBuffer } from './printing/escposBuffer';
+import { printProductLabels, buildPlainTextProductLabels, buildProductLabelsHTML } from './printing/labels';
 import { sendRawToPrinter, getPrinterInfo } from './transports/rawSpooler';
 
 function renderToDevice(device_: any, jobType: PrintJobRow['job_type'], payload: PrintJobPayload, paper: PaperSpec): void {
@@ -18,6 +19,8 @@ function renderToDevice(device_: any, jobType: PrintJobRow['job_type'], payload:
     printShipmentGuide(device_, payload as any, paper);
   } else if (jobType === 'electronic_invoice') {
     printElectronicInvoice(device_, payload as any, paper);
+  } else if (jobType === 'product_label') {
+    printProductLabels(device_, payload as any, paper);
   } else {
     printKitchenTicket(device_, payload as any, paper);
   }
@@ -27,6 +30,7 @@ function renderPlainText(jobType: PrintJobRow['job_type'], payload: PrintJobPayl
   if (jobType === 'sale_ticket' || jobType === 'pre_cuenta') return buildPlainTextSaleTicket(payload as any, paper);
   if (jobType === 'shipment_guide') return buildPlainTextShipmentGuide(payload as any, paper);
   if (jobType === 'electronic_invoice') return buildPlainTextElectronicInvoice(payload as any, paper);
+  if (jobType === 'product_label') return buildPlainTextProductLabels(payload as any, paper);
   return buildPlainTextTicket(payload as any, paper);
 }
 
@@ -34,6 +38,7 @@ function renderHTML(jobType: PrintJobRow['job_type'], payload: PrintJobPayload, 
   if (jobType === 'sale_ticket' || jobType === 'pre_cuenta') return buildSaleTicketHTML(payload as any, paper);
   if (jobType === 'shipment_guide') return buildShipmentGuideHTML(payload as any, paper);
   if (jobType === 'electronic_invoice') return buildElectronicInvoiceHTML(payload as any, paper);
+  if (jobType === 'product_label') return buildProductLabelsHTML(payload as any, paper);
   return buildKitchenTicketHTML(payload as any, paper);
 }
 

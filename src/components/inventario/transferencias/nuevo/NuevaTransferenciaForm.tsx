@@ -58,6 +58,13 @@ export function NuevaTransferenciaForm() {
 
   useEffect(() => {
     cargarDatosIniciales();
+    // «Transferir» desde el detalle de producto: llega con el producto (y la
+    // sucursal de origen) preseleccionados en la URL.
+    const params = new URLSearchParams(window.location.search);
+    const productoUrl = params.get('producto_id') ?? params.get('productId');
+    const origenUrl = params.get('origen') ?? params.get('branchId');
+    if (productoUrl && /^\d+$/.test(productoUrl)) setProductoSeleccionado(productoUrl);
+    if (origenUrl && /^\d+$/.test(origenUrl)) setOrigenId(origenUrl);
   }, []);
 
   useEffect(() => {

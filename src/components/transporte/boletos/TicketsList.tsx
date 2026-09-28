@@ -36,6 +36,8 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { TicketWithDetails } from '@/lib/services/ticketsService';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 
 interface TicketsListProps {
   tickets: TicketWithDetails[];
@@ -81,6 +83,9 @@ export function TicketsList({
   onDuplicate,
   onResendQR,
 }: TicketsListProps) {
+  // Cada boleto en su moneda; sin ella, la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+
   if (isLoading) {
     return <TableSkeleton rows={5} columns={7} />;
   }
@@ -161,11 +166,7 @@ export function TicketsList({
                   </div>
                 </TableCell>
                 <TableCell className="font-medium">
-                  {new Intl.NumberFormat('es-CO', {
-                    style: 'currency',
-                    currency: ticket.currency || 'COP',
-                    minimumFractionDigits: 0,
-                  }).format(ticket.total || 0)}
+                  {formatMoneda(ticket.total || 0, paraDocumento(ticket.currency))}
                 </TableCell>
                 <TableCell>
                   <Badge className={status.color}>{status.label}</Badge>

@@ -1,14 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User, ShoppingCart, Wallet, Plus, Trash2, X, Percent, Truck, MapPin, Phone, Navigation, UserCircle, Clock, QrCode } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { FileCheck2, CheckCircle, Banknote, User, Wallet, Plus, Trash2, X, Percent, Truck, QrCode, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { createPortal } from 'react-dom';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -20,23 +14,21 @@ import {
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { POSService } from '@/lib/services/posService';
 import { supabase } from '@/lib/supabase/config';
 import { useCommissionRate } from '@/lib/hooks/useCommissionRate';
-import { PrintService, BusinessInfo, CashierInfo, BranchInfo } from '@/lib/services/printService';
+import { PrintService, BusinessInfo, CashierInfo } from '@/lib/services/printService';
 import { PrintJobsService } from '@/lib/services/printJobsService';
 import { CashDrawerService } from '@/lib/services/cashDrawerService';
 import { toast } from 'sonner';
-import { Cart, PaymentMethod, CheckoutData, Sale, Currency, SaleItem } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { Cart, PaymentMethod, CheckoutData, Sale, Currency } from './types';
+import { cn } from '@/utils/Utils';
 import { 
   calculateCartTaxes, 
   type OrganizationTax as TaxUtilOrganizationTax,
   type TaxCalculationItem 
 } from '@/lib/utils/taxCalculations';
 import { validateCompositeStock } from '@/lib/services/compositeStockValidation';
-import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
 import { CajasService } from '@/components/pos/cajas/CajasService';
@@ -46,12 +38,47 @@ import { QrPaymentDialog } from '@/components/shared/QrPaymentDialog';
 import { useMobileNative } from '@/hooks/useMobileNative';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
-import { isQrPaymentCode, pickQrFromProviderResponse, resolveCashReceived, resolveDisplayQr, resolveQrChargeAmount, toDisplayPayment } from '@/lib/pos/display/payment';
+import { confirmQrPaymentEntry, isQrPaymentCode, pickQrFromProviderResponse, resolveCashReceived, resolveDisplayQr, resolveQrChargeAmount, toDisplayPayment } from '@/lib/pos/display/payment';
+import { computeTipAmount } from '@/lib/pos/display/tip';
 import { useCustomerDisplayPresence } from '@/components/pos/display/useCustomerDisplayPresence';
 import { TipFromDisplayNotice } from '@/components/pos/display/TipFromDisplayNotice';
 import { applyTipToPrefilledPayment } from '@/components/pos/display/tipNotice';
 import { isDesktop } from '@/lib/utils/desktop';
 import { newSaleId, ticketSaleNumber } from '@/lib/offline/salesOutbox';
+import { useTranslations } from 'next-intl';
+import { codigoErrorCobro, detalleErrorCobro } from '@/lib/pos/erroresCobro';
+import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
+import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
+// Lógica pura del cobro extraída LITERAL (POS-PLAN §2.6 L41–L52, paso 1):
+import { cuentasDelCobro } from '@/lib/pos/venta/cobro/cuentasCobro';
+import { actualizarEntradaPago, entradaDePagoNueva, pagosDelSobre, pagosParaImpresion, puedeQuitarPagos, quitarEntradaPago } from '@/lib/pos/venta/cobro/pagosCobro';
+import { faltaParaEntrada, montosDeEntrada, muestraMontosRapidos } from '@/lib/pos/venta/cobro/montosRapidos';
+import { PORCENTAJES_PROPINA, baseDePropina, meserosDesdeMiembros, propinaTopada, topePropina } from '@/lib/pos/venta/cobro/propinaCobro';
+import { camposComisionDelSobre, comisionDeTasaResuelta, esPersonaAsignada, montoComision } from '@/lib/pos/venta/cobro/comisionCobro';
+import { camposEntregaDelSobre, fleteDeTarifaElegida, opcionesDeTarifa, tarifaPorDefecto, tarifasVisiblesEnPos } from '@/lib/pos/venta/cobro/entregaCobro';
+import { lineasConSerial, seleccionSerialesCompleta } from '@/lib/pos/venta/cobro/serialesCobro';
+import { comprobarStockReceta, debeConfirmarStock } from '@/lib/pos/venta/cobro/stockRecetaCobro';
+import { AVISO_SIN_IMPRESORA_CAJA, AVISO_VENTA_SIN_SUCURSAL, PREFIJO_ERROR_TICKET, lanzarTicketYCajon, planPostVenta } from '@/lib/pos/venta/cobro/postVentaCobro';
+import { PostVenta, type EstadoRecibo } from '@/components/pos/venta/PostVenta';
+// Presentación del cobro (paso 11): contenedor, zona de totales y monto del pago.
+import { BotonImporte, KbdButton, SeccionPlegable, SegmentedControl, SelectorMetodoPago, clasesBoton, repartirMetodos, useAtajos, type Atajo } from '@/components/kit';
+import { Switch } from '@/components/ui/switch';
+import { EntregaCobro } from '@/components/pos/venta/cobro/EntregaCobro';
+import { leerEstadoFacturaElectronica, type ClienteConfigFactura, type EstadoFacturaElectronica } from '@/lib/pos/venta/cobro/facturaElectronicaCobro';
+import { CobroPanel } from '@/components/pos/venta/CobroPanel';
+import { ResumenCobro } from '@/components/pos/venta/cobro/ResumenCobro';
+import { EditorPagoCobro } from '@/components/pos/venta/cobro/EditorPagoCobro';
+import { accionAtajoMetodo, enterCompletaVenta } from '@/components/pos/venta/cobro/teclasCobro';
+import { teclaAtajo } from '@/lib/pos/venta/atajos';
+import { hayRafagaDelLector } from '@/hooks/useHardwareBarcodeScanner';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
+
+/** Botones de método visibles antes de «Otro» (Alt+1…Alt+5 por posición). */
+const MAX_BOTONES_METODO = 5;
+const ATAJOS_METODO = ['metodo1', 'metodo2', 'metodo3', 'metodo4', 'metodoOtro'] as const;
+type SeccionCobro = 'entrega' | 'propina' | 'comision' | 'factura';
+const SECCIONES_CERRADAS: Record<SeccionCobro, boolean> = { entrega: false, propina: false, comision: false, factura: false };
 
 interface CheckoutDialogProps {
   cart: Cart;
@@ -173,6 +200,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [qrReference, setQrReference] = useState<string>('');
   const [qrProviderLabel, setQrProviderLabel] = useState<string>('');
   const [qrExpiresAt, setQrExpiresAt] = useState<string | undefined>();
+  // El proveedor mató el código sin pago (expired/rejected/cancelled del
+  // poller, HALLAZGO T): la pantalla del cliente lo retira («El código
+  // venció») aunque el `expires_at` local siga en el futuro.
+  const [qrDead, setQrDead] = useState(false);
   // Importe por el que se generó el QR (F2-C, C2): el de la PROPIA entrada QR
   // en pago mixto, no `remaining` (que ya descuenta esa entrada pre-rellenada).
   // Lo comparten el proveedor, el modal, la pantalla del cliente y onPaid.
@@ -181,8 +212,28 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // onPaid la confirma (método e importe del código) en vez de añadir otra,
   // que duplicaba el pago (25.000 → 50.000 pagados sobre 25.000).
   const [qrEntryId, setQrEntryId] = useState<string | undefined>();
+  // Id de la entrada que onPaid acaba de confirmar (ronda 7, QA-2): lo fija
+  // el updater de `payments` (una sola fuente, `prev`) y lo lee el updater
+  // de `touchedIds`, que corre después en el mismo render (el hook de
+  // `payments` se declara antes). Nunca se decide con el `payments` de la
+  // clausura, que puede ir por detrás del estado real.
+  // DEPENDENCIA DE ORDEN (ronda 8, QA-6): el updater de `touchedIds` lee este
+  // ref DESPUÉS de que corra el de `payments` porque React procesa las colas
+  // en el orden de declaración de los hooks. Si alguien declara `touchedIds`
+  // antes que `payments`, el ref llega null y se marca el respaldo aunque la
+  // entrada de origen exista. Lo vigila un guard estático
+  // (qr-payment-f2c-r8 › «orden de hooks») que falla al invertirlos.
+  const confirmedQrEntryIdRef = useRef<string | null>(null);
   // Guarda el metodo QR usado para registrar el pago correcto al confirmar
   const [qrPaymentMethod, setQrPaymentMethod] = useState<string>('');
+  // Guard de en-vuelo de «Generar QR de pago» (ronda 8, F2C-R7-2): una doble
+  // pulsación (doble tap en la caja táctil) hacía DOS fetch a create-qr, dos
+  // cobros reales en el proveedor, y el poller del diálogo (efecto [open])
+  // quedaba fijado a la PRIMERA referencia mientras el cliente pagaba la
+  // segunda. El ref corta de forma síncrona (el estado llega un render
+  // tarde); el estado deshabilita el botón y pinta «Generando…».
+  const qrRequestInFlightRef = useRef(false);
+  const [isCreatingQr, setIsCreatingQr] = useState(false);
   // Pantalla del cliente (Fase 2, Cobro·QR): «Mostrar en pantalla del cliente»,
   // marcado por defecto al generar el QR si hay pantalla conectada (indicador de F0).
   const displayPresence = useCustomerDisplayPresence();
@@ -193,28 +244,50 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [showQrOnDisplay, setShowQrOnDisplay] = useState(false);
 
   // Estados para búsqueda de direcciones de clientes
-  const [addressSearch, setAddressSearch] = useState<string>('');
+  const [, setAddressSearch] = useState<string>('');
   const [addressResults, setAddressResults] = useState<Array<{ id: string; name: string; address: string; city?: string; phone?: string }>>([]);
   const [showAddressDropdown, setShowAddressDropdown] = useState<boolean>(false);
 
-  // Comisión calculada
-  const commissionAmount = commissionRate > 0 && salespersonId && salespersonId !== '__none__'
-    ? commissionMethod === 'fixed_amount'
-      ? commissionRate
-      : Math.round((calculatedTotals.subtotal || cart.subtotal) * commissionRate / 100 * 100) / 100
-    : 0;
-  
+  // Comisión calculada (L45: montoComision, src/lib/pos/venta/cobro/comisionCobro.ts)
+  const commissionAmount = montoComision({
+    commissionRate,
+    salespersonId,
+    commissionMethod,
+    subtotal: calculatedTotals.subtotal || cart.subtotal,
+  });
+
   // Calculados - usar totales con impuestos + propina
   const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
-  // Si el dialog calculó impuestos, usar su finalTotal. 
-  // Si no calculó impuestos pero el carrito ya los tiene (ej. desde mesa con useMesaTaxes), usar cart.total.
-  const baseTotal = (calculatedTotals.totalTaxAmount === 0 && cart.tax_total > 0)
-    ? cart.total
-    : (calculatedTotals.finalTotal > 0 ? calculatedTotals.finalTotal : cart.total);
-  const cartTotal = baseTotal + tipAmount + shippingFee;
+  // Base, total, cambio y «se puede completar»: cuentasDelCobro (L41,
+  // src/lib/pos/venta/cobro/cuentasCobro.ts). `totalPaid` y `remaining` siguen
+  // escritos aquí porque las pruebas de __tests__/pos-display leen esas dos
+  // líneas del fuente; son la misma cuenta que devuelve cuentasDelCobro.
+  const cuentasCobro = cuentasDelCobro({ calculatedTotals, cart, tipAmount, shippingFee, totalPaid });
+  const baseTotal = cuentasCobro.baseTotal;
+  const cartTotal = cuentasCobro.cartTotal;
   const remaining = Math.max(0, cartTotal - totalPaid);
-  const change = Math.max(0, totalPaid - cartTotal);
-  const canComplete = totalPaid >= cartTotal;
+  const change = cuentasCobro.change;
+  // Base de la propina (D7, paso 12): el subtotal SIN impuestos que ya calculó
+  // el cobro, no `baseTotal` (con impuestos). La misma base va a la pantalla
+  // del cliente (setTipBase) para que «10 %» sea la misma cifra en las dos.
+  const baseTip = baseDePropina({ calculatedTotals, cart });
+  const canComplete = cuentasCobro.canComplete;
+
+  // Advertencia (no bloquea el cobro): líneas que se cobrarán sin IVA porque ni
+  // el producto ni la organización tienen impuesto configurado.
+  const lineasParaAviso = useMemo(
+    () => cart.items.map((it) => ({
+      nombre: it.product?.name ?? '',
+      productId: it.product_id ?? null,
+      taxRate: it.tax_rate ?? null,
+      taxExcluded: it.tax_excluded ?? null,
+    })),
+    [cart.items],
+  );
+  const { sinImpuesto: lineasSinImpuesto } = useLineasSinImpuesto(
+    open ? cart.organization_id : null,
+    lineasParaAviso,
+  );
 
   // Pantalla del cliente (PLAN §4.2 «Cobro» y §12 Fase 0). Mientras el
   // cobro está abierto se proyecta el estado según el ÚLTIMO medio elegido:
@@ -232,6 +305,18 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // el recibido es solo el efectivo tecleado (resolveCashReceived): teclear
   // la tarjeta no convierte en «recibido» un efectivo pre-rellenado.
   const saleConfirmedRef = useRef(false);
+  // Intento de cobro (E-35 / BE3): el id de la venta se genera UNA vez por
+  // intento, al primer «Completar venta», y se reutiliza en los reintentos.
+  // Si el primer envío llegó a la base pero la respuesta se perdió (timeout,
+  // red), reintentar con el mismo id hace que pos_checkout_v1 devuelva la venta
+  // ya creada en vez de crear otra. Antes el navegador lo generaba dentro de
+  // POSService.checkout en cada clic (y el escritorio, en cada clic también).
+  const intentoCobroRef = useRef<{ id: string; creadoEn: string } | null>(null);
+  // «Completar venta» en vuelo (corte síncrono de la doble pulsación).
+  const cobroEnVueloRef = useRef(false);
+  const tCobro = useTranslations('posCobroServidor');
+  const tPos = useTranslations('posCobro');
+  const tAtajos = useTranslations('posVenta.atajos');
   const [touchedIds, setTouchedIds] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     if (!open || showReceipt) return;
@@ -240,9 +325,14 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     // interruptor apagado viaja sin código: la pantalla dice «Pago con QR:
     // siga las instrucciones del cajero» (PLAN §3.5).
     if (showQrDialog && qrPaymentMethod) {
-      const resolved = showQrOnDisplay
-        ? resolveDisplayQr({ imageUrl: qrImageUrl, data: qrData, expiresAt: qrExpiresAt })
-        : { qr: null, expiresAt: null };
+      // Código muerto por el proveedor (qrDead): sin código y vencido, con
+      // el interruptor en cualquier posición; la pantalla dice «El código
+      // venció», nunca pinta uno que ya no sirve.
+      const resolved = qrDead
+        ? { qr: null, expiresAt: 0 }
+        : showQrOnDisplay
+          ? resolveDisplayQr({ imageUrl: qrImageUrl, data: qrData, expiresAt: qrExpiresAt })
+          : { qr: null, expiresAt: null };
       getPosDisplayEmitter().setPayment(
         toDisplayPayment({
           methodCode: qrPaymentMethod,
@@ -286,6 +376,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     qrImageUrl,
     qrData,
     qrExpiresAt,
+    qrDead,
     qrAmount,
   ]);
 
@@ -295,25 +386,29 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     if (!open) return;
     return getPosDisplayEmitter().onUp((msg) => {
       if (msg.t !== 'qr_paid_claim' || msg.cartId !== cart.id) return;
-      toast.info('El cliente indica que ya pagó', {
-        description: 'Confirme el pago como siempre: por el estado del QR o el comprobante.',
+      toast.info(tPos('qr.clienteDiceQuePago'), {
+        description: tPos('qr.clienteDiceQuePagoDesc'),
       });
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tPos (next-intl) es estable por idioma
   }, [open, cart.id]);
 
   // Fase 2-B (Propina en pantalla): la base sobre la que la pantalla calcula
-  // los porcentajes es la MISMA que usa handleTipPercentage (total con
-  // impuestos, sin propina ni domicilio); así «10 %» es la misma cifra en la
+  // los porcentajes es la MISMA que usa handleTipPercentage (desde el paso 12,
+  // D7: el subtotal SIN impuestos, `baseTip`); así «10 %» es la misma cifra en la
   // pantalla y en la caja. La fase la abre el emisor al entrar en cobro.
   useEffect(() => {
     if (!open || showReceipt) return;
-    getPosDisplayEmitter().setTipBase(baseTotal);
-  }, [open, showReceipt, baseTotal]);
+    getPosDisplayEmitter().setTipBase(baseTip);
+  }, [open, showReceipt, baseTip]);
 
   useEffect(() => {
     if (open) {
       saleConfirmedRef.current = false;
       setTouchedIds(new Set());
+      // Cada apertura del cobro es un intento nuevo (otra venta u otra cuenta
+      // de la mesa); los reintentos DENTRO del mismo intento reusan su id.
+      intentoCobroRef.current = null;
       return;
     }
     // Cerrado sin vender: la pantalla vuelve al pedido. Tras una venta el
@@ -344,8 +439,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           if (config.require_cash_session) {
             const activeSession = await CajasService.getActiveSession();
             if (!activeSession) {
-              toast.error('No hay caja abierta', {
-                description: 'Debe abrir una caja antes de realizar ventas. Vaya a POS → Cajas.',
+              toast.error(tPos('caja.sinCaja'), {
+                description: tPos('caja.sinCajaDesc'),
                 duration: 5000,
               });
               onOpenChange(false);
@@ -432,6 +527,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setQrData(undefined);
       setQrImageUrl(undefined);
       setQrExpiresAt(undefined);
+      setQrDead(false);
       setQrAmount(undefined);
       setQrEntryId(undefined);
       setQrPaymentMethod('');
@@ -500,7 +596,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         const rates = await shippingRatesService.getShippingRates(cart.organization_id, {
           is_active: true,
         });
-        const posRates = rates.filter(r => r.show_on_pos);
+        const posRates = tarifasVisiblesEnPos(rates);
 
         if (posRates.length === 0) {
           setShippingRates([]);
@@ -517,20 +613,13 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           declared_value: subtotal,
         });
 
-        const rateOptions = simulated
-          .filter(s => posRates.some(pr => pr.id === s.rate.id))
-          .map(s => ({
-            id: s.rate.id,
-            rate_name: s.rate.rate_name,
-            total_cost: s.total_cost,
-            currency: s.rate.currency,
-          }));
+        const rateOptions = opcionesDeTarifa(simulated, posRates);
 
         setShippingRates(rateOptions);
 
         // Auto-seleccionar la más económica
-        if (rateOptions.length > 0) {
-          const cheapest = rateOptions[0];
+        const cheapest = tarifaPorDefecto(rateOptions);
+        if (cheapest) {
           setSelectedRateId(cheapest.id);
           setShippingFee(cheapest.total_cost);
         }
@@ -545,12 +634,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
   // Actualizar shippingFee cuando cambia selectedRateId
   useEffect(() => {
-    if (selectedRateId && shippingRates.length > 0) {
-      const rate = shippingRates.find(r => r.id === selectedRateId);
-      setShippingFee(rate?.total_cost || 0);
-    } else if (!selectedRateId) {
-      setShippingFee(0);
-    }
+    const flete = fleteDeTarifaElegida(selectedRateId, shippingRates);
+    if (flete !== null) setShippingFee(flete);
   }, [selectedRateId, shippingRates]);
 
   // Calcular totales con impuestos cuando cambie el carrito o configuración de impuestos
@@ -642,12 +727,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const loadServers = async () => {
     try {
       const members = await POSService.getOrganizationMembers();
-      setServers(members.map(m => ({
-        id: m.user_id,
-        name: m.users?.raw_user_meta_data?.full_name || 
-              m.users?.raw_user_meta_data?.name || 
-              m.users?.email || 'Sin nombre'
-      })));
+      setServers(meserosDesdeMiembros(members));
     } catch (error) {
       console.error('Error loading servers:', error);
     }
@@ -673,13 +753,17 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       followTipOnPrefilledPayment(0);
     } else {
       setTipPercentage(percentage);
-      const calculatedTip = Math.round(baseTotal * (percentage / 100));
+      // Misma aritmética que la pantalla del cliente y «Aplicar» (tip.ts, regla dura 7): con presets
+      // arbitrarios de la organización `Math.round(base * (pct / 100))` difería en 1 (25 × 58 % → 14 / 15).
+      const calculatedTip = computeTipAmount(baseTip, percentage);
       setTipAmount(calculatedTip);
       followTipOnPrefilledPayment(calculatedTip);
     }
   };
 
-  const handleTipAmountChange = (value: number) => {
+  const handleTipAmountChange = (valorTecleado: number) => {
+    // D7: «otro valor» nunca pasa del 10 % de la base (antes de impuestos).
+    const value = propinaTopada(valorTecleado, baseTip);
     setTipPercentage(null);
     setTipAmount(value);
     followTipOnPrefilledPayment(value);
@@ -694,10 +778,15 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // nada pendiente, al total. Así lo que cobra el código es lo que ve el
   // cliente en la pantalla.
   const handleQrPayment = async (methodCode: string, entryId?: string, entryAmount?: number) => {
+    // Ya hay una generación en vuelo: la segunda pulsación no hace nada
+    // (F2C-R7-2). Antes del fetch y de cualquier setState.
+    if (qrRequestInFlightRef.current) return;
     if (!cart.branch_id) {
-      toast.error('Se requiere una sucursal para procesar');
+      toast.error(tPos('errores.sinSucursal'));
       return;
     }
+    qrRequestInFlightRef.current = true;
+    setIsCreatingQr(true);
     try {
       const reference = `POS-${Date.now()}-${cart.organization_id}`;
       const othersTotal = payments.filter((p) => p.id !== entryId).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
@@ -706,7 +795,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // caería al total y el proveedor crearía un cobro REAL sobre una venta
       // ya cubierta. Se corta antes del fetch.
       if (Math.max(0, cartTotal - othersTotal) <= 0) {
-        toast.error('No hay saldo pendiente para cobrar con QR');
+        toast.error(tPos('qr.sinSaldo'));
         return;
       }
       const amount = resolveQrChargeAmount({ entryAmount, othersTotal, total: cartTotal });
@@ -725,7 +814,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       } else if (methodCode === 'breb_qr') {
         endpoint = '/api/integrations/breb/create-qr';
         providerLabel = 'Bre-B (Mono)';
-        extraBody = { keyValue: `@org${cart.organization_id}` };
+        // La llave Bre-B (a dónde llega el dinero) sale de la conexión, en el servidor.
       } else if (methodCode === 'bancolombia_qr_wompi') {
         endpoint = '/api/integrations/bancolombia/wompi/create-qr';
         providerLabel = 'Bancolombia QR (Wompi)';
@@ -750,7 +839,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           // terminal_model y terminal_serial se resuelven en el backend
         };
       } else {
-        toast.error('Metodo QR no soportado');
+        toast.error(tPos('qr.noSoportado'));
         return;
       }
 
@@ -758,7 +847,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          connectionId: '', // Se resuelve en el backend por organization
+          // La conexión de cobro la resuelve el servidor (organización de la sesión + sucursal).
           amount,
           currency: currency?.code || 'COP',
           reference,
@@ -773,7 +862,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        toast.error('Error al generar QR', { description: errData.error || 'Error desconocido' });
+        toast.error(tPos('qr.errorGenerar'), { description: errData.error || tPos('errores.desconocido') });
         return;
       }
 
@@ -783,8 +872,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // Si solo hay payment_url (sin qr_data ni qr_image_url), abrir en nueva ventana
       if (data.payment_url && !data.qr_data && !data.qr_image_url) {
         window.open(data.payment_url, '_blank');
-        toast.success('Link de pago abierto', {
-          description: 'Se abrio el link de pago de Bold en una nueva ventana.',
+        toast.success(tPos('qr.linkAbierto'), {
+          description: tPos('qr.linkAbiertoDesc'),
         });
         return;
       }
@@ -802,13 +891,19 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setQrData(picked.data);
       setQrImageUrl(picked.imageUrl);
       setQrExpiresAt(session?.expires_at || undefined);
+      setQrDead(false);
       setQrAmount(amount);
       setQrEntryId(entryId);
       setShowQrOnDisplay(displayConnectedRef.current);
       setShowQrDialog(true);
     } catch (err) {
       console.error('Error en handleQrPayment:', err);
-      toast.error('Error al generar QR de pago');
+      toast.error(tPos('qr.errorGenerarPago'));
+    } finally {
+      // Siempre (éxito, retorno temprano o error): el botón vuelve a estar
+      // disponible y la siguiente pulsación ya puede generar otro código.
+      qrRequestInFlightRef.current = false;
+      setIsCreatingQr(false);
     }
   };
   
@@ -938,48 +1033,41 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     );
   };
 
+  // Pagos (L42): reductores puros en src/lib/pos/venta/cobro/pagosCobro.ts.
   const addPayment = () => {
-    const newPayment: PaymentEntry = {
+    // Entrada nueva en efectivo por lo que falta (la primera, por el total).
+    const newPayment: PaymentEntry = entradaDePagoNueva({
       id: crypto.randomUUID(),
-      method: 'cash',
       amount: remaining
-    };
+    });
     setPayments([...payments, newPayment]);
   };
 
   const updatePayment = (id: string, field: 'method' | 'amount', value: string | number) => {
     // A partir de aquí la pantalla del cliente muestra recibido y cambio en vivo para ESTA entrada.
     if (field === 'amount') setTouchedIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
-    setPayments(payments.map(payment =>
-      payment.id === id
-        ? { ...payment, [field]: field === 'amount' ? Number(value) || 0 : value }
-        : payment
-    ));
+    setPayments(actualizarEntradaPago(payments, id, field, value));
   };
 
   const removePayment = (id: string) => {
-    if (payments.length > 1) {
-      setPayments(payments.filter(payment => payment.id !== id));
-    }
+    // Con una sola entrada devuelve la misma lista: React no re-renderiza.
+    setPayments(quitarEntradaPago(payments, id));
   };
 
-  const serializedItems = cart.items.filter(
-    (item) => item.product?.track_serial === true
-  );
+  // Seriales obligatorios (L48): src/lib/pos/venta/cobro/serialesCobro.ts.
+  const serializedItems = lineasConSerial(cart.items);
   const hasSerialItems = serializedItems.length > 0;
-  const serialSelectionsComplete = serializedItems.every(
-    (item) => (serialSelections[item.product_id]?.length ?? 0) === item.quantity
-  );
+  const serialSelectionsComplete = seleccionSerialesCompleta(serializedItems, serialSelections);
 
   // Handler que pre-llena la tasa de comisión desde vendor_commission_rates
   // al seleccionar un vendedor. El usuario puede override después.
   const handleSalespersonChange = async (value: string) => {
     setSalespersonId(value);
-    if (value && value !== '__none__') {
-      const rate = await resolveCommissionRate(value);
-      if (rate > 0) {
-        setCommissionRate(rate);
-        setCommissionMethod('percentage');
+    if (esPersonaAsignada(value)) {
+      const cambio = comisionDeTasaResuelta(await resolveCommissionRate(value));
+      if (cambio) {
+        setCommissionRate(cambio.commissionRate);
+        setCommissionMethod(cambio.commissionMethod);
       }
     } else {
       setCommissionRate(0);
@@ -990,7 +1078,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     if (!canComplete) return;
 
     if (!cart.branch_id) {
-      toast.error('Se requiere una sucursal para procesar');
+      toast.error(tPos('errores.sinSucursal'));
       return;
     }
 
@@ -999,6 +1087,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       return;
     }
 
+    // Doble pulsación en el mismo instante (doble tap, Enter repetido): el
+    // estado `isProcessing` llega un render tarde; el ref corta de forma
+    // síncrona, igual que `qrRequestInFlightRef` en «Generar QR de pago».
+    if (cobroEnVueloRef.current) return;
+    cobroEnVueloRef.current = true;
     setIsProcessing(true);
     try {
       // Asegurar que los datos del cliente estén disponibles
@@ -1018,25 +1111,18 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // Validar stock de ingredientes para productos compuestos
       const branchId = cart.branch_id;
       if (branchId && cart.items.length > 0) {
-        let stockCheck: Awaited<ReturnType<typeof validateCompositeStock>>;
-        try {
-          stockCheck = await validateCompositeStock(
-            cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity })),
-            branchId
-          );
-        } catch (stockCheckError) {
-          // Desktop sin red (fase 4B): la receta puede no estar en caché. La
-          // comprobación es previa y orientativa; no debe impedir la venta.
-          // En navegador se conserva el comportamiento de siempre.
-          if (!isDesktop()) throw stockCheckError;
-          console.warn('[checkout] No se pudo validar stock de ingredientes (sin red):', stockCheckError);
-          stockCheck = { ok: true };
-        }
-        if (!stockCheck.ok && stockCheck.message) {
+        // L49 (src/lib/pos/venta/cobro/stockRecetaCobro.ts): Desktop sin red
+        // no bloquea la venta; en el navegador un fallo corta como siempre.
+        const stockCheck = await comprobarStockReceta(
+          cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity })),
+          branchId,
+          { validar: validateCompositeStock, esDesktop: isDesktop },
+        );
+        if (debeConfirmarStock(stockCheck)) {
           // Reemplazo de window.confirm por AlertDialog controlado.
           // Se pausa el flujo con una promesa que se resuelve al confirmar/cancelar.
           const proceed = await new Promise<boolean>((resolve) => {
-            setStockConfirm({ message: stockCheck.message!, resolve });
+            setStockConfirm({ message: stockCheck.message, resolve });
           });
           if (!proceed) {
             setIsProcessing(false);
@@ -1072,63 +1158,81 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         total: calculatedTotals.finalTotal
       };
 
+      if (!intentoCobroRef.current) {
+        intentoCobroRef.current = { id: newSaleId(), creadoEn: new Date().toISOString() };
+      }
+      const intento = intentoCobroRef.current;
+
       const checkoutData: CheckoutData = {
         cart: updatedCart,
-        payments: payments.map(p => ({ method: p.method, amount: p.amount })),
+        payments: pagosDelSobre(payments),
         change,
         total_paid: totalPaid,
         tax_included: taxIncluded,
         tip_amount: tipAmount,
-        tip_server_id: serverId && serverId !== '__none__' ? serverId : undefined,
+        tip_server_id: esPersonaAsignada(serverId) ? serverId : undefined,
         tax_breakdown: taxBreakdown.length > 0 ? taxBreakdown : undefined,
-        salesperson_id: salespersonId && salespersonId !== '__none__' ? salespersonId : undefined,
-        commission_rate: commissionRate > 0 ? commissionRate : undefined,
-        commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none',
-        commission_method: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionMethod : undefined,
-        commission_amount: commissionAmount > 0 ? commissionAmount : undefined,
-        delivery_type: deliveryType,
-        delivery_info: deliveryType !== 'pickup' ? {
-          address: deliveryAddress,
-          city: deliveryCity,
-          contact_name: deliveryContactName,
-          contact_phone: deliveryContactPhone,
-          instructions: deliveryInstructions,
-        } : undefined,
-        driver_id: deliveryType === 'delivery_own' ? (selectedDriverId || undefined) : undefined,
-        shipping_fee: shippingFee > 0 ? shippingFee : undefined,
+        // L45: salesperson_id, commission_rate, commission_type, commission_method, commission_amount.
+        ...camposComisionDelSobre({ salespersonId, commissionRate, commissionType, commissionMethod, commissionAmount }),
+        // L46: delivery_type, delivery_info, driver_id, shipping_fee.
+        ...camposEntregaDelSobre({
+          deliveryType,
+          deliveryAddress,
+          deliveryCity,
+          deliveryContactName,
+          deliveryContactPhone,
+          deliveryInstructions,
+          selectedDriverId,
+          shippingFee,
+        }),
         serial_selections: hasSerialItems && serialSelectionsComplete ? serialSelections : undefined,
-        // Desktop (fase 4B): id y fecha generados en el cliente. Con red la
-        // venta se inserta con ese id; sin red va al outbox y se reproduce con
-        // el mismo id (idempotente). En navegador no se envían: nada cambia.
-        ...(isDesktop() ? { saleId: newSaleId(), createdAt: new Date().toISOString() } : {}),
+        // Id y fecha del intento de cobro, generados una vez y reutilizados en
+        // los reintentos (navegador y escritorio). Con red la venta se inserta
+        // con ese id; sin red (escritorio) va al outbox con el mismo id. En un
+        // cobro de mesa o de deuda es la llave de idempotencia de los pagos.
+        saleId: intento.id,
+        createdAt: intento.creadoEn,
+        attemptId: intento.id,
       };
 
       const sale = onProcessPayment
         ? await onProcessPayment(checkoutData)
         : await POSService.checkout(checkoutData);
-      const isPendingSync = sale.pending_sync === true;
+      // L51/L52 (src/lib/pos/venta/cobro/postVentaCobro.ts): qué se hace tras
+      // la venta en cada caso; el orden sigue siendo el de este bloque.
+      const postVenta = planPostVenta({
+        sale,
+        branchId: cart.branch_id,
+        payments,
+        deliveryType,
+        deliveryAddress,
+        sendToFactus,
+      });
+      const isPendingSync = postVenta.pendienteSincronizar;
       if (isPendingSync) {
-        toast.warning(`Sin conexión: venta ${sale.receipt_number_local} guardada en este equipo. Se sincronizará al volver la red.`);
+        toast.warning(tPos('postVenta.avisos.ventaSinRed', { numero: sale.receipt_number_local ?? '' }));
       }
       setCompletedSale(sale);
       setShowReceipt(true);
       saleConfirmedRef.current = true;
-      getPosDisplayEmitter().setMode('thanks', { total: cartTotal });
+      // `saleId` (Fase 4): la pantalla puede pedir calificación durante
+      // «Gracias» y la caja la registra contra ESTA venta (feedback.ts).
+      // Con la venta en el outbox del escritorio (`pending_sync`) todavía NO
+      // hay fila en `sales`, y `pos_display_feedback.sale_id` es una FK: el
+      // insert fallaría con 23503 y la calificación se perdería. Va como
+      // anónima, que es un caso ya contemplado (ventana de 2 minutos).
+      getPosDisplayEmitter().setMode('thanks', { total: cartTotal, saleId: postVenta.saleIdPantalla });
 
       // Haptic feedback de venta exitosa (no-op en web)
       hapticNotification('success');
       hapticImpact('medium');
 
-      // Impresión física automática del ticket de venta (best-effort):
-      // sale por la(s) impresora(s) con estación 'Caja'. Si no hay impresora
-      // o falla, no bloquea el flujo; queda el botón "Imprimir Recibo" (PDF).
-      if (cart.branch_id) {
-        const paymentsList = payments.filter(p => p.amount > 0).map(p => ({
-          method: p.method,
-          methodName: paymentMethods.find(pm => pm.code === p.method)?.name || p.method,
-          amount: p.amount,
-        }));
-        PrintJobsService.enqueueSaleTicket(cart.branch_id, {
+      // Ticket físico automático (sin impresora de caja: aviso) y cajón con
+      // efectivo, en ese orden y best-effort: lanzarTicketYCajon.
+      setEstadoRecibo(postVenta.ticket === 'encolar' ? 'enviando' : null);
+      setDetalleRecibo(null);
+      lanzarTicketYCajon(postVenta, {
+        encolarTicket: () => PrintJobsService.enqueueSaleTicket(cart.branch_id, {
           saleId: sale.id,
           // Offline: número local + «Pendiente de sincronizar» en el papel.
           saleNumber: ticketSaleNumber(sale),
@@ -1153,8 +1257,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             discountAmount: item.discount_amount,
             variantData: (item as any).product?.variant_data || null,
             modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
+            // Solo la nota PARA EL CLIENTE; la de cocina (`notes`) nunca va al ticket.
+            note: item.customer_note || null,
           })),
-          payments: paymentsList,
+          payments: pagosParaImpresion(payments, paymentMethods),
           businessName: organization?.name,
           businessNit: organization?.nit || organization?.tax_id,
           businessPhone: organization?.phone,
@@ -1181,31 +1287,29 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             city: deliveryCity || undefined,
             instructions: deliveryInstructions || undefined,
           } : undefined,
-        }).then(({ enqueued }) => {
-          if (enqueued === 0) {
-            toast.warning('No hay impresora de caja configurada para esta sucursal. El recibo quedó disponible para impresión manual.');
-          }
-        }).catch((err) => {
-          toast.error('No se pudo encolar la impresión física del recibo: ' + (err.message || err));
-        });
-      } else {
-        toast.warning('Esta venta no tiene sucursal asignada. No se encoló impresión física.');
-      }
-
-      // Abrir cajón de dinero si hay pagos en efectivo (best-effort, no bloquea)
-      const hasCashPayment = payments.some(p => p.amount > 0 && p.method === 'cash');
-      if (hasCashPayment && cart.branch_id) {
-        CashDrawerService.open(cart.branch_id).catch((err) => {
-          console.warn('[cashDrawer] No se pudo abrir el cajón:', err.message || err);
-        });
-      }
+        }),
+        abrirCajon: () => CashDrawerService.open(cart.branch_id),
+        // Los avisos del recibo se ven en la post-venta (sin badge «Nuevo», H6), no como toast.
+        avisarAdvertencia: (mensaje) => {
+          if (mensaje === AVISO_SIN_IMPRESORA_CAJA) setEstadoRecibo('sinImpresora');
+          else if (mensaje === AVISO_VENTA_SIN_SUCURSAL) setEstadoRecibo('sinSucursal');
+          else toast.warning(mensaje);
+        },
+        avisarError: (mensaje) => {
+          setEstadoRecibo('error');
+          setDetalleRecibo(mensaje.startsWith(PREFIJO_ERROR_TICKET) ? mensaje.slice(PREFIJO_ERROR_TICKET.length) : mensaje);
+        },
+        alEncolar: (enqueued) => {
+          if (enqueued > 0) setEstadoRecibo('enviado');
+        },
+      });
 
       // Crear shipment si es delivery propio
       // Sin red no hay venta en la BD todavía: el envío no puede crearse.
-      if (deliveryType === 'delivery_own' && deliveryAddress && isPendingSync) {
-        toast.warning('Sin conexión: el envío a domicilio debe crearse manualmente cuando la venta se sincronice.');
+      if (postVenta.envio === 'avisar_sin_red') {
+        toast.warning(tPos('postVenta.avisos.envioSinRed'));
       }
-      if (deliveryType === 'delivery_own' && deliveryAddress && !isPendingSync) {
+      if (postVenta.envio === 'hacer') {
         try {
           const { deliveryIntegrationService } = await import('@/lib/services/deliveryIntegrationService');
           await deliveryIntegrationService.createShipmentFromPOSSale({
@@ -1274,10 +1378,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       }
 
       // Enviar a Factus (factura electrónica) si el toggle está activado
-      if (sendToFactus && isPendingSync) {
-        toast.warning('Sin conexión: la factura electrónica se podrá enviar a DIAN desde Facturación cuando la venta se sincronice.');
+      if (postVenta.factura === 'avisar_sin_red') {
+        toast.warning(tPos('postVenta.avisos.facturaSinRed'));
       }
-      if (sendToFactus && !isPendingSync) {
+      if (postVenta.factura === 'hacer') {
         try {
           // Buscar la invoice_sales creada durante el checkout
           const { data: invoiceSale } = await supabase
@@ -1289,11 +1393,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             .maybeSingle();
 
           if (invoiceSale?.id) {
-            toast.info('Enviando factura a DIAN...');
+            toast.info(tPos('postVenta.avisos.enviandoFactura'));
             const result = await electronicInvoicingService.sendToFactus(invoiceSale.id, cart.organization_id);
             if (result.success) {
-              toast.success('Factura enviada a DIAN', {
-                description: `Factura ${invoiceSale.number} enviada para validación`,
+              toast.success(tPos('postVenta.avisos.facturaEnviada'), {
+                description: tPos('postVenta.avisos.facturaEnviadaDesc', { numero: invoiceSale.number }),
               });
 
               // Consultar el job de DIAN para obtener CUFE y QR
@@ -1347,12 +1451,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                         discountAmount: item.discount_amount,
                         variantData: (item as any).product?.variant_data || null,
                         modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
+                        note: item.customer_note || null,
                       })),
-                      payments: payments.filter(p => p.amount > 0).map(p => ({
-                        method: p.method,
-                        methodName: paymentMethods.find(pm => pm.code === p.method)?.name || p.method,
-                        amount: p.amount,
-                      })),
+                      payments: pagosParaImpresion(payments, paymentMethods),
                       customerName: customerData?.full_name,
                       customerDocType: customerData?.doc_type,
                       customerDocNumber: customerData?.doc_number,
@@ -1374,8 +1475,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                       changeAmount: change > 0 ? change : undefined,
                     }).then(({ enqueued }) => {
                       if (enqueued > 0) {
-                        toast.success('Factura electrónica enviada a impresora', {
-                          description: 'El recibo DIAN se está imprimiendo',
+                        toast.success(tPos('postVenta.avisos.facturaImpresora'), {
+                          description: tPos('postVenta.avisos.facturaImpresoraDesc'),
                         });
                       }
                     }).catch((err) => {
@@ -1387,16 +1488,16 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                 console.warn('No se pudo consultar el CUFE para impresión:', queryErr);
               }
             } else {
-              toast.error('Error al enviar a DIAN', {
-                description: result.error || 'No se pudo enviar la factura',
+              toast.error(tPos('postVenta.avisos.errorFactura'), {
+                description: result.error || tPos('postVenta.avisos.errorFacturaDesc'),
               });
             }
           } else {
-            toast.warning('No se encontró la factura para enviar a DIAN');
+            toast.warning(tPos('postVenta.avisos.facturaNoEncontrada'));
           }
         } catch (factusError: any) {
           console.error('Error sending to Factus:', factusError);
-          toast.error('Error al enviar a DIAN: ' + (factusError.message || 'Error desconocido'));
+          toast.error(tPos('postVenta.avisos.errorFactura'), { description: factusError.message || tPos('errores.desconocido') });
         }
       }
 
@@ -1407,9 +1508,17 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // Haptic feedback de error (no-op en web)
       hapticNotification('error');
       hapticImpact('heavy');
-      const errorMsg = error?.message || error?.details || (typeof error === 'string' ? error : 'Error desconocido');
-      alert('Error al procesar el pago: ' + errorMsg);
+      // Rechazos del servidor con código estable (precio, descuento, línea…)
+      // se muestran traducidos; el resto, como llegan.
+      const codigo = codigoErrorCobro(error);
+      const errorMsg = codigo
+        ? tCobro(`errores.${codigo}`, { detalle: detalleErrorCobro(error) })
+        : error?.message || error?.details || (typeof error === 'string' ? error : tPos('errores.desconocido'));
+      // Antes un alert() nativo; el carrito NO se toca: se puede reintentar
+      // (mismo intento de cobro, intentoCobroRef).
+      toast.error(tPos('errores.titulo'), { description: errorMsg });
     } finally {
+      cobroEnVueloRef.current = false;
       setIsProcessing(false);
     }
   };
@@ -1427,7 +1536,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             .eq('id', cart.customer_id)
             .single();
           if (fetched) printCustomerData = fetched as any;
-        } catch (e) {
+        } catch {
           console.warn('No se pudo obtener datos del cliente para impresión');
         }
       }
@@ -1444,6 +1553,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         notes: {
           product_name: item.product?.name || 'Producto',
           ...(item.modifiers && item.modifiers.length > 0 ? { modifiers: item.modifiers } : {}),
+          ...(item.customer_note ? { customer_note: item.customer_note } : {}),
         },
         product_name: item.product?.name || 'Producto',
         product: item.product
@@ -1548,664 +1658,368 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     setCommissionMethod('percentage');
   };
 
-  // Generar botones de monto rápido dinámicos según el total a pagar
-  const generateQuickAmounts = (amount: number): { label: string; value: number }[] => {
-    if (amount <= 0) return [{ label: 'Exacto', value: 0 }];
+  // Paso 11 del rediseño (POS-PLAN §4): el render pasa a CobroPanel (kit
+  // PanelAdaptable, 1120) con la zona de totales a la izquierda y los pagos a
+  // la derecha. El estado y los handlers de arriba NO cambian.
+  // El pago que se edita (selector de método, monto, «Exacto»): el que el
+  // cajero tocó en la lista o, si no, el último (el que acaba de agregar).
+  const [pagoActivoId, setPagoActivoId] = useState<string | null>(null);
+  const [menuOtroMetodo, setMenuOtroMetodo] = useState(false);
+  const pagoActivo = payments.find((p) => p.id === pagoActivoId) ?? payments[payments.length - 1];
+  const agregarPago = () => {
+    setPagoActivoId(null);
+    addPayment();
+  };
+  const metodosCobro = paymentMethods.map((m) => ({ codigo: m.id, nombre: m.name }));
+  const { visibles: metodosVisibles, resto: metodosOtro } = repartirMetodos(metodosCobro, MAX_BOTONES_METODO);
+  const nombreMetodo = (codigo: string) => paymentMethods.find((m) => m.id === codigo)?.name ?? codigo;
+  const elegirMetodo = (codigo: string) => {
+    if (pagoActivo) updatePayment(pagoActivo.id, 'method', codigo);
+  };
+  // «Exacto» y billetes rápidos (L43, D8): sobre LO QUE FALTA para el pago que
+  // se edita (el total menos las otras entradas), src/lib/pos/venta/cobro/montosRapidos.ts.
+  const montosPagoActivo = montosDeEntrada(pagoActivo ? faltaParaEntrada(payments, pagoActivo.id, cartTotal) : 0);
+  const ponerExacto = () => {
+    if (pagoActivo) updatePayment(pagoActivo.id, 'amount', montosPagoActivo.exacto);
+  };
+  const monedaOrganizacion = useMonedaOrganizacion();
+  const monedaCobro = useMemo(() => monedaOrganizacion.paraDocumento(currency?.code), [monedaOrganizacion, currency?.code]);
+  const formatearCobro = useMemo(() => crearFormateadorMoneda(monedaCobro), [monedaCobro]);
+  const cobroEditable = open && !showReceipt && !showQrDialog && !showSerialSelector && !stockConfirm;
 
-    const buttons: { label: string; value: number }[] = [];
-    const seen = new Set<number>();
+  // Recibo automático (paso 13): lo que pasó al encolarlo, para el aviso de la post-venta.
+  const [estadoRecibo, setEstadoRecibo] = useState<EstadoRecibo | null>(null);
+  const [detalleRecibo, setDetalleRecibo] = useState<string | null>(null);
+  useEffect(() => {
+    if (open) return;
+    setEstadoRecibo(null);
+    setDetalleRecibo(null);
+  }, [open]);
 
-    // Determinar la magnitud para redondeos inteligentes
-    const magnitude = Math.pow(10, Math.floor(Math.log10(Math.max(amount, 1))));
-    const roundUp = (val: number, step: number) => Math.ceil(val / step) * step;
+  // Secciones plegables (paso 12): cerradas al abrir el cobro, con resumen.
+  const [seccionesAbiertas, setSeccionesAbiertas] = useState<Record<SeccionCobro, boolean>>(SECCIONES_CERRADAS);
+  const abrirSeccion = (seccion: SeccionCobro, abierta: boolean) => setSeccionesAbiertas((prev) => ({ ...prev, [seccion]: abierta }));
+  useEffect(() => {
+    if (!open) setSeccionesAbiertas(SECCIONES_CERRADAS);
+  }, [open]);
+  // Factura electrónica «no configurada» (E-30): la sección se deshabilita con
+  // el motivo. Sin respuesta (sin red) no se bloquea nada.
+  const [estadoFactura, setEstadoFactura] = useState<EstadoFacturaElectronica | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    let cancelado = false;
+    leerEstadoFacturaElectronica(supabase as unknown as ClienteConfigFactura, cart.organization_id).then((estado) => {
+      if (!cancelado) setEstadoFactura(estado);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [open, cart.organization_id]);
+  const facturaDisponible = estadoFactura === null || estadoFactura === 'activa';
+  const motivoFactura =
+    estadoFactura === 'noConfigurada'
+      ? tPos('factura.motivoNoConfigurada')
+      : estadoFactura === 'pendiente'
+        ? tPos('factura.motivoPendiente')
+        : estadoFactura === 'suspendida'
+          ? tPos('factura.motivoSuspendida')
+          : undefined;
+  const resumenFactura = sendToFactus
+    ? eInvoiceAlwaysEnabled
+      ? tPos('factura.activadaGlobal')
+      : tPos('factura.activada')
+    : tPos('factura.desactivada');
+  const resumenEntrega =
+    deliveryType === 'pickup'
+      ? tPos('entrega.resumen.recoger')
+      : tPos(deliveryType === 'delivery_own' ? 'entrega.resumen.propio' : 'entrega.resumen.tercero', { flete: formatearCobro(shippingFee) });
+  const nombreMesero = servers.find((s) => s.id === serverId)?.name ?? tPos('propina.sinMesero');
+  const resumenPropina =
+    tipAmount > 0
+      ? tipPercentage !== null
+        ? tPos('propina.resumenPct', { pct: tipPercentage, monto: formatearCobro(tipAmount), mesero: nombreMesero })
+        : tPos('propina.resumen', { monto: formatearCobro(tipAmount), mesero: nombreMesero })
+      : tPos('propina.resumenNinguna');
+  const resumenComision = esPersonaAsignada(salespersonId)
+    ? tPos('comision.resumen', {
+        vendedor: servers.find((s) => s.id === salespersonId)?.name ?? '',
+        tasa: commissionMethod === 'percentage' ? tPos('comision.tasaPct', { tasa: commissionRate }) : formatearCobro(commissionRate),
+        monto: formatearCobro(commissionAmount),
+      })
+    : tPos('comision.resumenNinguna');
 
-    // 1. Monto exacto
-    buttons.push({ label: 'Exacto', value: Math.round(amount) });
-    seen.add(Math.round(amount));
+  // Atajos del cobro (mapa canónico src/lib/pos/venta/atajos.ts): solo con el
+  // cobro abierto y sin otro diálogo encima. Esc lo maneja el propio panel.
+  const atajosCobro: Atajo[] = [
+    ...ATAJOS_METODO.map((id, posicion) => ({
+      tecla: teclaAtajo(id),
+      descripcion: tAtajos(id),
+      permitirEnCampo: true,
+      cuando: () => !isProcessing && !!pagoActivo && accionAtajoMetodo(posicion, metodosVisibles, metodosOtro.length > 0) !== null,
+      accion: () => {
+        const accion = accionAtajoMetodo(posicion, metodosVisibles, metodosOtro.length > 0);
+        if (accion?.tipo === 'elegir') elegirMetodo(accion.codigo);
+        if (accion?.tipo === 'otro') setMenuOtroMetodo(true);
+      },
+    })),
+    {
+      tecla: teclaAtajo('exacto'),
+      descripcion: tAtajos('exacto'),
+      permitirEnCampo: true,
+      cuando: () => !isProcessing && !!pagoActivo,
+      accion: ponerExacto,
+    },
+    // Alt+D / Alt+P / Alt+F abren o cierran su sección (la comisión no lleva atajo, D13).
+    { tecla: teclaAtajo('entrega'), descripcion: tAtajos('entrega'), permitirEnCampo: true, accion: () => abrirSeccion('entrega', !seccionesAbiertas.entrega) },
+    { tecla: teclaAtajo('propina'), descripcion: tAtajos('propina'), permitirEnCampo: true, accion: () => abrirSeccion('propina', !seccionesAbiertas.propina) },
+    {
+      tecla: teclaAtajo('facturaElectronica'),
+      descripcion: tAtajos('facturaElectronica'),
+      permitirEnCampo: true,
+      cuando: () => facturaDisponible,
+      accion: () => abrirSeccion('factura', !seccionesAbiertas.factura),
+    },
+    {
+      // Enter completa SOLO con el pago cubierto y sin un control con foco que use Enter.
+      tecla: teclaAtajo('completarVenta'),
+      descripcion: tAtajos('completarVenta'),
+      permitirEnCampo: true,
+      cuando: () => canComplete && !isProcessing && enterCompletaVenta(typeof document === 'undefined' ? null : document.activeElement),
+      accion: () => {
+        void handleCheckout();
+      },
+    },
+  ];
+  useAtajos(atajosCobro, { activo: cobroEditable, hayRafaga: hayRafagaDelLector });
 
-    // 2. Redondeo al millar superior más cercano
-    const roundSteps = magnitude >= 100000 ? [100000, 50000] 
-                     : magnitude >= 10000 ? [10000, 5000] 
-                     : magnitude >= 1000 ? [1000, 500] 
-                     : [100, 50];
-
-    for (const step of roundSteps) {
-      const rounded = roundUp(amount, step);
-      if (!seen.has(rounded) && rounded > amount) {
-        buttons.push({ label: formatQuickLabel(rounded), value: rounded });
-        seen.add(rounded);
-      }
-    }
-
-    // 3. Agregar múltiplos útiles por encima del monto
-    const baseStep = roundSteps[0];
-    for (let mult = 2; mult <= 4; mult++) {
-      const val = roundUp(amount, baseStep) + baseStep * (mult - 1);
-      if (!seen.has(val) && buttons.length < 6) {
-        buttons.push({ label: formatQuickLabel(val), value: val });
-        seen.add(val);
-      }
-    }
-
-    // Ordenar: Exacto primero, luego ascendente
-    return buttons.sort((a, b) => {
-      if (a.label === 'Exacto') return -1;
-      if (b.label === 'Exacto') return 1;
-      return a.value - b.value;
-    }).slice(0, 6);
+  // Cerrar el panel (×, Esc): tras la venta pasa por handleCloseReceipt, que
+  // entrega la venta a la pantalla (onCheckoutComplete); sin venta, cancela.
+  const alCerrarPanel = (abierto: boolean) => {
+    if (abierto) return;
+    if (showReceipt) handleCloseReceipt();
+    else onOpenChange(false);
+  };
+  // Imprimir la factura electrónica desde la post-venta (solo con CUFE): el
+  // mismo payload y el mismo generador de siempre (PrintService / @printing).
+  const handleImprimirFactura = () => {
+    if (!electronicInvoiceData) return;
+    import('@printing').then(() => {
+                    const payload = {
+                      invoiceId: electronicInvoiceData.invoiceId,
+                      invoiceNumber: electronicInvoiceData.invoiceNumber,
+                      cufe: electronicInvoiceData.cufe,
+                      qrData: electronicInvoiceData.qrData,
+                      environment: electronicInvoiceData.environment,
+                      validationDate: electronicInvoiceData.validationDate,
+                      createdAt: new Date().toISOString(),
+                      items: cart.items.map((item) => ({
+                        productName: (item as any).name || item.product?.name || 'Producto',
+                        quantity: item.quantity,
+                        unitPrice: item.unit_price,
+                        total: item.total,
+                        taxAmount: item.tax_amount,
+                        discountAmount: item.discount_amount,
+                        variantData: (item as any).product?.variant_data || null,
+                        modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
+                      })),
+                      total: cartTotal,
+                      subtotal: calculatedTotals.subtotal,
+                      taxTotal: calculatedTotals.totalTaxAmount,
+                      taxIncluded: taxIncluded,
+                      taxLines: taxBreakdown.length > 0 ? taxBreakdown : null,
+                      payments: pagosParaImpresion(payments, paymentMethods),
+                      businessName: organization?.name,
+                      businessNit: organization?.nit || organization?.tax_id,
+                      businessPhone: organization?.phone,
+                      businessAddress: organization?.address,
+                      businessEmail: organization?.email,
+                      businessCity: (organization as any)?.city,
+                      businessFiscalResponsibilities: (organization as any)?.fiscal_responsibilities || null,
+                      businessLogoUrl: (organization as any)?.logo_url || undefined,
+                      branchName: branch?.name,
+                      branchAddress: branch?.address,
+                      branchPhone: branch?.phone,
+                      cashierName: currentUser?.name,
+                      totalPaid,
+                      changeAmount: change > 0 ? change : undefined,
+                      timezone,
+                    } as any;
+                    PrintService.printElectronicInvoice(payload);
+    });
   };
 
-  const formatQuickLabel = (value: number): string => {
-    if (value >= 1000000) return `${(value / 1000000).toFixed(value % 1000000 === 0 ? 0 : 1)}M`;
-    if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
-    return value.toString();
+  // Al abrir, el foco va al monto (no a la «×»): se teclea el efectivo y
+  // «Enter» completa si está cubierto.
+  const enfocarMonto = (evento: Event) => {
+    const campo = typeof document === 'undefined' ? null : document.querySelector<HTMLInputElement>('input[data-cobro-monto]');
+    if (!campo) return;
+    evento.preventDefault();
+    campo.focus();
+    campo.select();
   };
+  // El primer pago se agrega en un efecto (al abrir aún no hay campo): el foco
+  // inicial se pone cuando aparece, una vez por apertura.
+  const focoInicialRef = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      focoInicialRef.current = false;
+      return;
+    }
+    if (showReceipt || focoInicialRef.current || payments.length === 0) return;
+    const campo = document.querySelector<HTMLInputElement>('input[data-cobro-monto]');
+    if (!campo) return;
+    focoInicialRef.current = true;
+    campo.focus();
+    campo.select();
+  }, [open, showReceipt, payments.length]);
 
-  const quickAmountButtons = generateQuickAmounts(cartTotal);
+  // Monto del pago que se edita. Un pago QR no pasa del total (`max`).
+  const editorDePago = (payment: PaymentEntry) => (
+    <EditorPagoCobro
+      id={`amount-${payment.id}`}
+      etiqueta={tPos('pagos.monto', { n: payments.indexOf(payment) + 1 })}
+      valor={payment.amount}
+      max={isQrPaymentCode(payment.method) ? cartTotal : undefined}
+      moneda={monedaCobro}
+      deshabilitado={isProcessing}
+      onValorChange={(value) => updatePayment(payment.id, 'amount', value)}
+      onExacto={ponerExacto}
+      billetes={muestraMontosRapidos(payment.method) ? montosPagoActivo.billetes : []}
+      onBillete={(value) => updatePayment(payment.id, 'amount', value)}
+    />
+  );
 
-  if (!open || typeof document === 'undefined') return null;
-  return createPortal(
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
-      <div className="min-h-screen px-1 sm:px-4 py-2 sm:py-8 flex items-center justify-center">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[97vh] sm:max-h-[90vh] overflow-hidden relative animate-in fade-in-0 zoom-in-95 duration-300 dark:bg-gray-800">
-        {showReceipt && completedSale ? (
-          /* Vista de recibo - RESPONSIVE */
-          <div className="space-y-3 sm:space-y-4 text-center overflow-y-auto max-h-[90vh]">
-            <div className="sr-only">
-              <h2>Recibo de venta</h2>
-            </div>
-            <div className="p-4 sm:p-6">
-              <div className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-3 sm:mb-4">
-                <svg viewBox="0 0 52 52" className="h-full w-full text-green-600 dark:text-green-400" fill="none" stroke="currentColor">
-                  <circle cx="26" cy="26" r="24" strokeWidth="3" className="opacity-20" />
-                  <path
-                    d="M14 27 L22 35 L38 17"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeDasharray="60"
-                    className="animate-draw-check"
-                    style={{ strokeDashoffset: 60 }}
-                  />
-                </svg>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-bold mb-2 dark:text-white text-gray-900">
-                ¡Venta Completada!
-              </h2>
-              <p className="text-sm sm:text-base dark:text-gray-400 text-gray-600">
-                Venta #{completedSale.id.slice(-8)} procesada exitosamente
-              </p>
-              {completedSale.pending_sync && (
-                <p
-                  role="status"
-                  className="mt-2 inline-block rounded-md bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-500/20 dark:text-amber-300"
-                >
-                  Pendiente de sincronizar · {completedSale.receipt_number_local}
-                </p>
-              )}
-
-              <div className="bg-gray-100 dark:bg-gray-800 p-3 sm:p-4 rounded-lg mt-3 sm:mt-4 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm sm:text-base dark:text-gray-400 text-gray-600">Total:</span>
-                  <span className="font-bold text-base sm:text-lg dark:text-white text-gray-900">
-                    {formatCurrency(cartTotal)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm sm:text-base dark:text-gray-400 text-gray-600">Pagado:</span>
-                  <span className="text-sm sm:text-base dark:text-green-400 text-green-600 font-semibold">
-                    {formatCurrency(totalPaid)}
-                  </span>
-                </div>
-                {change > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm sm:text-base dark:text-gray-400 text-gray-600">Cambio:</span>
-                    <span className="text-sm sm:text-base dark:text-blue-400 text-blue-600 font-semibold">
-                      {formatCurrency(change)}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2 mt-3 sm:mt-4">
-                <Button
-                  onClick={handlePrint}
-                  className="flex-1 h-10 sm:h-11 dark:bg-blue-600 dark:hover:bg-blue-700 bg-blue-600 hover:bg-blue-700 text-sm sm:text-base"
-                >
-                  <Printer className="h-4 w-4 mr-2" />
-                  Re-imprimir Recibo
-                </Button>
-                {electronicInvoiceData && (
-                  <Button
-                    onClick={() => {
-                      import('@printing').then(({ buildElectronicInvoiceHTML, getPaperSpec }) => {
-                        const payload = {
-                          invoiceId: electronicInvoiceData.invoiceId,
-                          invoiceNumber: electronicInvoiceData.invoiceNumber,
-                          cufe: electronicInvoiceData.cufe,
-                          qrData: electronicInvoiceData.qrData,
-                          environment: electronicInvoiceData.environment,
-                          validationDate: electronicInvoiceData.validationDate,
-                          createdAt: new Date().toISOString(),
-                          items: cart.items.map((item) => ({
-                            productName: (item as any).name || item.product?.name || 'Producto',
-                            quantity: item.quantity,
-                            unitPrice: item.unit_price,
-                            total: item.total,
-                            taxAmount: item.tax_amount,
-                            discountAmount: item.discount_amount,
-                            variantData: (item as any).product?.variant_data || null,
-                            modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
-                          })),
-                          total: cartTotal,
-                          subtotal: calculatedTotals.subtotal,
-                          taxTotal: calculatedTotals.totalTaxAmount,
-                          taxIncluded: taxIncluded,
-                          taxLines: taxBreakdown.length > 0 ? taxBreakdown : null,
-                          payments: payments.filter(p => p.amount > 0).map(p => ({
-                            method: p.method,
-                            methodName: paymentMethods.find(pm => pm.code === p.method)?.name || p.method,
-                            amount: p.amount,
-                          })),
-                          businessName: organization?.name,
-                          businessNit: organization?.nit || organization?.tax_id,
-                          businessPhone: organization?.phone,
-                          businessAddress: organization?.address,
-                          businessEmail: organization?.email,
-                          businessCity: (organization as any)?.city,
-                          businessFiscalResponsibilities: (organization as any)?.fiscal_responsibilities || null,
-                          businessLogoUrl: (organization as any)?.logo_url || undefined,
-                          branchName: branch?.name,
-                          branchAddress: branch?.address,
-                          branchPhone: branch?.phone,
-                          cashierName: currentUser?.name,
-                          totalPaid,
-                          changeAmount: change > 0 ? change : undefined,
-                          timezone,
-                        } as any;
-                        PrintService.printElectronicInvoice(payload);
-                      });
-                    }}
-                    variant="outline"
-                    className="flex-1 h-10 sm:h-11 text-sm sm:text-base dark:border-green-600 dark:hover:bg-green-900/20 border-green-600 hover:bg-green-50"
-                  >
-                    <Printer className="h-4 w-4 mr-2" />
-                    Factura Electrónica
-                  </Button>
-                )}
-                <Button
-                  onClick={handleCloseReceipt}
-                  variant="outline"
-                  className="flex-1 h-10 sm:h-11 text-sm sm:text-base dark:border-gray-600 dark:hover:bg-gray-800"
-                >
-                  Cerrar
-                </Button>
-              </div>
-            </div>
-          </div>
+  if (!open) return null;
+  const conRecibo = showReceipt && !!completedSale;
+  const impuestosCobro = taxBreakdown.length > 0
+    ? taxBreakdown.map((b) => ({ nombre: b.name, tarifa: organizationTaxes.find((o) => o.name === b.name)?.rate ?? null, importe: b.amount }))
+    : (calculatedTotals.totalTaxAmount || cart.tax_total) > 0
+      ? [{ nombre: tPos('resumen.impuestos'), importe: calculatedTotals.totalTaxAmount || cart.tax_total }]
+      : [];
+  return (
+    <>
+    <CobroPanel
+      abierto={open}
+      onAbiertoChange={alCerrarPanel}
+      titulo={conRecibo ? tPos('postVenta.panel') : tPos('titulo')}
+      descripcion={conRecibo ? undefined : tPos('descripcion', { productos: cart.items.length, monto: formatearCobro(cart.total) })}
+      ocupado={isProcessing}
+      onFocoAlAbrir={enfocarMonto}
+      resumen={conRecibo ? undefined : (
+        <ResumenCobro
+          moneda={monedaCobro}
+          totalAPagar={cartTotal}
+          lineas={cart.items.map((item) => ({ id: item.id, nombre: item.product?.name ?? '', cantidad: item.quantity, total: item.total }))}
+          descuentos={cart.discount_total}
+          subtotal={calculatedTotals.subtotal || cart.subtotal}
+          impuestosIncluidos={taxIncluded}
+          impuestos={impuestosCobro}
+          propina={tipAmount}
+          flete={shippingFee}
+          pagado={totalPaid}
+          falta={remaining}
+          cambio={change}
+        />
+      )}
+      pie={conRecibo ? undefined : (
+        <>
+          <KbdButton
+            variante="secundario"
+            tamano="lg"
+            icono={X}
+            atajo={teclaAtajo('cancelarCobro')}
+            onClick={() => onOpenChange(false)}
+            disabled={isProcessing}
+            className="w-full sm:w-auto"
+          >
+            {tPos('pie.cancelar')}
+          </KbdButton>
+          <BotonImporte
+            etiqueta={tPos('pie.completar')}
+            importe={formatearCobro(cartTotal)}
+            atajo={teclaAtajo('completarVenta')}
+            estado={isProcessing ? 'procesando' : canComplete ? 'listo' : 'falta'}
+            motivo={tPos('pie.falta', { monto: formatearCobro(remaining) })}
+            etiquetaProcesando={tPos('pie.procesando')}
+            icono={CheckCircle}
+            onClick={handleCheckout}
+            className="sm:flex-1"
+          />
+        </>
+      )}
+    >
+        {conRecibo && completedSale ? (
+          /* Post-venta (paso 13): ResultadoOperacion del kit; imprimir y entregar la venta siguen aquí */
+          <PostVenta
+            moneda={monedaCobro}
+            total={cartTotal}
+            pagado={totalPaid}
+            cambio={change}
+            numeroVenta={`#${completedSale.id.slice(-8)}`}
+            numeroLocal={completedSale.receipt_number_local ?? null}
+            pendienteSincronizar={!!completedSale.pending_sync}
+            estadoRecibo={estadoRecibo}
+            detalleRecibo={detalleRecibo}
+            conFactura={!!electronicInvoiceData}
+            onNuevaVenta={handleCloseReceipt}
+            onReimprimir={handlePrint}
+            onFactura={handleImprimirFactura}
+            onCerrar={handleCloseReceipt}
+            activo={open && !showQrDialog && !showSerialSelector && !stockConfirm}
+          />
         ) : (
-          /* Vista de checkout - RESPONSIVE */
           <>
-            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 shrink-0">
-                  <CreditCard className="h-6 w-6 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Procesar Pago</h2>
-                  <p className="text-sm font-normal text-gray-500 dark:text-gray-400 mt-0.5">
-                    {cart.items.length} productos · Total: {formatCurrency(cart.total)}
-                  </p>
-                </div>
-              </div>
-              <button
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700"
-                onClick={() => onOpenChange(false)}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+            {/* Arriba de la zona de pagos: advertencia, no bloquea el cobro. */}
+            <AvisoSinImpuesto lineas={lineasSinImpuesto} accion="cobrar" />
 
-            <div className="overflow-y-auto max-h-[calc(90vh-80px)] bg-gray-50 dark:bg-gray-900">
-             <div className="p-5 sm:p-8">
-            <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-4 lg:space-y-0">
-              {/* COLUMNA IZQUIERDA: Resumen + Totales */}
-              <div className="space-y-3">
-              {/* Resumen del carrito - RESPONSIVE */}
-              <Card className="dark:bg-gray-800 dark:border-gray-700 bg-gray-50 border-gray-200">
-                <CardHeader className="p-4 sm:p-5 pb-2 sm:pb-3">
-                  <CardTitle className="text-sm sm:text-base dark:text-white text-gray-900 flex items-center gap-2">
-                    <ShoppingCart className="h-4 w-4 text-blue-500" />
-                    Resumen de Venta
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 sm:p-4 space-y-1.5 sm:space-y-2 max-h-[25vh] lg:max-h-[35vh] overflow-y-auto">
-                  {cart.items.map((item) => (
-                    <div key={item.id} className="flex justify-between items-start gap-2 text-xs sm:text-sm">
-                      <div className="flex-1 min-w-0">
-                        <span className="dark:text-gray-100 text-gray-900 break-words whitespace-normal">{item.product.name}</span>
-                        <span className="dark:text-gray-400 text-gray-600 ml-1">
-                          x{item.quantity}
-                        </span>
-                      </div>
-                      <span className="dark:text-gray-100 text-gray-900 font-medium shrink-0">
-                        {formatCurrency(item.total)}
-                      </span>
-                    </div>
-                  ))}
-                  
-                  <Separator className="dark:border-gray-700 border-gray-200" />
-                  
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="dark:text-gray-400 text-gray-600">Subtotal:</span>
-                      <span className="dark:text-white text-gray-900">
-                        {formatCurrency(cart.subtotal)}
-                      </span>
-                    </div>
-                    
-                    {cart.tax_total > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="dark:text-gray-400 text-gray-600">Impuestos:</span>
-                        <span className="dark:text-white text-gray-900">
-                          {formatCurrency(cart.tax_total)}
-                        </span>
-                      </div>
-                    )}
-                    
-                    {cart.discount_total > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="dark:text-gray-400 text-gray-600">Descuentos:</span>
-                        <span className="dark:text-green-400 text-green-600">
-                          -{formatCurrency(cart.discount_total)}
-                        </span>
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between text-lg font-semibold pt-1">
-                      <span className="dark:text-white text-gray-900">Total:</span>
-                      <span className="dark:text-blue-400 text-blue-600">
-                        {formatCurrency(cart.total)}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Resumen de totales finales - COLUMNA IZQUIERDA */}
-              <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200 border-2 border-blue-200 dark:border-blue-800">
-                <CardContent className="p-4 sm:p-5 space-y-2.5">
-                  <div className="flex justify-between text-sm">
-                    <span className="dark:text-gray-400 text-gray-600">Subtotal:</span>
-                    <div className="text-right">
-                      <span className="dark:text-white text-gray-900">
-                        {formatCurrency(calculatedTotals.subtotal || cart.subtotal)}
-                      </span>
-                      {taxIncluded && (
-                        <div className="text-xs dark:text-gray-500 text-gray-500">(base imponible)</div>
-                      )}
-                    </div>
-                  </div>
-                  {(calculatedTotals.totalTaxAmount > 0 || cart.tax_total > 0) && (
-                    <div className="flex justify-between text-sm">
-                      <span className="dark:text-gray-400 text-gray-600">Impuestos:</span>
-                      <span className="dark:text-blue-400 text-blue-600">{formatCurrency(calculatedTotals.totalTaxAmount || cart.tax_total)}</span>
-                    </div>
-                  )}
-                  {tipAmount > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="dark:text-gray-400 text-gray-600">Propina:</span>
-                      <span className="dark:text-green-400 text-green-600">{formatCurrency(tipAmount)}</span>
-                    </div>
-                  )}
-                  {shippingFee > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="dark:text-gray-400 text-gray-600">Flete:</span>
-                      <span className="dark:text-orange-400 text-orange-600">{formatCurrency(shippingFee)}</span>
-                    </div>
-                  )}
-                  <Separator className="dark:bg-gray-700 bg-gray-200" />
-                  <div className="flex justify-between text-base font-semibold">
-                    <span className="dark:text-gray-300 text-gray-700">Total a pagar:</span>
-                    <span className="dark:text-white text-gray-900">{formatCurrency(cartTotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="dark:text-gray-400 text-gray-600">Total pagado:</span>
-                    <span className={totalPaid >= cartTotal ? 'dark:text-green-400 text-green-600' : 'dark:text-yellow-400 text-yellow-600'}>
-                      {formatCurrency(totalPaid)}
-                    </span>
-                  </div>
-                  {remaining > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="dark:text-gray-400 text-gray-600">Falta:</span>
-                      <span className="dark:text-red-400 text-red-600">{formatCurrency(remaining)}</span>
-                    </div>
-                  )}
-                  {change > 0 && (
-                    <div className="flex justify-between text-lg font-semibold">
-                      <span className="dark:text-white text-gray-900">Cambio:</span>
-                      <span className="dark:text-blue-400 text-blue-600">{formatCurrency(change)}</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Sección de Entrega / Delivery - movida a columna izquierda */}
-              <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
-                <CardHeader className="p-4 sm:p-5 pb-2 sm:pb-3">
-                  <CardTitle className="text-sm sm:text-base dark:text-white text-gray-900 flex items-center gap-2">
-                    <Truck className="h-4 w-4 text-blue-500" />
-                    Entrega
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 sm:p-4 space-y-3">
-                  {/* Selector de tipo de entrega */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button
-                      size="sm"
-                      variant={deliveryType === 'pickup' ? 'default' : 'outline'}
-                      onClick={() => setDeliveryType('pickup')}
-                      className={`h-auto py-2 flex flex-col items-center gap-1 ${deliveryType === 'pickup' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      <span className="text-xs">Recoger</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={deliveryType === 'delivery_own' ? 'default' : 'outline'}
-                      onClick={() => setDeliveryType('delivery_own')}
-                      className={`h-auto py-2 flex flex-col items-center gap-1 ${deliveryType === 'delivery_own' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
-                    >
-                      <Truck className="h-4 w-4" />
-                      <span className="text-xs">Envío propio</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={deliveryType === 'delivery_third_party' ? 'default' : 'outline'}
-                      onClick={() => setDeliveryType('delivery_third_party')}
-                      className={`h-auto py-2 flex flex-col items-center gap-1 ${deliveryType === 'delivery_third_party' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
-                    >
-                      <Navigation className="h-4 w-4" />
-                      <span className="text-xs">Tercero</span>
-                    </Button>
-                  </div>
-
-                  {/* Campos de delivery cuando no es pickup */}
-                  {deliveryType !== 'pickup' && (
-                    <div className="space-y-3 pt-2 border-t dark:border-gray-700 border-gray-200">
-                      {deliveryType === 'delivery_own' && drivers.length > 0 && (
-                        <div className="space-y-1">
-                          <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
-                            <UserCircle className="h-3 w-3" />
-                            Conductor asignado
-                          </Label>
-                          <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
-                            <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300">
-                              <SelectValue placeholder="Seleccionar conductor..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {drivers.map((driver) => (
-                                <SelectItem key={driver.id} value={driver.id}>
-                                  {driver.name}{driver.phone ? ` · ${driver.phone}` : ''}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                      {deliveryType === 'delivery_own' && cart.customer?.address && (
-                        <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          <span>Dirección del cliente cargada. Puedes modificarla si el envío es a otro lugar.</span>
-                        </div>
-                      )}
-                      <div className="space-y-1 relative">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          Dirección de entrega *
-                        </Label>
-                        <Input
-                          value={deliveryAddress}
-                          onChange={(e) => {
-                            setDeliveryAddress(e.target.value);
-                            setAddressSearch(e.target.value);
-                            searchCustomerAddresses(e.target.value);
-                          }}
-                          onFocus={() => { if (addressResults.length > 0) setShowAddressDropdown(true); }}
-                          onBlur={() => setTimeout(() => setShowAddressDropdown(false), 200)}
-                          placeholder="Escribe la dirección o busca por nombre/teléfono..."
-                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                        />
-                        {showAddressDropdown && addressResults.length > 0 && (
-                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                            {addressResults.map((addr) => (
-                              <button
-                                key={addr.id}
-                                type="button"
-                                onMouseDown={() => selectCustomerAddress(addr)}
-                                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-0"
-                              >
-                                <div className="text-sm font-medium dark:text-white text-gray-900">{addr.name}</div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                  <MapPin className="h-3 w-3 shrink-0" />
-                                  {addr.address}{addr.city ? `, ${addr.city}` : ''}
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <Label className="text-xs dark:text-gray-400 text-gray-600">
-                            Ciudad
-                          </Label>
-                          <Input
-                            value={deliveryCity}
-                            onChange={(e) => setDeliveryCity(e.target.value)}
-                            placeholder="Ciudad"
-                            className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            Teléfono contacto
-                          </Label>
-                          <Input
-                            value={deliveryContactPhone}
-                            onChange={(e) => setDeliveryContactPhone(e.target.value)}
-                            placeholder="300 123 4567"
-                            className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600">
-                          Nombre contacto
-                        </Label>
-                        <Input
-                          value={deliveryContactName}
-                          onChange={(e) => setDeliveryContactName(e.target.value)}
-                          placeholder="Nombre de quien recibe"
-                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600">
-                          Instrucciones
-                        </Label>
-                        <Input
-                          value={deliveryInstructions}
-                          onChange={(e) => setDeliveryInstructions(e.target.value)}
-                          placeholder="Portón negro, apartamento 302..."
-                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                        />
-                      </div>
-                      {shippingRates.length > 0 && (
-                        <div className="space-y-1 pt-2 border-t dark:border-gray-700 border-gray-200">
-                          <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
-                            <Truck className="h-3 w-3" />
-                            Tarifa de envío
-                          </Label>
-                          <Select value={selectedRateId} onValueChange={setSelectedRateId}>
-                            <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300">
-                              <SelectValue placeholder="Seleccionar tarifa..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {shippingRates.map((rate) => (
-                                <SelectItem key={rate.id} value={rate.id}>
-                                  {rate.rate_name} - {formatCurrency(rate.total_cost)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {/* Estado de pago del envío */}
-                      <div className="space-y-1 pt-2 border-t dark:border-gray-700 border-gray-200">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
-                          <Wallet className="h-3 w-3" />
-                          Pago del envío
-                        </Label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={shipmentPaymentStatus === 'paid' ? 'default' : 'outline'}
-                            onClick={() => setShipmentPaymentStatus('paid')}
-                            className={`h-auto py-2 ${shipmentPaymentStatus === 'paid' ? 'bg-green-600 hover:bg-green-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
-                          >
-                            <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                            <span className="text-xs">Pagado</span>
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={shipmentPaymentStatus === 'pending' ? 'default' : 'outline'}
-                            onClick={() => setShipmentPaymentStatus('pending')}
-                            className={`h-auto py-2 ${shipmentPaymentStatus === 'pending' ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
-                          >
-                            <Clock className="h-3.5 w-3.5 mr-1" />
-                            <span className="text-xs">Pendiente</span>
-                          </Button>
-                        </div>
-                        {shipmentPaymentStatus === 'pending' && (
-                          <p className="text-xs text-yellow-600 dark:text-yellow-400">
-            El envío se creará como pendiente de pago. Podrás marcarlo como pagado al entregar.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+            {/* Pagos: siempre abierto (POS-UX-V2 D4) */}
+            <section aria-labelledby="cobro-pagos-titulo" className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+              <div className="flex items-center justify-between gap-2">
+                <h3 id="cobro-pagos-titulo" className="flex items-center gap-2 text-sm font-semibold text-fg">
+                  <Wallet aria-hidden="true" className="size-4 text-fg-secondary" strokeWidth={1.5} />
+                  {tPos('pagos.titulo')}
+                </h3>
+                <KbdButton variante="secundario" tamano="sm" icono={Plus} onClick={agregarPago} disabled={isProcessing}>
+                  {tPos('pagos.agregar')}
+                </KbdButton>
               </div>
 
-              {/* COLUMNA DERECHA: Métodos de pago + Propina */}
-              <div className="space-y-3">
-              {/* Métodos de pago - RESPONSIVE */}
-              <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
-                <CardHeader className="p-4 sm:p-5 pb-2 sm:pb-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-sm sm:text-base dark:text-white text-gray-900 flex items-center gap-2">
-                      <Wallet className="h-4 w-4 text-purple-500" />
-                      Métodos de Pago
-                    </CardTitle>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={addPayment}
-                      className="h-8 sm:h-9 px-3 text-xs dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300 border-gray-300 hover:bg-gray-50 text-gray-700"
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      Agregar
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-                  {payments.map((payment, index) => (
-                    <div key={payment.id} className="space-y-2 sm:space-y-3 p-2 sm:p-3 border rounded-lg dark:border-gray-700 dark:bg-gray-900/30 border-gray-200 bg-gray-50/50">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs sm:text-sm dark:text-gray-200 text-gray-900 font-medium flex items-center gap-1.5">
-                          <DollarSign className="h-3.5 w-3.5 text-green-500" />
-                          Pago {index + 1}
-                        </Label>
-                        {payments.length > 1 && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => removePayment(payment.id)}
-                            className="h-7 px-2 text-xs dark:text-red-400 dark:hover:bg-red-500/20 text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-1" />
-                            Eliminar
-                          </Button>
-                        )}
-                      </div>
+              <SelectorMetodoPago
+                metodos={metodosCobro}
+                valor={pagoActivo?.method ?? null}
+                onValorChange={elegirMetodo}
+                maxBotones={MAX_BOTONES_METODO}
+                atajos
+                menuAbierto={menuOtroMetodo}
+                onMenuAbiertoChange={setMenuOtroMetodo}
+                deshabilitado={isProcessing || !pagoActivo}
+                etiqueta={pagoActivo ? tPos('pagos.metodoDe', { n: payments.indexOf(pagoActivo) + 1 }) : undefined}
+              />
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                        <div className="space-y-2">
-                          <Label htmlFor={`method-${payment.id}`} className="text-xs dark:text-gray-400 text-gray-600">
-                            Método
-                          </Label>
-                          <Select
-                            value={payment.method}
-                            onValueChange={(value) => updatePayment(payment.id, 'method', value)}
-                          >
-                            <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200">
-                              {paymentMethods.map((method) => (
-                                <SelectItem key={method.id} value={method.id}>
-                                  {method.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+              {pagoActivo && editorDePago(pagoActivo)}
 
-                        <div className="space-y-2">
-                          <Label htmlFor={`amount-${payment.id}`} className="text-xs dark:text-gray-400 text-gray-600">
-                            Monto
-                          </Label>
-                          <div className="relative">
-                            <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
-                            <Input
-                              id={`amount-${payment.id}`}
-                              type="number"
-                              min="0"
-                              max={isQrPaymentCode(payment.method) ? cartTotal : undefined}
-                              step="0.01"
-                              value={payment.amount}
-                              onChange={(e) => updatePayment(payment.id, 'amount', e.target.value)}
-                              className="pl-10 dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                              placeholder="0.00"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Botones de montos rápidos solo para efectivo - RESPONSIVE */}
-                      {payment.method === 'cash' && (
-                        <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-1 sm:gap-2">
-                          {quickAmountButtons.map((button) => (
-                            <Button
-                              key={button.label}
-                              size="sm"
-                              variant="outline"
-                              onClick={() => updatePayment(payment.id, 'amount', button.value)}
-                              className="h-8 sm:h-9 text-[0.7rem] sm:text-xs px-2 sm:px-3 dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300 border-gray-300 hover:bg-gray-100 text-gray-700"
-                            >
-                              {button.label}
-                            </Button>
-                          ))}
-                        </div>
+              <ul aria-label={tPos('pagos.lista')} className="flex flex-col gap-2">
+                {payments.map((payment, index) => {
+                  const activo = payment.id === pagoActivo?.id;
+                  return (
+                    <li
+                      key={payment.id}
+                      className={cn(
+                        'flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2',
+                        activo ? 'border-line-brand bg-brand-tint' : 'border-line bg-subtle',
                       )}
+                    >
+                      <button
+                        type="button"
+                        aria-pressed={activo}
+                        aria-label={tPos('pagos.editar', { n: index + 1, metodo: nombreMetodo(payment.method), monto: formatearCobro(payment.amount) })}
+                        onClick={() => setPagoActivoId(payment.id)}
+                        className="flex min-w-0 flex-1 items-center gap-3 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                      >
+                        <span className="shrink-0 text-xs text-fg-secondary">{tPos('pagos.pago', { n: index + 1 })}</span>
+                        <span className="min-w-0 truncate text-sm font-medium text-fg">{nombreMetodo(payment.method)}</span>
+                        <span className="shrink-0 text-sm font-semibold tabular-nums text-fg">{formatearCobro(payment.amount)}</span>
+                      </button>
 
                       {/* Boton para pago QR si el metodo es QR */}
                       {(() => {
@@ -2215,48 +2029,106 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                           // Ronda 6 (HALLAZGO R): con las OTRAS entradas cubriendo el total no hay nada que cobrar por QR.
                           const othersCoverTotal = payments.filter((p) => p.id !== payment.id).reduce((sum, p) => sum + (Number(p.amount) || 0), 0) >= cartTotal;
                           return (
-                            <Button
+                            <button
                               type="button"
-                              variant="outline"
-                              className="w-full mt-2"
-                              disabled={othersCoverTotal}
+                              className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}
+                              disabled={othersCoverTotal || isCreatingQr}
+                              aria-busy={isCreatingQr}
                               onClick={() => handleQrPayment(currentMethod.code, payment.id, payment.amount)}
                             >
-                              <QrCode className="h-4 w-4 mr-2" />
-                              Generar QR de pago
-                            </Button>
+                              {isCreatingQr ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <QrCode aria-hidden="true" className="size-4" strokeWidth={1.5} />}
+                              {isCreatingQr ? tPos('pagos.generandoQr') : tPos('pagos.generarQr')}
+                            </button>
                           );
                         }
                         return null;
                       })()}
-                    </div>
-                  ))}
 
-                  {/* Toggle impuestos incluidos */}
-                  <div className="pt-2 pb-2">
-                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={taxIncluded}
-                        onChange={(e) => setTaxIncluded(e.target.checked)}
-                        className="h-4 w-4 rounded"
-                      />
-                      <Percent className="h-3.5 w-3.5 text-blue-500" />
-                      <span className="text-xs sm:text-sm dark:text-gray-300 text-gray-700">
-                        Impuestos incluidos en precios
-                      </span>
-                    </label>
-                  </div>
+                      {puedeQuitarPagos(payments) && (
+                        <button
+                          type="button"
+                          disabled={isProcessing}
+                          aria-label={tPos('pagos.eliminarAria', { n: index + 1 })}
+                          onClick={() => removePayment(payment.id)}
+                          className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'hover:text-danger-text' })}
+                        >
+                          <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                          <span className="hidden sm:inline">{tPos('pagos.eliminar')}</span>
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
 
-                  {/* Sección de Propina */}
-                  <div className="pt-3 border-t dark:border-gray-700 border-gray-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Banknote className="h-4 w-4 dark:text-green-400 text-green-600" />
-                      <Label className="text-sm font-medium dark:text-gray-200 text-gray-900">
-                        Propina (opcional)
-                      </Label>
-                    </div>
-                    
+              {/* C4 «Impuestos incluidos en precios»: misma semántica de siempre */}
+              <label className="flex w-fit cursor-pointer items-center gap-2 rounded-lg px-1 py-1 text-sm text-fg-secondary hover:text-fg">
+                <input
+                  type="checkbox"
+                  checked={taxIncluded}
+                  onChange={(e) => setTaxIncluded(e.target.checked)}
+                  className="size-4 rounded accent-brand"
+                />
+                <Percent aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
+                {tPos('pagos.impuestosIncluidos')}
+              </label>
+            </section>
+
+            {/* Secciones plegables (paso 12): cerradas, con resumen y atajo */}
+            <SeccionPlegable
+              id="cobro-entrega"
+              titulo={tPos('entrega.titulo')}
+              icono={Truck}
+              atajo={teclaAtajo('entrega')}
+              resumen={resumenEntrega}
+              abierta={seccionesAbiertas.entrega}
+              onAbiertaChange={(v) => abrirSeccion('entrega', v)}
+            >
+              <EntregaCobro
+                tipo={deliveryType}
+                onTipo={setDeliveryType}
+                conductores={drivers}
+                conductorId={selectedDriverId}
+                onConductor={setSelectedDriverId}
+                direccionDelCliente={!!cart.customer?.address}
+                direccion={deliveryAddress}
+                onDireccion={(texto) => {
+                  setDeliveryAddress(texto);
+                  setAddressSearch(texto);
+                  searchCustomerAddresses(texto);
+                }}
+                resultados={addressResults}
+                mostrarResultados={showAddressDropdown}
+                onFocoDireccion={() => { if (addressResults.length > 0) setShowAddressDropdown(true); }}
+                onSalirDireccion={() => setTimeout(() => setShowAddressDropdown(false), 200)}
+                onElegirDireccion={selectCustomerAddress}
+                ciudad={deliveryCity}
+                onCiudad={setDeliveryCity}
+                telefono={deliveryContactPhone}
+                onTelefono={setDeliveryContactPhone}
+                contacto={deliveryContactName}
+                onContacto={setDeliveryContactName}
+                instrucciones={deliveryInstructions}
+                onInstrucciones={setDeliveryInstructions}
+                tarifas={shippingRates}
+                tarifaId={selectedRateId}
+                onTarifa={setSelectedRateId}
+                pagoEnvio={shipmentPaymentStatus}
+                onPagoEnvio={setShipmentPaymentStatus}
+                formatear={formatearCobro}
+              />
+            </SeccionPlegable>
+
+            <SeccionPlegable
+              id="cobro-propina"
+              titulo={tPos('propina.titulo')}
+              icono={Banknote}
+              atajo={teclaAtajo('propina')}
+              resumen={resumenPropina}
+              abierta={seccionesAbiertas.propina}
+              onAbiertaChange={(v) => abrirSeccion('propina', v)}
+            >
+              <div className="flex flex-col gap-3">
                     {/* Propina elegida en la pantalla del cliente (F2-B): aviso no bloqueante; nada se aplica solo */}
                     <TipFromDisplayNotice
                       open={open && !showReceipt}
@@ -2278,55 +2150,56 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                     />
 
                     {/* Botones de porcentaje */}
-                    <div className="grid grid-cols-4 gap-2 mb-3">
-                      {[5, 10, 15, 20].map((pct) => (
-                        <Button
+                    <div role="group" aria-label={tPos('propina.porcentajes')} className="grid grid-cols-2 gap-2">
+                      {PORCENTAJES_PROPINA.map((pct) => (
+                        <button
                           key={pct}
                           type="button"
-                          size="sm"
-                          variant={tipPercentage === pct ? "default" : "outline"}
+                          aria-pressed={tipPercentage === pct}
                           onClick={() => handleTipPercentage(pct)}
-                          className={`h-9 text-xs ${
-                            tipPercentage === pct
-                              ? 'bg-green-600 hover:bg-green-700 text-white'
-                              : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'
-                          }`}
+                          className={cn(
+                            'flex h-12 flex-col items-center justify-center rounded-lg border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                            tipPercentage === pct ? 'border-line-brand bg-brand-tint text-brand-deep ring-1 ring-brand' : 'border-line-strong bg-surface text-fg hover:bg-hover',
+                          )}
                         >
-                          {pct}%
-                        </Button>
+                          {tPos('propina.pct', { pct })}
+                          <span className="text-xs font-normal tabular-nums text-fg-secondary">{formatearCobro(computeTipAmount(baseTip, pct))}</span>
+                        </button>
                       ))}
                     </div>
-                    
-                    {/* Monto personalizado */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600">
-                          Monto personalizado
-                        </Label>
-                        <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
-                          <Input
-                            type="number"
-                            min="0"
-                            step="100"
-                            value={tipAmount || ''}
-                            onChange={(e) => handleTipAmountChange(Number(e.target.value) || 0)}
-                            placeholder="0"
-                            className="pl-10 dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                          />
-                        </div>
+                    <p className="text-xs text-fg-muted">{tPos('propina.base', { monto: formatearCobro(baseTip) })}</p>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="cobro-propina-otro" className="text-xs font-medium text-fg-secondary">
+                          {tPos('propina.otroValor')}
+                        </label>
+                        <Input
+                          id="cobro-propina-otro"
+                          type="number"
+                          inputMode="numeric"
+                          min="0"
+                          max={topePropina(baseTip)}
+                          step="100"
+                          value={tipAmount || ''}
+                          onChange={(e) => handleTipAmountChange(Number(e.target.value) || 0)}
+                          placeholder="0"
+                          aria-describedby="cobro-propina-tope"
+                        />
+                        <span id="cobro-propina-tope" className="text-xs text-fg-muted">
+                          {tPos('propina.tope', { monto: formatearCobro(topePropina(baseTip)) })}
+                        </span>
                       </div>
-                      
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600">
-                          Mesero (opcional)
-                        </Label>
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="cobro-propina-mesero" className="text-xs font-medium text-fg-secondary">
+                          {tPos('propina.mesero')}
+                        </label>
                         <Select value={serverId} onValueChange={setServerId}>
-                          <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300">
-                            <SelectValue placeholder="Seleccionar..." />
+                          <SelectTrigger id="cobro-propina-mesero">
+                            <SelectValue placeholder={tPos('propina.meseroPlaceholder')} />
                           </SelectTrigger>
-                          <SelectContent className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200">
-                            <SelectItem value="__none__">Sin asignar</SelectItem>
+                          <SelectContent>
+                            <SelectItem value="__none__">{tPos('sinAsignar')}</SelectItem>
                             {servers.map((server) => (
                               <SelectItem key={server.id} value={server.id}>
                                 {server.name}
@@ -2336,157 +2209,95 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                         </Select>
                       </div>
                     </div>
-                    
-                    {tipAmount > 0 && (
-                      <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="dark:text-green-400 text-green-700">Propina:</span>
-                          <span className="font-semibold dark:text-green-400 text-green-700">
-                            {formatCurrency(tipAmount)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Sección de Comisión de Vendedor */}
-                  <div className="pt-3 border-t dark:border-gray-700 border-gray-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <User className="h-4 w-4 dark:text-blue-400 text-blue-600" />
-                      <Label className="text-sm font-medium dark:text-gray-200 text-gray-900">
-                        Comisión de Vendedor (opcional)
-                      </Label>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600">
-                          Vendedor
-                        </Label>
-                        <Select value={salespersonId} onValueChange={handleSalespersonChange}>
-                          <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300">
-                            <SelectValue placeholder="Seleccionar..." />
-                          </SelectTrigger>
-                          <SelectContent className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200">
-                            <SelectItem value="__none__">Sin asignar</SelectItem>
-                            {servers.map((server) => (
-                              <SelectItem key={server.id} value={server.id}>
-                                {server.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600">
-                          Comisión
-                        </Label>
-                        <div className="flex gap-1 mb-1">
-                          <Button
-                            type="button"
-                            variant={commissionMethod === 'percentage' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setCommissionMethod('percentage')}
-                            className="h-7 px-2 text-xs"
-                          >
-                            <Percent className="h-3 w-3 mr-1" /> %
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={commissionMethod === 'fixed_amount' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setCommissionMethod('fixed_amount')}
-                            className="h-7 px-2 text-xs"
-                          >
-                            <DollarSign className="h-3 w-3 mr-1" /> Monto
-                          </Button>
-                        </div>
-                        <div className="relative">
-                          {commissionMethod === 'percentage' ? (
-                            <Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
-                          ) : (
-                            <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
-                          )}
-                          <Input
-                            type="number"
-                            min="0"
-                            max={commissionMethod === 'percentage' ? "100" : undefined}
-                            step={commissionMethod === 'percentage' ? "0.5" : "100"}
-                            value={commissionRate || ''}
-                            onChange={(e) => setCommissionRate(Number(e.target.value) || 0)}
-                            placeholder="0"
-                            className="pl-10 dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {commissionAmount > 0 && (
-                      <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="dark:text-blue-400 text-blue-700">
-                            Comisión ({commissionMethod === 'percentage' ? `${commissionRate}%` : formatCurrency(commissionRate)}):
-                          </span>
-                          <span className="font-semibold dark:text-blue-400 text-blue-700">
-                            {formatCurrency(commissionAmount)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                </CardContent>
-              </Card>
               </div>
-            </div>
+            </SeccionPlegable>
 
-            {/* Toggle Factura Electrónica */}
-            <div className="px-1 py-2">
-              <div className={`p-2 sm:p-3 rounded-lg flex items-center justify-between ${eInvoiceAlwaysEnabled ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800' : 'bg-gray-50 dark:bg-gray-800/50'}`}>
-                <ElectronicInvoiceToggle
+            <SeccionPlegable
+              id="cobro-comision"
+              titulo={tPos('comision.titulo')}
+              icono={User}
+              resumen={resumenComision}
+              abierta={seccionesAbiertas.comision}
+              onAbiertaChange={(v) => abrirSeccion('comision', v)}
+            >
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="cobro-comision-vendedor" className="text-xs font-medium text-fg-secondary">
+                    {tPos('comision.vendedor')}
+                  </label>
+                  <Select value={salespersonId} onValueChange={handleSalespersonChange}>
+                    <SelectTrigger id="cobro-comision-vendedor">
+                      <SelectValue placeholder={tPos('comision.placeholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">{tPos('sinAsignar')}</SelectItem>
+                      {servers.map((server) => (
+                        <SelectItem key={server.id} value={server.id}>
+                          {server.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span id="cobro-comision-tipo" className="text-xs font-medium text-fg-secondary">
+                    {tPos('comision.valor')}
+                  </span>
+                  <div className="flex gap-2">
+                    <SegmentedControl
+                      etiqueta={tPos('comision.tipo')}
+                      valor={commissionMethod}
+                      tamano="sm"
+                      onValorChange={setCommissionMethod}
+                      opciones={[
+                        { valor: 'percentage' as const, etiqueta: tPos('comision.porcentaje') },
+                        { valor: 'fixed_amount' as const, etiqueta: tPos('comision.monto') },
+                      ]}
+                    />
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      max={commissionMethod === 'percentage' ? "100" : undefined}
+                      step={commissionMethod === 'percentage' ? "0.5" : "100"}
+                      value={commissionRate || ''}
+                      onChange={(e) => setCommissionRate(Number(e.target.value) || 0)}
+                      placeholder="0"
+                      aria-labelledby="cobro-comision-tipo"
+                      className="min-w-0 flex-1"
+                    />
+                  </div>
+                </div>
+              </div>
+            </SeccionPlegable>
+
+            <SeccionPlegable
+              id="cobro-factura"
+              titulo={tPos('factura.titulo')}
+              icono={FileCheck2}
+              atajo={teclaAtajo('facturaElectronica')}
+              resumen={facturaDisponible ? resumenFactura : undefined}
+              deshabilitada={!facturaDisponible}
+              motivo={motivoFactura}
+              abierta={seccionesAbiertas.factura}
+              onAbiertaChange={(v) => abrirSeccion('factura', v)}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="cobro-factura-enviar" className="text-sm text-fg">
+                  {tPos('factura.enviar')}
+                </label>
+                <Switch
+                  id="cobro-factura-enviar"
                   checked={sendToFactus}
                   onCheckedChange={setSendToFactus}
                   disabled={eInvoiceAlwaysEnabled}
-                  showLabel={true}
-                  showTooltip={true}
-                  size="md"
                 />
-                {eInvoiceAlwaysEnabled && (
-                  <span className="text-xs text-blue-600 dark:text-blue-400 font-medium ml-2">Global</span>
-                )}
               </div>
-            </div>
-
-             </div>
-            </div>
-            <div className="sticky bottom-0 z-10 bg-white border-t border-gray-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-3 sm:gap-4 dark:bg-gray-800 dark:border-gray-700">
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isProcessing}
-                className="w-full sm:w-auto h-11 sm:h-12 dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300 border-gray-300 hover:bg-gray-50 text-gray-700 text-sm sm:text-base"
-              >
-                <X className="h-4 w-4 mr-2" />
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleCheckout}
-                disabled={!canComplete || isProcessing}
-                className={`
-                  w-full sm:flex-1 h-11 sm:h-12 text-sm sm:text-base font-bold shadow-lg
-                  ${canComplete
-                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                    : 'dark:bg-gray-700 dark:text-gray-400 bg-gray-400 text-gray-200'
-                  }
-                `}
-              >
-                <CheckCircle className="h-5 w-5 mr-2" />
-                {isProcessing ? 'Procesando...' : canComplete ? `Completar Venta · ${formatCurrency(cartTotal)}` : 'Falta dinero'}
-              </Button>
-            </div>
+              {eInvoiceAlwaysEnabled && <p className="mt-2 text-xs text-fg-muted">{tPos('factura.global')}</p>}
+            </SeccionPlegable>
           </>
         )}
+    </CobroPanel>
       <QrPaymentDialog
         open={showQrDialog}
         onClose={() => setShowQrDialog(false)}
@@ -2498,23 +2309,24 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         currency={currency?.code || 'COP'}
         providerLabel={qrProviderLabel}
         expiresAt={qrExpiresAt}
+        onTerminal={() => setQrDead(true)}
         extraControl={
           displayPresence.emitting ? (
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded"
+                className="size-4 rounded accent-brand"
                 checked={showQrOnDisplay}
                 onChange={(e) => setShowQrOnDisplay(e.target.checked)}
               />
-              <span>Mostrar en pantalla del cliente</span>
-              {!displayPresence.connected && <span className="text-xs text-gray-400">(sin pantalla conectada)</span>}
+              <span>{tPos('qr.mostrarEnPantalla')}</span>
+              {!displayPresence.connected && <span className="text-xs text-fg-muted">{tPos('qr.sinPantalla')}</span>}
             </label>
           ) : null
         }
         onPaid={() => {
           setShowQrDialog(false);
-          toast.success('Pago QR confirmado');
+          toast.success(tPos('qr.confirmado'));
           // Pantalla del cliente (F2-C, C1): con el pago confirmado la fase
           // de propina queda decidida (equivale a «Omitir» si seguía
           // pendiente); al reproyectar el medio sin código la pantalla pasa a
@@ -2533,9 +2345,16 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             method: qrPaymentMethod || 'redeban_qr',
             amount: qrPaymentAmount,
           };
-          setPayments(prev => prev.some(p => p.id === qrEntryId)
-            ? prev.map(p => p.id === qrEntryId ? { ...p, method: qrPaymentMethod || p.method, amount: qrPaymentAmount } : p)
-            : [...prev, newPayment]);
+          // Una sola decisión (confirmQrPaymentEntry, ronda 7 · QA-2): la lista
+          // nueva y el id confirmado salen del MISMO `prev`; el id queda en el
+          // ref para el updater de `touchedIds`. Idempotente si StrictMode
+          // ejecuta el updater dos veces.
+          confirmedQrEntryIdRef.current = null;
+          setPayments(prev => {
+            const confirmed = confirmQrPaymentEntry({ payments: prev, qrEntryId, method: qrPaymentMethod, amount: qrPaymentAmount, fallback: newPayment });
+            confirmedQrEntryIdRef.current = confirmed.confirmedId;
+            return confirmed.payments;
+          });
           // La entrada confirmada por el proveedor queda INTOCABLE (ronda 6,
           // HALLAZGO P): sin esto seguía siendo «la única entrada pre-rellenada»
           // y un «Aplicar» posterior del aviso de propina (applyTipToPrefilledPayment)
@@ -2544,9 +2363,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           // propina queda en «Falta dinero» y el cajero la cobra por otro
           // medio. resolveCashReceived solo mira efectivo: «recibido/cambio»
           // no cambia. Se marca la entrada de origen si existe; si el cajero
-          // la quitó, la añadida como respaldo.
-          const confirmedQrEntryId = qrEntryId !== undefined && payments.some(p => p.id === qrEntryId) ? qrEntryId : newPayment.id;
-          setTouchedIds(prev => (prev.has(confirmedQrEntryId) ? prev : new Set(prev).add(confirmedQrEntryId)));
+          // la quitó, la añadida como respaldo: lo decidió el updater de
+          // `payments` (ref), nunca el `payments` de la clausura.
+          setTouchedIds(prev => {
+            const confirmedQrEntryId = confirmedQrEntryIdRef.current ?? newPayment.id;
+            return prev.has(confirmedQrEntryId) ? prev : new Set(prev).add(confirmedQrEntryId);
+          });
         }}
       />
       {hasSerialItems && (
@@ -2574,11 +2396,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Stock insuficiente de ingredientes</AlertDialogTitle>
+            <AlertDialogTitle>{tPos('stock.titulo')}</AlertDialogTitle>
             <AlertDialogDescription className="whitespace-pre-line">
               {stockConfirm?.message}
               {'\n\n'}
-              ¿Deseas continuar con la venta de todos modos?
+              {tPos('stock.pregunta')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -2588,7 +2410,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                 setStockConfirm(null);
               }}
             >
-              Cancelar
+              {tPos('stock.cancelar')}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
@@ -2596,14 +2418,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                 setStockConfirm(null);
               }}
             >
-              Continuar
+              {tPos('stock.continuar')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-        </div>
-      </div>
-    </div>,
-    document.body
+    </>
   );
 }

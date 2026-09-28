@@ -11,7 +11,7 @@ import {
   PackageX,
   Building2
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { StockStats as StockStatsType } from '@/lib/services/stockService';
 
 interface StockStatsProps {
@@ -20,6 +20,7 @@ interface StockStatsProps {
 }
 
 export function StockStats({ stats, isLoading }: StockStatsProps) {
+  const { formatear } = useMonedaOrganizacion();
   const statCards = [
     {
       title: 'Total Productos',
@@ -31,7 +32,7 @@ export function StockStats({ stats, isLoading }: StockStatsProps) {
     },
     {
       title: 'Valor Total',
-      value: formatCurrency(stats.totalValue),
+      value: formatear(stats.totalValue),
       icon: DollarSign,
       color: 'green',
       bgColor: 'bg-green-100 dark:bg-green-900/30',

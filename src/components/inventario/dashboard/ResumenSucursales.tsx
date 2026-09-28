@@ -2,8 +2,8 @@
 
 import {
   FC } from 'react';
-import { cn,
-  formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import {
   Building2,
   Package,
@@ -20,6 +20,8 @@ interface ResumenSucursalesProps {
 }
 
 const ResumenSucursales: FC<ResumenSucursalesProps> = ({ summaries, isLoading, className }) => {
+  const { formatear } = useMonedaOrganizacion();
+
   if (isLoading) {
     return (
       <div className={cn(
@@ -113,7 +115,7 @@ const ResumenSucursales: FC<ResumenSucursalesProps> = ({ summaries, isLoading, c
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Valor Inventario</p>
                   <p className="font-semibold text-gray-900 dark:text-white">
-                    {formatCurrency(summary.inventoryValue)}
+                    {formatear(summary.inventoryValue)}
                   </p>
                 </div>
               </div>

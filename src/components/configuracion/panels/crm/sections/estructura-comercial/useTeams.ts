@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { db } from './db';
 import type { OrgMember, SalesRole, SalesTeam, Territory } from './types';
 
@@ -23,7 +24,8 @@ export const EMPTY_MEMBER: MemberForm = {
   user_id: '',
   sales_role_id: '',
   quota_amount: '',
-  quota_currency: 'COP',
+  // Vacía hasta que se resuelve la moneda base de la organización (ver useTeams).
+  quota_currency: '',
   territory_id: '',
 };
 
@@ -44,6 +46,14 @@ export function useTeams() {
   const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const [memberForm, setMemberForm] = useState<MemberForm>(EMPTY_MEMBER);
+  const { code: monedaBase, resuelta: monedaResuelta } = useMonedaOrganizacion();
+
+  // La cuota nace en la moneda base de la organización, no en 'COP' cableado.
+  useEffect(() => {
+    if (monedaResuelta && !memberForm.quota_currency) {
+      setMemberForm((p) => ({ ...p, quota_currency: monedaBase }));
+    }
+  }, [monedaResuelta, monedaBase, memberForm.quota_currency]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -157,7 +167,8 @@ export function useTeams() {
         user_id: memberForm.user_id.trim(),
         sales_role_id: memberForm.sales_role_id || null,
         quota_amount: memberForm.quota_amount ? Number(memberForm.quota_amount) : null,
-        quota_currency: memberForm.quota_currency || 'COP',
+        // Sin moneda elegida no se manda: la base la pone el trigger.
+        quota_currency: memberForm.quota_currency || undefined,
         territory_id: memberForm.territory_id || null,
       });
       toast({ title: 'Miembro añadido', description: 'El miembro se añadió al equipo' });

@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, CreditCard, Banknote, Wallet, Smartphone } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface RegisterPaymentDialogProps {
   open: boolean;
@@ -42,6 +42,7 @@ export function RegisterPaymentDialog({
   pendingAmount,
   onSubmit,
 }: RegisterPaymentDialogProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const [amount, setAmount] = useState(pendingAmount.toString());
   const [method, setMethod] = useState('cash');
   const [reference, setReference] = useState('');

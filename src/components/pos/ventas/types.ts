@@ -95,7 +95,7 @@ export interface SaleWithDetails extends Sale {
   driver_id?: string;
   table_session_id?: string;
   delivery_type?: string;
-  delivery_address?: any;
+  delivery_address?: unknown;
   coupon_code?: string;
   salesperson_name?: string;
   commission_amount?: number;
@@ -103,18 +103,6 @@ export interface SaleWithDetails extends Sale {
   invoice?: InvoiceInfo;
   accounts_receivable?: AccountReceivableInfo;
   journal_entry?: JournalEntryInfo;
-}
-
-export interface SalesFilter {
-  search?: string;
-  status?: 'all' | 'pending' | 'completed' | 'cancelled';
-  payment_status?: 'all' | 'pending' | 'paid' | 'partial' | 'refunded';
-  date_from?: string;
-  date_to?: string;
-  customer_id?: string;
-  user_id?: string;
-  branch_id?: number;
-  source_type?: 'all' | 'pos' | 'web';
 }
 
 export interface DailySummary {

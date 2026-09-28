@@ -1,15 +1,18 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { rangoDelMes } from '@/lib/services/fiscalCalendar';
 
 export interface FiscalPeriod {
   id: string;
   organization_id: number;
   year: number;
   month: number | null;
-  period_type: 'monthly' | 'quarterly' | 'annual';
+  // Valores del CHECK de la base (fiscal_periods_period_type_check).
+  period_type: 'monthly' | 'quarterly' | 'yearly';
   start_date: string;
   end_date: string;
-  status: 'open' | 'closed' | 'locked';
+  // Valores del CHECK de la base: cerrar un periodo es bloquearlo.
+  status: 'open' | 'closing' | 'closed';
   closed_by: string | null;
   closed_at: string | null;
   notes: string | null;
@@ -86,29 +89,25 @@ export class PeriodosFiscalesService {
     if (error) throw error;
   }
 
-  static async bloquearPeriodo(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('fiscal_periods')
-      .update({ status: 'locked' })
-      .eq('id', id);
-
-    if (error) throw error;
-  }
-
   static async generarPeriodosMensuales(year: number): Promise<void> {
     const orgId = this.getOrganizationId();
     if (!orgId) throw new Error('No hay organización activa');
 
+    // `fiscal_periods.start_date`/`.end_date` son `date` (verificado en
+    // `information_schema.columns`). Los limites de un mes son los mismos en
+    // cualquier zona: se construyen con aritmetica de dia calendario. Antes
+    // salian de `new Date(year, i, 1).toISOString()`, medianoche LOCAL leida
+    // en UTC, y en cualquier zona con offset positivo (Madrid) enero empezaba
+    // el 31 de diciembre.
     const meses = Array.from({ length: 12 }, (_, i) => {
-      const start = new Date(year, i, 1);
-      const end = new Date(year, i + 1, 0);
+      const { start, end } = rangoDelMes(year, i + 1);
       return {
         organization_id: orgId,
         year,
         month: i + 1,
         period_type: 'monthly' as const,
-        start_date: start.toISOString().split('T')[0],
-        end_date: end.toISOString().split('T')[0],
+        start_date: start,
+        end_date: end,
         status: 'open' as const,
       };
     });
@@ -130,7 +129,7 @@ export class PeriodosFiscalesService {
         organization_id: orgId,
         year,
         month: null,
-        period_type: 'annual',
+        period_type: 'yearly',
         start_date: `${year}-01-01`,
         end_date: `${year}-12-31`,
         status: 'open',

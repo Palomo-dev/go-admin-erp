@@ -278,15 +278,15 @@ async function runReplication({ organizationId, client = supabase, onProgress, w
   // 7. Métodos de pago activos, con el nombre del catálogo global.
   const paymentMethods = new StoreWriter('payment_methods', org);
   const pmRows = unwrap<Omit<CatalogPaymentMethod, 'organization_id'>>(
-    await db.from('organization_payment_methods').select('payment_method_code, is_active, settings, payment_methods!inner ( name )').eq('organization_id', org).eq('is_active', true),
+    await db.from('organization_payment_methods').select('payment_method_code, is_active, settings, website_display_order, payment_methods!inner ( name )').eq('organization_id', org).eq('is_active', true),
     'organization_payment_methods',
   );
   await paymentMethods.write(pmRows.map((r) => ({ ...r, organization_id: org })));
   report('payment_methods', await paymentMethods.finish());
 
-  // 8. Impuestos activos.
+  // 8. Impuestos activos, con el código de su plantilla (las retenciones no se cobran en la venta).
   const taxes = new StoreWriter('organization_taxes', org);
-  await taxes.write(unwrap<CatalogOrganizationTax>(await db.from('organization_taxes').select('*').eq('organization_id', org).eq('is_active', true), 'organization_taxes'));
+  await taxes.write(unwrap<CatalogOrganizationTax>(await db.from('organization_taxes').select('*, tax_templates(code)').eq('organization_id', org).eq('is_active', true), 'organization_taxes'));
   report('organization_taxes', await taxes.finish());
 
   // 9. Monedas: la misma RPC que usa el POS (lectura; también queda en la caché de RPC).

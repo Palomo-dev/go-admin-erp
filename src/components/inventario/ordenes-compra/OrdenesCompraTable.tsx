@@ -33,7 +33,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import type { PurchaseOrder } from '@/lib/services/purchaseOrderService';
 import { CopyableId } from '@/components/common/CopyableId';
@@ -61,6 +61,7 @@ export function OrdenesCompraTable({
 }: OrdenesCompraTableProps) {
   const router = useRouter();
   const { formatDate } = useFormatDate();
+  const { formatear } = useMonedaOrganizacion();
   const [page, setPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -120,7 +121,7 @@ export function OrdenesCompraTable({
                     {order.expected_date ? formatDate(order.expected_date) : '-'}
                   </TableCell>
                   <TableCell className="text-right font-medium text-gray-900 dark:text-gray-100">
-                    {formatCurrency(order.total || 0)}
+                    {formatear(order.total || 0)}
                   </TableCell>
                   <TableCell className="hidden sm:table-cell text-gray-500 dark:text-gray-400 text-sm">
                     {formatDate(order.created_at)}

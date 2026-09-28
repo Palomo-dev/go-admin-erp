@@ -1,5 +1,60 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz, toPlainDate, plainDateToInstant } from '@/lib/utils/dateCore';
+import { getDayRange } from '@/lib/utils/dateRanges';
+import { sumarDiasAlDia, diasEntreDias } from '@/lib/services/fiscalCalendar';
+
+// ============================================================
+// Zona horaria en este servicio (Fase B, tanda 4 - vigencias).
+//
+// `memberships.start_date` y `.end_date` son **timestamptz**, no `date`
+// (verificado en `information_schema.columns`). El formulario manda
+// 'YYYY-MM-DD' y Postgres lo interpreta a medianoche del `TimeZone` de la
+// sesion (UTC): una membresia "hasta el 30" se guardaba como el 30 a las
+// 00:00Z, que en Madrid son las 02:00 del 30. A partir de esa hora el socio
+// ya constaba como vencido: perdia el ultimo dia que habia pagado.
+//
+// Regla adoptada aqui, y la misma en la lectura para que los dos errores no
+// se sigan cancelando: el dia de INICIO empieza a las 00:00 de la zona de la
+// organizacion, y el dia de FIN termina a las 23:59:59.999 de esa misma zona.
+// Una vigencia "hasta el dia X" cubre el dia X entero, que es lo que entiende
+// quien paga.
+//
+// `membership_freezes.start_date` / `.end_date` si son `date`: ahi se escribe
+// el dia, sin instante.
+//
+// De donde sale la organizacion: `memberships.organization_id` existe y es la
+// fila que se esta tocando. No se anade un parametro a las firmas porque eso
+// permitiria que el llamador pasara una organizacion distinta de la dueña del
+// dato; `membership_freezes` no tiene `organization_id`, y se llega a el por
+// `membership_id`, que es el salto que documenta el ADR-001.
+// ============================================================
+
+/** Zona horaria de la organizacion dueña de una membresia. */
+async function zonaDeLaMembresia(membershipId: number): Promise<string> {
+  const { data } = await supabase
+    .from('memberships')
+    .select('organization_id')
+    .eq('id', membershipId)
+    .maybeSingle();
+  return resolveTimezone(Number(data?.organization_id) || 0);
+}
+
+/** Dia calendario 'YYYY-MM-DD' de un valor que puede ser dia o instante. */
+function diaDe(valor: string, timezone: string): string {
+  return valor.length <= 10 ? valor : toPlainDate(new Date(valor), timezone);
+}
+
+/** Inicio de vigencia: 00:00 del dia, en la zona de la organizacion. */
+function inicioDeVigencia(dia: string, timezone: string): string {
+  return plainDateToInstant(dia, timezone, '00:00');
+}
+
+/** Fin de vigencia: el dia entero, hasta su ultimo milisegundo. */
+function finDeVigencia(dia: string, timezone: string): string {
+  return getDayRange(dia, timezone).end;
+}
 
 // ==================== TIPOS ====================
 
@@ -405,11 +460,22 @@ export async function getMembershipById(membershipId: number): Promise<Membershi
 export async function createMembership(membership: Partial<Membership>): Promise<Membership> {
   const orgId = getOrganizationId();
   const accessCode = generateAccessCode();
-  
+  const zona = await resolveTimezone(orgId);
+
+  // El formulario entrega dias calendario; la columna es timestamptz.
+  const inicio = membership.start_date
+    ? inicioDeVigencia(diaDe(membership.start_date, zona), zona)
+    : undefined;
+  const fin = membership.end_date
+    ? finDeVigencia(diaDe(membership.end_date, zona), zona)
+    : undefined;
+
   const { data, error } = await supabase
     .from('memberships')
     .insert({
       ...membership,
+      ...(inicio ? { start_date: inicio } : {}),
+      ...(fin ? { end_date: fin } : {}),
       organization_id: orgId,
       status: membership.status || 'active',
       access_code: accessCode
@@ -466,12 +532,16 @@ export async function freezeMembership(
   const membership = await getMembershipById(membershipId);
   if (!membership) throw new Error('Membresía no encontrada');
 
+  // `membership_freezes` no tiene `organization_id`: la organizacion sale de la
+  // membresia que se congela, que ya esta cargada aqui.
+  const zona = await resolveTimezone(Number(membership.organization_id) || 0);
+
   const { data: freeze, error: freezeError } = await supabase
     .from('membership_freezes')
     .insert({
       membership_id: membershipId,
-      start_date: new Date().toISOString().split('T')[0],
-      end_date: endDate || null,
+      start_date: todayInTz(zona),
+      end_date: endDate ? diaDe(endDate, zona) : null,
       reason,
       status: 'active',
       days_frozen: 0
@@ -512,15 +582,18 @@ export async function unfreezeMembership(membershipId: number): Promise<void> {
     .single();
 
   if (activeFreeze) {
-    const startDate = new Date(activeFreeze.start_date);
-    const endDate = new Date();
-    const daysFrozen = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const zona = await zonaDeLaMembresia(membershipId);
+    const hoy = todayInTz(zona);
+    // Dias de congelamiento = dias CALENDARIO, no `(ahora - inicio) / 24 h`:
+    // en la semana del cambio de horario esa division da un dia de mas o de
+    // menos, y ese dia se le regala (o se le quita) al socio.
+    const daysFrozen = diasEntreDias(String(activeFreeze.start_date).slice(0, 10), hoy);
 
     await supabase
       .from('membership_freezes')
-      .update({ 
+      .update({
         status: 'ended',
-        end_date: endDate.toISOString().split('T')[0],
+        end_date: hoy,
         days_frozen: daysFrozen,
         updated_at: new Date().toISOString()
       })
@@ -528,14 +601,15 @@ export async function unfreezeMembership(membershipId: number): Promise<void> {
 
     const membership = await getMembershipById(membershipId);
     if (membership) {
-      const newEndDate = new Date(membership.end_date);
-      newEndDate.setDate(newEndDate.getDate() + daysFrozen);
+      // `end_date` es timestamptz: se corre el DIA de vencimiento y se vuelve a
+      // cerrar al final de ese dia en la zona de la organizacion.
+      const diaFin = sumarDiasAlDia(diaDe(membership.end_date, zona), daysFrozen);
 
       await supabase
         .from('memberships')
-        .update({ 
+        .update({
           status: 'active',
-          end_date: newEndDate.toISOString(),
+          end_date: finDeVigencia(diaFin, zona),
           updated_at: new Date().toISOString()
         })
         .eq('id', membershipId);
@@ -573,16 +647,18 @@ export async function renewMembership(membershipId: number, planId?: number): Pr
   const plan = await getPlanById(targetPlanId);
   if (!plan) throw new Error('Plan no encontrado');
 
-  const startDate = new Date();
-  const endDate = new Date();
-  endDate.setDate(endDate.getDate() + plan.duration_days);
+  const zona = await resolveTimezone(Number(membership.organization_id) || 0);
+  const diaInicio = todayInTz(zona);
+  // `duration_days` son dias de calendario: 30 dias no son 30 x 24 h cuando el
+  // rango cruza un cambio de horario.
+  const diaFin = sumarDiasAlDia(diaInicio, plan.duration_days);
 
   const { data, error } = await supabase
     .from('memberships')
     .update({
       membership_plan_id: targetPlanId,
-      start_date: startDate.toISOString(),
-      end_date: endDate.toISOString(),
+      start_date: inicioDeVigencia(diaInicio, zona),
+      end_date: finDeVigencia(diaFin, zona),
       status: 'active',
       updated_at: new Date().toISOString()
     })
@@ -775,9 +851,11 @@ export async function getTodayCheckins(
   branchId?: number | null
 ): Promise<MemberCheckin[]> {
   const orgId = organizationId || getOrganizationId();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
+  // `setHours(0,0,0,0)` es medianoche del NAVEGADOR: desde Madrid, "los
+  // check-ins de hoy" de una sede de Bogota empezaban a las 17:00 de ayer.
+  const zona = await resolveTimezone(orgId, branchId ?? null);
+  const inicioDeHoy = getDayRange(todayInTz(zona), zona).start;
+
   let query = supabase
     .from('member_checkins')
     .select(`
@@ -786,7 +864,7 @@ export async function getTodayCheckins(
       memberships (id, status, membership_plans (name))
     `)
     .eq('organization_id', orgId)
-    .gte('checkin_at', today.toISOString())
+    .gte('checkin_at', inicioDeHoy)
     .order('checkin_at', { ascending: false });
 
   if (branchId) {
@@ -810,12 +888,16 @@ export async function getGymStats(
   branchId?: number | null
 ): Promise<GymStats> {
   const orgId = organizationId || getOrganizationId();
+  // Los limites del dia salen de la zona de la organizacion (o de la sucursal
+  // filtrada), no de `new Date(y, m, d)`, que es medianoche del NAVEGADOR: en
+  // Madrid ese instante cae en el dia anterior y el corte de "vencen esta
+  // semana" se desplazaba una jornada entera.
+  const zona = await resolveTimezone(orgId, branchId ?? null);
+  const hoy = todayInTz(zona);
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const in7Days = new Date(today);
-  in7Days.setDate(in7Days.getDate() + 7);
-  const weekAgo = new Date(today);
-  weekAgo.setDate(weekAgo.getDate() - 7);
+  const inicioDeHoy = getDayRange(hoy, zona).start;
+  const finDe7Dias = getDayRange(sumarDiasAlDia(hoy, 7), zona).end;
+  const inicioDeHace7Dias = getDayRange(sumarDiasAlDia(hoy, -7), zona).start;
 
   const { data: activeMemberships } = await supabase
     .from('memberships')
@@ -829,8 +911,8 @@ export async function getGymStats(
     .select('id', { count: 'exact' })
     .eq('organization_id', orgId)
     .eq('status', 'active')
-    .gte('end_date', today.toISOString())
-    .lte('end_date', in7Days.toISOString());
+    .gte('end_date', inicioDeHoy)
+    .lte('end_date', finDe7Dias);
 
   const { data: expiredMemberships } = await supabase
     .from('memberships')
@@ -843,7 +925,7 @@ export async function getGymStats(
     .from('member_checkins')
     .select('id', { count: 'exact' })
     .eq('organization_id', orgId)
-    .gte('checkin_at', today.toISOString())
+    .gte('checkin_at', inicioDeHoy)
     .is('denied_reason', null);
 
   if (branchId != null) {
@@ -856,14 +938,14 @@ export async function getGymStats(
     .from('payments')
     .select('amount')
     .eq('source', 'membership')
-    .gte('created_at', today.toISOString())
+    .gte('created_at', inicioDeHoy)
     .eq('status', 'completed');
 
   const { data: weekPayments } = await supabase
     .from('payments')
     .select('amount')
     .eq('source', 'membership')
-    .gte('created_at', weekAgo.toISOString())
+    .gte('created_at', inicioDeHace7Dias)
     .eq('status', 'completed');
 
   return {
@@ -984,11 +1066,22 @@ function generateAccessCode(): string {
   return code;
 }
 
-export function getDaysRemaining(endDate: string): number {
-  const end = new Date(endDate);
-  const now = new Date();
-  const diff = end.getTime() - now.getTime();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+/**
+ * Dias que le quedan a una membresia, contados en DIAS CALENDARIO de la zona
+ * de la organizacion. Vence hoy -> 0. Vencio ayer -> -1.
+ *
+ * `timezone` es obligatorio a proposito: `memberships.end_date` es un
+ * timestamptz, y restar instantes y dividir por 86 400 000 mezcla la hora del
+ * vencimiento con la del navegador. Con el fin de vigencia a las 23:59 de la
+ * organizacion, esa cuenta devolvia "1 dia" a las once de la noche del ultimo
+ * dia y "0" a las nueve de la mañana del mismo dia: dos respuestas distintas
+ * para la misma membresia segun la hora a la que se mirara la pantalla.
+ */
+export function getDaysRemaining(endDate: string, timezone: string): number {
+  if (!endDate) return 0;
+  const fin = new Date(endDate);
+  if (isNaN(fin.getTime())) return 0;
+  return diasEntreDias(todayInTz(timezone), toPlainDate(fin, timezone));
 }
 
 export function getMembershipStatusColor(status: string): string {

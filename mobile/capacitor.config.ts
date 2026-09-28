@@ -21,7 +21,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
  */
 const config: CapacitorConfig = {
   appId: 'io.goadmin.app',
-  appName: 'GoAdmin ERP',
+  appName: 'GO Admin ERP',
   // webDir no se usa con server.url remoto, pero Capacitor requiere un valor.
   webDir: 'www',
   server: {
@@ -44,7 +44,8 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
-      backgroundColor: '#0f172a',
+      // Fondo suave del manual de marca: el mismo de los splash.png (isotipo al centro).
+      backgroundColor: '#F8FAFF',
       showSpinner: false,
       androidScaleType: 'CENTER_CROP',
       iosSpinnerStyle: 'small',

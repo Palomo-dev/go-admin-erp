@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import type { PayrollPeriod } from '@/lib/services/payrollService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import {
   Table,
@@ -71,6 +71,8 @@ export function PeriodsTable({
 }: PeriodsTableProps) {
   const router = useRouter();
   const { formatDate } = useFormatDate();
+  // `payroll_periods` no tiene moneda: sus totales van en la moneda base.
+  const { formatear } = useMonedaOrganizacion();
 
   const handleViewDetail = (period: PayrollPeriod) => {
     router.push(`/app/hrm/nomina/periodos/${period.id}`);
@@ -147,10 +149,10 @@ export function PeriodsTable({
                 {period.total_employees || 0}
               </TableCell>
               <TableCell className="py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-white font-medium hidden lg:table-cell">
-                {formatCurrency(period.total_gross || 0, 'COP')}
+                {formatear(period.total_gross || 0)}
               </TableCell>
               <TableCell className="py-2 sm:py-3 text-xs sm:text-sm text-green-600 dark:text-green-400 font-medium">
-                {formatCurrency(period.total_net || 0, 'COP')}
+                {formatear(period.total_net || 0)}
               </TableCell>
               <TableCell className="py-2 sm:py-3">
                 <Badge className={`${statusColors[period.status || 'draft']} text-[10px] sm:text-xs`}>

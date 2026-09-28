@@ -69,6 +69,8 @@ function cart(lines: DisplayLine[], overrides: Partial<DisplayCart> = {}): Displ
     taxIncluded: true,
     total: lines.reduce((sum, l) => sum + l.total, 0),
     lastChangedLineId: lines.length ? lines[lines.length - 1].id : null,
+    // F4: el carrito lleva el nombre del cliente (solo se pinta con el ajuste).
+    customerName: null,
     ...overrides,
   };
 }

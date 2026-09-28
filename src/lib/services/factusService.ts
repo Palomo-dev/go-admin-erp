@@ -12,6 +12,64 @@ const FACTUS_URLS = {
 // Tipos de documentos electrónicos
 export type FactusDocumentType = '01' | '03' | '91' | '92';
 
+/**
+ * Error de la API de Factus con el código HTTP. `status` null = no hubo
+ * respuesta (red, DNS, timeout). La cola decide con él si reintenta
+ * (5xx, 429, 401, sin respuesta) o si es un rechazo que pide corregir (4xx).
+ */
+export class FactusApiError extends Error {
+  readonly status: number | null;
+  readonly body: unknown;
+
+  constructor(message: string, status: number | null, body?: unknown) {
+    super(message);
+    this.name = 'FactusApiError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
+/** Mensaje legible de una respuesta de error de Factus (incluye los errores de validación). */
+function mensajeErrorFactus(result: unknown, fallback: string): string {
+  const r = (result ?? {}) as { message?: string; error?: string; errors?: unknown; data?: { errors?: unknown; message?: string } };
+  const base = r.message || r.error || fallback;
+  const detalle = r.data?.errors || r.errors;
+  return detalle ? `${base}: ${JSON.stringify(detalle)}` : base;
+}
+
+async function leerJson(response: Response): Promise<unknown> {
+  const texto = await response.text();
+  if (!texto) return null;
+  try {
+    return JSON.parse(texto);
+  } catch {
+    return { message: texto.slice(0, 500) };
+  }
+}
+
+/** POST a Factus que lanza `FactusApiError` con el código HTTP si la respuesta no es 2xx. */
+async function postFactus<T>(url: string, accessToken: string, data: unknown, fallback: string): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+  } catch (err) {
+    throw new FactusApiError(`Sin respuesta de Factus: ${err instanceof Error ? err.message : String(err)}`, null);
+  }
+  const result = await leerJson(response);
+  if (!response.ok) {
+    throw new FactusApiError(mensajeErrorFactus(result, fallback), response.status, result);
+  }
+  return result as T;
+}
+
 export interface FactusCredentials {
   clientId: string;
   clientSecret: string;
@@ -42,12 +100,14 @@ export interface FactusCustomer {
   trade_name?: string;
   names: string;
   address: string;
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string;
   legal_organization_code: string;
   tribute_code: string;
   country_code?: string;
   municipality_code: string;
+  /** Responsabilidades fiscales (R-99-PN, O-13…). Factus v2 las exige. */
+  responsibilities?: string[];
 }
 
 export interface FactusItem {
@@ -104,12 +164,41 @@ export interface FactusInvoiceRequest {
   allowance_charges?: FactusAllowanceCharge[];
 }
 
+/**
+ * Nota crédito v2 (`POST /v2/credit-notes/validate`), según la documentación
+ * de Factus y verificada en sandbox: exige `customer` (con `responsibilities`)
+ * y `payment_details`; `bill_number` referencia la factura (customization 20).
+ */
+export interface FactusCreditNoteRequest {
+  reference_code: string;
+  numbering_range_id?: number;
+  /** Concepto DIAN: 1 devolución parcial, 2 anulación, 3 rebaja o descuento, 4 ajuste de precio, 5 otros. */
+  correction_concept_code: string;
+  /** 20 = referencia una factura electrónica; 22 = sin referencia. */
+  customization_id: '20' | '22';
+  bill_number?: string;
+  observation?: string;
+  send_email?: boolean;
+  payment_details: FactusPaymentDetail[];
+  customer: FactusCustomer;
+  items: FactusItem[];
+  allowance_charges?: FactusAllowanceCharge[];
+}
+
+export interface FactusCompany {
+  nit: string;
+  dv: string | null;
+  name: string;
+}
+
 export interface FactusInvoiceResponse {
   status: string;
   message: string;
   data?: {
     reference_code: string;
     number: string;
+    cude?: string;
+    links?: { qr?: string; public_url?: string };
     order_reference: string | null;
     send_email: boolean;
     has_claim: boolean;
@@ -301,69 +390,59 @@ export async function createInvoice(
   accessToken: string,
   invoiceData: FactusInvoiceRequest
 ): Promise<FactusInvoiceResponse> {
-  const baseUrl = getBaseUrl(environment);
-
-  const response = await fetch(`${baseUrl}/v2/bills/validate`, {
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(invoiceData),
-  });
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    const errorMsg = result.message || result.error || 'Error al crear factura en Factus';
-    const validationErrors = result.data?.errors || result.errors || result.data?.message;
-    const fullError = validationErrors 
-      ? `${errorMsg}: ${JSON.stringify(validationErrors)}`
-      : errorMsg;
-    console.error('Factus createInvoice error:', JSON.stringify(result));
-    throw new Error(fullError);
-  }
-
-  return result;
+  return postFactus<FactusInvoiceResponse>(
+    `${getBaseUrl(environment)}/v2/bills/validate`,
+    accessToken,
+    invoiceData,
+    'Error al crear factura en Factus',
+  );
 }
 
 /**
- * Crea/Valida una nota crédito electrónica
+ * Crea/Valida una nota crédito electrónica (formato v2).
  */
 export async function createCreditNote(
   environment: 'sandbox' | 'production',
   accessToken: string,
-  data: {
-    reference_code: string;
-    billing_reference: { number: string; cufe: string; uuid: string };
-    credit_note_reason: string;
-    payment_method_code: string;
-    observation?: string;
-    send_email?: boolean;
-    items: FactusItem[];
-    allowance_charges?: FactusAllowanceCharge[];
-  }
+  data: FactusCreditNoteRequest
 ): Promise<FactusInvoiceResponse> {
-  const baseUrl = getBaseUrl(environment);
+  return postFactus<FactusInvoiceResponse>(
+    `${getBaseUrl(environment)}/v2/credit-notes/validate`,
+    accessToken,
+    data,
+    'Error al crear nota crédito en Factus',
+  );
+}
 
-  const response = await fetch(`${baseUrl}/v2/credit-notes/validate`, {
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(data),
-  });
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.message || 'Error al crear nota crédito en Factus');
+/**
+ * Empresa emisora de la cuenta (`GET /v2/companies`). Una cuenta de Factus es
+ * UNA empresa: su NIT es el emisor de todo lo que se valide con ese token.
+ */
+export async function getCompany(
+  environment: 'sandbox' | 'production',
+  accessToken: string
+): Promise<FactusCompany> {
+  let response: Response;
+  try {
+    response = await fetch(`${getBaseUrl(environment)}/v2/companies`, {
+      headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+    });
+  } catch (err) {
+    throw new FactusApiError(`Sin respuesta de Factus: ${err instanceof Error ? err.message : String(err)}`, null);
   }
-
-  return result;
+  const result = (await leerJson(response)) as { data?: Record<string, unknown> } | null;
+  if (!response.ok) {
+    throw new FactusApiError(mensajeErrorFactus(result, 'Error al consultar la empresa en Factus'), response.status, result);
+  }
+  const d = result?.data ?? {};
+  const nombre = [d.company, d.graphic_representation_name, [d.names, d.surnames].filter(Boolean).join(' ')]
+    .map((v) => (typeof v === 'string' ? v.trim() : ''))
+    .find((v) => v.length > 0) ?? '';
+  return {
+    nit: String(d.nit ?? '').trim(),
+    dv: d.dv === null || d.dv === undefined ? null : String(d.dv),
+    name: nombre,
+  };
 }
 
 /**
@@ -383,25 +462,12 @@ export async function createDebitNote(
     allowance_charges?: FactusAllowanceCharge[];
   }
 ): Promise<FactusInvoiceResponse> {
-  const baseUrl = getBaseUrl(environment);
-
-  const response = await fetch(`${baseUrl}/v2/debit-notes/validate`, {
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(data),
-  });
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.message || 'Error al crear nota débito en Factus');
-  }
-
-  return result;
+  return postFactus<FactusInvoiceResponse>(
+    `${getBaseUrl(environment)}/v2/debit-notes/validate`,
+    accessToken,
+    data,
+    'Error al crear nota débito en Factus',
+  );
 }
 
 /**
@@ -634,7 +700,7 @@ export function mapIdentificationType(type: string | undefined): string {
     'TE': '21',  // Tarjeta extranjería
     'NUIP': '91', // NUIP
   };
-  return mapping[type || 'CC'] || '13';
+  return mapping[(type || 'CC').trim().toUpperCase()] || '13';
 }
 
 /**
@@ -669,6 +735,8 @@ export function mapTribute(tributeId: number | null | undefined): string {
     4: '0A',   // Régimen simple
     5: '06',   // Renta
     6: '07',   // ICA
+    18: '01',  // dian_tributes 18: IVA (cliente)
+    21: 'ZZ',  // dian_tributes 21: No aplica
   };
   return mapping[tributeId || 2] || 'ZZ';
 }
@@ -705,26 +773,63 @@ export function mapStandardCode(standardCodeId: number | null | undefined): stri
 }
 
 /**
- * Mapea el código de impuesto interno a código DIAN (string)
+ * Error de configuración: el código de impuesto o de retención de la línea no
+ * existe en las tablas de Factus/DIAN. El documento NO se envía (antes cualquier
+ * código desconocido salía como '01' IVA: un INC se declaraba como IVA).
  */
-export function mapTaxCode(taxCode: string | undefined): string {
-  const mapping: Record<string, string> = {
-    'IVA_19': '01',
-    'IVA_5': '01',
-    'IVA_0': '01',
-    'IVA': '01',
-    'RETE_4': '09',
-    'RETE_11': '09',
-    'ICA_0.966': '07',
-    '01': '01',
-    '04': '04',
-    '06': '06',
-    '07': '07',
-    '08': '08',
-    '09': '09',
-    '10': '10',
-  };
-  return mapping[taxCode || '01'] || '01';
+export class CodigoTributoNoAdmitidoError extends Error {
+  readonly codigo: string;
+  constructor(codigo: string, tipo: 'impuesto' | 'retención', detalle?: string) {
+    super(
+      `El código de ${tipo} «${codigo}» no es válido para la factura electrónica (Factus/DIAN)` +
+        (detalle ? `: ${detalle}` : '. Revise el impuesto del producto en Finanzas › Impuestos.'),
+    );
+    this.name = 'CodigoTributoNoAdmitidoError';
+    this.codigo = codigo;
+  }
+}
+
+/**
+ * Mapea el código de impuesto interno al código de Factus/DIAN.
+ *
+ * Tabla oficial de Factus «Códigos de impuestos»
+ * (https://developers.factus.com.co/tablas-de-referencia/tablas/, consultada el
+ * 2026-09-28): 01 IVA, 04 Impuesto Nacional al Consumo (INC), 35 impuesto a los
+ * ultraprocesados (IBUA). Nada más. ICA (DIAN 03) y las retenciones NO son
+ * impuestos de la línea en Factus: ICA falla con error claro; las retenciones
+ * van por `mapWithholdingCode`.
+ *
+ * Sin código (línea sin impuesto de plantilla) se declara IVA a la tarifa de la
+ * línea, como antes. Un código DESCONOCIDO falla: nunca se declara como IVA.
+ */
+export function mapTaxCode(taxCode: string | null | undefined): string {
+  const code = (taxCode ?? '').trim().toUpperCase();
+  if (!code) return '01';
+  if (code === '01' || code === 'IVA' || /^IVA_(\d+(\.\d+)?|EXCLUIDO)$/.test(code)) return '01';
+  if (code === '04' || code === 'INC' || /^INC_\d+(\.\d+)?$/.test(code)) return '04';
+  if (code === '35' || code === 'IBUA' || /^IBUA_\d+(\.\d+)?$/.test(code)) return '35';
+  if (code === '03' || code.startsWith('ICA')) {
+    throw new CodigoTributoNoAdmitidoError(taxCode as string, 'impuesto', 'el ICA no se declara como impuesto de la línea en Factus');
+  }
+  if (code.startsWith('RETE') || ['05', '06', '07'].includes(code)) {
+    throw new CodigoTributoNoAdmitidoError(taxCode as string, 'impuesto', 'es una retención; va en withholding_taxes, no en taxes');
+  }
+  throw new CodigoTributoNoAdmitidoError(taxCode as string, 'impuesto');
+}
+
+/**
+ * Mapea el código de retención interno al de Factus («Códigos de retenciones»,
+ * misma tabla oficial): 05 Retención sobre el IVA (ReteIVA), 06 Retención sobre
+ * renta (ReteFuente). ReteICA no está en la tabla de Factus: falla con error.
+ */
+export function mapWithholdingCode(code: string | null | undefined): string {
+  const c = (code ?? '').trim().toUpperCase();
+  if (c === '05' || c.startsWith('RETEIVA') || c.startsWith('RETE_IVA')) return '05';
+  if (c === '06' || c.startsWith('RETEFUENTE') || c.startsWith('RETE_FUENTE') || c.startsWith('RETERENTA') || /^RETE_\d+(\.\d+)?$/.test(c)) return '06';
+  if (c === '07' || c.startsWith('RETEICA') || c.startsWith('RETE_ICA')) {
+    throw new CodigoTributoNoAdmitidoError(code as string, 'retención', 'Factus no admite ReteICA en la factura');
+  }
+  throw new CodigoTributoNoAdmitidoError(String(code ?? ''), 'retención');
 }
 
 /**
@@ -761,31 +866,12 @@ export async function createSupportDocument(
   accessToken: string,
   data: FactusSupportDocumentRequest
 ): Promise<FactusSupportDocumentResponse> {
-  const baseUrl = getBaseUrl(environment);
-
-  const response = await fetch(`${baseUrl}/v2/support-documents/validate`, {
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(data),
-  });
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    const errorMsg = result.message || result.error || 'Error al crear documento soporte en Factus';
-    const validationErrors = result.data?.errors || result.errors || result.data?.message;
-    const fullError = validationErrors
-      ? `${errorMsg}: ${JSON.stringify(validationErrors)}`
-      : errorMsg;
-    console.error('Factus createSupportDocument error:', JSON.stringify(result));
-    throw new Error(fullError);
-  }
-
-  return result;
+  return postFactus<FactusSupportDocumentResponse>(
+    `${getBaseUrl(environment)}/v2/support-documents/validate`,
+    accessToken,
+    data,
+    'Error al crear documento soporte en Factus',
+  );
 }
 
 /**
@@ -967,6 +1053,7 @@ const factusService = {
   createInvoice,
   createCreditNote,
   createDebitNote,
+  getCompany,
   getInvoiceByReference,
   downloadPDF,
   downloadXML,
@@ -988,6 +1075,7 @@ const factusService = {
   mapUnitMeasure,
   mapStandardCode,
   mapTaxCode,
+  mapWithholdingCode,
   FACTUS_URLS,
 };
 

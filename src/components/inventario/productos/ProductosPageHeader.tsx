@@ -2,176 +2,184 @@
 
 import React from 'react';
 import Link from 'next/link';
-import {
-  Package,
-  PlusCircle,
-  FileSpreadsheet,
-  Download,
-  RefreshCw,
-  Sparkles,
-  Globe,
-  Link2,
-} from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+import { useRouter } from 'next/navigation';
+import { Barcode, ClipboardCheck, Download, FileSpreadsheet, Globe, Link2, Package, Plus, Printer, RefreshCw, Upload } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
-interface ProductosPageHeaderProps {
-  onCrearClick: () => void;
-  onImportarClick?: () => void;
-  onExportarClick?: () => void;
-  onExportarFacebookClick?: () => void;
-  onFacebookFeedClick?: () => void;
-  onRefreshClick?: () => void;
-  onScrapingClick?: () => void;
-  isRefreshing?: boolean;
-  totalProducts?: number;
-  /** Indica que la carga completa en background está en progreso */
-  backgroundLoading?: boolean;
-  /** Total de productos según el RPC (mientras carga el resto en background) */
-  fastTotalCount?: number | null;
-}
+import { PageHeader, RowActionsMenu, type AccionFila } from '@/components/kit';
+import { Button } from '@/components/ui/button';
 
 /**
- * Encabezado de la página de productos con título y acciones
+ * Cabecera del catálogo sobre el `PageHeader` del kit (Figma «Catálogo de
+ * productos»): migas, icono, título, subtítulo con el avance de la carga por
+ * lotes y, a la derecha, «Actualizar» · «Importar ▾» · «Nuevo producto» · «⋯».
+ *
+ * En móvil publica en el MobileHeader «Productos», el subtítulo corto y dos
+ * acciones: «+» y «⋯» (hoja «Acciones del catálogo»).
  */
+export interface ProductosPageHeaderProps {
+  onImportarArchivo: () => void;
+  onImportarWeb: () => void;
+  onExportarCsv: () => void;
+  onExportarFacebook: () => void;
+  onFeedFacebook: () => void;
+  onActualizar: () => void;
+  /** «Imprimir etiquetas» (seleccionados o, sin selección, lo filtrado). */
+  onImprimirEtiquetas?: () => void;
+  /** «Códigos de barras»: generar los que faltan (misma regla de alcance). */
+  onCodigosBarras?: () => void;
+  actualizando?: boolean;
+  /** Subtítulo de escritorio («Consolidado · 3 sucursales · 4.368 productos · …»). */
+  subtitulo: string;
+  /** Subtítulo corto del MobileHeader («4.368 productos» / «Cargando…»). */
+  subtituloMovil: string;
+  /** Carga por lotes: productos ya cargados de cuántos. */
+  progresoCarga?: { cargados: number; total: number } | null;
+}
+
+const HREF_NUEVO = '/app/inventario/productos/nuevo';
+
 const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
-  onCrearClick,
-  onImportarClick = () => {},
-  onExportarClick = () => {},
-  onExportarFacebookClick = () => {},
-  onFacebookFeedClick = () => {},
-  onRefreshClick,
-  onScrapingClick,
-  isRefreshing = false,
-  totalProducts,
-  backgroundLoading = false,
-  fastTotalCount = null
+  onImportarArchivo,
+  onImportarWeb,
+  onExportarCsv,
+  onExportarFacebook,
+  onFeedFacebook,
+  onActualizar,
+  onImprimirEtiquetas,
+  onCodigosBarras,
+  actualizando = false,
+  subtitulo,
+  subtituloMovil,
+  progresoCarga = null,
 }) => {
+  const router = useRouter();
+  const tEtq = useTranslations('inventarioEtiquetas.catalogo');
+  const t = useTranslations('productos.cabecera');
+  const cargandoLotes = !!progresoCarga && progresoCarga.cargados < progresoCarga.total;
+
+  const importar: AccionFila[] = [
+    {
+      id: 'importar-archivo',
+      etiqueta: t('importarArchivo'),
+      descripcion: t('importarArchivoDescripcion'),
+      icono: FileSpreadsheet,
+      onSelect: onImportarArchivo,
+    },
+    {
+      id: 'importar-web',
+      etiqueta: t('importarWeb'),
+      descripcion: t('importarWebDescripcion'),
+      icono: Globe,
+      onSelect: onImportarWeb,
+    },
+  ];
+
+  const exportar: AccionFila[] = [
+    { id: 'exportar-csv', etiqueta: t('exportarCsv'), icono: Download, onSelect: onExportarCsv },
+    {
+      id: 'exportar-facebook',
+      etiqueta: t('exportarFacebook'),
+      icono: Download,
+      onSelect: onExportarFacebook,
+      separadorAntes: true,
+    },
+    { id: 'feed-facebook', etiqueta: t('feedFacebook'), icono: Link2, onSelect: onFeedFacebook },
+  ];
+
+  const irAjustes: AccionFila = {
+    id: 'ajustes',
+    etiqueta: t('ajustes'),
+    icono: ClipboardCheck,
+    onSelect: () => router.push('/app/inventario/ajustes'),
+    separadorAntes: true,
+  };
+
+  // Etiquetas de papel y códigos de barras (Figma «Etiquetas y códigos — cómo
+  // se llega», 516:268810). «Etiquetas» a secas son los tags de clasificación.
+  const etiquetasYCodigos: AccionFila[] = [
+    ...(onImprimirEtiquetas
+      ? [{ id: 'imprimir-etiquetas', etiqueta: tEtq('imprimirEtiquetas'), icono: Printer, onSelect: onImprimirEtiquetas }]
+      : []),
+    ...(onCodigosBarras
+      ? [{ id: 'codigos-barras', etiqueta: tEtq('codigosBarras'), icono: Barcode, onSelect: onCodigosBarras }]
+      : []),
+  ];
+
+  const masAcciones: AccionFila[] = [
+    ...etiquetasYCodigos,
+    ...exportar.map((a, i) => (i === 0 && etiquetasYCodigos.length ? { ...a, separadorAntes: true } : a)),
+    irAjustes,
+  ];
+
+  // Hoja móvil «Acciones del catálogo»: lo mismo que la cabecera de escritorio.
+  const accionesMovil: AccionFila[] = [
+    { id: 'nuevo', etiqueta: t('nuevoProducto'), icono: Plus, onSelect: () => router.push(HREF_NUEVO) },
+    { ...importar[0], etiqueta: t('importarDesdeArchivo'), descripcion: undefined, separadorAntes: true },
+    { ...importar[1], etiqueta: t('importarDesdeWeb'), descripcion: undefined },
+    ...etiquetasYCodigos.map((a, i) => (i === 0 ? { ...a, separadorAntes: true } : a)),
+    { ...exportar[0], separadorAntes: true },
+    { ...exportar[1], separadorAntes: false },
+    exportar[2],
+    irAjustes,
+    {
+      id: 'actualizar',
+      etiqueta: t('actualizar'),
+      icono: RefreshCw,
+      onSelect: onActualizar,
+      deshabilitada: actualizando,
+      motivo: t('yaCargando'),
+    },
+  ];
+
   return (
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-      {/* Título y descripción */}
-      <div className="flex items-center gap-3">
-        <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-          <Package className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Catálogo de Productos
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            {totalProducts !== undefined ? (
-              <>
-                {totalProducts} productos en el catálogo
-                {backgroundLoading && (
-                  <span className="ml-2 inline-flex items-center gap-1 text-blue-500 dark:text-blue-400">
-                    <RefreshCw className="h-3 w-3 animate-spin" />
-                    Cargando {fastTotalCount !== null ? `de ${fastTotalCount}` : 'resto'}...
-                  </span>
-                )}
-              </>
-            ) : (
-              <>Gestiona tu inventario de productos</>
-            )}
-          </p>
-        </div>
-      </div>
-      
-      {/* Acciones */}
-      <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
-        {/* Botón Refrescar */}
-        {onRefreshClick && (
-          <Button 
-            variant="outline" 
+    <PageHeader
+      titulo={t('titulo')}
+      icono={Package}
+      migas={[{ etiqueta: t('migaInventario'), href: '/app/inventario' }, { etiqueta: t('migaProductos') }]}
+      subtitulo={subtitulo}
+      cargando={cargandoLotes}
+      progreso={progresoCarga ? { actual: progresoCarga.cargados, total: progresoCarga.total, etiqueta: t('progreso') } : null}
+      acciones={
+        <>
+          <Button
+            variant="outline"
             size="icon"
-            onClick={onRefreshClick}
-            disabled={isRefreshing}
-            className="h-9 w-9"
+            className="size-10"
+            onClick={onActualizar}
+            disabled={actualizando}
+            aria-label={t('actualizar')}
+            title={t('actualizar')}
           >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw aria-hidden="true" className={actualizando ? 'size-4 animate-spin' : 'size-4'} strokeWidth={1.5} />
           </Button>
-        )}
-
-        {/* Botón Importar con IA */}
-        {onScrapingClick && (
-          <Button 
-            onClick={onScrapingClick}
-            className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 text-white dark:text-white whitespace-nowrap"
-          >
-            <Sparkles className="mr-2 h-4 w-4" />
-            Importar con IA
+          <RowActionsMenu acciones={importar} etiquetaBoton={t('importar')} iconoBoton={Upload} />
+          <Button asChild className="h-10 gap-2">
+            <Link href={HREF_NUEVO} prefetch>
+              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('nuevoProducto')}
+            </Link>
           </Button>
-        )}
-
-        {/* Botón Nuevo Producto */}
-        <Link href="/app/inventario/productos/nuevo" prefetch={true}>
-          <Button 
-            onClick={onCrearClick}
-            className="bg-blue-600 hover:bg-blue-700 text-white whitespace-nowrap"
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Nuevo Producto
-          </Button>
-        </Link>
-        
-        {/* Menú de opciones */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              Más opciones
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent 
-            className="w-56 dark:bg-gray-800 dark:border-gray-700"
-            align="end"
-          >
-            <DropdownMenuItem 
-              onClick={onImportarClick}
-              className="cursor-pointer"
+          <RowActionsMenu acciones={masAcciones} orientacion="horizontal" tamano="md" titulo={t('menuTitulo')} />
+        </>
+      }
+      movil={{
+        titulo: t('migaProductos'),
+        subtitulo: subtituloMovil,
+        accion: (
+          <div className="flex items-center gap-1">
+            <Link
+              href={HREF_NUEVO}
+              aria-label={t('nuevoProducto')}
+              className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              <span>Importar desde CSV</span>
-            </DropdownMenuItem>
-            {onScrapingClick && (
-              <DropdownMenuItem 
-                onClick={onScrapingClick}
-                className="cursor-pointer"
-              >
-                <Sparkles className="mr-2 h-4 w-4 text-purple-500" />
-                <span>Importar desde web (IA)</span>
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={onExportarClick}
-              className="cursor-pointer"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              <span>Exportar a CSV</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={onExportarFacebookClick}
-              className="cursor-pointer"
-            >
-              <Globe className="mr-2 h-4 w-4 text-blue-600" />
-              <span>Exportar a Facebook (CSV)</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={onFacebookFeedClick}
-              className="cursor-pointer"
-            >
-              <Link2 className="mr-2 h-4 w-4 text-blue-600" />
-              <span>URL Feed para Facebook</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
+              <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
+            </Link>
+            <RowActionsMenu acciones={accionesMovil} orientacion="horizontal" tamano="sm" titulo={t('accionesMovil')} className="size-10" />
+          </div>
+        ),
+      }}
+    />
   );
 };
 

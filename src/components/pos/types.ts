@@ -98,7 +98,18 @@ export interface CartItem {
   tax_rate?: number;
   tax_excluded?: boolean;
   tax_included?: boolean;
+  /** Nota para COCINA (comanda, KDS, ticket de cocina). Nunca sale al cliente. */
   notes?: string;
+  /** Nota para el CLIENTE: ticket, recibo y factura electrónica. */
+  customer_note?: string;
+  /** La nota de cocina es una alergia: la comanda no se empieza sin confirmarla. */
+  is_allergy?: boolean;
+  /** Unidades que la cocina ya tiene de esta línea (según la última ronda enviada). */
+  kitchen_sent_qty?: number;
+  /** Nota de cocina tal como se envió la última vez. */
+  kitchen_sent_note?: string | null;
+  /** Si lo último enviado de esta línea era alergia. */
+  kitchen_sent_allergy?: boolean;
   modifiers?: CartItemModifier[];
   created_at: string;
   updated_at: string;
@@ -125,8 +136,16 @@ export interface Cart {
   tax_included?: boolean;
   applied_tax_ids?: string[];
   kitchen_ticket_id?: number | null;
+  /** Llave de la ronda «Enviar a cocina» en curso: reintentarla no duplica la comanda. */
+  kitchen_round_key?: string | null;
   sale_id?: string;
   invoice_id?: string;
+  /**
+   * Id de la venta a crédito en curso («Deuda»): se guarda ANTES de llamar a
+   * pos_checkout_v1 para que un reintento tras un corte devuelva la misma
+   * deuda en vez de crear otra. Se limpia al quedar registrada.
+   */
+  debt_attempt_id?: string | null;
 }
 
 export interface Sale {
@@ -140,8 +159,26 @@ export interface Sale {
   tax_total: number;
   discount_total: number;
   balance: number;
-  /** `pending_sync`: venta provisional guardada en el outbox del Desktop (fase 4B), aún no está en Supabase. */
-  status: 'pending' | 'completed' | 'cancelled' | 'expired' | 'pending_sync';
+  /**
+   * Estados REALES de `sales` según `sales_status_check`:
+   * `draft | paid | partial | pending | void`. «completed» y «cancelled» no
+   * existen en la base de datos y se conservan solo porque los pedidos web y
+   * código antiguo los usan; el tipo los admite para no romper esas rutas,
+   * pero una venta del POS nunca los tendrá (auditoría de ventas, 2026-09-22).
+   *
+   * `pending_sync`: venta provisional guardada en el outbox del Desktop
+   * (fase 4B), aún no está en Supabase.
+   */
+  status:
+    | 'draft'
+    | 'paid'
+    | 'partial'
+    | 'pending'
+    | 'void'
+    | 'completed'
+    | 'cancelled'
+    | 'expired'
+    | 'pending_sync';
   payment_status: 'pending' | 'paid' | 'partial' | 'refunded';
   sale_date: string;
   invoice_number?: string;
@@ -288,6 +325,38 @@ export interface CheckoutData {
   userId?: string;
   /** true cuando `salesSync` reproduce un sobre: nunca vuelve a encolarse en el outbox. */
   replayFromOutbox?: boolean;
+  /**
+   * Id del intento de cobro del diálogo (uno por apertura, igual en todos sus
+   * reintentos). En una venta nueva coincide con `saleId`; en el cobro de una
+   * venta que ya existe (mesa, deuda) es la llave de idempotencia de los pagos.
+   */
+  attemptId?: string;
+  /**
+   * Cobro de una venta que YA existe (la cuenta de una mesa): `pos_checkout_v1`
+   * en modo 'settle'. La deuda de mostrador se reconoce por `cart.sale_id` +
+   * `cart.invoice_id` y no necesita este campo.
+   */
+  settle?: CobroVentaExistente;
+}
+
+/** Datos del cobro de una venta que ya existe (mesa). */
+export interface CobroVentaExistente {
+  sale_id: string;
+  /**
+   * Sesión de la mesa: el servidor la valida, toma la tasa de impuesto de
+   * cada línea del cobro, recalcula la cuenta y liga la sesión a la venta.
+   */
+  table_session_id?: string;
+  /** Cuenta dividida por platos: las líneas que paga este cobro. */
+  paid_sale_item_ids?: string[];
+  /** Cuenta dividida: id de la parte que se paga (queda en `paid_by_split_id`). */
+  split_id?: string;
+  /**
+   * Cuenta dividida: el resto de líneas sin pagar. No se cobran en este
+   * intento; el servidor solo toma su tasa de impuesto para recalcular y
+   * validar la cuenta entera.
+   */
+  lineas_sin_cobrar?: CartItem[];
 }
 
 // Para impuestos

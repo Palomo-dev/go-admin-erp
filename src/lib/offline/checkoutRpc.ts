@@ -5,16 +5,15 @@
  * totales) y lo envía en una sola llamada: o entra todo o no entra nada.
  *
  * La RPC se detecta una vez por sesión: si Supabase responde que la función
- * no existe (`PGRST202`), `POSService.checkout` cae al camino de N inserts
- * de la fase 4B (respaldo temporal hasta que la migración
- * `20260921100000_pos_checkout_v1_rpc_atomica` esté en producción) y lo
- * avisa una sola vez por consola.
+ * no existe (`PGRST202`), `POSService.checkout` rechaza la venta con un error
+ * visible —ya no hay respaldo de N inserts (F-48, ADR-CC-002)— y lo avisa una
+ * sola vez por consola.
  *
  * Este módulo no importa Supabase: recibe el cliente por parámetro para que
  * los tests lo ejerzan con el cliente de mentira.
  */
 
-import type { CheckoutData, Sale } from '@/components/pos/types';
+import type { CheckoutData, CobroVentaExistente, Sale } from '@/components/pos/types';
 
 export const POS_CHECKOUT_RPC = 'pos_checkout_v1';
 
@@ -46,7 +45,35 @@ export interface CheckoutEnvelopeInput {
   promotionIds: string[];
   /** `commission_amount` de la factura, calculado como hasta ahora. */
   invoiceCommissionAmount: number;
+  /**
+   * 'sale' (por omisión): venta nueva. 'debt': venta nueva a crédito (sin
+   * pagos). 'settle': cobrar una venta que ya existe (deuda, mesa).
+   */
+  mode?: CheckoutMode;
+  /** settle: llave del intento de cobro (idempotencia de pagos y propina). */
+  paymentKey?: string;
+  /** debt: motivo, plazo en días y notas de la factura a crédito. */
+  debt?: { reason: string; payment_terms: number; notes?: string | null };
+  /** settle: datos del cobro de una venta existente (mesa). */
+  settle?: CobroVentaExistente;
+  /**
+   * settle de una mesa con la cuenta dividida: líneas sin pagar que NO cobra
+   * este intento. Viajan solo para que el servidor conozca su tasa de impuesto
+   * (recalcula y valida la cuenta entera); no suman al cobro.
+   */
+  lineasMesa?: LineaMesaSinCobrar[];
 }
+
+export interface LineaMesaSinCobrar {
+  sale_item_id: string;
+  product_id: number | null;
+  quantity: number;
+  unit_price: number;
+  tax_rate: number;
+  tax_included: boolean;
+}
+
+export type CheckoutMode = 'sale' | 'debt' | 'settle';
 
 export interface CheckoutEnvelopeItem {
   product_id: number | null;
@@ -59,8 +86,21 @@ export interface CheckoutEnvelopeItem {
   total: number;
   tax_included: boolean;
   notes: Record<string, unknown>;
-  modifiers: Array<{ name: string }>;
+  /** Modificadores con su id: pos_checkout_v1 suma sus extras configurados al validar el precio. */
+  modifiers: Array<{ name: string; modifier_id: number | null }>;
   serial_ids: number[];
+  /**
+   * Momento en que la línea entró al carrito (`CartItem.created_at`): el
+   * servidor acepta el precio vigente entonces (últimos 30 días) además del
+   * vigente ahora, para no rechazar un carrito armado antes de un cambio de precio.
+   */
+  priced_at: string | null;
+  /**
+   * Cobro de una mesa: la línea de `sale_items` a la que corresponde. El
+   * servidor toma de aquí solo la tasa y el modo de impuesto; cantidad,
+   * precio y descuento salen de la base.
+   */
+  sale_item_id?: string;
 }
 
 /** Sobre que recibe `pos_checkout_v1` (ver contrato en la migración). */
@@ -98,7 +138,17 @@ export interface CheckoutEnvelope {
   } | null;
   invoice: { prefix: string; commission_amount: number };
   promotion_ids: string[];
+  /** Ausente = 'sale' (sobres anteriores al 2026-09-24, p. ej. en el outbox). */
+  mode?: CheckoutMode;
+  payment_key?: string;
+  debt?: { reason: string; payment_terms: number; notes: string | null };
+  /** settle de una mesa: sesión, líneas que paga este cobro y parte de la cuenta dividida. */
+  table_session_id?: string;
+  paid_sale_item_ids?: string[];
+  split_id?: string;
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface CheckoutRpcResult {
   sale: Sale;
@@ -125,11 +175,16 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
     && checkout.commission_rate > 0
     && checkout.commission_type !== 'none'
   );
+  const mesa = input.mode === 'settle' && input.settle?.table_session_id ? input.settle : null;
 
   const items: CheckoutEnvelopeItem[] = cart.items.map((item, idx) => {
     const calc = itemCalcs[idx];
     const notes: Record<string, unknown> = { product_name: item.product?.name };
+    // `extra` = nota de COCINA (nunca va al cliente); `customer_note` = nota
+    // para el cliente: pos_checkout_v1 la copia a invoice_items.note (factura).
     if (item.notes) notes.extra = item.notes;
+    if (item.notes && item.is_allergy) notes.is_allergy = true;
+    if (item.customer_note) notes.customer_note = item.customer_note;
     if (item.modifiers && item.modifiers.length > 0) notes.modifiers = item.modifiers;
     const fallbackNet = (item.unit_price || 0) * (item.quantity || 1) - (item.discount_amount || 0);
     const serialIds = checkout.serial_selections?.[item.product_id] ?? [];
@@ -144,10 +199,34 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
       total: calc ? calc.total : fallbackNet,
       tax_included: calc ? calc.taxIncluded : (item.tax_included ?? (checkout.tax_included || false)),
       notes,
-      modifiers: (item.modifiers ?? []).map((m) => ({ name: m.name })),
+      modifiers: (item.modifiers ?? []).map((m) => ({ name: m.name, modifier_id: m.modifierId ?? null })),
       serial_ids: serialIds,
+      priced_at: item.created_at ?? null,
+      ...(mesa && UUID_RE.test(String(item.id ?? '')) ? { sale_item_id: String(item.id) } : {}),
     };
   });
+  if (mesa) {
+    const yaEnviadas = new Set(items.map((i) => i.sale_item_id).filter(Boolean));
+    for (const l of input.lineasMesa ?? []) {
+      if (!UUID_RE.test(l.sale_item_id) || yaEnviadas.has(l.sale_item_id) || !(l.quantity > 0)) continue;
+      items.push({
+        product_id: l.product_id,
+        product_name: null,
+        quantity: l.quantity,
+        unit_price: l.unit_price,
+        discount_amount: 0,
+        tax_rate: l.tax_rate,
+        tax_amount: 0,
+        total: 0,
+        tax_included: l.tax_included,
+        notes: {},
+        modifiers: [],
+        serial_ids: [],
+        priced_at: null,
+        sale_item_id: l.sale_item_id,
+      });
+    }
+  }
 
   return {
     version: 1,
@@ -185,6 +264,20 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
       : null,
     invoice: { prefix: 'FACT', commission_amount: input.invoiceCommissionAmount },
     promotion_ids: input.promotionIds,
+    ...(input.mode && input.mode !== 'sale' ? { mode: input.mode } : {}),
+    ...(input.mode === 'settle' ? { payment_key: input.paymentKey } : {}),
+    ...(input.mode === 'debt' && input.debt
+      ? { debt: { reason: input.debt.reason, payment_terms: input.debt.payment_terms, notes: input.debt.notes ?? null } }
+      : {}),
+    ...(mesa
+      ? {
+          table_session_id: mesa.table_session_id,
+          ...(mesa.paid_sale_item_ids && mesa.paid_sale_item_ids.length > 0
+            ? { paid_sale_item_ids: mesa.paid_sale_item_ids.filter((id) => UUID_RE.test(id)) }
+            : {}),
+          ...(mesa.split_id ? { split_id: mesa.split_id } : {}),
+        }
+      : {}),
   };
 }
 
@@ -212,8 +305,8 @@ function markRpcMissing(): void {
   if (!warnedMissing) {
     warnedMissing = true;
     console.warn(
-      `[checkoutRpc] La RPC ${POS_CHECKOUT_RPC} no existe en este entorno; el checkout usa el respaldo `
-      + 'de N inserts desde el cliente (fase 4B) hasta que la migración 20260921100000_pos_checkout_v1_rpc_atomica esté aplicada.',
+      `[checkoutRpc] La RPC ${POS_CHECKOUT_RPC} no existe en este entorno; las ventas nuevas no se pueden `
+      + 'guardar hasta que la migración 20260921100000_pos_checkout_v1_rpc_atomica esté aplicada.',
     );
   }
 }
@@ -232,8 +325,8 @@ export class CheckoutRpcError extends Error {
 }
 
 /**
- * Llama a la RPC. Devuelve `null` si la función no existe (respaldo del
- * llamador); lanza `CheckoutRpcError` con el código de Postgres en cualquier
+ * Llama a la RPC. Devuelve `null` si la función no existe (el llamador
+ * rechaza la venta); lanza `CheckoutRpcError` con el código de Postgres en cualquier
  * otro error. Como la RPC es una transacción, un error significa que NO se
  * escribió nada.
  */

@@ -6,8 +6,6 @@ import {
   Trash2, 
   MoreHorizontal, 
   Copy,
-  ToggleLeft,
-  ToggleRight,
   Percent,
   DollarSign,
   Users,
@@ -42,24 +40,32 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ServiceCharge, CHARGE_TYPE_LABELS, APPLIES_TO_LABELS } from './types';
+import { ServiceCharge } from './types';
 import { CargosServicioService } from './cargosServicioService';
-import { formatCurrency, cn } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
+import { codigoErrorCargo } from './cargosLogica';
 
 interface ChargesListProps {
   charges: ServiceCharge[];
   loading: boolean;
   onRefresh: () => void;
   onEdit?: (charge: ServiceCharge) => void;
+  /** billing_management: sin él no se ofrece editar, duplicar, activar ni eliminar. */
+  puedeGestionar?: boolean;
 }
 
 export function ChargesList({ 
   charges, 
   loading, 
   onRefresh, 
-  onEdit
+  onEdit,
+  puedeGestionar = false
 }: ChargesListProps) {
+  const t = useTranslations('posCargosServicio');
+  const { formatear } = useMonedaOrganizacion();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
 
@@ -68,10 +74,10 @@ export function ChargesList({
     
     try {
       await CargosServicioService.delete(deleteId);
-      toast.success('Cargo eliminado correctamente');
+      toast.success(t('toast.eliminado'));
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al eliminar el cargo');
+    } catch (error: unknown) {
+      toast.error(t(`errores.${codigoErrorCargo(error)}`));
     } finally {
       setDeleteId(null);
     }
@@ -82,11 +88,11 @@ export function ChargesList({
     try {
       await CargosServicioService.toggleActive(charge.id, !charge.is_active);
       toast.success(
-        charge.is_active ? 'Cargo desactivado' : 'Cargo activado'
+        charge.is_active ? t('toast.desactivado') : t('toast.activado')
       );
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al cambiar estado');
+    } catch (error: unknown) {
+      toast.error(t(`errores.${codigoErrorCargo(error)}`));
     } finally {
       setTogglingId(null);
     }
@@ -94,11 +100,11 @@ export function ChargesList({
 
   const handleDuplicate = async (charge: ServiceCharge) => {
     try {
-      await CargosServicioService.duplicate(charge.id);
-      toast.success('Cargo duplicado correctamente');
+      await CargosServicioService.duplicate(charge.id, t('copiaSufijo'));
+      toast.success(t('toast.duplicado'));
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al duplicar el cargo');
+    } catch (error: unknown) {
+      toast.error(t(`errores.${codigoErrorCargo(error)}`));
     }
   };
 
@@ -106,7 +112,7 @@ export function ChargesList({
     if (charge.charge_type === 'percentage') {
       return `${charge.charge_value}%`;
     }
-    return formatCurrency(charge.charge_value);
+    return formatear(charge.charge_value);
   };
 
   if (loading) {
@@ -124,10 +130,10 @@ export function ChargesList({
       <div className="text-center py-12">
         <Percent className="h-12 w-12 mx-auto mb-4 text-gray-400" />
         <h3 className="text-lg font-medium text-gray-600 dark:text-gray-400 mb-2">
-          No hay cargos de servicio
+          {t('lista.vacioTitulo')}
         </h3>
         <p className="text-gray-500 dark:text-gray-500">
-          Crea un cargo de servicio para aplicarlo a las ventas
+          {t('lista.vacioDescripcion')}
         </p>
       </div>
     );
@@ -139,13 +145,13 @@ export function ChargesList({
         <Table>
           <TableHeader>
             <TableRow className="dark:border-gray-700 hover:bg-transparent">
-              <TableHead>Nombre</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
-              <TableHead>Condiciones</TableHead>
-              <TableHead>Aplica a</TableHead>
-              <TableHead className="text-center">Estado</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
+              <TableHead>{t('lista.columnas.nombre')}</TableHead>
+              <TableHead>{t('lista.columnas.tipo')}</TableHead>
+              <TableHead className="text-right">{t('lista.columnas.valor')}</TableHead>
+              <TableHead>{t('lista.columnas.condiciones')}</TableHead>
+              <TableHead>{t('lista.columnas.aplicaA')}</TableHead>
+              <TableHead className="text-center">{t('lista.columnas.estado')}</TableHead>
+              <TableHead className="text-right">{t('lista.columnas.acciones')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -168,7 +174,7 @@ export function ChargesList({
                     )}
                     {!charge.branch && (
                       <p className="text-xs text-blue-500 dark:text-blue-400">
-                        Global (todas las sucursales)
+                        {t('global')}
                       </p>
                     )}
                   </div>
@@ -181,7 +187,7 @@ export function ChargesList({
                       <DollarSign className="h-4 w-4 text-green-500" />
                     )}
                     <span className="text-sm dark:text-gray-300">
-                      {CHARGE_TYPE_LABELS[charge.charge_type]}
+                      {t(`tiposCargo.${charge.charge_type}`)}
                     </span>
                   </div>
                 </TableCell>
@@ -194,18 +200,18 @@ export function ChargesList({
                   <div className="text-sm space-y-1">
                     {charge.min_amount && (
                       <p className="text-gray-600 dark:text-gray-400">
-                        Min: {formatCurrency(charge.min_amount)}
+                        {t('lista.minimoMonto', { monto: formatear(charge.min_amount) })}
                       </p>
                     )}
                     {charge.min_guests && (
                       <p className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
                         <Users className="h-3 w-3" />
-                        Min: {charge.min_guests} personas
+                        {t('lista.minimoPersonas', { count: charge.min_guests })}
                       </p>
                     )}
                     {!charge.min_amount && !charge.min_guests && (
                       <p className="text-gray-400 dark:text-gray-500 text-xs">
-                        Sin restricciones
+                        {t('lista.sinRestricciones')}
                       </p>
                     )}
                   </div>
@@ -215,7 +221,7 @@ export function ChargesList({
                     variant="outline" 
                     className="dark:border-gray-600 dark:text-gray-300"
                   >
-                    {APPLIES_TO_LABELS[charge.applies_to]}
+                    {t(`aplicaA.${charge.applies_to}`)}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-center">
@@ -223,23 +229,24 @@ export function ChargesList({
                     <Switch
                       checked={charge.is_active}
                       onCheckedChange={() => handleToggleActive(charge)}
-                      disabled={togglingId === charge.id}
+                      disabled={!puedeGestionar || togglingId === charge.id}
                     />
                     <div className="flex gap-1">
                       {charge.is_taxable && (
                         <Badge variant="secondary" className="text-xs">
-                          Gravado
+                          {t('lista.gravado')}
                         </Badge>
                       )}
                       {charge.is_optional && (
                         <Badge variant="outline" className="text-xs">
-                          Opcional
+                          {t('lista.opcional')}
                         </Badge>
                       )}
                     </div>
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
+                  {puedeGestionar && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -253,7 +260,7 @@ export function ChargesList({
                           className="dark:hover:bg-gray-700"
                         >
                           <Edit className="h-4 w-4 mr-2" />
-                          Editar
+                          {t('lista.editar')}
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem 
@@ -261,7 +268,7 @@ export function ChargesList({
                         className="dark:hover:bg-gray-700"
                       >
                         <Copy className="h-4 w-4 mr-2" />
-                        Duplicar
+                        {t('lista.duplicar')}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator className="dark:bg-gray-700" />
                       <DropdownMenuItem 
@@ -269,10 +276,11 @@ export function ChargesList({
                         className="text-red-600 dark:text-red-400 dark:hover:bg-gray-700"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Eliminar
+                        {t('lista.eliminar')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -284,21 +292,21 @@ export function ChargesList({
         <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
           <AlertDialogHeader>
             <AlertDialogTitle className="dark:text-white">
-              ¿Eliminar cargo de servicio?
+              {t('lista.eliminarTitulo')}
             </AlertDialogTitle>
             <AlertDialogDescription className="dark:text-gray-400">
-              Esta acción no se puede deshacer.
+              {t('lista.eliminarDescripcion')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600">
-              Cancelar
+              {t('lista.cancelar')}
             </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700"
             >
-              Eliminar
+              {t('lista.eliminar')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -30,7 +30,7 @@ import {
   Settings2,
   User,
 } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { ParkingPass } from '@/lib/services/parkingService';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
@@ -74,6 +74,7 @@ export function PassesTable({
   onReactivate,
   onRenew,
 }: PassesTableProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const formatDate = (dateStr: string) => {
     return formatPlainDate(dateStr, { day: '2-digit', month: 'short', year: 'numeric' });
   };

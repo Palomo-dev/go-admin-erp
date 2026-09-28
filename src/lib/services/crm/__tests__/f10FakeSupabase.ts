@@ -90,6 +90,65 @@ function runSerialized(db: FakeDb, key: string, task: () => Promise<RpcResult>):
   return run;
 }
 
+// ─── RPC fn_comision_oportunidad_devengar (migración 20260928212000) ────────
+// Misma semántica que la función SQL (probada por MCP en transacción que se
+// deshace), en memoria: comisión existente de la oportunidad → la devuelve;
+// comisión de una factura de la oportunidad (o de su venta) → no devenga (una
+// sola fuente); con factura: pagada, base = subtotal (sin impuestos) y método
+// de la factura; sin factura: oportunidad 'won', tasa de la oportunidad o
+// `rpcResult.fn_tasa_comision_vigente`. Registra el INSERT en `db.writes`.
+function fnComisionOportunidadDevengar(db: FakeDb, args: Record<string, unknown>): RpcResult {
+  const org = args.p_org;
+  const oppId = args.p_opportunity_id;
+  const invoiceId = args.p_invoice_id ?? null;
+  const opp = (db.rows.opportunities ?? []).find((r) => r.id === oppId && r.organization_id === org);
+  if (!opp) return { data: null, error: { code: 'P0002', message: 'oportunidad_no_encontrada' } };
+  const comms = (db.rows.commissions ??= []);
+  const salida = (c: Row, reason: string): RpcResult => ({
+    data: { created: false, already_accrued: true, reason, commission: { id: c.id, base_amount: c.base_amount, commission_rate: c.commission_rate, commission_amount: c.commission_amount, status: c.status, source_type: c.source_type } },
+    error: null,
+  });
+  const propia = comms.find((c) => c.organization_id === org && c.source_type === 'opportunity' && c.source_id === oppId);
+  if (propia) return salida(propia, 'ya_devengada');
+  const facturas = (db.rows.invoice_sales ?? []).filter((i) => i.organization_id === org && (i.opportunity_id === oppId || i.id === invoiceId));
+  const deFactura = comms.find((c) => c.organization_id === org && facturas.some((i) =>
+    (c.source_type === 'invoice_sale' && c.source_id === i.id) || (i.sale_id != null && c.source_type === 'sale' && c.source_id === i.sale_id)));
+  if (deFactura) return salida(deFactura, 'factura_ya_devengo');
+  const no = (reason: string): RpcResult => ({ data: { created: false, already_accrued: false, reason }, error: null });
+  let vendedor: unknown; let tipo: string; let metodo: string; let tasa: number; let base: number; let monto: number; let moneda: unknown;
+  if (invoiceId) {
+    const inv = (db.rows.invoice_sales ?? []).find((i) => i.id === invoiceId && i.organization_id === org);
+    if (!inv || inv.opportunity_id !== oppId) return { data: null, error: { code: 'P0002', message: 'factura_no_encontrada' } };
+    if (inv.status !== 'paid') return no('factura_no_pagada');
+    tipo = String(inv.commission_type ?? '').trim() || 'salesperson';
+    if (tipo === 'none' || !inv.salesperson_id) return no('sin_comision');
+    vendedor = inv.salesperson_id;
+    metodo = String(inv.commission_method ?? '') || 'percentage';
+    tasa = Number(inv.commission_rate ?? 0);
+    base = Number(inv.subtotal ?? inv.total ?? 0);
+    monto = metodo === 'fixed_amount' ? (Number(inv.commission_amount ?? 0) || tasa) : Math.round(base * tasa) / 100;
+    moneda = inv.currency;
+  } else {
+    if (opp.status !== 'won') return { data: null, error: { code: '22023', message: 'oportunidad_no_ganada' } };
+    if (!opp.salesperson_id) return no('sin_vendedor');
+    vendedor = opp.salesperson_id; tipo = 'salesperson'; metodo = 'percentage';
+    tasa = Number(opp.commission_rate ?? 0) > 0 ? Number(opp.commission_rate) : Number(db.rpcResult?.fn_tasa_comision_vigente ?? 0);
+    base = Number(opp.amount ?? 0);
+    monto = Math.round(base * tasa) / 100;
+    moneda = opp.currency;
+  }
+  if (!(monto > 0)) return no('sin_tasa');
+  const row: Row = {
+    id: `cm-${++idSeq}`, organization_id: org, commission_type: tipo, source_type: 'opportunity', source_id: oppId,
+    payee_type: 'employee', payee_id: vendedor, base_amount: base, commission_rate: tasa, commission_amount: monto,
+    currency: moneda ?? null, status: 'accrued',
+    metadata: { opportunity_id: oppId, ...(invoiceId ? { invoice_id: invoiceId } : {}), ...(args.p_payment_id ? { payment_id: args.p_payment_id } : {}), commission_method: metodo, origen: 'fn_comision_oportunidad_devengar' },
+  };
+  comms.push(row);
+  db.writes.push({ table: 'commissions', op: 'insert', row, filters: {} });
+  return { data: { created: true, already_accrued: false, reason: null, commission: { id: row.id, base_amount: base, commission_rate: tasa, commission_amount: monto, status: 'accrued', source_type: 'opportunity' } }, error: null };
+}
+
 function p0001(message: string, detail: Record<string, unknown>): RpcResult {
   return { data: null, error: { code: 'P0001', message, details: JSON.stringify(detail) } };
 }
@@ -303,6 +362,7 @@ export function createFakeSupabase(db: FakeDb) {
   const rpc = (fn: string, args: Record<string, unknown>) => {
     (db.rpcCalls ??= []).push({ fn, args });
     if (fn === 'fn_register_crm_payment') return runSerialized(db, `${String(args.p_organization_id)}:${String(args.p_invoice_id)}`, () => fnRegisterCrmPayment(db, args));
+    if (fn === 'fn_comision_oportunidad_devengar') return runSerialized(db, `opp:${String(args.p_opportunity_id)}`, async () => fnComisionOportunidadDevengar(db, args));
     return Promise.resolve({ data: db.rpcResult?.[fn] ?? null, error: null });
   };
   return { from, rpc, auth: { getUser: async () => ({ data: { user: { id: 'u-1' } } }) } };

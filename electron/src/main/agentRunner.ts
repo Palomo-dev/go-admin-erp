@@ -2,7 +2,7 @@ import { app, Notification, powerSaveBlocker } from 'electron';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import WebSocket from 'ws';
 import os from 'os';
-import { POLL_INTERVAL_MS, HEARTBEAT_INTERVAL_MS, DISCOVERY_PORT } from './constants';
+import { POLL_INTERVAL_MS, HEARTBEAT_INTERVAL_MS, DISCOVERY_PORT, WEB_APP_URL } from './constants';
 import { requireSupabaseEnv, PublicEnvMissingError } from './publicEnv';
 import {
   loadConfig,
@@ -318,6 +318,46 @@ export async function startAgentWithTokenHash(
   }
   // A partir de aquí el refresh token es exclusivo del agente.
   return startAgent(data.session.refresh_token, organizationId, organizationName, branchIds, branchNames);
+}
+
+/**
+ * Pide el código de vinculación al ERP remoto con el access token de la sesión
+ * de la ventana y arranca el agente con él.
+ *
+ * Desde que la ventana se sirve desde el Next embebido (127.0.0.1, fase 3),
+ * `POST /api/desktop/agent-session` relativo cae en ese servidor, que no lleva
+ * la clave de servicio: el agente nunca arrancaba («No se pudo generar el
+ * código de vinculación del agente»). El proceso principal no tiene CORS ni
+ * las cookies de 127.0.0.1, así que va a app.goadmin.io con Bearer + la
+ * organización explícita. El access token solo se usa para esta petición: el
+ * agente sigue con su propia familia de refresh tokens (verifyOtp).
+ */
+export async function startAgentWithAccessToken(
+  accessToken: string,
+  organizationId: number,
+  organizationName: string,
+  branchIds: number[],
+  branchNames: string[],
+): Promise<void> {
+  const base = app.isPackaged ? WEB_APP_URL : process.env.DEV_URL || 'http://localhost:3000';
+  let res: Response;
+  try {
+    res = await fetch(`${base}/api/desktop/agent-session`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'X-Organization-Id': String(organizationId),
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch (err) {
+    throw new Error(`Sin conexión con Go Admin para vincular el agente: ${(err as Error).message}`);
+  }
+  const body = (await res.json().catch(() => null)) as { token_hash?: string; error?: string } | null;
+  if (!res.ok || !body?.token_hash) {
+    throw new Error(body?.error || `No se pudo generar el código de vinculación (HTTP ${res.status})`);
+  }
+  return startAgentWithTokenHash(body.token_hash, organizationId, organizationName, branchIds, branchNames);
 }
 
 export function stopAgent(): void {

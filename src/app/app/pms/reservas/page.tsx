@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useToast } from '@/components/ui/use-toast';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import ReservationListService, { type ReservationFilters, type ReservationListItem } from '@/lib/services/reservationListService';
 import CheckinService, { type CheckinReservation } from '@/lib/services/checkinService';
 import CheckoutService, { type CheckoutReservation } from '@/lib/services/checkoutService';
@@ -38,6 +39,11 @@ export default function ReservasPage() {
   const { organization } = useOrganization();
   const { branchFilter, isLoading: branchLoading } = useBranch();
   const { toast } = useToast();
+  // `reservations.checkout` es una columna **date**: «las salidas de hoy» son
+  // las del dia calendario de la sucursal, no las del dia UTC.
+  // `ReservationListItem` no trae `branch_id`, asi que la zona sale de la
+  // sucursal del filtro; queda anotado como deuda en la bitacora.
+  const { getToday } = useFormatDate(branchFilter);
 
   const [reservations, setReservations] = useState<ReservationListItem[]>([]);
   const [filteredReservations, setFilteredReservations] = useState<ReservationListItem[]>([]);
@@ -352,7 +358,7 @@ export default function ReservasPage() {
       }
 
       // Obtener datos completos para check-out desde Supabase
-      const today = new Date().toISOString().split('T')[0];
+      const today = getToday();
       const departuresData = await CheckoutService.getDepartures(organization!.id, today);
 
       // Buscar la reserva específica

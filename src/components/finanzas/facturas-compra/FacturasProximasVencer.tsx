@@ -14,7 +14,9 @@ import {
 } from 'lucide-react';
 import { FacturasCompraService } from './FacturasCompraService';
 import { InvoicePurchase } from './types';
-import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
+import { formatDate, parseLocalDate } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { useRouter, usePathname } from 'next/navigation';
 import { useBranch } from '@/lib/context/BranchContext';
 
@@ -26,6 +28,8 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
   const router = useRouter();
   const pathname = usePathname();
   const { branchFilter } = useBranch();
+  // Totales que suman varias facturas: moneda base. Cada factura: su propia moneda.
+  const { formatear, paraDocumento } = useMonedaOrganizacion();
   const [facturas, setFacturas] = useState<InvoicePurchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [mostrarTodas, setMostrarTodas] = useState(false);
@@ -128,7 +132,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal min-w-0">Total por Pagar</p>
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white break-words whitespace-normal min-w-0">
-                  {formatCurrency(total)}
+                  {formatear(total)}
                 </p>
               </div>
             </div>
@@ -144,7 +148,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal min-w-0">Vencidas</p>
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white break-words whitespace-normal min-w-0">
-                  {formatCurrency(montoVencidas)}
+                  {formatear(montoVencidas)}
                 </p>
                 <p className="text-[10px] sm:text-xs text-red-500">{vencidas.length} facturas</p>
               </div>
@@ -264,10 +268,10 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
                     <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                       <div className="text-right hidden xs:block sm:hidden md:block">
                         <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {formatCurrency(factura.balance, factura.currency)}
+                          {formatMoneda(factura.balance, paraDocumento(factura.currency))}
                         </p>
                         <p className="text-[10px] sm:text-xs text-gray-500">
-                          de {formatCurrency(factura.total, factura.currency)}
+                          de {formatMoneda(factura.total, paraDocumento(factura.currency))}
                         </p>
                       </div>
                       

@@ -73,7 +73,7 @@ function racingClient(table: string, constraint: string): Sb {
 function deps(over: Partial<WonCloseDeps> = {}): WonCloseDeps {
   return {
     supabase: sb(), orgId: 120, contextBranchId: 7, timezone: 'America/Bogota', now: () => new Date(NOW),
-    getLatestProposal: async () => ({ id: 'q-1', branch_id: 3 }), convertToInvoice: async () => 'inv-1', accrueCommission: async () => null,
+    getLatestProposal: async () => ({ id: 'q-1', branch_id: 3 }), convertToInvoice: async () => ({ invoiceId: 'inv-1', numero: 'FACT-0001', yaConvertida: false }), accrueCommission: async () => null,
     ...over,
   };
 }

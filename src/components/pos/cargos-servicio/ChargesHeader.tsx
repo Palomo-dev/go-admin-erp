@@ -6,7 +6,6 @@ import {
   Percent,
   RefreshCw,
   Upload,
-  Building2,
   CheckCircle,
   XCircle
 } from 'lucide-react';
@@ -28,9 +27,11 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { ServiceChargeFilters, APPLIES_TO_LABELS, AppliesTo } from './types';
+import { ServiceChargeFilters, APPLIES_TO_VALUES, AppliesTo } from './types';
 import { CargosServicioService } from './cargosServicioService';
+import { codigoErrorCargo, type ErrorFilaCsv } from './cargosLogica';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 interface ChargesHeaderProps {
@@ -45,6 +46,8 @@ interface ChargesHeaderProps {
     inactive: number;
   };
   loading: boolean;
+  /** billing_management: sin él no se ofrece crear ni importar. */
+  puedeGestionar?: boolean;
 }
 
 export function ChargesHeader({
@@ -53,12 +56,19 @@ export function ChargesHeader({
   onRefresh,
   onNewCharge,
   stats,
-  loading
+  loading,
+  puedeGestionar = false
 }: ChargesHeaderProps) {
+  const t = useTranslations('posCargosServicio');
   const [showImport, setShowImport] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { setSelectedBranch, branches: globalBranches } = useBranch();
+  // Solo la lista de sucursales: el filtro de esta página es local y no cambia
+  // la sucursal global de la aplicación.
+  const { branches: globalBranches } = useBranch();
+
+  const textoErrorFila = (e: ErrorFilaCsv) =>
+    t('importar.fila', { fila: e.fila, error: t(`importar.errores.${e.codigo}`, { valor: e.valor ?? '' }) });
 
   const handleStatusChange = (value: string) => {
     const newFilter = value === 'all' 
@@ -68,7 +78,10 @@ export function ChargesHeader({
   };
 
   const handleBranchChange = (value: string) => {
-    setSelectedBranch(value === 'all' ? 'all' : parseInt(value));
+    onFiltersChange({
+      ...filters,
+      branch_id: value === 'all' ? undefined : parseInt(value, 10)
+    });
   };
 
   const handleAppliesToChange = (value: string) => {
@@ -86,20 +99,25 @@ export function ChargesHeader({
     try {
       const text = await file.text();
       const result = await CargosServicioService.importFromCSV(text);
-      
+
+      if (result.columnasFaltantes.length > 0) {
+        toast.error(t('importar.columnasFaltantes', { columnas: result.columnasFaltantes.join(', ') }));
+        return;
+      }
+
       if (result.errors.length > 0) {
         toast.warning(
-          `Importados: ${result.imported}. Errores: ${result.errors.length}`,
-          { description: result.errors.slice(0, 3).join('\n') }
+          t('importar.resultado', { importados: result.imported, errores: result.errors.length }),
+          { description: result.errors.slice(0, 3).map(textoErrorFila).join('\n') }
         );
       } else {
-        toast.success(`${result.imported} cargos importados correctamente`);
+        toast.success(t('importar.exito', { count: result.imported }));
       }
-      
+
       onRefresh();
       setShowImport(false);
-    } catch (error: any) {
-      toast.error(error.message || 'Error al importar');
+    } catch (error: unknown) {
+      toast.error(t(`errores.${codigoErrorCargo(error)}`));
     } finally {
       setImporting(false);
       if (fileInputRef.current) {
@@ -120,31 +138,33 @@ export function ChargesHeader({
               </div>
               <div>
                 <CardTitle className="dark:text-white">
-                  Cargos de Servicio
+                  {t('cabecera.titulo')}
                 </CardTitle>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Configura cargos automáticos como propina sugerida
+                  {t('cabecera.subtitulo')}
                 </p>
               </div>
             </div>
             
+            {puedeGestionar && (
             <div className="flex flex-wrap items-center gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setShowImport(true)}
                 className="dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600"
               >
                 <Upload className="h-4 w-4 mr-2" />
-                Importar
+                {t('cabecera.importar')}
               </Button>
-              <Button 
+              <Button
                 onClick={onNewCharge}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Nuevo Cargo
+                {t('cabecera.nuevo')}
               </Button>
             </div>
+            )}
           </div>
         </CardHeader>
       </Card>
@@ -155,7 +175,7 @@ export function ChargesHeader({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('cabecera.total')}</p>
                 <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                   {stats.total}
                 </p>
@@ -169,7 +189,7 @@ export function ChargesHeader({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Activos</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('cabecera.activos')}</p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {stats.active}
                 </p>
@@ -183,7 +203,7 @@ export function ChargesHeader({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Inactivos</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('cabecera.inactivos')}</p>
                 <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">
                   {stats.inactive}
                 </p>
@@ -203,12 +223,12 @@ export function ChargesHeader({
               onValueChange={handleStatusChange}
             >
               <SelectTrigger className="w-full sm:w-[140px] dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                <SelectValue placeholder="Estado" />
+                <SelectValue placeholder={t('cabecera.filtroEstado')} />
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="active">Activos</SelectItem>
-                <SelectItem value="inactive">Inactivos</SelectItem>
+                <SelectItem value="all">{t('cabecera.todos')}</SelectItem>
+                <SelectItem value="active">{t('cabecera.activos')}</SelectItem>
+                <SelectItem value="inactive">{t('cabecera.inactivos')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -217,10 +237,10 @@ export function ChargesHeader({
               onValueChange={handleBranchChange}
             >
               <SelectTrigger className="w-full sm:w-[180px] dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                <SelectValue placeholder="Sucursal" />
+                <SelectValue placeholder={t('cabecera.filtroSucursal')} />
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                <SelectItem value="all">Todas las sucursales</SelectItem>
+                <SelectItem value="all">{t('cabecera.todasSucursales')}</SelectItem>
                 {globalBranches.map((branch) => (
                   <SelectItem key={branch.id ?? 0} value={(branch.id ?? 0).toString()}>
                     {branch.name}
@@ -234,11 +254,11 @@ export function ChargesHeader({
               onValueChange={handleAppliesToChange}
             >
               <SelectTrigger className="w-full sm:w-[150px] dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                <SelectValue placeholder="Aplica a" />
+                <SelectValue placeholder={t('cabecera.filtroAplicaA')} />
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                {Object.entries(APPLIES_TO_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                {APPLIES_TO_VALUES.map((key) => (
+                  <SelectItem key={key} value={key}>{t(`aplicaA.${key}`)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -260,23 +280,23 @@ export function ChargesHeader({
       <Dialog open={showImport} onOpenChange={setShowImport}>
         <DialogContent className="dark:bg-gray-800 dark:border-gray-700">
           <DialogHeader>
-            <DialogTitle className="dark:text-white">Importar Cargos</DialogTitle>
+            <DialogTitle className="dark:text-white">{t('cabecera.importarTitulo')}</DialogTitle>
             <DialogDescription className="dark:text-gray-400">
-              Sube un archivo CSV con los cargos de servicio
+              {t('cabecera.importarDescripcion')}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
             <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-                <strong>Formato requerido:</strong>
+                <strong>{t('cabecera.formatoRequerido')}</strong>
               </p>
               <code className="text-xs bg-gray-200 dark:bg-gray-600 p-2 rounded block">
                 name,charge_type,charge_value,min_amount,min_guests,applies_to,is_taxable,is_optional
               </code>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                charge_type: percentage o fixed<br />
-                applies_to: all, dine_in, delivery, takeout
+                {t('csvAyuda.tipoCargo')}<br />
+                {t('csvAyuda.aplicaA')}
               </p>
             </div>
 
@@ -297,7 +317,7 @@ export function ChargesHeader({
               disabled={importing}
               className="dark:bg-gray-700 dark:border-gray-600"
             >
-              Cancelar
+              {t('cabecera.cancelar')}
             </Button>
           </DialogFooter>
         </DialogContent>

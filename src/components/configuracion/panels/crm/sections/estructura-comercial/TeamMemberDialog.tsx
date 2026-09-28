@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import type { OrgMember, SalesRole, Territory } from './types';
 import type { MemberForm } from './useTeams';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface TeamMemberDialogProps {
   open: boolean;
@@ -34,6 +35,12 @@ interface TeamMemberDialogProps {
   onSave: () => void;
 }
 
+/**
+ * Monedas extra del selector. La base de la organización y la del formulario
+ * se añaden siempre; no se cablea ninguna moneda local.
+ */
+const MONEDAS_CATALOGO = ['USD', 'EUR'];
+
 /** Diálogo para añadir un miembro de la organización a un equipo. */
 export function TeamMemberDialog({
   open,
@@ -46,6 +53,10 @@ export function TeamMemberDialog({
   saving,
   onSave,
 }: TeamMemberDialogProps) {
+  const { code: monedaBase, resuelta: monedaResuelta } = useMonedaOrganizacion();
+  const opcionesMoneda = Array.from(
+    new Set([monedaResuelta ? monedaBase : '', form.quota_currency, ...MONEDAS_CATALOGO].filter(Boolean)),
+  );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -147,9 +158,11 @@ export function TeamMemberDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="COP">COP</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
+                  {opcionesMoneda.map((code) => (
+                    <SelectItem key={code} value={code}>
+                      {code}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

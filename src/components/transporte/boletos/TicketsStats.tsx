@@ -1,7 +1,8 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
-import { Ticket, CheckCircle, UserCheck, XCircle, UserX, DollarSign } from 'lucide-react';
+import { Ticket, CheckCircle, UserCheck, XCircle, DollarSign } from 'lucide-react';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface TicketsStatsProps {
   stats: {
@@ -16,6 +17,8 @@ interface TicketsStatsProps {
 }
 
 export function TicketsStats({ stats }: TicketsStatsProps) {
+  // Ingresos agregados: en la moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   const statCards = [
     {
       title: 'Total Hoy',
@@ -49,11 +52,7 @@ export function TicketsStats({ stats }: TicketsStatsProps) {
     },
     {
       title: 'Ingresos Hoy',
-      value: new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: 'COP',
-        minimumFractionDigits: 0,
-      }).format(stats.revenue),
+      value: formatear(stats.revenue),
       icon: <DollarSign className="h-5 w-5" />,
       color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300',
     },

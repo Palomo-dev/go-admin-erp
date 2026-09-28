@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { TableSkeleton } from '@/components/common/PageSkeletons';
 import type { CheckinReservation } from '@/lib/services/checkinService';
-import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface ArrivalsTableProps {
   arrivals: CheckinReservation[];
@@ -56,17 +56,8 @@ export function ArrivalsTable({
   onCheckin,
   isLoading,
 }: ArrivalsTableProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    return formatPlainDate(dateString, { day: '2-digit', month: 'short' });
-  };
+  // Moneda base de la organización (la reserva/abono no tiene moneda propia).
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
 
   if (isLoading) {
     return <TableSkeleton rows={5} columns={6} />;

@@ -9,6 +9,13 @@ import { deliveryIntegrationService } from '@/lib/services/deliveryIntegrationSe
 import { webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
 import { webOrdersService, type WebOrder, type WebOrderStatus } from '@/lib/services/webOrdersService';
 import { type EstimatedTime, timeToMs, formatEstimatedTime } from '../components';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
+
+/** Mensaje de un error de Supabase o de JS, sin suponer su forma. */
+function mensajeDeError(error: unknown): string | undefined {
+  return (error as { message?: string } | null)?.message;
+}
 
 interface UseWebOrderDetailReturn {
   order: WebOrder | null;
@@ -103,9 +110,9 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
 
   const updateOrderStatus = async (
     status: WebOrderStatus,
-    extraData?: Record<string, any>
+    extraData?: Record<string, unknown>
   ) => {
-    const updateData: any = { status, ...extraData };
+    const updateData: Record<string, unknown> = { status, ...extraData };
     const now = new Date().toISOString();
 
     switch (status) {
@@ -144,6 +151,16 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
         transitMs,
         markAsPaid,
       });
+      if (result.yaConfirmado) {
+        toast({
+          title: 'El pedido ya estaba confirmado',
+          description: 'La venta se creó cuando llegó el pago; no se creó otra.',
+        });
+        setConfirmDialogOpen(false);
+        setMarkAsPaid(false);
+        loadOrder();
+        return;
+      }
       const parts = [`Venta creada · Comanda enviada a cocina · Listo: ${formatEstimatedTime(prepTime)}`];
       if (isDelivery && transitMs > 0) parts.push(`· Entrega: ${formatEstimatedTime(transitTime)}`);
       if (markAsPaid) parts.push('· Marcado como pagado');
@@ -155,11 +172,11 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
       setConfirmDialogOpen(false);
       setMarkAsPaid(false);
       loadOrder();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error confirmando pedido:', error);
       toast({
         title: 'Error al confirmar pedido',
-        description: error?.message || 'No se pudo confirmar el pedido',
+        description: mensajeDeError(error) || 'No se pudo confirmar el pedido',
         variant: 'destructive',
       });
     } finally {
@@ -176,7 +193,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
       setCancelDialogOpen(false);
       setCancelReason('');
       loadOrder();
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', variant: 'destructive' });
     } finally {
       setActionLoading(false);
@@ -189,7 +206,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
       await updateOrderStatus('preparing');
       toast({ title: 'Pedido en preparación' });
       loadOrder();
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', variant: 'destructive' });
     } finally {
       setActionLoading(false);
@@ -202,7 +219,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
       await updateOrderStatus('ready');
       toast({ title: 'Pedido listo para entrega' });
       loadOrder();
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', variant: 'destructive' });
     } finally {
       setActionLoading(false);
@@ -215,14 +232,14 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
       // Para retail, el tiempo de entrega se calcula en días, no minutos.
       // Usar el estimated_delivery_at que ya se calculó al confirmar el pedido.
       // Si no existe, dejar que el ERP lo calcule después (no hardcodear 30 min).
-      const extraData: Record<string, any> = {};
+      const extraData: Record<string, unknown> = {};
       if (order?.estimated_delivery_at) {
         extraData.estimated_delivery_at = order.estimated_delivery_at;
       }
       await updateOrderStatus('in_delivery', extraData);
       toast({ title: 'Pedido en camino' });
       loadOrder();
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', variant: 'destructive' });
     } finally {
       setActionLoading(false);
@@ -235,7 +252,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
       await updateOrderStatus('delivered');
       toast({ title: 'Pedido entregado' });
       loadOrder();
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', variant: 'destructive' });
     } finally {
       setActionLoading(false);
@@ -251,7 +268,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
       setCancelDialogOpen(false);
       setCancelReason('');
       loadOrder();
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', variant: 'destructive' });
     } finally {
       setActionLoading(false);
@@ -277,9 +294,9 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
       });
       toast({ title: 'Venta creada exitosamente' });
       router.push(`/app/pos/ventas/${result.saleId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error convirtiendo a venta:', error);
-      toast({ title: 'Error al crear venta', description: error?.message, variant: 'destructive' });
+      toast({ title: 'Error al crear venta', description: mensajeDeError(error), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -315,26 +332,59 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
 
       if (error) throw error;
 
-      // Si hay sale_id vinculado, actualizar el sale también
+      // Si hay una venta vinculada, el cobro se registra como PAGO, nunca
+      // escribiendo el saldo a mano: insertar en `payments` dispara los
+      // disparadores que recalculan la factura y la cartera. Antes se ponía
+      // `sales.balance = 0` y `status = 'paid'` sin crear ningún pago, así que
+      // la venta quedaba cobrada sin nada que la respaldara y el dinero no
+      // aparecía por ninguna parte (auditoría de pedidos online, 2026-09-22).
       if (order.sale_id) {
-        await supabase
-          .from('sales')
-          .update({
-            payment_status: 'paid',
-            balance: 0,
-            status: 'paid',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', order.sale_id);
+        const { data: invoice } = await supabase
+          .from('invoice_sales')
+          .select('id, balance, currency, branch_id')
+          .eq('sale_id', order.sale_id)
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (invoice && Number(invoice.balance) > 0) {
+          const { data: userData } = await supabase.auth.getUser();
+          const { error: paymentError } = await supabase.from('payments').insert({
+            organization_id: organizationId,
+            branch_id: invoice.branch_id ?? order.branch_id,
+            amount: Number(invoice.balance),
+            method: order.payment_method || 'cash',
+            // payments.currency es NOT NULL y sin trigger: la de la factura
+            // y, si no la trae, la base de la organización.
+            currency:
+              normalizarCodigoMoneda(invoice.currency) ??
+              (await resolveOrgCurrency(supabase, organizationId)).code,
+            status: 'completed',
+            reference: order.payment_reference || null,
+            source: 'invoice_sales',
+            source_id: String(invoice.id),
+            created_by: userData?.user?.id ?? null,
+          });
+          if (paymentError) throw paymentError;
+        } else if (!invoice) {
+          // Sin factura no hay contra qué registrar el pago: se deja constancia
+          // en el pedido y se avisa, en vez de fingir que la venta está cobrada.
+          toast({
+            title: 'Pedido marcado como pagado',
+            description:
+              'La venta vinculada no tiene factura, así que no se registró el pago en caja. Regístralo desde la factura cuando exista.',
+          });
+        }
       }
 
       toast({ title: 'Pedido marcado como pagado' });
       loadOrder();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error marking as paid:', error);
       toast({
         title: 'Error',
-        description: error?.message || 'No se pudo marcar como pagado',
+        description: mensajeDeError(error) || 'No se pudo marcar como pagado',
         variant: 'destructive',
       });
     } finally {

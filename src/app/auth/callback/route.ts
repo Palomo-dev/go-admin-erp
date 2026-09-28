@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { parseCodigoTarifaPorDefecto, setOrganizationDefaultTaxByCode } from '@/lib/services/defaultTaxService';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -442,6 +443,19 @@ export async function completeSignupAfterEmailConfirmation(supabase: any, user: 
         throw memberError;
       }
       console.log('✅ Membership created successfully');
+
+      // 4.1. Tarifa por defecto para productos sin impuesto, elegida en el
+      // registro. La organización es la recién creada en esta misma función
+      // con la sesión del usuario (no viene del cuerpo); el código se valida
+      // contra la lista cerrada de opciones. No bloquea el registro.
+      const defaultTaxCode = parseCodigoTarifaPorDefecto(signupData.defaultTaxCode);
+      if (defaultTaxCode) {
+        try {
+          await setOrganizationDefaultTaxByCode(supabase, orgData.id, defaultTaxCode);
+        } catch (taxError) {
+          console.warn('⚠️ No se pudo guardar la tarifa por defecto:', taxError);
+        }
+      }
       
       // 4.5. Crear registro en member_branches para que la asignación sea visible
       const { data: memberRecord, error: memberFetchError } = await supabase

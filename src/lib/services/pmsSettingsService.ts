@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 export interface PMSSettings {
   checkinTime: string;
@@ -29,10 +30,11 @@ export interface TaxTemplate {
   isDefault: boolean;
 }
 
-const defaultSettings: PMSSettings = {
+// Sin `defaultCurrency`: el valor por defecto es la moneda base de la
+// organización (`resolveOrgCurrency`), no una moneda fija.
+const defaultSettings: Omit<PMSSettings, 'defaultCurrency'> = {
   checkinTime: '15:00',
   checkoutTime: '11:00',
-  defaultCurrency: 'COP',
   timezone: 'America/Bogota',
   autoConfirmReservations: false,
   requireDeposit: true,
@@ -55,6 +57,8 @@ class PMSSettingsService {
   private settingsKey = 'pms_settings';
 
   async getSettings(organizationId: number): Promise<PMSSettings> {
+    const { code: monedaBase } = await resolveOrgCurrency(supabase, organizationId);
+    const porDefecto: PMSSettings = { ...defaultSettings, defaultCurrency: monedaBase };
     try {
       const { data, error } = await supabase
         .from('organization_settings')
@@ -65,17 +69,17 @@ class PMSSettingsService {
 
       if (error) {
         console.error('Error fetching PMS settings:', error);
-        return defaultSettings;
+        return porDefecto;
       }
 
       if (data?.settings) {
-        return { ...defaultSettings, ...data.settings };
+        return { ...porDefecto, ...data.settings };
       }
 
-      return defaultSettings;
+      return porDefecto;
     } catch (error) {
       console.error('Error in getSettings:', error);
-      return defaultSettings;
+      return porDefecto;
     }
   }
 
@@ -112,7 +116,8 @@ class PMSSettingsService {
       return [];
     }
 
-    return (data || []).map((t: any) => ({
+    type FilaImpuesto = { id: string; name: string; rate: number; is_default: boolean };
+    return ((data || []) as FilaImpuesto[]).map((t) => ({
       id: t.id,
       name: t.name,
       rate: t.rate,

@@ -1,4 +1,28 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz, toPlainDate } from '@/lib/utils/dateCore';
+import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
+import { plainDayOfInstant } from '@/lib/services/businessInstant';
+
+// ============================================================
+// Fase B, tanda 6 — el dia del tablero es el de la organizacion.
+//
+// `reservations.checkin` / `.checkout` y `reservation_blocks.date_from` son
+// columnas **date** (verificado en `information_schema.columns`): aqui se
+// comparan dias calendario, y el dia tiene que ser el de la organizacion o el
+// de la sucursal, nunca el de UTC. Cortando el ISO en UTC por la 'T',
+// una recepcion de Bogota a las 19:05 ya veia las llegadas de MAÑANA.
+//
+// `maintenance_orders.created_at` si es **timestamptz**, y por eso su dia se
+// saca con `plainDayOfInstant` y no cortando la cadena por la 'T' (regla 2 de
+// `docs/reglas-fechas-timezone.md`).
+//
+// La zona entra por identidad (ADR-003): `resolveTimezone(organizationId,
+// branchId)`. Cuando no hay sucursal elegida el tablero es consolidado y se
+// usa la de la organizacion; eso queda anotado como deuda en la bitacora,
+// porque un consolidado sobre sucursales en husos distintos no tiene un unico
+// «hoy».
+// ============================================================
 
 export interface DashboardStats {
   arrivalsToday: number;
@@ -106,6 +130,14 @@ interface MaintenanceOrderRow {
 }
 
 class PMSDashboardService {
+  /**
+   * Zona horaria efectiva del dato que se esta mirando. ADR-003: el servicio
+   * recibe identidad, nunca un `timezone` ya resuelto.
+   */
+  private zona(organizationId: number, branchId?: number | null): Promise<string> {
+    return resolveTimezone(organizationId, branchId ?? null);
+  }
+
   // Obtiene los IDs de sucursales pertenecientes a la organización.
   // Necesario porque spaces y maintenance_orders se filtran por branch_id,
   // no por organization_id.
@@ -125,8 +157,9 @@ class PMSDashboardService {
   }
 
   async getDashboardStats(organizationId: number, dateRange?: DateRangeFilter, branchId?: number | null): Promise<DashboardStats> {
-    const fromDate = dateRange ? dateRange.from.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-    const toDate = dateRange ? dateRange.to.toISOString().split('T')[0] : fromDate;
+    const tz = await this.zona(organizationId, branchId);
+    const fromDate = dateRange ? toPlainDate(dateRange.from, tz) : todayInTz(tz);
+    const toDate = dateRange ? toPlainDate(dateRange.to, tz) : fromDate;
 
     // Obtener branch_ids de la organización para filtrar spaces correctamente
     // Si branchId es específico, filtrar solo por esa sucursal
@@ -202,8 +235,9 @@ class PMSDashboardService {
   }
 
   async getArrivals(organizationId: number, dateRange?: DateRangeFilter, branchId?: number | null): Promise<TodayArrival[]> {
-    const fromDate = dateRange ? dateRange.from.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-    const toDate = dateRange ? dateRange.to.toISOString().split('T')[0] : fromDate;
+    const tz = await this.zona(organizationId, branchId);
+    const fromDate = dateRange ? toPlainDate(dateRange.from, tz) : todayInTz(tz);
+    const toDate = dateRange ? toPlainDate(dateRange.to, tz) : fromDate;
 
     let query = supabase
       .from('reservations')
@@ -260,8 +294,9 @@ class PMSDashboardService {
   }
 
   async getDepartures(organizationId: number, dateRange?: DateRangeFilter, branchId?: number | null): Promise<TodayDeparture[]> {
-    const fromDate = dateRange ? dateRange.from.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-    const toDate = dateRange ? dateRange.to.toISOString().split('T')[0] : fromDate;
+    const tz = await this.zona(organizationId, branchId);
+    const fromDate = dateRange ? toPlainDate(dateRange.from, tz) : todayInTz(tz);
+    const toDate = dateRange ? toPlainDate(dateRange.to, tz) : fromDate;
 
     let query = supabase
       .from('reservations')
@@ -315,8 +350,11 @@ class PMSDashboardService {
 
   async getAlerts(organizationId: number, branchId?: number | null): Promise<Alert[]> {
     const alerts: Alert[] = [];
-    const today = new Date().toISOString().split('T')[0];
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const tz = await this.zona(organizationId, branchId);
+    const today = todayInTz(tz);
+    // Dia calendario siguiente, no «dentro de 24 h»: en el cambio de horario
+    // un dia dura 23 o 25 horas y `Date.now() + 86400000` se salta o repite.
+    const tomorrow = sumarDiasAlDia(today, 1);
 
     // Reservations without space assignment
     let unassignedQuery = supabase
@@ -409,10 +447,9 @@ class PMSDashboardService {
   }
 
   async getWeekCalendarEvents(organizationId: number, branchId?: number | null): Promise<CalendarEvent[]> {
-    const today = new Date();
-    const weekEnd = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const todayStr = today.toISOString().split('T')[0];
-    const weekEndStr = weekEnd.toISOString().split('T')[0];
+    const tz = await this.zona(organizationId, branchId);
+    const todayStr = todayInTz(tz);
+    const weekEndStr = sumarDiasAlDia(todayStr, 7);
 
     const branchIds = branchId != null ? [branchId] : await this.getBranchIds(organizationId);
     const events: CalendarEvent[] = [];
@@ -515,7 +552,10 @@ class PMSDashboardService {
       events.push({
         id: `maintenance-${m.id}`,
         title: m.description?.substring(0, 30) || 'Mantenimiento',
-        date: m.created_at?.split('T')[0] || todayStr,
+        // `maintenance_orders.created_at` es timestamptz: cortar por la 'T'
+        // deja el dia UTC. Una orden abierta a las 20:00 en Bogota aparecia
+        // en el calendario del dia siguiente.
+        date: plainDayOfInstant(m.created_at, tz) || todayStr,
         type: 'maintenance',
         spaceLabel: m.spaces?.[0]?.label,
       });

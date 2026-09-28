@@ -19,8 +19,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { BancosService, BankAccount, BankTransaction } from '../BancosService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { supabase } from '@/lib/supabase/config';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { esEntradaBancaria } from '@/lib/finanzas/movimientoBancario';
+import { useTranslations } from 'next-intl';
 
 /** Informacion del link de Open Finance vinculado a la cuenta */
 interface OpenFinanceLinkInfo {
@@ -35,6 +39,9 @@ interface CuentaDetailPageProps {
 
 export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
   const router = useRouter();
+  // Saldos y movimientos de la cuenta: en la moneda de la cuenta.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const t = useTranslations('tesoreria');
   const [account, setAccount] = useState<BankAccount | null>(null);
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,22 +65,28 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
       setAccount(accountData);
       setTransactions(transactionsData);
 
-      // Buscar link de Open Finance vinculado a la cuenta
-      const { data: ofAccount } = await supabase
+      // Link de Open Finance vinculado a la cuenta, de ESTA organización. Sin
+      // vínculo no es un error (maybeSingle); un fallo de la consulta sí.
+      const { data: ofAccount, error: ofError } = await supabase
         .from('open_finance_accounts')
         .select('link_id, last_balance, last_balance_at')
+        .eq('organization_id', getOrganizationId())
         .eq('bank_account_id', parseInt(accountId))
         .eq('is_active', true)
-        .single();
+        .limit(1)
+        .maybeSingle();
+      if (ofError) throw ofError;
 
       setOfLink(ofAccount as OpenFinanceLinkInfo | null);
     } catch (error) {
       console.error('Error cargando datos:', error);
-      toast.error('Error al cargar los datos de la cuenta');
+      toast.error(t('errorCarga.cuentaBancaria'), {
+        action: { label: t('reintentar'), onClick: () => void loadData() },
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [accountId, router]);
+  }, [accountId, router, t]);
 
   useEffect(() => {
     loadData();
@@ -231,7 +244,7 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
                 ? 'text-green-600 dark:text-green-400' 
                 : 'text-red-600 dark:text-red-400'
             }`}>
-              {formatCurrency(account.balance, account.currency || 'COP')}
+              {formatMoneda(account.balance, paraDocumento(account.currency))}
             </div>
           </CardContent>
         </Card>
@@ -245,7 +258,7 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {formatCurrency(account.initial_balance || 0, account.currency || 'COP')}
+              {formatMoneda(account.initial_balance || 0, paraDocumento(account.currency))}
             </div>
           </CardContent>
         </Card>
@@ -273,7 +286,7 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {account.currency || 'COP'}
+              {paraDocumento(account.currency).code}
             </div>
           </CardContent>
         </Card>
@@ -414,12 +427,12 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
                   >
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-full ${
-                        tx.transaction_type === 'credit' 
+                        esEntradaBancaria(tx) 
                           ? 'bg-green-100 dark:bg-green-900/30' 
                           : 'bg-red-100 dark:bg-red-900/30'
                       }`}>
                         <DollarSign className={`h-4 w-4 ${
-                          tx.transaction_type === 'credit' 
+                          esEntradaBancaria(tx) 
                             ? 'text-green-600 dark:text-green-400' 
                             : 'text-red-600 dark:text-red-400'
                         }`} />
@@ -435,12 +448,12 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
                     </div>
                     <div className="text-right">
                       <p className={`font-semibold ${
-                        tx.transaction_type === 'credit' 
+                        esEntradaBancaria(tx) 
                           ? 'text-green-600 dark:text-green-400' 
                           : 'text-red-600 dark:text-red-400'
                       }`}>
-                        {tx.transaction_type === 'credit' ? '+' : '-'}
-                        {formatCurrency(Math.abs(tx.amount))}
+                        {esEntradaBancaria(tx) ? '+' : '-'}
+                        {formatMoneda(Math.abs(tx.amount), paraDocumento(account.currency))}
                       </p>
                       {tx.reference && (
                         <p className="text-xs text-gray-500 dark:text-gray-400">

@@ -1,0 +1,14 @@
+-- Rollback de 20260926115000_compras_f1_concilia_con_pago_unico.sql
+--
+-- NO-OP A PROPÓSITO. Esa migración no cambió nada propio: devolvió a su estado
+-- correcto dos funciones de la sesión de ventas que 20260926100000 y
+-- 20260926110000 habían pisado sin querer (`fn_finanzas_exigir_permiso` del pago
+-- único y la rama de venta de `fn_recalc_invoice_balance_from_payments`). Su
+-- inverso literal volvería a romper el pago único (error `SIN_PERMISO` en lugar
+-- de `sin_permiso`, sin EXECUTE para authenticated) y la cartera de ventas
+-- (sin `account_receivable`).
+--
+-- Para deshacer compras F1 entera, revertir 20260926130000, 20260926120000,
+-- 20260926110000 y 20260926100000: el rollback de esta última restaura la
+-- versión de P1.1 de `fn_recalc_invoice_balance_from_payments`.
+select 1;

@@ -127,9 +127,16 @@
  * caché; y si es la ÚNICA pestaña de POS (en segundo plano mientras se
  * enciende desde Configuración), la pantalla la adopta provisionalmente por
  * latido, le pide snapshot y `handleUp` responde con hello + state sin mirar
- * la visibilidad. Solo `start()`, `setSession` y la respuesta a
- * `need_snapshot` NO dependen de la visibilidad: son datos de ESTA caja o
- * una petición expresa de la pantalla, no un aviso ajeno.
+ * la visibilidad. Solo `start()` y la respuesta a `need_snapshot` NO
+ * dependen de la visibilidad: son datos de ESTA caja o una petición expresa
+ * de la pantalla, no un aviso ajeno. `setSession` (ronda 5 de F2-B, defecto
+ * F2B-R4-1) tampoco saluda desde una pestaña OCULTA: con dos pestañas, la
+ * visible abre la caja y la oculta recibe el Realtime de `cash_sessions`,
+ * recarga y llamaba a setSession la ÚLTIMA; su hello relevaba a la visible
+ * fuera de la ventana de elección. La sesión se guarda igual y viaja en el
+ * siguiente hello (reannounce al volver a verse, o respuesta a need_snapshot).
+ * El receptor añade la guarda simétrica: un hello `visible: false` no releva
+ * a una activa adoptada con `visible: true` (transport.ts, regla 2).
  *
  * «Gracias» dura THANKS_DURATION_MS «o hasta la siguiente venta» (PLAN §4.2).
  * Decisión (ronda 3): la «siguiente venta» es una MUTACIÓN REAL de líneas
@@ -188,8 +195,8 @@ import type {
   UpMessage,
 } from './protocol';
 import { projectCartForDisplay, type DisplayTotalsOverride } from './projection';
-import { isAcceptableTipChoice, isValidTipPercent, resolveTipSelection, type DisplayTipBlock, type TipSelection } from './tip';
-import type { DisplayTransport, HelloDraft } from './transport';
+import { isAcceptableTipChoice, porcentajesPropinaOfrecidos, resolveTipSelection, type DisplayTipBlock, type TipSelection } from './tip';
+import type { DisplayCapabilitiesByOrigin, DisplaySeenByOrigin, DisplayTransport, HelloDraft } from './transport';
 
 /** Cuánto se muestra «Gracias» antes de volver al modo derivado (PLAN §4.2: 8 s o siguiente venta). */
 export const THANKS_DURATION_MS = 8000;
@@ -416,6 +423,20 @@ function warn(where: string, err: unknown): void {
   console.warn(`[pos-display] ${where} falló:`, err);
 }
 
+/**
+ * Identificador corto y único por ventana para cada «Gracias» (Fase 4). No
+ * es un secreto ni un id de negocio: solo tiene que distinguir una venta de
+ * la siguiente dentro de la misma caja, así que un contador con una sal de
+ * arranque basta y no obliga a `crypto.randomUUID` (que falta en contextos
+ * no seguros, justo donde corre parte de estas cajas).
+ */
+let thanksCounter = 0;
+const thanksSalt = Math.random().toString(36).slice(2, 8);
+function nextThanksId(): string {
+  thanksCounter += 1;
+  return `t${thanksSalt}${thanksCounter}`;
+}
+
 export class DisplayEmitter {
   private readonly createTransport: () => DisplayTransport | null;
   private readonly isEnabled: () => boolean;
@@ -449,6 +470,15 @@ export class DisplayEmitter {
   private tipConfig: { presets: number[]; allowCustom: boolean } | null = null;
   private tipBase: number | null = null;
   private tipSelected: TipSelectedMessage | null = null;
+  /**
+   * La misma elección ya resuelta a importe en el momento de aceptarla (ronda
+   * 8, QA F2B-R7 E): el getter `tipSelection` devuelve ESTA, no una
+   * re-resolución. CONGELADA (`Object.freeze`, ronda 4 de cierre): es la
+   * misma referencia que reciben los oyentes de `onTipSelected`, y un oyente
+   * descuidado que la mutara cambiaría la cifra que el cliente vio para el
+   * getter y para los oyentes siguientes.
+   */
+  private tipResolved: Readonly<TipSelection> | null = null;
   private readonly tipListeners = new Set<(selection: TipSelection) => void>();
   private readonly tipPhaseListeners = new Set<(phase: TipPhase) => void>();
   private readonly stateListeners = new Set<(state: DisplayState) => void>();
@@ -457,6 +487,20 @@ export class DisplayEmitter {
   private lastCapabilitiesJson: string | null = null;
   private thanks: DisplayState['thanks'] = null;
   private thanksTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Venta que la pantalla está agradeciendo (Fase 4). La calificación que
+   * llega de la pantalla NO trae el id de la venta: lo pone la caja desde
+   * aquí. Un `saleId` que viniera por el cable sería un id de venta elegido
+   * por quien escriba en el canal. Se olvida al salir de «Gracias».
+   */
+  private thanksSaleId: string | null = null;
+  /**
+   * Identificador del «Gracias» en curso (Fase 4, ronda 2). Viaja en el
+   * `state` y vuelve en el mensaje `rating`: si no coincide, la calificación
+   * es de una venta anterior que llegó tarde por el canal remoto y se
+   * descarta. Se renueva en cada `setMode('thanks')` y se olvida al salir.
+   */
+  private thanksId: string | null = null;
   private closed = false;
 
   private pendingFlush: Cancel | null = null;
@@ -606,7 +650,11 @@ export class DisplayEmitter {
     }
   }
 
-  /** Nombre del cajero y estado de la caja. Cambiarlos vuelve a emitir `hello` (PLAN §5.2). */
+  /**
+   * Nombre del cajero y estado de la caja. Cambiarlos vuelve a emitir `hello`
+   * (PLAN §5.2)… solo desde una ventana VISIBLE (ver cabecera, F2B-R4-1): la
+   * pestaña oculta guarda la sesión y la lleva en su próximo saludo.
+   */
   setSession(session: Partial<DisplaySessionInfo>): void {
     try {
       const next: DisplaySessionInfo = {
@@ -615,7 +663,7 @@ export class DisplayEmitter {
       };
       const changed = next.sessionOpen !== this.session.sessionOpen || next.cashier?.name !== this.session.cashier?.name;
       this.session = next;
-      if (changed && this.transport) this.announce();
+      if (changed && this.transport && this.windowVisible()) this.announce();
     } catch (err) {
       warn('setSession', err);
     }
@@ -871,9 +919,11 @@ export class DisplayEmitter {
    * pendiente y `cartId` es el carrito proyectado. El emisor no aplica nada:
    * la caja muestra «Cliente eligió 10 % ($X)» con Aplicar / Cambiar
    * (PLAN §5.3). Un oyente que lance no afecta al resto. Sobrevive a
-   * stop()/start(): se registra una vez por componente.
+   * stop()/start(): se registra una vez por componente. La selección llega
+   * CONGELADA (la misma referencia que devuelve `tipSelection`): mutarla
+   * lanza en modo estricto y no cambia la cifra para nadie.
    */
-  onTipSelected(listener: (selection: TipSelection) => void): () => void {
+  onTipSelected(listener: (selection: Readonly<TipSelection>) => void): () => void {
     this.tipListeners.add(listener);
     return () => {
       this.tipListeners.delete(listener);
@@ -885,11 +935,19 @@ export class DisplayEmitter {
     return this.tipState;
   }
 
-  /** Última elección aceptada en esta fase, resuelta a importe; null si no hubo. */
-  get tipSelection(): TipSelection | null {
-    const msg = this.tipSelected;
-    if (!msg) return null;
-    return resolveTipSelection(msg.cartId, this.effectiveTipBase(), { kind: msg.kind, value: msg.value });
+  /**
+   * Última elección aceptada en esta fase, resuelta a importe; null si no hubo.
+   * Es EXACTAMENTE la `TipSelection` que se entregó a `onTipSelected`: el
+   * importe quedó congelado con la base que el cliente vio al pulsar. Si la
+   * base cambia después (el cajero edita un descuento en el modal) este
+   * getter NO se re-resuelve: una elección tiene una sola cifra por cualquier
+   * camino de lectura (ronda 8, QA F2B-R7 describe E). Quien quiera el
+   * importe con la base actual lo recalcula con `computeTipAmount` (tip.ts).
+   * La referencia está congelada (`Object.isFrozen` → true): ni el aviso de
+   * la caja ni ningún oyente pueden alterarla.
+   */
+  get tipSelection(): Readonly<TipSelection> | null {
+    return this.tipResolved;
   }
 
   /**
@@ -902,7 +960,7 @@ export class DisplayEmitter {
    *   la cierran tip_selected / skipTip(). Se ignora.
    * Con la caja sin arrancar (CheckoutDialog en mesas o nueva venta) se ignora.
    */
-  setMode(mode: DisplayMode, extra?: { total?: number; askRating?: boolean }): void {
+  setMode(mode: DisplayMode, extra?: { total?: number; askRating?: boolean; saleId?: string | null }): void {
     try {
       if (!this.started) return;
       switch (mode) {
@@ -912,7 +970,17 @@ export class DisplayEmitter {
           this.resetTip();
           this.tipBase = null; // la venta terminó: la base no vale para la siguiente
           this.closed = false;
-          this.thanks = { total, askRating: extra?.askRating === true };
+          // Fase 4: si quien confirma la venta no dice nada, manda el ajuste
+          // de la organización (`rating.enabled`). Así CheckoutDialog no
+          // tiene que conocer los ajustes de la pantalla para preguntar.
+          const askRating = extra?.askRating === undefined ? this.ratingEnabled() : extra.askRating === true;
+          // El id existe para que una calificación no se cuente dos veces
+          // (la pantalla lo devuelve en el mensaje `rating`). Sin pregunta no
+          // hay nada que deduplicar, así que el estado no lo lleva: los
+          // frames de «Gracias» de las fases anteriores no cambian de forma.
+          this.thanksId = askRating ? nextThanksId() : null;
+          this.thanks = this.thanksId ? { total, askRating, id: this.thanksId } : { total, askRating };
+          this.thanksSaleId = typeof extra?.saleId === 'string' && extra.saleId.length > 0 ? extra.saleId : null;
           this.armThanksTimer();
           break;
         }
@@ -957,14 +1025,46 @@ export class DisplayEmitter {
   }
 
   /**
+   * Última señal de la pantalla por origen (Fase 3, parte C): `local`
+   * (ventana en esta máquina) y `remote` (tableta por Supabase Broadcast).
+   * null sin transporte. Con un transporte que no distinga orígenes se lee
+   * `lastDisplaySeenAt` como local. El indicador del POS lo usa para decir
+   * «conectada (local / remota / ambas)».
+   */
+  get lastDisplaySeenByOrigin(): DisplaySeenByOrigin | null {
+    const transport = this.transport;
+    if (!transport) return null;
+    if (transport.lastDisplaySeenByOrigin) return transport.lastDisplaySeenByOrigin;
+    return { local: transport.lastDisplaySeenAt, remote: null };
+  }
+
+  /**
    * Últimas `capabilities` que la pantalla declaró (`display_alive` /
    * `need_snapshot`): táctil o no, y tamaño. null sin transporte, sin
    * pantalla, tras su `display_bye` o si el transporte no las guarda
    * (ronda 2, QA-3). La UI de la caja las usa para no prometer una respuesta
    * que una pantalla NO táctil nunca dará (PLAN §4.4).
+   *
+   * Con pantalla por los DOS tubos (F3-C) el transporte las anota por origen
+   * y devuelve la COMBINACIÓN de las vivas —táctil si alguna lo es—, no la
+   * última que habló: ver `combineDisplayCapabilities` (transport.ts). Así el
+   * aviso de propina no alterna de texto con cada latido cuando el monitor
+   * del mostrador no es táctil y la tableta sí.
    */
   get lastDisplayCapabilities(): DisplayCapabilities | null {
     return this.transport?.lastDisplayCapabilities ?? null;
+  }
+
+  /**
+   * Capacidades declaradas POR ORIGEN (F3-C ronda 5 · 1). null sin transporte
+   * o con un transporte que no las anote por origen (F0–F2). La UI de la caja
+   * lo combina con los orígenes VIVOS de la presencia
+   * (`combineLiveDisplayCapabilities`, presence.ts) para que una tableta que
+   * muere sin despedirse deje de contar: el transporte no juzga el silencio,
+   * igual que no lo juzga en `lastDisplaySeenAt`.
+   */
+  get lastDisplayCapabilitiesByOrigin(): DisplayCapabilitiesByOrigin | null {
+    return this.transport?.lastDisplayCapabilitiesByOrigin ?? null;
   }
 
   /**
@@ -993,6 +1093,29 @@ export class DisplayEmitter {
    * la caja aplique el MISMO forzado táctil que la pantalla
    * (`settings.touch`, PLAN §4.4) sin conocer settings.ts ni la organización.
    */
+  /**
+   * Venta que la pantalla está agradeciendo ahora mismo, o null. La usa la
+   * caja para registrar la calificación del cliente contra la venta correcta
+   * (ver `thanksSaleId`).
+   */
+  get ratingSaleId(): string | null {
+    return this.thanks ? this.thanksSaleId : null;
+  }
+
+  /**
+   * Identificador del «Gracias» que la caja está mostrando, o null si ya no
+   * hay ninguno. La caja compara con el `thanksId` del mensaje `rating` antes
+   * de registrar nada (ver posDisplay.ts).
+   */
+  get ratingThanksId(): string | null {
+    return this.thanks ? this.thanksId : null;
+  }
+
+  /** ¿La organización pide calificación al terminar la venta? (ajuste `rating.enabled`). */
+  private ratingEnabled(): boolean {
+    return this.presentationSettings?.rating?.enabled === true;
+  }
+
   get presentationSettings(): DisplayPresentationSettings | null {
     if (!this.getSettings) return null;
     try {
@@ -1045,7 +1168,13 @@ export class DisplayEmitter {
     // completed ya no son un pedido pendiente que mostrar.
     if (this.cart.status !== 'active' && this.cart.status !== 'hold') return null;
     const totals = this.totalsOverride && this.totalsOverride.cartId === this.cart.id ? this.totalsOverride.totals : null;
-    return projectCartForDisplay(this.cart, { currency: this.currency, totals, lastChangedLineId: null });
+    // `showCustomerName` se aplica AQUÍ y no solo al pintar: con el ajuste
+    // apagado (el valor por defecto, «privacidad primero» del PLAN §5.2) el
+    // nombre no debe salir del emisor, o seguiría cruzando el canal remoto de
+    // una tableta y viéndose en sus herramientas de desarrollo. El filtro de
+    // la pantalla se conserva como defensa para emisores anteriores.
+    const includeCustomerName = this.presentationSettings?.showCustomerName === true;
+    return projectCartForDisplay(this.cart, { currency: this.currency, totals, lastChangedLineId: null, includeCustomerName });
   }
 
   /**
@@ -1083,7 +1212,8 @@ export class DisplayEmitter {
     }
     const tips = settings?.tips;
     if (!tips || tips.enabled !== true) return;
-    const presets = Array.isArray(tips.presets) ? Array.from(new Set(tips.presets.filter(isValidTipPercent))) : [];
+    // Tope del 10 % (D7, tip.ts): los porcentajes configurados por encima no se ofrecen.
+    const presets = porcentajesPropinaOfrecidos(tips.presets);
     const allowCustom = tips.allowCustom === true;
     if (presets.length === 0 && !allowCustom) return;
     this.tipConfig = { presets, allowCustom };
@@ -1095,6 +1225,7 @@ export class DisplayEmitter {
     this.setTipPhase(null);
     this.tipConfig = null;
     this.tipSelected = null;
+    this.tipResolved = null;
   }
 
   /** Único punto que escribe `tipState`; avisa a onTipPhaseChange solo si cambió. */
@@ -1116,6 +1247,15 @@ export class DisplayEmitter {
     return this.projectedCart?.total ?? 0;
   }
 
+  /** ¿La elección está entre lo que la fase ofreció? `none` siempre; `amount` con allowCustom; `percent` solo si es un preset. */
+  private isOfferedTipChoice(kind: TipSelectedMessage['kind'], value: number): boolean {
+    if (kind === 'none') return true;
+    const config = this.tipConfig;
+    if (config === null) return false;
+    if (kind === 'amount') return config.allowCustom;
+    return config.presets.includes(value);
+  }
+
   private tipBlock(): DisplayTipBlock {
     const config = this.tipConfig ?? { presets: [], allowCustom: false };
     return { presets: [...config.presets], allowCustom: config.allowCustom, selected: this.tipSelected, base: this.effectiveTipBase() };
@@ -1132,6 +1272,12 @@ export class DisplayEmitter {
    * (tip.ts / TipView los limitan), pero otra pantalla (F3 Realtime) o un
    * sobre fabricado sí podrían; antes el primero se resolvía como «Sin
    * propina» y cerraba la pregunta, y el segundo llegaba a la caja tal cual.
+   *
+   * Y solo lo que se OFRECIÓ (ronda 5, tester r4 bloque B): la configuración
+   * congelada al abrir la fase (`tipConfig`) es el contrato con la pantalla.
+   * Un `amount` exige `allowCustom`; un `percent` debe estar en `presets`.
+   * Lo que no casa se descarta igual, sin cerrar la fase, con aviso en
+   * consola: la única barrera ya no es el «Aplicar» del cajero.
    */
   private acceptTipSelection(msg: TipSelectedMessage): void {
     if (this.tipState !== 'pending') return;
@@ -1141,10 +1287,20 @@ export class DisplayEmitter {
       console.warn('[pos-display] tip_selected descartado: valor fuera de rango', { kind: msg.kind, value: msg.value });
       return;
     }
+    if (!this.isOfferedTipChoice(msg.kind, msg.value)) {
+      console.warn('[pos-display] tip_selected descartado: no está entre lo ofrecido', { kind: msg.kind, value: msg.value, offered: this.tipConfig });
+      return;
+    }
     this.tipSelected = msg;
+    // Se resuelve UNA vez con la base que el cliente vio y se CONGELA: el
+    // getter `tipSelection` y todos los oyentes reciben esta misma referencia
+    // (no se re-resuelve) y ninguno puede cambiarle la cifra.
+    const selection: Readonly<TipSelection> = Object.freeze(
+      resolveTipSelection(msg.cartId, this.effectiveTipBase(), { kind: msg.kind, value: msg.value }),
+    );
+    this.tipResolved = selection;
     this.setTipPhase('done');
     this.requestFlush();
-    const selection = resolveTipSelection(msg.cartId, this.effectiveTipBase(), { kind: msg.kind, value: msg.value });
     for (const listener of Array.from(this.tipListeners)) {
       try {
         listener(selection);
@@ -1322,7 +1478,9 @@ export class DisplayEmitter {
     // el transporte sin saludar; la pantalla la adopta por latido, pide
     // snapshot y aquí recibe su hello + state. Con dos pestañas, la ventana
     // de elección del receptor (ADOPTION_WINDOW_MS) resuelve por
-    // sessionOpen/seq, no por quién responde la última.
+    // `visible` primero (F2-B) y luego sessionOpen/seq, no por quién
+    // responde la última; y fuera de la ventana una oculta no releva a una
+    // visible (transport.ts, regla 2).
     try {
       // El transporte ya anotó (o borró) las capacidades antes de entregar el sobre: se avisa si cambiaron.
       if (msg.t === 'display_alive' || msg.t === 'need_snapshot' || msg.t === 'display_bye') this.notifyCapabilitiesIfChanged();
@@ -1382,6 +1540,8 @@ export class DisplayEmitter {
     this.thanksTimer = setTimeout(() => {
       this.thanksTimer = null;
       this.thanks = null;
+      this.thanksSaleId = null;
+      this.thanksId = null;
       this.requestFlush();
     }, this.thanksDurationMs);
     const maybeUnref = this.thanksTimer as unknown as { unref?: () => void };
@@ -1397,5 +1557,7 @@ export class DisplayEmitter {
   private clearThanks(): void {
     this.clearThanksTimer();
     this.thanks = null;
+    this.thanksSaleId = null;
+    this.thanksId = null;
   }
 }

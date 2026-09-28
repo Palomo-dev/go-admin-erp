@@ -1070,12 +1070,17 @@ describe('Tarjeta · contrato estático (fuente)', () => {
     expect(posDisplay).toMatch(/getSettings: \(\) => toDisplayPresentationSettings\(getCachedCustomerDisplaySettings\(getOrganizationId\(\)\)\)/);
   });
 
-  it('protocol.ts: hello.settings es opcional (aditivo) y no viaja enabled ni idle', () => {
+  /**
+   * F4: el reposo (`idle`) pasó a viajar en el saludo, y opcional como el
+   * resto del bloque; lo que NO viaja sigue siendo `enabled` (el interruptor
+   * maestro: apagado no hay hello que mandar).
+   */
+  it('protocol.ts: hello.settings es opcional (aditivo), lleva idle opcional y no viaja enabled', () => {
     const protocol = read('src/lib/pos/display/protocol.ts');
     expect(protocol).toMatch(/settings\?: DisplayPresentationSettings/);
-    expect(protocol).toMatch(/export interface DisplayPresentationSettings \{[\s\S]*?touch: DisplayTouchOverride;\s*\}/);
     const block = protocol.slice(protocol.indexOf('export interface DisplayPresentationSettings'), protocol.indexOf('// Mensajes hacia arriba'));
+    expect(block).toMatch(/touch: DisplayTouchOverride;/);
+    expect(block).toMatch(/idle\?: DisplayIdleSettings;/);
     expect(block).not.toMatch(/\benabled: boolean;\s*$/m);
-    expect(block).not.toMatch(/idle:/);
   });
 });

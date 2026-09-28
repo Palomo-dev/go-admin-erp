@@ -28,6 +28,12 @@ export interface Branch {
   // normalizar el valor vacío del select.
   branch_type?: BranchType | null;
   zone?: string;
+  /**
+   * Zona horaria IANA propia de la sucursal (fase A3). `null`/ausente =
+   * hereda la de la organización. La cascada efectiva la resuelven
+   * `resolveTimezoneForBranch` en el cliente y `fn_timezone_for` en la base.
+   */
+  timezone?: string | null;
   branch_code: string;
   is_active?: boolean;
   is_web_stock_source?: boolean;

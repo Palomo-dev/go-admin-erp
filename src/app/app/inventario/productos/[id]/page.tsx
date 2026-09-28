@@ -1,189 +1,28 @@
 'use client';
 
-import {
-  useParams,
-  useRouter } from 'next/navigation';
-import { useState,
-  useEffect,
-  useCallback } from 'react';
-import { Package, AlertCircle, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
-import { supabase } from '@/lib/supabase/config';
-import DetalleProducto from '@/components/inventario/productos/id/DetalleProducto';
-import { useOrganization } from '@/lib/hooks/useOrganization';
-import { Button } from '@/components/ui/button';
+import { Suspense } from 'react';
+import { useParams } from 'next/navigation';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
+import { DetalleProducto } from '@/components/inventario/productos/detalle/DetalleProducto';
 
 /**
- * Página de detalle de producto
- * Muestra toda la información relacionada con un producto específico
- * y sus variantes en una sola vista organizada por pestañas
+ * Detalle de producto. El id de la URL es el uuid; la organización sale de la
+ * sesión y todas las lecturas filtran por ella.
  */
 export default function ProductoDetallePage() {
   const params = useParams();
-  const id = params?.id as string;
-  const router = useRouter();
-  const [loading, setLoading] = useState<boolean>(true);
-  const [producto, setProducto] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
-  const { organization, isLoading: orgLoading } = useOrganization();
+  const uuid = (params?.id as string) ?? '';
 
-  useEffect(() => {
-    const fetchProducto = async () => {
-      if (!id || !organization?.id) return;
-
-      try {
-        setLoading(true);
-        
-        // Siempre consultar la BD para obtener datos completos (incluyendo product_suppliers, etc.)
-        // Buscar por UUID (el id de la URL ahora es UUID)
-        const { data, error: fetchError } = await supabase
-          .from('products')
-          .select(`
-            *,
-            categories(id, name),
-            children:products(
-              *,
-              categories(id, name),
-              product_prices(id, price, compare_price, effective_from, effective_to),
-              product_costs(id, cost, effective_from, effective_to),
-              stock_levels(branch_id, qty_on_hand, qty_reserved, branches(id, name)),
-              product_images(id, storage_path, is_primary)
-            ),
-            product_prices(id, price, compare_price, effective_from, effective_to),
-            product_costs(id, cost, effective_from, effective_to),
-            stock_levels(branch_id, qty_on_hand, qty_reserved, branches(id, name)),
-            product_images(id, storage_path, is_primary),
-            product_suppliers(id, supplier_id, cost, is_preferred, supplier_sku, lead_time_days, min_order_qty, supplier:suppliers(id, uuid, name, nit)),
-            product_tax_relations(tax_id, organization_taxes(id, name, rate))
-          `)
-          .eq('uuid', id)
-          .eq('organization_id', organization.id)
-          .single();
-
-        console.log('Data del producto:', data);  
-
-        if (fetchError) throw new Error(fetchError.message);
-        
-        if (!data) {
-          throw new Error('Producto no encontrado');
-        }
-        
-        // Procesar y formatear los datos obtenidos - similar al catálogo
-        // Calcular precio actual, costo actual y stock
-        const currentPrice = data.product_prices && data.product_prices.length > 0
-          ? data.product_prices
-              .filter((p: any) => {
-                // Filtrar por fechas vigentes o sin fecha de fin
-                const now = new Date();
-                const from = p.effective_from ? new Date(p.effective_from) : null;
-                const to = p.effective_to ? new Date(p.effective_to) : null;
-                
-                return (!from || from <= now) && (!to || to >= now);
-              })
-              .sort((a: any, b: any) => {
-                // Ordenar del más reciente al más antiguo
-                return new Date(b.effective_from || 0).getTime() - new Date(a.effective_from || 0).getTime();
-              })[0]?.price || 0
-          : data.price || 0;
-        
-        const currentCost = data.product_costs && data.product_costs.length > 0
-          ? data.product_costs
-              .filter((c: any) => {
-                // Filtrar por fechas vigentes o sin fecha de fin
-                const now = new Date();
-                const from = c.effective_from ? new Date(c.effective_from) : null;
-                const to = c.effective_to ? new Date(c.effective_to) : null;
-                
-                return (!from || from <= now) && (!to || to >= now);
-              })
-              .sort((a: any, b: any) => {
-                // Ordenar del más reciente al más antiguo
-                return new Date(b.effective_from || 0).getTime() - new Date(a.effective_from || 0).getTime();
-              })[0]?.cost || 0
-          : data.cost || 0;
-        
-        // Calcular stock total
-        // Para productos padre (con variantes), el stock está en los hijos,
-        // no en el padre. Sumar ambos: stock_levels del padre + stock_levels de children.
-        // PostgREST devuelve `numeric` como texto: convertir con Number().
-        const parentStock = data.stock_levels
-          ? data.stock_levels.reduce((total: number, sl: any) => {
-              return total + (Number(sl.qty_on_hand) || 0);
-            }, 0)
-          : 0;
-        const childrenStock = (data.children || []).reduce((total: number, child: any) => {
-          if (!child.stock_levels) return total;
-          return total + child.stock_levels.reduce((childTotal: number, sl: any) => {
-            return childTotal + (Number(sl.qty_on_hand) || 0);
-          }, 0);
-        }, 0);
-        const totalStock = parentStock + childrenStock;
-        
-        // Agregar los campos calculados al objeto producto
-        const processedProduct = {
-          ...data,
-          price: currentPrice,
-          cost: currentCost,
-          stock: totalStock
-        };
-
-        setProducto(processedProduct);
-      } catch (error: any) {
-        console.error('Error al cargar el producto:', error);
-        setError(error.message || 'Error al cargar el producto');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducto();
-  }, [id, organization]);
-
-  // Mostrar estado de carga
-  if (loading || orgLoading) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <PageHeaderSkeleton />
-        <DetailSkeleton />
-      </div>
-    );
-  }
-
-  // Mostrar error si hay alguno
-  if (error) {
-    return (
-      <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <div className="flex flex-col items-center justify-center h-[60vh] gap-6">
-          <div className="p-4 bg-red-100 dark:bg-red-900/30 rounded-full">
-            <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
-          </div>
-          <div className="text-center max-w-md">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Error al cargar el producto
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
-            <div className="flex gap-3 justify-center">
-              <Link href="/app/inventario/productos">
-                <Button variant="outline">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Volver a productos
-                </Button>
-              </Link>
-              <Button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700 text-white">
-                Reintentar
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Mostrar página de detalle del producto
   return (
-    <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {producto && <DetalleProducto producto={producto} />}
-    </div>
+    <Suspense
+      fallback={
+        <div className="space-y-4 p-4 sm:p-6">
+          <PageHeaderSkeleton />
+          <DetailSkeleton />
+        </div>
+      }
+    >
+      <DetalleProducto uuid={uuid} />
+    </Suspense>
   );
 }

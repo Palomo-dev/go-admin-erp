@@ -364,8 +364,10 @@ describe('P · la entrada QR confirmada por onPaid queda intocable en todos los 
   it('CheckoutDialog (estático): onPaid marca con setTouchedIds la entrada de origen si existe, si no la añadida; y updatePayment sigue marcando solo el importe', () => {
     const onPaid = CHECKOUT.slice(CHECKOUT.indexOf('onPaid={() => {'), CHECKOUT.indexOf('<SerialSelectorDialog'));
     expect(onPaid.length).toBeGreaterThan(0);
-    expect(onPaid).toMatch(/const confirmedQrEntryId = qrEntryId !== undefined && payments\.some\(p => p\.id === qrEntryId\) \? qrEntryId : newPayment\.id;/);
-    expect(onPaid).toMatch(/setTouchedIds\(prev => \(prev\.has\(confirmedQrEntryId\) \? prev : new Set\(prev\)\.add\(confirmedQrEntryId\)\)\);/);
+    // Ronda 7 (QA-2): el id confirmado sale del `prev` del updater de payments (confirmQrPaymentEntry → ref), no de la clausura.
+    expect(onPaid).toMatch(/confirmedQrEntryIdRef\.current = confirmed\.confirmedId;/);
+    expect(onPaid).toMatch(/setTouchedIds\(prev => \{\s*const confirmedQrEntryId = confirmedQrEntryIdRef\.current \?\? newPayment\.id;\s*return prev\.has\(confirmedQrEntryId\) \? prev : new Set\(prev\)\.add\(confirmedQrEntryId\);\s*\}\);/);
+    expect(onPaid).not.toMatch(/payments\.some\(p => p\.id === qrEntryId\)/);
     expect(onPaid.indexOf('setPayments(')).toBeLessThan(onPaid.indexOf('setTouchedIds('));
     expect(CHECKOUT).toMatch(/if \(field === 'amount'\) setTouchedIds\(\(prev\) => \(prev\.has\(id\) \? prev : new Set\(prev\)\.add\(id\)\)\);/);
   });
@@ -408,14 +410,17 @@ describe('R · corte de handleQrPayment ≡ disabled del botón, con importes ra
   it('CheckoutDialog (estático): el corte va ANTES de setQrPaymentMethod y del fetch, y el botón usa la misma expresión de «otras entradas»', () => {
     const handler = CHECKOUT.slice(CHECKOUT.indexOf('const handleQrPayment = async'), CHECKOUT.indexOf('const loadTaxData = async'));
     expect(handler.length).toBeGreaterThan(0);
-    const cutIdx = handler.indexOf("toast.error('No hay saldo pendiente para cobrar con QR')");
+    // Paso 12 del POS: los textos del cobro salen de next-intl (posCobro); se busca la llamada, no el literal.
+    const cutIdx = handler.indexOf("toast.error(tPos('qr.sinSaldo'))");
     expect(cutIdx).toBeGreaterThan(0);
     expect(handler.indexOf('setQrPaymentMethod(methodCode)')).toBeGreaterThan(cutIdx);
     expect(handler.indexOf('await fetch(')).toBeGreaterThan(cutIdx);
     expect(handler.indexOf('resolveQrChargeAmount(')).toBeGreaterThan(cutIdx);
     expect(handler).toMatch(/if \(Math\.max\(0, cartTotal - othersTotal\) <= 0\) \{/);
-    const button = CHECKOUT.slice(CHECKOUT.indexOf('const othersCoverTotal ='), CHECKOUT.indexOf('Generar QR de pago', CHECKOUT.indexOf('const othersCoverTotal =')));
+    // Paso 11 del rediseño del POS: el texto del botón sale de next-intl (posCobro.pagos.generarQr).
+    const button = CHECKOUT.slice(CHECKOUT.indexOf('const othersCoverTotal ='), CHECKOUT.indexOf("tPos('pagos.generarQr')", CHECKOUT.indexOf('const othersCoverTotal =')));
     expect(button).toMatch(/payments\.filter\(\(p\) => p\.id !== payment\.id\)\.reduce\(\(sum, p\) => sum \+ \(Number\(p\.amount\) \|\| 0\), 0\) >= cartTotal/);
-    expect(button).toContain('disabled={othersCoverTotal}');
+    // Ronda 8 (F2C-R7-2): además, deshabilitado mientras hay una generación en vuelo (isCreatingQr).
+    expect(button).toContain('disabled={othersCoverTotal || isCreatingQr}');
   });
 });

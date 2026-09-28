@@ -1,6 +1,10 @@
 'use client';
 
-import { formatCurrency } from '@/utils/Utils';
+import { contextoMoneda, crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { abrirDocumento, descargarDocumento, guardarArchivo, imprimirDocumento, obtenerPdf } from '@/lib/documents/cliente';
+import { colorHexSeguro, escaparHtml as e } from '@/lib/documents/escape';
+import { qrSvg } from '@/lib/documents/qr';
+import type { TipoDocumento } from '@/lib/documents/tipos';
 
 export interface InvoiceDataForPDF {
   id: string;
@@ -48,70 +52,74 @@ export interface InvoiceDataForPDF {
   }[];
   // Monto de notas de crédito / saldo a favor aplicado a esta factura (informativo)
   credit_applied?: number;
+  /**
+   * Formato de los montos: moneda del documento (o la base de la
+   * organización), decimales y locale del país. Lo arma el llamador con
+   * `useMonedaOrganizacion().paraDocumento(doc.currency)`. Sin él, se formatea
+   * en `currency` con locale de respaldo; nunca se suponen pesos.
+   */
+  moneda?: ContextoMoneda;
 }
 
+/** Contexto de formato del documento. */
+function monedaDe(data: InvoiceDataForPDF): ContextoMoneda {
+  return data.moneda ?? contextoMoneda(data.currency);
+}
+
+/**
+ * Tipo del motor para los datos que arman las pantallas de venta: la
+ * cotización llega por el mismo método con `status = 'quotation'`.
+ */
+function tipoVenta(data: Pick<InvoiceDataForPDF, 'status'>): TipoDocumento {
+  return data.status === 'quotation' ? 'cotizacion' : 'factura-venta';
+}
+
+/** Descarga el PDF del motor con el nombre que pide la pantalla (o el del servidor). */
+async function descargarConNombre(tipo: TipoDocumento, id: string, filename?: string): Promise<void> {
+  if (!filename) return descargarDocumento(tipo, id);
+  const { blob } = await obtenerPdf(tipo, id);
+  guardarArchivo(blob, filename);
+}
+
+/**
+ * Puntos de entrada de documentos que usan las pantallas actuales.
+ *
+ * Desde la fase 2 (motor único, `src/lib/documents`) todos van a
+ * `GET /api/documentos/<tipo>/<id>`: el servidor arma el documento desde la
+ * base con la organización de la sesión, la moneda del documento, las fechas
+ * en la zona de la organización y los textos escapados. De `data` solo se usan
+ * `id` (y `status === 'quotation'` para elegir la cotización); el resto lo
+ * siguen armando las pantallas viejas por compatibilidad de firma y se ignora.
+ * Ya no se escribe en el bucket público `invoices` ni se construye un QR que
+ * apunte a él.
+ */
 export class PDFService {
-  // Generar PDF de factura usando API route
+  /** PDF del documento, generado en el servidor por el motor. */
   static async generateInvoicePDF(invoiceData: InvoiceDataForPDF): Promise<Blob> {
-    try {
-      const response = await fetch('/api/pdf/invoice', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(invoiceData),
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al generar PDF');
-      }
-
-      return await response.blob();
-    } catch (error) {
-      console.error('Error generando PDF:', error);
-      throw error;
-    }
+    return (await obtenerPdf(tipoVenta(invoiceData), invoiceData.id)).blob;
   }
 
-  // Descargar PDF de factura
+  /** Descarga el PDF (o, si el servidor no puede generar PDF, el HTML imprimible). */
   static async downloadInvoicePDF(invoiceData: InvoiceDataForPDF, filename?: string): Promise<void> {
-    try {
-      const blob = await this.generateInvoicePDF(invoiceData);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename || `factura_${invoiceData.number}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Error descargando PDF:', error);
-      throw error;
-    }
+    await descargarConNombre(tipoVenta(invoiceData), invoiceData.id, filename);
   }
 
-  // Abrir PDF en nueva pestaña para imprimir
+  /** Abre el PDF en una pestaña nueva. */
   static async printInvoicePDF(invoiceData: InvoiceDataForPDF): Promise<void> {
-    try {
-      const blob = await this.generateInvoicePDF(invoiceData);
-      const url = window.URL.createObjectURL(blob);
-      const printWindow = window.open(url, '_blank');
-      if (printWindow) {
-        printWindow.onload = () => {
-          printWindow.print();
-        };
-      }
-    } catch (error) {
-      console.error('Error imprimiendo PDF:', error);
-      throw error;
-    }
+    abrirDocumento(tipoVenta(invoiceData), invoiceData.id);
   }
 
-  // Generar HTML para el PDF (alternativa usando window.print con estilos)
+  /**
+   * @deprecated Plantilla de navegador anterior al motor único: arma el HTML
+   * con los datos que le pasa la pantalla. No la usa ningún punto de entrada;
+   * se conserva (con los textos escapados y el QR local) mientras las
+   * pantallas se rediseñan. Para un documento real: `imprimirDocumento`.
+   */
   static generateInvoiceHTML(data: InvoiceDataForPDF, qrUrl?: string): string {
-    const primaryColor = data.organization?.primary_color || '#2563eb';
-    const secondaryColor = data.organization?.secondary_color || '#1e40af';
+    const primaryColor = colorHexSeguro(data.organization?.primary_color) || '#2563eb';
+    const secondaryColor = colorHexSeguro(data.organization?.secondary_color) || '#1e40af';
+    const moneda = monedaDe(data);
+    const formatCurrency = crearFormateadorMoneda(moneda);
     const qrData = qrUrl || `Factura: ${data.number} | Total: ${formatCurrency(data.total)} | Saldo: ${formatCurrency(data.balance)} | ${data.organization?.name || ''}`;
 
     const formatDate = (dateString: string) => {
@@ -138,14 +146,13 @@ export class PDFService {
 
     const isQuotation = data.status === 'quotation';
     const docTitle = isQuotation ? 'COTIZACIÓN' : 'FACTURA';
-    const docNumberLabel = isQuotation ? 'Cotización' : 'Factura';
 
     return `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>${docTitle} ${data.number}</title>
+        <title>${docTitle} ${e(data.number)}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; color: #333; }
@@ -202,17 +209,17 @@ export class PDFService {
         <div class="invoice">
           <div class="header">
             <div class="logo-section">
-              ${data.organization?.logo_url ? `<img src="${data.organization.logo_url}" alt="Logo" class="logo-img" />` : `<div class="logo-text">${data.organization?.name || 'Mi Empresa'}</div>`}
+              ${data.organization?.logo_url ? `<img src="${e(data.organization.logo_url)}" alt="Logo" class="logo-img" />` : `<div class="logo-text">${e(data.organization?.name || 'Mi Empresa')}</div>`}
             </div>
             <div class="invoice-title">
               <div style="display:flex;align-items:flex-start;gap:12px;">
                 <div style="text-align:right;">
                   <h1>${docTitle}</h1>
-                  <div class="invoice-number">${data.number}</div>
-                  <span class="status status-${isQuotation ? 'issued' : data.status}">${statusText[data.status] || data.status}</span>
+                  <div class="invoice-number">${e(data.number)}</div>
+                  <span class="status status-${isQuotation ? 'issued' : e(data.status)}">${e(statusText[data.status] || data.status)}</span>
                 </div>
                 <div style="flex-shrink:0;">
-                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(qrData)}" alt="QR ${docTitle}" style="width:80px;height:80px;" />
+                  <div style="width:80px;height:80px;">${qrSvg(qrData.slice(0, 600), { titulo: `QR ${docTitle}` })}</div>
                   <div style="font-size:9px;color:#6b7280;text-align:center;margin-top:2px;">Escanear para ver</div>
                 </div>
               </div>
@@ -225,19 +232,19 @@ export class PDFService {
           <div class="info-section">
             <div class="info-box">
               <h3>De</h3>
-              <p class="name">${data.organization?.name || 'Mi Empresa'}</p>
-              ${data.organization?.tax_id ? `<p>NIT: ${data.organization.tax_id}</p>` : ''}
-              ${data.organization?.address ? `<p>${data.organization.address}</p>` : ''}
-              ${data.organization?.phone ? `<p>Tel: ${data.organization.phone}</p>` : ''}
-              ${data.organization?.email ? `<p>${data.organization.email}</p>` : ''}
+              <p class="name">${e(data.organization?.name || 'Mi Empresa')}</p>
+              ${data.organization?.tax_id ? `<p>NIT: ${e(data.organization.tax_id)}</p>` : ''}
+              ${data.organization?.address ? `<p>${e(data.organization.address)}</p>` : ''}
+              ${data.organization?.phone ? `<p>Tel: ${e(data.organization.phone)}</p>` : ''}
+              ${data.organization?.email ? `<p>${e(data.organization.email)}</p>` : ''}
             </div>
             <div class="info-box">
               <h3>${isQuotation ? 'Cotizar a' : 'Facturar a'}</h3>
-              <p class="name">${data.customer?.full_name || 'Cliente'}</p>
-              ${(data.customer?.doc_number || data.customer?.tax_id) ? `<p>${data.customer?.doc_type ? data.customer.doc_type.toUpperCase() : 'NIT/CC'}: ${data.customer.doc_number || data.customer.tax_id}</p>` : ''}
-              ${data.customer?.address ? `<p>${data.customer.address}</p>` : ''}
-              ${data.customer?.phone ? `<p>Tel: ${data.customer.phone}</p>` : ''}
-              ${data.customer?.email ? `<p>${data.customer.email}</p>` : ''}
+              <p class="name">${e(data.customer?.full_name || 'Cliente')}</p>
+              ${(data.customer?.doc_number || data.customer?.tax_id) ? `<p>${e(data.customer?.doc_type ? data.customer.doc_type.toUpperCase() : 'NIT/CC')}: ${e(data.customer.doc_number || data.customer.tax_id)}</p>` : ''}
+              ${data.customer?.address ? `<p>${e(data.customer.address)}</p>` : ''}
+              ${data.customer?.phone ? `<p>Tel: ${e(data.customer.phone)}</p>` : ''}
+              ${data.customer?.email ? `<p>${e(data.customer.email)}</p>` : ''}
             </div>
           </div>
           
@@ -252,7 +259,7 @@ export class PDFService {
             </div>
             <div>
               <label>Moneda</label>
-              <span>${data.currency || 'COP'}</span>
+              <span>${moneda.code}</span>
             </div>
           </div>
           
@@ -270,11 +277,11 @@ export class PDFService {
             <tbody>
               ${data.items.map(item => `
                 <tr>
-                  <td>${item.sku ? `<span style="color:#6b7280;font-size:11px;">SKU: ${item.sku}</span><br/>` : ''}${item.description}${item.serial_numbers && item.serial_numbers.length > 0 ? `<br/><span style="font-size:10px;color:#6b7280;">Seriales: ${item.serial_numbers.join(', ')}</span>` : ''}</td>
-                  <td>${item.qty}</td>
+                  <td>${item.sku ? `<span style="color:#6b7280;font-size:11px;">SKU: ${e(item.sku)}</span><br/>` : ''}${e(item.description)}${item.serial_numbers && item.serial_numbers.length > 0 ? `<br/><span style="font-size:10px;color:#6b7280;">Seriales: ${e(item.serial_numbers.join(', '))}</span>` : ''}</td>
+                  <td>${e(item.qty)}</td>
                   <td>${formatCurrency(item.unit_price)}</td>
                   <td>${item.discount_amount && item.discount_amount > 0 ? `<span class="item-discount">- ${formatCurrency(item.discount_amount)}</span>` : '-'}</td>
-                  <td>${item.tax_rate ? `${item.tax_rate}%${item.tax_included ? ' (incl.)' : ''}` : '-'}</td>
+                  <td>${item.tax_rate ? `${e(item.tax_rate)}%${item.tax_included ? ' (incl.)' : ''}` : '-'}</td>
                   <td>${formatCurrency(item.total_line)}</td>
                 </tr>
               `).join('')}
@@ -322,7 +329,7 @@ export class PDFService {
           ${data.notes ? `
             <div class="notes">
               <h4>Notas</h4>
-              <p>${data.notes}</p>
+              <p>${e(data.notes)}</p>
             </div>
           ` : ''}
           
@@ -336,36 +343,25 @@ export class PDFService {
     `;
   }
 
-  // Método alternativo: Imprimir usando ventana del navegador
+  /**
+   * Imprime la factura de venta (o la cotización, con `status = 'quotation'`):
+   * abre el documento del motor en una pestaña que lanza el diálogo de
+   * impresión. Se abre dentro del clic (sin `await` antes), así el bloqueador
+   * de ventanas emergentes no la corta.
+   */
   static async printInvoiceHTML(data: InvoiceDataForPDF): Promise<void> {
-    // 1. Construir URL pública de Storage determinísticamente (sin esperar)
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const pdfUrl = `${supabaseUrl}/storage/v1/object/public/invoices/facturas-venta/${data.id}.pdf`;
-
-    // 2. Disparar generación del PDF en background (no bloquea la impresión)
-    fetch(`/api/facturas-venta/${data.id}/pdf`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    }).catch((e) => console.warn('[PDF] Error generando PDF en background:', e));
-
-    // 3. Generar HTML y abrir inmediatamente
-    const html = this.generateInvoiceHTML(data, pdfUrl);
-
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.onload = () => {
-        printWindow.print();
-      };
-    }
+    imprimirDocumento(tipoVenta(data), data.id);
   }
 
-  // Generar HTML para PDF de factura de compra
+  /**
+   * @deprecated Plantilla de navegador anterior al motor único (ver
+   * `generateInvoiceHTML`). Para un documento real: `imprimirDocumento('factura-compra', id)`.
+   */
   static generatePurchaseInvoiceHTML(data: InvoiceDataForPDF): string {
-    const primaryColor = data.organization?.primary_color || '#2563eb';
-    const secondaryColor = data.organization?.secondary_color || '#1e40af';
+    const primaryColor = colorHexSeguro(data.organization?.primary_color) || '#2563eb';
+    const secondaryColor = colorHexSeguro(data.organization?.secondary_color) || '#1e40af';
+    const moneda = monedaDe(data);
+    const formatCurrency = crearFormateadorMoneda(moneda);
 
     const formatDate = (dateString: string) => {
       if (!dateString) return '-';
@@ -390,7 +386,7 @@ export class PDFService {
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>Factura de Compra ${data.number}</title>
+        <title>Factura de Compra ${e(data.number)}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; color: #333; }
@@ -447,12 +443,12 @@ export class PDFService {
         <div class="invoice">
           <div class="header">
             <div class="logo-section">
-              ${data.organization?.logo_url ? `<img src="${data.organization.logo_url}" alt="Logo" class="logo-img" />` : `<div class="logo-text">${data.organization?.name || 'Mi Empresa'}</div>`}
+              ${data.organization?.logo_url ? `<img src="${e(data.organization.logo_url)}" alt="Logo" class="logo-img" />` : `<div class="logo-text">${e(data.organization?.name || 'Mi Empresa')}</div>`}
             </div>
             <div class="invoice-title">
               <h1>FACTURA DE COMPRA</h1>
-              <div class="invoice-number">${data.number}</div>
-              <span class="status status-${data.status}">${statusText[data.status] || data.status}</span>
+              <div class="invoice-number">${e(data.number)}</div>
+              <span class="status status-${e(data.status)}">${e(statusText[data.status] || data.status)}</span>
             </div>
           </div>
           
@@ -462,19 +458,19 @@ export class PDFService {
           <div class="info-section">
             <div class="info-box">
               <h3>Empresa</h3>
-              <p class="name">${data.organization?.name || 'Mi Empresa'}</p>
-              ${data.organization?.tax_id ? `<p>NIT: ${data.organization.tax_id}</p>` : ''}
-              ${data.organization?.address ? `<p>${data.organization.address}</p>` : ''}
-              ${data.organization?.phone ? `<p>Tel: ${data.organization.phone}</p>` : ''}
-              ${data.organization?.email ? `<p>${data.organization.email}</p>` : ''}
+              <p class="name">${e(data.organization?.name || 'Mi Empresa')}</p>
+              ${data.organization?.tax_id ? `<p>NIT: ${e(data.organization.tax_id)}</p>` : ''}
+              ${data.organization?.address ? `<p>${e(data.organization.address)}</p>` : ''}
+              ${data.organization?.phone ? `<p>Tel: ${e(data.organization.phone)}</p>` : ''}
+              ${data.organization?.email ? `<p>${e(data.organization.email)}</p>` : ''}
             </div>
             <div class="info-box">
               <h3>Proveedor</h3>
-              <p class="name">${data.customer?.full_name || 'N/A'}</p>
-              ${(data.customer?.doc_number || data.customer?.tax_id) ? `<p>${data.customer?.doc_type ? data.customer.doc_type.toUpperCase() : 'NIT'}: ${data.customer.doc_number || data.customer.tax_id}</p>` : ''}
-              ${data.customer?.address ? `<p>${data.customer.address}</p>` : ''}
-              ${data.customer?.phone ? `<p>Tel: ${data.customer.phone}</p>` : ''}
-              ${data.customer?.email ? `<p>${data.customer.email}</p>` : ''}
+              <p class="name">${e(data.customer?.full_name || 'N/A')}</p>
+              ${(data.customer?.doc_number || data.customer?.tax_id) ? `<p>${e(data.customer?.doc_type ? data.customer.doc_type.toUpperCase() : 'NIT')}: ${e(data.customer.doc_number || data.customer.tax_id)}</p>` : ''}
+              ${data.customer?.address ? `<p>${e(data.customer.address)}</p>` : ''}
+              ${data.customer?.phone ? `<p>Tel: ${e(data.customer.phone)}</p>` : ''}
+              ${data.customer?.email ? `<p>${e(data.customer.email)}</p>` : ''}
             </div>
           </div>
           
@@ -489,7 +485,7 @@ export class PDFService {
             </div>
             <div>
               <label>Moneda</label>
-              <span>${data.currency || 'COP'}</span>
+              <span>${moneda.code}</span>
             </div>
           </div>
           
@@ -507,11 +503,11 @@ export class PDFService {
             <tbody>
               ${data.items.map(item => `
                 <tr>
-                  <td>${item.sku ? `<span style="color:#6b7280;font-size:11px;">SKU: ${item.sku}</span><br/>` : ''}${item.description}${item.serial_numbers && item.serial_numbers.length > 0 ? `<br/><span style="font-size:10px;color:#6b7280;">Seriales: ${item.serial_numbers.join(', ')}</span>` : ''}</td>
-                  <td>${item.qty}</td>
+                  <td>${item.sku ? `<span style="color:#6b7280;font-size:11px;">SKU: ${e(item.sku)}</span><br/>` : ''}${e(item.description)}${item.serial_numbers && item.serial_numbers.length > 0 ? `<br/><span style="font-size:10px;color:#6b7280;">Seriales: ${e(item.serial_numbers.join(', '))}</span>` : ''}</td>
+                  <td>${e(item.qty)}</td>
                   <td>${formatCurrency(item.unit_price)}</td>
                   <td>${item.discount_amount && item.discount_amount > 0 ? `<span class="item-discount">- ${formatCurrency(item.discount_amount)}</span>` : '-'}</td>
-                  <td>${item.tax_rate ? `${item.tax_rate}%${item.tax_included ? ' (incl.)' : ''}` : '-'}</td>
+                  <td>${item.tax_rate ? `${e(item.tax_rate)}%${item.tax_included ? ' (incl.)' : ''}` : '-'}</td>
                   <td>${formatCurrency(item.total_line)}</td>
                 </tr>
               `).join('')}
@@ -559,7 +555,7 @@ export class PDFService {
           ${data.notes ? `
             <div class="notes">
               <h4>Notas</h4>
-              <p>${data.notes}</p>
+              <p>${e(data.notes)}</p>
             </div>
           ` : ''}
           
@@ -573,32 +569,18 @@ export class PDFService {
     `;
   }
 
-  // Imprimir PDF de factura de compra usando ventana del navegador
+  /** Imprime la factura de compra: documento del motor en una pestaña con el diálogo de impresión. */
   static printPurchaseInvoiceHTML(data: InvoiceDataForPDF): void {
-    const html = this.generatePurchaseInvoiceHTML(data);
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.onload = () => {
-        printWindow.print();
-      };
-    }
+    imprimirDocumento('factura-compra', data.id);
   }
 
-  // Descargar PDF de factura de compra
+  /**
+   * Descarga la factura de compra en PDF (antes era un `.html` con nombre de
+   * «PDF»). Si el servidor no puede generar PDF, descarga el HTML imprimible.
+   */
   static async downloadPurchaseInvoicePDF(data: InvoiceDataForPDF, filename?: string): Promise<void> {
     try {
-      const html = this.generatePurchaseInvoiceHTML(data);
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename || `factura_compra_${data.number}.html`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      await descargarConNombre('factura-compra', data.id, filename);
     } catch (error) {
       console.error('Error descargando PDF:', error);
       throw error;

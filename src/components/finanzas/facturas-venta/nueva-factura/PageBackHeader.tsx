@@ -2,12 +2,14 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { FileText, ArrowLeft, Save } from 'lucide-react';
+import { FileText, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 export function PageBackHeader() {
   // Usamos el router para la navegación
   const router = useRouter();
+  const t = useTranslations('facturasVenta.nuevaFactura');
 
   // Función para volver a la página de facturas de venta
   const handleBack = () => {
@@ -21,6 +23,7 @@ export function PageBackHeader() {
           variant="ghost" 
           size="sm"
           onClick={handleBack}
+          aria-label={t('volver')}
           className="
             p-2 h-auto min-w-[36px] sm:min-w-[40px]
             hover:bg-gray-100 dark:hover:bg-gray-700
@@ -34,7 +37,7 @@ export function PageBackHeader() {
           <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
         </div>
         <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-          Nueva Factura de Venta
+          {t('titulo')}
         </h1>
       </div>
     </div>

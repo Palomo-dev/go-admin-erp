@@ -29,6 +29,16 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { addPlainDays, getDayRange } from '@/lib/utils/timezone';
+
+// ============================================================
+// Fase B, tanda 9. El conteo de "transacciones de los ultimos 30 dias" tenia
+// los dos defectos a la vez: el dia de corte era el UTC, y esa cadena de dia se
+// comparaba contra `open_finance_transactions.transaction_date`, que es
+// **timestamptz** (verificado en `information_schema.columns`). Postgres la lee
+// como medianoche UTC, asi que en Bogota la ventana empezaba cinco horas tarde.
+// ============================================================
 
 // ============================================================
 // Tipos
@@ -115,6 +125,7 @@ export default function OpenFinanceDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { getToday, timezone } = useFormatDate();
 
   /** Carga el estado de salud desde el endpoint /health */
   const loadHealth = useCallback(async () => {
@@ -137,10 +148,9 @@ export default function OpenFinanceDashboardPage() {
   const loadSummary = useCallback(async (orgId: number) => {
     if (!orgId) return;
     try {
-      // Fecha de hace 30 dias para filtrar transacciones recientes
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const dateFrom = thirtyDaysAgo.toISOString().split('T')[0];
+      // Hace 30 dias CALENDARIO en la zona de la organizacion, convertido al
+      // instante en que empieza ese dia: la columna es timestamptz.
+      const dateFrom = getDayRange(addPlainDays(getToday(), -30), timezone).start;
 
       // Consultar conteos en paralelo (head: true para no traer filas)
       const [
@@ -186,7 +196,7 @@ export default function OpenFinanceDashboardPage() {
       console.error('Error cargando resumen:', error);
       toast.error('Error al cargar el resumen de Open Finance');
     }
-  }, []);
+  }, [getToday, timezone]);
 
   /** Carga inicial de todos los datos */
   useEffect(() => {

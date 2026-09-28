@@ -1,68 +1,32 @@
 // ============================================================
 // /api/integrations/payfac/payouts/summary
-// Resume totales de dispersion de una organizacion (admin + organizacion)
-// GET - resumen (query: ?organizationId=xxx)
+// Totales de dispersion de una organizacion
+// GET - organizacion: la de la sesion; plataforma: ?organizationId= obligatorio
 //       totalCollected, totalCommission, totalDispersed, pendingDispersal
+//
+// SEGURIDAD (GO-sec, 2026-09-23; auditoria §2.4): con `?organizationId=`
+// cualquiera con sesion leia el resumen de otra organizacion. Ver
+// `payfac/alcance.ts`.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import { routeErrorResponse } from '@/lib/security/orgGuards';
 import { payoutService } from '@/lib/services/integrations/payfac';
+import { organizacionDelAlcance, resolverAlcancePayfac } from '@/lib/services/integrations/payfac/alcance';
 
-// Verifica que el usuario sea administrador de plataforma
-async function verifyPlatformAdmin(
-  supabase: SupabaseClient,
-  userId: string,
-): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('platform_admins')
-    .select('id, role, status')
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .single();
+const RUTA = 'payfac/payouts/summary';
 
-  if (error || !data) return false;
-  return data.role === 'super_admin' || data.role === 'admin';
-}
-
-// GET - resumen de dispersion de una organizacion
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const organizationId = searchParams.get('organizationId');
-
+    const alcance = await resolverAlcancePayfac(request, RUTA);
+    const organizationId = organizacionDelAlcance(alcance);
     if (!organizationId) {
-      // Sin organizationId, requiere permisos de admin para ver resumen global
-      const isAdmin = await verifyPlatformAdmin(supabase, session.user.id);
-      if (!isAdmin) {
-        return NextResponse.json(
-          { error: 'organizationId es requerido' },
-          { status: 400 },
-        );
-      }
+      return NextResponse.json({ error: 'organizationId es requerido' }, { status: 400 });
     }
 
-    // Convertir organizationId a numero (viene como string desde el query string)
-    const orgIdNum = organizationId ? Number(organizationId) : 0;
-
-    const summary = await payoutService.getSummary(
-      supabase,
-      orgIdNum,
-    );
-
+    const summary = await payoutService.getSummary(null, organizationId);
     return NextResponse.json({ success: true, data: summary });
   } catch (error) {
-    console.error('[PayFac Payouts Summary GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('PayFac Payouts Summary GET', error);
   }
 }

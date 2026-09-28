@@ -1,41 +1,36 @@
 // ============================================================
 // /api/integrations/open-finance/validate-supplier
-// Valida la cuenta bancaria de un proveedor via Open Finance
-// POST - valida cuenta de proveedor (body: { supplierId })
+// Valida la cuenta bancaria de un proveedor DE LA ORGANIZACION
+// POST - body: { supplierId }
+//
+// SEGURIDAD (GO-sec, 2026-09-23): aceptaba cualquier proveedor (datos de
+// titulares de otra organizacion y cuota de la plataforma). Ahora el proveedor
+// tiene que ser de la organizacion de la sesion (404), organizacion ajena en el
+// body → 403 y exige `finance.create`.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { paymentInitiationService } from '@/lib/services/integrations/openFinance/paymentInitiationService';
+import { proveedorDeLaOrganizacion } from '@/lib/services/integrations/openFinance/seguridadRutas';
 
-// POST - valida la cuenta bancaria de un proveedor
-export async function POST(request: NextRequest) {
+const RUTA = 'open-finance/validate-supplier';
+
+export const POST = withOrg(async (ctx, request) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const body = await readOrgBody<{ supplierId?: number | string }>(ctx, request, { route: RUTA });
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.CREAR, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const supplierId = Number(body.supplierId);
+    if (!Number.isInteger(supplierId) || supplierId <= 0) {
+      return NextResponse.json({ error: 'supplierId es requerido' }, { status: 400 });
     }
+    await proveedorDeLaOrganizacion(ctx, supplierId);
 
-    const body = await request.json();
-    const { supplierId } = body;
-
-    // Validar campo requerido
-    if (!supplierId) {
-      return NextResponse.json(
-        { error: 'supplierId es requerido' },
-        { status: 400 },
-      );
-    }
-
-    const result = await paymentInitiationService.validateSupplierAccount(Number(supplierId));
-
+    const result = await paymentInitiationService.validateSupplierAccount(supplierId);
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
-    console.error('[Open Finance Validate Supplier POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('Open Finance Validate Supplier POST', error);
   }
-}
+});

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { CLASE_IMPUESTO_VENTA, sinRetenciones } from '@/lib/services/taxResolverCore';
 import { notifyCustomerDisplaySettingsChanged } from '@/lib/pos/display/posDisplay';
 import {
   defaultCustomerDisplaySettings,
@@ -41,7 +42,7 @@ export interface ServiceCharge {
   organization_id: number;
   branch_id?: number;
   name: string;
-  charge_type: 'percentage' | 'fixed';
+  charge_type: 'percentage' | 'fixed_amount';
   charge_value: number;
   min_amount?: number;
   min_guests?: number;
@@ -228,7 +229,8 @@ export class ConfiguracionService {
       .order('name');
 
     if (error) throw error;
-    return data || [];
+    // Las retenciones no son impuestos del POS: se ven en Finanzas › Impuestos › Retenciones.
+    return sinRetenciones(data ?? []);
   }
 
   // Obtener cargos de servicio
@@ -246,13 +248,19 @@ export class ConfiguracionService {
   }
 
   // Activar/desactivar cargo de servicio
+  // Acotado a la organización de la sesión; escribir cargos exige el permiso
+  // `billing_management` (RLS). Un UPDATE bloqueado por RLS afecta 0 filas sin
+  // error: por eso el `.select()`.
   static async toggleServiceCharge(id: number, isActive: boolean): Promise<void> {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('service_charges')
-      .update({ is_active: isActive, updated_at: new Date().toISOString() })
-      .eq('id', id);
+      .update({ is_active: isActive })
+      .eq('id', id)
+      .eq('organization_id', getOrganizationId())
+      .select('id');
 
     if (error) throw error;
+    if (!data || data.length === 0) throw new Error('SIN_PERMISO');
   }
 
   // Obtener secuencias de facturación
@@ -292,7 +300,7 @@ export class ConfiguracionService {
 
     const [paymentMethods, taxes, serviceCharges, invoiceSequences, saleSequences] = await Promise.all([
       supabase.from('organization_payment_methods').select('id', { count: 'exact' }).eq('organization_id', orgId).eq('is_active', true),
-      supabase.from('organization_taxes').select('id', { count: 'exact' }).eq('organization_id', orgId).eq('is_active', true),
+      supabase.from('organization_taxes').select('id', { count: 'exact' }).eq('organization_id', orgId).eq('is_active', true).eq('kind', CLASE_IMPUESTO_VENTA),
       supabase.from('service_charges').select('id', { count: 'exact' }).eq('organization_id', orgId).eq('is_active', true),
       supabase.from('invoice_sequences').select('id', { count: 'exact' }).eq('organization_id', orgId).eq('is_active', true),
       supabase.from('sale_sequences').select('id', { count: 'exact' }).eq('organization_id', orgId).eq('is_active', true),

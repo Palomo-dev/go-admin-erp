@@ -39,6 +39,10 @@ export type PreviewBusiness = Pick<
   | 'branchName'
   | 'branchAddress'
   | 'branchPhone'
+  // Moneda base de la organización: la vista previa formatea como el ticket real.
+  | 'currency'
+  | 'locale'
+  | 'currencyDecimals'
 >;
 
 /**
@@ -199,6 +203,9 @@ export function buildSampleKitchenTicket(business?: PreviewBusiness): KitchenTic
 export function buildSampleElectronicInvoice(business?: PreviewBusiness): ElectronicInvoicePrintPayload {
   const resolved = resolveBusiness(business);
   return {
+    currency: resolved.currency,
+    locale: resolved.locale,
+    currencyDecimals: resolved.currencyDecimals,
     invoiceNumber: 'FE12345',
     cufe: '18d5e0a7b9c3f1e2a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2d4e6f8a0b2c4d6e8f0a2',
     qrData: 'https://catalogo-vpfe-hab.dian.gov.co/document/searchqr?documentkey=18d5e0a7b9c3f1e2a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2d4e6f8a0b2c4d6e8f0a2',
@@ -329,6 +336,8 @@ export function buildSampleShipmentGuide(business?: PreviewBusiness): ShipmentGu
     insuranceCost: 1000,
     codAmount: 0,
     totalCost: 14000,
-    currency: 'COP',
+    currency: resolved.currency,
+    locale: resolved.locale,
+    currencyDecimals: resolved.currencyDecimals,
   };
 }

@@ -48,8 +48,11 @@ import { HistorialMesasDialog } from '@/components/pos/mesas/HistorialMesasDialo
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import type { TableWithSession, MesaFormData, RestaurantTable } from '@/components/pos/mesas/types';
+import { LiberarMesaDialog, useAvisoLiberacion } from '@/components/pos/mesas/LiberarMesaDialog';
+import type { ResultadoLiberacion } from '@/components/pos/mesas/liberacionMesaCliente';
 
 export default function MesasPage() {
+  const avisoLiberacion = useAvisoLiberacion();
   const router = useRouter();
   const { toast } = useToast();
   const { branchFilter, isLoading: branchLoading } = useBranch();
@@ -321,25 +324,11 @@ export default function MesasPage() {
     setMesaParaLiberar(mesa);
   };
 
-  const confirmarLiberarMesa = async () => {
-    if (!mesaParaLiberar) return;
-    try {
-      await MesasService.liberarMesa(mesaParaLiberar.id);
-      await cargarDatos();
-      toast({
-        title: 'Mesa liberada',
-        description: `Mesa ${mesaParaLiberar.name} liberada exitosamente`,
-      });
-    } catch (error: any) {
-      console.error('Error liberando mesa:', error);
-      toast({
-        title: 'Error al liberar mesa',
-        description: error?.message || 'No se pudo liberar la mesa',
-        variant: 'destructive',
-      });
-    } finally {
-      setMesaParaLiberar(null);
-    }
+  // La mesa quedó libre desde el diálogo «Liberar mesa» (con o sin saldo).
+  const handleMesaLiberada = async (resultado: ResultadoLiberacion) => {
+    toast(avisoLiberacion(resultado, mesaParaLiberar?.name ?? ''));
+    setMesaParaLiberar(null);
+    await cargarDatos();
   };
 
   const handleActualizarComensales = async () => {
@@ -954,29 +943,20 @@ export default function MesasPage() {
         onOpenChange={setShowHistorial}
       />
 
-      <AlertDialog
-        open={!!mesaParaLiberar}
-        onOpenChange={(open) => !open && setMesaParaLiberar(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Liberar mesa {mesaParaLiberar?.name}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción cerrará la sesión activa de la mesa y marcará las comandas
-              pendientes como entregadas. ¿Deseas continuar?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmarLiberarMesa}
-              className="bg-orange-600 hover:bg-orange-700"
-            >
-              Sí, liberar mesa
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Liberar mesa: con saldo pide resolverlo; «Cobrar ahora» abre el cobro en el detalle */}
+      <LiberarMesaDialog
+        abierto={!!mesaParaLiberar}
+        onAbiertoChange={(open) => !open && setMesaParaLiberar(null)}
+        tableId={mesaParaLiberar?.id ?? null}
+        mesaNombre={mesaParaLiberar?.name}
+        cajaAbierta
+        onCobrar={() => {
+          const id = mesaParaLiberar?.id;
+          setMesaParaLiberar(null);
+          if (id) router.push(`/app/pos/mesas/${id}?cobrar=1`);
+        }}
+        onLiberada={handleMesaLiberada}
+      />
 
       {/* Dialog para editar comensales */}
       <Dialog open={!!mesaParaComensales} onOpenChange={(open) => !open && setMesaParaComensales(null)}>

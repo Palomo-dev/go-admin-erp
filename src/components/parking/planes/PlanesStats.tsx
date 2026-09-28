@@ -4,7 +4,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { CreditCard, CheckCircle, XCircle, Users } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface PlanesStatsProps {
   stats: {
@@ -18,6 +18,7 @@ interface PlanesStatsProps {
 }
 
 export function PlanesStats({ stats, isLoading }: PlanesStatsProps) {
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
   const statItems = [
     {
       label: 'Total Planes',

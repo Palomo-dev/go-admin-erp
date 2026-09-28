@@ -35,7 +35,7 @@ export interface WarrantyClaim {
   created_by: string | null;
   created_at: string;
   updated_at: string;
-  attachments: any[];
+  attachments: unknown[];
 }
 
 export interface WarrantyClaimSerialDetails {
@@ -152,8 +152,8 @@ class WarrantyClaimsService {
       }
 
       return { data: resultData, count: count || 0, error: null };
-    } catch (error: any) {
-      console.error('Error obteniendo reclamos de garantía:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo reclamos de garantía:', (error as Error)?.message || error);
       return { data: [], count: 0, error: error as Error };
     }
   }
@@ -173,7 +173,7 @@ class WarrantyClaimsService {
             current_branch_id,
             products!fk_serial_product ( name, sku, brand, reference ),
             branches!serial_numbers_current_branch_id_fkey ( name ),
-            customers!serial_numbers_sold_to_customer_id_fkey ( id, full_name, phone, email )
+            customers!fk_serial_customer ( id, full_name, phone, email )
           ),
           customers ( id, full_name, phone, email, address ),
           resolved_by_user:profiles!warranty_claims_resolved_by_fkey ( email ),
@@ -187,8 +187,8 @@ class WarrantyClaimsService {
       if (error) throw error;
 
       return { data: data as WarrantyClaimWithDetails, error: null };
-    } catch (error: any) {
-      console.error('Error obteniendo detalle de reclamo:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo detalle de reclamo:', (error as Error)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -213,9 +213,9 @@ class WarrantyClaimsService {
         totalRefundAmount: 0,
       };
 
-      data.forEach((claim: any) => {
+      data.forEach((claim: { status: string; refund_amount: number | string | null }) => {
         if (claim.status in stats) {
-          (stats as any)[claim.status]++;
+          (stats as unknown as Record<string, number>)[claim.status]++;
         }
         if (claim.refund_amount) {
           stats.totalRefundAmount += Number(claim.refund_amount);
@@ -223,8 +223,8 @@ class WarrantyClaimsService {
       });
 
       return { data: stats, error: null };
-    } catch (error: any) {
-      console.error('Error obteniendo stats de garantías:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo stats de garantías:', (error as Error)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -242,8 +242,8 @@ class WarrantyClaimsService {
       if (error) throw error;
 
       return { data: data as WarrantyClaim, error: null };
-    } catch (error: any) {
-      console.error('Error creando reclamo de garantía:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error creando reclamo de garantía:', (error as Error)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -261,7 +261,7 @@ class WarrantyClaimsService {
     }
   ): Promise<{ error: Error | null }> {
     try {
-      const updateData: any = { status };
+      const updateData: Record<string, unknown> = { status };
 
       if (status === 'resolved' || status === 'rejected') {
         updateData.resolution_date = new Date().toISOString();
@@ -283,8 +283,8 @@ class WarrantyClaimsService {
       if (error) throw error;
 
       return { error: null };
-    } catch (error: any) {
-      console.error('Error actualizando reclamo:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error actualizando reclamo:', (error as Error)?.message || error);
       return { error: error as Error };
     }
   }
@@ -305,8 +305,8 @@ class WarrantyClaimsService {
       if (error) throw error;
 
       return { data: data || [], error: null };
-    } catch (error: any) {
-      console.error('Error obteniendo seriales para reemplazo:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo seriales para reemplazo:', (error as Error)?.message || error);
       return { data: [], error: error as Error };
     }
   }

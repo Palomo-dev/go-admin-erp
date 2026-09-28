@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
   FileCheck2, 
@@ -29,9 +30,10 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ stats, isLoading }: StatsCardsProps) {
+  const t = useTranslations('facturacionElectronica.estadisticas');
   const cards = [
     {
-      title: 'Total Enviados',
+      title: t('total'),
       value: stats.total,
       icon: Send,
       color: 'blue',
@@ -40,7 +42,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
       iconColor: 'text-blue-600 dark:text-blue-400',
     },
     {
-      title: 'Aceptados',
+      title: t('aceptados'),
       value: stats.accepted,
       icon: FileCheck2,
       color: 'green',
@@ -49,7 +51,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
       iconColor: 'text-green-600 dark:text-green-400',
     },
     {
-      title: 'Rechazados',
+      title: t('rechazados'),
       value: stats.rejected,
       icon: FileX2,
       color: 'red',
@@ -58,7 +60,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
       iconColor: 'text-red-600 dark:text-red-400',
     },
     {
-      title: 'Pendientes',
+      title: t('pendientes'),
       value: stats.pending + stats.processing,
       icon: Clock,
       color: 'yellow',
@@ -67,7 +69,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
       iconColor: 'text-yellow-600 dark:text-yellow-400',
     },
     {
-      title: 'Fallidos',
+      title: t('fallidos'),
       value: stats.failed,
       icon: AlertTriangle,
       color: 'orange',
@@ -76,7 +78,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
       iconColor: 'text-orange-600 dark:text-orange-400',
     },
     {
-      title: 'Tasa de Éxito',
+      title: t('tasaExito'),
       value: `${stats.successRate.toFixed(1)}%`,
       icon: TrendingUp,
       color: 'indigo',

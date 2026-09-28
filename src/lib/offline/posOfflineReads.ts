@@ -30,6 +30,8 @@ import {
   type CatalogStatus,
   type CatalogStockLevel,
 } from './catalogStore';
+import { precioVigente } from '@/lib/pos/precioVigente';
+import { sinRetenciones } from '@/lib/services/taxResolverCore';
 
 /** Mensaje único para «no hay catálogo local todavía». */
 export const CATALOG_NOT_REPLICATED_MESSAGE = 'Catálogo local aún no replicado: conecta a internet una vez';
@@ -63,10 +65,18 @@ function num(value: number | string | null | undefined): number {
   return Number.isFinite(n) ? (n as number) : 0;
 }
 
-/** Precio vigente: el de `effective_from` más reciente (igual que online). */
+/**
+ * Precio vigente con la misma regla que en línea (`lib/pos/precioVigente`):
+ * effective_from <= ahora < effective_to, el más reciente.
+ */
 function currentPrice(prices: CatalogProductPrice[]): CatalogProductPrice | null {
-  if (prices.length === 0) return null;
-  return [...prices].sort((a, b) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime())[0];
+  return precioVigente(prices);
+}
+
+/** Filas de precio del catálogo local de un producto (para `POSService.getProductPrice`). */
+export async function getProductPriceRows(organizationId: number, productId: number): Promise<CatalogProductPrice[]> {
+  await requireCatalog(organizationId);
+  return getCatalogRowsByProducts('product_prices', [productId]);
 }
 
 function groupBy<T, K extends string | number>(rows: T[], key: (row: T) => K): Map<K, T[]> {
@@ -375,10 +385,10 @@ export async function getCurrencyRows(organizationId: number) {
   return (await getCatalogRowsByOrg('currencies', organizationId)).sort((a, b) => Number(!!b.is_base) - Number(!!a.is_base) || a.code.localeCompare(b.code));
 }
 
-/** Equivalente offline de `POSService.getOrganizationTaxes` (activos, por nombre). */
+/** Equivalente offline de `POSService.getOrganizationTaxes` (activos, por nombre, sin retenciones). */
 export async function getOrganizationTaxes(organizationId: number) {
   await requireCatalog(organizationId);
-  return (await getCatalogRowsByOrg('organization_taxes', organizationId))
+  return sinRetenciones(await getCatalogRowsByOrg('organization_taxes', organizationId))
     .filter((t) => t.is_active !== false)
     .sort((a, b) => a.name.localeCompare(b.name, 'es'));
 }
@@ -390,7 +400,8 @@ export async function getProductTaxes(organizationId: number, productId: number)
   if (relations.length === 0) return [];
   const taxIds = new Set(relations.map((r) => r.tax_id));
   const taxes = (await getCatalogRowsByOrg('organization_taxes', organizationId)).filter((t) => taxIds.has(t.id) && t.is_active !== false);
-  return taxes.map((tax) => ({ product_id: productId, tax_id: tax.id, organization_taxes: tax }));
+  // Igual que en línea: una retención relacionada no es impuesto de la venta.
+  return sinRetenciones(taxes).map((tax) => ({ product_id: productId, tax_id: tax.id, organization_taxes: tax }));
 }
 
 export const posOfflineReads = {
@@ -398,6 +409,7 @@ export const posOfflineReads = {
   getProductVariants,
   getProductByBarcode,
   getProductById,
+  getProductPriceRows,
   getCategories,
   getCategoryRanking,
   searchCustomers,

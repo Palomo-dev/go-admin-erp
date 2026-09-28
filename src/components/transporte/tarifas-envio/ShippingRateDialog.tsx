@@ -27,6 +27,7 @@ import type {
 } from '@/lib/services/shippingRatesService';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { useOpcionesMoneda } from '@/components/transporte/useOpcionesMoneda';
 
 interface ShippingRateDialogProps {
   open: boolean;
@@ -52,12 +53,6 @@ const CALCULATION_METHODS = [
   { value: 'flat', label: 'Tarifa fija' },
 ];
 
-const CURRENCIES = [
-  { value: 'COP', label: 'COP - Peso Colombiano' },
-  { value: 'USD', label: 'USD - Dólar' },
-  { value: 'EUR', label: 'EUR - Euro' },
-];
-
 const initialFormData: Partial<CreateShippingRateData> & { show_on_website?: boolean; show_on_pos?: boolean; free_shipping_threshold?: number } = {
   rate_name: '',
   rate_code: '',
@@ -77,7 +72,8 @@ const initialFormData: Partial<CreateShippingRateData> & { show_on_website?: boo
   min_charge: 0,
   fuel_surcharge_percent: 0,
   insurance_percent: 0,
-  currency: 'COP',
+  // Sin moneda fija: la base de la organización (efecto de abajo o trigger).
+  currency: undefined,
   valid_from: undefined,
   valid_until: undefined,
   is_active: true,
@@ -121,23 +117,32 @@ export function ShippingRateDialog({
         min_charge: rate.min_charge || 0,
         fuel_surcharge_percent: rate.fuel_surcharge_percent || 0,
         insurance_percent: rate.insurance_percent || 0,
-        currency: rate.currency || 'COP',
+        currency: rate.currency || undefined,
         valid_from: rate.valid_from || undefined,
         valid_until: rate.valid_until || undefined,
         is_active: rate.is_active,
         show_on_website: rate.show_on_website !== false,
         show_on_pos: rate.show_on_pos !== false,
         free_shipping_threshold: rate.free_shipping_threshold || 0,
-        estimated_transit_days: (rate as any).estimated_transit_days ?? null,
+        estimated_transit_days: rate.estimated_transit_days ?? null,
       });
     } else {
       setFormData(initialFormData);
     }
   }, [rate, open]);
 
+  // Moneda por defecto: la base de la organización, en cuanto se conoce (no
+  // antes: mientras `resuelta` es false el código es solo un marcador). Si
+  // se envía vacía, la base la pone el trigger `trg_00_moneda_base_por_defecto`.
+  const { opciones: opcionesMoneda, monedaBase, resuelta: monedaResuelta } = useOpcionesMoneda(rate?.currency);
+  useEffect(() => {
+    if (!monedaResuelta) return;
+    setFormData((prev) => (prev.currency ? prev : { ...prev, currency: monedaBase }));
+  }, [monedaResuelta, monedaBase, rate, open]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = { ...formData, branch_id: branchId || undefined };
+    const payload = { ...formData, currency: formData.currency || undefined, branch_id: branchId || undefined };
     if (!payload.carrier_id) delete payload.carrier_id;
     if (!payload.valid_from) delete payload.valid_from;
     if (!payload.valid_until) delete payload.valid_until;
@@ -257,16 +262,16 @@ export function ShippingRateDialog({
               <div className="space-y-2">
                 <Label>Moneda</Label>
                 <Select
-                  value={formData.currency || 'COP'}
+                  value={formData.currency || ''}
                   onValueChange={(v) => handleChange('currency', v)}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {CURRENCIES.map((curr) => (
-                      <SelectItem key={curr.value} value={curr.value}>
-                        {curr.label}
+                    {opcionesMoneda.map((m) => (
+                      <SelectItem key={m.code} value={m.code}>
+                        {m.name && m.name !== m.code ? `${m.code} - ${m.name}` : m.code}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -359,8 +364,8 @@ export function ShippingRateDialog({
                 id="estimated_transit_days"
                 type="number"
                 min={0}
-                value={(formData as any).estimated_transit_days ?? ''}
-                onChange={(e) => handleChange('estimated_transit_days' as any, e.target.value ? parseInt(e.target.value, 10) : null)}
+                value={formData.estimated_transit_days ?? ''}
+                onChange={(e) => handleChange('estimated_transit_days', e.target.value ? parseInt(e.target.value, 10) : null)}
                 placeholder="Ej: 3 (dejar vacío = sin estimación)"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -403,28 +408,28 @@ export function ShippingRateDialog({
                 <Label htmlFor="show_on_website">Disponible en página web</Label>
                 <p className="text-xs text-muted-foreground">Mostrar esta tarifa en el checkout de la web</p>
               </div>
-              <Switch id="show_on_website" checked={(formData as any).show_on_website !== false} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, show_on_website: checked }))} />
+              <Switch id="show_on_website" checked={formData.show_on_website !== false} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, show_on_website: checked }))} />
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="show_on_pos">Disponible en POS y Mesas</Label>
                 <p className="text-xs text-muted-foreground">Mostrar esta tarifa en el checkout del POS y mesas</p>
               </div>
-              <Switch id="show_on_pos" checked={(formData as any).show_on_pos !== false} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, show_on_pos: checked }))} />
+              <Switch id="show_on_pos" checked={formData.show_on_pos !== false} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, show_on_pos: checked }))} />
             </div>
-            {(formData as any).show_on_website && (
+            {formData.show_on_website && (
               <div className="p-3 border rounded-lg bg-blue-50 dark:bg-blue-900/10 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label htmlFor="enable_free_shipping">Habilitar envío gratis</Label>
                     <p className="text-xs text-muted-foreground">Ofrecer envío gratis a partir de cierto monto</p>
                   </div>
-                  <Switch id="enable_free_shipping" checked={((formData as any).free_shipping_threshold || 0) > 0} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, free_shipping_threshold: checked ? 100000 : 0 }))} />
+                  <Switch id="enable_free_shipping" checked={(formData.free_shipping_threshold || 0) > 0} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, free_shipping_threshold: checked ? 100000 : 0 }))} />
                 </div>
-                {((formData as any).free_shipping_threshold || 0) > 0 && (
+                {(formData.free_shipping_threshold || 0) > 0 && (
                   <div className="space-y-1">
-                    <Label htmlFor="free_shipping_threshold">Envío gratis desde ($)</Label>
-                    <Input id="free_shipping_threshold" type="number" min={1} value={(formData as any).free_shipping_threshold} onChange={(e) => setFormData(prev => ({ ...prev, free_shipping_threshold: Number(e.target.value) }))} />
+                    <Label htmlFor="free_shipping_threshold">Envío gratis desde ({formData.currency || monedaBase})</Label>
+                    <Input id="free_shipping_threshold" type="number" min={1} value={formData.free_shipping_threshold} onChange={(e) => setFormData(prev => ({ ...prev, free_shipping_threshold: Number(e.target.value) }))} />
                     <p className="text-xs text-muted-foreground">Si el subtotal supera este monto, esta tarifa será gratis.</p>
                   </div>
                 )}

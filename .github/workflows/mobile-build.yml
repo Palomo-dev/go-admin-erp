@@ -96,7 +96,11 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'tools platform-tools build-tools;34.0.0 platforms;android-34'
+          # Sin 'tools': Google lo retiro del repositorio del SDK (lo sustituye
+          # cmdline-tools, que esta accion ya instala) y sdkmanager fallaba con
+          # «Failed to find package 'tools'». Plataforma 36 = compileSdkVersion
+          # de mobile/android/variables.gradle.
+          packages: 'platform-tools build-tools;36.0.0 platforms;android-36'
 
       - name: Install mobile dependencies
         working-directory: mobile

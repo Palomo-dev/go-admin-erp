@@ -73,11 +73,6 @@ export interface HealthStatus {
 // Tipos internos de filas de BD
 // ============================================================
 
-/** Fila minima de organizations con vinculacion Open Finance */
-interface OrganizationRow {
-  id: number;
-}
-
 /** Fila minima de open_finance_links */
 interface OpenFinanceLinkRow {
   id: string;
@@ -271,9 +266,10 @@ export class CronJobsService {
 
       for (const payment of (payments || []) as ScheduledPaymentRow[]) {
         try {
-          // El source_id es el ID de la cuenta por pagar
-          const accountPayableId = Number(payment.source_id);
-          if (!accountPayableId) {
+          // El source_id es el uuid de la cuenta por pagar (antes `Number(uuid)`
+          // daba NaN y ningún pago programado se ejecutaba).
+          const accountPayableId = String(payment.source_id ?? '');
+          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(accountPayableId)) {
             errors += 1;
             continue;
           }

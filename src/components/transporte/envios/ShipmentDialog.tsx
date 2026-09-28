@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput, telefonoOpcionalValido } from '@/components/ui/phone-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
@@ -221,6 +221,8 @@ export function ShipmentDialog({
 
   const handleSubmit = async () => {
     if (!formData.sender_name || !formData.receiver_name) return;
+    // Los campos ya muestran el aviso del país: no se guarda un teléfono incompleto.
+    if (!telefonoOpcionalValido(formData.sender_phone) || !telefonoOpcionalValido(formData.receiver_phone)) return;
 
     setIsSubmitting(true);
     try {
@@ -308,7 +310,7 @@ export function ShipmentDialog({
                 <PhoneInput
                   value={formData.sender_phone}
                   onChange={(v) => setFormData((p) => ({ ...p, sender_phone: v }))}
-                  placeholder="300 123 4567"
+                  aria-label="Teléfono del remitente"
                 />
               </div>
             </div>
@@ -345,7 +347,7 @@ export function ShipmentDialog({
                 <PhoneInput
                   value={formData.receiver_phone}
                   onChange={(v) => setFormData((p) => ({ ...p, receiver_phone: v }))}
-                  placeholder="300 123 4567"
+                  aria-label="Teléfono del destinatario"
                 />
               </div>
             </div>

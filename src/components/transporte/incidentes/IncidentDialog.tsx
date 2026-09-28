@@ -25,6 +25,7 @@ import type { IncidentWithDetails, CreateIncidentData } from '@/lib/services/inc
 import { INCIDENT_TYPES, SEVERITY_LEVELS, INCIDENT_STATUSES } from '@/lib/services/incidentsService';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { useOpcionesMoneda } from '@/components/transporte/useOpcionesMoneda';
 
 interface IncidentDialogProps {
   open: boolean;
@@ -53,7 +54,8 @@ const initialFormData: Partial<CreateIncidentData> = {
   longitude: undefined,
   estimated_cost: 0,
   actual_cost: 0,
-  currency: 'COP',
+  // Sin moneda fija: la base de la organización (efecto de abajo o trigger).
+  currency: undefined,
   notes: '',
 };
 
@@ -91,7 +93,7 @@ export function IncidentDialog({
         longitude: incident.longitude,
         estimated_cost: incident.estimated_cost || 0,
         actual_cost: incident.actual_cost || 0,
-        currency: incident.currency || 'COP',
+        currency: incident.currency || undefined,
         notes: incident.notes || '',
       });
     } else {
@@ -100,16 +102,23 @@ export function IncidentDialog({
     setActiveTab('general');
   }, [incident, open]);
 
+  // Moneda por defecto: la base de la organización, en cuanto se conoce (no
+  // antes: mientras `resuelta` es false el código es solo un marcador). Si
+  // se envía vacía, la base la pone el trigger `trg_00_moneda_base_por_defecto`.
+  const { opciones: opcionesMoneda, monedaBase, resuelta: monedaResuelta } = useOpcionesMoneda(incident?.currency);
+  useEffect(() => {
+    if (!monedaResuelta) return;
+    setFormData((prev) => (prev.currency ? prev : { ...prev, currency: monedaBase }));
+  }, [monedaResuelta, monedaBase, incident, open]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSave({ ...formData, branch_id: branchId || undefined } as Partial<CreateIncidentData>);
+    await onSave({ ...formData, currency: formData.currency || undefined, branch_id: branchId || undefined } as Partial<CreateIncidentData>);
   };
 
   const handleChange = (field: keyof CreateIncidentData, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
-
-  const references = formData.reference_type === 'trip' ? trips : shipments;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -367,16 +376,18 @@ export function IncidentDialog({
               <div className="space-y-2">
                 <Label>Moneda</Label>
                 <Select
-                  value={formData.currency || 'COP'}
+                  value={formData.currency || ''}
                   onValueChange={(v) => handleChange('currency', v)}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="COP">COP - Peso Colombiano</SelectItem>
-                    <SelectItem value="USD">USD - Dólar</SelectItem>
-                    <SelectItem value="EUR">EUR - Euro</SelectItem>
+                    {opcionesMoneda.map((m) => (
+                      <SelectItem key={m.code} value={m.code}>
+                        {m.name && m.name !== m.code ? `${m.code} - ${m.name}` : m.code}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

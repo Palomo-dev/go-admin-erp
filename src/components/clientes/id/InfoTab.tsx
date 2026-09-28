@@ -2,26 +2,72 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase/config';
-import { formatDate } from '@/utils/Utils';
 import { Building2 } from 'lucide-react';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { mensajeError, useFechasFicha } from './useFechasFicha';
 
 interface InfoTabProps {
   clienteId: string;
   organizationId: number;
 }
 
+/** Columnas de `customers` que muestra la pestaña. */
+interface ClienteInfo {
+  id: string;
+  organization_id: number;
+  customer_type?: string | null;
+  full_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  trade_name?: string | null;
+  company_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  identification_type?: string | null;
+  identification_number?: string | null;
+  address?: string | null;
+  fiscal_municipality_id?: string | number | null;
+  fiscal_responsibilities?: string[] | null;
+  dv?: number | null;
+  roles?: string[] | null;
+  tags?: string[] | null;
+  is_registered?: boolean | null;
+  notes?: string | null;
+  preferences?: Record<string, unknown> | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+interface PersonaVinculada {
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+}
+
+interface EnlaceEmpresa {
+  is_primary?: boolean | null;
+  position?: string | null;
+  person?: PersonaVinculada | PersonaVinculada[] | null;
+  company?: { id?: string; full_name?: string | null } | { id?: string; full_name?: string | null }[] | null;
+}
+
+const uno = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
+
 export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
+  const t = useTranslations('clientes.ficha');
+  const { instante } = useFechasFicha();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [clienteInfo, setClienteInfo] = useState<any>(null);
+  const [error, setError] = useState<{ mensaje: string | null; sinDatos?: boolean } | null>(null);
+  const [clienteInfo, setClienteInfo] = useState<ClienteInfo | null>(null);
   const [municipalityName, setMunicipalityName] = useState<string | null>(null);
   const [municipalityState, setMunicipalityState] = useState<string | null>(null);
   const [municipalityPostalCode, setMunicipalityPostalCode] = useState<string | null>(null);
   const [primaryContact, setPrimaryContact] = useState<{ name: string; email: string | null; phone: string | null; position: string | null } | null>(null);
-  const [linkedCompanies, setLinkedCompanies] = useState<Array<{ id: string; name: string; position: string | null; is_primary: boolean }>>([]);
+  const [linkedCompanies, setLinkedCompanies] = useState<Array<{ id: string; name: string | null; position: string | null; is_primary: boolean }>>([]);
 
   // Cargar datos completos del cliente
   useEffect(() => {
@@ -29,7 +75,7 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
       try {
         setLoading(true);
         setError(null);
-        
+
         // Obtener información completa del cliente
         const { data, error } = await supabase
           .from('customers')
@@ -37,16 +83,16 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
           .eq('id', clienteId)
           .eq('organization_id', organizationId)
           .single();
-        
+
         if (error) throw error;
-        
+
         if (!data) {
-          setError('No se encontraron datos del cliente');
+          setError({ mensaje: null, sinDatos: true });
           return;
         }
-        
-        setClienteInfo(data);
-        
+
+        setClienteInfo(data as ClienteInfo);
+
         // Cargar nombre del municipio si existe
         if (data.fiscal_municipality_id) {
           const { data: muni } = await supabase
@@ -77,12 +123,15 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
             .order('is_primary', { ascending: false });
 
           if (companyLinks && companyLinks.length > 0) {
-            const companies = companyLinks.map((link: any) => ({
-              id: link.company?.id || '',
-              name: link.company?.full_name || 'Sin nombre',
-              position: link.position || null,
-              is_primary: link.is_primary || false,
-            })).filter((c: any) => c.id);
+            const companies = (companyLinks as EnlaceEmpresa[]).map((link) => {
+              const company = uno(link.company);
+              return {
+                id: company?.id || '',
+                name: company?.full_name || null,
+                position: link.position || null,
+                is_primary: link.is_primary || false,
+              };
+            }).filter((c) => c.id);
             setLinkedCompanies(companies);
           }
         }
@@ -105,8 +154,9 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
             .order('is_primary', { ascending: false });
 
           if (linkData && linkData.length > 0) {
-            const primary = linkData.find((l: any) => l.is_primary) || linkData[0];
-            const person = primary.person as any;
+            const enlaces = linkData as EnlaceEmpresa[];
+            const primary = enlaces.find((l) => l.is_primary) || enlaces[0];
+            const person = uno(primary.person);
             if (person) {
               setPrimaryContact({
                 name: `${person.first_name || ''} ${person.last_name || ''}`.trim(),
@@ -117,14 +167,14 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
             }
           }
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error al cargar datos completos del cliente:', err);
-        setError(err.message || 'Error al cargar información del cliente');
+        setError({ mensaje: mensajeError(err) });
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchClienteData();
   }, [clienteId, organizationId]);
 
@@ -139,51 +189,60 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
   if (error || !clienteInfo) {
     return (
       <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/20 rounded-lg p-4 my-4">
-        <p className="text-red-600 dark:text-red-400 font-medium">Error: {error || 'No se pudo cargar la información del cliente'}</p>
+        <p className="text-red-600 dark:text-red-400 font-medium">
+          {t('info.error', {
+            mensaje:
+              error?.mensaje ||
+              (error?.sinDatos ? t('info.sinDatos') : error ? t('info.errorCarga') : t('info.noSePudoCargar')),
+          })}
+        </p>
       </div>
     );
   }
 
-  // Formatear las fechas si existen
-  const createdAt = clienteInfo.created_at ? formatDate(new Date(clienteInfo.created_at)) : 'No disponible';
-  const updatedAt = clienteInfo.updated_at ? formatDate(new Date(clienteInfo.updated_at)) : 'No disponible';
+  const noEspecificado = t('info.noEspecificado');
+
+  // Formatear las fechas si existen (created_at y updated_at son timestamptz)
+  const createdAt = clienteInfo.created_at ? instante(clienteInfo.created_at) : t('info.noDisponible');
+  const updatedAt = clienteInfo.updated_at ? instante(clienteInfo.updated_at) : t('info.noDisponible');
 
   // Extraer los roles del cliente (si existen)
   const roles = clienteInfo.roles || [];
-  const rolesFormatted = Array.isArray(roles) && roles.length > 0 
-    ? roles.join(', ') 
-    : 'No especificado';
+  const rolesFormatted = Array.isArray(roles) && roles.length > 0
+    ? roles.join(', ')
+    : noEspecificado;
 
   // Extraer responsabilidades fiscales
   const fiscalResp = clienteInfo.fiscal_responsibilities || [];
-  const fiscalFormatted = Array.isArray(fiscalResp) && fiscalResp.length > 0
-    ? fiscalResp.join(', ')
-    : 'No especificado';
 
   const isCompany = clienteInfo?.customer_type === 'company';
 
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-medium">Información completa del cliente</h3>
-      
+      <h3 className="text-lg font-medium">{t('info.titulo')}</h3>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Información personal / empresarial */}
         <Card>
           <CardHeader>
-            <CardTitle>{isCompany ? 'Datos de la empresa' : 'Datos personales'}</CardTitle>
-            <CardDescription>{isCompany ? 'Información de la empresa y contacto' : 'Información básica de contacto e identificación'}</CardDescription>
+            <CardTitle>{isCompany ? t('info.datosEmpresa') : t('info.datosPersonales')}</CardTitle>
+            <CardDescription>{isCompany ? t('info.datosEmpresaDescripcion') : t('info.datosPersonalesDescripcion')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-3">
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{isCompany ? 'Razón Social' : 'Nombre completo'}</p>
-                <p>{clienteInfo.full_name || `${clienteInfo.first_name || ''} ${clienteInfo.last_name || ''}`.trim() || 'No especificado'}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{isCompany ? t('info.razonSocial') : t('info.nombreCompleto')}</p>
+                <p>{clienteInfo.full_name || `${clienteInfo.first_name || ''} ${clienteInfo.last_name || ''}`.trim() || noEspecificado}</p>
               </div>
-              
+
               {isCompany && primaryContact && (
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Persona de contacto</p>
-                  <p>{primaryContact.name}{primaryContact.position ? ` (${primaryContact.position})` : ''}</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.personaContacto')}</p>
+                  <p>
+                    {primaryContact.position
+                      ? t('info.contactoConCargo', { nombre: primaryContact.name, cargo: primaryContact.position })
+                      : primaryContact.name}
+                  </p>
                   {primaryContact.email && (
                     <p className="text-sm text-gray-500 dark:text-gray-400">{primaryContact.email}</p>
                   )}
@@ -192,58 +251,65 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
                   )}
                 </div>
               )}
-              
+
               {isCompany && clienteInfo.trade_name && (
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Nombre Comercial</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.nombreComercial')}</p>
                   <p>{clienteInfo.trade_name}</p>
                 </div>
               )}
-              
+
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Correo electrónico</p>
-                <p>{clienteInfo.email || 'No especificado'}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.correo')}</p>
+                <p>{clienteInfo.email || noEspecificado}</p>
               </div>
-              
+
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Teléfono</p>
-                <p>{clienteInfo.phone || 'No especificado'}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.telefono')}</p>
+                <p>{clienteInfo.phone || noEspecificado}</p>
               </div>
-              
+
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Identificación</p>
-                <p>{clienteInfo.identification_type ? `${clienteInfo.identification_type}: ${clienteInfo.identification_number || 'No especificado'}` : 'No especificado'}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.identificacion')}</p>
+                <p>
+                  {clienteInfo.identification_type
+                    ? t('info.identificacionValor', {
+                        tipo: clienteInfo.identification_type,
+                        numero: clienteInfo.identification_number || noEspecificado,
+                      })
+                    : noEspecificado}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Información de dirección */}
         <Card>
           <CardHeader>
-            <CardTitle>Dirección</CardTitle>
-            <CardDescription>Datos de ubicación</CardDescription>
+            <CardTitle>{t('info.direccion')}</CardTitle>
+            <CardDescription>{t('info.direccionDescripcion')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-3">
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Dirección completa</p>
-                <p>{clienteInfo.address || 'No especificado'}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.direccionCompleta')}</p>
+                <p>{clienteInfo.address || noEspecificado}</p>
               </div>
-              
+
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Municipio</p>
-                <p>{municipalityName || 'No especificado'}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.municipio')}</p>
+                <p>{municipalityName || noEspecificado}</p>
               </div>
-              
+
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Estado/Provincia</p>
-                <p>{municipalityState || 'No especificado'}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.estadoProvincia')}</p>
+                <p>{municipalityState || noEspecificado}</p>
               </div>
-              
+
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Código postal</p>
-                <p>{municipalityPostalCode || 'No especificado'}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.codigoPostal')}</p>
+                <p>{municipalityPostalCode || noEspecificado}</p>
               </div>
             </div>
           </CardContent>
@@ -256,9 +322,9 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
           <CardHeader>
             <CardTitle className="flex flex-wrap items-center gap-2">
               <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              Empresas vinculadas
+              {t('info.empresasVinculadas')}
             </CardTitle>
-            <CardDescription>Empresas con las que este contacto está asociado</CardDescription>
+            <CardDescription>{t('info.empresasVinculadasDescripcion')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -270,7 +336,7 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
                     </div>
                     <div>
                       <Link href={`/app/clientes/${company.id}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
-                        {company.name}
+                        {company.name ?? t('comun.sinNombre')}
                       </Link>
                       {company.position && (
                         <p className="text-sm text-gray-500 dark:text-gray-400">{company.position}</p>
@@ -279,7 +345,7 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
                   </div>
                   {company.is_primary && (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                      Principal
+                      {t('info.principal')}
                     </span>
                   )}
                 </div>
@@ -288,41 +354,41 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
           </CardContent>
         </Card>
       )}
-      
+
       {/* Datos Empresariales y Fiscales - solo mostrar si hay datos */}
       {(isCompany || clienteInfo.company_name || clienteInfo.trade_name || clienteInfo.dv != null || fiscalResp.length > 0) && (
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>{isCompany ? 'Datos Fiscales' : 'Datos Empresariales y Fiscales'}</CardTitle>
-          <CardDescription>Información fiscal y comercial</CardDescription>
+          <CardTitle>{isCompany ? t('info.datosFiscales') : t('info.datosEmpresarialesFiscales')}</CardTitle>
+          <CardDescription>{t('info.datosFiscalesDescripcion')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {!isCompany && (
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Razón Social</p>
-                <p>{clienteInfo.company_name || 'No especificado'}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.razonSocial')}</p>
+                <p>{clienteInfo.company_name || noEspecificado}</p>
               </div>
             )}
             {!isCompany && (
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Nombre Comercial</p>
-                <p>{clienteInfo.trade_name || 'No especificado'}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.nombreComercial')}</p>
+                <p>{clienteInfo.trade_name || noEspecificado}</p>
               </div>
             )}
             <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Dígito de Verificación (DV)</p>
-              <p>{clienteInfo.dv != null ? clienteInfo.dv : 'No especificado'}</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.digitoVerificacion')}</p>
+              <p>{clienteInfo.dv != null ? clienteInfo.dv : noEspecificado}</p>
             </div>
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Responsabilidad Fiscal (DIAN)</p>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.responsabilidadFiscal')}</p>
             <div className="flex flex-wrap gap-2 mt-1">
               {fiscalResp.length > 0 ? fiscalResp.map((code: string) => (
                 <span key={code} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
                   {code}
                 </span>
-              )) : <p>No especificado</p>}
+              )) : <p>{noEspecificado}</p>}
             </div>
           </div>
         </CardContent>
@@ -333,22 +399,22 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
         {/* Metadatos y preferencias */}
         <Card>
           <CardHeader>
-            <CardTitle>Roles y etiquetas</CardTitle>
-            <CardDescription>Clasificación del cliente</CardDescription>
+            <CardTitle>{t('info.rolesEtiquetas')}</CardTitle>
+            <CardDescription>{t('info.rolesEtiquetasDescripcion')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-3">
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Roles</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.roles')}</p>
                 <p>{rolesFormatted}</p>
               </div>
-              
+
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Etiquetas</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.etiquetas')}</p>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {Array.isArray(clienteInfo.tags) && clienteInfo.tags.length > 0 ? (
                     clienteInfo.tags.map((tag: string, index: number) => (
-                      <span 
+                      <span
                         key={index}
                         className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
                       >
@@ -356,73 +422,73 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
                       </span>
                     ))
                   ) : (
-                    <span className="text-gray-500 dark:text-gray-400">Sin etiquetas</span>
+                    <span className="text-gray-500 dark:text-gray-400">{t('info.sinEtiquetas')}</span>
                   )}
                 </div>
               </div>
-              
+
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Cliente registrado</p>
-                <p>{clienteInfo.is_registered ? 'Sí' : 'No'}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.clienteRegistrado')}</p>
+                <p>{clienteInfo.is_registered ? t('info.si') : t('info.no')}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Información del sistema */}
         <Card>
           <CardHeader>
-            <CardTitle>Datos del sistema</CardTitle>
-            <CardDescription>Información técnica</CardDescription>
+            <CardTitle>{t('info.datosSistema')}</CardTitle>
+            <CardDescription>{t('info.datosSistemaDescripcion')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-3">
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">ID del cliente</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.idCliente')}</p>
                 <p className="font-mono text-sm">{clienteInfo.id}</p>
               </div>
-              
+
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">ID de organización</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.idOrganizacion')}</p>
                 <p>{clienteInfo.organization_id}</p>
               </div>
-              
+
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Fecha de alta</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.fechaAlta')}</p>
                 <p>{createdAt}</p>
               </div>
-              
+
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Última actualización</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.ultimaActualizacion')}</p>
                 <p>{updatedAt}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Notas */}
       <Card>
         <CardHeader>
-          <CardTitle>Notas</CardTitle>
-          <CardDescription>Información adicional sobre el cliente</CardDescription>
+          <CardTitle>{t('info.notas')}</CardTitle>
+          <CardDescription>{t('info.notasDescripcion')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 whitespace-pre-wrap">
             {clienteInfo.notes ? (
               <p>{clienteInfo.notes}</p>
             ) : (
-              <p className="text-gray-500 dark:text-gray-400 italic">No hay notas disponibles para este cliente.</p>
+              <p className="text-gray-500 dark:text-gray-400 italic">{t('info.sinNotas')}</p>
             )}
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Preferencias */}
       <Card>
         <CardHeader>
-          <CardTitle>Preferencias</CardTitle>
-          <CardDescription>Preferencias personalizadas del cliente</CardDescription>
+          <CardTitle>{t('info.preferencias')}</CardTitle>
+          <CardDescription>{t('info.preferenciasDescripcion')}</CardDescription>
         </CardHeader>
         <CardContent>
           {clienteInfo.preferences && Object.keys(clienteInfo.preferences).length > 0 ? (
@@ -430,7 +496,7 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
               {JSON.stringify(clienteInfo.preferences, null, 2)}
             </pre>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400 italic">No hay preferencias registradas para este cliente.</p>
+            <p className="text-gray-500 dark:text-gray-400 italic">{t('info.sinPreferencias')}</p>
           )}
         </CardContent>
       </Card>

@@ -1,46 +1,36 @@
 // ============================================================
 // /api/integrations/payfac/payouts/[id]
-// Gestiona un payout individual con sus items
-// GET  - obtiene payout con items
-// POST - procesa o cancela payout (body: { action, reason? })
+// Un payout individual con sus items
+// GET  - obtiene payout con items (plataforma: cualquiera; organizacion: el suyo)
+// POST - procesa o cancela payout (body: { action, reason? }) — solo plataforma
+//
+// SEGURIDAD (GO-sec, 2026-09-23; auditoria §2.4): GET devolvia el payout de
+// cualquier organizacion por id. Ahora una organizacion solo ve los suyos
+// (404 si no) y el admin de plataforma se verifica con `fn_is_platform_admin()`.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import { OrgContextError } from '@/lib/utils/orgContext';
+import { withPlatformAdmin } from '@/lib/security/platformAdmin';
+import { routeErrorResponse } from '@/lib/security/orgGuards';
 import { payoutService } from '@/lib/services/integrations/payfac';
+import { resolverAlcancePayfac } from '@/lib/services/integrations/payfac/alcance';
 
-// Verifica que el usuario sea administrador de plataforma
-async function verifyPlatformAdmin(
-  supabase: SupabaseClient,
-  userId: string,
-): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('platform_admins')
-    .select('id, role, status')
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .single();
+const RUTA = 'payfac/payouts/[id]';
 
-  if (error || !data) return false;
-  return data.role === 'super_admin' || data.role === 'admin';
+type RouteParams = { params: Promise<Record<string, string | string[] | undefined>> };
+
+async function idDeLaRuta(routeParams?: RouteParams): Promise<string> {
+  const params = routeParams ? await routeParams.params : {};
+  return typeof params.id === 'string' ? params.id : '';
 }
 
 // GET - obtiene payout con items
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(request: Request, routeParams: RouteParams) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const alcance = await resolverAlcancePayfac(request, RUTA);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const { id } = await params;
+    const id = await idDeLaRuta(routeParams);
     if (!id) {
       return NextResponse.json(
         { error: 'ID de payout requerido' },
@@ -48,46 +38,23 @@ export async function GET(
       );
     }
 
-    const payout = await payoutService.getById(supabase, id);
+    const payout = await payoutService.getById(null, id);
 
-    if (!payout) {
-      return NextResponse.json(
-        { error: 'Payout no encontrado' },
-        { status: 404 },
-      );
+    // Una organizacion no distingue «no existe» de «es de otra».
+    if (!payout || (alcance.tipo === 'organizacion' && Number(payout.organization_id) !== alcance.ctx.organizationId)) {
+      throw new OrgContextError('Payout no encontrado', 404, 'NOT_FOUND');
     }
 
     return NextResponse.json({ success: true, data: payout });
   } catch (error) {
-    console.error('[PayFac Payout GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('PayFac Payout GET', error);
   }
 }
 
-// POST - procesa o cancela un payout
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+// POST - procesa o cancela un payout (solo plataforma)
+export const POST = withPlatformAdmin(async (admin, request, routeParams) => {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    // Procesar/cancelar payouts requiere permisos de admin
-    const isAdmin = await verifyPlatformAdmin(supabase, session.user.id);
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: 'Acceso restringido a administradores de plataforma' },
-        { status: 403 },
-      );
-    }
-
-    const { id } = await params;
+    const id = await idDeLaRuta(routeParams);
     if (!id) {
       return NextResponse.json(
         { error: 'ID de payout requerido' },
@@ -95,23 +62,24 @@ export async function POST(
       );
     }
 
-    const body = await request.json();
+    const body = (await request.json().catch(() => ({}))) as { action?: string; reason?: string };
     const { action, reason } = body;
 
-    // Validar accion
-    if (!action || (action !== 'process' && action !== 'cancel')) {
+    if (action !== 'process' && action !== 'cancel') {
       return NextResponse.json(
         { error: "action debe ser 'process' o 'cancel'" },
         { status: 400 },
       );
     }
 
-    const payout = await payoutService.process(supabase, id, action, reason);
+    console.info(`[${RUTA}] ${action} por la plataforma`, { adminUserId: admin.userId, payoutId: id });
+    const result = await payoutService.process(null, id, action, reason);
+    if (!result.success) {
+      return NextResponse.json({ error: result.error ?? 'No se pudo completar la accion' }, { status: 409 });
+    }
 
-    return NextResponse.json({ success: true, data: payout });
+    return NextResponse.json({ success: true, data: result });
   } catch (error) {
-    console.error('[PayFac Payout POST] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('PayFac Payout POST', error);
   }
-}
+});

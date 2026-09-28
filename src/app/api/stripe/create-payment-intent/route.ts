@@ -1,89 +1,59 @@
 /**
  * API Endpoint: Crear Payment Intent de Stripe
  * GO Admin ERP - Create Payment Intent
- * 
+ *
  * Este endpoint crea un Payment Intent en Stripe para procesar un pago.
  * Se llama desde el frontend antes de mostrar el formulario de pago.
- */
-
-import { NextRequest, NextResponse } from 'next/server'
-import { createPaymentIntent } from '@/lib/stripe/paymentService'
-import { CreatePaymentIntentData } from '@/lib/stripe/types'
-import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
-
-/**
+ *
  * POST /api/stripe/create-payment-intent
- * 
+ *
  * Body esperado:
  * {
  *   amount: number,
  *   currency: string,
  *   customerId?: string,
- *   organizationId: number,
- *   branchId: number,
+ *   organizationId?: number,   // si viene, debe ser la de la sesión (403 si no)
+ *   branchId: number,          // debe ser de la organización de la sesión (404 si no)
  *   description?: string,
  *   metadata?: object,
  *   saleId?: string,
  *   invoiceId?: string,
  *   accountReceivableId?: string
  * }
+ *
+ * GO-sec (auditoría 2026-09-24): la ruta creaba un cliente de Supabase SIN
+ * cookies y le pedía el usuario, así que respondía 401 siempre (y
+ * `/api/stripe/` está fuera del middleware). Ahora la sesión es la real
+ * (`getServerOrgContext`), la organización sale de ella y no del body
+ * (`readOrgBody`: 403 + registro si el body trae otra) y la sucursal se
+ * comprueba contra esa organización. Sin GET (Next responde 405).
  */
-export async function POST(request: NextRequest) {
+
+import { NextResponse } from 'next/server'
+import { createPaymentIntent } from '@/lib/stripe/paymentService'
+import type { CreatePaymentIntentData } from '@/lib/stripe/types'
+import { getServerOrgContext, readOrgBody } from '@/lib/utils/orgContext'
+import { assertRecordOfOrg, routeErrorResponse } from '@/lib/security/orgGuards'
+
+const RUTA = 'stripe/create-payment-intent'
+
+type Body = Partial<Omit<CreatePaymentIntentData, 'organizationId'>> & { organizationId?: unknown }
+
+export async function POST(request: Request) {
   try {
-    // Crear cliente de Supabase con sesión
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    const cookieStore = await cookies()
-    
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
-    
-    // Verificar autenticación
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const ctx = await getServerOrgContext(request)
+    const body = (await readOrgBody<Body | null>(ctx, request)) ?? {}
 
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'No autenticado' },
-        { status: 401 }
-      )
+    if (!body.amount || !body.currency || !body.branchId) {
+      return NextResponse.json({ error: 'Faltan campos requeridos: amount, currency, branchId' }, { status: 400 })
     }
 
-    // Obtener datos del body
-    const body = await request.json()
+    await assertRecordOfOrg(ctx, 'branches', body.branchId, 'Sucursal no encontrada')
 
-    // Validar campos requeridos
-    if (!body.amount || !body.currency || !body.organizationId || !body.branchId) {
-      return NextResponse.json(
-        { error: 'Faltan campos requeridos: amount, currency, organizationId, branchId' },
-        { status: 400 }
-      )
-    }
-
-    // Verificar que el usuario pertenezca a la organización
-    const { data: membership, error: membershipError } = await supabase
-      .from('organization_members')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('organization_id', body.organizationId)
-      .single()
-
-    if (membershipError || !membership) {
-      return NextResponse.json(
-        { error: 'No tienes acceso a esta organización' },
-        { status: 403 }
-      )
-    }
-
-    // Preparar datos para crear Payment Intent
     const paymentData: CreatePaymentIntentData = {
       amount: body.amount,
       currency: body.currency,
-      organizationId: body.organizationId,
+      organizationId: ctx.organizationId,
       branchId: body.branchId,
       customerId: body.customerId,
       description: body.description,
@@ -93,36 +63,19 @@ export async function POST(request: NextRequest) {
       accountReceivableId: body.accountReceivableId,
     }
 
-    // Crear Payment Intent
     const paymentIntent = await createPaymentIntent(paymentData)
 
-    // Log de auditoría
-    console.log('✅ Payment Intent creado por usuario:', user.id, '- PI:', paymentIntent.paymentIntentId)
+    console.log('[stripe/create-payment-intent] creado', {
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+      paymentIntentId: paymentIntent.paymentIntentId,
+    })
 
-    // Retornar client secret
     return NextResponse.json({
       clientSecret: paymentIntent.clientSecret,
       paymentIntentId: paymentIntent.paymentIntentId,
     })
-  } catch (error: any) {
-    console.error('❌ Error en /api/stripe/create-payment-intent:', error)
-
-    return NextResponse.json(
-      {
-        error: error.message || 'Error creando Payment Intent',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      },
-      { status: 500 }
-    )
+  } catch (err) {
+    return routeErrorResponse(RUTA, err)
   }
-}
-
-/**
- * GET - No permitido
- */
-export async function GET() {
-  return NextResponse.json(
-    { error: 'Método no permitido' },
-    { status: 405 }
-  )
 }

@@ -1,62 +1,26 @@
 // ============================================================
 // /api/integrations/payfac/payouts/pending
-// Lista payouts pendientes de dispersion (admin + organizacion)
-// GET - lista payouts pendientes (query: ?organizationId=xxx)
+// Payouts pendientes de dispersion
+// GET - plataforma: todos (o ?organizationId=); organizacion: solo los suyos
+//
+// SEGURIDAD (GO-sec, 2026-09-23; auditoria §2.4): con `?organizationId=`
+// cualquiera con sesion leia los pendientes de otra organizacion. Ver
+// `payfac/alcance.ts`.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import { routeErrorResponse } from '@/lib/security/orgGuards';
 import { payoutService } from '@/lib/services/integrations/payfac';
+import { organizacionDelAlcance, resolverAlcancePayfac } from '@/lib/services/integrations/payfac/alcance';
 
-// Verifica que el usuario sea administrador de plataforma
-async function verifyPlatformAdmin(
-  supabase: SupabaseClient,
-  userId: string,
-): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('platform_admins')
-    .select('id, role, status')
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .single();
+const RUTA = 'payfac/payouts/pending';
 
-  if (error || !data) return false;
-  return data.role === 'super_admin' || data.role === 'admin';
-}
-
-// GET - lista payouts pendientes, opcionalmente filtrados por organizacion
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const organizationId = searchParams.get('organizationId');
-    const orgIdNum = organizationId ? Number(organizationId) : undefined;
-
-    // Si no se especifica organizationId, requiere permisos de admin
-    if (!orgIdNum) {
-      const isAdmin = await verifyPlatformAdmin(supabase, session.user.id);
-      if (!isAdmin) {
-        return NextResponse.json(
-          { error: 'Se requiere organizationId o permisos de administrador' },
-          { status: 403 },
-        );
-      }
-    }
-
-    const pending = await payoutService.listPending(supabase, orgIdNum);
-
+    const alcance = await resolverAlcancePayfac(request, RUTA);
+    const pending = await payoutService.listPending(null, organizacionDelAlcance(alcance));
     return NextResponse.json({ success: true, data: pending });
   } catch (error) {
-    console.error('[PayFac Payouts Pending GET] Error:', error);
-    const message = error instanceof Error ? error.message : 'Error interno del servidor';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return routeErrorResponse('PayFac Payouts Pending GET', error);
   }
 }

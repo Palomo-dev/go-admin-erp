@@ -1,7 +1,8 @@
 'use client';
 
 import type { CountryPayrollRules } from '@/lib/services/hrmConfigService';
-import { formatCurrency } from '@/utils/Utils';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import {
   Dialog,
@@ -36,7 +37,12 @@ export function RuleDetailModal({
   onClose,
 }: RuleDetailModalProps) {
   const { formatDate } = useFormatDate();
+  const { paraDocumento } = useMonedaOrganizacion();
   if (!rule) return null;
+
+  // Reglas legales de un país: su moneda es la de la fila
+  // (`minimum_wage_currency`); si falta, la base de la organización.
+  const monedaRegla = paraDocumento(rule.minimum_wage_currency);
 
   const pctFormat = (val: number | null) => ((val || 0) * 100).toFixed(2) + '%';
 
@@ -77,7 +83,7 @@ export function RuleDetailModal({
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Moneda</p>
               <p className="font-medium text-gray-900 dark:text-white">
-                {rule.minimum_wage_currency || 'COP'}
+                {monedaRegla.code}
               </p>
             </div>
           </div>
@@ -94,13 +100,13 @@ export function RuleDetailModal({
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Salario Mínimo</p>
                 <p className="text-xl font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(rule.minimum_wage || 0, rule.minimum_wage_currency || 'COP')}
+                  {formatMoneda(rule.minimum_wage || 0, monedaRegla)}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Auxilio de Transporte</p>
                 <p className="text-xl font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(rule.transport_allowance || 0, rule.minimum_wage_currency || 'COP')}
+                  {formatMoneda(rule.transport_allowance || 0, monedaRegla)}
                 </p>
               </div>
               <div className="col-span-2">
@@ -108,7 +114,7 @@ export function RuleDetailModal({
                   Aplica hasta salario de:
                 </p>
                 <p className="font-medium text-gray-900 dark:text-white">
-                  {formatCurrency(rule.transport_allowance_threshold || 0, rule.minimum_wage_currency || 'COP')}
+                  {formatMoneda(rule.transport_allowance_threshold || 0, monedaRegla)}
                 </p>
               </div>
             </div>

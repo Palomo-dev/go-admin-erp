@@ -1,20 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useSession } from '@/lib/hooks/useSession';
 import { getUserOrganization } from '@/lib/supabase/config';
 import { ClientForm } from '@/components/clientes/new/ClientForm';
-import Link from 'next/link';
-import { ArrowLeft, UserPlus } from 'lucide-react';
-import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState, PageHeader } from '@/components/kit';
 
 export default function NewClientPage() {
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [branchId, setBranchId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  // Error de carga: clave traducible o texto que devuelve getUserOrganization.
+  const [error, setError] = useState<{ clave?: 'sinSesion' | 'sinOrganizacion' | 'carga'; texto?: string } | null>(null);
+  const t = useTranslations('clientes.formulario');
   
   const { session, loading: sessionLoading } = useSession();
   
@@ -23,7 +23,7 @@ export default function NewClientPage() {
       if (sessionLoading) return;
       
       if (!session || !session.user?.id) {
-        setError('No hay sesión activa. Por favor inicie sesión para continuar.');
+        setError({ clave: 'sinSesion' });
         setIsLoading(false);
         return;
       }
@@ -32,13 +32,13 @@ export default function NewClientPage() {
         const userData = await getUserOrganization(session.user.id);
         
         if (userData.error) {
-          setError(userData.error);
+          setError({ texto: userData.error });
           setIsLoading(false);
           return;
         }
         
         if (!userData.organization?.id) {
-          setError('No se encontró una organización asociada a tu cuenta.');
+          setError({ clave: 'sinOrganizacion' });
           setIsLoading(false);
           return;
         }
@@ -57,9 +57,9 @@ export default function NewClientPage() {
         }
         
         setIsLoading(false);
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error cargando datos de organización:', err);
-        setError('Error al cargar la información de tu organización');
+        setError({ clave: 'carga' });
         setIsLoading(false);
       }
     }
@@ -69,50 +69,38 @@ export default function NewClientPage() {
   
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <PageHeaderSkeleton />
-        <DetailSkeleton />
+      <div className="flex min-h-full flex-col gap-4 bg-canvas p-4 lg:gap-6 lg:p-6" aria-busy="true">
+        <Skeleton className="h-4 w-48" />
+        <Skeleton className="h-10 w-72" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header mejorado */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <Link href="/app/clientes">
-            <Button variant="outline" size="icon" className="h-10 w-10 rounded-lg border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
-                <UserPlus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              Crear Nuevo Cliente
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
-              Completa la información para registrar un nuevo cliente
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="flex min-h-full flex-col gap-4 bg-canvas p-4 lg:gap-6 lg:p-6">
+      <PageHeader
+        titulo={t('paginas.nuevo.titulo')}
+        subtitulo={t('paginas.nuevo.subtitulo')}
+        variante="form"
+        volverA={'/app/clientes'}
+        migas={[
+          { etiqueta: t('paginas.migaInicio'), href: '/app/inicio' },
+          { etiqueta: t('paginas.migaClientes'), href: '/app/clientes' },
+          { etiqueta: t('paginas.nuevo.titulo') },
+        ]}
+      />
 
-      {/* Error */}
       {error ? (
-        <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
-          <CardContent className="pt-4">
-            <p className="font-medium text-red-700 dark:text-red-300 mb-2">Error</p>
-            <p className="text-sm text-red-600 dark:text-red-400 mb-4">{error}</p>
-            <Link href="/app/clientes">
-              <Button variant="outline" size="sm" className="border-red-300 text-red-700">
-                Volver a clientes
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState
+            variante="error"
+            titulo={t('paginas.errorOrganizacion.titulo')}
+            descripcion={error.clave ? t(`paginas.errores.${error.clave}`) : error.texto}
+            accion={{ etiqueta: t('paginas.errorOrganizacion.volver'), href: '/app/clientes' }}
+          />
+        </div>
       ) : organizationId ? (
         <ClientForm organizationId={organizationId} branchId={branchId || undefined} />
       ) : null}

@@ -1,39 +1,35 @@
+// ============================================================
+// /api/integrations/tiktok/webhook — webhook de TikTok.
+//
+// GET: verificación del endpoint. Credencial: `TIKTOK_WEBHOOK_VERIFY_TOKEN`
+//   (entorno). Fail-closed: sin la variable → 403. Antes caía a un token por
+//   defecto escrito en el código (repositorio público) y respondía 200 aun
+//   con el token equivocado.
+//
+// POST: CERRADO (401) hasta implementar la firma (GO-sec, 2026-09-24). Antes
+//   aceptaba cualquier cuerpo sin verificar nada y lo escribía en los logs
+//   (datos de terceros). No procesa ni guarda nada: cerrarlo no pierde
+//   información. Credencial que usará el proveedor: el App Secret de TikTok
+//   (`TIKTOK_APP_SECRET`); TikTok firma con HMAC-SHA256 `<timestamp>.<raw body>`
+//   y manda `TikTok-Signature: t=<timestamp>,s=<firma>`. Implementarlo contra
+//   la documentación vigente del producto de TikTok que se suscriba, con
+//   comparación en tiempo constante y ventana de tiempo, antes de abrirlo.
+//   Mismo criterio que el webhook de Redeban.
+// ============================================================
+
 import { NextRequest, NextResponse } from 'next/server';
+import { verificarSuscripcionWebhook } from '@/lib/security/suscripcionWebhook';
 
-/**
- * GET /api/integrations/tiktok/webhook
- * Verificación del webhook (TikTok envía GET para verificar el endpoint).
- */
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const verifyToken = searchParams.get('verify_token');
-  const challenge = searchParams.get('challenge');
-
-  // TikTok puede enviar un challenge para verificar el endpoint
-  const expectedToken = process.env.TIKTOK_WEBHOOK_VERIFY_TOKEN || 'goadmin_tiktok_verify';
-
-  if (verifyToken === expectedToken && challenge) {
-    return new NextResponse(challenge, { status: 200 });
-  }
-
-  return NextResponse.json({ status: 'ok' });
+  return verificarSuscripcionWebhook(request, {
+    variable: 'TIKTOK_WEBHOOK_VERIFY_TOKEN',
+    parametroToken: 'verify_token',
+    parametroDesafio: 'challenge',
+    etiqueta: 'TikTok Webhook',
+  });
 }
 
-/**
- * POST /api/integrations/tiktok/webhook
- * Recibir eventos/notificaciones de TikTok.
- */
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-
-    console.log('TikTok webhook received:', JSON.stringify(body).substring(0, 500));
-
-    // Procesar según el tipo de evento
-    // TikTok webhooks son menos maduros que Meta, por ahora solo logueamos
-    return NextResponse.json({ status: 'received' });
-  } catch (error) {
-    console.error('Error processing TikTok webhook:', error);
-    return NextResponse.json({ status: 'error' }, { status: 500 });
-  }
+export async function POST() {
+  console.warn('[TikTok Webhook] rechazado: la verificación de firma no está implementada (fail-closed)');
+  return NextResponse.json({ error: 'webhook_unauthorized' }, { status: 401 });
 }

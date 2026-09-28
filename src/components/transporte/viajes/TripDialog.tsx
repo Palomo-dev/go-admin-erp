@@ -25,6 +25,7 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz } from '@/lib/utils/timezone';
+import { useOpcionesMoneda } from '@/components/transporte/useOpcionesMoneda';
 
 interface Route {
   id: string;
@@ -66,7 +67,6 @@ export function TripDialog({
   routes,
   vehicles,
   drivers,
-  branches,
   onSave,
 }: TripDialogProps) {
   const { timezone } = useOrgTimezone();
@@ -85,7 +85,7 @@ export function TripDialog({
     branch_id: '',
     total_seats: 0,
     base_fare: 0,
-    currency: 'COP',
+    currency: '',
     notes: '',
   });
 
@@ -101,7 +101,7 @@ export function TripDialog({
         branch_id: trip.branch_id?.toString() || '',
         total_seats: trip.total_seats || 0,
         base_fare: trip.base_fare || 0,
-        currency: trip.currency || 'COP',
+        currency: trip.currency || '',
         notes: trip.notes || '',
       });
       setBranchId(trip.branch_id ?? null);
@@ -117,12 +117,21 @@ export function TripDialog({
         branch_id: '',
         total_seats: 40,
         base_fare: 0,
-        currency: 'COP',
+        currency: '',
         notes: '',
       });
       setBranchId(selectedBranchId);
     }
   }, [trip, open, selectedBranchId]);
+
+  // Moneda por defecto: la base de la organización, en cuanto se conoce (no
+  // antes: mientras `resuelta` es false el código es solo un marcador). Si
+  // se envía vacía, la base la pone el trigger `trg_00_moneda_base_por_defecto`.
+  const { opciones: opcionesMoneda, monedaBase, resuelta: monedaResuelta } = useOpcionesMoneda(trip?.currency);
+  useEffect(() => {
+    if (!monedaResuelta) return;
+    setFormData((prev) => (prev.currency ? prev : { ...prev, currency: monedaBase }));
+  }, [monedaResuelta, monedaBase, trip, open]);
 
   const handleVehicleChange = (vehicleId: string) => {
     setFormData((prev) => ({ ...prev, vehicle_id: vehicleId }));
@@ -155,7 +164,7 @@ export function TripDialog({
         total_seats: formData.total_seats,
         available_seats: trip ? undefined : formData.total_seats,
         base_fare: formData.base_fare,
-        currency: formData.currency,
+        currency: formData.currency || undefined,
         notes: formData.notes || undefined,
       });
       onOpenChange(false);
@@ -307,8 +316,11 @@ export function TripDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="COP">COP</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
+                  {opcionesMoneda.map((m) => (
+                    <SelectItem key={m.code} value={m.code}>
+                      {m.code}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

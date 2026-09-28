@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
@@ -40,6 +40,8 @@ interface PipelineGoalData {
 }
 
 const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'monthly' }) => {
+  // Importes agregados: moneda base de la organización (nunca 'COP' cableado).
+  const { formatear } = useMonedaOrganizacion();
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
@@ -279,14 +281,14 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
         <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-md shadow-md">
           <p className="font-medium text-gray-800 dark:text-gray-200">{data.name}</p>
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            Total: {formatCurrency(data.totalAmount)}
+            Total: {formatear(data.totalAmount)}
           </p>
           <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-            Pronóstico: {formatCurrency(data.forecastAmount)}
+            Pronóstico: {formatear(data.forecastAmount)}
           </p>
           {data.goal && (
             <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-              Objetivo: {formatCurrency(data.goal)}
+              Objetivo: {formatear(data.goal)}
             </p>
           )}
         </div>
@@ -329,7 +331,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
               height={60}
             />
             <YAxis 
-              tickFormatter={(value) => formatCurrency(value, 'COP')}
+              tickFormatter={(value) => formatear(value)}
               className="text-xs text-gray-600 dark:text-gray-300"
             />
             <Tooltip

@@ -22,25 +22,56 @@ import type {
   OpenCashSessionData,
   CloseCashSessionData,
   CashMovementData,
-  CashSessionReport,
-  CashSessionFilter,
   CashCount,
   CreateCashCountData,
   CreateCashMovementData,
   SessionPaymentDetail,
-  SessionMovementType
+  SessionMovementType,
+  CashHistoryFilters
 } from './types';
+import { diferenciasHistorial, enriquecerSesiones, exportacionHistorial, paginaHistorial } from '@/lib/pos/cajas/historialConsulta';
+import { parametrosArqueo } from '@/lib/pos/cajas/arqueo';
+import { claveDeConcepto } from '@/lib/pos/cajas/conceptos';
+import { RPC_MOVIMIENTO_CAJA, codigoErrorMovimiento, movimientoDeRpc, parametrosMovimiento, type DatosMovimientoCaja } from '@/lib/pos/cajas/movimientoRpc';
+import type { ResumenCaja, ResumenCompacto } from '@/lib/pos/cajas/resumenServidor';
+import {
+  alcanceApertura,
+  claveTraduccionError,
+  codigoCajaYaAbierta,
+  sucursalDeApertura,
+  type CodigoCajaYaAbierta,
+} from '@/lib/pos/cajas/alcance';
 
-/** Venta de una sesión de caja (columnas seleccionadas en `getSessionSales`). */
-export interface SessionSaleRow {
-  id: string;
-  total: number;
-  status: string;
-  payment_status: string;
-  created_at: string;
-  customer_id: string | null;
-  source: string | null;
+/**
+ * Error de cajas que la UI muestra. `message` sigue en español (lo leen logs y
+ * otros consumidores); `codigo` es estable y la UI lo traduce con
+ * `cajas.errores.<codigo>`, con respaldo al `message` si no hay traducción.
+ * Los códigos de `POST /api/pos/cajas/[id]/cerrar` llegan tal cual.
+ */
+export class ErrorCaja extends Error {
+  readonly codigo: string;
+  constructor(codigo: string, mensaje: string) {
+    super(mensaje);
+    this.name = 'ErrorCaja';
+    this.codigo = codigo;
+  }
 }
+
+/**
+ * Clave de traducción (`cajas.errores.<clave>`, en camelCase) del error lanzado
+ * por `CajasService`, o `null` si no trae código: `caja_ya_cerrada` → `cajaYaCerrada`.
+ */
+export function claveErrorCaja(error: unknown): string | null {
+  if (!(error instanceof ErrorCaja) || !error.codigo) return null;
+  return claveTraduccionError(error.codigo);
+}
+
+/** Mensaje en español (logs y respaldo) de cada caja ya abierta; la UI traduce el código. */
+const MENSAJE_CAJA_YA_ABIERTA: Record<CodigoCajaYaAbierta, string> = {
+  caja_global_abierta: 'Ya hay una caja global abierta. Ciérrala antes de abrir otra.',
+  caja_propia_abierta: 'Ya tienes una caja abierta en esta sucursal. Ciérrala antes de abrir otra.',
+  caja_sucursal_abierta: 'Ya hay una caja abierta en esta sucursal. Ciérrala antes de abrir otra.',
+};
 
 interface InvoiceSaleRef { id: string; number: string | null; customer_id: string | null; sale_id: string | null }
 interface InvoicePurchaseRef { id: string; number_ext: string | null; supplier_id: string | null }
@@ -249,7 +280,8 @@ export class CajasService {
         .eq('id', session.opened_by)
         .single();
       if (profileData) {
-        session.opened_by_name = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Usuario';
+        // Sin nombre queda vacío: la pantalla pone su respaldo traducido («Cajero», «—»).
+        session.opened_by_name = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || undefined;
       }
     }
 
@@ -264,7 +296,8 @@ export class CajasService {
         session.branch_name = branchData.name;
       }
     } else {
-      session.branch_name = 'Todas las sucursales';
+      // Caja global: la pantalla la pinta por `branch_id === null` («Todas las sucursales» traducido).
+      session.branch_name = undefined;
     }
 
     return session;
@@ -306,131 +339,87 @@ export class CajasService {
 
       if (error) throw error;
 
-      // Obtener nombres de cajeros y sucursales
-      const sessions = (data || []) as CashSession[];
-      const userIds = sessions.map(s => s.opened_by).filter(Boolean);
-      if (userIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name')
-          .in('id', userIds);
-
-        const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
-        for (const session of sessions) {
-          const profile = profileMap.get(session.opened_by);
-          session.opened_by_name = profile
-            ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Usuario'
-            : 'Usuario';
-        }
-      }
-
-      // Obtener nombres de sucursales (las que tienen branch_id)
-      const branchIds = [...new Set(sessions.map(s => s.branch_id).filter(Boolean))];
-      if (branchIds.length > 0) {
-        const { data: branchesData } = await supabase
-          .from('branches')
-          .select('id, name')
-          .in('id', branchIds);
-        const branchMap = new Map((branchesData || []).map(b => [b.id, b.name]));
-        for (const session of sessions) {
-          if (session.branch_id) {
-            session.branch_name = branchMap.get(session.branch_id) || `#${session.branch_id}`;
-          } else {
-            session.branch_name = 'Todas las sucursales';
-          }
-        }
-      } else {
-        // Todas son globales
-        for (const session of sessions) {
-          session.branch_name = 'Todas las sucursales';
-        }
-      }
-
-      return sessions;
+      return await this.enrichSessions((data || []) as CashSession[]);
     } catch (error) {
       console.error('Error getting active sessions:', error);
       throw error;
     }
   }
 
+  /** Nombres de quien abrió, de quien cerró y de la sucursal (módulo compartido con el servidor). */
+  private static async enrichSessions(sessions: CashSession[]): Promise<CashSession[]> {
+    return enriquecerSesiones(supabase, sessions);
+  }
+
   /**
-   * Obtiene el historial de sesiones con paginación
+   * Historial de cajas. Con red lo lee el SERVIDOR (`GET /api/pos/cajas/historial`),
+   * que aplica la máscara del cierre ciego: sin `pos.cajas.ver_esperado` no
+   * llegan `final_amount` ni `difference`, ni se filtra u ordena por ellos.
+   * Sin red (Desktop) se consulta la réplica local con el mismo módulo; ahí la
+   * pantalla oculta las cifras como antes (los datos ya están en el equipo).
+   */
+  private static async historialServidor<T>(vista: 'pagina' | 'diferencias' | 'exportar', filters: CashHistoryFilters, page = 1, pageSize = 10): Promise<T> {
+    const q = new URLSearchParams({ vista, pagina: String(page), tamano: String(pageSize) });
+    const sucursal = filters.branchId ?? getBranchFilter();
+    if (sucursal) q.set('sucursal', String(sucursal));
+    if (filters.status) q.set('status', filters.status);
+    if (filters.desde) q.set('desde', filters.desde);
+    if (filters.hasta) q.set('hasta', filters.hasta);
+    if (filters.busqueda) q.set('busqueda', filters.busqueda);
+    if (filters.resultado) q.set('resultado', filters.resultado);
+    if (filters.orden) {
+      q.set('orden', filters.orden.campo);
+      q.set('dir', filters.orden.direccion);
+    }
+    const headers: Record<string, string> = {};
+    if (this.organizationId) headers['x-organization-id'] = String(this.organizationId);
+    const response = await fetch(`/api/pos/cajas/historial?${q.toString()}`, { credentials: 'same-origin', cache: 'no-store', headers });
+    const body = (await response.json().catch(() => null)) as (T & { codigo?: string; error?: string }) | null;
+    if (!response.ok || !body) throw new ErrorCaja(body?.codigo || 'lectura_fallida', body?.error || 'No se pudo leer el historial de cajas');
+    return body;
+  }
+
+  /** Opciones del módulo compartido para la réplica local (sin red). */
+  private static opcionesLocales(filters: CashHistoryFilters) {
+    return { organizationId: Number(this.organizationId), sucursalId: filters.branchId ?? getBranchFilter() ?? null, verImportes: true };
+  }
+
+  /**
+   * Historial de sesiones con paginación, filtros y orden en el servidor.
    */
   static async getSessionHistoryPaginated(
     page: number = 1,
     pageSize: number = 10,
-    filters?: { status?: 'open' | 'closed' | 'all'; branchId?: number }
+    filters: CashHistoryFilters = {}
   ): Promise<{ data: CashSession[]; total: number }> {
     try {
-      const branchId = filters?.branchId ?? this.branchId;
-
-      let query = supabase
-        .from('cash_sessions')
-        .select('*', { count: 'exact' })
-        .eq('organization_id', this.organizationId);
-
-      // Si hay branchId, filtrar por esa sucursal Y las globales (branch_id null)
-      if (branchId) {
-        query = query.or(`branch_id.eq.${branchId},branch_id.is.null`);
-      }
-
-      if (filters?.status && filters.status !== 'all') {
-        query = query.eq('status', filters.status);
-      }
-
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-
-      const { data, count, error } = await query
-        .order('opened_at', { ascending: false })
-        .range(from, to);
-
-      if (error) throw error;
-
-      // Obtener nombres de cajeros y sucursales
-      const sessions = (data || []) as CashSession[];
-      const userIds = sessions.map(s => s.opened_by).filter(Boolean);
-      if (userIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name')
-          .in('id', userIds);
-
-        const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
-        for (const session of sessions) {
-          const profile = profileMap.get(session.opened_by);
-          session.opened_by_name = profile
-            ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Usuario'
-            : 'Usuario';
-        }
-      }
-
-      // Obtener nombres de sucursales
-      const branchIds = [...new Set(sessions.map(s => s.branch_id).filter(Boolean))];
-      if (branchIds.length > 0) {
-        const { data: branchesData } = await supabase
-          .from('branches')
-          .select('id, name')
-          .in('id', branchIds);
-        const branchMap = new Map((branchesData || []).map(b => [b.id, b.name]));
-        for (const session of sessions) {
-          if (session.branch_id) {
-            session.branch_name = branchMap.get(session.branch_id) || `#${session.branch_id}`;
-          } else {
-            session.branch_name = 'Todas las sucursales';
-          }
-        }
-      } else {
-        for (const session of sessions) {
-          session.branch_name = 'Todas las sucursales';
-        }
-      }
-
-      return { data: sessions, total: count || 0 };
+      if (!this.organizationId) return { data: [], total: 0 };
+      if (shouldOperateCashOffline()) return await paginaHistorial(supabase, filters, this.opcionesLocales(filters), page, pageSize);
+      const r = await this.historialServidor<{ data: CashSession[]; total: number }>('pagina', filters, page, pageSize);
+      return { data: r.data, total: r.total };
     } catch (error) {
       console.error('Error getting paginated session history:', error);
       throw error;
     }
+  }
+
+  /**
+   * Diferencias de todas las sesiones que cumplen los filtros (para la franja
+   * de cifras del historial). Con cierre ciego sin permiso, lista vacía.
+   */
+  static async getSessionHistoryDifferences(filters: CashHistoryFilters = {}): Promise<Array<number | null>> {
+    if (!this.organizationId) return [];
+    if (shouldOperateCashOffline()) return diferenciasHistorial(supabase, filters, this.opcionesLocales(filters));
+    const r = await this.historialServidor<{ diferencias: Array<number | null> }>('diferencias', filters);
+    return r.diferencias;
+  }
+
+  /** Todas las sesiones que cumplen los filtros, con nombres (para «Exportar»). Tope: 5.000. */
+  static async getSessionHistoryForExport(filters: CashHistoryFilters = {}): Promise<CashSession[]> {
+    if (!this.organizationId) return [];
+    if (shouldOperateCashOffline()) return exportacionHistorial(supabase, filters, this.opcionesLocales(filters));
+    const r = await this.historialServidor<{ data: CashSession[] }>('exportar', filters);
+    return r.data;
   }
 
   /**
@@ -445,17 +434,17 @@ export class CajasService {
     try {
       const userId = await getCurrentUserId();
       if (!userId) {
-        throw new Error('Usuario no autenticado');
+        throw new ErrorCaja('no_autenticado', 'Usuario no autenticado');
       }
 
       const mode = await this.getCashSessionMode();
 
       // En modo 'user' el alcance siempre es la sucursal actual (no hay caja global)
-      const scope = mode === 'user' ? 'branch' : (data.scope || 'branch');
-      const targetBranchId = scope === 'global' ? null : this.branchId;
+      const scope = alcanceApertura(mode, data.scope);
+      const targetBranchId = sucursalDeApertura(scope, this.branchId);
 
       if (scope === 'branch' && !this.branchId) {
-        throw new Error('No se pudo obtener la sucursal. Seleccione una sucursal.');
+        throw new ErrorCaja('sin_sucursal', 'No se pudo obtener la sucursal. Seleccione una sucursal.');
       }
 
       // Verificar que no haya ya una caja abierta para el mismo alcance
@@ -476,18 +465,15 @@ export class CajasService {
       }
 
       const offline = shouldOperateCashOffline();
-      const alreadyOpenMessage = scope === 'global'
-        ? 'Ya hay una caja global abierta. Ciérrala antes de abrir otra.'
-        : (mode === 'user'
-          ? 'Ya tienes una caja abierta en esta sucursal. Ciérrala antes de abrir otra.'
-          : 'Ya hay una caja abierta en esta sucursal. Ciérrala antes de abrir otra.');
+      const codigoAbierta = codigoCajaYaAbierta(mode, scope);
+      const alreadyOpen = new ErrorCaja(codigoAbierta, MENSAJE_CAJA_YA_ABIERTA[codigoAbierta]);
 
       // Sin red el GET se resuelve en la réplica local; una sesión cerrada sin
       // red sigue `open` allí hasta sincronizar, así que se descarta aparte.
       const { data: existingSession } = await checkQuery.maybeSingle();
 
       if (existingSession && !(offline && (await isCashSessionClosedLocally(this.organizationId as number, String(existingSession.uuid))))) {
-        throw new Error(alreadyOpenMessage);
+        throw alreadyOpen;
       }
 
       if (offline) {
@@ -499,7 +485,7 @@ export class CajasService {
           userId,
         });
         if (localOpen && (scope === 'global' ? localOpen.branch_id === null : localOpen.branch_id === this.branchId)) {
-          throw new Error(alreadyOpenMessage);
+          throw alreadyOpen;
         }
         const session = await enqueueCashSessionOpen({
           organizationId: this.organizationId as number,
@@ -525,6 +511,10 @@ export class CajasService {
         .select()
         .single();
 
+      // 23505: la base ya tiene una caja abierta en este alcance (índice
+      // `ux_cash_sessions_abierta_por_alcance`, por modo). Pasa cuando otra
+      // pestaña u otro cajero abrió entre la comprobación y el insert.
+      if (error && (error as { code?: string }).code === '23505') throw alreadyOpen;
       if (error) throw error;
 
       console.log('Sesión de caja abierta:', session.id);
@@ -536,25 +526,34 @@ export class CajasService {
   }
 
   /**
-   * Cierra la sesión de caja activa
+   * Cierra una sesión de caja.
+   *
+   * - Con red, siempre por `POST /api/pos/cajas/[id]/cerrar` (la propia y la
+   *   de otro cajero): el servidor decide el permiso y calcula la diferencia.
+   * - Sin red (Desktop), solo la caja activa de quien cierra: va al outbox con
+   *   el esperado calculado en local, que es lo único que ve las ventas sin
+   *   sincronizar.
    */
-  static async closeSession(data: CloseCashSessionData): Promise<CashSession> {
+  static async closeSession(data: CloseCashSessionData, target?: Pick<CashSession, 'id' | 'uuid'>): Promise<CashSession> {
     try {
       const userId = await getCurrentUserId();
       if (!userId) {
-        throw new Error('Usuario no autenticado');
+        throw new ErrorCaja('no_autenticado', 'Usuario no autenticado');
       }
 
       const activeSession = await this.getActiveSession();
+      if (target && target.id !== activeSession?.id) {
+        return await this.closeOtherSession(target.id, data);
+      }
       if (!activeSession) {
-        throw new Error('No hay sesión de caja abierta');
+        throw new ErrorCaja('sin_caja_abierta', 'No hay sesión de caja abierta');
       }
 
-      // Calcular la diferencia
-      const summary = await this.getCashSummary(activeSession.id);
-      const difference = data.final_amount - summary.expected_amount;
-
       if (shouldOperateCashOffline()) {
+        // Calcular la diferencia en local: sin red el servidor no ve las
+        // ventas del outbox. Al sincronizar se guarda este cálculo.
+        const summary = await this.getCashSummary(activeSession.id);
+        const difference = data.final_amount - summary.expected_amount;
         // Fase 4F: cierre sin red → outbox con el resumen calculado sobre
         // réplica + ventas/movimientos locales; la sesión queda cerrada en local.
         const closed = await enqueueCashSessionClose({
@@ -565,26 +564,16 @@ export class CajasService {
           notes: data.notes || activeSession.notes || null,
           summary,
           summaryPartial: this.lastSummaryWasPartial,
+          countedByMethod: data.counted_by_method,
+          denominations: data.denominations,
         });
         console.log('Sesión de caja cerrada sin red (pendiente de sincronizar):', closed.id);
         return closed;
       }
 
-      const { data: session, error } = await supabase
-        .from('cash_sessions')
-        .update({
-          closed_at: new Date().toISOString(),
-          closed_by: userId,
-          final_amount: data.final_amount,
-          difference: difference,
-          notes: data.notes || activeSession.notes,
-          status: 'closed'
-        })
-        .eq('id', activeSession.id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      // Con red, también la caja propia se cierra en el servidor: allí se
+      // calcula el esperado y la diferencia (antes los mandaba el navegador).
+      const session = await this.closeOnServer(activeSession.id, data);
 
       // Si esta sesión nació sin red, su estado local ya sobra.
       if (isDesktop() && activeSession.uuid) {
@@ -600,18 +589,58 @@ export class CajasService {
   }
 
   /**
+   * Cierre de una caja que no es la activa de quien cierra: necesita red (la
+   * caja ajena no está en el outbox local).
+   */
+  private static async closeOtherSession(sessionId: number, data: CloseCashSessionData): Promise<CashSession> {
+    if (sessionId < 0 || shouldOperateCashOffline()) {
+      throw new ErrorCaja('cierre_ajeno_sin_red', 'Sin conexión solo puedes cerrar tu propia caja. Vuelve a intentarlo cuando haya red.');
+    }
+    return this.closeOnServer(sessionId, data);
+  }
+
+  /**
+   * `POST /api/pos/cajas/[id]/cerrar`: el servidor decide si esta persona
+   * puede cerrarla (quien la abrió o `pos.cajas.cerrar_ajenas`, nunca el
+   * nombre del rol) y cierra en una transacción (`pos_caja_cerrar`): arqueo de
+   * cierre con el conteo por método, esperado y diferencia del servidor. El
+   * navegador solo manda lo contado.
+   */
+  private static async closeOnServer(sessionId: number, data: CloseCashSessionData): Promise<CashSession> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.organizationId) headers['x-organization-id'] = String(this.organizationId);
+
+    const response = await fetch(`/api/pos/cajas/${sessionId}/cerrar`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers,
+      body: JSON.stringify({
+        final_amount: data.final_amount,
+        notes: data.notes ?? null,
+        ...(data.counted_by_method ? { counted_by_method: data.counted_by_method } : {}),
+        ...(data.denominations ? { denominations: data.denominations } : {}),
+      }),
+    });
+    const body = (await response.json().catch(() => null)) as { session?: CashSession; error?: string; codigo?: string } | null;
+    if (!response.ok || !body?.session) {
+      throw new ErrorCaja(body?.codigo || 'cierre_fallido', body?.error || 'No se pudo cerrar la caja');
+    }
+    return body.session;
+  }
+
+  /**
    * Registra un movimiento de caja (ingreso o egreso)
    */
   static async addMovement(data: CashMovementData): Promise<CashMovement> {
     try {
       const userId = await getCurrentUserId();
       if (!userId) {
-        throw new Error('Usuario no autenticado');
+        throw new ErrorCaja('no_autenticado', 'Usuario no autenticado');
       }
 
       const activeSession = await this.getActiveSession();
       if (!activeSession) {
-        throw new Error('No hay sesión de caja abierta');
+        throw new ErrorCaja('sin_caja_abierta', 'No hay sesión de caja abierta');
       }
 
       if (shouldOperateCashOffline()) {
@@ -623,27 +652,14 @@ export class CajasService {
           amount: data.amount,
           userId,
           notes: data.notes ?? null,
+          conceptCode: data.concept_code ?? null,
+          reference: data.reference ?? null,
         });
         console.log('Movimiento registrado sin red (pendiente de sincronizar):', movement.id);
         return movement;
       }
 
-      const { data: movement, error } = await supabase
-        .from('cash_movements')
-        .insert({
-          organization_id: this.organizationId,
-          cash_session_id: activeSession.id,
-          type: data.type,
-          concept: data.concept,
-          amount: data.amount,
-          user_id: userId,
-          notes: data.notes
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
+      const movement = await this.registrarMovimiento(activeSession.id, data);
       console.log('Movimiento registrado:', movement.id);
       return movement;
     } catch (error) {
@@ -756,8 +772,9 @@ export class CajasService {
         .filter(p => !PURCHASE_SOURCES.includes(p.source) && p.source !== AR_SOURCE)
         .reduce((sum, payment) => sum + Number(payment.change_amount || 0), 0);
       // salesCash = efectivo de ventas (sin abonos a cuentas por cobrar) - vuelto
-      const salesCash = (cashPayments || [])
-        .filter(p => !PURCHASE_SOURCES.includes(p.source) && p.source !== AR_SOURCE)
+      const salesCashPayments = (cashPayments || [])
+        .filter(p => !PURCHASE_SOURCES.includes(p.source) && p.source !== AR_SOURCE);
+      const salesCash = salesCashPayments
         .reduce((sum, payment) => sum + Number(payment.amount), 0) - changeTotal;
       // Recibos de caja en efectivo (abonos a cuentas por cobrar)
       const cashReceiptsCash = (cashPayments || [])
@@ -767,12 +784,16 @@ export class CajasService {
         .filter(p => PURCHASE_SOURCES.includes(p.source))
         .reduce((sum, payment) => sum + Number(payment.amount), 0);
 
-      // Consultar devoluciones procesadas en el período
+      // Devoluciones procesadas en el período, solo las heredadas (sin
+      // refund_method): las de procesar_devolucion en efectivo ya son una
+      // salida en cash_movements y las de saldo a favor no sacan efectivo.
+      // Misma regla que pos_caja_esperado en el servidor.
       let returnsQuery = supabase
         .from('returns')
         .select('total_refund')
         .eq('organization_id', this.organizationId)
         .eq('status', 'processed')
+        .is('refund_method', null)
         .gte('created_at', session.opened_at)
         .lte('created_at', session.closed_at || new Date().toISOString());
       if (session.branch_id) {
@@ -886,6 +907,9 @@ export class CajasService {
         expense_by_method: expenseByMethod,
         sales_total: salesTotal,
         sales_by_method: salesByMethod,
+        sales_cash_count: salesCashPayments.length,
+        cash_in_count: movements.filter(m => m.type === 'in').length,
+        cash_out_count: movements.filter(m => m.type === 'out').length,
       };
 
       if (!isDesktop()) return summary;
@@ -903,6 +927,149 @@ export class CajasService {
       console.error('Error calculating cash summary:', error);
       throw error;
     }
+  }
+
+  /**
+   * Resumen completo de una caja (sesión, esperado, movimientos, arqueos,
+   * ventas del turno y permisos) leído del servidor con la máscara del cierre
+   * ciego ya aplicada (`GET /api/pos/cajas/[id]/resumen`). `idOUuid` es el
+   * número de la caja o su uuid.
+   *
+   * Desktop sin red: el servidor no está; se arma con el cálculo local de
+   * siempre (`getCashSummary` sobre réplica + outbox) y `sinRed: true`. La
+   * visibilidad la decide entonces la pantalla con `useBlindCloseMode`.
+   */
+  static async getResumen(
+    idOUuid: string | number,
+    opciones: { ventas?: boolean; sesionLocal?: CashSession } = {},
+  ): Promise<ResumenCaja & { sinRed?: boolean }> {
+    const local = opciones.sesionLocal;
+    if (shouldOperateCashOffline() || (local && local.id < 0)) {
+      return this.resumenSinRed(local ?? (await this.getSessionById(Number(idOUuid))));
+    }
+    const headers: Record<string, string> = {};
+    if (this.organizationId) headers['x-organization-id'] = String(this.organizationId);
+    const qs = opciones.ventas === false ? '?ventas=0' : '';
+    const response = await fetch(`/api/pos/cajas/${encodeURIComponent(String(idOUuid))}/resumen${qs}`, {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers,
+    });
+    const body = (await response.json().catch(() => null)) as (ResumenCaja & { error?: string; codigo?: string }) | null;
+    if (!response.ok || !body || !('sesion' in body)) {
+      throw new ErrorCaja(body?.codigo || 'lectura_fallida', body?.error || 'No se pudo leer la caja');
+    }
+    return body;
+  }
+
+  /**
+   * Cifras de varias cajas abiertas en una petición (`GET /api/pos/cajas/resumenes`).
+   * Sin red: el cálculo local de cada una.
+   */
+  static async getResumenes(ids: number[]): Promise<Map<number, ResumenCompacto>> {
+    const mapa = new Map<number, ResumenCompacto>();
+    const reales = ids.filter((id) => id > 0);
+    if (shouldOperateCashOffline() || reales.length === 0) {
+      const calculados = await Promise.allSettled(ids.map((id) => this.getCashSummary(id)));
+      calculados.forEach((r, i) => {
+        if (r.status === 'fulfilled') {
+          mapa.set(ids[i], {
+            sales_cash: r.value.sales_cash,
+            sales_cash_count: r.value.sales_cash_count ?? 0,
+            expected_amount: r.value.expected_amount,
+            cash_in: r.value.cash_in,
+            cash_out: r.value.cash_out,
+            cash_in_count: r.value.cash_in_count ?? 0,
+            cash_out_count: r.value.cash_out_count ?? 0,
+          });
+        }
+      });
+      return mapa;
+    }
+    const headers: Record<string, string> = {};
+    if (this.organizationId) headers['x-organization-id'] = String(this.organizationId);
+    const response = await fetch(`/api/pos/cajas/resumenes?ids=${reales.join(',')}`, { credentials: 'same-origin', cache: 'no-store', headers });
+    const body = (await response.json().catch(() => null)) as { resumenes?: Record<string, ResumenCompacto>; codigo?: string; error?: string } | null;
+    if (!response.ok || !body?.resumenes) throw new ErrorCaja(body?.codigo || 'lectura_fallida', body?.error || 'No se pudieron leer las cajas');
+    for (const [id, r] of Object.entries(body.resumenes)) mapa.set(Number(id), r);
+    return mapa;
+  }
+
+  /** Resumen sin red (Desktop): mismo contrato que el del servidor, con el cálculo local. */
+  private static async resumenSinRed(session: CashSession): Promise<ResumenCaja & { sinRed: true }> {
+    const [summary, movements, mode] = await Promise.all([
+      this.getCashSummary(session.id),
+      this.getSessionMovements(session.id),
+      this.getCashSessionMode(),
+    ]);
+    const userId = await getCurrentUserId();
+    const porMetodo: Record<string, number> = { ...(summary.income_by_method ?? {}) };
+    porMetodo.cash = summary.expected_amount;
+    return {
+      sinRed: true,
+      modo: mode,
+      sesion: {
+        id: session.id,
+        uuid: session.uuid,
+        organization_id: session.organization_id,
+        branch_id: session.branch_id,
+        branch_name: session.branch_name ?? null,
+        opened_by: session.opened_by,
+        opened_by_name: session.opened_by_name ?? null,
+        opened_at: session.opened_at,
+        initial_amount: Number(session.initial_amount),
+        closed_at: session.closed_at ?? null,
+        closed_by: session.closed_by ?? null,
+        closed_by_name: session.closed_by_name ?? null,
+        final_amount: session.final_amount ?? null,
+        difference: session.difference ?? null,
+        status: session.status,
+        notes: session.notes ?? null,
+      },
+      esperado: {
+        session_id: session.id,
+        status: session.status,
+        efectivo_esperado: summary.expected_amount,
+        por_metodo: porMetodo,
+        detalle: {
+          inicial: summary.initial_amount,
+          ventas_efectivo: summary.sales_cash,
+          vuelto: summary.change_total,
+          abonos_efectivo: summary.cash_receipts_by_method?.cash ?? 0,
+          entradas: summary.cash_in,
+          salidas: summary.cash_out,
+          compras_efectivo: summary.purchases_by_method?.cash ?? 0,
+          devoluciones: summary.returns_total,
+        },
+        por_cajero: mode === 'user',
+        hasta: session.closed_at ?? null,
+        oculto: false,
+      },
+      movimientos: movements.map((m) => ({
+        id: m.id,
+        uuid: m.uuid ?? null,
+        type: m.type,
+        concept: m.concept,
+        concept_code: m.concept_code ?? null,
+        clave_concepto: claveDeConcepto(m),
+        reference: m.reference ?? null,
+        amount: Number(m.amount),
+        notes: m.notes ?? null,
+        created_at: m.created_at,
+        user_id: m.user_id,
+        user_name: m.user_name ?? null,
+      })),
+      arqueos: [],
+      ventas: { cantidad: 0, total: 0, filas: [], truncadas: false },
+      permisos: {
+        cerrarCajasAjenas: false,
+        verEsperadoEnCierreCiego: false,
+        esPropia: session.opened_by === userId,
+        puedeCerrar: session.status === 'open' && session.opened_by === userId,
+      },
+      cierreCiego: false,
+      verImportes: true,
+    };
   }
 
   /**
@@ -955,7 +1122,8 @@ export class CajasService {
           .eq('id', session.opened_by)
           .single();
         if (profileData) {
-          session.opened_by_name = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Usuario';
+          // Sin nombre queda vacío: la pantalla pone su respaldo traducido («Cajero», «—»).
+          session.opened_by_name = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || undefined;
         }
       }
 
@@ -974,136 +1142,6 @@ export class CajasService {
       return session;
     } catch (error) {
       console.error('Error getting session by UUID:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Obtiene el historial de sesiones con filtros
-   */
-  static async getSessionHistory(filter?: CashSessionFilter): Promise<CashSession[]> {
-    try {
-      const branchFilter = getBranchFilter();
-      let query = supabase
-        .from('cash_sessions')
-        .select('*')
-        .eq('organization_id', this.organizationId)
-        .order('opened_at', { ascending: false });
-
-      // Filtrar por sucursal salvo en modo "Todas las sucursales"
-      if (branchFilter) {
-        query = query.eq('branch_id', branchFilter);
-      }
-
-      if (filter?.status && filter.status !== 'all') {
-        query = query.eq('status', filter.status);
-      }
-
-      if (filter?.date_from) {
-        query = query.gte('opened_at', filter.date_from);
-      }
-
-      if (filter?.date_to) {
-        query = query.lte('opened_at', filter.date_to);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      return data || [];
-    } catch (error) {
-      console.error('Error getting session history:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Genera reporte completo de una sesión para PDF
-   */
-  static async generateSessionReport(sessionId: number): Promise<CashSessionReport> {
-    try {
-      // Obtener sesión con nombre del cajero
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('cash_sessions')
-        .select('*')
-        .eq('id', sessionId)
-        .single();
-
-      if (sessionError) throw sessionError;
-
-      const session = sessionData as CashSession;
-      // Obtener nombre del cajero desde profiles (no hay FK directa)
-      if (session?.opened_by) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('id', session.opened_by)
-          .single();
-
-        if (profileData) {
-          session.opened_by_name = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Usuario';
-        } else {
-          session.opened_by_name = 'Usuario';
-        }
-      }
-
-      // Obtener nombre de la sucursal
-      if (session?.branch_id) {
-        const { data: branchData } = await supabase
-          .from('branches')
-          .select('name')
-          .eq('id', session.branch_id)
-          .single();
-        if (branchData) {
-          session.branch_name = branchData.name;
-        } else {
-          session.branch_name = `#${session.branch_id}`;
-        }
-      } else {
-        session.branch_name = 'Todas las sucursales';
-      }
-
-      const movements = await this.getSessionMovements(sessionId);
-      const summary = await this.getCashSummary(sessionId);
-
-      // En modo 'user' el reporte solo incluye las ventas del cajero de esta caja
-      const reportCashMode = await this.getCashSessionMode();
-      const reportFilterByCashier = reportCashMode === 'user' && !!session.opened_by;
-
-      // Obtener resumen de ventas con change_amount
-      let salesQuery = supabase
-        .from('payments')
-        .select('amount, method, change_amount')
-        .eq('organization_id', this.organizationId)
-        .eq('status', 'completed')
-        .gte('created_at', session.opened_at)
-        .lte('created_at', session.closed_at || new Date().toISOString());
-      if (session.branch_id) {
-        salesQuery = salesQuery.eq('branch_id', session.branch_id);
-      }
-      if (reportFilterByCashier) {
-        salesQuery = salesQuery.eq('created_by', session.opened_by);
-      }
-      const { data: salesData, error: salesError } = await salesQuery;
-
-      if (salesError) throw salesError;
-
-      const salesSummary = {
-        total_sales: (salesData || []).reduce((sum, p) => sum + Number(p.amount), 0),
-        cash_sales: (salesData || []).filter(p => p.method === 'cash').reduce((sum, p) => sum + Number(p.amount), 0),
-        card_sales: (salesData || []).filter(p => p.method === 'card').reduce((sum, p) => sum + Number(p.amount), 0),
-        other_sales: (salesData || []).filter(p => p.method !== 'cash' && p.method !== 'card').reduce((sum, p) => sum + Number(p.amount), 0)
-      };
-
-      return {
-        session,
-        movements,
-        summary,
-        sales_summary: salesSummary
-      };
-    } catch (error) {
-      console.error('Error generating session report:', error);
       throw error;
     }
   }
@@ -1133,38 +1171,28 @@ export class CajasService {
   }
 
   /**
-   * Crea un arqueo de caja
+   * Crea un arqueo de caja.
+   *
+   * Va por `pos_caja_registrar_arqueo`: el esperado lo calcula el servidor y
+   * `difference` la calcula Postgres (columna GENERATED; mandarla en el insert
+   * daba 428C9 y ningún arqueo se había podido guardar). Efectivo contra
+   * efectivo; cada otro método contra su esperado en `method_breakdown`.
    */
   static async createCashCount(sessionId: number, data: CreateCashCountData): Promise<CashCount> {
     try {
       const userId = await getCurrentUserId();
       if (!userId) {
-        throw new Error('Usuario no autenticado');
+        throw new ErrorCaja('no_autenticado', 'Usuario no autenticado');
       }
 
-      // Obtener monto esperado
-      const summary = await this.getCashSummary(sessionId);
-
-      const { data: count, error } = await supabase
-        .from('cash_counts')
-        .insert({
-          organization_id: this.organizationId,
-          cash_session_id: sessionId,
-          count_type: data.count_type,
-          counted_amount: data.counted_amount,
-          expected_amount: data.expected_amount || summary.expected_amount,
-          difference: data.counted_amount - (data.expected_amount || summary.expected_amount),
-          denominations: data.denominations,
-          counted_by: userId,
-          notes: data.notes
-        })
-        .select()
-        .single();
+      const { data: count, error } = await supabase.rpc(
+        'pos_caja_registrar_arqueo',
+        parametrosArqueo(sessionId, data),
+      );
 
       if (error) throw error;
 
-      console.log('Arqueo registrado:', count.id);
-      return count;
+      return count as CashCount;
     } catch (error) {
       console.error('Error creating cash count:', error);
       throw error;
@@ -1178,25 +1206,11 @@ export class CajasService {
     try {
       const userId = await getCurrentUserId();
       if (!userId) {
-        throw new Error('Usuario no autenticado');
+        throw new ErrorCaja('no_autenticado', 'Usuario no autenticado');
       }
 
-      const { data: movement, error } = await supabase
-        .from('cash_movements')
-        .insert({
-          organization_id: this.organizationId,
-          cash_session_id: sessionId,
-          type: data.type,
-          concept: data.concept,
-          amount: data.amount,
-          user_id: userId,
-          notes: data.notes
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
+      // La RPC exige caja abierta de la organización (antes solo lo comprobaba la pantalla).
+      const movement = await this.registrarMovimiento(sessionId, data);
       console.log('Movimiento registrado en sesión:', movement.id);
       return movement;
     } catch (error) {
@@ -1206,59 +1220,17 @@ export class CajasService {
   }
 
   /**
-   * Obtiene detalle completo de una sesión con movimientos y arqueos (por ID numérico)
+   * Escribe el movimiento por `pos_caja_registrar_movimiento` (caja abierta,
+   * autor = sesión, idempotente por uuid). Ya no hay INSERT directo en
+   * `cash_movements` desde el navegador (fase 2 de la RLS de cajas).
    */
-  static async getSessionDetail(sessionId: number): Promise<{
-    session: CashSession;
-    movements: CashMovement[];
-    counts: CashCount[];
-    summary: CashSummary;
-  }> {
-    try {
-      const [session, movements, counts, summary] = await Promise.all([
-        this.getSessionById(sessionId),
-        this.getSessionMovements(sessionId),
-        this.getSessionCounts(sessionId),
-        this.getCashSummary(sessionId)
-      ]);
-
-      return { session, movements, counts, summary };
-    } catch (error) {
-      console.error('Error getting session detail:', error);
-      throw error;
+  private static async registrarMovimiento(sessionId: number, data: CreateCashMovementData | CashMovementData): Promise<CashMovement> {
+    const { data: fila, error } = await supabase.rpc(RPC_MOVIMIENTO_CAJA, parametrosMovimiento(sessionId, data as DatosMovimientoCaja));
+    if (error) {
+      const codigo = codigoErrorMovimiento(error);
+      throw new ErrorCaja(codigo, (error as { message?: string }).message || 'No se pudo registrar el movimiento');
     }
-  }
-
-  /**
-   * Obtiene detalle completo de una sesión por UUID
-   */
-  static async getSessionDetailByUuid(uuid: string): Promise<{
-    session: CashSession;
-    movements: CashMovement[];
-    counts: CashCount[];
-    summary: CashSummary;
-  }> {
-    try {
-      const session = await this.getSessionByUuid(uuid);
-      const [movements, counts, summary] = await Promise.all([
-        this.getSessionMovements(session.id),
-        this.getSessionCounts(session.id),
-        this.getCashSummary(session.id)
-      ]);
-
-      return { session, movements, counts, summary };
-    } catch (error) {
-      console.error('Error getting session detail by UUID:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Obtiene resumen de caja por UUID
-   */
-  static async getCashSummaryByUuid(uuid: string): Promise<CashSummary> {
-    const session = await this.getSessionByUuid(uuid);
-    return this.getCashSummary(session.id);
+    return movimientoDeRpc<CashMovement>(fila);
   }
 
   /**
@@ -1267,65 +1239,6 @@ export class CajasService {
   static async createCashCountByUuid(uuid: string, data: CreateCashCountData): Promise<CashCount> {
     const session = await this.getSessionByUuid(uuid);
     return this.createCashCount(session.id, data);
-  }
-
-  /**
-   * Registra movimiento por UUID de sesión
-   */
-  static async addMovementToSessionByUuid(uuid: string, data: CreateCashMovementData): Promise<CashMovement> {
-    const session = await this.getSessionByUuid(uuid);
-    return this.addMovementToSession(session.id, data);
-  }
-
-  /**
-   * Obtiene ventas por UUID de sesión
-   */
-  static async getSessionSalesByUuid(uuid: string): Promise<SessionSaleRow[]> {
-    const session = await this.getSessionByUuid(uuid);
-    return this.getSessionSales(session.id);
-  }
-
-  /**
-   * Obtiene pagos por método por UUID de sesión
-   */
-  static async getSessionPaymentsByMethodByUuid(uuid: string): Promise<Record<string, number>> {
-    const session = await this.getSessionByUuid(uuid);
-    return this.getSessionPaymentsByMethod(session.id);
-  }
-
-  /**
-   * Obtiene las ventas de una sesión de caja
-   */
-  static async getSessionSales(sessionId: number): Promise<SessionSaleRow[]> {
-    try {
-      const session = await this.getSessionById(sessionId);
-
-      // En modo 'user' solo se incluyen las ventas registradas por el cajero de esta caja
-      const salesCashMode = await this.getCashSessionMode();
-      const salesFilterByCashier = salesCashMode === 'user' && !!session.opened_by;
-
-      let salesQuery = supabase
-        .from('sales')
-        .select('id, total, status, payment_status, created_at, customer_id, source')
-        .eq('organization_id', this.organizationId)
-        .eq('branch_id', session.branch_id)
-        .eq('include_in_cash_register', true)
-        .neq('payment_status', 'pending')
-        .gte('created_at', session.opened_at)
-        .lte('created_at', session.closed_at || new Date().toISOString());
-      if (salesFilterByCashier) {
-        salesQuery = salesQuery.eq('user_id', session.opened_by);
-      }
-      const { data, error } = await salesQuery
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      return (data || []) as SessionSaleRow[];
-    } catch (error) {
-      console.error('Error getting session sales:', error);
-      throw error;
-    }
   }
 
   /**
@@ -1497,45 +1410,6 @@ export class CajasService {
       return details;
     } catch (error) {
       console.error('Error getting session payments detail:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Obtiene los pagos de una sesión de caja agrupados por método
-   */
-  static async getSessionPaymentsByMethod(sessionId: number): Promise<Record<string, number>> {
-    try {
-      const session = await this.getSessionById(sessionId);
-
-      // En modo 'user' solo se incluyen los pagos del cajero de esta caja
-      const pbmCashMode = await this.getCashSessionMode();
-      const pbmFilterByCashier = pbmCashMode === 'user' && !!session.opened_by;
-
-      let paymentsByMethodQuery = supabase
-        .from('payments')
-        .select('method, amount')
-        .eq('organization_id', this.organizationId)
-        .eq('branch_id', session.branch_id)
-        .eq('status', 'completed')
-        .gte('created_at', session.opened_at)
-        .lte('created_at', session.closed_at || new Date().toISOString());
-      if (pbmFilterByCashier) {
-        paymentsByMethodQuery = paymentsByMethodQuery.eq('created_by', session.opened_by);
-      }
-      const { data, error } = await paymentsByMethodQuery;
-
-      if (error) throw error;
-
-      const paymentsByMethod: Record<string, number> = {};
-      (data || []).forEach(p => {
-        const method = p.method || 'other';
-        paymentsByMethod[method] = (paymentsByMethod[method] || 0) + Number(p.amount);
-      });
-
-      return paymentsByMethod;
-    } catch (error) {
-      console.error('Error getting session payments by method:', error);
       throw error;
     }
   }

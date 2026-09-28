@@ -32,8 +32,8 @@ export function MembershipCard({
   onFreeze,
   onUnfreeze
 }: MembershipCardProps) {
-  const { formatDate } = useFormatDate();
-  const daysRemaining = getDaysRemaining(membership.end_date);
+  const { formatDate, timezone } = useFormatDate();
+  const daysRemaining = getDaysRemaining(membership.end_date, timezone);
   const isExpired = daysRemaining < 0;
   const isExpiringSoon = daysRemaining >= 0 && daysRemaining <= 7;
   const customer = membership.customers;

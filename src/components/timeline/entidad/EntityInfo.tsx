@@ -3,7 +3,8 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import {
   Package,
   Users,
@@ -14,9 +15,6 @@ import {
   Shield,
   Calendar,
   Building2,
-  Clock,
-  Hash,
-  User,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -108,6 +106,9 @@ const ENTITY_FIELDS: Record<string, Array<{ key: string; label: string; format?:
 export function EntityInfo({ entityType, entityId, entityData, loading }: EntityInfoProps) {
   const IconComponent = ENTITY_ICONS[entityType.toLowerCase()] || FileText;
   const fields = ENTITY_FIELDS[entityType.toLowerCase()] || [];
+  // Importes en la moneda del documento (si la trae) o en la base de la organización.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const monedaEntidad = typeof entityData?.currency === 'string' ? entityData.currency : null;
 
   // Ojo: el parametro no puede llamarse `format`, tapa al `format` de date-fns
   const formatValue = (value: unknown, valueFormat?: 'date' | 'currency' | 'boolean'): string => {
@@ -122,11 +123,7 @@ export function EntityInfo({ entityType, entityId, entityData, loading }: Entity
     }
     
     if (valueFormat === 'currency' && typeof value === 'number') {
-      return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: 'COP',
-        minimumFractionDigits: 0,
-      }).format(value);
+      return formatMoneda(value, paraDocumento(monedaEntidad));
     }
     
     if (valueFormat === 'boolean') {

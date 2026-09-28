@@ -26,6 +26,7 @@ import {
   DollarSign,
 } from 'lucide-react';
 import { ParkingRate, VehicleType, RateUnit } from './types';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface TarifasListProps {
   rates: ParkingRate[];
@@ -70,6 +71,9 @@ export function TarifasList({
   onToggleActive,
   isLoading,
 }: TarifasListProps) {
+  // Moneda base de la organización (las tarifas de parking no tienen moneda propia).
+  const { formatear: formatPrice } = useMonedaOrganizacion();
+
   if (isLoading) {
     return <CardListSkeleton cards={6} columns="3" />;
   }
@@ -87,14 +91,6 @@ export function TarifasList({
       </div>
     );
   }
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(price);
-  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

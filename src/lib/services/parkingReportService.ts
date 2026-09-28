@@ -1,4 +1,50 @@
 import { supabase } from '@/lib/supabase/config';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { toPlainDate } from '@/lib/utils/dateCore';
+import { getDateRange } from '@/lib/utils/dateRanges';
+import { formatDateTimeInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
+import { diaDeLaSemanaDelDia, sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
+
+// ============================================================
+// Fase B, tanda 8 — los reportes de parqueadero se cortan por el dia del
+// parqueadero, no por el dia UTC.
+//
+// `parking_sessions.entry_at` y `payments.created_at` son **timestamptz**
+// (verificado en `information_schema.columns`), y las siete consultas de este
+// archivo los comparaban contra los dias sueltos del filtro:
+//
+//     .gte('entry_at', '2026-09-01').lte('entry_at', '2026-09-23')
+//
+// Postgres lee esas cadenas como medianoche UTC. Dos errores a la vez:
+//   1. El ULTIMO DIA DEL RANGO NO ENTRA, salvo la primera hora. Un informe
+//      «del 1 al 23» dejaba fuera casi todas las sesiones del 23.
+//   2. El corte va desplazado el offset de la zona: en Bogota, las sesiones
+//      entre las 19:00 y medianoche se contaban en el dia siguiente.
+//
+// `getDateRange` convierte los dos extremos en instantes con su offset real
+// (DST incluido), y por eso el filtro pasa a ser `gte`/`lte` sobre instantes.
+//
+// El agrupador por dia/semana/mes y las «horas pico» tambien se leen en la
+// zona del parqueadero: `new Date(entry_at).getHours()` daba la hora del
+// navegador, y el ISO cortado por la 'T' el dia UTC.
+//
+// La zona entra por identidad (ADR-003): `resolveTimezone(organizationId,
+// filters.branchId)`.
+// ============================================================
+
+/**
+ * Hora de pared (0–23) de un `timestamptz` en la zona dada, o `null` si el
+ * valor no es legible. Nunca `getHours()`, que lee el reloj del navegador.
+ */
+function horaEnZona(valor: string | null | undefined, timezone: string): number | null {
+  if (!valor) return null;
+  const instante = new Date(valor);
+  if (isNaN(instante.getTime())) return null;
+  // `formatTimeInTz` devuelve "HH:mm" en 24 h; `parseInt` se queda con "HH".
+  const hora = parseInt(formatTimeInTz(instante, timezone), 10);
+  if (isNaN(hora)) return null;
+  return hora === 24 ? 0 : hora;
+}
 
 export interface OccupancyByHour {
   hour: number;
@@ -54,6 +100,29 @@ export interface ReportSummary {
 
 class ParkingReportService {
   /**
+   * Zona horaria efectiva del reporte. ADR-003: identidad, nunca un
+   * `timezone` ya resuelto. `parking_sessions` tiene `branch_id`, asi que
+   * cuando el filtro nombra una sucursal manda la suya.
+   */
+  private zona(organizationId: number, filters: ReportFilters): Promise<string> {
+    return resolveTimezone(organizationId, filters.branchId ?? null);
+  }
+
+  /**
+   * Los dos extremos del filtro como INSTANTES con offset, listos para una
+   * columna `timestamptz`. Devuelve tambien la zona, porque quien filtra casi
+   * siempre tiene que agrupar o formatear despues con la misma.
+   */
+  private async rangoDeInstantes(
+    organizationId: number,
+    filters: ReportFilters,
+  ): Promise<{ start: string; end: string; timezone: string }> {
+    const timezone = await this.zona(organizationId, filters);
+    const { start, end } = getDateRange(filters.startDate, filters.endDate, timezone);
+    return { start, end, timezone };
+  }
+
+  /**
    * Obtener resumen general de reportes
    */
   async getReportSummary(
@@ -61,12 +130,13 @@ class ParkingReportService {
     filters: ReportFilters
   ): Promise<ReportSummary> {
     try {
+      const rango = await this.rangoDeInstantes(organizationId, filters);
       const { data: sessions, error } = await supabase
         .from('parking_sessions')
         .select('*, branch:branches!inner(organization_id)')
         .eq('branch.organization_id', organizationId)
-        .gte('entry_at', filters.startDate)
-        .lte('entry_at', filters.endDate)
+        .gte('entry_at', rango.start)
+        .lte('entry_at', rango.end)
         .eq('status', 'closed');
 
       if (error) throw error;
@@ -106,12 +176,13 @@ class ParkingReportService {
     filters: ReportFilters
   ): Promise<OccupancyByHour[]> {
     try {
+      const rango = await this.rangoDeInstantes(organizationId, filters);
       const { data: sessions, error } = await supabase
         .from('parking_sessions')
         .select('entry_at, duration_min, branch:branches!inner(organization_id)')
         .eq('branch.organization_id', organizationId)
-        .gte('entry_at', filters.startDate)
-        .lte('entry_at', filters.endDate);
+        .gte('entry_at', rango.start)
+        .lte('entry_at', rango.end);
 
       if (error) throw error;
 
@@ -121,8 +192,12 @@ class ParkingReportService {
         hourlyData[i] = { count: 0, totalDuration: 0 };
       }
 
+      // La franja horaria es la del PARQUEADERO. `getHours()` daba la del
+      // navegador: la misma entrada caia en las 08:00 mirando desde Bogota y
+      // en las 15:00 mirando desde Madrid.
       (sessions || []).forEach((session) => {
-        const hour = new Date(session.entry_at).getHours();
+        const hour = horaEnZona(session.entry_at, rango.timezone);
+        if (hour === null) return;
         hourlyData[hour].count++;
         hourlyData[hour].totalDuration += session.duration_min || 0;
       });
@@ -147,12 +222,13 @@ class ParkingReportService {
     groupBy: 'day' | 'week' | 'month' = 'day'
   ): Promise<RevenueByPeriod[]> {
     try {
+      const rango = await this.rangoDeInstantes(organizationId, filters);
       const { data: sessions, error } = await supabase
         .from('parking_sessions')
         .select('entry_at, amount, branch:branches!inner(organization_id)')
         .eq('branch.organization_id', organizationId)
-        .gte('entry_at', filters.startDate)
-        .lte('entry_at', filters.endDate)
+        .gte('entry_at', rango.start)
+        .lte('entry_at', rango.end)
         .eq('status', 'closed');
 
       if (error) throw error;
@@ -160,17 +236,20 @@ class ParkingReportService {
       const periodData: { [key: string]: { revenue: number; sessions: number } } = {};
 
       (sessions || []).forEach((session) => {
-        const date = new Date(session.entry_at);
+        // `entry_at` es timestamptz: su dia es el de la zona del parqueadero.
+        // El ISO cortado por la 'T' daba el dia UTC, y `getFullYear()` /
+        // `getMonth()` el mes del navegador: una sesion del 31 de enero a las
+        // 20:00 en Bogota se agrupaba en febrero.
+        const dia = toPlainDate(new Date(session.entry_at), rango.timezone);
         let periodKey: string;
 
         if (groupBy === 'day') {
-          periodKey = date.toISOString().split('T')[0];
+          periodKey = dia;
         } else if (groupBy === 'week') {
-          const weekStart = new Date(date);
-          weekStart.setDate(date.getDate() - date.getDay());
-          periodKey = weekStart.toISOString().split('T')[0];
+          // Semana que empieza en domingo, igual que antes.
+          periodKey = sumarDiasAlDia(dia, -diaDeLaSemanaDelDia(dia));
         } else {
-          periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          periodKey = dia.slice(0, 7);
         }
 
         if (!periodData[periodKey]) {
@@ -201,6 +280,7 @@ class ParkingReportService {
     filters: ReportFilters
   ): Promise<ZoneStats[]> {
     try {
+      const rango = await this.rangoDeInstantes(organizationId, filters);
       // Obtener zonas
       const { data: zones, error: zonesError } = await supabase
         .from('parking_zones')
@@ -218,8 +298,8 @@ class ParkingReportService {
           branch:branches!inner(organization_id)
         `)
         .eq('branch.organization_id', organizationId)
-        .gte('entry_at', filters.startDate)
-        .lte('entry_at', filters.endDate)
+        .gte('entry_at', rango.start)
+        .lte('entry_at', rango.end)
         .eq('status', 'closed');
 
       if (sessionsError) throw sessionsError;
@@ -265,12 +345,13 @@ class ParkingReportService {
     filters: ReportFilters
   ): Promise<VehicleTypeStats[]> {
     try {
+      const rango = await this.rangoDeInstantes(organizationId, filters);
       const { data: sessions, error } = await supabase
         .from('parking_sessions')
         .select('vehicle_type, amount, branch:branches!inner(organization_id)')
         .eq('branch.organization_id', organizationId)
-        .gte('entry_at', filters.startDate)
-        .lte('entry_at', filters.endDate)
+        .gte('entry_at', rango.start)
+        .lte('entry_at', rango.end)
         .eq('status', 'closed');
 
       if (error) throw error;
@@ -310,14 +391,15 @@ class ParkingReportService {
     filters: ReportFilters
   ): Promise<PassVsOccasional> {
     try {
+      const rango = await this.rangoDeInstantes(organizationId, filters);
       // Pagos de sesiones (ocasionales)
       const { data: sessionPayments, error: sessionError } = await supabase
         .from('payments')
         .select('amount')
         .eq('organization_id', organizationId)
         .eq('source', 'parking_session')
-        .gte('created_at', filters.startDate)
-        .lte('created_at', filters.endDate)
+        .gte('created_at', rango.start)
+        .lte('created_at', rango.end)
         .eq('status', 'completed');
 
       if (sessionError) throw sessionError;
@@ -328,8 +410,8 @@ class ParkingReportService {
         .select('amount')
         .eq('organization_id', organizationId)
         .eq('source', 'parking_pass')
-        .gte('created_at', filters.startDate)
-        .lte('created_at', filters.endDate)
+        .gte('created_at', rango.start)
+        .lte('created_at', rango.end)
         .eq('status', 'completed');
 
       if (passError) throw passError;
@@ -364,12 +446,13 @@ class ParkingReportService {
     limit: number = 10
   ): Promise<{ plate: string; visits: number; totalSpent: number }[]> {
     try {
+      const rango = await this.rangoDeInstantes(organizationId, filters);
       const { data: sessions, error } = await supabase
         .from('parking_sessions')
         .select('vehicle_plate, amount, branch:branches!inner(organization_id)')
         .eq('branch.organization_id', organizationId)
-        .gte('entry_at', filters.startDate)
-        .lte('entry_at', filters.endDate);
+        .gte('entry_at', rango.start)
+        .lte('entry_at', rango.end);
 
       if (error) throw error;
 
@@ -406,6 +489,7 @@ class ParkingReportService {
     filters: ReportFilters
   ): Promise<string> {
     try {
+      const rango = await this.rangoDeInstantes(organizationId, filters);
       const { data: sessions, error } = await supabase
         .from('parking_sessions')
         .select(`
@@ -414,8 +498,8 @@ class ParkingReportService {
           branch:branches!inner(name, organization_id)
         `)
         .eq('branch.organization_id', organizationId)
-        .gte('entry_at', filters.startDate)
-        .lte('entry_at', filters.endDate)
+        .gte('entry_at', rango.start)
+        .lte('entry_at', rango.end)
         .order('entry_at', { ascending: false });
 
       if (error) throw error;
@@ -434,8 +518,11 @@ class ParkingReportService {
       const rows = (sessions || []).map((s) => [
         s.vehicle_plate,
         s.vehicle_type,
-        new Date(s.entry_at).toLocaleString('es-CO'),
-        s.exit_at ? new Date(s.exit_at).toLocaleString('es-CO') : '-',
+        // Entrada y salida en la hora del PARQUEADERO. `toLocaleString` sin
+        // `timeZone` imprimia la del navegador: el mismo CSV descargado desde
+        // dos husos distintos daba horas distintas para la misma sesion.
+        formatDateTimeInTz(s.entry_at, rango.timezone),
+        s.exit_at ? formatDateTimeInTz(s.exit_at, rango.timezone) : '-',
         s.duration_min || 0,
         s.amount || 0,
         s.status,

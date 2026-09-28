@@ -5,9 +5,9 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useOrganization, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import EmployeeLoansService from '@/lib/services/employeeLoansService';
-import type { EmployeeLoan } from '@/lib/services/employeeLoansService';
+import type { EmployeeLoan, LoanFilters } from '@/lib/services/employeeLoansService';
 import { LoansTable } from '@/components/hrm/prestamos';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +38,6 @@ import {
   Search,
   CheckCircle,
   Clock,
-  XCircle,
   AlertTriangle,
   ArrowLeft,
   DollarSign,
@@ -47,6 +46,8 @@ import {
 export default function PrestamosPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
+  // Totales de varios préstamos: se pintan en la moneda base de la organización.
+  const { formatear } = useMonedaOrganizacion();
 
   const [loans, setLoans] = useState<EmployeeLoan[]>([]);
   const [stats, setStats] = useState({
@@ -80,7 +81,7 @@ export default function PrestamosPage() {
 
     setIsLoading(true);
     try {
-      const filters: any = {};
+      const filters: LoanFilters = {};
       if (statusFilter && statusFilter !== 'all') {
         filters.status = statusFilter;
       }
@@ -103,7 +104,7 @@ export default function PrestamosPage() {
 
       setLoans(filtered);
       setStats(statsData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading data:', error);
       toast({
         title: 'Error',
@@ -137,10 +138,10 @@ export default function PrestamosPage() {
       toast({ title: 'Préstamo aprobado y activado' });
       setApproveId(null);
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo aprobar el préstamo',
+        description: (error as { message?: string } | null)?.message || 'No se pudo aprobar el préstamo',
         variant: 'destructive',
       });
     }
@@ -162,7 +163,7 @@ export default function PrestamosPage() {
       setRejectLoan(null);
       setRejectReason('');
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo rechazar el préstamo',
@@ -181,7 +182,7 @@ export default function PrestamosPage() {
       toast({ title: 'Préstamo cancelado' });
       setCancelId(null);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo cancelar el préstamo',
@@ -200,7 +201,7 @@ export default function PrestamosPage() {
       toast({ title: 'Préstamo eliminado' });
       setDeleteId(null);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo eliminar el préstamo',
@@ -317,7 +318,7 @@ export default function PrestamosPage() {
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Desembolsado</p>
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                  {formatCurrency(stats.totalDisbursed, 'COP')}
+                  {formatear(stats.totalDisbursed)}
                 </p>
               </div>
             </div>
@@ -332,7 +333,7 @@ export default function PrestamosPage() {
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Saldo</p>
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                  {formatCurrency(stats.totalBalance, 'COP')}
+                  {formatear(stats.totalBalance)}
                 </p>
               </div>
             </div>

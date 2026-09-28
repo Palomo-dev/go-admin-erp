@@ -11,6 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { telefonoOpcionalValido } from "@/lib/utils/telefono";
 import { FileText } from "lucide-react";
 
 interface EditCustomerModalProps {
@@ -36,6 +38,8 @@ export default function EditCustomerModal({
 }: EditCustomerModalProps) {
   if (!customer) return null;
 
+  const telefonoInvalido = !telefonoOpcionalValido(formData.phone);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
@@ -50,6 +54,7 @@ export default function EditCustomerModal({
           className="space-y-4 py-2"
           onSubmit={(e) => {
             e.preventDefault();
+            if (telefonoInvalido) return;
             onSave();
           }}
         >
@@ -80,12 +85,10 @@ export default function EditCustomerModal({
 
             <div className="space-y-2">
               <Label htmlFor="phone">Teléfono</Label>
-              <Input
+              <PhoneInput
                 id="phone"
                 value={formData.phone}
-                onChange={(e) =>
-                  onFormChange("phone", e.target.value)
-                }
+                onChange={(v) => onFormChange("phone", v)}
               />
             </div>
 
@@ -136,7 +139,7 @@ export default function EditCustomerModal({
           <Button
             type="submit"
             onClick={onSave}
-            disabled={isSaving}
+            disabled={isSaving || telefonoInvalido}
           >
             {isSaving ? "Guardando..." : "Guardar"}
           </Button>

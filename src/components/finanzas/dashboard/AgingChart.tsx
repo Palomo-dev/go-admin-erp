@@ -4,7 +4,8 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/utils/Utils';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import type { AgingData } from './FinanzasDashboardService';
 
 interface AgingChartProps {
@@ -21,7 +22,12 @@ const agingColors = [
   'bg-red-700 dark:bg-red-800'
 ];
 
-export function AgingChart({ data, isLoading, currencyCode = 'COP' }: AgingChartProps) {
+export function AgingChart({ data, isLoading, currencyCode }: AgingChartProps) {
+  // Agregados del tablero: en la moneda que pasa el padre (la base) o, si no
+  // llega, en la moneda base de la organización. Nunca pesos fijos.
+  const { paraDocumento } = useMonedaOrganizacion();
+  const monedaCtx = paraDocumento(currencyCode);
+  const formatear = crearFormateadorMoneda(monedaCtx);
   if (isLoading) {
     return (
       <Card className="dark:bg-gray-800/50">
@@ -64,7 +70,7 @@ export function AgingChart({ data, isLoading, currencyCode = 'COP' }: AgingChart
             Antigüedad de Cartera (CxC)
           </CardTitle>
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            Total: {formatCurrency(totalCartera, currencyCode)}
+            Total: {formatear(totalCartera)}
           </span>
         </div>
       </CardHeader>
@@ -81,7 +87,7 @@ export function AgingChart({ data, isLoading, currencyCode = 'COP' }: AgingChart
                     'transition-all hover:opacity-80'
                   )}
                   style={{ width: `${item.porcentaje}%` }}
-                  title={`${item.rango}: ${formatCurrency(item.monto, currencyCode)} (${item.porcentaje.toFixed(1)}%)`}
+                  title={`${item.rango}: ${formatear(item.monto)} (${item.porcentaje.toFixed(1)}%)`}
                 />
               )
             ))}
@@ -103,7 +109,7 @@ export function AgingChart({ data, isLoading, currencyCode = 'COP' }: AgingChart
                     {item.porcentaje.toFixed(1)}%
                   </span>
                   <span className="font-medium text-gray-900 dark:text-white w-32 text-right">
-                    {formatCurrency(item.monto, currencyCode)}
+                    {formatear(item.monto)}
                   </span>
                 </div>
               </div>

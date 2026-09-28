@@ -15,8 +15,11 @@ import PaymentMethodStep from '../../../components/auth/PaymentMethodStep';
 import { supabase } from '@/lib/supabase/config';
 import { extractGoogleUserNames } from '@/lib/auth/googleAuth';
 import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { setOrganizationDefaultTaxByCode, type CodigoTarifaPorDefecto } from '@/lib/services/defaultTaxService';
 import { useTranslations } from 'next-intl';
 import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
+import { Firma, Isotipo } from '@/components/shell/marca/Firma';
+import type { User } from '@supabase/supabase-js';
 
 // Definición de tipos
 interface SignupData {
@@ -54,6 +57,7 @@ interface SignupData {
   organizationSecondaryColor?: string;
   organizationSubdomain?: string;
   logoUrl?: string; // NUEVO - Storage path del logo
+  defaultTaxCode?: CodigoTarifaPorDefecto; // Tarifa por defecto para productos sin impuesto
   // Si se une con código
   invitationCode: string;
   // Datos de sucursal principal
@@ -98,12 +102,11 @@ function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations('auth.signup');
-  const tc = useTranslations('common');
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isGoogleUser, setIsGoogleUser] = useState(false);
-  const [googleUserData, setGoogleUserData] = useState<any>(null);
+  const [googleUserData, setGoogleUserData] = useState<User | null>(null);
   const [signupData, setSignupData] = useState<SignupData>({
     firstName: '',
     lastName: '',
@@ -364,26 +367,33 @@ function SignupContent() {
           throw memberError;
         }
         console.log('✅ Membresía creada exitosamente');
+
+        // Tarifa por defecto elegida en el paso de organización. El disparador
+        // setup_organization_defaults ya sembró los impuestos; aquí solo se
+        // marca is_default. No bloquea el registro.
+        if (signupData.defaultTaxCode) {
+          try {
+            await setOrganizationDefaultTaxByCode(supabase, orgId, signupData.defaultTaxCode);
+          } catch (taxError) {
+            console.warn('⚠️ No se pudo guardar la tarifa por defecto (no bloquea signup):', taxError);
+          }
+        }
         
         // Registrar vendedor si viene con código de referido
         if (signupData.referralCode) {
           console.log('🔍 Registrando referral de vendedor:', signupData.referralCode);
           try {
-            const { data: seller, error: sellerError } = await supabase
-              .from('sellers')
-              .select('id')
-              .eq('referral_code', signupData.referralCode)
-              .eq('status', 'active')
-              .single();
+            // RPC que valida que el llamante administre la organización; la
+            // tabla sellers ya no es legible por otros usuarios.
+            const { data: registrado, error: refRpcError } = await supabase
+              .rpc('fn_registrar_referido_vendedor', {
+                p_referral_code: signupData.referralCode,
+                p_organization_id: orgId,
+              });
 
-            if (seller && !sellerError) {
-              await supabase
-                .from('seller_referrals')
-                .insert({
-                  seller_id: seller.id,
-                  organization_id: orgId,
-                  status: 'pending',
-                });
+            if (refRpcError) {
+              console.warn('⚠️ No se pudo registrar el referido:', refRpcError.message);
+            } else if (registrado) {
               console.log('✅ Referral de vendedor registrado');
             } else {
               console.warn('⚠️ Código de vendedor no encontrado:', signupData.referralCode);
@@ -453,7 +463,7 @@ function SignupContent() {
           throw branchError;
         }
         if (!updatedBranches || updatedBranches.length === 0) {
-          throw new Error('No se encontró la sucursal principal creada automáticamente para actualizar');
+          throw new Error(t('errorMainBranchNotFound'));
         }
         console.log('✅ Sucursal principal actualizada exitosamente');
         
@@ -568,7 +578,7 @@ function SignupContent() {
           ? new Date(stripeTrialEnd).toISOString()
           : new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000).toISOString();
 
-        const updatePayload: any = {
+        const updatePayload: Record<string, unknown> = {
           plan_id: planId,
           billing_period: billingPeriod,
           ...(signupData.skipTrial
@@ -640,7 +650,7 @@ function SignupContent() {
       if (isGoogleUser && googleUserData) {
         // Usuario de Google ya autenticado, crear datos con el flujo completo
         console.log('Usuario de Google completando signup:', googleUserData.id);
-        await createSignupData(googleUserData.id, googleUserData.email);
+        await createSignupData(googleUserData.id, googleUserData.email || '');
         // Usar window.location.replace (full reload) en lugar de router.push para
         // sincronizar las cookies de sesión de Supabase antes de montar AppLayout,
         // igual que el flujo de login. Con router.push (client-side) AppLayout puede
@@ -690,6 +700,7 @@ function SignupContent() {
               organizationSecondaryColor: signupData.organizationSecondaryColor,
               organizationSubdomain: signupData.organizationSubdomain,
               logoUrl: signupData.logoUrl,
+              defaultTaxCode: signupData.defaultTaxCode,
               // Código de invitación
               invitationCode: signupData.invitationCode,
               // Datos de sucursal
@@ -730,11 +741,11 @@ function SignupContent() {
         if (errorMsg.toLowerCase().includes('already registered') || errorMsg.toLowerCase().includes('already been registered')) {
           throw new Error(t('emailAlreadyRegistered'));
         }
-        throw new Error(errorMsg || 'Error al crear la cuenta');
+        throw new Error(errorMsg || t('errorCreateAccount'));
       }
 
       if (!authData.user) {
-        throw new Error('No se pudo crear el usuario');
+        throw new Error(t('errorCreateUser'));
       }
 
       console.log('Usuario creado exitosamente en Auth:', authData.user.id);
@@ -761,9 +772,10 @@ function SignupContent() {
           // sesión antes de montar AppLayout, igual que el flujo de login.
           window.location.replace('/app/inicio?welcome=true');
           return;
-        } catch (createError: any) {
+        } catch (createError: unknown) {
           console.error('Error creando datos de registro:', createError);
-          throw new Error(`${t('errorSetupAccount')} - ${createError.message || 'Error desconocido'}`);
+          const detalle = createError instanceof Error && createError.message ? createError.message : t('errorUnknown');
+          throw new Error(`${t('errorSetupAccount')} - ${detalle}`);
         }
       }
       
@@ -771,9 +783,9 @@ function SignupContent() {
       console.log('Email de verificación enviado a:', signupData.email);
       nextStep();
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error en registro:', err);
-      setError(err.message || 'Error al crear la cuenta');
+      setError(err instanceof Error && err.message ? err.message : t('errorCreateAccount'));
     } finally {
       setLoading(false);
     }
@@ -800,46 +812,41 @@ function SignupContent() {
       {/* Panel de branding - solo desktop */}
       <div className="hidden lg:flex lg:w-2/5 items-center justify-center p-12 relative z-10">
         <div className="relative z-10 max-w-sm text-white">
-          {/* Logo grande */}
+          {/* Firma del manual de marca, variante sobre fondo azul */}
           <div className="mb-8">
-            <div className="inline-flex items-center justify-center bg-white/15 backdrop-blur-sm rounded-2xl p-5 shadow-2xl ring-1 ring-white/20">
-              <div className="flex flex-col items-center justify-center space-y-0.5">
-                <div className="text-4xl font-black text-white tracking-tight leading-none">GO</div>
-                <div className="text-sm font-medium text-blue-100 tracking-wide uppercase">Admin</div>
-              </div>
-            </div>
+            <Firma invertido />
           </div>
           <h1 className="text-3xl xl:text-4xl font-bold mb-4 leading-tight">
             {t('pageTitle')}
           </h1>
           <p className="text-base xl:text-lg text-blue-100 dark:text-gray-300 mb-8 leading-relaxed">
-            Crea tu cuenta y la de tu organización en pocos minutos.
+            {t('brandPanel.subtitle')}
           </p>
           {/* Pasos del proceso */}
           <ul className="space-y-3 text-blue-50 dark:text-gray-300">
             <li className="flex items-center gap-3">
               <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">1</span>
-              <span className="text-sm">Datos personales</span>
+              <span className="text-sm">{t('brandPanel.steps.personal')}</span>
             </li>
             <li className="flex items-center gap-3">
               <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">2</span>
-              <span className="text-sm">Organización</span>
+              <span className="text-sm">{t('brandPanel.steps.organization')}</span>
             </li>
             <li className="flex items-center gap-3">
               <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">3</span>
-              <span className="text-sm">Sucursal principal</span>
+              <span className="text-sm">{t('brandPanel.steps.mainBranch')}</span>
             </li>
             <li className="flex items-center gap-3">
               <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">4</span>
-              <span className="text-sm">Plan y suscripción</span>
+              <span className="text-sm">{t('brandPanel.steps.plan')}</span>
             </li>
             <li className="flex items-center gap-3">
               <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">5</span>
-              <span className="text-sm">Método de pago</span>
+              <span className="text-sm">{t('brandPanel.steps.payment')}</span>
             </li>
             <li className="flex items-center gap-3">
               <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">6</span>
-              <span className="text-sm">Verificación de email</span>
+              <span className="text-sm">{t('brandPanel.steps.verification')}</span>
             </li>
           </ul>
         </div>
@@ -850,26 +857,9 @@ function SignupContent() {
 
       <div className={formCardClass}>
         <div className="flex flex-col items-center">
-          {/* Logo GO Admin con diseño moderno */}
+          {/* Isotipo del manual de marca (en desktop lo lleva el panel azul) */}
           <div className="mb-2 sm:mb-3 lg:hidden">
-            <div className="relative">
-              {/* Círculo decorativo con gradiente de fondo */}
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-lg blur-sm sm:blur-md opacity-30 animate-pulse"></div>
-              
-              {/* Contenedor del logo */}
-              <div className="relative bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg p-2 sm:p-3 shadow-lg">
-                <div className="flex flex-col items-center justify-center space-y-0">
-                  {/* Texto GO con estilo bold */}
-                  <div className="text-xl sm:text-2xl font-black text-white tracking-tight leading-none">
-                    GO
-                  </div>
-                  {/* Texto Admin con estilo más ligero */}
-                  <div className="text-[10px] sm:text-xs font-medium text-blue-100 tracking-wide uppercase">
-                    Admin
-                  </div>
-                </div>
-              </div>
-            </div>
+            <Isotipo tamano={40} />
           </div>
           
           {/* Título mejorado */}

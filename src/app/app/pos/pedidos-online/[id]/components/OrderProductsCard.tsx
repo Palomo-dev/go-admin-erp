@@ -3,7 +3,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Receipt } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
 import { OrderItemsList, OrderTotals } from '@/components/pos/pedidos-online';
 import type { WebOrder } from '@/lib/services/webOrdersService';
 

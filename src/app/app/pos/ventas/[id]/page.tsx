@@ -1,11 +1,18 @@
 'use client';
 
-import { useParams } from 'next/navigation';
-import { VentaDetalle } from '@/components/pos/ventas/VentaDetalle';
+import { Suspense, use } from 'react';
+import { VentaDetallePage } from '@/components/pos/ventas/detalle/VentaDetallePage';
 
-export default function VentaDetalleRoute() {
-  const params = useParams();
-  const saleId = params?.id as string;
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
 
-  return <VentaDetalle saleId={saleId} />;
+/** Detalle de venta: la URL no cambia (`/app/pos/ventas/{uuid}`); el servidor valida el id. */
+export default function VentaDetalleRoute({ params }: PageProps) {
+  const { id } = use(params);
+  return (
+    <Suspense>
+      <VentaDetallePage ventaId={id} />
+    </Suspense>
+  );
 }

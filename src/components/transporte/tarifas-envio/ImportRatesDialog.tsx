@@ -16,10 +16,10 @@ import {
   FileSpreadsheet,
   Loader2,
   CheckCircle,
-  XCircle,
   AlertTriangle,
 } from 'lucide-react';
 import type { CreateShippingRateData } from '@/lib/services/shippingRatesService';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface ImportRatesDialogProps {
   open: boolean;
@@ -53,6 +53,10 @@ export function ImportRatesDialog({
   isLoading = false,
 }: ImportRatesDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Moneda del ejemplo de la plantilla: la base de la organización (vacía
+  // mientras no se conoce; una fila sin moneda toma la base al importarse).
+  const { code: monedaBase, resuelta: monedaResuelta } = useMonedaOrganizacion();
+  const monedaEjemplo = monedaResuelta ? monedaBase : '';
   const [parsedData, setParsedData] = useState<ParsedRow[]>([]);
   const [fileName, setFileName] = useState<string>('');
   const [importResult, setImportResult] = useState<{ success: number; errors: string[] } | null>(null);
@@ -91,7 +95,7 @@ export function ImportRatesDialog({
       '8000',
       '5',
       '1',
-      'COP',
+      monedaEjemplo,
     ];
 
     const csvContent = [headers.join(','), exampleRow.join(',')].join('\n');

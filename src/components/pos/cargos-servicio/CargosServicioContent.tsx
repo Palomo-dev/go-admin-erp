@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   ChargesList,
@@ -14,8 +14,10 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 export function CargosServicioContent({ embedded = false }: { embedded?: boolean }) {
+  const t = useTranslations('posCargosServicio');
   const { organization, isLoading: orgLoading } = useOrganization();
   const { branchFilter } = useBranch();
 
@@ -27,13 +29,25 @@ export function CargosServicioContent({ embedded = false }: { embedded?: boolean
   const [filters, setFilters] = useState<ServiceChargeFilters>({});
   const [showForm, setShowForm] = useState(false);
   const [editingCharge, setEditingCharge] = useState<ServiceCharge | null>(null);
+  const [puedeGestionar, setPuedeGestionar] = useState(false);
 
-  // Sincronizar filtro local de sucursal con branchFilter global
+  // Permiso de escritura (billing_management), resuelto en la base.
+  useEffect(() => {
+    if (!organization?.id) return;
+    let vigente = true;
+    CargosServicioService.puedeGestionar()
+      .then((puede) => { if (vigente) setPuedeGestionar(puede); })
+      .catch(() => { if (vigente) setPuedeGestionar(false); });
+    return () => { vigente = false; };
+  }, [organization?.id]);
+
+  // La sucursal global solo fija el valor inicial del filtro local; cambiar el
+  // filtro de esta página no toca la sucursal global (ver ChargesHeader).
   useEffect(() => {
     setFilters(prev => prev.branch_id === (branchFilter ?? undefined) ? prev : { ...prev, branch_id: branchFilter ?? undefined });
   }, [branchFilter]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!organization?.id) return;
 
     setLoading(true);
@@ -52,19 +66,19 @@ export function CargosServicioContent({ embedded = false }: { embedded?: boolean
         active: allCharges.filter((c) => c.is_active).length,
         inactive: allCharges.filter((c) => !c.is_active).length,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading service charges:', error);
-      toast.error('Error al cargar los cargos de servicio');
+      toast.error(t('toast.errorCarga'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [organization?.id, filters, t]);
 
   useEffect(() => {
     if (organization?.id) {
-      loadData();
+      void loadData();
     }
-  }, [organization?.id, filters, branchFilter]);
+  }, [organization?.id, loadData]);
 
   const handleEdit = (charge: ServiceCharge) => {
     setEditingCharge(charge);
@@ -99,6 +113,7 @@ export function CargosServicioContent({ embedded = false }: { embedded?: boolean
         branches={branches}
         stats={stats}
         loading={loading}
+        puedeGestionar={puedeGestionar}
       />
 
       <Card className="dark:bg-gray-800 dark:border-gray-700">
@@ -107,7 +122,8 @@ export function CargosServicioContent({ embedded = false }: { embedded?: boolean
             charges={charges}
             loading={loading}
             onRefresh={loadData}
-            onEdit={handleEdit}
+            onEdit={puedeGestionar ? handleEdit : undefined}
+            puedeGestionar={puedeGestionar}
           />
         </CardContent>
       </Card>

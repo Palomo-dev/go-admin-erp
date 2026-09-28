@@ -17,11 +17,19 @@ import {
 } from './components';
 import type { DateFilterPreset } from './components/MisEnviosFilters';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/dateDisplay';
+import { plainDayOfInstant } from '@/lib/services/businessInstant';
+import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
 
 export default function MisEnviosPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
   const { branchFilter } = useBranch();
+  // Hacen falta dos zonas: la de la organizacion para decidir que dia es «hoy»
+  // para quien filtra, y la de la sucursal de CADA envio para saber en que dia
+  // cayo su `created_at`. `resolveFor` se puede llamar por fila; un hook, no.
+  const { timezone, resolveFor } = useOrgTimezone();
   const [shipments, setShipments] = useState<DeliveryShipment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -275,41 +283,27 @@ export default function MisEnviosPage() {
     }
   };
 
+  // Rango del filtro, en DIAS CALENDARIO de la organizacion. `from` incluido,
+  // `to` excluido — la misma semantica de siempre, ahora escrita con aritmetica
+  // de dias en vez de `Date.setDate` sobre la medianoche del NAVEGADOR, que en
+  // Madrid caia en el dia anterior y desplazaba el filtro entero un dia.
   const getDateRange = () => {
     if (dateFilter === 'all') return null;
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const hoy = todayInTz(timezone);
     switch (dateFilter) {
-      case 'today': {
-        const end = new Date(today);
-        end.setDate(end.getDate() + 1);
-        return { from: today.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
-      }
-      case 'yesterday': {
-        const start = new Date(today);
-        start.setDate(start.getDate() - 1);
-        return { from: start.toISOString().split('T')[0], to: today.toISOString().split('T')[0] };
-      }
-      case '7days': {
-        const start = new Date(today);
-        start.setDate(start.getDate() - 7);
-        return { from: start.toISOString().split('T')[0], to: now.toISOString().split('T')[0] };
-      }
-      case '15days': {
-        const start = new Date(today);
-        start.setDate(start.getDate() - 15);
-        return { from: start.toISOString().split('T')[0], to: now.toISOString().split('T')[0] };
-      }
-      case '30days': {
-        const start = new Date(today);
-        start.setDate(start.getDate() - 30);
-        return { from: start.toISOString().split('T')[0], to: now.toISOString().split('T')[0] };
-      }
+      case 'today':
+        return { from: hoy, to: sumarDiasAlDia(hoy, 1) };
+      case 'yesterday':
+        return { from: sumarDiasAlDia(hoy, -1), to: hoy };
+      case '7days':
+        return { from: sumarDiasAlDia(hoy, -7), to: hoy };
+      case '15days':
+        return { from: sumarDiasAlDia(hoy, -15), to: hoy };
+      case '30days':
+        return { from: sumarDiasAlDia(hoy, -30), to: hoy };
       case 'custom': {
         if (!dateFrom || !dateTo) return null;
-        const to = new Date(dateTo);
-        to.setDate(to.getDate() + 1);
-        return { from: dateFrom, to: to.toISOString().split('T')[0] };
+        return { from: dateFrom, to: sumarDiasAlDia(dateTo, 1) };
       }
       default:
         return null;
@@ -327,7 +321,12 @@ export default function MisEnviosPage() {
     const range = getDateRange();
     let matchesDate = true;
     if (range) {
-      const shipmentDate = s.created_at?.split('T')[0] || '';
+      // `shipments.created_at` es **timestamptz**. `split('T')[0]` se quedaba
+      // con el dia UTC: un envio creado a las 19:00 en Bogota se contaba como
+      // del dia siguiente y desaparecia del filtro «hoy». El dia de un envio es
+      // el de SU sucursal (`shipments.branch_id`).
+      const zonaDelEnvio = resolveFor(s.branch_id ?? null).timezone;
+      const shipmentDate = plainDayOfInstant(s.created_at, zonaDelEnvio);
       matchesDate = shipmentDate >= range.from && shipmentDate < range.to;
     }
     return matchesSearch && matchesStatus && matchesDate;

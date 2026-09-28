@@ -1,552 +1,263 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+/**
+ * /app/pos/cajas/[id]/arqueos/nuevo — «Nuevo arqueo» (Figma `359:57136`,
+ * `360:144952` móvil; paso 8 de docs/implementacion/CAJAS-VENTAS-PLAN.md).
+ *
+ * - Tipo de arqueo (apertura · parcial · cierre) con la ayuda de que un arqueo
+ *   de tipo «Cierre» NO cierra la caja.
+ * - Efectivo por billetes y monedas de la moneda de la organización
+ *   (`ConteoEfectivo`) y los demás métodos (`ConteoPorMetodo`), cada uno contra
+ *   su propio esperado.
+ * - El esperado viene del servidor (`GET /api/pos/cajas/[id]/resumen`): con
+ *   cierre ciego y sin permiso no llega y se ve «Oculto».
+ * - Observación obligatoria si hay diferencia; confirmación antes de guardar
+ *   con diferencia (Figma `C-ArqueoDif` `360:145358`).
+ * - Guarda por `pos_caja_registrar_arqueo` (solo lo contado; el servidor
+ *   calcula esperado, diferencia y `method_breakdown`, y exige la caja abierta).
+ */
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import {
-  ArrowLeft,
-  Calculator,
-  Save,
-  RefreshCw,
-  DollarSign,
-  AlertCircle,
-  CheckCircle,
-  CreditCard,
-  Banknote,
-  Smartphone,
-  Wallet,
-  EyeOff,
-} from 'lucide-react';
-import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { RichTextEditor } from '@/components/shared/RichTextEditor';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useOrganization } from '@/lib/hooks/useOrganization';
-import { formatCurrency, cn } from '@/utils/Utils';
-import { CajasService } from '../CajasService';
-import { ConfiguracionService } from '@/components/pos/configuracion/configuracionService';
-import { useBlindCloseMode } from '../useBlindCloseMode';
-import type { CashSession, CashSummary, CashDenominations, CreateCashCountData } from '../types';
-import { supabase } from '@/lib/supabase/config';
+import { useTranslations } from 'next-intl';
+import { ClipboardList, NotebookPen } from 'lucide-react';
 import { toast } from 'sonner';
+import { Dialogo, EmptyState, FormField, PageHeader, SegmentedControl, Tarjeta } from '@/components/kit';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
+import { diferenciasPorMetodo, observacionObligatoria, totalesConteo, type TipoArqueo } from '@/lib/pos/cajas/arqueo';
+import { conteoParaGuardar, denominacionesDe, totalDenominaciones, type ConteoDenominaciones } from '@/lib/pos/cajas/denominaciones';
+import { CajasService } from '../CajasService';
+import { ConteoEfectivo } from '../conteo/ConteoEfectivo';
+import { ConteoPorMetodo } from '../conteo/ConteoPorMetodo';
+import { ResumenArqueo } from '../conteo/ResumenArqueo';
+import { DebajoSesion, useMensajeErrorCaja, useMetodosPagoActivos, useMonedaCaja } from '../comunesCaja';
+import { useEtiquetaMetodoPago } from '../paymentMethodLabels';
+import { useResumenCaja } from '../useResumenCaja';
 
 interface NuevoArqueoPageProps {
   sessionUuid: string;
 }
 
-// Denominaciones colombianas
-const BILL_DENOMINATIONS = [100000, 50000, 20000, 10000, 5000, 2000, 1000];
-const COIN_DENOMINATIONS = [1000, 500, 200, 100, 50];
+const MAX_NOTAS = 1000;
 
 export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
+  const t = useTranslations('cajas.arqueo');
+  const tFicha = useTranslations('cajas.ficha');
   const router = useRouter();
-  const { organization, isLoading: orgLoading } = useOrganization();
-  const [session, setSession] = useState<CashSession | null>(null);
-  const [summary, setSummary] = useState<CashSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const { isBlindMode, isOrgAdmin, showExpected } = useBlindCloseMode();
-  const [paymentMethods, setPaymentMethods] = useState<{ code: string; name: string }[]>([]);
+  const { moneda, simbolo, formatear } = useMonedaCaja();
+  const etiquetaMetodo = useEtiquetaMetodoPago();
+  const mensajeError = useMensajeErrorCaja();
+  const metodosActivos = useMetodosPagoActivos();
+  const { resumen, cargando, error, recargar } = useResumenCaja(sessionUuid, { ventas: false });
 
-  // Form state
-  const [countType, setCountType] = useState<'opening' | 'partial' | 'closing'>('partial');
-  const [notes, setNotes] = useState('');
-  const [bills, setBills] = useState<Record<string, number>>({});
-  const [coins, setCoins] = useState<Record<string, number>>({});
-  const [methodCounts, setMethodCounts] = useState<Record<string, number>>({});
+  const [tipo, setTipo] = useState<TipoArqueo>('partial');
+  const [denominaciones, setDenominaciones] = useState<ConteoDenominaciones>({});
+  const [efectivoManual, setEfectivoManual] = useState<number | null>(null);
+  const [otros, setOtros] = useState<Record<string, number | null>>({});
+  const [notas, setNotas] = useState('');
+  const [intentoGuardar, setIntentoGuardar] = useState(false);
+  const [confirmar, setConfirmar] = useState(false);
+  const [guardando, setGuardando] = useState(false);
 
-  useEffect(() => {
-    if (organization?.id && sessionUuid) {
-      loadSessionData();
-    }
-  }, [organization, sessionUuid]);
+  const volverA = `/app/pos/cajas/${sessionUuid}`;
+  const conLista = denominacionesDe(moneda.code) !== null;
+  const efectivoContado = conLista ? totalDenominaciones(denominaciones) : efectivoManual ?? 0;
+  const visible = resumen?.verImportes ?? false;
 
-  const loadPaymentMethods = async () => {
+  const filas = useMemo(
+    () => diferenciasPorMetodo(visible ? resumen?.esperado.por_metodo ?? {} : null, { ...otros, cash: efectivoContado }, metodosActivos),
+    [visible, resumen, otros, efectivoContado, metodosActivos],
+  );
+  const totales = useMemo(() => totalesConteo(filas), [filas]);
+  const notasObligatorias = observacionObligatoria(totales.diferenciaTotal);
+  const errorNotas = intentoGuardar && notasObligatorias && !notas.trim() ? t('notasObligatorias') : null;
+  const nadaContado = totales.totalContado <= 0;
+
+  const guardar = async () => {
+    setGuardando(true);
     try {
-      const methods = await ConfiguracionService.getPaymentMethods();
-      const activeMethods = methods
-        .filter(m => m.is_active)
-        .map(m => ({ code: m.payment_method_code, name: m.payment_methods?.name || m.payment_method_code }));
-      setPaymentMethods(activeMethods);
-    } catch (err) {
-      console.warn('Error loading payment methods:', err);
+      const porMetodo: Record<string, number> = {};
+      for (const [k, v] of Object.entries(otros)) if (v !== null && v > 0) porMetodo[k] = v;
+      const guardado = await CajasService.createCashCountByUuid(sessionUuid, {
+        count_type: tipo,
+        counted_amount: efectivoContado,
+        counted_by_method: porMetodo,
+        denominations: conLista ? conteoParaGuardar(denominaciones) : undefined,
+        notes: notas.trim() || undefined,
+      });
+      const dif = guardado.difference;
+      toast.success(t('guardado'), {
+        description: dif !== null && dif !== undefined ? t('guardadoDiferencia', { monto: formatear(Number(dif)) }) : t('guardadoSinCifras'),
+      });
+      router.push(volverA);
+    } catch (e) {
+      const m = (e as { message?: string })?.message ?? '';
+      toast.error(t('errorGuardar'), { description: m.includes('caja_cerrada') ? mensajeError('caja_ya_cerrada') : mensajeError(null, m) });
+      setGuardando(false);
+      setConfirmar(false);
     }
   };
 
-  const loadSessionData = async () => {
-    setIsLoading(true);
-    try {
-      const [sessionData, summaryData] = await Promise.all([
-        CajasService.getSessionByUuid(sessionUuid),
-        CajasService.getCashSummaryByUuid(sessionUuid),
-      ]);
-      setSession(sessionData);
-      setSummary(summaryData);
-      await loadPaymentMethods();
-    } catch (error: any) {
-      console.error('Error loading session:', error);
-      toast.error('Error al cargar datos de la sesión');
-    } finally {
-      setIsLoading(false);
+  const alGuardar = () => {
+    setIntentoGuardar(true);
+    if (nadaContado) return;
+    if (notasObligatorias && !notas.trim()) return;
+    if (visible && observacionObligatoria(totales.diferenciaTotal)) {
+      setConfirmar(true);
+      return;
     }
+    void guardar();
   };
 
-  const handleBillChange = (denomination: number, quantity: string) => {
-    const qty = parseInt(quantity) || 0;
-    setBills(prev => ({ ...prev, [denomination.toString()]: qty }));
-  };
+  const migas = [
+    { etiqueta: tFicha('migaPos'), href: '/app/pos' },
+    { etiqueta: tFicha('migaCajas'), href: '/app/pos/cajas' },
+    { etiqueta: resumen ? tFicha('sesion', { id: resumen.sesion.id }) : '…', href: volverA },
+    { etiqueta: t('titulo') },
+  ];
 
-  const handleCoinChange = (denomination: number, quantity: string) => {
-    const qty = parseInt(quantity) || 0;
-    setCoins(prev => ({ ...prev, [denomination.toString()]: qty }));
-  };
-
-  const handleMethodCountChange = (method: string, value: string) => {
-    const amount = parseFloat(value) || 0;
-    setMethodCounts(prev => ({ ...prev, [method]: amount }));
-  };
-
-  const calculateCashTotal = () => {
-    let total = 0;
-    Object.entries(bills).forEach(([denom, qty]) => {
-      total += parseInt(denom) * qty;
-    });
-    Object.entries(coins).forEach(([denom, qty]) => {
-      total += parseInt(denom) * qty;
-    });
-    return total;
-  };
-
-  const calculateMethodTotal = () => {
-    return Object.values(methodCounts).reduce((sum, val) => sum + val, 0);
-  };
-
-  const countedAmount = calculateCashTotal() + calculateMethodTotal();
-  const cashTotal = calculateCashTotal();
-  const expectedAmount = summary?.expected_amount || 0;
-  const difference = countedAmount - expectedAmount;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!session) return;
-
-    setIsSaving(true);
-    try {
-      const denominations: CashDenominations = {};
-      
-      // Solo incluir denominaciones con cantidad > 0
-      const filteredBills: Record<string, number> = {};
-      Object.entries(bills).forEach(([denom, qty]) => {
-        if (qty > 0) filteredBills[denom] = qty;
-      });
-      if (Object.keys(filteredBills).length > 0) {
-        denominations.bills = filteredBills;
-      }
-
-      const filteredCoins: Record<string, number> = {};
-      Object.entries(coins).forEach(([denom, qty]) => {
-        if (qty > 0) filteredCoins[denom] = qty;
-      });
-      if (Object.keys(filteredCoins).length > 0) {
-        denominations.coins = filteredCoins;
-      }
-
-      const data: CreateCashCountData = {
-        count_type: countType,
-        counted_amount: countedAmount,
-        expected_amount: expectedAmount,
-        denominations: Object.keys(denominations).length > 0 ? denominations : undefined,
-        notes: notes || undefined
-      };
-
-      await CajasService.createCashCountByUuid(sessionUuid, data);
-      
-      toast.success('Arqueo registrado exitosamente', {
-        description: showExpected ? `Diferencia: ${formatCurrency(difference)}` : 'Arqueo registrado'
-      });
-      
-      router.push(`/app/pos/cajas/${sessionUuid}`);
-    } catch (error: any) {
-      console.error('Error creating cash count:', error);
-      toast.error('Error al registrar arqueo', {
-        description: error.message
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const clearDenominations = () => {
-    setBills({});
-    setCoins({});
-    setMethodCounts({});
-  };
-
-  if (orgLoading || isLoading) {
+  // ── Estados ───────────────────────────────────────────────────────────────
+  if (cargando && !resumen) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <PageHeaderSkeleton />
-        <DetailSkeleton />
+      <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6" aria-busy="true">
+        <PageHeader titulo={t('titulo')} variante="form" volverA={volverA} migas={migas} cargando />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <Skeleton className="h-96 rounded-xl lg:col-span-2" />
+          <Skeleton className="h-64 rounded-xl" />
+        </div>
       </div>
     );
   }
-
-  if (!session || session.status !== 'open') {
+  if (error || !resumen) {
+    const noExiste = error === 'caja_no_encontrada' || error === 'caja_invalida';
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
-        <div className="container mx-auto max-w-4xl">
-          <Card className="dark:bg-gray-800">
-            <CardContent className="p-6 text-center">
-              <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
-              <h2 className="text-lg font-semibold mb-2 dark:text-white">
-                {!session ? 'Sesión no encontrada' : 'Sesión cerrada'}
-              </h2>
-              <p className="text-gray-500 dark:text-gray-400 mb-4">
-                {!session 
-                  ? 'La sesión de caja solicitada no existe.'
-                  : 'No se pueden registrar arqueos en una sesión cerrada.'
-                }
-              </p>
-              <Link href="/app/pos/cajas">
-                <Button variant="outline">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Volver a Cajas
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+      <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
+        <PageHeader titulo={t('titulo')} variante="form" volverA="/app/pos/cajas" migas={migas} />
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState
+            variante={noExiste ? 'empty' : 'error'}
+            titulo={noExiste ? tFicha('noExisteTitulo') : tFicha('errorTitulo')}
+            descripcion={noExiste ? tFicha('noExisteDescripcion') : mensajeError(error)}
+            onReintentar={noExiste ? undefined : () => void recargar()}
+            accion={noExiste ? { etiqueta: tFicha('volverCajas'), href: '/app/pos/cajas' } : undefined}
+          />
+        </div>
+      </div>
+    );
+  }
+  if (resumen.sesion.status !== 'open') {
+    return (
+      <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
+        <PageHeader titulo={t('titulo')} variante="form" volverA={volverA} migas={migas} debajo={<DebajoSesion sesion={resumen.sesion} />} />
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState
+            variante="forbidden"
+            titulo={t('cerradaTitulo')}
+            descripcion={t('cerradaDescripcion')}
+            accion={{ etiqueta: tFicha('verCaja'), href: volverA }}
+            accionSecundaria={{ etiqueta: tFicha('volverCajas'), href: '/app/pos/cajas' }}
+          />
         </div>
       </div>
     );
   }
 
-  const getMethodIcon = (code: string) => {
-    switch (code) {
-      case 'cash': return <Wallet className="h-4 w-4 text-green-600 dark:text-green-400" />;
-      case 'card': return <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />;
-      case 'transfer': return <Banknote className="h-4 w-4 text-purple-600 dark:text-purple-400" />;
-      case 'nequi': case 'daviplata': return <Smartphone className="h-4 w-4 text-orange-600 dark:text-orange-400" />;
-      default: return <DollarSign className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
-    }
-  };
-
-  const getMethodLabel = (code: string) => {
-    switch (code) {
-      case 'cash': return 'Efectivo';
-      case 'card': return 'Tarjeta';
-      case 'transfer': return 'Transferencia';
-      case 'credit': return 'Crédito';
-      default: return code.charAt(0).toUpperCase() + code.slice(1);
-    }
-  };
+  const botones = (
+    <>
+      <Button variant="outline" className="h-10" onClick={() => router.push(volverA)} disabled={guardando}>
+        {t('cancelar')}
+      </Button>
+      <Button className="h-10" onClick={alGuardar} disabled={guardando || nadaContado} title={nadaContado ? t('nadaContado') : undefined}>
+        {guardando ? t('guardando') : t('guardar')}
+      </Button>
+    </>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Link href={`/app/pos/cajas/${sessionUuid}`}>
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="flex-1">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold dark:text-white">Nuevo Arqueo</h1>
-              {isBlindMode && !isOrgAdmin && (
-                <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 flex items-center gap-1">
-                  <EyeOff className="h-3 w-3" />
-                  Cierre Ciego
-                </Badge>
-              )}
+    <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 pb-24 sm:p-6">
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={t('subtitulo', { id: resumen.sesion.id })}
+        variante="form"
+        volverA={volverA}
+        migas={migas}
+        acciones={botones}
+        debajo={<DebajoSesion sesion={resumen.sesion} />}
+      />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
+          <Tarjeta titulo={t('tipoTitulo')} icono={ClipboardList}>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+              <SegmentedControl<TipoArqueo>
+                etiqueta={t('tipoTitulo')}
+                valor={tipo}
+                onValorChange={setTipo}
+                opciones={[
+                  { valor: 'opening', etiqueta: t('tipos.opening') },
+                  { valor: 'partial', etiqueta: t('tipos.partial') },
+                  { valor: 'closing', etiqueta: t('tipos.closing') },
+                ]}
+              />
+              <p className="text-xs text-fg-muted">{t('ayudaTipo')}</p>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Sesión #{session.id} - Registrar conteo de caja
-            </p>
-          </div>
+          </Tarjeta>
+
+          <ConteoEfectivo
+            moneda={moneda.code}
+            valor={denominaciones}
+            onValorChange={setDenominaciones}
+            totalManual={efectivoManual}
+            onTotalManualChange={setEfectivoManual}
+            formatear={formatear}
+            simbolo={simbolo}
+            deshabilitado={guardando}
+          />
+
+          <ConteoPorMetodo
+            filas={filas}
+            incluirEfectivo={false}
+            onContadoChange={(metodo, v) => setOtros((prev) => ({ ...prev, [metodo]: v }))}
+            etiquetaMetodo={etiquetaMetodo}
+            formatear={formatear}
+            simbolo={simbolo}
+            visible={visible}
+            deshabilitado={guardando}
+            descripcion={t('otrosDescripcion')}
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Formulario Principal */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Tipo de Arqueo */}
-              <Card className="dark:bg-gray-800 dark:border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-lg dark:text-white">Tipo de Arqueo</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Select value={countType} onValueChange={(v) => setCountType(v as any)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="opening">Apertura</SelectItem>
-                      <SelectItem value="partial">Parcial</SelectItem>
-                      <SelectItem value="closing">Cierre</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </CardContent>
-              </Card>
-
-              {/* Desglose de Billetes */}
-              <Card className="dark:bg-gray-800 dark:border-gray-700">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-lg dark:text-white flex items-center gap-2">
-                    <Wallet className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    Efectivo - Billetes
-                  </CardTitle>
-                  <Button type="button" variant="ghost" size="sm" onClick={clearDenominations}>
-                    Limpiar
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {BILL_DENOMINATIONS.map((denom) => (
-                      <div key={denom} className="space-y-1">
-                        <Label className="text-xs text-gray-500 dark:text-gray-400">
-                          {formatCurrency(denom)}
-                        </Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            min="0"
-                            value={bills[denom.toString()] || ''}
-                            onChange={(e) => handleBillChange(denom, e.target.value)}
-                            className="text-center"
-                            placeholder="0"
-                          />
-                        </div>
-                        {(bills[denom.toString()] || 0) > 0 && (
-                          <p className="text-xs text-green-600 dark:text-green-400 text-right">
-                            = {formatCurrency(denom * (bills[denom.toString()] || 0))}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Desglose de Monedas */}
-              <Card className="dark:bg-gray-800 dark:border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-lg dark:text-white">Efectivo - Monedas</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                    {COIN_DENOMINATIONS.map((denom) => (
-                      <div key={denom} className="space-y-1">
-                        <Label className="text-xs text-gray-500 dark:text-gray-400">
-                          {formatCurrency(denom)}
-                        </Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            min="0"
-                            value={coins[denom.toString()] || ''}
-                            onChange={(e) => handleCoinChange(denom, e.target.value)}
-                            className="text-center"
-                            placeholder="0"
-                          />
-                        </div>
-                        {(coins[denom.toString()] || 0) > 0 && (
-                          <p className="text-xs text-green-600 dark:text-green-400 text-right">
-                            = {formatCurrency(denom * (coins[denom.toString()] || 0))}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {cashTotal > 0 && (
-                    <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg flex justify-between items-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Total Efectivo</span>
-                      <span className="font-bold text-green-600 dark:text-green-400">{formatCurrency(cashTotal)}</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Conteo por otros métodos de pago */}
-              {paymentMethods.filter(m => m.code !== 'cash').length > 0 && (
-                <Card className="dark:bg-gray-800 dark:border-gray-700">
-                  <CardHeader>
-                    <CardTitle className="text-lg dark:text-white">Otros Métodos de Pago</CardTitle>
-                    <CardDescription className="text-gray-500 dark:text-gray-400">
-                      Registra el monto recibido en cada método de pago
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {paymentMethods.filter(m => m.code !== 'cash').map((method) => (
-                      <div key={method.code} className="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
-                        <div className="flex-shrink-0 p-2 bg-gray-100 dark:bg-gray-700 rounded-full">
-                          {getMethodIcon(method.code)}
-                        </div>
-                        <div className="flex-1">
-                          <Label className="text-sm font-medium dark:text-white text-gray-900">
-                            {method.name || getMethodLabel(method.code)}
-                          </Label>
-                          {showExpected && summary?.income_by_method && summary.income_by_method[method.code] != null && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              Esperado: {formatCurrency(summary.income_by_method[method.code])}
-                            </p>
-                          )}
-                        </div>
-                        <div className="w-40">
-                          <Input
-                            type="number"
-                            min="0"
-                            step="any"
-                            value={methodCounts[method.code] || ''}
-                            onChange={(e) => handleMethodCountChange(method.code, e.target.value)}
-                            className="text-right"
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    {calculateMethodTotal() > 0 && (
-                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex justify-between items-center">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Total Otros Métodos</span>
-                        <span className="font-bold text-blue-600 dark:text-blue-400">{formatCurrency(calculateMethodTotal())}</span>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Notas */}
-              <Card className="dark:bg-gray-800 dark:border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-lg dark:text-white">Notas</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <RichTextEditor
-                    value={notes}
-                    onChange={(html) => setNotes(html)}
-                    placeholder="Observaciones del arqueo..."
-                    minHeight={100}
-                  />
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Resumen */}
-            <div className="space-y-6">
-              <Card className="dark:bg-gray-800 dark:border-gray-700 sticky top-4">
-                <CardHeader>
-                  <CardTitle className="text-lg dark:text-white flex items-center gap-2">
-                    <Calculator className="h-5 w-5" />
-                    Resumen
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    {showExpected && (
-                      <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                        <span className="text-gray-600 dark:text-gray-400">Monto Esperado</span>
-                        <span className="font-medium dark:text-white">{formatCurrency(expectedAmount)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                      <span className="text-gray-600 dark:text-gray-400">Efectivo Contado</span>
-                      <span className="font-medium dark:text-white">{formatCurrency(cashTotal)}</span>
-                    </div>
-                    {paymentMethods.filter(m => m.code !== 'cash').length > 0 && (
-                      <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                        <span className="text-gray-600 dark:text-gray-400">Otros Métodos</span>
-                        <span className="font-medium dark:text-white">{formatCurrency(calculateMethodTotal())}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                      <span className="text-gray-600 dark:text-gray-400">Total Contado</span>
-                      <span className="font-bold text-xl text-blue-600 dark:text-blue-400">
-                        {formatCurrency(countedAmount)}
-                      </span>
-                    </div>
-
-                    {showExpected && (
-                      <>
-                        <Separator />
-                        <div className="flex justify-between items-center py-2">
-                          <span className="font-semibold dark:text-white">Diferencia</span>
-                          <div className="flex items-center gap-2">
-                            {difference >= 0 ? (
-                              <CheckCircle className="h-5 w-5 text-green-500" />
-                            ) : (
-                              <AlertCircle className="h-5 w-5 text-red-500" />
-                            )}
-                            <span className={cn(
-                              "font-bold text-xl",
-                              difference >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                            )}>
-                              {formatCurrency(difference)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {difference !== 0 && (
-                          <div className={cn(
-                            "p-3 rounded-lg",
-                            difference > 0 
-                              ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
-                              : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400"
-                          )}>
-                            <p className="text-sm">
-                              {difference > 0 
-                                ? `Sobrante de ${formatCurrency(difference)}`
-                                : `Faltante de ${formatCurrency(Math.abs(difference))}`
-                              }
-                            </p>
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {!showExpected && (
-                      <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center gap-2">
-                        <EyeOff className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
-                        <p className="text-sm text-purple-700 dark:text-purple-400">
-                          Cierre ciego activo. Los montos esperados y diferencias son visibles solo para administradores.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={isSaving || countedAmount === 0}
-                  >
-                    {isSaving ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Guardando...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-2" />
-                        Guardar Arqueo
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </form>
+        <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start">
+          <ResumenArqueo totales={totales} formatear={formatear} visible={visible} />
+          <Tarjeta titulo={t('observaciones')} icono={NotebookPen}>
+            <FormField etiqueta={t('notas')} obligatorio={notasObligatorias} error={errorNotas} ayuda={t('notasAyuda', { max: MAX_NOTAS })}>
+              <Textarea value={notas} onChange={(e) => setNotas(e.target.value.slice(0, MAX_NOTAS))} rows={3} placeholder={t('notasPlaceholder')} />
+            </FormField>
+          </Tarjeta>
+          <div className="hidden gap-3 lg:grid lg:grid-cols-2">{botones}</div>
+        </div>
       </div>
+
+      {/* Móvil: acciones fijas al pie. */}
+      <div className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-2 gap-3 border-t border-line bg-surface p-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:hidden">
+        {botones}
+      </div>
+
+      <Dialogo
+        abierto={confirmar}
+        onAbiertoChange={(v) => !guardando && setConfirmar(v)}
+        titulo={t('confirmarTitulo')}
+        descripcion={
+          totales.diferenciaTotal !== null && totales.diferenciaTotal < 0
+            ? t('confirmarFaltante', { monto: formatear(Math.abs(totales.diferenciaTotal)) })
+            : t('confirmarSobrante', { monto: formatear(Math.abs(totales.diferenciaTotal ?? 0)) })
+        }
+        ancho={440}
+        primario={{ etiqueta: t('confirmarGuardar'), onClick: () => void guardar(), cargando: guardando }}
+      >
+        <p className="text-sm text-fg-secondary">{t('confirmarNota')}</p>
+      </Dialogo>
     </div>
   );
 }

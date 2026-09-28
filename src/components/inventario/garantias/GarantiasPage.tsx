@@ -38,7 +38,6 @@ import {
   Wrench,
   DollarSign,
   Package,
-  AlertTriangle,
 } from 'lucide-react';
 import {
   warrantyClaimsService,
@@ -49,7 +48,7 @@ import {
 } from '@/lib/services/warrantyClaimsService';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { CreateClaimDialog } from './CreateClaimDialog';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { CopyableId } from '@/components/common/CopyableId';
 
@@ -76,6 +75,7 @@ export function GarantiasPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { formatDate } = useFormatDate();
+  const { formatear } = useMonedaOrganizacion();
   const organizationId = getOrganizationId();
 
   const [claims, setClaims] = useState<WarrantyClaimWithDetails[]>([]);
@@ -119,11 +119,11 @@ export function GarantiasPage() {
       } else {
         setStats(statsRes.data);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error cargando reclamos:', err);
       toast({
         title: 'Error',
-        description: err.message || 'No se pudieron cargar los reclamos de garantía',
+        description: (err as { message?: string } | null)?.message || 'No se pudieron cargar los reclamos de garantía',
         variant: 'destructive',
       });
     } finally {
@@ -156,9 +156,9 @@ export function GarantiasPage() {
       { label: 'Aprobados', value: stats.approved, icon: <CheckCircle2 size={18} />, color: 'text-green-600 dark:text-green-400' },
       { label: 'Rechazados', value: stats.rejected, icon: <XCircle size={18} />, color: 'text-red-600 dark:text-red-400' },
       { label: 'Resueltos', value: stats.resolved, icon: <CheckCircle2 size={18} />, color: 'text-indigo-600 dark:text-indigo-400' },
-      { label: 'Monto Reembolsos', value: formatCurrency(stats.totalRefundAmount, 'COP'), icon: <DollarSign size={18} />, color: 'text-purple-600 dark:text-purple-400' },
+      { label: 'Monto Reembolsos', value: formatear(stats.totalRefundAmount), icon: <DollarSign size={18} />, color: 'text-purple-600 dark:text-purple-400' },
     ];
-  }, [stats]);
+  }, [stats, formatear]);
 
   return (
     <div className="space-y-4 p-4 sm:p-6">

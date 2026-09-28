@@ -1,8 +1,10 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 
 interface Item {
@@ -41,13 +43,19 @@ interface ItemsDetalleProps {
   items: Item[];
   taxIncluded?: boolean;
   organizationTaxes?: OrganizationTax[];
+  /** Moneda del documento (factura o nota); sin ella, la base de la organización. */
+  currency?: string | null;
 }
 
-export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [] }: ItemsDetalleProps) {
+export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [], currency }: ItemsDetalleProps) {
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = crearFormateadorMoneda(paraDocumento(currency));
+  const t = useTranslations('facturasVenta');
+
   if (!items || items.length === 0) {
     return (
       <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-gray-500 dark:text-gray-400">
-        No hay ítems registrados en esta factura.
+        {t('itemsDetalle.vacio')}
       </div>
     );
   }
@@ -63,7 +71,7 @@ export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [
       const found = organizationTaxes.find(t => Number(t.rate) === rate);
       if (found) return found.name;
     }
-    return 'Impuesto';
+    return t('detalle.impuesto');
   };
 
   return (
@@ -73,12 +81,12 @@ export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [
           <TableHeader>
             <TableRow className="border-b border-gray-200 dark:border-gray-700">
               <TableHead className="w-[40px] sm:w-[50px] text-xs sm:text-sm text-gray-700 dark:text-gray-300">#</TableHead>
-              <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Descripción</TableHead>
-              <TableHead className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300">Cant.</TableHead>
-              <TableHead className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden sm:table-cell">Precio Unit.</TableHead>
-              <TableHead className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden md:table-cell">Desc.</TableHead>
-              <TableHead className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden md:table-cell">Impuesto</TableHead>
-              <TableHead className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300">Total</TableHead>
+              <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">{t('itemsDetalle.columnas.descripcion')}</TableHead>
+              <TableHead className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300">{t('itemsDetalle.columnas.cantidad')}</TableHead>
+              <TableHead className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden sm:table-cell">{t('itemsDetalle.columnas.precioUnitario')}</TableHead>
+              <TableHead className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden md:table-cell">{t('itemsDetalle.columnas.descuento')}</TableHead>
+              <TableHead className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden md:table-cell">{t('itemsDetalle.columnas.impuesto')}</TableHead>
+              <TableHead className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300">{t('itemsDetalle.columnas.total')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -94,7 +102,7 @@ export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [
                         <div className="flex flex-col gap-1">
                           {sku ? (
                             <>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">SKU: {sku}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">{t('itemsDetalle.sku', { sku })}</span>
                               <HtmlContentRenderer html={item.description} className="break-words whitespace-normal min-w-0" />
                             </>
                           ) : (
@@ -115,7 +123,7 @@ export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [
                             if (!isNaN(rate) && rate > 0 && isIncluded) {
                               return (
                                 <span className="md:hidden inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                                  Imp. incluido
+                                  {t('itemsDetalle.impIncluido')}
                                 </span>
                               );
                             }
@@ -143,20 +151,20 @@ export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [
                           <span className="text-gray-700 dark:text-gray-200">{taxName}</span>
                           {isIncluded ? (
                             <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                              Incluido
+                              {t('itemsDetalle.incluido')}
                             </span>
                           ) : (
                             <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {nameHasRate ? 'Adicional' : `${rate.toFixed(2)}% (+imp.)`}
+                              {nameHasRate ? t('itemsDetalle.adicional') : t('itemsDetalle.tasaMasImpuesto', { tasa: rate.toFixed(2) })}
                             </span>
                           )}
                           {!nameHasRate && isIncluded && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400">{rate.toFixed(2)}%</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{t('itemsDetalle.tasa', { tasa: rate.toFixed(2) })}</span>
                           )}
                         </div>
                       );
                     }
-                    return <span className="text-gray-400 dark:text-gray-500">N/A</span>;
+                    return <span className="text-gray-400 dark:text-gray-500">{t('itemsDetalle.noAplica')}</span>;
                   })()}
                 </TableCell>
                 <TableCell className="text-right font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-100 py-2 sm:py-3">
@@ -170,11 +178,11 @@ export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [
       
       {taxIncluded ? (
         <div className="mt-2 sm:mt-3 text-right text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic px-2 sm:px-0">
-          * Los precios incluyen impuestos
+          {t('itemsDetalle.preciosIncluyen')}
         </div>
       ) : (
         <div className="mt-2 sm:mt-3 text-right text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic px-2 sm:px-0">
-          * Los impuestos se calculan sobre el subtotal
+          {t('itemsDetalle.impuestosSobreSubtotal')}
         </div>
       )}
     </div>

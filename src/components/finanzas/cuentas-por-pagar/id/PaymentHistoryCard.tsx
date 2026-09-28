@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CreditCard, Clock, CheckCircle, XCircle, Building2 } from 'lucide-react';
+import { CreditCard, Clock, CheckCircle, XCircle, Building2, type LucideIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CuentaPorPagarDetailService } from './service';
 import { PaymentRecord } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 
@@ -16,7 +17,7 @@ interface PaymentHistoryCardProps {
   onUpdate?: () => void;
 }
 
-const statusConfig: Record<string, { icon: any; color: string; label: string }> = {
+const statusConfig: Record<string, { icon: LucideIcon; color: string; label: string }> = {
   completed: { icon: CheckCircle, color: 'text-green-600 dark:text-green-400', label: 'Completado' },
   pending: { icon: Clock, color: 'text-yellow-600 dark:text-yellow-400', label: 'Pendiente' },
   failed: { icon: XCircle, color: 'text-red-600 dark:text-red-400', label: 'Fallido' },
@@ -37,9 +38,14 @@ const methodLabels: Record<string, string> = {
   pse: 'PSE'
 };
 
-export function PaymentHistoryCard({ accountId, onUpdate }: PaymentHistoryCardProps) {
+export function PaymentHistoryCard({ accountId }: PaymentHistoryCardProps) {
   const { timezone } = useOrgTimezone();
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  // Los pagos de una cuenta por pagar van en la moneda de su factura de
+  // compra (así los registra el servicio); sin factura, en la moneda base.
+  const [monedaFactura, setMonedaFactura] = useState<string | null>(null);
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatCurrency = crearFormateadorMoneda(paraDocumento(monedaFactura));
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -52,6 +58,7 @@ export function PaymentHistoryCard({ accountId, onUpdate }: PaymentHistoryCardPr
       const account = await CuentaPorPagarDetailService.obtenerDetalleCuentaPorPagar(accountId);
       if (account) {
         setPayments(account.payment_history);
+        setMonedaFactura(account.invoice_currency ?? null);
       }
     } catch (error) {
       console.error('Error cargando pagos:', error);

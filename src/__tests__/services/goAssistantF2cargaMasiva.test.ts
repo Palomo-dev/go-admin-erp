@@ -173,6 +173,25 @@ describe('carga masiva — política de duplicados, dicha y aplicada', () => {
     expect(plan.filas.map((f) => f.motivo).filter(Boolean)).toEqual(['Sin nombre.', 'Precio negativo.', 'SKU "x1" repetido en el archivo.']);
     expect(plan.nuevos).toBe(2);
   });
+
+  it('dos productos nuevos con el mismo código de barras: el segundo se omite (el índice único haría fallar toda la carga)', () => {
+    const plan = planificar(
+      [
+        { name: 'Camiseta S', sku: 'CS', barcode: '2000000000015' },
+        { name: 'Camiseta M', sku: 'CM', barcode: '2000000000015' },
+        { name: 'Camiseta L', sku: 'CL', barcode: '2000000000022' },
+      ],
+      [],
+      ['name', 'sku', 'barcode']
+    );
+    expect(plan).toMatchObject({ nuevos: 2, errores: 1 });
+    expect(plan.filas[0]).toMatchObject({ n: 2, estado: 'error', motivo: 'Código de barras "2000000000015" repetido en el archivo.' });
+  });
+
+  it('el choque con el índice único de códigos se explica sin jerga', () => {
+    const r = mapCargaError('duplicate key value violates unique constraint "ux_products_org_barcode"');
+    expect(r).toMatchObject({ ok: false, errorCode: 'barcode_taken' });
+  });
 });
 
 describe('carga masiva — argumentos y ejecución', () => {

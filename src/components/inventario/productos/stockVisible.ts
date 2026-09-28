@@ -15,14 +15,27 @@
 export interface NivelStock {
   branch_id: number;
   qty_on_hand: number | string;
+  /** Mínimo configurado para esa sucursal; 0 o ausente = sin mínimo. */
+  min_level?: number | string | null;
 }
 
 /** Lo mínimo que necesita esta función de un producto. */
 export interface ProductoConStock {
   track_stock?: boolean;
   stock_levels?: NivelStock[] | null;
+  /**
+   * Padre + variantes sumados por sucursal (lo arma `catalogoLotes.ts`).
+   * Si viene, manda sobre `stock_levels`, que solo tiene las filas del padre:
+   * un producto con variantes casi siempre tiene 0 propio y todo en ellas.
+   */
+  stock_sucursales?: NivelStock[] | null;
   /** Total precalculado por el cargador; solo se usa como último recurso. */
   stock?: number;
+}
+
+/** Niveles por sucursal que se pintan: los del producto completo si existen. */
+export function nivelesDe(p: ProductoConStock): NivelStock[] {
+  return p.stock_sucursales ?? p.stock_levels ?? [];
 }
 
 /**
@@ -36,7 +49,7 @@ export function stockVisibleDe(
 ): number | null {
   if (p.track_stock === false) return null;
 
-  const niveles = p.stock_levels ?? [];
+  const niveles = nivelesDe(p);
   const filtrados =
     branchFilter === null ? niveles : niveles.filter((sl) => sl.branch_id === branchFilter);
 
@@ -46,6 +59,16 @@ export function stockVisibleDe(
   }
 
   return filtrados.reduce((sum, sl) => sum + (Number(sl.qty_on_hand) || 0), 0);
+}
+
+/**
+ * Mínimo que corresponde a lo que se ve: el de la sucursal filtrada o la suma
+ * de todas. 0 si el producto no tiene mínimo configurado.
+ */
+export function minimoVisibleDe(p: ProductoConStock, branchFilter: number | null): number {
+  const niveles = nivelesDe(p);
+  const filtrados = branchFilter === null ? niveles : niveles.filter((sl) => sl.branch_id === branchFilter);
+  return filtrados.reduce((sum, sl) => sum + (Number(sl.min_level) || 0), 0);
 }
 
 /**

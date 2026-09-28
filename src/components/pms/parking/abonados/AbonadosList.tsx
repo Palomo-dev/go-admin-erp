@@ -10,7 +10,6 @@ import {
   User, 
   MoreVertical,
   Edit,
-  Trash2,
   XCircle
 } from 'lucide-react';
 import {
@@ -21,6 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { ParkingPass } from '@/lib/services/parkingService';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface AbonadosListProps {
   passes: ParkingPass[];
@@ -40,13 +40,8 @@ export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
     return formatPlainDate(dateStr, { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  // Moneda base de la organización (la reserva/abono no tiene moneda propia).
+  const { formatear: formatCurrency } = useMonedaOrganizacion();
 
   const getDaysRemaining = (endDate: string) => {
     const end = new Date(endDate);

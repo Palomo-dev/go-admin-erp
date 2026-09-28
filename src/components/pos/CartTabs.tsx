@@ -1,25 +1,23 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Plus, X, Clock, ShoppingCart } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { Clock, Plus, ShoppingCart, X } from 'lucide-react';
+import { Dialogo, EmptyState, KbdButton, useAtajos } from '@/components/kit';
+import { useDragScroll } from '@/hooks/useDragScroll';
+import { hayRafagaDelLector } from '@/hooks/useHardwareBarcodeScanner';
+import { teclaAtajo } from '@/lib/pos/venta/atajos';
+import { etiquetaPestana, puedeCerrarPestana } from '@/lib/pos/venta/pestanaCarrito';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { cn } from '@/utils/Utils';
 import { Cart } from './types';
-import { formatCurrency } from '@/utils/Utils';
 
+/**
+ * Pestañas de los carritos de la sucursal (paso 8 de POS-PLAN; POS-UX-V2 D3):
+ * cliente o «Carrito N», total y líneas; «Nuevo · Ctrl+N»; cerrar con
+ * confirmación solo con más de un carrito (L12). Ctrl+Tab pasa al siguiente.
+ * Misma API de siempre.
+ */
 interface CartTabsProps {
   carts: Cart[];
   activeCartId: string;
@@ -27,118 +25,20 @@ interface CartTabsProps {
   onNewCart: () => void;
   onRemoveCart: (cartId: string) => void;
   className?: string;
+  /** false apaga Ctrl+N y Ctrl+Tab (la página lo hace con el cobro abierto). */
+  atajosActivos?: boolean;
 }
 
-export function CartTabs({ 
-  carts, 
-  activeCartId, 
-  onCartSelect, 
-  onNewCart, 
-  onRemoveCart, 
-  className 
-}: CartTabsProps) {
+export function CartTabs({ carts, activeCartId, onCartSelect, onNewCart, onRemoveCart, className, atajosActivos = true }: CartTabsProps) {
+  const t = useTranslations('posVenta.pestanas');
+  const tAtajos = useTranslations('posVenta.atajos');
+  const { formatear } = useMonedaOrganizacion();
   const [isCreatingCart, setIsCreatingCart] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStartX, setDragStartX] = useState(0);
-  const [scrollStartX, setScrollStartX] = useState(0);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const touchStartX = useRef(0);
-  const touchStartY = useRef(0);
-  const touchMovedRef = useRef(false);
   const [cartToRemove, setCartToRemove] = useState<string | null>(null);
-
-  // Funciones para scroll con drag y arrastrar (click and drag scrolling)
-  const handleMouseDown = (e: React.MouseEvent) => {
-    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
-    if (!viewport) return;
-    
-    // Solo iniciar drag con click izquierdo
-    if (e.button !== 0) return;
-    
-    setIsDragging(true);
-    setDragStartX(e.clientX);
-    setScrollStartX(viewport.scrollLeft);
-    
-    // Prevenir selección de texto durante el drag
-    e.preventDefault();
-    document.body.style.userSelect = 'none';
-  };
-
-
-
-  // Touch events para dispositivos móviles
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    touchStartX.current = touch.clientX;
-    touchStartY.current = touch.clientY;
-    touchMovedRef.current = false;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    const deltaX = Math.abs(touch.clientX - touchStartX.current);
-    const deltaY = Math.abs(touch.clientY - touchStartY.current);
-
-    // Solo activar drag si el movimiento es mayormente horizontal y supera 10px
-    if (!touchMovedRef.current && deltaX > 10 && deltaX > deltaY) {
-      touchMovedRef.current = true;
-      const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
-      if (viewport) {
-        setIsDragging(true);
-        setDragStartX(touch.clientX);
-        setScrollStartX(viewport.scrollLeft);
-      }
-    }
-
-    if (isDragging) {
-      const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
-      if (!viewport) return;
-
-      const dX = touch.clientX - dragStartX;
-      const newScrollX = scrollStartX - dX;
-
-      viewport.scrollLeft = Math.max(0, Math.min(newScrollX, viewport.scrollWidth - viewport.clientWidth));
-      e.preventDefault();
-    }
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-  };
-
-  // Manejar eventos globales de mouse para que el drag funcione fuera del área
-  useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return;
-      
-      const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
-      if (!viewport) return;
-      
-      const deltaX = e.clientX - dragStartX;
-      const newScrollX = scrollStartX - deltaX;
-      
-      viewport.scrollLeft = Math.max(0, Math.min(newScrollX, viewport.scrollWidth - viewport.clientWidth));
-    };
-
-    const handleGlobalMouseUp = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        document.body.style.userSelect = '';
-      }
-    };
-
-    if (isDragging) {
-      document.addEventListener('mousemove', handleGlobalMouseMove);
-      document.addEventListener('mouseup', handleGlobalMouseUp);
-      
-      return () => {
-        document.removeEventListener('mousemove', handleGlobalMouseMove);
-        document.removeEventListener('mouseup', handleGlobalMouseUp);
-      };
-    }
-  }, [isDragging, dragStartX, scrollStartX]);
+  const arrastre = useDragScroll<HTMLDivElement>();
 
   const handleNewCart = async () => {
+    if (isCreatingCart) return;
     setIsCreatingCart(true);
     try {
       await onNewCart();
@@ -147,228 +47,133 @@ export function CartTabs({
     }
   };
 
-  const handleRemoveCart = (cartId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    // Solo mostrar confirmación si hay más de 1 carrito
-    if (carts.length > 1) {
-      setCartToRemove(cartId);
-    }
+  const siguiente = () => {
+    if (carts.length < 2) return;
+    const i = carts.findIndex((c) => c.id === activeCartId);
+    onCartSelect(carts[(i + 1) % carts.length].id);
   };
 
+  useAtajos(
+    [
+      { tecla: teclaAtajo('nuevoCarrito'), descripcion: tAtajos('nuevoCarrito'), accion: () => void handleNewCart(), permitirEnCampo: true },
+      { tecla: teclaAtajo('siguienteCarrito'), descripcion: tAtajos('siguienteCarrito'), accion: siguiente, cuando: () => carts.length > 1, permitirEnCampo: true },
+    ],
+    { activo: atajosActivos, hayRafaga: hayRafagaDelLector },
+  );
+
   const confirmRemoveCart = () => {
-    if (cartToRemove) {
-      onRemoveCart(cartToRemove);
-    }
+    if (cartToRemove) onRemoveCart(cartToRemove);
     setCartToRemove(null);
   };
 
-  const getCartDisplayName = (cart: Cart, index: number) => {
-    if (cart.customer) {
-      const firstName = cart.customer.full_name.split(' ')[0];
-      return firstName.length > 8 ? firstName.substring(0, 8) + '...' : firstName;
-    }
-    return `Carrito ${index + 1}`;
+  const nombre = (cart: Cart, index: number) => {
+    const e = etiquetaPestana(cart, index);
+    return e.cliente ?? t('carritoN', { n: e.numero });
   };
 
-  const getCartIcon = (cart: Cart) => {
-    if (cart.status === 'hold') {
-      return <Clock className="h-4 w-4" />;
-    }
-    return <ShoppingCart className="h-4 w-4" />;
-  };
+  if (carts.length === 0) {
+    return (
+      <div className={className}>
+        <EmptyState
+          variante="empty"
+          icono={ShoppingCart}
+          titulo={t('sinCarritosTitulo')}
+          descripcion={t('sinCarritosDescripcion')}
+          accion={{ etiqueta: t('crear'), onClick: () => void handleNewCart() }}
+        />
+      </div>
+    );
+  }
 
+  const aCerrar = carts.find((c) => c.id === cartToRemove);
   return (
-    <div className={`space-y-2 ${className}`}>
-      {/* Tabs para múltiples carritos */}
-      {carts.length > 0 ? (
-        <Tabs value={activeCartId} onValueChange={onCartSelect}>
-          <div className="flex items-center justify-between mb-2">
-            <ScrollArea 
-              ref={scrollAreaRef}
-              className="flex-1 select-none"
-              onMouseDown={handleMouseDown}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
-            >
-              <div 
-                className="flex space-x-1 w-max"
-                style={{ pointerEvents: isDragging ? 'none' : 'auto' }}
+    <div className={cn('flex items-center gap-2', className)}>
+      <div ref={arrastre.ref} className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:thin]">
+        <div role="tablist" aria-label={t('etiqueta')} className="flex w-max items-center gap-1 rounded-lg bg-subtle p-1">
+          {carts.map((cart, index) => {
+            const e = etiquetaPestana(cart, index);
+            const activa = cart.id === activeCartId;
+            const Icono = e.enEspera ? Clock : ShoppingCart;
+            return (
+              <div
+                key={cart.id}
+                className={cn(
+                  'flex items-center rounded-md transition-colors',
+                  activa ? (e.enEspera ? 'bg-warning-subtle text-warning-text shadow-sm' : 'bg-surface text-fg shadow-sm') : 'text-fg-secondary hover:bg-hover',
+                )}
               >
-                <TabsList className="dark:bg-gray-800 bg-gray-100 p-1 inline-flex">
-                {carts.map((cart, index) => (
-                  <TabsTrigger
-                    key={cart.id}
-                    value={cart.id}
-                    className={`
-                      relative group flex items-center space-x-2 px-3 py-2
-                      ${cart.status === 'hold' 
-                        ? 'dark:data-[state=active]:bg-yellow-600/20 dark:data-[state=active]:text-yellow-400 data-[state=active]:bg-yellow-100 data-[state=active]:text-yellow-700'
-                        : 'dark:data-[state=active]:bg-blue-600/20 dark:data-[state=active]:text-blue-400 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700'
-                      }
-                    `}
-                  >
-                    {getCartIcon(cart)}
-                    <span className="text-sm font-medium">
-                      {getCartDisplayName(cart, index)}
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activa}
+                  tabIndex={activa ? 0 : -1}
+                  title={e.enEspera && cart.hold_reason ? t('enEsperaMotivo', { motivo: cart.hold_reason }) : undefined}
+                  onClick={() => onCartSelect(cart.id)}
+                  onKeyDown={(ev) => {
+                    if (ev.key !== 'ArrowRight' && ev.key !== 'ArrowLeft') return;
+                    ev.preventDefault();
+                    const j = (index + (ev.key === 'ArrowRight' ? 1 : -1) + carts.length) % carts.length;
+                    onCartSelect(carts[j].id);
+                  }}
+                  className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <Icono aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} />
+                  <span className="max-w-[9rem] truncate">{nombre(cart, index)}</span>
+                  {e.mostrarTotal && <span className="text-xs tabular-nums text-fg-secondary">{formatear(e.total)}</span>}
+                  {e.lineas > 0 && (
+                    <span
+                      className={cn(
+                        'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-semibold tabular-nums',
+                        e.enEspera ? 'border border-line-warning text-warning-text' : 'bg-brand-action text-fg-on-brand',
+                      )}
+                      aria-label={t('lineas', { n: e.lineas })}
+                    >
+                      {e.lineas}
                     </span>
-                    
-                    {/* Badge con total */}
-                    {cart.total > 0 && (
-                      <Badge 
-                        variant="secondary" 
-                        className="text-xs px-1 py-0 h-5 dark:bg-gray-700 bg-gray-200"
-                      >
-                        {formatCurrency(cart.total, 'COP').replace(/\$\s?/, '$').replace(/,\d{3}$/, 'k')}
-                      </Badge>
-                    )}
-
-                    {/* Badge con cantidad de items */}
-                    {cart.items.length > 0 && (
-                      <Badge 
-                        variant={cart.status === 'hold' ? 'outline' : 'default'}
-                        className={`
-                          text-xs px-1 py-0 h-5 min-w-[20px] flex items-center justify-center
-                          ${cart.status === 'hold' 
-                            ? 'dark:border-yellow-500 dark:text-yellow-400 border-yellow-500 text-yellow-600' 
-                            : 'dark:bg-blue-600 dark:text-white bg-blue-600 text-white'
-                          }
-                        `}
-                      >
-                        {cart.items.length}
-                      </Badge>
-                    )}
-
-                    {/* Botón para cerrar carrito */}
-                    {carts.length > 1 && (
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        className="h-5 w-5 p-0 ml-1 opacity-100 transition-opacity dark:hover:bg-red-500/20 dark:hover:text-red-400 hover:bg-red-100 hover:text-red-600 rounded flex items-center justify-center cursor-pointer flex-shrink-0"
-                        onClick={(e) => handleRemoveCart(cart.id, e)}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                        }}
-                        onTouchStart={(e) => {
-                          e.stopPropagation();
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            handleRemoveCart(cart.id, e as any);
-                          }
-                        }}
-                      >
-                        <X className="h-3 w-3" />
-                      </div>
-                    )}
-                  </TabsTrigger>
-                ))}
-                </TabsList>
+                  )}
+                </button>
+                {puedeCerrarPestana(carts.length) && (
+                  <button
+                    type="button"
+                    aria-label={t('cerrarCarrito', { nombre: nombre(cart, index) })}
+                    title={t('cerrar')}
+                    onClick={() => setCartToRemove(cart.id)}
+                    className="mr-1 flex size-6 items-center justify-center rounded text-fg-muted hover:bg-danger-subtle hover:text-danger-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    <X aria-hidden="true" className="size-3.5" />
+                  </button>
+                )}
               </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+            );
+          })}
+        </div>
+      </div>
+      <KbdButton
+        variante="secundario"
+        tamano="sm"
+        icono={Plus}
+        atajo={teclaAtajo('nuevoCarrito')}
+        cargando={isCreatingCart}
+        onClick={() => void handleNewCart()}
+        aria-label={t('nuevo')}
+      >
+        <span className="hidden xl:inline">{t('nuevo')}</span>
+      </KbdButton>
 
-            {/* Botón para agregar nuevo carrito */}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleNewCart}
-              disabled={isCreatingCart}
-              className="ml-2 dark:border-gray-700 dark:hover:bg-gray-800 border-gray-300 hover:bg-gray-50"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Contenido de cada carrito */}
-          {carts.map((cart) => (
-            <TabsContent key={cart.id} value={cart.id} className="mt-0">
-              <Card className="dark:bg-gray-800/50 dark:border-gray-700/50 bg-gray-50/50 border-gray-200">
-                <CardContent className="p-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center space-x-4">
-                      <span className="dark:text-gray-400 text-gray-600">
-                        Items: <span className="font-medium dark:text-white text-gray-900">{cart.items.length}</span>
-                      </span>
-                      {cart.customer && (
-                        <span className="dark:text-gray-400 text-gray-600">
-                          Cliente: <span className="font-medium dark:text-white text-gray-900">{cart.customer.full_name}</span>
-                        </span>
-                      )}
-                      {cart.status === 'hold' && cart.hold_reason && (
-                        <span className="dark:text-yellow-400 text-yellow-600 text-xs">
-                          En espera: {cart.hold_reason}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold dark:text-blue-400 text-blue-600">
-                        {formatCurrency(cart.total)}
-                      </div>
-                      <div className="text-xs dark:text-gray-400 text-gray-600">
-                        {new Date(cart.updated_at).toLocaleTimeString()}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          ))}
-        </Tabs>
-      ) : (
-        /* Mensaje cuando no hay carritos */
-        <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
-          <CardContent className="p-6 text-center">
-            <ShoppingCart className="h-12 w-12 mx-auto mb-3 dark:text-gray-400 text-gray-500 opacity-50" />
-            <h3 className="font-medium mb-2 dark:text-white text-gray-900">
-              No hay carritos activos
-            </h3>
-            <p className="text-sm dark:text-gray-400 text-gray-600 mb-4">
-              Crea un nuevo carrito para comenzar una venta
-            </p>
-            <Button 
-              onClick={handleNewCart}
-              disabled={isCreatingCart}
-              className="dark:bg-blue-600 dark:hover:bg-blue-700 bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Crear Carrito
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Confirmación al cerrar carrito */}
-      <AlertDialog open={!!cartToRemove} onOpenChange={(open) => { if (!open) setCartToRemove(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Cerrar este carrito?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Se eliminarán todos los productos del carrito. Esta acción no se puede deshacer.
-              {cartToRemove && (() => {
-                const cart = carts.find(c => c.id === cartToRemove);
-                if (cart && cart.items.length > 0) {
-                  return ` Tiene ${cart.items.length} producto(s) por ${formatCurrency(cart.total)}.`;
-                }
-                return '';
-              })()}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmRemoveCart}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              Sí, cerrar carrito
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <Dialogo
+        abierto={!!cartToRemove}
+        onAbiertoChange={(abierto) => {
+          if (!abierto) setCartToRemove(null);
+        }}
+        titulo={t('confirmarTitulo')}
+        descripcion={
+          aCerrar && aCerrar.items.length > 0
+            ? t('confirmarConProductos', { n: aCerrar.items.length, total: formatear(aCerrar.total) })
+            : t('confirmarDescripcion')
+        }
+        ancho={440}
+        primario={{ etiqueta: t('confirmar'), destructiva: true, onClick: confirmRemoveCart }}
+      />
     </div>
   );
 }

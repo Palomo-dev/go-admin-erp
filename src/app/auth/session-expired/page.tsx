@@ -22,6 +22,10 @@ export default function SessionExpiredPage() {
       // Clear localStorage items related to authentication
       localStorage.removeItem('rememberMe');
       localStorage.removeItem('userEmail');
+      // Heredado: versiones anteriores guardaban la contraseña aquí y esta
+      // pantalla no la borraba (auditoría de acceso, 2026-09-22).
+      localStorage.removeItem('userPassword');
+      localStorage.removeItem('biometricRefreshToken');
       localStorage.removeItem('currentOrganizationId');
       localStorage.removeItem('currentOrganizationType');
       

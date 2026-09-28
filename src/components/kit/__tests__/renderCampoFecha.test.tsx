@@ -138,6 +138,13 @@ describe('CampoFecha (render)', () => {
     expect(screen.queryByRole('button', { name: 'Limpiar' })).toBeNull();
   });
 
+  test('con aria-required (FormField obligatorio) tampoco ofrece «Limpiar»', () => {
+    renderConIdioma(<Controlado inicial="2026-09-01" aria-required />);
+    abrir();
+    expect(screen.queryByRole('button', { name: 'Limpiar' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Hoy' })).toBeTruthy();
+  });
+
   test('inglés: semana desde el domingo, mes y botones traducidos', () => {
     renderConIdioma(<Controlado inicial="2026-09-01" aria-label="Start date" />, { idioma: 'en' });
     abrir(/Start date/);

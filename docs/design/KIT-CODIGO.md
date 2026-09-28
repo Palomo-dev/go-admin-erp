@@ -629,3 +629,74 @@ la comparación (la misma fórmula que `ProductSearch`) y el nivel del stock cua
 
 Pruebas: `kit/__tests__/piezasVentaPos.test.ts` (lógica) y `renderPiezasVentaPos.test.tsx` (render
 con jsdom: roles, nombres, clics, `aria-keyshortcuts`, inglés).
+
+## Adenda: campo de fecha de marca (CampoFecha, CalendarioMes) (2026-09-28)
+
+Pedido del dueño: «en los calendarios no estamos usando el componente que habíamos acordado en
+Figma». El diálogo «Actualizar precio» del detalle de producto abría el selector **nativo** del
+navegador (`<input type="date">`, calendario gris de Chrome). Desde ahora **ninguna pantalla del kit
+ni de las zonas rediseñadas usa el calendario del navegador**.
+
+**Componente de Figma**: `DateRange` **104:3343** (página «02 Componentes», sección «Formularios»),
+variantes `State=default` 104:3195 (disparador) y `State=open` 104:3207; el panel es el frame
+«Calendario» 104:3219. Descripción en Figma: «Rango de fechas único de la app (movimientos, kardex,
+auditoría, vigencia de precios). Atajos arriba, calendario con rango en Tinte GO y extremos en Azul
+acción. Sustituye a los 4 controles de fecha (Popover+Calendar a mano)».
+
+| Figma | Código | Contrato |
+|---|---|---|
+| Disparador 104:3195 / 104:3208 (40 px, radio 8, `Icon/Calendar` 16, texto Body 14, `Icon/ChevronDown`; borde de marca abierto) + panel 104:3219 | `kit/CampoFecha.tsx` | `valor` (`YYYY-MM-DD`, vacío o `null` = sin fecha), `onValorChange(dia)` (`''` al limpiar: el mismo contrato que el `value` de un `<input type="date">`), `min`, `max`, `hoy` (si no llega, `useFormatDate().getToday()`), `limpiable` (por defecto, si no es obligatorio: ni `required` ni `aria-required`), `placeholder` (por defecto «Elegir fecha»), `id`, `name` (campo oculto para formularios nativos), `required` (el navegador lo valida), `disabled`, `aria-label` / `aria-labelledby` / `aria-describedby` / `aria-invalid` / `aria-required` (encaja con `FormField`, directo o con render-prop), `tamano` (`md` 40 px · `sm` 32 px), `alinear` del panel, `onBlur` (al cerrar), `className`. Disparador `role="combobox"` (patrón de solo selección de WAI-ARIA) con `aria-haspopup="dialog"`; borde `line-danger` con `aria-invalid`. Pie: «Hoy» (si el día cabe en `min`/`max`) y «Limpiar» en `text-link` |
+| Panel «Calendario» 104:3219: mes con flechas (Body-medium 14), iniciales Caption 12 `fg-muted`, grilla 42 × 32, día elegido en `brand-action` radio 8, tramo en `brand-tint` / `brand-deep`, días de otro mes en `fg-muted` | `kit/CalendarioMes.tsx` + `calendarioLogica.ts` | `valor` (un día) o `rango: { desde, hasta }`, `diaInicial`, `onElegir(dia)`, `onDiaActivo(dia)` (vista previa de un rango), `min`, `max`, `hoy` (subrayado de marca, `aria-current="date"`), `enfocarAlMontar`. `role="grid"`; teclado: flechas (± 1 día / ± 1 semana), Inicio/Fin (semana), RePág/AvPág (± 1 mes; con Mayús, ± 1 año); Enter/Espacio eligen. Días fuera de límite `aria-disabled` |
+| `DateRange` `State=open` 104:3207 (chips de atajos, calendario de rango, pie «Desde 1 sep · Hasta 21 sep» + «Limpiar») | `kit/DateRangeButton.tsx` (mismo contrato de antes + `min`, `onLimpiar`) | El panel ya no tiene dos `<input type="date">`: chips de 28 px radio full (el activo en `brand-tint` con ✓), calendario de rango en **dos clics** (el primero ancla, el segundo cierra en orden y aplica), pie `aria-live`. «Limpiar» solo si la pantalla pasa `onLimpiar` |
+
+**Días calendario puros.** Toda la aritmética va sobre `Date.UTC` (`calendarioLogica.ts`), así el día
+elegido es el mismo con `TZ=UTC` que con `TZ=America/Bogota`; ninguna pieza usa
+`toISOString().split('T')[0]`. «Hoy» es el de la organización. Donde el formulario viejo guardaba un
+`Date` a medianoche local (factura de venta, historial de mesas, movimientos, kardex) la pantalla
+convierte ida y vuelta con el día plano y el valor guardado no cambia.
+
+**Idioma.** Mes, días y nombres accesibles con `Intl` del idioma activo de next-intl. Español: lunes
+primero y las iniciales de Figma «L M X J V S D», formato «28 sep 2026»; francés: lunes primero;
+inglés (EE. UU.) y portugués (Brasil): domingo primero. Textos en `kit.calendario.*` y
+`kit.rango.dias7` / `dias30` (es/en/fr/pt).
+
+**Dentro de diálogos y hojas.** El panel va en `Portal` con `z-[70]` (por encima de `Dialog`/`Sheet`
+z-50 y de los modales a mano z-60), `collisionPadding` 8 y ancho máximo `100vw - 16px`: no se corta
+dentro del modal. Al cerrar, el foco vuelve siempre al disparador (también en Safari).
+
+**Pruebas.** `kit/__tests__/calendarioLogica.test.ts` (grilla, idioma, teclado, límites, rango) y
+`renderCampoFecha.test.tsx` (jsdom: sin `input[type=date]`, selección, foco de vuelta, min/max,
+teclado, «Hoy»/«Limpiar», campo oculto obligatorio, inglés y español, `DateRangeButton` en dos clics).
+Corren igual con `TZ=UTC` y `TZ=America/Bogota`.
+
+### Pantallas que cambiaron (53 campos)
+
+| Zona | Campos | Dónde |
+|---|---|---|
+| Kit | 4 | `DateRangeButton` (2 campos del panel → calendario de rango; lo usan facturas de venta y compra, ventas, cajas, historial y kardex del producto, estado de cuenta), `RegistrarPagoDialog` (fecha del pago), `PlanCuotasDialog` (primera cuota) |
+| Inventario | 9 | detalle de producto › «Actualizar precio» (`CampoVigencia`), formulario de producto › precio programado (`SeccionPrecios`), lotes (vencimiento), traslados (desde/hasta), movimientos y kardex (los dos Popover+Calendar hechos a mano) |
+| POS | 20 | devoluciones (historial 2, búsqueda de ticket 1), reservas de mesas (formulario 1, filtros 2), historial de mesas (el `DatePicker` viejo, 2), cupones 2, promociones 2, propinas 2, reportes 2, satisfacción 2, pedidos online 2 |
+| Finanzas | 20 | factura de venta nuevo/editar (el `DatePicker` viejo, 2); factura de compra: formulario nuevo 2, formulario de edición 2, filtros 2, registrar pago 1; cuentas por pagar: filtros 2, registrar pago 1, programar pago (modal 1, diálogo 1), pago desde el detalle 1, edición de cuota 1; cotizaciones 2; transferencias 1; saldo a favor 1 |
+
+Categorías, proveedores, cuentas por cobrar y notas no tenían campos de fecha propios (la cartera
+usa `DateRangeButton`, `RegistrarPagoDialog` y `PlanCuotasDialog` del kit).
+
+### Lo que queda fuera (no se tocó)
+
+A 2026-09-28 quedan **167** campos nativos (`148 type="date"`, `17 type="datetime-local"`,
+`2 type="month"`) y **32** archivos con el `DatePicker`/`Calendar` viejo de `components/ui`, todos
+fuera de las zonas del pedido: transporte 28, HRM 22, CRM 18, finanzas 17, PM 11, inventario 10,
+PMS 8, integraciones 7, calendario 7, parking 6, notificaciones 6, gym 4, voz 3, reportes 3,
+configuración 3, organización 2, inicio 2, chat 2, admin 2, shell 1.
+
+- Finanzas fuera del pedido: contabilidad sin rediseño (asientos 1, balance de comprobación 2,
+  balance general 1, estado de resultados 2, mayor 2), comisiones 2, conciliación bancaria 2,
+  documentos soporte 2 (+ 1 `type="time"`), monedas 2 (+ `DatePicker` en `ExchangeRatesTable`),
+  activos fijos 1.
+- Inventario fuera del pedido: órdenes de compra (nueva 1, editar 1), distribución 2, garantías 2,
+  reportes 2, trazabilidad 2.
+- `type="time"` (hora sin fecha) no es un calendario y sigue nativo: reserva de mesa, configuración
+  del POS, documento soporte. Si hace falta una variante con hora (`datetime-local`), va como hermana
+  de `CampoFecha` con la misma estética; ninguna pantalla del pedido la necesitó.
+- `components/ui/date-picker.tsx` y `components/ui/calendar.tsx` siguen existiendo para esos
+  módulos; cuando se rediseñen, se cambian por `CampoFecha` / `DateRangeButton`.

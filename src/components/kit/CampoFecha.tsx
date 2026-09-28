@@ -34,7 +34,7 @@ export interface CampoFechaProps {
   max?: string | null;
   /** «Hoy» en la zona de la organización (`YYYY-MM-DD`). */
   hoy?: string;
-  /** Muestra «Limpiar» en el pie. Por defecto, si el campo no es obligatorio. */
+  /** Muestra «Limpiar» en el pie. Por defecto, si el campo no es obligatorio (`required` o `aria-required`). */
   limpiable?: boolean;
   /** Texto sin fecha (por defecto «Elegir fecha»). */
   placeholder?: string;
@@ -89,7 +89,7 @@ export const CampoFecha = React.forwardRef<HTMLButtonElement, CampoFechaProps>(f
   const dia = esFechaPlana(valor) ? valor : '';
   const texto = dia ? etiquetaDiaTrigger(dia, locale) : (placeholder ?? t('calendario.elegirFecha'));
   const invalido = ariaInvalid === true || ariaInvalid === 'true';
-  const puedeLimpiar = (limpiable ?? !required) && Boolean(dia);
+  const puedeLimpiar = (limpiable ?? !(required || ariaRequired)) && Boolean(dia);
   const hoyElegible = esFechaPlana(hoy) && !fueraDeLimites(hoy, min, max);
 
   const unirRef = (nodo: HTMLButtonElement | null) => {

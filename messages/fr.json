@@ -11618,7 +11618,10 @@
         "ingredientes": "Ingrédients ({n})",
         "opcional": "Facultatif",
         "sinIngredientes": "Cette recette n’a pas d’ingrédients définis."
-      }
+      },
+      "codigoManualTitulo": "Saisir un code-barres",
+      "codigoManualEtiqueta": "Code-barres",
+      "codigoManualBuscar": "Rechercher et ajouter"
     },
     "pagina": {
       "sinCarritoActivo": "Aucun panier actif",

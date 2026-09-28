@@ -29,7 +29,12 @@ import {
 import { ConfiguracionService, PosCategoriesDisplayConfig, defaultCategoriesDisplayConfig } from './configuracion/configuracionService';
 import { recipeService, type ProductRecipe } from '@/lib/services/recipeService';
 import { useBranch } from '@/lib/context/BranchContext';
-import { useHardwareBarcodeScanner } from '@/hooks/useHardwareBarcodeScanner';
+import { hayRafagaDelLector, useHardwareBarcodeScanner } from '@/hooks/useHardwareBarcodeScanner';
+import { ScanBarcode } from 'lucide-react';
+import { Dialogo } from '@/components/kit/Dialogo';
+import { FormField } from '@/components/kit/FormField';
+import { useAtajos } from '@/components/kit/useAtajos';
+import { teclaAtajo } from '@/lib/pos/venta/atajos';
 import { GrillaProductos } from './venta/GrillaProductos';
 import { RecetaDialogo } from './venta/catalogo/RecetaDialogo';
 import { useCatalogoGrilla, type ErrorCatalogo } from './venta/catalogo/useCatalogoGrilla';
@@ -284,6 +289,32 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
     onDescartado: () => toast.info(t('cierraElDialogo')),
   });
 
+  // Ctrl+B: código de barras escrito a mano (lector dañado, etiqueta ilegible);
+  // se resuelve igual que un escaneo (paso 14, mapa de POS-UX-V2 §3).
+  const [codigoManualAbierto, setCodigoManualAbierto] = useState(false);
+  const [codigoManual, setCodigoManual] = useState('');
+  const tAtajos = useTranslations('posVenta.atajos');
+  useAtajos(
+    [
+      {
+        tecla: teclaAtajo('codigoManual'),
+        descripcion: tAtajos('codigoManual'),
+        permitirEnCampo: true,
+        accion: () => {
+          setCodigoManual('');
+          setCodigoManualAbierto(true);
+        },
+      },
+    ],
+    { activo: !bloqueado, hayRafaga: hayRafagaDelLector },
+  );
+  const enviarCodigoManual = () => {
+    const codigo = codigoManual.trim();
+    if (!codigo) return;
+    setCodigoManualAbierto(false);
+    void handleHardwareScan(codigo);
+  };
+
   // Ver la receta vinculada a un producto (abre un diálogo con ingredientes y rendimiento).
   // No agrega el producto al carrito: es solo consulta desde el grid del POS.
   const handleViewRecipe = async (product: PosGridProduct) => {
@@ -380,6 +411,34 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
           onSelectVariant={handleVariantSelect}
         />
       )}
+
+      {/* Ctrl+B: código de barras manual */}
+      <Dialogo
+        abierto={codigoManualAbierto}
+        onAbiertoChange={setCodigoManualAbierto}
+        titulo={t('codigoManualTitulo')}
+        icono={ScanBarcode}
+        ancho={440}
+        primario={{ etiqueta: t('codigoManualBuscar'), onClick: enviarCodigoManual, deshabilitada: !codigoManual.trim() }}
+      >
+        <FormField etiqueta={t('codigoManualEtiqueta')}>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            autoFocus
+            value={codigoManual}
+            onChange={(e) => setCodigoManual(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                enviarCodigoManual();
+              }
+            }}
+            className="h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm tabular-nums text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          />
+        </FormField>
+      </Dialogo>
 
       {/* Receta vinculada (solo lectura) */}
       <RecetaDialogo

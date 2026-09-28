@@ -11723,7 +11723,10 @@
         "ingredientes": "Ingredients ({n})",
         "opcional": "Optional",
         "sinIngredientes": "This recipe has no ingredients defined."
-      }
+      },
+      "codigoManualTitulo": "Type a barcode",
+      "codigoManualEtiqueta": "Barcode",
+      "codigoManualBuscar": "Find and add"
     },
     "pagina": {
       "sinCarritoActivo": "There is no active cart",

@@ -170,6 +170,18 @@ describe('ProductSearch (grilla del POS)', () => {
     expect(onSelect).toHaveBeenLastCalledWith(expect.objectContaining({ id: 2 }));
   });
 
+  test('Ctrl+B: el código escrito a mano se resuelve como un escaneo', async () => {
+    const posService = jest.requireMock('@/lib/services/posService') as { POSService: { getProductByBarcode: jest.Mock } };
+    getProductsPaginated.mockResolvedValue(pagina(productos(1, 1), 1, 1));
+    renderConIdioma(<ProductSearch onProductSelect={jest.fn()} />);
+    await screen.findByRole('button', { name: 'Elegir Producto 1' });
+    fireEvent.keyDown(document.body, { key: 'b', ctrlKey: true });
+    const campo = await screen.findByRole('textbox', { name: 'Código de barras' });
+    fireEvent.change(campo, { target: { value: '7701234567890' } });
+    fireEvent.keyDown(campo, { key: 'Enter' });
+    await waitFor(() => expect(posService.POSService.getProductByBarcode).toHaveBeenCalledWith('7701234567890'));
+  });
+
   test('con el cobro abierto un escaneo avisa y no agrega', async () => {
     getProductsPaginated.mockResolvedValue(pagina(productos(1, 1), 1, 1));
     const onSelect = jest.fn();

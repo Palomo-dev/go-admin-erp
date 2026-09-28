@@ -8936,7 +8936,21 @@
       "combinacion_repetida": "Two variants have the same attribute combination.",
       "variante_stock_sin_costo": "A variant with initial stock needs a cost.",
       "demasiadas_imagenes": "You can upload up to 5 images.",
-      "dimension_negativa": "Weight and dimensions can't be negative."
+      "dimension_negativa": "Weight and dimensions can't be negative.",
+      "receta_sin_ingredientes": "The recipe is on but has no ingredients: add at least one or turn it off.",
+      "receta_con_errores": "Some recipe ingredients have errors: review them before saving.",
+      "receta_al_producir_sin_inventario": "“On production” requires “Track inventory”: what is produced has to go somewhere.",
+      "conversion_faltante": "A recipe ingredient is missing a unit conversion: create it from the flagged row.",
+      "receta_rinde_invalido": "The recipe yield must be greater than 0.",
+      "receta_unidad_invalida": "A recipe unit does not exist.",
+      "receta_ingrediente_invalido": "A recipe ingredient does not exist, was deleted, is a service or a product with variants.",
+      "receta_autorreferida": "A product cannot be an ingredient of its own recipe (nor its variants or its parent).",
+      "receta_cantidad_invalida": "Each recipe ingredient needs a quantity greater than 0.",
+      "receta_merma_invalida": "Ingredient waste goes from 0 to 99.99 %.",
+      "receta_ingrediente_repetido": "An ingredient is repeated in the recipe with the same unit: merge it.",
+      "receta_variante_desconocida": "The recipe points to a variant that is no longer in the form.",
+      "receta_destino_repetido": "There are two recipes for the same product or variant.",
+      "guardado_en_curso": "This save is already being processed. Wait a moment and try again."
     },
     "imagenes": {
       "insignias": {
@@ -9190,7 +9204,9 @@
       "actualizado": "Product updated",
       "duplicado": "Product duplicated",
       "guardadoDescripcion": "“{nombre}” was saved.",
-      "avisoCodigos": "The product was saved, but the variants' barcodes couldn't be numbered. Generate them from Labels."
+      "avisoCodigos": "The product was saved, but the variants' barcodes couldn't be numbered. Generate them from Labels.",
+      "borradorRecuperado": "We recovered unsaved changes to this form (draft from this tab).",
+      "descartarBorrador": "Discard draft"
     },
     "secciones": {
       "informacion": {
@@ -9231,7 +9247,7 @@
       },
       "avanzado": {
         "titulo": "Advanced",
-        "descripcion": "Shipping (weight and size), internal note and composite/recipe."
+        "descripcion": "Shipping, internal note and recipe: ingredients, yield, waste, cost and how inventory is deducted."
       }
     },
     "informacion": {
@@ -9339,10 +9355,7 @@
       "notaAyudaCrear": "Saved as the product's first note.",
       "notaAyudaEditar": "Added as a new note; the full thread lives in the Notes tab of the product page.",
       "verNotas": "View notes",
-      "compuesto": "Composite or recipe",
-      "esCompuesto": "This is a composite product",
-      "compuestoAyuda": "It's made from other products (recipe); its ingredients are set in Recipes.",
-      "irRecetas": "Go to Recipes"
+      "receta": "Recipe"
     },
     "duplicar": {
       "sufijoSku": "-COPY",
@@ -13920,6 +13933,149 @@
       "nueva": "New withholding",
       "editar": "Edit withholding",
       "nota": "A withholding is applied by the buyer: it is not added to the price, it is not assigned to products and it cannot be the default rate."
+    }
+  },
+  "receta": {
+    "fila": {
+      "seLlevaEn": "tracked in {unidad}",
+      "existencia": "{cantidad} {unidad} at {sucursal}",
+      "sinInventario": "no inventory",
+      "seCosteaPor": "costed per {unidad}",
+      "equivale": "= {cantidad} {unidad}",
+      "fusionar": "Merge",
+      "crearConversion": "Create conversion",
+      "sinCosto": "No cost recorded: the recipe cost is incomplete.",
+      "noDescuenta": "Not tracked: it is costed but does not deduct stock.",
+      "filaDe": "Ingredient {nombre}",
+      "ordenar": "Reorder {nombre} (up and down arrows)",
+      "cantidad": "Quantity",
+      "unidad": "Unit",
+      "merma": "Waste",
+      "porUnidad": "{costo} / {unidad}",
+      "sinConversion": "no conversion",
+      "opcionalDe": "{nombre} is optional",
+      "opcional": "Optional",
+      "quitar": "Remove {nombre}"
+    },
+    "errores": {
+      "cantidad_invalida": "Quantity must be greater than 0.",
+      "merma_invalida": "Waste goes from 0 to 99.99 %.",
+      "repetido": "This ingredient is already in the recipe with the same unit.",
+      "autorreferida": "It is the product itself or one of its variants: remove it from the recipe.",
+      "conversion_faltante": "There is no conversion from {de} to {a} for this ingredient.",
+      "ingrediente_invalido": "This ingredient no longer exists in the organization.",
+      "sin_ingredientes": "Add at least one ingredient.",
+      "rinde_invalido": "Yield must be greater than 0."
+    },
+    "costo": {
+      "titulo": "Recipe cost",
+      "error": "The cost could not be calculated. It retries when an ingredient changes.",
+      "sinIngredientes": "Add ingredients to see the cost.",
+      "sinPermiso": "You are not allowed to see costs and margins. You can still edit the recipe.",
+      "tanda": "Batch cost",
+      "rinde": "Yield",
+      "porUnidad": "Cost per unit",
+      "precio": "Sale price",
+      "margen": "Margin",
+      "incompleto": "{count, plural, one {Incomplete cost: 1 ingredient is missing its cost or conversion.} other {Incomplete cost: # ingredients are missing their cost or conversion.}}",
+      "fuente": "Source: average cost at {sucursal}; if there is no stock, the product current cost. Recalculated when an ingredient changes.",
+      "sinSucursal": "the active branch"
+    },
+    "alcance": {
+      "titulo": "Recipe scope",
+      "compartida": "One recipe for all variants",
+      "porVariante": "One recipe per variant",
+      "estados": "Recipe of each variant",
+      "chip": "{nombre} · {estado}",
+      "estado": {
+        "sin_receta": "no recipe",
+        "compartida": "uses the shared one",
+        "propia": "own",
+        "con_errores": "with errors"
+      },
+      "ayudaPorVariante": "A variant without its own recipe uses the shared one (the product recipe). “Copy from…” starts from another variant.",
+      "ayudaCompartida": "{count, plural, one {The variant deducts} other {The # variants deduct}} the same ingredients. If one needs something else, switch to “One recipe per variant”."
+    },
+    "conversion": {
+      "titulo": "New conversion",
+      "descripcion": "For {ingrediente}, tracked in {unidad}.",
+      "de": "From",
+      "factor": "Equals ({unidad})",
+      "factorInvalido": "The factor must be greater than 0.",
+      "inversa": "Also create the inverse",
+      "inversaCon": "Also create the inverse ({vista})",
+      "tiposDistintos": "{de} and {a} are different kinds of unit: they cannot be converted. Pick a unit of the same kind in the recipe.",
+      "vistaPrevia": "{ida} · {vuelta}",
+      "alcanceOrganizacion": "Saved for the whole organization. Product-only conversions come with the Units tab of the product detail.",
+      "guardar": "Save conversion",
+      "error": "The conversion could not be saved: {detalle}"
+    },
+    "editor": {
+      "rinde": "Yield",
+      "unidadRinde": "Yield unit",
+      "nombre": "Recipe name (optional)",
+      "nombrePlaceholder": "Base recipe",
+      "ingredientes": "Ingredients ({count})",
+      "tanda": "Batch: {costo}",
+      "sinCosto": "No cost",
+      "vacioTitulo": "No ingredients yet",
+      "vacioDescripcion": "Search for a product to add it. If the ingredient does not exist, create it without leaving the form.",
+      "colIngrediente": "Ingredient",
+      "colCantidad": "Quantity",
+      "colUnidad": "Unit",
+      "colMerma": "Waste",
+      "colCosto": "Cost",
+      "agregar": "Add ingredient",
+      "buscar": "Search by name or SKU",
+      "buscarVacio": "Type to search for a product.",
+      "sinResultados": "No product matches.",
+      "crearCon": "Create ingredient “{texto}”",
+      "crearIngrediente": "Create ingredient",
+      "seLlevaEn": "tracked in {unidad}"
+    },
+    "formulario": {
+      "interruptor": "This product is made from a recipe",
+      "interruptorAyuda": "Ingredients are deducted from inventory and the cost is calculated automatically, with the same rule as the recipe cost report.",
+      "version": "Version {version} active since {desde}. If you change it, saving creates version {siguiente}; otherwise no version is created.",
+      "ordenesAbiertas": "{count, plural, one {The open production order keeps version {version}.} other {The # open production orders keep version {version}.}}",
+      "modoTitulo": "How inventory is deducted",
+      "alVender": "On sale (assembled at sale)",
+      "alProducir": "On production (production order)",
+      "alVenderAyuda": "On sale: each sale deducts the ingredients (recipe × quantity ÷ yield, with waste). Optional ingredients are not deducted.",
+      "alProducirAyuda": "On production: ingredients are consumed when a production order is completed and the product enters inventory. Sales deduct only the product. Never both.",
+      "alProducirSinInventario": "“On production” requires “Track inventory”: what is produced has to go somewhere.",
+      "alProducirServicio": "A service has no inventory: use “On sale”.",
+      "activarInventario": "Turn on “Track inventory”",
+      "propiasSeDesactivan": "{count, plural, one {The own recipe of 1 variant is not saved with “One recipe for all”: it is deactivated on save.} other {The own recipes of # variants are not saved with “One recipe for all”: they are deactivated on save.}}",
+      "huerfanasQuitadas": "{count, plural, one {1 recipe of a variant that no longer exists was removed.} other {# recipes of variants that no longer exist were removed.}}",
+      "recetaDe": "Recipe of:",
+      "compartida": "Shared",
+      "laCompartida": "The shared one",
+      "chipVariante": "{nombre} · {estado}",
+      "estadoVariante": {
+        "sin_receta": "no recipe",
+        "compartida": "uses the shared one",
+        "propia": "own",
+        "con_errores": "with errors"
+      },
+      "ingredientesCompartida": "Shared recipe ingredients",
+      "ingredientesDe": "Ingredients of “{nombre}” ({count})",
+      "usarCompartida": "Use the shared one",
+      "copiarDe": "Copy from…",
+      "usaLaCompartida": "“{nombre}” uses the shared recipe.",
+      "sinRecetaVariante": "“{nombre}” has no recipe: create its own or build the shared one first.",
+      "copiarCompartida": "Copy from the shared one and adjust",
+      "crearPropia": "Create own recipe",
+      "comoSeGuarda": {
+        "titulo": "How it is saved",
+        "crearBorrador": "Nothing is written to the database until “Save”. Meanwhile the recipe lives in the form and in a draft of this tab.",
+        "crearVariantes": "Each variant recipe is saved on that variant; a variant without its own recipe uses the shared one.",
+        "crearUnaOperacion": "On save, a single operation creates product, variants and recipes. If anything fails, nothing is left half done.",
+        "crearReintento": "Double click or retry after a dropped connection: the same product comes back, no second one is created.",
+        "editarSinCambio": "If the recipe did not change, no version is created.",
+        "editarAlProducir": "Switching to “On production” requires “Track inventory”: what is produced has to go somewhere.",
+        "editarVersiones": "Each change saves a new version; previous ones are kept and open production orders keep theirs."
+      }
     }
   }
 }

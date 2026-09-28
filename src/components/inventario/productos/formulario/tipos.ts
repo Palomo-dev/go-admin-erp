@@ -21,6 +21,8 @@ export interface CategoriaCatalogo {
 export interface UnidadCatalogo {
   code: string;
   name: string;
+  /** weight · volume · count · length · area: la receta solo ofrece unidades del mismo tipo. */
+  unit_type?: string | null;
 }
 
 export interface ImpuestoCatalogo {
@@ -98,4 +100,6 @@ export interface PropsSeccionFormulario {
   moneda: MonedaFormulario;
   /** Día de la organización (YYYY-MM-DD) para vistas previas. */
   hoy: string;
+  /** Editar: órdenes de producción abiertas con la receta activa (no cambian al guardar). */
+  ordenesAbiertasReceta?: number;
 }

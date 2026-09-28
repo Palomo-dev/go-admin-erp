@@ -7,14 +7,15 @@ import { useTranslations } from 'next-intl';
 import { FormField } from '@/components/kit';
 import { CampoNumero } from '@/components/kit/CampoNumero';
 import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
-import { Switch } from '@/components/ui/switch';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import type { PropsSeccionFormulario } from '../tipos';
+import { SeccionReceta } from './SeccionReceta';
 
 /**
  * Avanzado: envío (peso y medidas para cotizar guías; oculto en servicios),
  * nota interna (una nota nueva; el hilo vive en la pestaña Notas del detalle)
- * y compuesto/receta (`is_composite`).
+ * y receta (`SeccionReceta`: ingredientes, rinde, merma, costo y cómo se
+ * descuenta el inventario; antes era solo el interruptor y un enlace a Recetas).
  */
 type CampoEnvio = 'weight_kg' | 'length_cm' | 'width_cm' | 'height_cm';
 
@@ -34,7 +35,8 @@ function Subtitulo({ icono: Icono, children }: { icono: typeof Truck; children: 
   );
 }
 
-export function SeccionAvanzado({ estado, cambiar, errores, modo, productUuid }: PropsSeccionFormulario) {
+export function SeccionAvanzado(props: PropsSeccionFormulario) {
+  const { estado, cambiar, errores, modo, productUuid } = props;
   const t = useTranslations('productoForm.avanzado');
   const tErr = useTranslations('productoForm.errores');
   const entero = useFormatoEntero();
@@ -102,21 +104,10 @@ export function SeccionAvanzado({ estado, cambiar, errores, modo, productUuid }:
         </p>
       </div>
 
-      {/* Compuesto / receta */}
+      {/* Receta */}
       <div className="flex flex-col gap-3 border-t border-line pt-5">
-        <Subtitulo icono={ChefHat}>{t('compuesto')}</Subtitulo>
-        <div className="flex items-start justify-between gap-4">
-          <label htmlFor="producto-compuesto" className="min-w-0 text-sm text-fg">
-            {t('esCompuesto')}
-            <span className="mt-0.5 block text-xs text-fg-muted">{t('compuestoAyuda')}</span>
-          </label>
-          <Switch id="producto-compuesto" checked={estado.is_composite} onCheckedChange={(v) => cambiar('is_composite', v)} />
-        </div>
-        {estado.is_composite && (
-          <Link href="/app/inventario/recetas" className="self-start text-sm text-link hover:underline">
-            {t('irRecetas')}
-          </Link>
-        )}
+        <Subtitulo icono={ChefHat}>{t('receta')}</Subtitulo>
+        <SeccionReceta {...props} />
       </div>
     </div>
   );

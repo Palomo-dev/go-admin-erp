@@ -63,6 +63,7 @@ export const PASO_DE_CAMPO: Record<CampoFormulario, PasoMovil> = {
   barcode: 'detalles',
   proveedor: 'detalles',
   dimensiones: 'detalles',
+  receta: 'detalles',
 };
 
 export function primerPasoConError(errores: ErroresFormulario): PasoMovil | null {

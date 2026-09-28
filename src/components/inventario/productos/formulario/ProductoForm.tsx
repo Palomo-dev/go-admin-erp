@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Lock } from 'lucide-react';
+import { FileText, History, Lock } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { EmptyState, FormSection, PageHeader, Stepper, useEsEscritorio, type Miga } from '@/components/kit';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -112,6 +112,7 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
     productUuid,
     organizacionId,
     sufijos: { sku: td('sufijoSku'), nombre: td('sufijoNombre') },
+    conBorrador: layout === 'page',
   });
   const { estado } = form;
 
@@ -197,7 +198,14 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
     }
     setGuardando(otro ? 'otro' : 'guardar');
     try {
-      const r = await guardarProducto({ organizacionId, estado, modo, productId: form.productId, revisarCodigos: revisar });
+      const r = await guardarProducto({
+        organizacionId,
+        estado,
+        modo,
+        productId: form.productId,
+        revisarCodigos: revisar,
+        claveIdempotencia: form.claveGuardado(),
+      });
       if (!r.ok) {
         if (r.tipo === 'codigos') {
           toast({ title: r.titulo, description: r.mensaje, variant: 'destructive' });
@@ -380,6 +388,7 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
     productUuid,
     moneda,
     hoy: fechas.getToday(),
+    ordenesAbiertasReceta: form.ordenesAbiertasReceta,
   };
 
   const contenido = (s: SeccionFormulario): ReactNode => {
@@ -444,6 +453,17 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
     </div>
   );
 
+  // Borrador recuperado de sessionStorage (decisión 5): se avisa y se puede descartar.
+  const avisoBorrador = form.borradorRecuperado && (
+    <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-info-subtle p-3 text-sm text-info-text">
+      <History aria-hidden className="size-4 shrink-0" strokeWidth={1.5} />
+      <span className="min-w-0 flex-1">{t('borradorRecuperado')}</span>
+      <button type="button" onClick={form.descartarBorrador} className="font-medium text-link hover:underline">
+        {t('descartarBorrador')}
+      </button>
+    </div>
+  );
+
   // Móvil, crear o duplicar: stepper de 3 pasos.
   if (conStepper) {
     const siguiente = PASOS_MOVIL[indicePaso] as PasoMovil | undefined;
@@ -456,6 +476,7 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
       <>
         <span id="producto-form-inicio" className="scroll-mt-24" />
         {avisoPermiso}
+        {avisoBorrador}
         <Stepper
           pasos={PASOS_MOVIL.map((p) => ({ valor: p, etiqueta: tp(p) }))}
           actual={paso}
@@ -559,6 +580,7 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
     <>
       <span id="producto-form-inicio" className="scroll-mt-24" />
       {avisoPermiso}
+      {avisoBorrador}
       {!enDialogo && esEscritorio ? (
         <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)]">
           <aside>

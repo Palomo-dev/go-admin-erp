@@ -8831,7 +8831,21 @@
       "combinacion_repetida": "Deux variantes ont la même combinaison d’attributs.",
       "variante_stock_sin_costo": "Une variante avec un stock initial nécessite un coût.",
       "demasiadas_imagenes": "Vous pouvez ajouter jusqu’à 5 images.",
-      "dimension_negativa": "Le poids et les dimensions ne peuvent pas être négatifs."
+      "dimension_negativa": "Le poids et les dimensions ne peuvent pas être négatifs.",
+      "receta_sin_ingredientes": "La recette est activée mais sans ingrédients : ajoutez-en au moins un ou désactivez-la.",
+      "receta_con_errores": "Certains ingrédients de la recette ont des erreurs : vérifiez-les avant d’enregistrer.",
+      "receta_al_producir_sin_inventario": "« À la production » exige « Suivre le stock » : ce qui est produit doit entrer quelque part.",
+      "conversion_faltante": "Il manque une conversion d’unités pour un ingrédient : créez-la depuis la ligne signalée.",
+      "receta_rinde_invalido": "Le rendement de la recette doit être supérieur à 0.",
+      "receta_unidad_invalida": "Une unité de la recette n’existe pas.",
+      "receta_ingrediente_invalido": "Un ingrédient n’existe pas, est supprimé, est un service ou un produit avec variantes.",
+      "receta_autorreferida": "Un produit ne peut pas être ingrédient de sa propre recette (ni ses variantes ni son parent).",
+      "receta_cantidad_invalida": "Chaque ingrédient doit avoir une quantité supérieure à 0.",
+      "receta_merma_invalida": "La perte d’un ingrédient va de 0 à 99,99 %.",
+      "receta_ingrediente_repetido": "Un ingrédient est répété dans la recette avec la même unité : fusionnez-le.",
+      "receta_variante_desconocida": "La recette vise une variante qui n’est plus dans le formulaire.",
+      "receta_destino_repetido": "Il y a deux recettes pour le même produit ou la même variante.",
+      "guardado_en_curso": "Cet enregistrement est déjà en cours. Patientez un instant et réessayez."
     },
     "imagenes": {
       "insignias": {
@@ -9085,7 +9099,9 @@
       "actualizado": "Produit mis à jour",
       "duplicado": "Produit dupliqué",
       "guardadoDescripcion": "« {nombre} » a été enregistré.",
-      "avisoCodigos": "Le produit a été enregistré, mais les codes-barres des variantes n’ont pas pu être numérotés. Générez-les depuis Étiquettes."
+      "avisoCodigos": "Le produit a été enregistré, mais les codes-barres des variantes n’ont pas pu être numérotés. Générez-les depuis Étiquettes.",
+      "borradorRecuperado": "Nous avons récupéré des modifications non enregistrées de ce formulaire (brouillon de cet onglet).",
+      "descartarBorrador": "Supprimer le brouillon"
     },
     "secciones": {
       "informacion": {
@@ -9126,7 +9142,7 @@
       },
       "avanzado": {
         "titulo": "Avancé",
-        "descripcion": "Expédition (poids et dimensions), note interne et composé/recette."
+        "descripcion": "Expédition, note interne et recette : ingrédients, rendement, perte, coût et déstockage."
       }
     },
     "informacion": {
@@ -9234,10 +9250,7 @@
       "notaAyudaCrear": "Enregistrée comme première note du produit.",
       "notaAyudaEditar": "Ajoutée comme nouvelle note ; le fil complet se trouve dans l’onglet Notes de la fiche.",
       "verNotas": "Voir les notes",
-      "compuesto": "Composé ou recette",
-      "esCompuesto": "C’est un produit composé",
-      "compuestoAyuda": "Il est composé d’autres produits (recette) ; ses ingrédients se définissent dans Recettes.",
-      "irRecetas": "Aller aux recettes"
+      "receta": "Recette"
     },
     "duplicar": {
       "sufijoSku": "-COPIE",
@@ -13815,6 +13828,149 @@
       "nueva": "Nouvelle retenue",
       "editar": "Modifier la retenue",
       "nota": "Une retenue est pratiquée par l’acheteur : elle ne s’ajoute pas au prix, ne s’attribue pas aux produits et ne peut pas être le taux par défaut."
+    }
+  },
+  "receta": {
+    "fila": {
+      "seLlevaEn": "suivi en {unidad}",
+      "existencia": "{cantidad} {unidad} à {sucursal}",
+      "sinInventario": "sans stock",
+      "seCosteaPor": "coûté par {unidad}",
+      "equivale": "= {cantidad} {unidad}",
+      "fusionar": "Fusionner",
+      "crearConversion": "Créer la conversion",
+      "sinCosto": "Aucun coût enregistré : le coût de la recette est incomplet.",
+      "noDescuenta": "Sans stock : il est coûté mais ne déstocke pas.",
+      "filaDe": "Ingrédient {nombre}",
+      "ordenar": "Réordonner {nombre} (flèches haut et bas)",
+      "cantidad": "Quantité",
+      "unidad": "Unité",
+      "merma": "Perte",
+      "porUnidad": "{costo} / {unidad}",
+      "sinConversion": "sans conversion",
+      "opcionalDe": "{nombre} est facultatif",
+      "opcional": "Facultatif",
+      "quitar": "Retirer {nombre}"
+    },
+    "errores": {
+      "cantidad_invalida": "La quantité doit être supérieure à 0.",
+      "merma_invalida": "La perte va de 0 à 99,99 %.",
+      "repetido": "Cet ingrédient est déjà dans la recette avec la même unité.",
+      "autorreferida": "C’est le produit lui-même ou une de ses variantes : retirez-le de la recette.",
+      "conversion_faltante": "Aucune conversion de {de} vers {a} pour cet ingrédient.",
+      "ingrediente_invalido": "Cet ingrédient n’existe plus dans l’organisation.",
+      "sin_ingredientes": "Ajoutez au moins un ingrédient.",
+      "rinde_invalido": "Le rendement doit être supérieur à 0."
+    },
+    "costo": {
+      "titulo": "Coût de la recette",
+      "error": "Impossible de calculer le coût. Nouvel essai au prochain changement d’ingrédient.",
+      "sinIngredientes": "Ajoutez des ingrédients pour voir le coût.",
+      "sinPermiso": "Vous n’avez pas l’autorisation de voir les coûts et marges. Vous pouvez quand même modifier la recette.",
+      "tanda": "Coût du lot",
+      "rinde": "Rendement",
+      "porUnidad": "Coût par unité",
+      "precio": "Prix de vente",
+      "margen": "Marge",
+      "incompleto": "{count, plural, one {Coût incomplet : il manque le coût ou la conversion de 1 ingrédient.} other {Coût incomplet : il manque le coût ou la conversion de # ingrédients.}}",
+      "fuente": "Source : coût moyen à {sucursal} ; sans stock, le coût en vigueur du produit. Recalculé à chaque changement d’ingrédient.",
+      "sinSucursal": "l’agence active"
+    },
+    "alcance": {
+      "titulo": "Portée de la recette",
+      "compartida": "Une recette pour toutes les variantes",
+      "porVariante": "Une recette par variante",
+      "estados": "Recette de chaque variante",
+      "chip": "{nombre} · {estado}",
+      "estado": {
+        "sin_receta": "sans recette",
+        "compartida": "utilise la commune",
+        "propia": "propre",
+        "con_errores": "avec erreurs"
+      },
+      "ayudaPorVariante": "Une variante sans recette propre utilise la recette commune (celle du produit). « Copier depuis… » part d’une autre variante.",
+      "ayudaCompartida": "{count, plural, one {La variante déstocke} other {Les # variantes déstockent}} les mêmes ingrédients. Si l’une a besoin d’autre chose, passez à « Une recette par variante »."
+    },
+    "conversion": {
+      "titulo": "Nouvelle conversion",
+      "descripcion": "Pour {ingrediente}, suivi en {unidad}.",
+      "de": "De",
+      "factor": "Équivaut à ({unidad})",
+      "factorInvalido": "Le facteur doit être supérieur à 0.",
+      "inversa": "Créer aussi l’inverse",
+      "inversaCon": "Créer aussi l’inverse ({vista})",
+      "tiposDistintos": "{de} et {a} sont des unités de types différents : impossible de convertir. Choisissez dans la recette une unité du même type.",
+      "vistaPrevia": "{ida} · {vuelta}",
+      "alcanceOrganizacion": "Enregistrée pour toute l’organisation. La conversion propre à un produit arrivera avec l’onglet Unités du détail.",
+      "guardar": "Enregistrer la conversion",
+      "error": "Impossible d’enregistrer la conversion : {detalle}"
+    },
+    "editor": {
+      "rinde": "Rendement",
+      "unidadRinde": "Unité du rendement",
+      "nombre": "Nom de la recette (facultatif)",
+      "nombrePlaceholder": "Recette de base",
+      "ingredientes": "Ingrédients ({count})",
+      "tanda": "Lot : {costo}",
+      "sinCosto": "Sans coût",
+      "vacioTitulo": "Pas encore d’ingrédients",
+      "vacioDescripcion": "Cherchez un produit pour l’ajouter. Si l’ingrédient n’existe pas, créez-le sans quitter le formulaire.",
+      "colIngrediente": "Ingrédient",
+      "colCantidad": "Quantité",
+      "colUnidad": "Unité",
+      "colMerma": "Perte",
+      "colCosto": "Coût",
+      "agregar": "Ajouter un ingrédient",
+      "buscar": "Rechercher par nom ou SKU",
+      "buscarVacio": "Tapez pour rechercher un produit.",
+      "sinResultados": "Aucun produit ne correspond.",
+      "crearCon": "Créer l’ingrédient « {texto} »",
+      "crearIngrediente": "Créer un ingrédient",
+      "seLlevaEn": "suivi en {unidad}"
+    },
+    "formulario": {
+      "interruptor": "Ce produit est fabriqué à partir d’une recette",
+      "interruptorAyuda": "Les ingrédients sont déstockés et le coût se calcule tout seul, avec la même règle que le rapport de coût des recettes.",
+      "version": "Version {version} active depuis le {desde}. Si vous la modifiez, l’enregistrement crée la version {siguiente} ; sinon, aucune version n’est créée.",
+      "ordenesAbiertas": "{count, plural, one {L’ordre de production ouvert garde la version {version}.} other {Les # ordres de production ouverts gardent la version {version}.}}",
+      "modoTitulo": "Comment le stock est déduit",
+      "alVender": "À la vente (assemblé à la vente)",
+      "alProducir": "À la production (ordre de production)",
+      "alVenderAyuda": "À la vente : chaque vente déstocke les ingrédients (recette × quantité ÷ rendement, avec la perte). Les ingrédients facultatifs ne sont pas déstockés.",
+      "alProducirAyuda": "À la production : les ingrédients sortent à la clôture d’un ordre de production et le produit entre en stock. La vente déstocke seulement le produit. Jamais les deux.",
+      "alProducirSinInventario": "« À la production » exige « Suivre le stock » : ce qui est produit doit entrer quelque part.",
+      "alProducirServicio": "Un service n’a pas de stock : utilisez « À la vente ».",
+      "activarInventario": "Activer « Suivre le stock »",
+      "propiasSeDesactivan": "{count, plural, one {La recette propre de 1 variante n’est pas enregistrée avec « Une recette pour toutes » : elle sera désactivée.} other {Les recettes propres de # variantes ne sont pas enregistrées avec « Une recette pour toutes » : elles seront désactivées.}}",
+      "huerfanasQuitadas": "{count, plural, one {1 recette d’une variante qui n’existe plus a été retirée.} other {# recettes de variantes qui n’existent plus ont été retirées.}}",
+      "recetaDe": "Recette de :",
+      "compartida": "Commune",
+      "laCompartida": "La commune",
+      "chipVariante": "{nombre} · {estado}",
+      "estadoVariante": {
+        "sin_receta": "sans recette",
+        "compartida": "utilise la commune",
+        "propia": "propre",
+        "con_errores": "avec erreurs"
+      },
+      "ingredientesCompartida": "Ingrédients de la recette commune",
+      "ingredientesDe": "Ingrédients de « {nombre} » ({count})",
+      "usarCompartida": "Utiliser la commune",
+      "copiarDe": "Copier depuis…",
+      "usaLaCompartida": "« {nombre} » utilise la recette commune.",
+      "sinRecetaVariante": "« {nombre} » n’a pas de recette : créez-en une propre ou préparez d’abord la commune.",
+      "copiarCompartida": "Copier la commune et ajuster",
+      "crearPropia": "Créer une recette propre",
+      "comoSeGuarda": {
+        "titulo": "Comment c’est enregistré",
+        "crearBorrador": "Rien n’est écrit en base avant « Enregistrer ». En attendant, la recette vit dans le formulaire et dans un brouillon de cet onglet.",
+        "crearVariantes": "La recette de chaque variante est enregistrée sur cette variante ; celle sans recette propre utilise la commune.",
+        "crearUnaOperacion": "À l’enregistrement, une seule opération crée produit, variantes et recettes. Si quelque chose échoue, rien ne reste à moitié.",
+        "crearReintento": "Double clic ou nouvel essai après une coupure : le même produit revient, aucun autre n’est créé.",
+        "editarSinCambio": "Si la recette n’a pas changé, aucune version n’est créée.",
+        "editarAlProducir": "Passer à « À la production » exige « Suivre le stock » : ce qui est produit doit entrer quelque part.",
+        "editarVersiones": "Chaque changement enregistre une nouvelle version ; les précédentes sont conservées et les ordres de production ouverts gardent la leur."
+      }
     }
   }
 }

@@ -21,7 +21,8 @@ import {
  * 1. revisión de códigos de barras (producto y variantes);
  * 2. subida de las imágenes nuevas y copia de las del original al duplicar
  *    (nunca se reutiliza el storage_path de otro producto);
- * 3. una sola RPC transaccional (`fn_producto_guardar`);
+ * 3. una sola RPC transaccional (`fn_producto_guardar`): producto, variantes y
+ *    recetas juntos, con clave de idempotencia (un reintento devuelve lo ya guardado);
  * 4. si falla, se borra lo que se subió en el paso 2;
  * 5. si va bien, se borran del storage las imágenes quitadas, se numeran los
  *    códigos de las variantes (no heredan el del padre) y se avisa a la tienda.
@@ -43,6 +44,8 @@ export interface EntradaGuardado {
   /** Editar: id del producto. */
   productId?: number;
   revisarCodigos: RevisionCodigos;
+  /** Misma clave mientras el formulario no cambie (doble clic, reintento tras un corte de red). */
+  claveIdempotencia?: string;
 }
 
 export type ResultadoGuardado =
@@ -100,6 +103,7 @@ export async function guardarProducto({
   modo,
   productId,
   revisarCodigos,
+  claveIdempotencia,
 }: EntradaGuardado): Promise<ResultadoGuardado> {
   // 1. Códigos de barras: formato, repetidos en el formulario y en la organización.
   const excluir =
@@ -145,10 +149,9 @@ export async function guardarProducto({
   // 3. Una sola transacción.
   let resultado: ResultadoGuardarProducto;
   try {
-    resultado = await productoService.guardar(
-      organizacionId,
-      construirPayload(estado, modo, { productId, rutas }),
-    );
+    const payload = construirPayload(estado, modo, { productId, rutas });
+    if (claveIdempotencia) payload.clave_idempotencia = claveIdempotencia;
+    resultado = await productoService.guardar(organizacionId, payload);
   } catch (e) {
     // 4. Nada quedó guardado: fuera lo que se subió.
     await borrarRutas(subidas);
@@ -159,7 +162,9 @@ export async function guardarProducto({
     };
   }
 
-  // 5. Después de guardar.
+  // 5. Después de guardar. Un reintento idempotente devuelve lo guardado la primera
+  // vez: lo que se acaba de subir no quedó referenciado y se borra.
+  if (resultado.repetido) await borrarRutas(subidas);
   await borrarRutas(resultado.imagenes_quitadas);
   let avisoCodigos = false;
   if (estado.tiene_variantes && estado.barcode.trim() && resultado.variantes.length > 0) {

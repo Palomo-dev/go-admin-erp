@@ -4,6 +4,12 @@ import type {
   ModoFormularioProducto,
   PayloadGuardarProducto,
 } from '@/lib/services/productoService';
+import {
+  payloadRecetaProducto,
+  recetaFormInicial,
+  validarRecetaForm,
+  type RecetaForm,
+} from '@/components/kit/receta/recetaLogica';
 import { validarPatron } from './seriales';
 import { claveAtributos, nombreVariante, type Atributos } from './variantes';
 
@@ -57,7 +63,8 @@ export type CampoFormulario =
   | 'imagenes'
   | 'barcode'
   | 'proveedor'
-  | 'dimensiones';
+  | 'dimensiones'
+  | 'receta';
 
 /** Sección donde vive cada campo (índice lateral y paso del stepper móvil). */
 export const SECCION_DE_CAMPO: Record<CampoFormulario, SeccionFormulario> = {
@@ -78,6 +85,7 @@ export const SECCION_DE_CAMPO: Record<CampoFormulario, SeccionFormulario> = {
   barcode: 'codigos',
   proveedor: 'organizacion',
   dimensiones: 'avanzado',
+  receta: 'avanzado',
 };
 
 /** Códigos de validación: son claves i18n en `productoForm.errores.*`. */
@@ -107,7 +115,10 @@ export type CodigoValidacion =
   | 'categoria_invalida'
   | 'impuesto_invalido'
   | 'proveedor_invalido'
-  | 'variantes_activas';
+  | 'variantes_activas'
+  | 'receta_sin_ingredientes'
+  | 'receta_con_errores'
+  | 'receta_al_producir_sin_inventario';
 
 export type ErroresFormulario = Partial<Record<CampoFormulario, CodigoValidacion>>;
 
@@ -246,8 +257,13 @@ export interface EstadoFormularioProducto {
   length_cm: number | null;
   width_cm: number | null;
   height_cm: number | null;
-  is_composite: boolean;
   nota: string;
+  /**
+   * Receta (Avanzado › Receta). `receta.activa` es `products.is_composite`; la
+   * receta de una variante se indexa por `VarianteForm.clave` hasta que la
+   * variante exista (docs/design/PRODUCTO-RECETAS-Y-SUBSECCIONES.md §2.2).
+   */
+  receta: RecetaForm;
 }
 
 export interface SucursalBasica {
@@ -350,8 +366,8 @@ export function estadoInicial(sucursales: readonly SucursalBasica[] = []): Estad
     length_cm: null,
     width_cm: null,
     height_cm: null,
-    is_composite: false,
     nota: '',
+    receta: recetaFormInicial(),
   };
 }
 
@@ -498,8 +514,9 @@ export function estadoDesdeDatos(
     length_cm: n(p.length_cm),
     width_cm: n(p.width_cm),
     height_cm: n(p.height_cm),
-    is_composite: Boolean(p.is_composite),
     nota: '',
+    // Las recetas llegan aparte (fn_producto_recetas_para_formulario): ver recetaFormDesdeServidor.
+    receta: { ...recetaFormInicial(), activa: Boolean(p.is_composite), modo: p.production_type === 'preparation' ? 'al_producir' : 'al_vender' },
   };
   // Duplicar con imágenes y sin principal marcada: la primera.
   if (estado.imagenes.length > 0 && !estado.imagenes.some((i) => i.is_primary)) {
@@ -517,7 +534,7 @@ export function limiteImagenes(modo: ModoFormularioProducto, originales: number)
 export function validarFormulario(
   e: EstadoFormularioProducto,
   modo: ModoFormularioProducto,
-  contexto: { imagenesOriginales?: number; ahora?: Date } = {},
+  contexto: { imagenesOriginales?: number; ahora?: Date; productId?: number } = {},
 ): ErroresFormulario {
   const err: ErroresFormulario = {};
   if (!e.sku.trim()) err.sku = 'sku_requerido';
@@ -603,7 +620,20 @@ export function validarFormulario(
 
   if (e.imagenes.length > limiteImagenes(modo, contexto.imagenesOriginales ?? 0)) err.imagenes = 'demasiadas_imagenes';
   if ([e.weight_kg, e.length_cm, e.width_cm, e.height_cm].some((x) => x !== null && x < 0)) err.dimensiones = 'dimension_negativa';
+  const errReceta = validarRecetaForm(e.receta, {
+    tieneVariantes: e.tiene_variantes,
+    clavesVariantes: e.variantes.map((v) => v.clave),
+    rastreaInventario: rastrea,
+    excluirIds: idsPropios(e, contexto.productId),
+  });
+  if (errReceta) err.receta = errReceta;
   return err;
+}
+
+/** El producto y sus variantes: no pueden ser ingredientes de su propia receta. */
+export function idsPropios(e: EstadoFormularioProducto, productId?: number): number[] {
+  const ids = e.variantes.map((v) => v.id).filter((id): id is number => typeof id === 'number');
+  return productId ? [productId, ...ids] : ids;
 }
 
 /** Primera sección con error (para desplazar el formulario y abrir el paso). */
@@ -662,6 +692,19 @@ export function campoDeErrorRpc(codigo: CodigoErrorProducto): CampoFormulario | 
     case 'patron_requerido':
     case 'patron_sin_consecutivo':
       return 'serial_pattern';
+    case 'conversion_faltante':
+    case 'receta_sin_ingredientes':
+    case 'receta_rinde_invalido':
+    case 'receta_unidad_invalida':
+    case 'receta_ingrediente_invalido':
+    case 'receta_autorreferida':
+    case 'receta_cantidad_invalida':
+    case 'receta_merma_invalida':
+    case 'receta_ingrediente_repetido':
+    case 'receta_variante_desconocida':
+    case 'receta_destino_repetido':
+    case 'receta_al_producir_sin_inventario':
+      return 'receta';
     default:
       return null;
   }
@@ -706,7 +749,7 @@ export function construirPayload(
       length_cm: e.product_type === 'service' ? null : e.length_cm,
       width_cm: e.product_type === 'service' ? null : e.width_cm,
       height_cm: e.product_type === 'service' ? null : e.height_cm,
-      is_composite: e.is_composite,
+      is_composite: e.receta.activa,
     },
     impuestos: [...e.impuestos],
     categorias_adicionales: e.categorias_adicionales.filter((c) => c !== e.category_id),
@@ -775,6 +818,8 @@ export function construirPayload(
   if (e.tiene_variantes) {
     payload.variantes = e.variantes.map((v) => ({
       ...(modo === 'editar' && v.id ? { id: v.id } : {}),
+      // Con la clave se ubica en el servidor la receta de una variante que aún no tiene id.
+      clave: v.clave,
       sku: v.sku.trim(),
       name: v.name.trim() || nombreVariante(e.name.trim(), v.attributes),
       // La variante no hereda el código del padre (dos tallas con el mismo código
@@ -796,6 +841,12 @@ export function construirPayload(
         : {}),
     }));
   }
+
+  payload.receta = payloadRecetaProducto(
+    e.receta,
+    e.tiene_variantes,
+    e.tiene_variantes ? e.variantes.map((v) => v.clave) : [],
+  );
 
   if (e.nota.trim()) payload.nota = e.nota;
   return payload;

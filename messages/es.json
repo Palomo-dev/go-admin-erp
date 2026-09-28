@@ -8936,7 +8936,21 @@
       "combinacion_repetida": "Dos variantes tienen la misma combinación de atributos.",
       "variante_stock_sin_costo": "Una variante con stock inicial necesita costo.",
       "demasiadas_imagenes": "Puedes subir hasta 5 imágenes.",
-      "dimension_negativa": "El peso y las medidas no pueden ser negativos."
+      "dimension_negativa": "El peso y las medidas no pueden ser negativos.",
+      "receta_sin_ingredientes": "La receta está encendida pero no tiene ingredientes: agrega al menos uno o apágala.",
+      "receta_con_errores": "Hay ingredientes de la receta con errores: revísalos antes de guardar.",
+      "receta_al_producir_sin_inventario": "«Al producir» exige «Rastrear inventario»: lo producido tiene que entrar a alguna parte.",
+      "conversion_faltante": "Falta la conversión de unidades de un ingrediente de la receta: créala desde la fila marcada.",
+      "receta_rinde_invalido": "El rinde de la receta debe ser mayor que 0.",
+      "receta_unidad_invalida": "Una unidad de la receta no existe.",
+      "receta_ingrediente_invalido": "Un ingrediente de la receta no existe, está borrado, es un servicio o un producto con variantes.",
+      "receta_autorreferida": "Un producto no puede ser ingrediente de su propia receta (ni sus variantes ni su padre).",
+      "receta_cantidad_invalida": "Cada ingrediente de la receta necesita una cantidad mayor que 0.",
+      "receta_merma_invalida": "La merma de un ingrediente va de 0 a 99,99 %.",
+      "receta_ingrediente_repetido": "Un ingrediente está repetido en la receta con la misma unidad: fusiónalo.",
+      "receta_variante_desconocida": "La receta apunta a una variante que ya no está en el formulario.",
+      "receta_destino_repetido": "Hay dos recetas para el mismo producto o variante.",
+      "guardado_en_curso": "Este guardado ya se está procesando. Espera un momento y vuelve a intentarlo."
     },
     "imagenes": {
       "insignias": {
@@ -9190,7 +9204,9 @@
       "actualizado": "Producto actualizado",
       "duplicado": "Producto duplicado",
       "guardadoDescripcion": "«{nombre}» quedó guardado.",
-      "avisoCodigos": "El producto se guardó, pero no se pudieron numerar los códigos de barras de las variantes. Genéralos desde Etiquetas."
+      "avisoCodigos": "El producto se guardó, pero no se pudieron numerar los códigos de barras de las variantes. Genéralos desde Etiquetas.",
+      "borradorRecuperado": "Recuperamos cambios sin guardar de este formulario (borrador de esta pestaña).",
+      "descartarBorrador": "Descartar borrador"
     },
     "secciones": {
       "informacion": {
@@ -9231,7 +9247,7 @@
       },
       "avanzado": {
         "titulo": "Avanzado",
-        "descripcion": "Envío (peso y medidas), nota interna y compuesto/receta."
+        "descripcion": "Envío, nota interna y receta: ingredientes, rendimiento, merma, costo y cómo se descuenta el inventario."
       }
     },
     "informacion": {
@@ -9339,10 +9355,7 @@
       "notaAyudaCrear": "Se guarda como la primera nota del producto.",
       "notaAyudaEditar": "Se agrega como una nota nueva; el hilo completo vive en la pestaña Notas del detalle.",
       "verNotas": "Ver notas",
-      "compuesto": "Compuesto o receta",
-      "esCompuesto": "Es un producto compuesto",
-      "compuestoAyuda": "Se arma con otros productos (receta); sus ingredientes se definen en Recetas.",
-      "irRecetas": "Ir a Recetas"
+      "receta": "Receta"
     },
     "duplicar": {
       "sufijoSku": "-COPIA",
@@ -13920,6 +13933,149 @@
       "nueva": "Nueva retención",
       "editar": "Editar retención",
       "nota": "Una retención la practica el comprador: no se suma al precio, no se asigna a productos y no puede ser la tarifa por defecto."
+    }
+  },
+  "receta": {
+    "fila": {
+      "seLlevaEn": "se lleva en {unidad}",
+      "existencia": "{cantidad} {unidad} en {sucursal}",
+      "sinInventario": "sin inventario",
+      "seCosteaPor": "se costea por {unidad}",
+      "equivale": "= {cantidad} {unidad}",
+      "fusionar": "Fusionar",
+      "crearConversion": "Crear conversión",
+      "sinCosto": "Sin costo registrado: el costo de la receta queda incompleto.",
+      "noDescuenta": "No lleva inventario: se costea pero no descuenta stock.",
+      "filaDe": "Ingrediente {nombre}",
+      "ordenar": "Ordenar {nombre} (flechas arriba y abajo)",
+      "cantidad": "Cantidad",
+      "unidad": "Unidad",
+      "merma": "Merma",
+      "porUnidad": "{costo} / {unidad}",
+      "sinConversion": "sin conversión",
+      "opcionalDe": "{nombre} es opcional",
+      "opcional": "Opcional",
+      "quitar": "Quitar {nombre}"
+    },
+    "errores": {
+      "cantidad_invalida": "La cantidad debe ser mayor que 0.",
+      "merma_invalida": "La merma va de 0 a 99,99 %.",
+      "repetido": "Este ingrediente ya está en la receta con la misma unidad.",
+      "autorreferida": "Es el propio producto o una de sus variantes: quítalo de la receta.",
+      "conversion_faltante": "No hay conversión de {de} a {a} para este ingrediente.",
+      "ingrediente_invalido": "Este ingrediente ya no existe en la organización.",
+      "sin_ingredientes": "Agrega al menos un ingrediente.",
+      "rinde_invalido": "El rinde debe ser mayor que 0."
+    },
+    "costo": {
+      "titulo": "Costo de la receta",
+      "error": "No se pudo calcular el costo. Se reintenta al cambiar un ingrediente.",
+      "sinIngredientes": "Agrega ingredientes para ver el costo.",
+      "sinPermiso": "No tienes permiso para ver costos y márgenes. La receta se puede editar igual.",
+      "tanda": "Costo de la tanda",
+      "rinde": "Rinde",
+      "porUnidad": "Costo por unidad",
+      "precio": "Precio de venta",
+      "margen": "Margen",
+      "incompleto": "{count, plural, one {Costo incompleto: falta el costo o la conversión de 1 ingrediente.} other {Costo incompleto: falta el costo o la conversión de # ingredientes.}}",
+      "fuente": "Fuente: costo promedio en {sucursal}; si no hay existencias, el costo vigente del producto. Se recalcula al cambiar un ingrediente.",
+      "sinSucursal": "la sucursal activa"
+    },
+    "alcance": {
+      "titulo": "Alcance de la receta",
+      "compartida": "Una receta para todas las variantes",
+      "porVariante": "Una receta por variante",
+      "estados": "Receta de cada variante",
+      "chip": "{nombre} · {estado}",
+      "estado": {
+        "sin_receta": "sin receta",
+        "compartida": "usa la compartida",
+        "propia": "propia",
+        "con_errores": "con errores"
+      },
+      "ayudaPorVariante": "Una variante sin receta propia usa la compartida (la receta del producto). «Copiar de…» parte de otra variante.",
+      "ayudaCompartida": "{count, plural, one {La variante descuenta} other {Las # variantes descuentan}} los mismos ingredientes. Si una necesita otra cosa, pasa a «Una receta por variante»."
+    },
+    "conversion": {
+      "titulo": "Nueva conversión",
+      "descripcion": "Para {ingrediente}, que se lleva en {unidad}.",
+      "de": "De",
+      "factor": "Equivale a ({unidad})",
+      "factorInvalido": "El factor debe ser mayor que 0.",
+      "inversa": "Crear también la inversa",
+      "inversaCon": "Crear también la inversa ({vista})",
+      "tiposDistintos": "{de} y {a} son unidades de distinto tipo: no se pueden convertir. Elige en la receta una unidad del mismo tipo.",
+      "vistaPrevia": "{ida} · {vuelta}",
+      "alcanceOrganizacion": "Se guarda para toda la organización. La conversión solo para un producto llega con la pestaña Unidades del detalle.",
+      "guardar": "Guardar conversión",
+      "error": "No se pudo guardar la conversión: {detalle}"
+    },
+    "editor": {
+      "rinde": "Rinde",
+      "unidadRinde": "Unidad del rinde",
+      "nombre": "Nombre de la receta (opcional)",
+      "nombrePlaceholder": "Receta base",
+      "ingredientes": "Ingredientes ({count})",
+      "tanda": "Tanda: {costo}",
+      "sinCosto": "Sin costo",
+      "vacioTitulo": "Aún no hay ingredientes",
+      "vacioDescripcion": "Busca un producto para agregarlo. Si el ingrediente no existe, créalo sin salir del formulario.",
+      "colIngrediente": "Ingrediente",
+      "colCantidad": "Cantidad",
+      "colUnidad": "Unidad",
+      "colMerma": "Merma",
+      "colCosto": "Costo",
+      "agregar": "Agregar ingrediente",
+      "buscar": "Buscar por nombre o SKU",
+      "buscarVacio": "Escribe para buscar un producto.",
+      "sinResultados": "Ningún producto coincide.",
+      "crearCon": "Crear ingrediente «{texto}»",
+      "crearIngrediente": "Crear ingrediente",
+      "seLlevaEn": "se lleva en {unidad}"
+    },
+    "formulario": {
+      "interruptor": "Este producto se arma con una receta",
+      "interruptorAyuda": "Los ingredientes se descuentan del inventario y el costo se calcula solo, con la misma regla del reporte de costo de recetas.",
+      "version": "Versión {version} activa desde el {desde}. Si la cambias, al guardar se crea la versión {siguiente}; si no, no se crea ninguna.",
+      "ordenesAbiertas": "{count, plural, one {La orden de producción abierta sigue con la versión {version}.} other {Las # órdenes de producción abiertas siguen con la versión {version}.}}",
+      "modoTitulo": "Cómo se descuenta el inventario",
+      "alVender": "Al vender (se arma en la venta)",
+      "alProducir": "Al producir (orden de producción)",
+      "alVenderAyuda": "Al vender: cada venta descuenta los ingredientes (receta × cantidad ÷ rinde, con la merma). Los ingredientes opcionales no se descuentan.",
+      "alProducirAyuda": "Al producir: los ingredientes salen al completar una orden de producción y el producto entra al inventario. La venta descuenta solo el producto. Nunca las dos cosas.",
+      "alProducirSinInventario": "«Al producir» exige «Rastrear inventario»: lo producido tiene que entrar a alguna parte.",
+      "alProducirServicio": "Un servicio no lleva inventario: usa «Al vender».",
+      "activarInventario": "Activar «Rastrear inventario»",
+      "propiasSeDesactivan": "{count, plural, one {La receta propia de 1 variante no se guarda con «Una receta para todas»: al guardar se desactiva.} other {Las recetas propias de # variantes no se guardan con «Una receta para todas»: al guardar se desactivan.}}",
+      "huerfanasQuitadas": "{count, plural, one {Se quitó 1 receta de una variante que ya no existe.} other {Se quitaron # recetas de variantes que ya no existen.}}",
+      "recetaDe": "Receta de:",
+      "compartida": "Compartida",
+      "laCompartida": "La compartida",
+      "chipVariante": "{nombre} · {estado}",
+      "estadoVariante": {
+        "sin_receta": "sin receta",
+        "compartida": "usa la compartida",
+        "propia": "propia",
+        "con_errores": "con errores"
+      },
+      "ingredientesCompartida": "Ingredientes de la receta compartida",
+      "ingredientesDe": "Ingredientes de «{nombre}» ({count})",
+      "usarCompartida": "Usar la compartida",
+      "copiarDe": "Copiar de…",
+      "usaLaCompartida": "«{nombre}» usa la receta compartida.",
+      "sinRecetaVariante": "«{nombre}» no tiene receta: crea una propia o arma primero la compartida.",
+      "copiarCompartida": "Copiar de la compartida y ajustar",
+      "crearPropia": "Crear receta propia",
+      "comoSeGuarda": {
+        "titulo": "Cómo se guarda",
+        "crearBorrador": "Nada se escribe en la base hasta «Guardar». Mientras tanto la receta vive en el formulario y en un borrador de esta pestaña.",
+        "crearVariantes": "La receta de cada variante se guarda en esa variante; la que no tiene receta propia usa la compartida.",
+        "crearUnaOperacion": "Al guardar, una sola operación crea producto, variantes y recetas. Si algo falla, no queda nada a medias.",
+        "crearReintento": "Doble clic o reintento tras un corte: se devuelve el mismo producto, no se crea otro.",
+        "editarSinCambio": "Si la receta no cambió, no se crea versión.",
+        "editarAlProducir": "Cambiar a «Al producir» exige «Rastrear inventario»: lo producido tiene que entrar a alguna parte.",
+        "editarVersiones": "Cada cambio guarda una versión nueva; las anteriores se conservan y las órdenes de producción abiertas siguen con la suya."
+      }
     }
   }
 }

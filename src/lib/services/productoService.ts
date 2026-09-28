@@ -1,3 +1,4 @@
+import type { PayloadRecetaProducto } from './recipeService';
 import { supabase } from '@/lib/supabase/config';
 
 /**
@@ -54,6 +55,20 @@ export const CODIGOS_ERROR_PRODUCTO = [
   'excede_stock',
   'sin_seriales',
   'modo_invalido',
+  // Receta (fn_producto_guardar · fn_receta_int_guardar_version)
+  'conversion_faltante',
+  'receta_sin_ingredientes',
+  'receta_rinde_invalido',
+  'receta_unidad_invalida',
+  'receta_ingrediente_invalido',
+  'receta_autorreferida',
+  'receta_cantidad_invalida',
+  'receta_merma_invalida',
+  'receta_ingrediente_repetido',
+  'receta_variante_desconocida',
+  'receta_destino_repetido',
+  'receta_al_producir_sin_inventario',
+  'guardado_en_curso',
 ] as const;
 
 export type CodigoErrorProducto = (typeof CODIGOS_ERROR_PRODUCTO)[number] | 'desconocido';
@@ -243,6 +258,8 @@ export interface ResultadoGenerarSeriales {
 
 export interface VarianteEntrada {
   id?: number;
+  /** Clave de cliente (VarianteForm.clave): ubica la receta de una variante nueva. */
+  clave?: string;
   sku: string;
   name: string;
   barcode?: string | null;
@@ -548,6 +565,7 @@ export const productoService = {
       cost: num(data?.cost),
       variantes: data?.variantes ?? [],
       imagenes_quitadas: data?.imagenes_quitadas ?? [],
+      recetas: data?.recetas ?? [],
     };
   },
 };
@@ -632,6 +650,10 @@ export interface PayloadGuardarProducto {
   modificadores?: GrupoModificadorEntrada[];
   imagenes?: ImagenEntrada[];
   nota?: string | null;
+  /** Una por intento de guardado lógico: un reintento devuelve el mismo resultado. */
+  clave_idempotencia?: string;
+  /** Sin esta clave las recetas no se tocan. */
+  receta?: PayloadRecetaProducto;
 }
 
 export interface ResultadoGuardarProducto {
@@ -641,8 +663,11 @@ export interface ResultadoGuardarProducto {
   name: string;
   price: number;
   cost: number;
-  variantes: { id: number; sku: string }[];
+  variantes: { id: number; sku: string; clave?: string | null }[];
   imagenes_quitadas: string[];
+  recetas?: { destino: 'producto' | { variante: string }; product_id: number; recipe_id: number; version: number; cambio: boolean }[];
+  /** La clave de idempotencia ya se había guardado: es el resultado de entonces. */
+  repetido?: boolean;
 }
 
 export interface DatosFormularioProducto {

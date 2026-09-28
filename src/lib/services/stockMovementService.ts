@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { recipeService } from './recipeService';
 
 export interface SaleItemForStock {
   product_id: number | null;
@@ -13,92 +14,16 @@ interface RecipeItemForStock {
 }
 
 /**
- * Devuelve la lista de productos cuyo stock debe reservarse/liberarse para
- * un item vendido. Si el producto tiene receta activa, devuelve los
- * ingredientes (con cantidad convertida a la unidad base del ingrediente).
- * Si además el producto compuesto tiene track_stock=true, lo incluye.
- * Si no tiene receta, devuelve solo el producto mismo.
+ * Productos cuyo stock se reserva o libera por un ítem vendido. Lo resuelve el
+ * servidor (`fn_receta_expandir`) con el mismo resolutor y el mismo cálculo que
+ * descuenta la venta: receta propia o la compartida del padre, rinde, merma,
+ * conversión de unidades, sin opcionales y sin el propio producto (F-68); más el
+ * compuesto si lleva inventario. Sin receta, o «al producir», el producto mismo.
+ * Antes esta lógica se repetía aquí con consultas desde el navegador.
  */
-async function getRecipeItemsForStock(
-  productId: number,
-  qty: number,
-  organizationId: number
-): Promise<RecipeItemForStock[]> {
-  // Buscar receta activa
-  const { data: recipe } = await supabase
-    .from('product_recipes')
-    .select('id')
-    .eq('product_id', productId)
-    .eq('is_active', true)
-    .limit(1)
-    .maybeSingle();
-
-  if (!recipe) {
-    // Sin receta → solo el producto
-    const { data: prod } = await supabase
-      .from('products')
-      .select('track_stock')
-      .eq('id', productId)
-      .maybeSingle();
-    return [{ product_id: productId, quantity: qty, track_stock: prod?.track_stock ?? true }];
-  }
-
-  // Con receta → traer ingredientes + track_stock del compuesto
-  const { data: ingredients } = await supabase
-    .from('recipe_ingredients')
-    .select(
-      'ingredient_product_id, quantity, unit_code, ingredient_product:products(id, track_stock, unit_code)'
-    )
-    .eq('recipe_id', recipe.id);
-
-  const { data: compositeProd } = await supabase
-    .from('products')
-    .select('track_stock')
-    .eq('id', productId)
-    .maybeSingle();
-
-  const items: RecipeItemForStock[] = [];
-
-  for (const ing of ingredients || []) {
-    // Un producto que figura como ingrediente de su propia receta ya sale
-    // abajo como compuesto; contarlo aquí lo descontaba dos veces (F-68).
-    if (ing.ingredient_product_id === productId) continue;
-    const ingProd = (ing as { ingredient_product?: { track_stock?: boolean; unit_code?: string | null } }).ingredient_product;
-    const trackStock = ingProd?.track_stock ?? true;
-    if (!trackStock) continue;
-
-    // Conversión de unidades: recipe_unit → product_unit
-    let convertedQty = Number(ing.quantity) * qty;
-    const fromUnit = ing.unit_code;
-    const toUnit = ingProd?.unit_code;
-    if (fromUnit && toUnit && fromUnit !== toUnit) {
-      const { data: conv } = await supabase
-        .from('unit_conversions')
-        .select('factor')
-        .eq('from_unit_code', fromUnit)
-        .eq('to_unit_code', toUnit)
-        .or(`organization_id.is.null,organization_id.eq.${organizationId}`)
-        .order('organization_id', { ascending: false, nullsFirst: false })
-        .limit(1)
-        .maybeSingle();
-      if (conv?.factor && conv.factor > 0) {
-        convertedQty = convertedQty * Number(conv.factor);
-      }
-    }
-
-    items.push({
-      product_id: ing.ingredient_product_id,
-      quantity: convertedQty,
-      track_stock: true,
-    });
-  }
-
-  // Si el compuesto también rastrea stock, incluirlo
-  if (compositeProd?.track_stock === true) {
-    items.push({ product_id: productId, quantity: qty, track_stock: true });
-  }
-
-  return items;
+async function getRecipeItemsForStock(productId: number, qty: number): Promise<RecipeItemForStock[]> {
+  const items = await recipeService.expandir(productId, qty);
+  return items.map((i) => ({ product_id: i.product_id, quantity: i.quantity, track_stock: i.track_stock }));
 }
 
 /**
@@ -229,6 +154,9 @@ export const stockMovementService = {
     _updatedBy?: string
   ): Promise<StockDecrementResult> {
     void _updatedBy; // reservado para uso futuro (auditoría de reservas)
+    // La organización la resuelve el servidor desde el producto (fn_receta_expandir
+    // verifica la pertenencia); se conserva el parámetro por compatibilidad.
+    void organizationId;
     const errors: string[] = [];
     const skippedItems: StockSkippedItem[] = [];
 
@@ -246,7 +174,7 @@ export const stockMovementService = {
 
       // Expandir receta: obtener lista de productos a reservar
       // (ingredientes + compuesto si track_stock=true, o solo el producto si no tiene receta)
-      const recipeItems = await getRecipeItemsForStock(item.product_id, qty, organizationId);
+      const recipeItems = await getRecipeItemsForStock(item.product_id, qty);
 
       for (const ri of recipeItems) {
         if (!ri.track_stock) continue;
@@ -316,7 +244,7 @@ export const stockMovementService = {
       }
 
       // Expandir receta para liberar reservas de ingredientes también
-      const recipeItems = await getRecipeItemsForStock(item.product_id, qty, 0);
+      const recipeItems = await getRecipeItemsForStock(item.product_id, qty);
 
       for (const ri of recipeItems) {
         if (!ri.track_stock) continue;

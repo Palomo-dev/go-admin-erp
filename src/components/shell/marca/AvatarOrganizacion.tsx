@@ -13,7 +13,7 @@ import { colorOrganizacion } from '@/lib/utils/identidadVisual';
 
 const PALABRAS_MENORES = new Set(['de', 'del', 'la', 'las', 'el', 'los', 'y', 'e', 'sas', 's.a.s.', 'sa', 's.a.', 'ltda', 'ltda.']);
 
-/** «Perros de Diego» → «PD»; «Mi empresa S.A.S.» → «ME». */
+/** «Mi empresa S.A.S.» → «ME»; «Distribuidora del Norte» → «DN». */
 export function iniciales(nombre: string): string {
   const palabras = nombre.trim().split(/\s+/).filter((p) => p && !PALABRAS_MENORES.has(p.toLowerCase()));
   const letras = (palabras.length ? palabras : [nombre.trim()]).slice(0, 2).map((p) => p[0] ?? '');

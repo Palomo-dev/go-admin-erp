@@ -217,6 +217,9 @@ describe('middleware · webhooks y crons que se autentican solos llegan sin cook
     '/api/factus/process-pending',
     '/api/email/webhook',
     '/api/integrations/open-finance/webhook',
+    // 2026-09-28: el proceso principal de Go Admin Desktop pide el código de
+    // vinculación sin cookies (Bearer); el handler es fail-closed (withOrg).
+    '/api/desktop/agent-session',
   ];
 
   it.each(EXCLUIDAS)('%s: el middleware no la toca (ni redirige ni 401)', async (ruta) => {

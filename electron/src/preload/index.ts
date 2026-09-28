@@ -60,6 +60,15 @@ try {
     branchIds: number[],
     branchNames: string[],
   ) => ipcRenderer.invoke('agent:start-token', tokenHash, orgId, orgName, branchIds, branchNames),
+  // Desktop >= 0.2.7: el proceso principal pide el código de vinculación a
+  // app.goadmin.io con el access token (el Next embebido no puede generarlo).
+  startAgentWithSession: (
+    accessToken: string,
+    orgId: number,
+    orgName: string,
+    branchIds: number[],
+    branchNames: string[],
+  ) => ipcRenderer.invoke('agent:start-session', accessToken, orgId, orgName, branchIds, branchNames),
   stopAgent: () => ipcRenderer.invoke('agent:stop'),
   status: () => ipcRenderer.invoke('agent:status'),
   logout: () => ipcRenderer.invoke('agent:logout'),

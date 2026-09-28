@@ -49,7 +49,10 @@ function horaLocal(iso: string, timezone: string): string {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
+    // `hourCycle: 'h23'` y no `hour12: false`: con `hour12: false` Node 20 (el
+    // de CI) usa el ciclo h24 en 'en-CA' y escribe la medianoche como «24:00»
+    // del dia anterior; Node 22 la escribe «00:00». h23 es 00-23 en ambos.
+    hourCycle: 'h23',
   });
   return dtf.format(new Date(iso)).replace(',', '');
 }

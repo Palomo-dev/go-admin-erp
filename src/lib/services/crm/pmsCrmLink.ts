@@ -1,6 +1,9 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/utils/orgId';
 import { getCurrentBranchIdWithFallback } from '@/lib/hooks/useOrganization';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { todayInTz } from '@/lib/utils/dateCore';
+import { sumarDiasAlDia } from '@/lib/services/fiscalCalendar';
 import reservationsService, {
   type CreateReservationData,
   type Reservation,
@@ -115,9 +118,15 @@ async function createReservationFromOpportunity(
   }
 
   // 3. Determinar fechas (usar el primer espacio con checkin_date, o fallback a hoy/manana)
+  // `reservations.checkin` / `.checkout` son columnas **date**: el respaldo es
+  // el dia calendario de la SUCURSAL que va a alojar la reserva (ADR-003), no
+  // el dia UTC. En un hotel de Bogota, una oportunidad convertida a las 19:10
+  // creaba una reserva que entraba mañana y salia pasado mañana.
+  // La identidad ya estaba en esta funcion: no hace falta cambiar la firma.
   const firstSpaceWithDates = oppSpaces.find((s) => s.checkin_date && s.checkout_date);
-  const today = new Date().toISOString().split('T')[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const tz = await resolveTimezone(orgId, branchId);
+  const today = todayInTz(tz);
+  const tomorrow = sumarDiasAlDia(today, 1);
 
   const checkin = firstSpaceWithDates?.checkin_date || today;
   const checkout = firstSpaceWithDates?.checkout_date || tomorrow;

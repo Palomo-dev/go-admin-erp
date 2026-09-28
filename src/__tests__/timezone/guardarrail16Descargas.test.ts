@@ -493,11 +493,18 @@ describe('cada call-site usa el helper que le toca, en su sitio', () => {
     expect(texto).toContain('`top_skus_${getToday()}.csv`');
   });
 
-  it('CatalogoProductos: los DOS nombres (CSV propio y feed de Facebook)', () => {
+  it('CatalogoProductos: el nombre de descarga, y ningun dia por otra via', () => {
+    // El feed de Facebook salio de este archivo el 2026-09-23: otra sesion lo
+    // unifico con la exportacion de Meta y ambos se generan ahora en el
+    // servidor, que no compone ningun nombre con fecha (comprobado en
+    // src/app/api/inventario/productos/facebook/route.ts y
+    // src/app/api/facebook-feed/route.ts: no derivan dia). Por eso ya no existe
+    // el `dateStr` que esta guarda exigia. La asercion se ata a de donde sale
+    // el dia y a que no reaparezca por otra via, no a la forma del codigo.
     const texto = leer('src/components/inventario/productos/CatalogoProductos.tsx');
     expect(texto).toContain('const { getToday } = useFormatDate();');
     expect(texto).toContain('link.download = `productos_${getToday()}.csv`;');
-    expect(texto).toContain('const dateStr = getToday();');
+    expect(texto).not.toMatch(/toISOString\(\)\s*\.\s*(split|slice)/);
   });
 
   it('CatalogoProveedores: el nombre de descarga (csv, xlsx y pdf)', () => {

@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp } from 'lucide-react';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
@@ -36,6 +37,7 @@ interface OportunidadesTabProps {
 
 export default function OportunidadesTab({ clienteId, organizationId }: OportunidadesTabProps) {
   const t = useTranslations('clientes.ficha');
+  const { paraDocumento } = useMonedaOrganizacion();
   const { plana } = useFechasFicha();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ mensaje: string | null } | null>(null);
@@ -168,7 +170,7 @@ export default function OportunidadesTab({ clienteId, organizationId }: Oportuni
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   {opp.amount > 0 && (
                     <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {formatCurrency(parseFloat(String(opp.amount)), opp.currency || 'COP')}
+                      {formatMoneda(parseFloat(String(opp.amount)), paraDocumento(opp.currency))}
                     </span>
                   )}
                   {getStatusBadge(opp.status)}

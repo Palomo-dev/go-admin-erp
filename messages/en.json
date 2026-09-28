@@ -11732,6 +11732,27 @@
       "enEspera": "Cart put on hold",
       "enEsperaConMotivo": "Cart put on hold: {motivo}",
       "divisor": "Drag to widen the cart · double-click to reset"
+    },
+    "carrito": {
+      "lista": "Cart items",
+      "cocina": {
+        "new": "Sent to kitchen",
+        "preparing": "Preparing",
+        "ready": "Ready!",
+        "delivered": "Delivered"
+      },
+      "modificadorConPrecio": "{nombre} (+{precio})",
+      "notaEtiqueta": "{tipo}: {nota}. Edit",
+      "editarDescuentoDe": "Edit the discount of {nombre}: {monto}",
+      "descuentoDe": "Discount on {nombre}",
+      "descuento": "Discount",
+      "aplicarDescuento": "Apply discount",
+      "cancelar": "Cancel",
+      "frecuentes": "Frequent:",
+      "aplicarFrecuente": "Apply the frequent discount of {monto}",
+      "confirmarQuitarTitulo": "Remove {nombre} from the cart?",
+      "confirmarQuitarDescripcion": "The quantity reached 0. You can add it again from the search.",
+      "quitar": "Remove"
     }
   }
 }

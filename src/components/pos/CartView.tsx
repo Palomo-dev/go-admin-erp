@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Minus, Plus, Trash2, ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, ReceiptText, Send, ChefHat, CheckCircle, Check, StickyNote, Tag, AlertTriangle, UserRound } from 'lucide-react';
+import { ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, Send, ChefHat, CheckCircle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,13 +15,11 @@ import { PrintService } from '@/lib/services/printService';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import KitchenService from '@/lib/services/kitchenService';
 import { supabase } from '@/lib/supabase/config';
-import { Cart, Sale, SaleItem, Customer, Product, Category, Payment } from './types';
+import { Cart, CartItem, Sale, SaleItem, Customer, Payment } from './types';
 import { cn } from '@/utils/Utils';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { TaxSummary, type TaxSummaryTotals } from './TaxSummary';
-import { CachedProductImage } from './CachedProductImage';
 import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
-import { EtiquetaSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { toast } from 'sonner';
 import DetalleFactura from '@/components/finanzas/facturas-venta/id/DetalleFactura';
@@ -29,29 +27,15 @@ import type { KitchenTicket } from '@/lib/services/kitchenService';
 import type { LucideIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { mensajeErrorCobro } from '@/lib/pos/erroresCobro';
-import { aplicarNotaALinea, estadoCocinaLinea, NOTA_MAX, type CambioNotaLinea } from '@/lib/pos/cocina/lineasCarrito';
-import { ChipsNotasRapidas, type DestinoNota } from '@/components/pos/cocina/ChipsNotasRapidas';
+import { aplicarNotaALinea, type CambioNotaLinea } from '@/lib/pos/cocina/lineasCarrito';
+import type { DestinoNota } from '@/components/pos/cocina/ChipsNotasRapidas';
 import { lineasParaAviso } from '@/lib/pos/venta/lineasSinImpuesto';
 import { estadoBotonCobrar, puedeConfirmarDeuda, puedeRegistrarDeuda } from '@/lib/pos/venta/requisitosCarrito';
+// `CartProduct` y `requiresPreparation` se movieron literales a lineaCarrito.ts (paso 6): las usa también la línea.
+import { requiresPreparation, type CartProduct } from '@/lib/pos/venta/lineaCarrito';
+import { LineasCarrito } from '@/components/pos/venta/carrito/LineasCarrito';
 
 type KitchenTicketStatus = KitchenTicket['status'];
-
-/**
- * `item.product` en el carrito trae más que `Product`: la categoría puede
- * venir como objeto o como array (según el join), y las variantes traen
- * `variant_data`. Solo lo que este componente lee.
- */
-type CartProduct = Product & {
-  categories?: Category | Category[] | null;
-  variant_data?: Record<string, string> | null;
-};
-
-/** ¿La categoría del producto exige preparación en cocina? (objeto o array, según el join). */
-function requiresPreparation(product: CartProduct | undefined): boolean {
-  const cat = product?.category ?? product?.categories;
-  const first = Array.isArray(cat) ? cat[0] : cat;
-  return first?.requires_preparation === true;
-}
 
 /**
  * Formas mínimas de lo que devuelve POSService.getInvoiceForCart (el servicio
@@ -108,11 +92,18 @@ interface CartViewProps {
   onSendComanda?: (cart: Cart) => Promise<void>;
   className?: string;
   cashSessionActive?: boolean;
+  /**
+   * false apaga los atajos del carrito (la página lo hace con el cobro
+   * abierto). Por defecto encendidos: los de la línea solo disparan con el
+   * foco dentro de una línea.
+   */
+  atajosActivos?: boolean;
 }
 
-export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true }: CartViewProps) {
+export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true, atajosActivos = true }: CartViewProps) {
   const { timezone } = useOrgTimezone();
-  const { formatear } = useMonedaOrganizacion();
+  const moneda = useMonedaOrganizacion();
+  const { formatear } = moneda;
   const [showHoldDialog, setShowHoldDialog] = useState(false);
   const [holdReason, setHoldReason] = useState('');
   const [taxIncluded, setTaxIncluded] = useState(cart.tax_included ?? false);
@@ -385,6 +376,13 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   const handleStartEditDiscount = (itemId: string, currentDiscount?: number) => {
     setEditingDiscountItemId(itemId);
     setDiscountInputValue(currentDiscount ? String(currentDiscount) : '');
+  };
+
+  // Abrir el editor de descuento de una línea («+ Agregar descuento», su
+  // etiqueta «-$X» o la tecla D): lo mismo que hacían el enlace y la etiqueta.
+  const handleOpenDiscount = (item: CartItem) => {
+    handleStartEditDiscount(item.id, item.discount_amount);
+    handleLoadFrequentDiscounts(item.product_id);
   };
 
   // Poner carrito en espera
@@ -725,471 +723,36 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                 <p className="text-[0.65rem] sm:text-xs mt-1">Busca productos para agregar</p>
               </div>
             ) : (
-              cart.items.map((item, itemIndex) => {
-                const cartProduct = item.product as CartProduct | undefined;
-                const productImage = cartProduct?.image;
-                const variantEntries = cartProduct?.variant_data
-                  ? Object.entries(cartProduct.variant_data).filter(([, v]) => !!v)
-                  : [];
-
-                return (
-                <Card key={item.id} className="dark:bg-gray-800/50 dark:border-gray-700/50 bg-gray-50/50 border-gray-200 shadow-sm">
-                  <CardContent className="p-2 sm:p-2.5">
-                    {/* Layout responsive: móvil vertical, desktop horizontal */}
-                    <div className="space-y-3 lg:space-y-0">
-                      {/* Información del producto - RESPONSIVE */}
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-2 flex-1 min-w-0 pr-2">
-                          {/* Imagen del producto */}
-                          <div className="shrink-0">
-                            <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                              <CachedProductImage
-                                src={productImage}
-                                alt={item.product.name}
-                                mode="thumb"
-                                className="w-full h-full object-cover"
-                                fallback={<Package className="h-5 w-5 text-gray-400" />}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            {/* Nombre del producto con ellipsis */}
-                            <h4 className="font-medium text-xs sm:text-sm dark:text-gray-100 text-gray-900 break-words whitespace-normal leading-tight" title={item.product.name}>
-                              {item.product.name}
-                            </h4>
-
-                            {indicesSinImpuesto.has(itemIndex) && (
-                              <EtiquetaSinImpuesto className="mt-1" />
-                            )}
-
-                            {/* Badge de estado de cocina si el ticket fue enviado */}
-                            {cart.kitchen_ticket_id && kitchenStatus && (() => {
-                              if (!requiresPreparation(item.product as CartProduct | undefined)) return null;
-                              const itemStatusConfig: Record<string, { label: string; color: string }> = {
-                                new: { label: 'Enviado a cocina', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-300 dark:border-yellow-700' },
-                                preparing: { label: 'En preparación', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-300 dark:border-orange-700' },
-                                ready: { label: '¡Listo!', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-700 animate-pulse' },
-                                delivered: { label: 'Entregado', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-gray-300 dark:border-gray-700' },
-                              };
-                              const cfg = itemStatusConfig[kitchenStatus] || itemStatusConfig.new;
-                              return (
-                                <Badge variant="outline" className={`text-[0.6rem] sm:text-[0.65rem] px-1 py-0 mt-1 ${cfg.color}`}>
-                                  {cfg.label}
-                                </Badge>
-                              );
-                            })()}
-
-                            {/* Badges de variantes seleccionadas */}
-                            {variantEntries.length > 0 && (
-                              <div className="flex items-center gap-1 flex-wrap mt-1">
-                                {variantEntries.map(([attr, value]) => (
-                                  <Badge key={attr} variant="outline" className="text-[0.6rem] sm:text-[0.65rem] px-1 py-0 border-indigo-300 text-indigo-700 dark:border-indigo-700 dark:text-indigo-300 shrink-0">
-                                    {attr}: {value}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Badges de modificadores seleccionados */}
-                            {item.modifiers && item.modifiers.length > 0 && (
-                              <div className="flex items-center gap-1 flex-wrap mt-1">
-                                {item.modifiers.map((mod) => (
-                                  <Badge key={mod.modifierId} variant="outline" className="text-[0.6rem] sm:text-[0.65rem] px-1 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300 shrink-0">
-                                    {mod.name}{mod.extraPrice > 0 ? ` (+${formatear(mod.extraPrice)})` : ''}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Estado de la línea frente a lo enviado a cocina (por línea, no por ticket) */}
-                            {(() => {
-                              const estado = estadoCocinaLinea(item);
-                              if (estado === 'sin_enviar') return null;
-                              return (
-                                <Badge
-                                  variant="outline"
-                                  className={cn(
-                                    'text-[0.6rem] sm:text-[0.65rem] px-1 py-0 mt-1',
-                                    estado === 'enviada'
-                                      ? 'border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-300'
-                                      : 'border-amber-400 text-amber-700 bg-amber-50 dark:border-amber-600 dark:text-amber-300 dark:bg-amber-900/20',
-                                  )}
-                                >
-                                  {estado === 'enviada'
-                                    ? tNotas('enviada', { cantidad: item.kitchen_sent_qty ?? 0 })
-                                    : tNotas('cambioPendiente')}
-                                </Badge>
-                              );
-                            })()}
-
-                            {/* Notas del producto: cocina (azul; alergia en rojo) y cliente (verde) */}
-                            {editingNotesItemId !== item.id && (item.notes || item.customer_note) && (
-                              <div className="flex items-center gap-1 flex-wrap mt-1">
-                                {item.notes && (
-                                  <Badge
-                                    variant="outline"
-                                    title={tNotas('notaCocina')}
-                                    className={cn(
-                                      'text-[0.6rem] sm:text-[0.65rem] px-1 py-0 shrink-0 cursor-pointer',
-                                      item.is_allergy
-                                        ? 'border-red-400 text-red-700 bg-red-50 dark:border-red-700 dark:text-red-300 dark:bg-red-900/20'
-                                        : 'border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-300',
-                                    )}
-                                    onClick={() => handleStartEditNotes(item.id, 'cocina')}
-                                  >
-                                    {item.is_allergy
-                                      ? <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
-                                      : <StickyNote className="h-2.5 w-2.5 mr-0.5" />}
-                                    {item.is_allergy ? tNotas('alergiaBadge', { nota: item.notes }) : item.notes}
-                                  </Badge>
-                                )}
-                                {item.customer_note && (
-                                  <Badge
-                                    variant="outline"
-                                    title={tNotas('notaCliente')}
-                                    className="text-[0.6rem] sm:text-[0.65rem] px-1 py-0 border-green-300 text-green-700 dark:border-green-700 dark:text-green-300 shrink-0 cursor-pointer"
-                                    onClick={() => handleStartEditNotes(item.id, 'cliente')}
-                                  >
-                                    <UserRound className="h-2.5 w-2.5 mr-0.5" />
-                                    {item.customer_note}
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Input inline para editar nota */}
-                            {editingNotesItemId === item.id && (
-                              <div className="mt-1">
-                                <div className="flex items-center gap-1 mb-1" role="group" aria-label={tNotas('destino')}>
-                                  {(['cocina', 'cliente'] as const).map((destino) => (
-                                    <button
-                                      key={destino}
-                                      type="button"
-                                      aria-pressed={noteDestino === destino}
-                                      onMouseDown={(e) => e.preventDefault()}
-                                      onClick={() => handleCambiarDestinoNota(item.id, destino)}
-                                      className={cn(
-                                        'px-1.5 py-0.5 rounded text-[0.6rem] sm:text-[0.65rem] font-medium border',
-                                        noteDestino === destino
-                                          ? 'bg-blue-600 text-white border-blue-600'
-                                          : 'bg-white text-gray-600 border-gray-300 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-600',
-                                      )}
-                                    >
-                                      {destino === 'cocina' ? tNotas('destinoCocina') : tNotas('destinoCliente')}
-                                    </button>
-                                  ))}
-                                  {noteDestino === 'cocina' && (
-                                    <label className="flex items-center gap-1 ml-1 text-[0.6rem] sm:text-[0.65rem] text-red-700 dark:text-red-300 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={noteAlergia}
-                                        onChange={(e) => setNoteAlergia(e.target.checked)}
-                                        className="h-3 w-3 rounded border-gray-300 dark:border-gray-600"
-                                      />
-                                      <AlertTriangle className="h-2.5 w-2.5" />
-                                      {tNotas('alergia')}
-                                    </label>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    type="text"
-                                    value={itemNotesValue}
-                                    maxLength={NOTA_MAX}
-                                    onChange={(e) => setItemNotesValue(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') handleSaveNotes(item.id);
-                                      if (e.key === 'Escape') { setEditingNotesItemId(null); setItemNotesValue(''); }
-                                    }}
-                                    placeholder={noteDestino === 'cliente' ? tNotas('placeholderCliente') : tNotas('placeholderCocina')}
-                                    aria-label={noteDestino === 'cliente' ? tNotas('notaCliente') : tNotas('notaCocina')}
-                                    className="h-6 sm:h-7 text-xs flex-1 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 bg-white border-gray-300 px-2"
-                                    autoFocus
-                                  />
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 sm:h-7 sm:w-7 p-0 dark:text-green-400 dark:hover:bg-green-500/20 text-green-600 hover:bg-green-100 shrink-0"
-                                    onClick={() => handleSaveNotes(item.id)}
-                                    title={tNotas('guardar')}
-                                    aria-label={tNotas('guardar')}
-                                  >
-                                    <Check className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 sm:h-7 sm:w-7 p-0 dark:text-gray-400 dark:hover:bg-gray-600/20 text-gray-500 hover:bg-gray-100 shrink-0"
-                                    onClick={() => { setEditingNotesItemId(null); setItemNotesValue(''); }}
-                                    title={tNotas('cancelar')}
-                                    aria-label={tNotas('cancelar')}
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                                <ChipsNotasRapidas
-                                  branchId={cart.branch_id}
-                                  destino={noteDestino}
-                                  onElegir={(texto, alergia) => {
-                                    setItemNotesValue(texto);
-                                    if (alergia) setNoteAlergia(true);
-                                  }}
-                                />
-                              </div>
-                            )}
-
-                            {/* Info secundaria responsive */}
-                            <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 mt-1">
-                              <Badge variant="outline" className="text-[0.65rem] sm:text-xs px-1 py-0 dark:border-gray-600 dark:text-gray-400 border-gray-400 text-gray-600 shrink-0">
-                                {item.product.sku}
-                              </Badge>
-                              <span className="text-[0.65rem] sm:text-xs dark:text-gray-400 text-gray-600">
-                                {formatear(item.unit_price)} / {item.product.unit_code}
-                              </span>
-                            </div>
-
-                            {/* Mostrar estado de impuesto */}
-                            {item.tax_excluded ? (
-                              <div className="text-[0.65rem] sm:text-xs dark:text-orange-400 text-orange-600 mt-0.5 sm:mt-1">
-                                Sin impuesto (excluido)
-                              </div>
-                            ) : (
-                              item.tax_amount != null && item.tax_amount > 0 && (
-                                <div className="text-[0.65rem] sm:text-xs dark:text-green-400 text-green-600 mt-0.5 sm:mt-1">
-                                  {item.tax_included ? '(inc. ' : '+'}{formatear(item.tax_amount)} impuestos{item.tax_included ? ')' : ''}
-                                </div>
-                              )
-                            )}
-
-                            {/* Descuento aplicado o input para agregar */}
-                            {item.discount_amount && item.discount_amount > 0 && editingDiscountItemId !== item.id ? (
-                              <div
-                                className="flex items-center gap-1 mt-0.5 sm:mt-1 cursor-pointer"
-                                onClick={() => !isOnHold && handleStartEditDiscount(item.id, item.discount_amount)}
-                              >
-                                <Badge variant="outline" className="text-[0.6rem] sm:text-[0.65rem] px-1 py-0 border-red-300 text-red-700 dark:border-red-700 dark:text-red-300 shrink-0">
-                                  <Tag className="h-2.5 w-2.5 mr-0.5" />
-                                  -{formatear(item.discount_amount)}
-                                </Badge>
-                              </div>
-                            ) : editingDiscountItemId === item.id ? (
-                              <div className="flex items-center gap-1 mt-0.5 sm:mt-1">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  value={discountInputValue}
-                                  onChange={(e) => setDiscountInputValue(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      const val = parseFloat(discountInputValue) || 0;
-                                      handleApplyDiscount(item.id, val);
-                                    }
-                                    if (e.key === 'Escape') { setEditingDiscountItemId(null); setDiscountInputValue(''); }
-                                  }}
-                                  placeholder="Descuento"
-                                  className="h-6 sm:h-7 text-xs w-20 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 bg-white border-gray-300 px-1"
-                                  autoFocus
-                                  disabled={isOnHold}
-                                />
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 w-6 sm:h-7 sm:w-7 p-0 dark:text-green-400 dark:hover:bg-green-500/20 text-green-600 hover:bg-green-100 shrink-0"
-                                  onClick={() => handleApplyDiscount(item.id, parseFloat(discountInputValue) || 0)}
-                                  title="Aplicar descuento"
-                                >
-                                  <Check className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 w-6 sm:h-7 sm:w-7 p-0 dark:text-gray-400 dark:hover:bg-gray-600/20 text-gray-500 hover:bg-gray-100 shrink-0"
-                                  onClick={() => { setEditingDiscountItemId(null); setDiscountInputValue(''); }}
-                                  title="Cancelar"
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            ) : !isOnHold && (
-                              <div className="flex items-center gap-1 flex-wrap mt-0.5 sm:mt-1">
-                                <button
-                                  className="text-[0.6rem] sm:text-[0.65rem] text-blue-500 dark:text-blue-400 hover:underline"
-                                  onClick={() => {
-                                    handleStartEditDiscount(item.id);
-                                    handleLoadFrequentDiscounts(item.product_id);
-                                  }}
-                                >
-                                  + Agregar descuento
-                                </button>
-                                {frequentDiscountsMap[item.product_id]?.length > 0 && (
-                                  <div className="flex items-center gap-1 flex-wrap">
-                                    {frequentDiscountsMap[item.product_id].map((disc) => (
-                                      <button
-                                        key={disc}
-                                        className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.6rem] font-medium bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50 cursor-pointer"
-                                        onClick={() => handleApplyDiscount(item.id, disc)}
-                                      >
-                                        -{formatear(disc)}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Badges de descuentos frecuentes al editar */}
-                            {editingDiscountItemId === item.id && frequentDiscountsMap[item.product_id]?.length > 0 && (
-                              <div className="flex items-center gap-1 flex-wrap mt-1">
-                                <span className="text-[0.6rem] text-gray-400 dark:text-gray-500">Frecuentes:</span>
-                                {frequentDiscountsMap[item.product_id].map((disc) => (
-                                  <button
-                                    key={disc}
-                                    className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.6rem] font-medium bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50 cursor-pointer"
-                                    onClick={() => handleApplyDiscount(item.id, disc)}
-                                  >
-                                    -{formatear(disc)}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Total del item - visible en desktop */}
-                        <div className="hidden md:block text-right min-w-[70px] sm:min-w-[80px]">
-                          <div className="font-semibold text-xs sm:text-sm dark:text-gray-100 text-gray-900">
-                            {formatear(item.total)}
-                          </div>
-                          {item.quantity > 1 && (
-                            <div className="text-[0.65rem] sm:text-xs dark:text-gray-400 text-gray-600">
-                              {item.quantity} × {formatear(item.unit_price)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Controles: cantidad, total (móvil) y eliminar - RESPONSIVE */}
-                      <div className="flex items-center justify-between gap-2">
-                        {/* Control de cantidad - COMPACTO */}
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 w-6 sm:h-7 sm:w-7 p-0 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300 border-gray-300 hover:bg-gray-100 text-gray-700"
-                            onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                            disabled={isOnHold}
-                          >
-                            <Minus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                          </Button>
-                          
-                          <Input
-                            type="number"
-                            min="1"
-                            value={item.quantity}
-                            onChange={(e) => {
-                              const newQuantity = parseInt(e.target.value) || 1;
-                              if (newQuantity > 0) {
-                                handleQuantityChange(item.id, newQuantity);
-                              }
-                            }}
-                            className="w-10 sm:w-12 h-6 sm:h-7 text-center text-xs sm:text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 bg-white border-gray-300 text-gray-900 px-1"
-                            disabled={isOnHold}
-                          />
-                          
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 w-6 sm:h-7 sm:w-7 p-0 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300 border-gray-300 hover:bg-gray-100 text-gray-700"
-                            onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                            disabled={isOnHold}
-                          >
-                            <Plus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                          </Button>
-                        </div>
-
-                        {/* Total del item - visible en móvil */}
-                        <div className="md:hidden text-right flex-1 min-w-0">
-                          <div className="font-semibold text-xs sm:text-sm dark:text-gray-100 text-gray-900">
-                            {formatear(item.total)}
-                          </div>
-                          {item.quantity > 1 && (
-                            <div className="text-[0.65rem] sm:text-xs dark:text-gray-400 text-gray-600 break-words whitespace-normal">
-                              {item.quantity} × {formatear(item.unit_price)}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Checkbox impuesto incluido en el precio (sincronizado con TaxSummary) */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          <input
-                            id={`tax-included-${item.id}`}
-                            type="checkbox"
-                            checked={item.tax_included ?? false}
-                            onChange={() => handleToggleItemTaxIncluded(item.id)}
-                            disabled={isOnHold || item.tax_excluded}
-                            className="h-3 w-3 rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-500 bg-white dark:bg-gray-900 cursor-pointer"
-                          />
-                          <label
-                            htmlFor={`tax-included-${item.id}`}
-                            className="text-[0.6rem] sm:text-xs text-gray-700 dark:text-gray-300 cursor-pointer whitespace-nowrap"
-                          >
-                            Incluido
-                          </label>
-                        </div>
-
-                        {/* Toggle excluir impuesto por ítem */}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className={cn(
-                            "h-6 w-6 sm:h-7 sm:w-7 p-0 shrink-0",
-                            item.tax_excluded
-                              ? "dark:text-orange-400 dark:hover:bg-orange-500/20 text-orange-600 hover:bg-orange-100"
-                              : "dark:text-gray-400 dark:hover:bg-gray-600/20 text-gray-500 hover:bg-gray-100"
-                          )}
-                          onClick={() => handleToggleTax(item.id)}
-                          disabled={isOnHold}
-                          title={item.tax_excluded ? "Impuesto excluido - clic para incluir" : "Excluir impuesto de este producto"}
-                        >
-                          <ReceiptText className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                        </Button>
-
-                        {/* Agregar/editar nota del producto */}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className={cn(
-                            "h-6 w-6 sm:h-7 sm:w-7 p-0 shrink-0",
-                            item.notes || item.customer_note
-                              ? "dark:text-blue-400 dark:hover:bg-blue-500/20 text-blue-600 hover:bg-blue-100"
-                              : "dark:text-gray-400 dark:hover:bg-gray-600/20 text-gray-500 hover:bg-gray-100"
-                          )}
-                          onClick={() => handleStartEditNotes(item.id, !item.notes && item.customer_note ? 'cliente' : 'cocina')}
-                          disabled={isOnHold}
-                          title={item.notes || item.customer_note ? tNotas('editarNota') : tNotas('agregarNota')}
-                        >
-                          <StickyNote className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                        </Button>
-
-                        {/* Eliminar item */}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 sm:h-7 sm:w-7 p-0 dark:text-red-400 dark:hover:bg-red-500/20 text-red-600 hover:bg-red-100 shrink-0"
-                          onClick={() => handleRemoveItem(item.id)}
-                          disabled={isOnHold}
-                          title="Eliminar item"
-                        >
-                          <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                );
-              })
+              // Paso 6 (POS-PLAN): las líneas se pintan con `CartLine` del kit. Los
+              // handlers son los mismos de siempre; nada se calcula en la línea.
+              <LineasCarrito
+                cartId={cart.id}
+                branchId={cart.branch_id}
+                items={cart.items}
+                moneda={moneda}
+                formatear={formatear}
+                bloqueada={isOnHold || isOnHoldWithDebt}
+                indicesSinImpuesto={indicesSinImpuesto}
+                estadoTicket={cart.kitchen_ticket_id && kitchenStatus ? kitchenStatus : null}
+                descuentosFrecuentes={frequentDiscountsMap}
+                atajosActivos={atajosActivos}
+                onCantidad={handleQuantityChange}
+                onQuitar={handleRemoveItem}
+                onExcluirImpuesto={handleToggleTax}
+                onIncluido={handleToggleItemTaxIncluded}
+                nota={{ itemId: editingNotesItemId, destino: noteDestino, alergia: noteAlergia, texto: itemNotesValue }}
+                onNotaAbrir={handleStartEditNotes}
+                onNotaDestino={handleCambiarDestinoNota}
+                onNotaAlergia={setNoteAlergia}
+                onNotaTexto={setItemNotesValue}
+                onNotaGuardar={handleSaveNotes}
+                onNotaCancelar={() => { setEditingNotesItemId(null); setItemNotesValue(''); }}
+                descuento={{ itemId: editingDiscountItemId, texto: discountInputValue }}
+                onDescuentoAbrir={handleOpenDiscount}
+                onDescuentoTexto={setDiscountInputValue}
+                onDescuentoAplicar={handleApplyDiscount}
+                onDescuentoCancelar={() => { setEditingDiscountItemId(null); setDiscountInputValue(''); }}
+              />
             )}
           </div>
 

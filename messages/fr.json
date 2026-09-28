@@ -11627,6 +11627,27 @@
       "enEspera": "Panier mis en attente",
       "enEsperaConMotivo": "Panier mis en attente : {motivo}",
       "divisor": "Faites glisser pour agrandir le panier · double-clic pour réinitialiser"
+    },
+    "carrito": {
+      "lista": "Articles du panier",
+      "cocina": {
+        "new": "Envoyé en cuisine",
+        "preparing": "En préparation",
+        "ready": "Prêt !",
+        "delivered": "Servi"
+      },
+      "modificadorConPrecio": "{nombre} (+{precio})",
+      "notaEtiqueta": "{tipo} : {nota}. Modifier",
+      "editarDescuentoDe": "Modifier la remise de {nombre} : {monto}",
+      "descuentoDe": "Remise sur {nombre}",
+      "descuento": "Remise",
+      "aplicarDescuento": "Appliquer la remise",
+      "cancelar": "Annuler",
+      "frecuentes": "Fréquentes :",
+      "aplicarFrecuente": "Appliquer la remise fréquente de {monto}",
+      "confirmarQuitarTitulo": "Retirer {nombre} du panier ?",
+      "confirmarQuitarDescripcion": "La quantité est arrivée à 0. Vous pouvez l’ajouter à nouveau depuis la recherche.",
+      "quitar": "Retirer"
     }
   }
 }

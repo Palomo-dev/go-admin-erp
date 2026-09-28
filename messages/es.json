@@ -11732,6 +11732,27 @@
       "enEspera": "Carrito puesto en espera",
       "enEsperaConMotivo": "Carrito puesto en espera: {motivo}",
       "divisor": "Arrastra para ampliar el carrito · doble clic para restablecer"
+    },
+    "carrito": {
+      "lista": "Productos del carrito",
+      "cocina": {
+        "new": "Enviado a cocina",
+        "preparing": "En preparación",
+        "ready": "¡Listo!",
+        "delivered": "Entregado"
+      },
+      "modificadorConPrecio": "{nombre} (+{precio})",
+      "notaEtiqueta": "{tipo}: {nota}. Editar",
+      "editarDescuentoDe": "Editar el descuento de {nombre}: {monto}",
+      "descuentoDe": "Descuento de {nombre}",
+      "descuento": "Descuento",
+      "aplicarDescuento": "Aplicar descuento",
+      "cancelar": "Cancelar",
+      "frecuentes": "Frecuentes:",
+      "aplicarFrecuente": "Aplicar el descuento frecuente de {monto}",
+      "confirmarQuitarTitulo": "¿Quitar {nombre} del carrito?",
+      "confirmarQuitarDescripcion": "La cantidad llegó a 0. Puedes volver a agregarlo desde la búsqueda.",
+      "quitar": "Quitar"
     }
   }
 }

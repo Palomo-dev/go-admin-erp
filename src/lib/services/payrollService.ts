@@ -22,10 +22,28 @@ export interface PayrollPeriod {
   approved_by: string | null;
   approved_at: string | null;
   notes: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   runs_count?: number;
+}
+
+interface RawProfile { first_name: string | null; last_name: string | null }
+/** Fila de payroll_slips con sus embebidos (lo que devuelve el select con joins). */
+type RawSlip = PayrollSlip & {
+  employments?: { employee_code?: string | null; organization_members?: { profiles?: RawProfile | null } | null } | null;
+  payroll_runs?: { run_number?: number; payroll_periods?: { name?: string; organization_id?: number } | null } | null;
+};
+interface RawEmployment {
+  id: string;
+  employee_code: string | null;
+  organization_members?: { organization_id?: number; profiles?: RawProfile | null } | null;
+}
+
+/** Metadata de una comisión pagada por nómina: la previa + la colilla que la pagó. */
+export function metadataPagadaPorNomina(previa: Record<string, unknown> | null | undefined, slipId: string): Record<string, unknown> {
+  const base = previa && typeof previa === 'object' && !Array.isArray(previa) ? previa : {};
+  return { ...base, payroll_slip_id: slipId };
 }
 
 export interface PayrollRun {
@@ -35,7 +53,7 @@ export interface PayrollRun {
   executed_by: string;
   executed_at: string | null;
   status: string | null;
-  summary: Record<string, any> | null;
+  summary: Record<string, unknown> | null;
   error_log: string | null;
   superseded_by: string | null;
   is_final: boolean;
@@ -87,7 +105,7 @@ export interface PayrollSlip {
   payment_id: string | null;
   paid_at: string | null;
   notes: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   // Joined fields
@@ -113,7 +131,7 @@ export interface PayrollItem {
   source_type: string | null;
   source_id: string | null;
   notes: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -272,7 +290,7 @@ class PayrollService {
   }
 
   async changePeriodStatus(id: string, status: string): Promise<PayrollPeriod> {
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       status,
       updated_at: new Date().toISOString(),
     };
@@ -418,11 +436,11 @@ class PayrollService {
     if (error) throw error;
 
     // Filter by organization
-    const filtered = (data || []).filter((slip: any) => 
+    const filtered = ((data || []) as unknown as RawSlip[]).filter((slip) =>
       slip.payroll_runs?.payroll_periods?.organization_id === this.organizationId
     );
 
-    return filtered.map((slip: any) => this.mapSlip(slip));
+    return filtered.map((slip) => this.mapSlip(slip));
   }
 
   async getSlipById(id: string): Promise<PayrollSlip | null> {
@@ -449,7 +467,7 @@ class PayrollService {
   }
 
   async updateSlipStatus(id: string, status: string): Promise<PayrollSlip> {
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       status,
       updated_at: new Date().toISOString(),
     };
@@ -467,19 +485,32 @@ class PayrollService {
 
     if (error) throw error;
 
-    // Si se marca como pagado, marcar comisiones vinculadas como pagadas
-    if (status === 'paid' && data?.metadata?.commission_ids?.length) {
+    // Si se marca como pagado, marcar comisiones vinculadas como pagadas.
+    // Metadata FUSIONADA (antes se reemplazaba por {payroll_slip_id} y se perdían
+    // sale_id, commission_method…) y acotada a la organización. payroll_slip_id
+    // va en la misma escritura: fn_auto_journal_commission no asienta el pago
+    // de una comisión pagada por nómina (lo asienta la nómina).
+    const commissionIds = Array.isArray(data?.metadata?.commission_ids)
+      ? (data.metadata.commission_ids as unknown[]).filter((x): x is string => typeof x === 'string')
+      : [];
+    if (status === 'paid' && commissionIds.length > 0) {
       const now = new Date().toISOString();
-      await supabase
+      const { data: pending, error: readError } = await supabase
         .from('commissions')
-        .update({
-          status: 'paid',
-          paid_at: now,
-          updated_at: now,
-          metadata: { payroll_slip_id: id },
-        })
-        .in('id', data.metadata.commission_ids)
+        .select('id, metadata')
+        .eq('organization_id', this.organizationId)
+        .in('id', commissionIds)
         .eq('status', 'accrued');
+      if (readError) throw readError;
+      for (const c of (pending || []) as Array<{ id: string; metadata: Record<string, unknown> | null }>) {
+        const { error: commError } = await supabase
+          .from('commissions')
+          .update({ status: 'paid', paid_at: now, updated_at: now, metadata: metadataPagadaPorNomina(c.metadata, id) })
+          .eq('id', c.id)
+          .eq('organization_id', this.organizationId)
+          .eq('status', 'accrued');
+        if (commError) throw commError;
+      }
     }
 
     return this.getSlipById(data.id) as Promise<PayrollSlip>;
@@ -608,11 +639,11 @@ class PayrollService {
 
     if (error) throw error;
 
-    const filtered = (data || []).filter((emp: any) => 
+    const filtered = ((data || []) as unknown as RawEmployment[]).filter((emp) =>
       emp.organization_members?.organization_id === this.organizationId
     );
 
-    return filtered.map((emp: any) => {
+    return filtered.map((emp) => {
       const profile = emp.organization_members?.profiles;
       return {
         id: emp.id,
@@ -642,7 +673,7 @@ class PayrollService {
     return `Periodo ${start} - ${end}`;
   }
 
-  private mapSlip(slip: any): PayrollSlip {
+  private mapSlip(slip: RawSlip): PayrollSlip {
     const profile = slip.employments?.organization_members?.profiles;
     return {
       ...slip,

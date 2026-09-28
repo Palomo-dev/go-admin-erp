@@ -737,3 +737,122 @@ Migración `20260928222823_recibos_consecutivo_por_organizacion` (rollback en `s
   permitiría reutilizar su número.
 - Tests: `src/lib/documents/__tests__/motor.test.ts` («consecutivo del recibo…») y
   `consecutivoReciboSql.test.ts` (migración + doble del generador).
+
+## 14. Recibos, egresos, caja, estados de cuenta, soporte y nota débito en Figma (2026-09-28)
+
+El dueño preguntó si ya estaban en Figma todos los recibos de caja y los demás documentos del motor.
+No lo estaban: en `09 Documentos` solo había factura de venta (carta, USD, media carta, 80 mm),
+factura de compra, cotización, nota crédito y los estados. Se dibujaron los que faltaban, en siete
+secciones nuevas debajo de «Orden de compra — PDF», sin solapar nada. Todas reutilizan los 7
+componentes de «Componentes — Documentos» (`Doc/Campo`, `Doc/Badge estado`, `Doc/QR DIAN`,
+`Doc/Sello de firma`, `Doc/Paginación`, `Doc/Marca de agua`, `Doc/Chip de impuesto`) y la maqueta
+del renderizador (`render/carta.ts`, `render/termico.ts`): cabecera de identidad con el emisor
+(NIT con DV, dirección, ciudad, teléfono), caja del documento, tarjetas de sucursal y contraparte,
+referencia, metadatos, resumen, tablas, cierre (notas y totales), firmas, pie legal y paginación.
+Tamaños reales: carta 816 × 1056 y rollo de 272 px de ancho. Colores solo con variables.
+
+**Regla seguida:** se dibujaron solo campos que hoy arma el cargador de cada tipo
+(`src/lib/documents/server/cargadores/*`). Lo que no existe está dibujado solo cuando hacía falta
+para la propuesta, y en ese caso lleva una nota amarilla «Propuesta» fuera del frame.
+
+El índice de la página (texto `405:19`) pasa de 5 a 15 entradas, todas con enlace a su sección
+(se añadieron también Etiquetas y Orden de compra, que faltaban).
+
+### 14.1 Secciones y frames
+
+Enlace: `https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=<id con guion>`.
+
+| Sección | Id | Frames (id) | Capturas `docs/design/figma/` |
+|---|---|---|---|
+| Recibo de caja — carta y 80 mm | [`1053:7038`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1053-7038) | Carta aplicado `1053:7042` · Carta anulado `1053:7128` · 80 mm aplicado `1053:7213` · 80 mm anulado `1053:7270` | `75-documento-recibo-caja-carta-aplicado.png` · `-carta-anulado.png` · `-80mm-aplicado.png` · `-80mm-anulado.png` |
+| Comprobante de egreso — carta y 80 mm | [`1055:7083`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1055-7083) | Carta `1055:7087` · 80 mm `1055:7173` | `75-documento-comprobante-egreso-carta.png` · `-80mm.png` |
+| Cierre de caja — carta y 80 mm | [`1055:7232`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1055-7232) | Carta hoja 1 `1055:7236` · Carta hoja 2 `1055:7399` · 80 mm `1055:7452` · 80 mm cierre ciego `1055:7560` | `75-documento-cierre-caja-carta-p1.png` · `-carta-p2.png` · `-80mm.png` · `-80mm-ciego.png` |
+| Arqueo de caja — carta y 80 mm | [`1056:7129`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1056-7129) | Carta `1056:7133` · 80 mm `1056:7341` | `75-documento-arqueo-caja-carta.png` · `-80mm.png` |
+| Estados de cuenta — cliente y proveedor | [`1057:7152`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1057-7152) | Cliente hoja 1 `1057:7156` · hoja 2 `1057:7625` · Proveedor hoja 1 `1057:7897` · hoja 2 `1057:8383` | `75-documento-estado-cuenta-cliente-p1.png` · `-cliente-p2.png` · `-proveedor-p1.png` · `-proveedor-p2.png` |
+| Documento soporte — aceptado y borrador | [`1058:7291`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1058-7291) | Aceptado `1058:7295` · Borrador `1058:7625` | `75-documento-soporte-aceptado.png` · `-borrador.png` |
+| Nota débito — carta (propuesta) | [`1058:7745`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1058-7745) | Aceptada DIAN `1058:7749` | `75-documento-nota-debito-carta.png` |
+
+### 14.2 Qué muestra cada uno y de dónde sale
+
+- **Recibo de caja** (`pagos.ts`, dinero que entra). Número `RC-0001` de `payments.receipt_number`
+  (§13). Sucursal una sola vez, en su tarjeta. Cliente con documento legible (`CC 1.234.567`,
+  `NIT 900.123.456-7`; R-99-PN omitido en persona natural). Referencia: documento abonado
+  («Factura de venta FV-1042») y saldo pendiente del documento. Metadatos: fecha del pago, medio de
+  pago con nombre («Efectivo», «Transferencia»), moneda y referencia si existe. Totales: recibido y
+  cambio solo si hubo cambio; valor recibido. Firmas «Entrega» (nombre y documento del cliente
+  pre-impresos, `payload.firmante`) y «Recibe». Anulado: estado «Anulado» en tono aviso y marca de
+  agua ANULADA; conserva su número.
+- **Comprobante de egreso** (`pagos.ts`, orígenes `invoice_purchase` / `account_payable`). `CE-0001`,
+  proveedor en la tarjeta y pre-impreso en «Recibe»; «Descuento concedido» solo con
+  `discount_amount > 0`.
+- **Cierre de caja** (`cajas.ts`). Esperado de `pos_caja_esperado`; metadatos cajero, apertura,
+  cierre, cerrada por y moneda; resumen monto inicial / esperado / contado / diferencia; tablas por
+  medio de pago, entradas y salidas y arqueos; cuadre del efectivo; firmas cajero y supervisor. Con
+  el contenido de ejemplo ocupa dos hojas: firmas y cuadre llevan `break-inside: avoid`, así que las
+  firmas pasan completas a la hoja 2. Variante de 80 mm con cierre ciego: esperado, diferencias y
+  montos por medio salen «***» con la banda informativa.
+- **Arqueo de caja** (`cajas.ts`). Referencia a la caja (número, apertura, cajero), denominaciones
+  (billetes y monedas con cantidad y subtotal), desglose por medio (esperado, contado, diferencia) y
+  total contado / esperado / diferencia (verde si sobra o cuadra, rojo si falta).
+- **Estado de cuenta del cliente** (`estadoCuenta.ts`). Rango, saldo inicial, cargos, abonos, saldo
+  final, saldo a favor y facturas abiertas; movimientos con saldo corrido y totales del periodo;
+  antigüedad por tramos y facturas abiertas con días vencidos. Dos hojas: la tabla repite su
+  cabecera y la paginación identifica el documento. Los números del ejemplo cuadran: la suma de
+  saldos abiertos (6.740.000) es el saldo final.
+- **Estado de cuenta del proveedor** (`estadoCuentaProveedor.ts` → `fn_estado_cuenta_proveedor`).
+  Cargos por el neto de cada factura, cuentas por pagar sin factura, pagos por
+  `amount + discount_amount`, vencido y por vencer. El pago del 27/09 es el mismo `CE-0001` del
+  comprobante de egreso (2.000.000 + 25.000 de descuento) y deja vencidos los 750.000 de FC-2291.
+- **Documento soporte** (`compras.ts`). Contraparte del jsonb `support_documents.provider`
+  completada con `suppliers`; factura de compra asociada; líneas, impuestos (la fila sale siempre,
+  aunque sea 0) y «Total a pagar al proveedor». Aceptado: badge «Aceptado DIAN», QR de verificación y
+  CUDS en el pie. Borrador: la referencia interna en lugar del número y marca de agua BORRADOR.
+- **Nota débito** (no existe en el motor). Espejo de la nota crédito: factura afectada, fecha, CUFE
+  y motivo en la referencia; sin firma; QR y CUDE al ser aceptada.
+
+### 14.3 Propuestas marcadas en Figma (no existen hoy)
+
+| # | Dónde | Propuesta | Toca |
+|---|---|---|---|
+| P1 | Recibo carta anulado | Banda roja «Documento anulado.» y estado en tono peligro, como compra y soporte | `pagos.ts` |
+| P2 | Recibo 80 mm | Casilla «Entrega» con el cliente pre-impreso (hoy solo «Recibe», en blanco) | `termico.ts` |
+| P3 | Rollos de 80 mm | Ciudad del emisor junto a la dirección (el dato existe, el rollo no lo imprime) | `termico.ts` |
+| P4 | Recibo 80 mm anulado | «*** ANULADO ***» destacado (el rollo ignora `marcaAgua`) | `termico.ts` |
+| P5 | Egreso 80 mm | Proveedor pre-impreso sobre «Recibe» | `termico.ts` |
+| P6 | Arqueo 80 mm | Encabezado corto sobre cada bloque aplanado («Tipo · Denominación · Cant.») | `termico.ts` |
+| P7 | Estado de cuenta, hoja 2 en adelante | Cabecera corrida: cliente, documento y periodo sobre la tabla | `carta.ts` |
+| P8 | Estado del proveedor | Antigüedad por tramos y facturas abiertas, como el del cliente | `fn_estado_cuenta_proveedor` (aditivo) |
+| P9 | Documento soporte | Rótulos DIAN «Adquiriente» / «Vendedor o prestador del servicio» | `compras.ts`, `messages/*` |
+| P10 | Documento soporte | Línea de resolución de numeración en el pie (hoy `resolucion: null`) | `compras.ts` |
+| P11 | Nota débito | Tipo nuevo `nota-debito`, cargador espejo de la nota crédito, textos en 4 idiomas y campo nuevo «Concepto DIAN» (1–4) | `tipos.ts`, `ventas.ts`, esquema |
+
+### 14.4 Chequeo por script (use_figma, 2026-09-28)
+
+| Verificación | Resultado |
+|---|---|
+| Solapes entre secciones de la página y entre hijos de cada sección nueva | **0** |
+| Instancias rotas (componente principal ausente), sobre 85 instancias | **0** |
+| Textos desbordados (fuera de su frame o de su contenedor, alto fijo o truncado), sobre 1.395 textos | **0** |
+| Cuerpo de cada carta por encima de la paginación (y = 1016) | máximo 942 (estados de cuenta, hoja 1) |
+| Nombres de organizaciones clientes (comparados con la tabla `organizations`, palabra completa) | **0** |
+
+Ejemplos usados: «Mi empresa S.A.S.», «Distribuidora del Norte S.A.S.», «Textiles Andinos S.A.S.»,
+«Ana Gómez», «Juan Carlos Ramírez», «Laura Restrepo», «Andrés Molina».
+
+### 14.5 Preguntas para el dueño (con recomendación)
+
+1. **Recibo anulado: ¿banda roja y estado en rojo (P1)?** Recomendación: sí. Es el mismo criterio
+   de la factura de compra y del documento soporte, y un recibo anulado sin banda se presta a
+   confusión.
+2. **Rollo de 80 mm: ¿«Entrega» pre-impreso, ciudad y «ANULADO» destacado (P2 a P5)?**
+   Recomendación: sí, las cuatro juntas; solo tocan `termico.ts` y los datos ya están en el payload.
+3. **¿Consecutivo propio para cierres y arqueos (hoy «#128» y «#342», el id de la tabla)?**
+   Recomendación: no por ahora. Son reportes internos y el id no se repite; si auditoría lo pide,
+   una serie por sucursal con el mismo generador de §13.
+4. **Estados de cuenta: ¿cabecera corrida en la hoja 2 (P7) y antigüedad para proveedores (P8)?**
+   Recomendación: sí a ambas; P8 es un cambio aditivo en la función de la base.
+5. **Documento soporte: ¿rótulos DIAN y resolución en el pie (P9 y P10)?** Recomendación: sí; la
+   numeración autorizada es requisito de la DIAN para el documento soporte electrónico.
+6. **Nota débito (Q-ND1): ¿suma al saldo de la factura o crea su propia cuenta por cobrar?**
+   Recomendación: su propia cuenta por cobrar (opción A de `FINANZAS-DOCUMENTOS-V2.md` §5), que es
+   lo que ya hace el trigger de cartera; el PDF no mostraría «nuevo saldo de la factura».

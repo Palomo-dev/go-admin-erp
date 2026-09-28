@@ -639,3 +639,46 @@ variante `pos` y `CategoryBar` (sección «Productos y POS»), `CustomerPicker` 
 el cupo: `155:7745` (`PosProductSearch`, estado real tras la decisión final), `250:81342` y `275:33959` (botón que
 alterna), y el orden de capas pendiente de `874:582518` / `874:582587` (ya retirados por la decisión final; confirmar
 que se borraron).
+
+---
+
+## 6. Estado de la implementación (2026-09-28)
+
+Pasos 0–16 hechos, un commit por paso en `main` (sin push): 0 `42b1b851`, 1 `e156c86c`, 2 `ac74f1d3`, 3 `68068850`,
+4 `54bd0d9b`, 5 `34a23327`, 6 `b8ee28fa`, 7 `086ff79a`, 8 `3ffe9be5`, 9 `378e72d0`, 10 `fe004290`, 11 `b6f9f7fb`,
+12 `47aeb97b`, 13 `3f24b6d5`, 14 `a5287019`, 15 `b06978dd`, 16 `b4c424ee` + el commit de este cierre. Los pasos 14 y
+15 se hicieron antes que 11-13 (orden alternativo de §4: no dependen del cobro).
+
+Desviaciones del plan, con su motivo:
+
+- **Sin `useCobro` entero.** El estado del cobro se quedó en `CheckoutDialog.tsx` (116 aserciones de lógica lo leen);
+  se movió el dibujo (`venta/CobroPanel`, `venta/cobro/*`, `venta/PostVenta`) y la lógica pura a
+  `src/lib/pos/venta/cobro/*`. Lo mismo en carrito (`CartView` conserva handlers; dibujo en `venta/carrito/*`,
+  `AccionesCarrito`, `DialogoDescuento`) y catálogo (`ProductSearch` contenedor; dibujo en `GrillaProductos`).
+- **D4** aplicada: sin caja «Abrir caja para cobrar · F9» solo si `pos_require_cash_session`; sin la exigencia se cobra.
+- **D7** aplicada con matiz: la configuración de la pantalla del cliente sigue aceptando tres porcentajes; los
+  mayores de 10 % no se ofrecen (cobro y pantalla). «Otro» en la pantalla del cliente no se topa (bloque fijado por
+  pruebas de fuente): pendiente.
+- **D8** aplicada: «Exacto» y billetes sobre lo que falta; «Exacto» se ofrece en todos los medios (Figma), los
+  billetes solo en efectivo.
+- **D10** aplicada: con el cobro abierto (Radix) el lector descarta y avisa; `ProductSearch.bloqueado` cubre lo mismo.
+- **Detalle de la factura del carrito con deuda**: pasa a `DetalleFacturaVenta` (pedido del agente de facturas); se
+  retiraron `facturas-venta/id/{DetalleFactura, PagosDetalle, RegistrarPagoDialog, NotaCreditoDialog,
+  AnularFacturaDialog}`. La carpeta `id/` no se borra entera: `ItemsDetalle` (notas crédito) y `paymentTerms` (una
+  prueba) siguen en uso.
+- **«Total impuestos»** ya no es una fila propia del resumen del carrito: `ResumenTotales` pinta un renglón por
+  impuesto con su tarifa y el total (el bloque compartido no tiene esa fila).
+- **Clave del divisor** nueva (`pos-layout-productos-carrito-v2`) para que el 560 px por defecto no lo pise el 75/25
+  guardado.
+
+Pendiente, y por qué:
+
+- Verificación visual en navegador (1440, 1024 horizontal, 768 vertical, 390): el preview activo pedía iniciar sesión
+  y no se inician sesiones desde el agente. La red de seguridad visual son las pruebas de render (Testing Library +
+  jsdom).
+- Textos en español fijo en archivos no tocados por el rediseño: `OfflineCustomerDialog`,
+  `PendientesSinConexionDialog` (Desktop), y los datos que se guardan («Sin motivo especificado», «Total adeudado»).
+- `CheckoutDialog.tsx`: 35 `any` y 3 avisos de dependencias de efectos preexistentes (en la lógica, no se tocó).
+- Cargos de servicio, supervisor, mesas, «A toda la venta» (D5/D6): huecos previstos (`cargos` de
+  `ResumenTotales`, `accionExtra` de `CartLine`, pestaña deshabilitada).
+- `POS-PARIDAD-PANTALLA-PRINCIPAL.md` no está versionado (lo dejó otra sesión sin añadir): no se actualizó.

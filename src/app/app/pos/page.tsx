@@ -117,8 +117,9 @@ export default function POSPage() {
     setDialogoCaja(true);
   };
   // Shell móvil (Figma MobileHeader Mode=pos y MobileTabBar): la cabecera
-  // muestra el estado de la caja y «⋯ Caja y dispositivo», y la barra inferior
-  // se oculta con el carrito abierto o cobrando, donde manda la botonera «Cobrar».
+  // muestra el estado de la caja y «⋯ Caja y dispositivo». La barra inferior
+  // de la app NO se muestra en el POS (Figma B.12 · D3c móvil): abajo mandan el
+  // total y «Cobrar» fijos, y para salir está la flecha «←» de la cabecera.
   useCabeceraMovil({
     modo: 'pos',
     estadoPos: { texto: estadoCaja, tono: cashSession ? 'exito' : 'advertencia' },
@@ -133,7 +134,7 @@ export default function POSPage() {
         <MoreHorizontal aria-hidden="true" className="size-5" strokeWidth={1.5} />
       </button>
     ),
-    ocultarBarra: mobileView === 'cart' || showCheckout,
+    ocultarBarra: true,
   });
   // Atajos de la pantalla (mapa canónico, src/lib/pos/venta/atajos.ts). Con el
   // cobro abierto manda el cobro. El resto de atajos los registra cada pieza.

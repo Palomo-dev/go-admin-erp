@@ -1,6 +1,13 @@
 import { supabase } from '@/lib/supabase/config';
-import { getCurrentBranchId, getCurrentUserId, getOrganizationId } from '@/lib/hooks/useOrganization';
-import type { ErrorSaldoFavor, ResultadoAplicarSaldo } from '@/lib/finanzas/saldosAFavor/contrato';
+import { getCurrentBranchId, getOrganizationId } from '@/lib/hooks/useOrganization';
+import type {
+  ContextoSaldoFavor,
+  ErrorSaldoFavor,
+  ResultadoAplicarSaldo,
+  ResultadoCrearSaldo,
+} from '@/lib/finanzas/saldosAFavor/contrato';
+
+export type { ContextoSaldoFavor };
 
 /**
  * Error de una petición a `/api/saldos-a-favor/**` con su `codigo` estable
@@ -84,13 +91,18 @@ export interface FacturaPendiente {
 }
 
 export interface CrearSaldoInput {
-  organizationId: number;
   customerId: string;
   amount: number;
-  cashAccount?: string;
+  /** `payment_methods.code` de la organización (nunca una cuenta PUC). */
+  metodo: string;
+  cuentaBancaria?: number | null;
+  referencia?: string;
   notes?: string;
+  /** Día calendario `YYYY-MM-DD` (vence al final de ese día en la zona de la sucursal). */
   expiry?: string | null;
   branchId?: number | null;
+  /** Una por apertura del diálogo (`nuevaClaveIdempotencia('anticipo')`). */
+  claveIdempotencia: string;
 }
 
 export interface AplicarSaldoInput {
@@ -172,23 +184,34 @@ export const saldosAFavorService = {
     return (data || []) as FacturaPendiente[];
   },
 
-  /** Crea un saldo a favor (anticipo) y su asiento contable. */
-  async crear(input: CrearSaldoInput): Promise<string> {
-    const userId = await getCurrentUserId();
+  /**
+   * Métodos de pago de la organización, cuentas bancarias y caja abierta de la
+   * sucursal (`GET /api/saldos-a-favor/contexto`).
+   */
+  async contexto(branchId: number | null): Promise<ContextoSaldoFavor> {
+    const q = branchId != null ? `?sucursal=${encodeURIComponent(String(branchId))}` : '';
+    const r = await fetch(`/api/saldos-a-favor/contexto${q}`, { credentials: 'same-origin', cache: 'no-store', headers: cabeceras() });
+    return leer<ContextoSaldoFavor>(r);
+  },
+
+  /**
+   * Registra un anticipo: el dinero entra como un pago real (recibo, payments y
+   * caja) y queda como saldo a favor (`POST /api/saldos-a-favor` → `fn_saldo_favor_crear`).
+   */
+  async crear(input: CrearSaldoInput): Promise<ResultadoCrearSaldo> {
     const branchId = input.branchId ?? getCurrentBranchId();
-    if (!branchId) throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
-    const { data, error } = await supabase.rpc('fn_create_customer_credit', {
-      p_org: input.organizationId,
-      p_customer: input.customerId,
-      p_amount: input.amount,
-      p_cash_account: input.cashAccount || '1110',
-      p_branch: branchId,
-      p_notes: input.notes || null,
-      p_expiry: input.expiry || null,
-      p_created_by: userId,
+    if (!branchId) throw new ErrorPeticionSaldoFavor('sucursal_invalida', 422);
+    return enviar<ResultadoCrearSaldo>('/api/saldos-a-favor', {
+      cliente_id: input.customerId,
+      sucursal_id: branchId,
+      monto: input.amount,
+      metodo: input.metodo,
+      cuenta_bancaria: input.cuentaBancaria ?? null,
+      referencia: input.referencia?.trim() || null,
+      vence: input.expiry || null,
+      notas: input.notes?.trim() || null,
+      clave_idempotencia: input.claveIdempotencia,
     });
-    if (error) throw error;
-    return data as string;
   },
 
   /**

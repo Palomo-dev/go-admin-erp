@@ -110,3 +110,52 @@ describe('2 · aplicar un saldo a favor, validado en la base (20260928140100)', 
     expect(rollback).toMatch(/create or replace function public\.fn_apply_customer_credit\(p_credit_id uuid, p_invoice_id uuid, p_amount numeric, p_created_by uuid/);
   });
 });
+
+describe('3 · crear un anticipo pasa por un pago real (20260928140200)', () => {
+  const sql = leer('supabase/migrations/20260928140200_saldo_favor_3_crear_anticipo_con_pago.sql');
+  const rollback = leer('supabase/rollbacks/20260928140200_saldo_favor_3_crear_anticipo_con_pago_rollback.sql');
+
+  /**
+   * Dry-run 2026-09-28 (org 144, sucursal con caja abierta en modo por cajero, transacción deshecha):
+   *   efectivo con la caja de otro cajero      → sin_caja_abierta
+   *   efectivo con caja propia, 500, vence +30 → recibo RC-…, caja 123, arqueo +500,
+   *                                              saldo 500/active, created_by = auth.uid(),
+   *                                              vence el día elegido en la zona de la sucursal,
+   *                                              1 fila payments(customer_credit), asiento 1105 D / 2805 C
+   *   misma clave                              → repetida=true;  misma clave y otro monto → clave_idempotencia_reutilizada
+   *   transferencia sin referencia             → referencia_obligatoria;  con referencia → otro recibo
+   *   método 'credit'                          → metodo_invalido
+   *   cliente de otra organización             → cliente_no_encontrado
+   *   sucursal inexistente                     → sucursal_invalida
+   *   vence ayer                               → vencimiento_invalido
+   *   organización ajena (p_organization_id)   → Acceso denegado (sin_permiso)
+   *   miembro sin finance.create               → sin_permiso
+   */
+  test('el dinero entra por payments con recibo y caja; el saldo en la misma transacción', () => {
+    expect(sql).toMatch(/insert into public\.payment_groups/);
+    expect(sql).toMatch(/v_org, p_branch, 'customer_credit', v_credito::text, p_metodo, v_monto/);
+    expect(sql).toMatch(/v_caja := public\.fn_caja_abierta_para\(v_org, p_branch, v_uid\)/);
+    expect(sql).toMatch(/raise exception 'sin_caja_abierta'/);
+    expect(sql).toMatch(/v_cuenta_dinero := public\.fn_money_account_code_pago\(/);
+  });
+
+  test('sesión, permiso, idempotencia, cliente, sucursal y método de la organización', () => {
+    expect(sql).toMatch(/fn_finanzas_exigir_permiso\(v_org, array\['finance\.create'\]\)/);
+    expect(sql).toMatch(/pg_advisory_xact_lock\(hashtextextended\('fn_registrar_pago:' \|\| v_org/);
+    for (const codigo of ['cliente_no_encontrado', 'sucursal_invalida', 'sin_acceso_sucursal', 'metodo_invalido', 'referencia_obligatoria', 'vencimiento_invalido']) {
+      expect(sql).toMatch(new RegExp(`raise exception '${codigo}'`));
+    }
+    expect(sql).toMatch(/pm\.code <> 'credit'/);
+  });
+
+  test('fn_create_customer_credit queda interna, guarda el autor y falla sin asiento', () => {
+    expect(sql).toMatch(/revoke all on function public\.fn_create_customer_credit\([^)]*\) from public, anon, authenticated/);
+    expect(sql).toMatch(/coalesce\(\(select auth\.uid\(\)\), p_created_by\)/);
+    expect(sql).toMatch(/if v_entry is null then\s+raise exception 'asiento_no_creado'/);
+  });
+
+  test('el rollback devuelve el EXECUTE a authenticated y quita la RPC nueva', () => {
+    expect(rollback).toMatch(/drop function if exists public\.fn_saldo_favor_crear/);
+    expect(rollback).toMatch(/grant execute on function public\.fn_create_customer_credit\([^)]*\) to authenticated/);
+  });
+});

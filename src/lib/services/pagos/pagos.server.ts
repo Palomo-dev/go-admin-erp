@@ -201,7 +201,14 @@ async function documentosCobro(
 
 export async function contextoPago(
   ctx: Ctx,
-  entrada: { direccion: DireccionPago; documento?: DocumentoPago; id?: string; customerId?: string },
+  entrada: {
+    direccion: DireccionPago;
+    documento?: DocumentoPago;
+    id?: string;
+    customerId?: string;
+    /** Sucursal de la caja cuando no hay documento (anticipo): manda sobre la del primer documento. */
+    branchId?: number | null;
+  },
 ): Promise<ContextoPago> {
   if (entrada.direccion !== 'cobro') {
     // El contexto de pago a proveedor lo arma la sesión de compras/CxP con este
@@ -216,7 +223,7 @@ export async function contextoPago(
   if ((entrada.id || entrada.customerId) && docs.length === 0 && entrada.id) {
     throw new ErrorPagoServidor('documento_no_encontrado');
   }
-  const branchId = docs[0]?.branch_id ?? null;
+  const branchId = entrada.branchId ?? docs[0]?.branch_id ?? null;
 
   const [metodosRes, cuentasRes, cajaRes, hoyRes, clienteRes] = await Promise.all([
     ctx.supabase

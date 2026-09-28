@@ -49,7 +49,24 @@ jest.mock('@/lib/utils/orgContext', () => {
   };
 });
 
+const contextoPagoFalso = jest.fn(async (_ctx: unknown, entrada: { branchId?: number | null }) => ({
+  direccion: 'cobro',
+  tercero: null,
+  documentos: [],
+  metodos: [{ code: 'cash', name: 'Efectivo', requires_reference: false }],
+  cuentasBancarias: [],
+  caja: { abierta: entrada.branchId === 7, id: entrada.branchId === 7 ? 3 : null },
+  hoy: '2026-09-28',
+  branch_id: entrada.branchId ?? null,
+}));
+jest.mock('@/lib/services/pagos/pagos.server', () => {
+  class ErrorPagoServidor extends Error {}
+  return { ErrorPagoServidor, contextoPago: (c: unknown, e: { branchId?: number | null }) => contextoPagoFalso(c, e) };
+});
+
 import { POST as aplicar } from '@/app/api/saldos-a-favor/[id]/aplicar/route';
+import { POST as crear } from '@/app/api/saldos-a-favor/route';
+import { GET as contexto } from '@/app/api/saldos-a-favor/contexto/route';
 
 const peticion = (url: string, body: unknown) =>
   new Request(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -61,6 +78,7 @@ beforeEach(() => {
   guion.errorRpc = null;
   guion.datos = {
     fn_apply_customer_credit: { aplicacion_id: 'a1', repetida: false, monto: 100, saldo_disponible: 900, saldo_factura: 0 },
+    fn_saldo_favor_crear: { credito_id: 'c1', grupo_id: 'g1', recibo: 'RC-000009', repetida: false, caja_id: 3, monto: 500 },
   };
   rpcs.length = 0;
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -145,5 +163,87 @@ describe('POST /api/saldos-a-favor/[id]/aplicar', () => {
     const j = await r.json();
     expect(j.codigo).toBe('error_desconocido');
     expect(JSON.stringify(j)).not.toMatch(/relation/);
+  });
+});
+
+describe('POST /api/saldos-a-favor (anticipo)', () => {
+  const CLIENTE = '33333333-4444-4555-8666-777777777777';
+  const cuerpo = (extra: Record<string, unknown> = {}) => ({
+    cliente_id: CLIENTE,
+    sucursal_id: 7,
+    monto: 500,
+    metodo: 'cash',
+    clave_idempotencia: 'anticipo:prueba-0001',
+    ...extra,
+  });
+  const url = 'http://x/api/saldos-a-favor';
+
+  test('crea con la organización de la sesión, sin cuenta PUC ni autor del cliente', async () => {
+    const r = await crear(peticion(url, cuerpo({ vence: '2026-10-28', notas: 'abono' })), params);
+    expect(r.status).toBe(201);
+    expect((await r.json()).resultado.recibo).toBe('RC-000009');
+    expect(rpcs).toHaveLength(1);
+    expect(rpcs[0].nombre).toBe('fn_saldo_favor_crear');
+    expect(rpcs[0].args).toMatchObject({
+      p_customer: CLIENTE,
+      p_branch: 7,
+      p_monto: 500,
+      p_metodo: 'cash',
+      p_organization_id: ORG,
+      p_vence: '2026-10-28',
+    });
+    expect(rpcs[0].args).not.toHaveProperty('p_cash_account');
+    expect(rpcs[0].args).not.toHaveProperty('p_created_by');
+  });
+
+  test('una cuenta PUC o un autor en el body → 400 (el esquema es estricto)', async () => {
+    const r1 = await crear(peticion(url, cuerpo({ cash_account: '1105' })), params);
+    expect(r1.status).toBe(400);
+    const r2 = await crear(peticion(url, cuerpo({ created_by: 'u-2' })), params);
+    expect(r2.status).toBe(400);
+    expect(rpcs).toHaveLength(0);
+  });
+
+  test('organización ajena → 403; sin finance.create → 403 sin RPC', async () => {
+    const r1 = await crear(peticion(url, cuerpo({ organizationId: 999 })), params);
+    expect(r1.status).toBe(403);
+    guion.permisos = new Set(['finance.view']);
+    const r2 = await crear(peticion(url, cuerpo()), params);
+    expect(r2.status).toBe(403);
+    expect((await r2.json()).codigo).toBe('sin_permiso');
+    expect(rpcs).toHaveLength(0);
+  });
+
+  test('efectivo sin caja abierta → 409 sin_caja_abierta', async () => {
+    guion.errorRpc = { message: 'sin_caja_abierta' };
+    const r = await crear(peticion(url, cuerpo()), params);
+    expect(r.status).toBe(409);
+    expect((await r.json()).codigo).toBe('sin_caja_abierta');
+  });
+
+  test('Acceso denegado de la base (organización ajena) sale como sin_permiso 403', async () => {
+    guion.errorRpc = { message: 'Acceso denegado a la organización' };
+    const r = await crear(peticion(url, cuerpo()), params);
+    expect(r.status).toBe(403);
+    expect((await r.json()).codigo).toBe('sin_permiso');
+  });
+});
+
+describe('GET /api/saldos-a-favor/contexto', () => {
+  test('métodos y caja de la sucursal pedida, con finance.view', async () => {
+    const r = await contexto(new Request('http://x/api/saldos-a-favor/contexto?sucursal=7'), params);
+    expect(r.status).toBe(200);
+    const j = await r.json();
+    expect(j.caja).toEqual({ abierta: true, id: 3 });
+    expect(j.metodos[0].code).toBe('cash');
+    expect(contextoPagoFalso).toHaveBeenLastCalledWith(expect.anything(), { direccion: 'cobro', branchId: 7 });
+  });
+
+  test('sin finance.view → 403; sucursal mal formada → 400', async () => {
+    const r1 = await contexto(new Request('http://x/api/saldos-a-favor/contexto?sucursal=x'), params);
+    expect(r1.status).toBe(400);
+    guion.permisos = new Set();
+    const r2 = await contexto(new Request('http://x/api/saldos-a-favor/contexto?sucursal=7'), params);
+    expect(r2.status).toBe(403);
   });
 });

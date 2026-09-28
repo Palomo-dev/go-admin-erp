@@ -115,3 +115,41 @@ export interface ResultadoAplicarSaldo {
   saldo_factura: number;
   estado_factura?: string;
 }
+
+const DIA = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+/**
+ * Anticipo a mano: el dinero entra como un pago real (recibo, payments y caja)
+ * por el método de la organización; nunca una cuenta PUC elegida en pantalla.
+ */
+export const crearSaldoSchema = z
+  .object({
+    cliente_id: UUID,
+    sucursal_id: z.number().int().positive(),
+    monto: IMPORTE,
+    metodo: z.string().min(1).max(40),
+    cuenta_bancaria: z.number().int().positive().nullable().optional(),
+    referencia: z.string().max(200).nullable().optional(),
+    vence: DIA.nullable().optional(),
+    notas: z.string().max(2000).nullable().optional(),
+    clave_idempotencia: CLAVE,
+  })
+  .strict();
+export type SolicitudCrearSaldo = z.infer<typeof crearSaldoSchema>;
+
+export interface ResultadoCrearSaldo {
+  credito_id: string;
+  grupo_id: string;
+  recibo: string;
+  repetida: boolean;
+  caja_id: number | null;
+  monto: number;
+}
+
+/** Lo que necesita el diálogo del anticipo: métodos, cuentas y caja de la sucursal. */
+export interface ContextoSaldoFavor {
+  metodos: { code: string; name: string; requires_reference: boolean }[];
+  cuentasBancarias: { id: number; name: string; bank_name: string | null; ultimos: string | null; currency: string | null }[];
+  caja: { abierta: boolean; id: number | null };
+  hoy: string;
+}

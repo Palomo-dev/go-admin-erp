@@ -12,10 +12,14 @@ import { ORG_BODY_KEYS } from '@/lib/security/organizationBody';
 import {
   codigoErrorSaldoFavor,
   estadoHttpErrorSaldoFavor,
+  type ContextoSaldoFavor,
   type ErrorSaldoFavor,
   type ResultadoAplicarSaldo,
+  type ResultadoCrearSaldo,
   type SolicitudAplicarSaldo,
+  type SolicitudCrearSaldo,
 } from '@/lib/finanzas/saldosAFavor/contrato';
+import { contextoPago, ErrorPagoServidor } from '@/lib/services/pagos/pagos.server';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'userId' | 'supabase'>;
 
@@ -73,4 +77,40 @@ export async function aplicarSaldo(ctx: Ctx, creditId: string, s: SolicitudAplic
   });
   if (error) throw errorDeRpc('fn_apply_customer_credit', ctx, error);
   return data as ResultadoAplicarSaldo;
+}
+
+/**
+ * Anticipo a mano (`fn_saldo_favor_crear`): recibo + payments + saldo + asiento en
+ * una transacción; efectivo exige caja abierta. Cliente, sucursal y método se
+ * validan en la base contra la organización de la sesión.
+ */
+export async function crearSaldo(ctx: Ctx, s: SolicitudCrearSaldo): Promise<ResultadoCrearSaldo> {
+  const { data, error } = await ctx.supabase.rpc('fn_saldo_favor_crear', {
+    p_customer: s.cliente_id,
+    p_branch: s.sucursal_id,
+    p_monto: s.monto,
+    p_metodo: s.metodo,
+    p_clave_idempotencia: s.clave_idempotencia,
+    p_organization_id: ctx.organizationId,
+    p_cuenta_bancaria: s.cuenta_bancaria ?? null,
+    p_referencia: s.referencia ?? null,
+    p_vence: s.vence ?? null,
+    p_notas: s.notas ?? null,
+  });
+  if (error) throw errorDeRpc('fn_saldo_favor_crear', ctx, error);
+  return data as ResultadoCrearSaldo;
+}
+
+/**
+ * Métodos de la organización, cuentas bancarias, caja abierta de la sucursal y
+ * el día: la misma lectura del diálogo único de pago (`contextoPago`).
+ */
+export async function contextoSaldo(ctx: Ctx, branchId: number | null): Promise<ContextoSaldoFavor> {
+  try {
+    const c = await contextoPago(ctx, { direccion: 'cobro', branchId });
+    return { metodos: c.metodos, cuentasBancarias: c.cuentasBancarias, caja: c.caja, hoy: c.hoy };
+  } catch (err) {
+    if (err instanceof ErrorPagoServidor) throw new ErrorSaldoFavorServidor('error_desconocido');
+    throw err;
+  }
 }

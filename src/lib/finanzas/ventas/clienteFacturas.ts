@@ -57,14 +57,14 @@ export async function emitirFacturaVenta(id: string): Promise<{ id: string; nume
   return (await leer<{ resultado: { id: string; numero: string; stock_descontado: boolean } }>(r)).resultado;
 }
 
-export async function anularFacturaVenta(id: string, motivo: string): Promise<{ productos_devueltos: number }> {
+export async function anularFacturaVenta(id: string, motivo: string): Promise<{ productos_devueltos: number; comisiones_canceladas?: number; avisos?: string[] }> {
   const r = await fetch(`/api/facturas-venta/${encodeURIComponent(id)}/anular`, {
     method: 'POST',
     credentials: 'same-origin',
     headers: cabeceras(true),
     body: JSON.stringify({ motivo }),
   });
-  return (await leer<{ resultado: { productos_devueltos: number } }>(r)).resultado;
+  return (await leer<{ resultado: { productos_devueltos: number; comisiones_canceladas?: number; avisos?: string[] } }>(r)).resultado;
 }
 
 /** Crea (`id` null) o edita un borrador; la base calcula totales y crea la venta ligada. */

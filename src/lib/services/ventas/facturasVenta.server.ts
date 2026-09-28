@@ -90,11 +90,23 @@ export function faltantesDe(err: ErrorFacturaServidor): FaltanteStock[] {
   return Array.isArray(err.detalle) ? (err.detalle as FaltanteStock[]) : [];
 }
 
-export async function anularFactura(ctx: Ctx, id: string, motivo: string): Promise<{ id: string; productos_devueltos: number }> {
+/**
+ * Resultado de `fn_factura_venta_anular`. `comisiones_canceladas`: comisiones
+ * devengadas de la factura (o de su venta) que la anulación canceló, con
+ * contra-asiento. `avisos`: p. ej. `comision_ya_pagada` (no se tocó; revisar a mano).
+ */
+export interface ResultadoAnularFactura {
+  id: string;
+  productos_devueltos: number;
+  comisiones_canceladas?: number;
+  avisos?: string[];
+}
+
+export async function anularFactura(ctx: Ctx, id: string, motivo: string): Promise<ResultadoAnularFactura> {
   await exigirFacturaDeLaSesion(ctx, id);
   const { data, error } = await ctx.supabase.rpc('fn_factura_venta_anular', { p_invoice_id: id, p_motivo: motivo });
   if (error) lanzar('fn_factura_venta_anular', ctx, error);
-  return data as { id: string; productos_devueltos: number };
+  return data as ResultadoAnularFactura;
 }
 
 // ─── Detalle agregado ────────────────────────────────────────────────────────

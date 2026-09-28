@@ -44,7 +44,7 @@ import {
   type EslabonDocumento,
   type LineaDocumento,
 } from '@/components/kit';
-import { toastError, toastSuccess } from '@/components/ui/use-toast';
+import { toastError, toastSuccess, toastWarning } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
@@ -65,6 +65,7 @@ const RUTA_LISTADO = '/app/finanzas/facturas-venta';
 
 export function DetalleFacturaVenta({ id }: { id: string }) {
   const t = useTranslations('facturasVenta');
+  const tAvisos = useTranslations('posCobroServidor.avisos');
   const router = useRouter();
   const permisos = usePermisosFinanzas();
   const moneda = useMonedaOrganizacion();
@@ -207,8 +208,10 @@ export function DetalleFacturaVenta({ id }: { id: string }) {
     setAnulando(true);
     setErrorAnular(null);
     try {
-      await anularFacturaVenta(factura.id, motivo);
+      const resultado = await anularFacturaVenta(factura.id, motivo);
       toastSuccess(t('anular.hecho'), t('anular.hechoDescripcion', { numero }));
+      // La comisión ya pagada no se revierte sola (el dinero salió): se avisa, como en el POS.
+      if (resultado?.avisos?.includes('comision_ya_pagada')) toastWarning(tAvisos('comision_ya_pagada'));
       setAnularAbierto(false);
       await cargar();
     } catch (e) {

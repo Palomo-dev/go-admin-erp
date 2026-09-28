@@ -11725,6 +11725,27 @@
       "verFactura": "Voir la facture",
       "imprimir": "Imprimer",
       "anular": "Annuler"
+    },
+    "pestanas": {
+      "etiqueta": "Paniers",
+      "carritoN": "Panier {n}",
+      "lineas": "{n, plural, one {# produit} other {# produits}}",
+      "enEsperaMotivo": "En attente : {motivo}",
+      "cerrar": "Fermer le panier",
+      "cerrarCarrito": "Fermer {nombre}",
+      "nuevo": "Nouveau panier",
+      "crear": "Créer un panier",
+      "sinCarritosTitulo": "Aucun panier actif",
+      "sinCarritosDescripcion": "Créez un panier pour commencer une vente",
+      "confirmarTitulo": "Fermer ce panier ?",
+      "confirmarDescripcion": "Tous ses produits seront retirés. Action irréversible.",
+      "confirmarConProductos": "{n, plural, one {# produit} other {# produits}} pour {total} seront retirés. Action irréversible.",
+      "confirmar": "Fermer le panier"
+    },
+    "cliente": {
+      "contacto": "Contact : {nombre}",
+      "espaciosOcupados": "Chambres occupées ({n})",
+      "crear": "Créer un client"
     }
   }
 }

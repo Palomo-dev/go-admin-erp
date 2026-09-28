@@ -85,6 +85,8 @@ export default function POSPage() {
   // D4: ¿la organización exige caja para cobrar? (`pos_require_cash_session`,
   // la misma configuración que revisa el cobro al abrirse). Mientras se lee, sí.
   const [requiereCaja, setRequiereCaja] = useState(true);
+  // F2: lista de clientes del carrito activo (CustomerPicker del kit).
+  const [clienteAbierto, setClienteAbierto] = useState(false);
   const [, setDailySummary] = useState<DailySummary | null>(null);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -136,6 +138,7 @@ export default function POSPage() {
       { tecla: teclaAtajo('mapa'), accion: () => setMapaAtajos(true), descripcion: tAtajos('mapa') },
       { tecla: teclaAtajo('caja'), accion: abrirDialogoCaja, descripcion: tAtajos('caja') },
       { tecla: teclaAtajo('pantallaCliente'), accion: () => abrirMenuPantallaCliente(), descripcion: tAtajos('pantallaCliente') },
+      { tecla: teclaAtajo('cliente'), accion: () => setClienteAbierto(true), descripcion: tAtajos('cliente') },
     ],
     { activo: !showCheckout, hayRafaga: hayRafagaDelLector },
   );
@@ -590,6 +593,9 @@ export default function POSPage() {
                   <CustomerSelector
                     selectedCustomer={activeCart?.customer}
                     onCustomerSelect={handleCustomerSelect}
+                    open={clienteAbierto}
+                    onOpenChange={setClienteAbierto}
+                    atajo={teclaAtajo('cliente')}
                   />
                 </CardContent>
               </Card>
@@ -602,6 +608,7 @@ export default function POSPage() {
                   onCartSelect={setActiveCartId}
                   onNewCart={createNewCart}
                   onRemoveCart={removeCart}
+                  atajosActivos={!showCheckout}
                 />
               </div>
 

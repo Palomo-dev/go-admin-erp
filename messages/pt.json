@@ -11725,6 +11725,27 @@
       "verFactura": "Ver nota",
       "imprimir": "Imprimir",
       "anular": "Anular"
+    },
+    "pestanas": {
+      "etiqueta": "Carrinhos",
+      "carritoN": "Carrinho {n}",
+      "lineas": "{n, plural, one {# produto} other {# produtos}}",
+      "enEsperaMotivo": "Em espera: {motivo}",
+      "cerrar": "Fechar carrinho",
+      "cerrarCarrito": "Fechar {nombre}",
+      "nuevo": "Novo carrinho",
+      "crear": "Criar carrinho",
+      "sinCarritosTitulo": "Não há carrinhos ativos",
+      "sinCarritosDescripcion": "Crie um carrinho para começar uma venda",
+      "confirmarTitulo": "Fechar este carrinho?",
+      "confirmarDescripcion": "Todos os produtos serão removidos. Não é possível desfazer.",
+      "confirmarConProductos": "Serão removidos {n, plural, one {# produto} other {# produtos}} por {total}. Não é possível desfazer.",
+      "confirmar": "Fechar carrinho"
+    },
+    "cliente": {
+      "contacto": "Contato: {nombre}",
+      "espaciosOcupados": "Espaços ocupados ({n})",
+      "crear": "Criar cliente"
     }
   }
 }

@@ -1,0 +1,98 @@
+/**
+ * @jest-environment jsdom
+ *
+ * Paso 8: pestañas de carritos (Ctrl+N, Ctrl+Tab, cerrar con confirmación
+ * solo con más de uno) y el selector de cliente sobre `CustomerPicker` del kit
+ * (misma API: busca en el servicio, elige, quita, crea).
+ */
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { renderConIdioma } from '@/test-utils/renderConIdioma';
+import type { Cart, Customer } from '@/components/pos/types';
+
+const searchCustomers = jest.fn();
+jest.mock('@/lib/services/posService', () => ({
+  POSService: { searchCustomers: (...a: unknown[]) => searchCustomers(...a), usesLocalCatalog: () => false },
+}));
+jest.mock('@/lib/hooks/useOrgCurrency', () => ({
+  useMonedaOrganizacion: () => ({ code: 'COP', decimals: 0, locale: 'es-CO', formatear: (n: number) => `$ ${n}` }),
+}));
+jest.mock('@/lib/hooks/useOrganization', () => ({ useOrganization: () => ({ organization: { id: 1 } }), getCurrentBranchIdWithFallback: () => 3 }));
+jest.mock('@/lib/supabase/config', () => {
+  const vacio = { data: [], error: null };
+  const cadena: Record<string, unknown> = {};
+  for (const m of ['select', 'eq', 'in', 'order']) cadena[m] = () => cadena;
+  cadena.limit = async () => vacio;
+  (cadena as { then: unknown }).then = (r: (v: unknown) => unknown) => Promise.resolve(vacio).then(r);
+  return { supabase: { from: () => cadena } };
+});
+jest.mock('@/components/shared/form-dialogs', () => ({ ClienteFormDialog: ({ open }: { open: boolean }) => (open ? <div>formulario-cliente</div> : null) }));
+jest.mock('@/components/pos/OfflineCustomerDialog', () => ({ OfflineCustomerDialog: () => null }));
+
+import { CartTabs } from '@/components/pos/CartTabs';
+import { CustomerSelector } from '@/components/pos/CustomerSelector';
+
+const carrito = (id: string, extra: Partial<Cart> = {}) => ({ id, status: 'active', total: 0, items: [], ...extra }) as unknown as Cart;
+
+describe('CartTabs', () => {
+  test('Ctrl+N crea; Ctrl+Tab pasa al siguiente; la pestaña dice cliente o «Carrito N»', async () => {
+    const onNew = jest.fn(async () => undefined);
+    const onSelect = jest.fn();
+    renderConIdioma(
+      <CartTabs
+        carts={[carrito('a'), carrito('b', { customer: { full_name: 'Ana Gómez' } as Customer, total: 5000, items: [{ id: 'l' }] as Cart['items'] })]}
+        activeCartId="a"
+        onCartSelect={onSelect}
+        onNewCart={onNew}
+        onRemoveCart={jest.fn()}
+      />,
+    );
+    expect(screen.getByRole('tab', { name: /Carrito 1/ }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: /Ana/ })).toBeTruthy();
+    await act(async () => {
+      fireEvent.keyDown(document.body, { key: 'n', ctrlKey: true });
+    });
+    expect(onNew).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(document.body, { key: 'Tab', ctrlKey: true });
+    expect(onSelect).toHaveBeenCalledWith('b');
+  });
+
+  test('cerrar pide confirmación y solo existe con más de un carrito', () => {
+    const onRemove = jest.fn();
+    const { rerender } = renderConIdioma(
+      <CartTabs carts={[carrito('a'), carrito('b')]} activeCartId="a" onCartSelect={jest.fn()} onNewCart={jest.fn()} onRemoveCart={onRemove} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar Carrito 2' }));
+    expect(onRemove).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar carrito' }));
+    expect(onRemove).toHaveBeenCalledWith('b');
+    rerender(<CartTabs carts={[carrito('a')]} activeCartId="a" onCartSelect={jest.fn()} onNewCart={jest.fn()} onRemoveCart={onRemove} />);
+    expect(screen.queryByRole('button', { name: /Cerrar Carrito/ })).toBeNull();
+  });
+});
+
+describe('CustomerSelector sobre CustomerPicker', () => {
+  test('busca en el servicio, elige el cliente completo y lo puede quitar', async () => {
+    const ana = { id: 'c1', full_name: 'Ana Gómez', email: 'ana@x.co', doc_type: 'CC', doc_number: '123' } as Customer;
+    searchCustomers.mockResolvedValue([ana]);
+    const onSelect = jest.fn();
+    renderConIdioma(<CustomerSelector onCustomerSelect={onSelect} open onOpenChange={jest.fn()} />);
+    const opcion = await screen.findByRole('option', { name: /Ana Gómez/ });
+    expect(searchCustomers).toHaveBeenCalledWith(expect.objectContaining({ status: 'active' }));
+    fireEvent.click(opcion);
+    expect(onSelect).toHaveBeenCalledWith(ana);
+  });
+
+  test('con cliente elegido: «Quitar» manda undefined', () => {
+    const onSelect = jest.fn();
+    renderConIdioma(<CustomerSelector selectedCustomer={{ id: 'c1', full_name: 'Ana Gómez' } as Customer} onCustomerSelect={onSelect} />);
+    fireEvent.click(screen.getByRole('button', { name: /Quitar/ }));
+    expect(onSelect).toHaveBeenCalledWith(undefined, undefined);
+  });
+
+  test('«Crear cliente» abre el formulario completo', async () => {
+    searchCustomers.mockResolvedValue([]);
+    renderConIdioma(<CustomerSelector onCustomerSelect={jest.fn()} open onOpenChange={jest.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Crear cliente' }));
+    await waitFor(() => expect(screen.getByText('formulario-cliente')).toBeTruthy());
+  });
+});

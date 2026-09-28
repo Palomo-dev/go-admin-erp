@@ -11830,6 +11830,27 @@
       "verFactura": "View invoice",
       "imprimir": "Print",
       "anular": "Void"
+    },
+    "pestanas": {
+      "etiqueta": "Carts",
+      "carritoN": "Cart {n}",
+      "lineas": "{n, plural, one {# product} other {# products}}",
+      "enEsperaMotivo": "On hold: {motivo}",
+      "cerrar": "Close cart",
+      "cerrarCarrito": "Close {nombre}",
+      "nuevo": "New cart",
+      "crear": "Create cart",
+      "sinCarritosTitulo": "No active carts",
+      "sinCarritosDescripcion": "Create a cart to start a sale",
+      "confirmarTitulo": "Close this cart?",
+      "confirmarDescripcion": "All its products will be removed. This cannot be undone.",
+      "confirmarConProductos": "{n, plural, one {# product} other {# products}} for {total} will be removed. This cannot be undone.",
+      "confirmar": "Close cart"
+    },
+    "cliente": {
+      "contacto": "Contact: {nombre}",
+      "espaciosOcupados": "Occupied rooms ({n})",
+      "crear": "Create customer"
     }
   }
 }

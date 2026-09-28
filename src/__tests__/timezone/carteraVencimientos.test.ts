@@ -208,8 +208,9 @@ const HORA_DEL_NAVEGADOR = /new Date\([^)]*\+ 'T' \+ new Date\(\)\.toTimeString\
 const ARCHIVOS_TANDA_2 = [
   'src/components/finanzas/facturas-compra/RegistrarPagoModal.tsx',
   'src/components/finanzas/facturas-compra/FacturasCompraService.ts',
-  'src/components/finanzas/facturas-venta/id/RegistrarPagoDialog.tsx',
-  'src/components/finanzas/facturas-venta/id/DetalleFactura.tsx',
+  // 2026-09-28 (paso 7 del POS): `id/RegistrarPagoDialog` e `id/DetalleFactura` se
+  // retiraron; el carrito con deuda muestra `detalle/DetalleFacturaVenta`, que entra aquí.
+  'src/components/finanzas/facturas-venta/detalle/DetalleFacturaVenta.tsx',
   'src/components/finanzas/facturas-venta/ImportarCSVDialog.tsx',
   'src/components/finanzas/pagos/RegistrarPagoConectado.tsx',
   'src/components/finanzas/cuentas-por-cobrar/listado/ListadoCartera.tsx',
@@ -235,22 +236,27 @@ describe('los archivos de la tanda 2 no vuelven al día UTC', () => {
     // Venta y cartera: el pago va por el pago único. El navegador manda el DÍA
     // (`date`) y la base lo lleva a la zona de la sucursal; ningún adaptador
     // compone instantes ni escribe `payments`.
-    const dialogo = leer('src/components/finanzas/facturas-venta/id/RegistrarPagoDialog.tsx');
-    expect(dialogo).toContain('RegistrarPagoConectado');
-    expect(dialogo).not.toMatch(/from\('payments'\)/);
+    // Reapuntado (2026-09-28): el adaptador viejo se retiró; el detalle de la
+    // factura de venta registra el pago con el componente del pago único.
+    const detalle = leer('src/components/finanzas/facturas-venta/detalle/DetalleFacturaVenta.tsx');
+    expect(detalle).toContain('RegistrarPagoConectado');
+    expect(detalle).not.toMatch(/from\('payments'\)/);
     const rpc = leer('supabase/migrations/20260924072939_pago_unico_registrar_y_anular.sql');
     expect(rpc).toMatch(/p_fecha date/);
   });
 
   it('los min/max y las comparaciones usan el día en la zona, no el UTC', () => {
-    for (const ruta of [
-      'src/components/finanzas/facturas-compra/RegistrarPagoModal.tsx',
-      'src/components/finanzas/facturas-venta/id/DetalleFactura.tsx',
-    ]) {
+    // `id/DetalleFactura.tsx` salió de esta lista al retirarse (2026-09-28): el
+    // detalle nuevo no calcula días en el navegador; el vencimiento lo cuenta
+    // `diasVencidos` con el día de la sucursal (`useFormatDate`), que se exige abajo.
+    for (const ruta of ['src/components/finanzas/facturas-compra/RegistrarPagoModal.tsx']) {
       const fuente = leer(ruta);
       expect(fuente).toContain('plainDayOfInstant(');
       expect(fuente).toContain('diaEmision');
     }
+    const detalleVenta = leer('src/components/finanzas/facturas-venta/detalle/DetalleFacturaVenta.tsx');
+    expect(detalleVenta).toContain('useFormatDate(');
+    expect(detalleVenta).toContain('diasVencidos(');
   });
 
   it('las cuotas se generan con aritmética de día calendario', () => {

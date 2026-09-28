@@ -1,9 +1,10 @@
 /**
  * L35-L36 (docs/implementacion/POS-PLAN.md §2.5): botón «Cobrar» del carrito.
- * Comportamiento de HOY: sin caja se deshabilita SIEMPRE (el carrito no mira
- * `pos_require_cash_session`; eso lo revisa el diálogo de cobro al abrirse) y
- * el «Cobrar» de un carrito en deuda NO exige caja. La decisión D4 del diseño
- * («Abrir caja para cobrar · F9») llega en otro paso. `estadoBotonCobrar` y
+ * Decisión D4 (paso 7 del rediseño, aprobada por el dueño): sin caja el botón
+ * pasa a «Abrir caja para cobrar · F9» SOLO si la organización exige caja
+ * (`pos_require_cash_session`); sin la exigencia se cobra sin caja. Antes de
+ * este paso el carrito lo deshabilitaba SIEMPRE: la prueba cambió con la
+ * decisión. El «Cobrar» de un carrito en deuda NO exige caja. `estadoBotonCobrar` y
  * `puedeCobrarDeuda` salen de `src/components/pos/CartView.tsx`.
  */
 import { estadoBotonCobrar, esCarritoEnDeuda, puedeCobrarDeuda } from '@/lib/pos/venta/requisitosCarrito';
@@ -16,9 +17,10 @@ describe('botón «Cobrar» (L35)', () => {
     expect(estadoBotonCobrar({ caja: true, carrito: conLineas('active') })).toBe('listo');
   });
 
-  it('sin caja: deshabilitado SIEMPRE, aunque la configuración no exija caja', () => {
+  it('sin caja: «Abrir caja para cobrar» si la organización la exige (o no se sabe); si no, se cobra', () => {
     expect(estadoBotonCobrar({ caja: false, carrito: conLineas('active') })).toBe('sin-caja');
-    expect(estadoBotonCobrar({ caja: false, config: { requiereCaja: false }, carrito: conLineas('active') })).toBe('sin-caja');
+    expect(estadoBotonCobrar({ caja: false, config: { requiereCaja: true }, carrito: conLineas('active') })).toBe('sin-caja');
+    expect(estadoBotonCobrar({ caja: false, config: { requiereCaja: false }, carrito: conLineas('active') })).toBe('listo');
   });
 
   it('en espera o en deuda: bloqueado (con o sin caja); sin líneas: vacío (la botonera no se pinta)', () => {

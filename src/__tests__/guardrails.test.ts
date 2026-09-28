@@ -2395,7 +2395,9 @@ describe('28. Generadores de documentos: sin moneda fija', () => {
     'components/pos/configuracion/impresiones/sampleData.ts',
     'components/transporte/envios/shipmentLabelPrinter.ts',
     'components/crm/propuestas/ProposalPrintView.tsx',
-    'components/finanzas/facturas-venta/id/DetalleFactura.tsx',
+    // `components/finanzas/facturas-venta/id/DetalleFactura.tsx` se retiró (2026-09-28, paso 7 del POS):
+    // el carrito con deuda muestra `facturas-venta/detalle/DetalleFacturaVenta.tsx`, que no genera
+    // documentos en el navegador (los PDFs van por el motor único).
     'components/finanzas/cotizaciones/id/DetalleCotizacion.tsx',
     'components/finanzas/facturas-compra/id/DetalleFacturaCompra.tsx',
     'components/finanzas/cuentas-por-pagar/id/service.ts',

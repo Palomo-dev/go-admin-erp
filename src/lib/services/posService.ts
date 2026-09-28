@@ -2367,6 +2367,8 @@ export class POSService {
   static async cancelDebtWithCreditNote(cartId: string, motivo?: string): Promise<{
     cart: Cart;
     creditNote: { id: string | null; number: string | null };
+    /** Avisos de la RPC (p. ej. `factura_electronica_sin_nota_credito_dian`). */
+    avisos: string[];
   }> {
     const allCarts = this.readAllCarts();
     const cart = allCarts.find((c) => c.id === cartId);
@@ -2393,6 +2395,7 @@ export class POSService {
     return {
       cart: actualizado,
       creditNote: { id: resultado.nota_credito_id, number: resultado.nota_credito_numero },
+      avisos: resultado.avisos,
     };
   }
 

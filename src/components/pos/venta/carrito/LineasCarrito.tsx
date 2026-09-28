@@ -307,6 +307,7 @@ export function LineasCarrito({
           return (
             <li
               key={item.id}
+              data-linea-carrito=""
               onBlur={(e) => {
                 if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
                   setEnfocada((prev) => (prev === item.id ? null : prev));

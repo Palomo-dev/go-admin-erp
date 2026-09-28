@@ -1,14 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { useTranslations } from 'next-intl';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Calculator, Settings, ChevronDown, Check } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { ChevronDown, Check } from 'lucide-react';
+import { ResumenTotales } from '@/components/kit/ResumenTotales';
 import { POSService } from '@/lib/services/posService';
 import { cartLinesSignature } from '@/lib/pos/display/emitter';
 import { Cart } from './types';
@@ -70,7 +66,8 @@ export function TaxSummary({
   onTotalsChange,
   className 
 }: TaxSummaryProps) {
-  const { formatear } = useMonedaOrganizacion();
+  const moneda = useMonedaOrganizacion();
+  const t = useTranslations('posVenta.resumen');
   const [organizationTaxes, setOrganizationTaxes] = useState<OrganizationTax[]>([]);
   const [taxBreakdown, setTaxBreakdown] = useState<TaxBreakdown[]>([]);
   const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({});
@@ -270,243 +267,94 @@ export function TaxSummary({
   const resumen = resumenImpuestos({ subtotal, totalTaxAmount, finalTotal, discountTotal: cart.discount_total, taxBreakdown });
   const total = resumen.total;
 
-  if (loading) {
-    return (
-      <Card className={`dark:bg-gray-800 bg-white dark:border-gray-700 border-gray-200 ${className}`}>
-        <CardHeader className="p-2 sm:p-3 pb-2">
-          <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm dark:text-white text-gray-900">
-            <Calculator className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span>Resumen</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-2 sm:p-3 space-y-2">
-          <Skeleton className="h-4 w-1/2" />
-          <Skeleton className="h-3 w-3/4" />
-        </CardContent>
-      </Card>
-    );
-  }
+  // El dibujo es `ResumenTotales` del kit (paso 7): Subtotal bruto ·
+  // Descuento · un renglón por impuesto con su nombre y tarifa (informativo
+  // si los precios los incluyen) · Total. El interruptor «Impuestos
+  // incluidos» y el selector de impuestos de la organización van en la
+  // cabecera. Nada de esto calcula: son las cifras de `calculatedTotals`.
+  const selectorImpuestos = !hasProductSpecificTaxes && organizationTaxes.length > 0 && (
+    <Popover open={taxSelectorOpen} onOpenChange={setTaxSelectorOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={taxSelectorOpen}
+          aria-label={t('impuestosDisponibles')}
+          className="flex h-8 w-full items-center justify-between gap-2 rounded-lg border border-line-strong bg-surface px-3 text-xs text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          <span className="truncate">
+            {(() => {
+              const etiqueta = etiquetaSelectorImpuestos(appliedTaxes, organizationTaxes);
+              if (etiqueta.tipo === 'ninguno') return t('ningunImpuesto');
+              if (etiqueta.tipo === 'uno') return t('unImpuesto', { nombre: etiqueta.nombre, tasa: etiqueta.tasa });
+              return t('variosImpuestos', { n: etiqueta.cantidad });
+            })()}
+          </span>
+          <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 opacity-60" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-2" align="start">
+        <p className="mb-2 px-1 text-xs text-fg-secondary">{t('seleccionaImpuestos')}</p>
+        <ul className="flex max-h-48 flex-col gap-0.5 overflow-y-auto" role="listbox" aria-multiselectable="true" aria-label={t('impuestosDisponibles')}>
+          {organizationTaxes.map((tax) => (
+            <li key={tax.id} role="option" aria-selected={!!appliedTaxes[tax.id]}>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = { ...appliedTaxes, [tax.id]: !appliedTaxes[tax.id] };
+                  setAppliedTaxes(next);
+                  const selectedIds = Object.keys(next).filter(id => next[id]);
+                  onAppliedTaxesChange?.(selectedIds);
+                }}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                <span aria-hidden="true" className="flex size-4 shrink-0 items-center justify-center rounded border border-line-strong">
+                  {appliedTaxes[tax.id] && <Check className="size-3 text-brand" />}
+                </span>
+                <span className="flex-1">{t('unImpuesto', { nombre: tax.name, tasa: tax.rate })}</span>
+                {tax.is_default && (
+                  <span className="inline-flex h-4 items-center rounded-full bg-subtle px-1.5 text-[10px] text-fg-secondary">{t('predeterminado')}</span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  );
 
-  if (cart.items.length === 0) {
-    return (
-      <Card className={`dark:bg-gray-800 bg-white dark:border-gray-700 border-gray-200 ${className}`}>
-        <CardHeader className="p-2 sm:p-3 pb-2">
-          <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm dark:text-white text-gray-900">
-            <Calculator className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span>Resumen</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-2 sm:p-3">
-          <div className="text-xs sm:text-sm dark:text-gray-400 text-gray-600">Agregue productos</div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const cabecera = (
+    <div className="flex flex-col gap-2">
+      <label className="flex cursor-pointer items-center justify-between gap-2 text-xs text-fg-secondary">
+        <span>{t('impuestosIncluidos')}</span>
+        <span className="relative inline-flex items-center">
+          <input
+            type="checkbox"
+            role="switch"
+            checked={taxIncluded}
+            onChange={(e) => onTaxIncludedChange(e.target.checked)}
+            className="peer sr-only"
+          />
+          <span aria-hidden="true" className="h-4 w-8 rounded-full bg-line-strong transition-colors after:absolute after:left-0.5 after:top-0.5 after:size-3 after:rounded-full after:bg-surface after:transition-transform peer-checked:bg-brand-action peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-brand" />
+        </span>
+      </label>
+      {selectorImpuestos}
+    </div>
+  );
 
   return (
-    <Card className={`dark:bg-gray-800 bg-white dark:border-gray-700 border-gray-200 ${className}`}>
-      <CardHeader className="p-2 sm:p-3 pb-2">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-1.5 text-xs sm:text-sm dark:text-white text-gray-900">
-            <Calculator className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
-            <span className="break-words whitespace-normal">Resumen</span>
-          </CardTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 dark:hover:bg-gray-700 hover:bg-gray-100 shrink-0"
-          >
-            <Settings className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-          </Button>
-        </div>
-        
-        {/* Toggle para impuestos incluidos - RESPONSIVE */}
-        <div className="flex items-center justify-between gap-2 mt-1.5 sm:mt-2">
-          <span className="text-[0.65rem] sm:text-xs dark:text-gray-400 text-gray-600 leading-tight">
-            Impuestos incluidos
-          </span>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={taxIncluded}
-              onChange={(e) => onTaxIncludedChange(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-7 h-3.5 sm:w-8 sm:h-4 bg-gray-200 peer-focus:outline-none peer-focus:ring-1 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-2.5 after:w-2.5 sm:after:h-3 sm:after:w-3 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-          </label>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="p-2 sm:p-3 pt-0">
-        <div className="space-y-2">
-          {/* Subtotal.
-              `subtotal` viene NETO de descuentos porque `calculateCartTaxes` resta
-              el descuento en cada línea (correcto: el impuesto se calcula sobre la
-              base ya descontada). Pero pintado así, con la línea "Descuento" debajo,
-              el desglose mentía: Subtotal 180.990 / Descuento −2.010 / Total 180.990.
-              Se muestra el bruto (neto + descuento) para que cuadre igual que en el
-              diálogo de cobro: 183.000 − 2.010 = 180.990. El cálculo no cambia. */}
-          <div className="flex justify-between items-start gap-3 text-xs sm:text-sm">
-            <span className="dark:text-gray-400 text-gray-600 shrink-0">Subtotal:</span>
-            <div className="text-right">
-              <span className="dark:text-white text-gray-900 font-medium">
-                {formatear(resumen.subtotalBruto)}
-              </span>
-              {taxIncluded && (
-                <div className="text-xs dark:text-gray-500 text-gray-500">
-                  (inc. impuestos)
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Multi-selector de impuestos de organización (cuando no hay impuestos específicos del producto) */}
-          {!hasProductSpecificTaxes && organizationTaxes.length > 0 && (
-            <>
-              <Separator className="dark:bg-gray-700 bg-gray-200" />
-              <div className="space-y-2">
-                <div className="text-xs font-medium dark:text-gray-300 text-gray-700">
-                  Impuestos disponibles:
-                </div>
-                <Popover open={taxSelectorOpen} onOpenChange={setTaxSelectorOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={taxSelectorOpen}
-                      className="w-full justify-between h-8 text-xs dark:bg-gray-800 dark:border-gray-600 dark:hover:bg-gray-700 bg-white"
-                    >
-                      {(() => {
-                        const etiqueta = etiquetaSelectorImpuestos(appliedTaxes, organizationTaxes);
-
-                        if (etiqueta.tipo === 'ninguno') {
-                          return "Ningún impuesto seleccionado";
-                        } else if (etiqueta.tipo === 'uno') {
-                          return `${etiqueta.nombre} (${etiqueta.tasa}%)`;
-                        } else {
-                          return `${etiqueta.cantidad} impuestos seleccionados`;
-                        }
-                      })()}
-                      <ChevronDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 p-2 dark:bg-gray-800 dark:border-gray-600" align="start">
-                    <div className="space-y-1 max-h-48 overflow-y-auto">
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 px-1">
-                        Selecciona los impuestos a aplicar:
-                      </div>
-                      {organizationTaxes.map((tax) => (
-                        <div
-                          key={tax.id}
-                          onClick={() => {
-                            const next = { ...appliedTaxes, [tax.id]: !appliedTaxes[tax.id] };
-                            setAppliedTaxes(next);
-                            const selectedIds = Object.keys(next).filter(id => next[id]);
-                            onAppliedTaxesChange?.(selectedIds);
-                          }}
-                          className="flex items-center space-x-2 px-2 py-2 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                        >
-                          <Checkbox
-                            checked={appliedTaxes[tax.id] || false}
-                            onChange={() => {}} // Manejado por el onClick del contenedor
-                            className="h-3 w-3"
-                          />
-                          <div className="flex-1 flex items-center gap-2">
-                            <span className="text-xs dark:text-gray-300 text-gray-700">
-                              {tax.name} ({tax.rate}%)
-                            </span>
-                            {tax.is_default && (
-                              <Badge variant="outline" className="text-xs py-0 px-1 h-4">
-                                predeterminado
-                              </Badge>
-                            )}
-                          </div>
-                          {appliedTaxes[tax.id] && (
-                            <Check className="h-3 w-3 dark:text-green-400 text-green-600" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </>
-          )}
-
-          {/* Desglose de impuestos */}
-          {!resumen.sinImpuestosConfigurados && (
-            <>
-              <Separator className="dark:bg-gray-700 bg-gray-200" />
-              <div className="space-y-2">
-                <div className="text-xs font-medium dark:text-gray-300 text-gray-700">
-                  Impuestos aplicados:
-                </div>
-                <div className="space-y-1">
-                  {resumen.impuestos.map((tax) => (
-                    <div key={tax.taxId} className="flex justify-between items-start gap-2 text-xs">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0 flex-1">
-                        <span className="dark:text-gray-400 text-gray-600 break-words whitespace-normal" title={tax.etiqueta}>
-                          {tax.etiqueta}
-                        </span>
-                        {taxIncluded && (
-                          <Badge variant="outline" className="text-xs py-0 px-1 w-fit shrink-0">
-                            incluido
-                          </Badge>
-                        )}
-                      </div>
-                      <span className="dark:text-white text-gray-900 font-medium shrink-0">
-                        {formatear(tax.importe)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Total de impuestos */}
-          {resumen.mostrarTotalImpuestos && (
-            <>
-              <Separator className="dark:bg-gray-700 bg-gray-200" />
-              <div className="flex justify-between items-center gap-3 text-sm font-medium">
-                <span className="dark:text-gray-300 text-gray-700 shrink-0">Total Impuestos:</span>
-                <span className="dark:text-blue-400 text-blue-600">
-                  {formatear(resumen.totalImpuestos)}
-                </span>
-              </div>
-            </>
-          )}
-
-          {/* Descuento total */}
-          {resumen.mostrarDescuento && (
-            <>
-              <Separator className="dark:bg-gray-700 bg-gray-200" />
-              <div className="flex justify-between items-center gap-3 text-sm font-medium">
-                <span className="dark:text-red-400 text-red-600 shrink-0">Descuento:</span>
-                <span className="dark:text-red-400 text-red-600">
-                  -{formatear(resumen.descuento)}
-                </span>
-              </div>
-            </>
-          )}
-
-          {/* Total final */}
-          <Separator className="dark:bg-gray-700 bg-gray-200" />
-          <div className="flex justify-between items-center gap-3 text-sm sm:text-base font-semibold">
-            <span className="dark:text-white text-gray-900 shrink-0">Total Final:</span>
-            <span className="dark:text-green-400 text-green-600">
-              {formatear(total)}
-            </span>
-          </div>
-
-          {/* Información adicional */}
-          {resumen.sinImpuestosConfigurados && (
-            <div className="text-xs dark:text-gray-500 text-gray-500 text-center mt-2 px-2">
-              No hay impuestos configurados para estos productos
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+    <ResumenTotales
+      className={className}
+      moneda={moneda}
+      cargando={loading}
+      etiqueta={t('titulo')}
+      cabecera={cart.items.length > 0 ? cabecera : undefined}
+      subtotal={cart.items.length > 0 ? resumen.subtotalBruto : 0}
+      descuentos={resumen.mostrarDescuento ? [{ id: 'descuento', etiqueta: t('descuento'), importe: resumen.descuento }] : []}
+      impuestos={taxBreakdown.map((tax) => ({ nombre: tax.name, tarifa: tax.rate, importe: tax.taxAmount }))}
+      total={cart.items.length > 0 ? total : 0}
+      impuestosIncluidos={taxIncluded}
+      sinImpuestosConfigurados={cart.items.length > 0 && resumen.sinImpuestosConfigurados}
+    />
   );
 }

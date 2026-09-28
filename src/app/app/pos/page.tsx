@@ -38,6 +38,7 @@ import { startOfflineSync } from '@/lib/offline/syncStages';
 import { CASH_OUTBOX_CHANGED_EVENT } from '@/lib/offline/cashOutbox';
 import { isDesktop } from '@/lib/utils/desktop';
 import { CajasService } from '@/components/pos/cajas/CajasService';
+import { ConfiguracionService } from '@/components/pos/configuracion/configuracionService';
 import { useBlindCloseMode } from '@/components/pos/cajas/useBlindCloseMode';
 import { usePermisosCaja } from '@/components/pos/cajas/usePermisosCaja';
 import { puedeCerrarCaja } from '@/lib/pos/cajas/reglasCierre';
@@ -81,6 +82,9 @@ export default function POSPage() {
   const [dialogoCaja, setDialogoCaja] = useState(false);
   const [hojaCaja, setHojaCaja] = useState(false);
   const [mapaAtajos, setMapaAtajos] = useState(false);
+  // D4: ¿la organización exige caja para cobrar? (`pos_require_cash_session`,
+  // la misma configuración que revisa el cobro al abrirse). Mientras se lee, sí.
+  const [requiereCaja, setRequiereCaja] = useState(true);
   const [, setDailySummary] = useState<DailySummary | null>(null);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -273,6 +277,19 @@ export default function POSPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization?.id, branchFilter]);
+
+  useEffect(() => {
+    if (!organization?.id) return;
+    let vigente = true;
+    ConfiguracionService.getRequireCashSessionConfig()
+      .then((config) => {
+        if (vigente) setRequiereCaja(config.require_cash_session !== false);
+      })
+      .catch((err) => console.warn('Error leyendo si la caja es obligatoria:', err));
+    return () => {
+      vigente = false;
+    };
+  }, [organization?.id]);
 
   const loadDashboardData = async () => {
     try {
@@ -598,6 +615,9 @@ export default function POSPage() {
                     onHold={handleHoldCart}
                     onSendComanda={handleSendComanda}
                     cashSessionActive={!!cashSession}
+                    requiereCaja={requiereCaja}
+                    onAbrirCaja={abrirDialogoCaja}
+                    atajosActivos={!showCheckout}
                   />
                 </div>
               )}

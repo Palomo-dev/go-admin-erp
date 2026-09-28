@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, Send, ChefHat, CheckCircle, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Check, CheckCircle, ChefHat, FileText, Pause, Send, ShoppingCart } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
+import { CartTag, Dialogo, DialogoMotivo, EmptyState, FilaDato, FormField, ListaDatos, PanelAdaptable, useAtajos } from '@/components/kit';
+import { AccionesCarrito } from '@/components/pos/venta/AccionesCarrito';
+import { hayRafagaDelLector } from '@/hooks/useHardwareBarcodeScanner';
+import { teclaAtajo } from '@/lib/pos/venta/atajos';
+import { todayInTz } from '@/lib/utils/dateCore';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { sumarDiasCalendario } from '@/lib/utils/taskReminderDates';
 import { POSService } from '@/lib/services/posService';
 import { PrintService } from '@/lib/services/printService';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
@@ -22,7 +22,9 @@ import { TaxSummary, type TaxSummaryTotals } from './TaxSummary';
 import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { toast } from 'sonner';
-import DetalleFactura from '@/components/finanzas/facturas-venta/id/DetalleFactura';
+// El detalle nuevo lee la factura del servidor y registra pagos por el pago único
+// (el viejo `id/DetalleFactura` escribía desde el navegador y se retiró).
+import { DetalleFacturaVenta } from '@/components/finanzas/facturas-venta/detalle/DetalleFacturaVenta';
 import type { KitchenTicket } from '@/lib/services/kitchenService';
 import type { LucideIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -98,9 +100,18 @@ interface CartViewProps {
    * foco dentro de una línea.
    */
   atajosActivos?: boolean;
+  /**
+   * La organización exige caja para cobrar (`pos_require_cash_session`, D4).
+   * Por defecto sí: sin caja el botón es «Abrir caja para cobrar · F9».
+   */
+  requiereCaja?: boolean;
+  /** «Abrir caja para cobrar · F9»: abre el diálogo de apertura (lo monta la página). */
+  onAbrirCaja?: () => void;
+  /** «Descuento · D» del carrito (diálogo del paso 10); sin él no se muestra. */
+  onDescuento?: () => void;
 }
 
-export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true, atajosActivos = true }: CartViewProps) {
+export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true, atajosActivos = true, requiereCaja = true, onAbrirCaja, onDescuento }: CartViewProps) {
   const { timezone } = useOrgTimezone();
   const moneda = useMonedaOrganizacion();
   const { formatear } = moneda;
@@ -191,6 +202,13 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
 
   // Estado para envío de comanda
   const [isSendingComanda, setIsSendingComanda] = useState(false);
+
+  // «Anular» la deuda pide motivo (el servidor lo exige, ≥ 3 caracteres) y confirma (H10).
+  const [showCancelDebtDialog, setShowCancelDebtDialog] = useState(false);
+  const [isCancellingDebt, setIsCancellingDebt] = useState(false);
+  const [cancelDebtError, setCancelDebtError] = useState<string | null>(null);
+  const tCarrito = useTranslations('posVenta.carrito');
+  const tAtajosCarrito = useTranslations('posVenta.atajos');
 
   // Estado para edición de notas por item
   const [editingNotesItemId, setEditingNotesItemId] = useState<string | null>(null);
@@ -424,8 +442,8 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
       });
       
       // Mostrar información del resultado
-      toast.success('¡Deuda registrada exitosamente!', {
-        description: `Factura ${result.invoice.number} por ${formatear(result.invoice.total)}`
+      toast.success(tCarrito('deudaRegistrada'), {
+        description: tCarrito('deudaRegistradaDescripcion', { numero: String(result.invoice.number), total: formatear(result.invoice.total) }),
       });
 
       // Pantalla del cliente: la venta a crédito ya se facturó → «Gracias»
@@ -448,8 +466,8 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
       setPaymentTerms(30);
     } catch (error: unknown) {
       console.error('Error holding cart with debt:', error);
-      toast.error('Error al registrar deuda', {
-        description: mensajeErrorCobro(error, tCobro, 'No se pudo crear la factura y cuenta por cobrar')
+      toast.error(tCarrito('errorDeuda'), {
+        description: mensajeErrorCobro(error, tCobro, tCarrito('errorDeudaDescripcion'))
       });
     } finally {
       setIsProcessingHoldWithDebt(false);
@@ -465,8 +483,8 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
       setShowInvoiceModal(true);
     } catch (error: unknown) {
       console.error('Error cargando factura:', error);
-      toast.error('Error al cargar factura', {
-        description: errorMessage(error) || 'No se pudo obtener los datos de la factura'
+      toast.error(tCarrito('errorFactura'), {
+        description: errorMessage(error) || tCarrito('errorFacturaDescripcion')
       });
     } finally {
       setIsLoadingInvoice(false);
@@ -587,22 +605,19 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         timezone,
       );
 
-      toast.success('Factura enviada a imprimir');
+      toast.success(tCarrito('facturaImpresa'));
 
     } catch (error: unknown) {
       console.error('Error imprimiendo factura:', error);
-      toast.error('Error al imprimir factura', {
-        description: errorMessage(error) || 'No se pudo imprimir la factura'
+      toast.error(tCarrito('errorImprimir'), {
+        description: errorMessage(error) || tCarrito('errorImprimirDescripcion')
       });
     }
   };
 
   // Handler para cobrar deuda - llevar al checkout
   const handlePayDebt = () => {
-    toast.info('Redirigiendo al checkout...', {
-      description: 'Se procesará el pago de la deuda'
-    });
-    // Reactivar temporalmente para checkout
+    // Reactivar temporalmente para checkout (el cobro de la deuda no exige caja).
     onCheckout(cart);
   };
 
@@ -612,28 +627,34 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
     setIsSendingComanda(true);
     try {
       await onSendComanda(cart);
-      toast.success('Enviado a cocina');
     } catch (error: unknown) {
       console.error('Error enviando comanda:', error);
-      toast.error('Error al enviar comanda', { description: errorMessage(error) || 'No se pudo enviar' });
+      toast.error(tCarrito('errorCocina'), { description: errorMessage(error) || tCarrito('errorCocinaDescripcion') });
     } finally {
       setIsSendingComanda(false);
     }
   };
 
-  // Anular deuda con nota de crédito
-  const handleCancelDebt = async () => {
+  // Anular deuda con nota de crédito: una RPC con permiso `pos.void` en el
+  // servidor y el motivo del cajero (≥ 3 caracteres, lo exige la RPC).
+  const handleCancelDebt = async (motivo: string) => {
+    setIsCancellingDebt(true);
+    setCancelDebtError(null);
     try {
-      const result = await POSService.cancelDebtWithCreditNote(cart.id);
+      const result = await POSService.cancelDebtWithCreditNote(cart.id, motivo);
       onCartUpdate(result.cart);
-      toast.success('Deuda anulada exitosamente', {
-        description: `Se creó la nota de crédito ${result.creditNote.number}. Todos los balances han sido saldados.`
+      setShowCancelDebtDialog(false);
+      toast.success(tCarrito('deudaAnulada'), {
+        description: tCarrito('deudaAnuladaDescripcion', { numero: String(result.creditNote.number ?? '') }),
       });
+      if (result.avisos?.includes('factura_electronica_sin_nota_credito_dian')) {
+        toast.warning(tCarrito('avisoNotaCreditoDian'), { duration: 10000 });
+      }
     } catch (error: unknown) {
       console.error('Error anulando deuda:', error);
-      toast.error('Error al anular deuda', {
-        description: mensajeErrorCobro(error, tCobro, 'No se pudo crear la nota de crédito')
-      });
+      setCancelDebtError(mensajeErrorCobro(error, tCobro, tCarrito('errorAnularDescripcion')));
+    } finally {
+      setIsCancellingDebt(false);
     }
   };
 
@@ -641,438 +662,264 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   const isOnHold = cart.status === 'hold';
   const isOnHoldWithDebt = cart.status === 'hold_with_debt';
   const hasCustomer = !!cart.customer_id;
+  const modo = isOnHoldWithDebt ? 'deuda' : isOnHold ? 'espera' : 'activo';
+  // L35 + D4: sin caja «Abrir caja para cobrar · F9» si la organización la exige.
+  const estadoCobrar = estadoBotonCobrar({ caja: cashSessionActive, config: { requiereCaja }, carrito: cart });
+  const puedeDeuda = puedeRegistrarDeuda(cart);
+  const cobrar = () => {
+    if (estadoCobrar === 'listo') onCheckout(cart);
+    else if (estadoCobrar === 'sin-caja') onAbrirCaja?.();
+  };
+
+  // Atajos del carrito (POS-UX-V2 §3): F4 cobrar, F6 espera/reactivar, F7
+  // deuda, F8 cocina, D descuento. Apagados con el cobro abierto.
+  useAtajos(
+    [
+      {
+        tecla: teclaAtajo('cobrar'),
+        descripcion: tAtajosCarrito('cobrar'),
+        cuando: () => !isEmpty,
+        accion: () => (isOnHoldWithDebt ? handlePayDebt() : cobrar()),
+      },
+      {
+        tecla: teclaAtajo('espera'),
+        descripcion: tAtajosCarrito('espera'),
+        cuando: () => !isEmpty && !isOnHoldWithDebt,
+        accion: () => (isOnHold ? void handleActivate() : setShowHoldDialog(true)),
+      },
+      { tecla: teclaAtajo('deuda'), descripcion: tAtajosCarrito('deuda'), cuando: () => puedeDeuda, accion: () => setShowHoldWithDebtDialog(true) },
+      {
+        tecla: teclaAtajo('cocina'),
+        descripcion: tAtajosCarrito('cocina'),
+        cuando: () => !isEmpty && !isOnHold && !isOnHoldWithDebt && hasPreparationItems && !!onSendComanda,
+        accion: () => void handleSendComanda(),
+      },
+      {
+        tecla: teclaAtajo('lineaDescuento'),
+        descripcion: tAtajosCarrito('lineaDescuento'),
+        // Con el foco en una línea, D es el descuento de esa línea (lo registra LineasCarrito).
+        cuando: () => !isEmpty && modo === 'activo' && !!onDescuento && !document.activeElement?.closest('[data-linea-carrito]'),
+        accion: () => onDescuento?.(),
+      },
+    ],
+    { activo: atajosActivos, hayRafaga: hayRafagaDelLector },
+  );
+
+  const vencimiento = formatPlainDate(sumarDiasCalendario(todayInTz(timezone), Math.max(0, Number(paymentTerms) || 0)));
 
   return (
-    <div className={`space-y-2 sm:space-y-3 ${className}`}>
-      <Card className={cn(
-        "shadow-lg",
-        isOnHoldWithDebt 
-          ? 'dark:border-orange-500/50 border-orange-400/50 dark:bg-gradient-to-br dark:from-gray-900 dark:to-orange-900/10' 
-          : isOnHold 
-          ? 'dark:border-yellow-500/50 border-yellow-400/50 dark:bg-gradient-to-br dark:from-gray-900 dark:to-yellow-900/10' 
-          : 'dark:border-gray-800 border-gray-200 dark:bg-gray-900 bg-white'
-      )}>
-        <CardHeader className="p-2 sm:p-3 pb-2 shrink-0">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base dark:text-white text-gray-900">
-                <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
-                <span>Carrito</span>
-                {isOnHold && (
-                  <Badge variant="outline" className="dark:border-yellow-600 dark:text-yellow-400 dark:bg-yellow-500/10 border-yellow-500 text-yellow-700 bg-yellow-50 text-xs px-1.5 py-0">
-                    Espera
-                  </Badge>
-                )}
-                {isOnHoldWithDebt && (
-                  <Badge variant="outline" className="dark:border-orange-600 dark:text-orange-400 dark:bg-orange-500/10 border-orange-500 text-orange-700 bg-orange-50 text-xs px-1.5 py-0 flex items-center gap-1">
-                    <FileText className="h-3 w-3" />
-                    <span className="hidden xs:inline">Deuda</span>
-                  </Badge>
-                )}
-                {cart.kitchen_ticket_id && kitchenStatus && (() => {
-                  const statusConfig: Record<KitchenTicketStatus, { label: string; color: string; icon: LucideIcon }> = {
-                    new: { label: 'Enviado a cocina', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-300 dark:border-yellow-700', icon: Send },
-                    preparing: { label: 'En preparación', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-300 dark:border-orange-700', icon: ChefHat },
-                    ready: { label: '¡Listo!', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-700 animate-pulse', icon: CheckCircle },
-                    delivered: { label: 'Entregado', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-gray-300 dark:border-gray-700', icon: Check },
-                  };
-                  const config = statusConfig[kitchenStatus as KitchenTicketStatus] || statusConfig.new;
-                  const Icon = config.icon;
-                  return (
-                    <Badge variant="outline" className={`text-xs px-1.5 py-0 flex items-center gap-1 ${config.color}`}>
-                      <Icon className="h-3 w-3" />
-                      <span className="hidden xs:inline">{config.label}</span>
-                    </Badge>
-                  );
-                })()}
-              </CardTitle>
-              {isOnHold && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleActivate}
-                  className="h-7 sm:h-8 px-2 sm:px-3 dark:border-green-600 dark:text-green-400 dark:hover:bg-green-500/10 border-green-500 text-green-700 hover:bg-green-50 text-xs"
-                >
-                  <Play className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                  <span className="hidden xs:inline">Reactivar</span>
-                </Button>
-              )}
-            </div>
-            {isOnHoldWithDebt && (
-              <div className="text-[0.7rem] sm:text-xs dark:text-orange-400 text-orange-600 flex items-center gap-1">
-                <span>💳</span>
-                <span className="hidden xs:inline">Deuda registrada - Ver en Cuentas por Cobrar</span>
-                <span className="inline xs:hidden">Deuda registrada</span>
-              </div>
-            )}
-            {cart.customer && (
-              <div className="text-xs sm:text-sm dark:text-gray-400 text-gray-600 break-words whitespace-normal">
-                Cliente: <span className="font-medium dark:text-gray-200 text-gray-900">{cart.customer.full_name}</span>
-              </div>
-            )}
+    <section
+      aria-label={tCarrito('titulo')}
+      className={cn(
+        'flex flex-col gap-3 rounded-xl border bg-surface p-3',
+        isOnHoldWithDebt ? 'border-line-warning' : isOnHold ? 'border-line-warning' : 'border-line',
+        className,
+      )}
+    >
+      <header className="flex flex-wrap items-center gap-2">
+        <ShoppingCart aria-hidden="true" className="size-4 text-fg-secondary" strokeWidth={1.5} />
+        <h2 className="text-sm font-semibold text-fg">{tCarrito('titulo')}</h2>
+        {isOnHold && (
+          <CartTag tono="advertencia" icono={Pause}>
+            {tCarrito('estadoEspera')}
+          </CartTag>
+        )}
+        {isOnHoldWithDebt && (
+          <CartTag tono="advertencia" icono={FileText} titulo={tCarrito('deudaRegistradaAviso')}>
+            {tCarrito('estadoDeuda')}
+          </CartTag>
+        )}
+        {cart.kitchen_ticket_id && kitchenStatus && (() => {
+          const iconos: Record<KitchenTicketStatus, LucideIcon> = { new: Send, preparing: ChefHat, ready: CheckCircle, delivered: Check };
+          const clave = (['new', 'preparing', 'ready', 'delivered'] as const).includes(kitchenStatus as KitchenTicketStatus)
+            ? (kitchenStatus as KitchenTicketStatus)
+            : 'new';
+          return (
+            <CartTag tono={clave === 'ready' ? 'exito' : 'informacion'} icono={iconos[clave]}>
+              {tCarrito(`cocina.${clave}`)}
+            </CartTag>
+          );
+        })()}
+      </header>
+      {isOnHoldWithDebt && <p className="-mt-1 text-xs text-warning-text">{tCarrito('deudaRegistradaAviso')}</p>}
+
+      {isEmpty ? (
+        <EmptyState variante="empty" icono={ShoppingCart} titulo={tCarrito('vacioTitulo')} descripcion={tCarrito('vacioDescripcion')} />
+      ) : (
+        // Paso 6 (POS-PLAN): las líneas se pintan con `CartLine` del kit. Los
+        // handlers son los mismos de siempre; nada se calcula en la línea.
+        <div className="min-h-0 flex-1 overflow-y-auto" data-carrito-lineas="">
+          <LineasCarrito
+            cartId={cart.id}
+            branchId={cart.branch_id}
+            items={cart.items}
+            moneda={moneda}
+            formatear={formatear}
+            bloqueada={isOnHold || isOnHoldWithDebt}
+            indicesSinImpuesto={indicesSinImpuesto}
+            estadoTicket={cart.kitchen_ticket_id && kitchenStatus ? kitchenStatus : null}
+            descuentosFrecuentes={frequentDiscountsMap}
+            atajosActivos={atajosActivos}
+            onCantidad={handleQuantityChange}
+            onQuitar={handleRemoveItem}
+            onExcluirImpuesto={handleToggleTax}
+            onIncluido={handleToggleItemTaxIncluded}
+            nota={{ itemId: editingNotesItemId, destino: noteDestino, alergia: noteAlergia, texto: itemNotesValue }}
+            onNotaAbrir={handleStartEditNotes}
+            onNotaDestino={handleCambiarDestinoNota}
+            onNotaAlergia={setNoteAlergia}
+            onNotaTexto={setItemNotesValue}
+            onNotaGuardar={handleSaveNotes}
+            onNotaCancelar={() => { setEditingNotesItemId(null); setItemNotesValue(''); }}
+            descuento={{ itemId: editingDiscountItemId, texto: discountInputValue }}
+            onDescuentoAbrir={handleOpenDiscount}
+            onDescuentoTexto={setDiscountInputValue}
+            onDescuentoAplicar={handleApplyDiscount}
+            onDescuentoCancelar={() => { setEditingDiscountItemId(null); setDiscountInputValue(''); }}
+          />
+        </div>
+      )}
+
+      {!isEmpty && (
+        <div className="flex shrink-0 flex-col gap-3 border-t border-line pt-3">
+          {/* Resumen de impuestos y totales: el cálculo es de TaxSummary; el dibujo, ResumenTotales del kit. */}
+          <TaxSummary
+            cart={cart}
+            taxIncluded={taxIncluded}
+            onTaxIncludedChange={handleTaxIncludedChange}
+            onAppliedTaxesChange={handleAppliedTaxesChange}
+            onTotalsChange={handleTotalsChange}
+          />
+          <AccionesCarrito
+            modo={modo}
+            total={formatear(cart.total)}
+            estadoCobrar={estadoCobrar}
+            onCobrar={cobrar}
+            onAbrirCaja={onAbrirCaja}
+            onDescuento={onDescuento}
+            onEspera={() => setShowHoldDialog(true)}
+            onReactivar={() => void handleActivate()}
+            puedeDeuda={puedeDeuda}
+            motivoDeuda={!hasCustomer ? tCarrito('deudaSinCliente') : undefined}
+            onDeuda={() => setShowHoldWithDebtDialog(true)}
+            conCocina={hasPreparationItems && !!onSendComanda}
+            enviandoCocina={isSendingComanda}
+            onCocina={() => void handleSendComanda()}
+            cargandoFactura={isLoadingInvoice}
+            onVerFactura={() => void handleViewInvoice()}
+            onImprimir={() => void handlePrintInvoice()}
+            onCobrarDeuda={handlePayDebt}
+            onAnular={() => {
+              setCancelDebtError(null);
+              setShowCancelDebtDialog(true);
+            }}
+          />
+        </div>
+      )}
+
+      {/* Poner en espera */}
+      <Dialogo
+        abierto={showHoldDialog}
+        onAbiertoChange={setShowHoldDialog}
+        titulo={tCarrito('esperaTitulo')}
+        icono={Pause}
+        ancho={440}
+        primario={{ etiqueta: tCarrito('esperaConfirmar'), onClick: () => void handleHold() }}
+      >
+        <FormField etiqueta={tCarrito('esperaMotivo')} ayuda={tCarrito('opcional')}>
+            <textarea
+              value={holdReason}
+              onChange={(e) => setHoldReason(e.target.value)}
+              placeholder={tCarrito('esperaPlaceholder')}
+              rows={3}
+              className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            />
+        </FormField>
+      </Dialogo>
+
+      {/* Registrar deuda */}
+      <Dialogo
+        abierto={showHoldWithDebtDialog}
+        onAbiertoChange={(abierto) => {
+          if (isProcessingHoldWithDebt) return;
+          setShowHoldWithDebtDialog(abierto);
+          if (!abierto) {
+            setHoldWithDebtReason('');
+            setPaymentTerms(30);
+          }
+        }}
+        titulo={tCarrito('deudaTitulo')}
+        descripcion={tCarrito('deudaDescripcion')}
+        icono={FileText}
+        ancho={520}
+        primario={{
+          etiqueta: tCarrito('deudaConfirmar'),
+          onClick: () => void handleHoldWithDebt(),
+          cargando: isProcessingHoldWithDebt,
+          deshabilitada: !puedeConfirmarDeuda(cart, holdWithDebtReason),
+          motivo: !puedeConfirmarDeuda(cart, holdWithDebtReason) ? tCarrito('deudaMotivoRequerido') : undefined,
+        }}
+      >
+        <ListaDatos etiqueta={tCarrito('deudaTitulo')}>
+          <FilaDato etiqueta={tCarrito('cliente')} valor={cart.customer?.full_name || tCarrito('sinCliente')} />
+          <FilaDato etiqueta={tCarrito('totalAdeudar')} valor={formatear(cart.total)} tono="fuerte" tamano="lg" />
+        </ListaDatos>
+        <FormField etiqueta={tCarrito('deudaMotivo')} obligatorio>
+            <textarea
+              value={holdWithDebtReason}
+              onChange={(e) => setHoldWithDebtReason(e.target.value)}
+              placeholder={tCarrito('deudaPlaceholder')}
+              rows={3}
+              className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            />
+        </FormField>
+        <FormField etiqueta={tCarrito('deudaDias')} ayuda={tCarrito('deudaVence', { fecha: vencimiento })}>
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={paymentTerms}
+              onChange={(e) => setPaymentTerms(Number(e.target.value))}
+              className="h-10 w-24 rounded-lg border border-line-strong bg-surface px-3 text-sm tabular-nums text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            />
+        </FormField>
+        <div className="rounded-lg border border-line bg-subtle p-3 text-xs text-fg-secondary">
+          <p className="font-medium text-fg">{tCarrito('deudaSeCreara')}</p>
+          <ul className="mt-1 list-disc pl-4">
+            <li>{tCarrito('deudaFactura')}</li>
+            <li>{tCarrito('deudaCartera')}</li>
+            <li>{tCarrito('deudaHistorial')}</li>
+          </ul>
+        </div>
+      </Dialogo>
+
+      {/* Anular la deuda: motivo obligatorio y confirmación (H10) */}
+      <DialogoMotivo
+        abierto={showCancelDebtDialog}
+        onAbiertoChange={(abierto) => !isCancellingDebt && setShowCancelDebtDialog(abierto)}
+        titulo={tCarrito('anularTitulo')}
+        descripcion={tCarrito('anularDescripcion')}
+        textoConfirmar={tCarrito('anularConfirmar')}
+        consecuencias={[tCarrito('anularNotaCredito'), tCarrito('anularPagos'), tCarrito('anularStock')]}
+        onConfirmar={handleCancelDebt}
+        cargando={isCancellingDebt}
+        error={cancelDebtError}
+      />
+
+      {/* Detalle de la factura del carrito con deuda */}
+      <PanelAdaptable abierto={showInvoiceModal} onAbiertoChange={setShowInvoiceModal} titulo={tCarrito('detalleFactura')} icono={FileText} ancho={1120}>
+        {isLoadingInvoice ? (
+          <div className="flex flex-col gap-3 p-4" role="status" aria-label={tCarrito('cargandoFactura')}>
+            <Skeleton className="h-5 w-1/2" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-20 w-full" />
           </div>
-        </CardHeader>
-        
-        <CardContent className="p-2 sm:p-3 space-y-2 sm:space-y-3">
-          {/* Items del carrito - COMPACTO CON MAX HEIGHT EN MÓVIL */}
-          <div className="space-y-1.5 sm:space-y-2 max-h-[20vh] sm:max-h-[25vh] md:max-h-[30vh] lg:max-h-[40vh] overflow-y-auto">
-            {isEmpty ? (
-              <div className="flex flex-col items-center justify-center text-center py-4 sm:py-6 dark:text-gray-500 text-gray-500">
-                <Package className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-2 opacity-50" />
-                <p className="text-xs sm:text-sm font-medium">El carrito está vacío</p>
-                <p className="text-[0.65rem] sm:text-xs mt-1">Busca productos para agregar</p>
-              </div>
-            ) : (
-              // Paso 6 (POS-PLAN): las líneas se pintan con `CartLine` del kit. Los
-              // handlers son los mismos de siempre; nada se calcula en la línea.
-              <LineasCarrito
-                cartId={cart.id}
-                branchId={cart.branch_id}
-                items={cart.items}
-                moneda={moneda}
-                formatear={formatear}
-                bloqueada={isOnHold || isOnHoldWithDebt}
-                indicesSinImpuesto={indicesSinImpuesto}
-                estadoTicket={cart.kitchen_ticket_id && kitchenStatus ? kitchenStatus : null}
-                descuentosFrecuentes={frequentDiscountsMap}
-                atajosActivos={atajosActivos}
-                onCantidad={handleQuantityChange}
-                onQuitar={handleRemoveItem}
-                onExcluirImpuesto={handleToggleTax}
-                onIncluido={handleToggleItemTaxIncluded}
-                nota={{ itemId: editingNotesItemId, destino: noteDestino, alergia: noteAlergia, texto: itemNotesValue }}
-                onNotaAbrir={handleStartEditNotes}
-                onNotaDestino={handleCambiarDestinoNota}
-                onNotaAlergia={setNoteAlergia}
-                onNotaTexto={setItemNotesValue}
-                onNotaGuardar={handleSaveNotes}
-                onNotaCancelar={() => { setEditingNotesItemId(null); setItemNotesValue(''); }}
-                descuento={{ itemId: editingDiscountItemId, texto: discountInputValue }}
-                onDescuentoAbrir={handleOpenDiscount}
-                onDescuentoTexto={setDiscountInputValue}
-                onDescuentoAplicar={handleApplyDiscount}
-                onDescuentoCancelar={() => { setEditingDiscountItemId(null); setDiscountInputValue(''); }}
-              />
-            )}
-          </div>
-
-          {!isEmpty && (
-            <>
-              {/* Resumen de Impuestos y Totales */}
-              <TaxSummary 
-                cart={cart}
-                taxIncluded={taxIncluded}
-                onTaxIncludedChange={handleTaxIncludedChange}
-                onAppliedTaxesChange={handleAppliedTaxesChange}
-                onTotalsChange={handleTotalsChange}
-                className="-mx-1"
-              />
-
-              {/* Botones de acción - RESPONSIVE */}
-              <div className="space-y-1.5 sm:space-y-2 shrink-0">
-                {isOnHoldWithDebt ? (
-                  // Botones específicos para carritos con deuda
-                  <>
-                    <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewInvoice()}
-                        disabled={isLoadingInvoice}
-                        className="h-8 sm:h-9 dark:border-blue-600 dark:text-blue-400 dark:hover:bg-blue-500/20 dark:bg-blue-500/10 border-blue-500 text-blue-700 hover:bg-blue-50 bg-blue-50/50 text-xs"
-                      >
-                        {isLoadingInvoice ? (
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current sm:mr-1" />
-                        ) : (
-                          <FileText className="h-3 w-3 sm:mr-1" />
-                        )}
-                        <span className="hidden xs:inline">{isLoadingInvoice ? 'Cargando...' : 'Ver Factura'}</span>
-                      </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePrintInvoice()}
-                        className="h-8 sm:h-9 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 border-gray-400 text-gray-700 hover:bg-gray-100 text-xs"
-                      >
-                        <Printer className="h-3 w-3 sm:mr-1" />
-                        <span className="hidden xs:inline">Imprimir</span>
-                      </Button>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-                      <Button
-                        onClick={() => handlePayDebt()}
-                        className="h-8 sm:h-9 dark:bg-green-600 dark:hover:bg-green-700 dark:text-white bg-green-600 hover:bg-green-700 text-white text-xs"
-                        size="sm"
-                      >
-                        <CreditCard className="h-3 w-3 sm:mr-1" />
-                        <span className="hidden xs:inline">Cobrar</span>
-                        <span className="inline xs:hidden">$</span>
-                      </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCancelDebt()}
-                        className="h-8 sm:h-9 dark:border-red-600 dark:text-red-400 dark:hover:bg-red-500/20 border-red-500 text-red-700 hover:bg-red-50 text-xs"
-                      >
-                        <X className="h-3 w-3 sm:mr-1" />
-                        <span className="hidden xs:inline">Anular</span>
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  // Botones normales para carritos activos/hold
-                  <>
-                    <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowHoldDialog(true)}
-                        disabled={isOnHold || isOnHoldWithDebt}
-                        className="h-8 sm:h-9 dark:border-yellow-600 dark:text-yellow-400 dark:hover:bg-yellow-500/20 dark:bg-yellow-500/10 border-yellow-500 text-yellow-700 hover:bg-yellow-50 bg-yellow-50/50 text-xs"
-                      >
-                        <Pause className="h-3 w-3 mr-1" />
-                        <span className="text-xs">Espera</span>
-                      </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowHoldWithDebtDialog(true)}
-                        disabled={!puedeRegistrarDeuda(cart)}
-                        className="h-8 sm:h-9 dark:border-orange-600 dark:text-orange-400 dark:hover:bg-orange-500/20 dark:bg-orange-500/10 border-orange-500 text-orange-700 hover:bg-orange-50 bg-orange-50/50 text-xs"
-                        title={!hasCustomer ? 'Necesita cliente asignado' : 'Poner en espera con deuda registrada'}
-                      >
-                        <FileText className="h-3 w-3 sm:mr-1" />
-                        <span className="hidden xs:inline">Deuda</span>
-                      </Button>
-                    </div>
-                    
-                    {hasPreparationItems && onSendComanda && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSendComanda}
-                        disabled={isOnHold || isOnHoldWithDebt || isSendingComanda}
-                        className="w-full h-8 sm:h-9 dark:border-green-600 dark:text-green-400 dark:hover:bg-green-500/20 dark:bg-green-500/10 border-green-500 text-green-700 hover:bg-green-50 bg-green-50/50 text-xs font-medium"
-                      >
-                        {isSendingComanda ? (
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current sm:mr-1" />
-                        ) : (
-                          <Send className="h-3 w-3 sm:mr-1" />
-                        )}
-                        <span className="text-xs">{isSendingComanda ? 'Enviando...' : 'Enviar Cocina'}</span>
-                      </Button>
-                    )}
-
-                    <Button
-                      onClick={() => onCheckout(cart)}
-                      // L35: sin caja se deshabilita SIEMPRE (src/lib/pos/venta/requisitosCarrito.ts).
-                      disabled={estadoBotonCobrar({ caja: cashSessionActive, carrito: cart }) !== 'listo'}
-                      className="w-full h-10 sm:h-11 lg:h-10 dark:bg-blue-600 dark:hover:bg-blue-700 bg-blue-600 hover:bg-blue-700 text-sm sm:text-base font-semibold shadow-lg"
-                    >
-                      <CreditCard className="h-4 w-4 sm:mr-2" />
-                      <span className="hidden xs:inline">Cobrar</span>
-                      <span className="inline xs:hidden">$</span>
-                    </Button>
-                    {!cashSessionActive && (
-                      <p className="text-xs text-red-600 dark:text-red-400 text-center mt-1">
-                        Debe abrir una caja antes de cobrar
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Dialog para poner en espera - RESPONSIVE */}
-      <Dialog open={showHoldDialog} onOpenChange={setShowHoldDialog}>
-        <DialogContent className="sm:max-w-md max-w-[95vw] dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200">
-          <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg dark:text-white text-gray-900">
-              Poner Carrito en Espera
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-3 sm:space-y-4">
-            <div className="space-y-1.5 sm:space-y-2">
-              <Label htmlFor="hold_reason" className="text-sm dark:text-gray-200 text-gray-900">
-                Motivo (opcional)
-              </Label>
-              <Textarea
-                id="hold_reason"
-                value={holdReason}
-                onChange={(e) => setHoldReason(e.target.value)}
-                placeholder="Ej: Cliente fue a buscar dinero, esperando autorización..."
-                rows={3}
-                className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowHoldDialog(false)}
-              className="dark:border-gray-700 dark:hover:bg-gray-800 border-gray-300 hover:bg-gray-50"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleHold}
-              className="dark:bg-yellow-600 dark:hover:bg-yellow-700 bg-yellow-600 hover:bg-yellow-700"
-            >
-              <Pause className="h-4 w-4 mr-2" />
-              Poner en Espera
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog para poner en espera con deuda */}
-      <Dialog open={showHoldWithDebtDialog} onOpenChange={setShowHoldWithDebtDialog}>
-        <DialogContent className="sm:max-w-md dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 dark:text-white text-gray-900">
-              <FileText className="h-5 w-5 text-orange-500" />
-              Registrar Deuda
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Resumen del carrito */}
-            <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium dark:text-orange-300 text-orange-700">Cliente:</span>
-                <span className="text-sm dark:text-orange-200 text-orange-800">
-                  {cart.customer?.full_name || 'Sin cliente'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium dark:text-orange-300 text-orange-700">Total a adeudar:</span>
-                <span className="text-lg font-bold dark:text-orange-200 text-orange-800">
-                  {formatear(cart.total)}
-                </span>
-              </div>
-            </div>
-
-            {/* Campo de motivo */}
-            <div className="space-y-2">
-              <Label htmlFor="hold_with_debt_reason" className="dark:text-white text-gray-900">
-                Motivo de la deuda <span className="text-red-500">*</span>
-              </Label>
-              <Textarea
-                id="hold_with_debt_reason"
-                value={holdWithDebtReason}
-                onChange={(e) => setHoldWithDebtReason(e.target.value)}
-                placeholder="Ej: Cliente no tiene efectivo, pago diferido, venta a crédito..."
-                rows={3}
-                className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                required
-              />
-            </div>
-
-            {/* Campo de términos de pago */}
-            <div className="space-y-2">
-              <Label htmlFor="payment_terms" className="dark:text-white text-gray-900">
-                Días para vencimiento
-              </Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="payment_terms"
-                  type="number"
-                  min="1"
-                  max="365"
-                  value={paymentTerms}
-                  onChange={(e) => setPaymentTerms(Number(e.target.value))}
-                  className="w-20 dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                />
-                <span className="text-sm dark:text-gray-400 text-gray-600">días</span>
-                <span className="text-xs dark:text-gray-500 text-gray-500 ml-2">
-                  (Vence: {new Date(Date.now() + paymentTerms * 24 * 60 * 60 * 1000).toLocaleDateString()})
-                </span>
-              </div>
-            </div>
-
-            {/* Información importante */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-              <p className="text-xs dark:text-blue-300 text-blue-700">
-                <strong>📋 Se creará:</strong>
-              </p>
-              <ul className="text-xs dark:text-blue-300 text-blue-700 mt-1 space-y-1 ml-4">
-                <li>• Factura de venta oficial</li>
-                <li>• Cuenta por cobrar en el sistema</li>
-                <li>• Registro en historial del cliente</li>
-              </ul>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowHoldWithDebtDialog(false);
-                setHoldWithDebtReason('');
-                setPaymentTerms(30);
-              }}
-              disabled={isProcessingHoldWithDebt}
-              className="dark:border-gray-700 dark:hover:bg-gray-800 border-gray-300 hover:bg-gray-50"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleHoldWithDebt}
-              disabled={isProcessingHoldWithDebt || !puedeConfirmarDeuda(cart, holdWithDebtReason)}
-              className="dark:bg-orange-600 dark:hover:bg-orange-700 bg-orange-600 hover:bg-orange-700"
-            >
-              {isProcessingHoldWithDebt ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Procesando...
-                </>
-              ) : (
-                <>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Registrar Deuda
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal para mostrar factura */}
-      <Dialog open={showInvoiceModal} onOpenChange={setShowInvoiceModal}>
-        <DialogContent className="w-[90vw] max-w-none h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200">
-          <DialogHeader>
-            <DialogTitle className="dark:text-white text-gray-900">
-              Detalle de Factura
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="mt-4">
-            {isLoadingInvoice ? (
-              <div className="p-4 space-y-3">
-                <Skeleton className="h-5 w-1/2" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : invoiceData ? (
-              <DetalleFactura factura={invoiceData.invoice} />
-            ) : (
-              <p className="text-center dark:text-gray-400 text-gray-600 p-8">
-                No se pudo cargar la factura
-              </p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+        ) : invoiceData ? (
+          <DetalleFacturaVenta id={String(invoiceData.invoice.id)} />
+        ) : (
+          <p className="p-8 text-center text-fg-secondary">{tCarrito('errorFacturaDescripcion')}</p>
+        )}
+      </PanelAdaptable>
+    </section>
   );
 }

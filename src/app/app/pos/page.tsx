@@ -2,13 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle, useDefaultLayout } from 'react-resizable-panels';
-import { ShoppingCart, Settings, ArrowLeft, MoreHorizontal } from 'lucide-react';
+import { Settings, ArrowLeft, MoreHorizontal } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { useAtajos } from '@/components/kit/useAtajos';
 import { ProductSearch } from '@/components/pos/ProductSearch';
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
 import { PanelCarrito } from '@/components/pos/venta/PanelCarrito';
+import { BarraCobroMovil } from '@/components/pos/venta/BarraCobroMovil';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { estadoBotonCobrar } from '@/lib/pos/venta/requisitosCarrito';
 import { CabeceraPos, abrirMenuPantallaCliente } from '@/components/pos/venta/CabeceraPos';
 import { HojaCajaDispositivo } from '@/components/pos/venta/HojaCajaDispositivo';
 import { MapaAtajos } from '@/components/pos/venta/MapaAtajos';
@@ -140,6 +143,19 @@ export default function POSPage() {
       { tecla: teclaAtajo('caja'), accion: abrirDialogoCaja, descripcion: tAtajos('caja') },
       { tecla: teclaAtajo('pantallaCliente'), accion: () => abrirMenuPantallaCliente(), descripcion: tAtajos('pantallaCliente') },
       { tecla: teclaAtajo('cliente'), accion: () => setClienteAbierto(true), descripcion: tAtajos('cliente') },
+      {
+        // Celular o tableta con teclado y la hoja del carrito cerrada: F4 de la barra fija
+        // (con la hoja abierta, o en escritorio, lo registra el propio carrito).
+        tecla: teclaAtajo('cobrar'),
+        descripcion: tAtajos('cobrar'),
+        cuando: () => !isDesktopLayout && mobileView === 'products' && !!activeCart,
+        accion: () => {
+          if (!activeCart) return;
+          const estado = estadoBotonCobrar({ caja: !!cashSession, config: { requiereCaja }, carrito: activeCart });
+          if (estado === 'listo') handleCheckout(activeCart);
+          else if (estado === 'sin-caja') abrirDialogoCaja();
+        },
+      },
     ],
     { activo: !showCheckout, hayRafaga: hayRafagaDelLector },
   );
@@ -621,46 +637,40 @@ export default function POSPage() {
 
           return (
             <div className="flex-1 flex flex-col gap-2 sm:gap-3 overflow-hidden">
-              {/* === MÓVIL: Vista Productos (pantalla completa) === */}
-              <div className={cn('overflow-hidden', mobileView === 'products' ? 'flex-1' : 'hidden')}>
-                {productsPane}
-              </div>
-
-              {/* === MÓVIL: Vista Carrito (pantalla completa) === */}
-              <div className={cn('flex min-h-0 flex-col gap-2 pb-20', mobileView === 'cart' ? 'flex-1' : 'hidden')}>
-                <button
-                  type="button"
-                  onClick={() => setMobileView('products')}
-                  className="flex h-8 w-fit items-center gap-1 rounded-md px-2 text-xs font-medium text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                >
-                  <ArrowLeft aria-hidden="true" className="size-4" />
-                  {tBarra('seguirComprando')}
-                </button>
-                {cartPane}
-              </div>
+              {/* Celular y tableta vertical (< 1024, D2): la grilla ocupa la pantalla, la barra fija lleva
+                  el total y «Cobrar · F4» (o «Abrir caja para cobrar») y el carrito se abre en una hoja. */}
+              <div className="min-h-0 flex-1 overflow-hidden">{productsPane}</div>
+              <Sheet open={mobileView === 'cart'} onOpenChange={(abierta) => setMobileView(abierta ? 'cart' : 'products')}>
+                <SheetContent side="bottom" hideCloseButton className="flex h-[92dvh] flex-col gap-2 rounded-t-2xl border-line bg-canvas p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                  <div className="mx-auto h-1 w-10 shrink-0 rounded-full bg-line-strong" aria-hidden="true" />
+                  <div className="flex shrink-0 items-center justify-between gap-2">
+                    <SheetTitle className="text-base font-semibold text-fg">{tBarra('hojaCarrito')}</SheetTitle>
+                    <SheetDescription className="sr-only">{tBarra('etiqueta')}</SheetDescription>
+                    <button
+                      type="button"
+                      onClick={() => setMobileView('products')}
+                      className="flex h-9 items-center gap-1 rounded-lg px-2 text-sm font-medium text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                      <ArrowLeft aria-hidden="true" className="size-4" />
+                      {tBarra('seguirComprando')}
+                    </button>
+                  </div>
+                  {cartPane}
+                </SheetContent>
+              </Sheet>
+              {mobileView === 'products' && (
+                <BarraCobroMovil
+                  unidades={activeCart ? activeCart.items.reduce((sum, i) => sum + i.quantity, 0) : 0}
+                  total={formatear(activeCart?.total ?? 0)}
+                  estado={activeCart ? estadoBotonCobrar({ caja: !!cashSession, config: { requiereCaja }, carrito: activeCart }) : 'vacio'}
+                  onVerCarrito={() => setMobileView('cart')}
+                  onCobrar={() => activeCart && handleCheckout(activeCart)}
+                  onAbrirCaja={abrirDialogoCaja}
+                />
+              )}
             </div>
           );
         })()}
-
-        {/* === BOTÓN FLOTANTE CARRITO - Solo móvil (lo sustituye la barra fija del paso 15) === */}
-        {mobileView === 'products' && (
-          <button
-            onClick={() => setMobileView('cart')}
-            className="lg:hidden fixed bottom-[calc(var(--shell-barra-inferior,0px)+1.5rem)] right-6 z-50 flex items-center gap-2 rounded-full bg-brand-action px-4 py-3 text-sm font-semibold text-fg-on-brand shadow-xl transition-all active:scale-95"
-          >
-            <ShoppingCart className="h-5 w-5" />
-            {activeCart && activeCart.items.length > 0 ? (
-              <>
-                <span className="rounded-full bg-fg-on-brand/20 px-2 py-0.5 text-xs">
-                  {activeCart.items.reduce((sum, i) => sum + i.quantity, 0)}
-                </span>
-                <span>{formatear(activeCart.total)}</span>
-              </>
-            ) : (
-              <span>{tBarra('hojaCarrito')}</span>
-            )}
-          </button>
-        )}
 
         {/* Dialog de checkout */}
         {checkoutCart && (

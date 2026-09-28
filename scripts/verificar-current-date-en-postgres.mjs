@@ -122,8 +122,18 @@ async function main() {
 
   if (intrusas.length === 0 && desaparecidas.length === 0) {
     console.log('');
-    console.log(`  Inventario CURRENT_DATE: OK — ${enLaBase.length} funciones, las ${esperadas.length} del ADR-004.`);
-    for (const f of enLaBase) console.log(`    · ${f}`);
+    if (enLaBase.length === 0) {
+      // Desde 2026-09-23 este es el estado normal: la lista blanca esta vacia y
+      // el inventario afirma algo mas fuerte que antes. Ver el ADR-004 reescrito.
+      console.log('  Inventario CURRENT_DATE: OK — 0 funciones.');
+      console.log('  Ninguna funcion de public decide un dia calendario con CURRENT_DATE.');
+      console.log('  La lista blanca esta vacia a proposito.');
+    } else {
+      console.log(
+        `  Inventario CURRENT_DATE: OK — ${enLaBase.length} funciones, las ${esperadas.length} del ADR-004.`,
+      );
+      for (const f of enLaBase) console.log(`    · ${f}`);
+    }
     console.log('');
     return;
   }

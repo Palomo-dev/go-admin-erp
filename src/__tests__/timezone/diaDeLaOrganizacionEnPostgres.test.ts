@@ -25,10 +25,12 @@
 //      masivo sobre datos históricos.
 //   6. Las comparaciones contra columnas `timestamptz` no vuelven a
 //      `date_trunc('day', now())` (= medianoche UTC): usan `AT TIME ZONE`.
-//   7. Las SIETE funciones del catálogo global de tasas de cambio siguen en
-//      UTC **a propósito**, y su justificación escrita existe: ADR-004 las
-//      nombra una por una. Es una lista blanca cerrada: una octava función con
-//      `CURRENT_DATE` no está cubierta por el ADR.
+//   7. La lista blanca de `CURRENT_DATE` está **vacía**. Las siete funciones
+//      del catálogo global de tasas ya no deciden el día en UTC: pasaron a
+//      `fn_today_system()` el 2026-09-23, porque `currency_rates` tenía dos
+//      criterios de día a la vez (sus funciones en UTC y el `DEFAULT` de la
+//      columna en el día del sistema). Cualquier firma nueva en el JSON exige
+//      justificarla antes en el ADR-004.
 //   8. Cada migración de la fase D tiene su reversión, y la reversión es real
 //      (devuelve `CURRENT_DATE`), no un archivo vacío.
 //
@@ -60,21 +62,42 @@ const MIGRACIONES_FASE_D = [
 
 const ADR_TASAS = 'ADR-004-dia-utc-en-el-catalogo-global-de-tasas.md';
 
+/** La migración que dejó el inventario en cero. */
+const MIGRACION_TASAS = '20260923235500_tasas_catalogo_dia_del_sistema.sql';
+
 /**
- * Las 7 firmas que se quedan en UTC a propósito: escriben en `currency_rates`,
- * que es un catálogo GLOBAL sin `organization_id`. Lista blanca cerrada;
- * ampliarla exige volver al ADR-004 y justificarlo.
+ * Las 7 funciones del catálogo global de tasas. Ya NO son una lista blanca:
+ * son las que esta fase arregló al final, y lo que se exige de ellas es lo
+ * contrario que antes — que **no** conserven `CURRENT_DATE` y que resuelvan el
+ * día con `fn_today_system()`.
  *
- * NO se escribe aquí: sale del MISMO archivo que lee el job de CI que comprueba
- * la base viva (`scripts/verificar-current-date-en-postgres.mjs`). Dos copias de
- * una lista blanca divergen, y la que divergiera sería justo la que deja pasar
- * la función intrusa. Ver ADR-005.
+ * `save_exchange_rates` aparece con dos sobrecargas (4 y 5 argumentos); en la
+ * base hay además otras tres sobrecargas que nunca tuvieron `CURRENT_DATE` y
+ * que esta fase no toca.
+ */
+const FUNCIONES_DEL_CATALOGO_DE_TASAS = [
+  'auto_generate_missing_rates',
+  'fill_historical_rates_real_api',
+  'fill_missing_currency_dates',
+  'insert_fallback_rates',
+  'save_exchange_rates',
+  'update_global_exchange_rates',
+] as const;
+
+/**
+ * La lista blanca. NO se escribe aquí: sale del MISMO archivo que lee el job de
+ * CI que comprueba la base viva (`scripts/verificar-current-date-en-postgres.mjs`).
+ * Dos copias de una lista blanca divergen, y la que divergiera sería justo la
+ * que deja pasar la función intrusa. Ver ADR-005.
+ *
+ * Hoy está **vacía**, y ese es el contrato: si alguien añade una firma, los
+ * tests de más abajo exigen que el ADR-004 la nombre y la justifique.
  */
 const LISTA_BLANCA: { adr: string; firmas: string[] } = JSON.parse(
   readFileSync(join(RAIZ, 'scripts/lista-blanca-current-date.json'), 'utf8'),
 );
 
-/** Nombres distintos (`save_exchange_rates` aparece con dos sobrecargas). */
+/** Nombres distintos de lo que haya en la lista blanca (hoy: ninguno). */
 const TASAS_EN_UTC_A_PROPOSITO = [
   ...new Set(LISTA_BLANCA.firmas.map((f) => f.replace(/\(.*$/, '').trim())),
 ].sort() as readonly string[];
@@ -209,6 +232,11 @@ const CONTRATOS: Record<string, Contrato> = {
 const CURRENT_DATE_RE = /\bCURRENT_DATE\b/i;
 /** El equivalente de `CURRENT_DATE` escrito sobre timestamptz: medianoche UTC. */
 const DATE_TRUNC_DIA_NOW_RE = /date_trunc\s*\(\s*'day'\s*,\s*now\s*\(\s*\)\s*\)/i;
+
+/** Quita los comentarios `--` de un SQL, para no auditar la documentación. */
+export function sinComentariosDeLinea(sql: string): string {
+  return sql.replace(/--[^\n]*/g, '');
+}
 
 export function normalizaFirma(parametros: string): string {
   return parametros.replace(/\s+/g, ' ').trim().toLowerCase();
@@ -370,61 +398,188 @@ describe('Fase D — forma de las migraciones', () => {
   });
 });
 
-describe('Fase D — las 7 funciones de tasas se quedan en UTC con justificación', () => {
+describe('Fase D — el catálogo global de tasas también resuelve el día del sistema', () => {
   const adr = join(DIR_ADR, ADR_TASAS);
+  const migracion = join(DIR_MIGRACIONES, MIGRACION_TASAS);
+  const sqlMigracion = existsSync(migracion) ? readFileSync(migracion, 'utf8') : '';
 
-  test('la lista blanca tiene exactamente 7 firmas, sin repetidas', () => {
-    expect(LISTA_BLANCA.firmas).toHaveLength(7);
-    expect(new Set(LISTA_BLANCA.firmas).size).toBe(7);
-  });
-
-  test('la lista blanca guarda FIRMAS, no solo nombres', () => {
-    // `save_exchange_rates` tiene dos sobrecargas: por nombre serían 6 entradas
-    // para 7 filas, y una sobrecarga nueva con CURRENT_DATE pasaría inadvertida.
-    for (const firma of LISTA_BLANCA.firmas) {
-      expect(firma).toMatch(/^[a-z_][a-z0-9_]*\(.*\)$/);
-    }
-    expect(LISTA_BLANCA.firmas.filter((f) => f.startsWith('save_exchange_rates('))).toHaveLength(2);
-  });
-
-  test('la lista blanca apunta al ADR que la justifica', () => {
-    expect(LISTA_BLANCA.adr).toContain(ADR_TASAS);
-  });
-
-  test('el ADR existe', () => {
+  test('la lista blanca de CURRENT_DATE está vacía', () => {
+    // Es el contrato nuevo, y es más fuerte que el anterior: ninguna función de
+    // `public` decide un día calendario con CURRENT_DATE. Sin excepciones que
+    // mantener. Volver a llenarla exige justificarlo primero en el ADR-004, y
+    // los tests de más abajo lo exigen entrada por entrada.
     exige(
-      existsSync(adr),
-      `Falta ${adr}. Dejar CURRENT_DATE sin justificación escrita no está permitido.`,
+      LISTA_BLANCA.firmas.length === 0,
+      `La lista blanca volvió a tener ${LISTA_BLANCA.firmas.length} firma(s): ` +
+        `${LISTA_BLANCA.firmas.join(', ')}. Si de verdad hace falta, el ADR-004 ` +
+        'tiene que nombrarlas y decir por qué ese dato no es de ninguna organización.',
       true,
     );
   });
 
-  test.each(TASAS_EN_UTC_A_PROPOSITO)('el ADR nombra %s', (nombre) => {
-    const texto = readFileSync(adr, 'utf8');
-    expect(texto).toContain(nombre);
+  test('si algún día se llena, guarda FIRMAS y no solo nombres', () => {
+    // `save_exchange_rates` tiene varias sobrecargas: por nombre, una sobrecarga
+    // nueva con CURRENT_DATE pasaría inadvertida.
+    for (const firma of LISTA_BLANCA.firmas) {
+      expect(firma).toMatch(/^[a-z_][a-z0-9_]*\(.*\)$/);
+    }
+    expect(new Set(LISTA_BLANCA.firmas).size).toBe(LISTA_BLANCA.firmas.length);
   });
 
-  test('el ADR dice por qué: currency_rates no tiene organization_id', () => {
+  test('la lista blanca apunta al ADR que la gobierna', () => {
+    expect(LISTA_BLANCA.adr).toContain(ADR_TASAS);
+  });
+
+  test('cada firma que haya en la lista blanca está nombrada en el ADR', () => {
+    // Con la lista vacía esto no comprueba nada; existe para que llenarla
+    // vuelva a obligar a escribir el porqué. `test.each` no admite array vacío.
+    const texto = readFileSync(adr, 'utf8');
+    for (const nombre of TASAS_EN_UTC_A_PROPOSITO) {
+      exige(
+        texto.includes(nombre),
+        `La lista blanca nombra ${nombre} y el ADR-004 no lo menciona.`,
+        true,
+      );
+    }
+  });
+
+  test('el ADR existe y marca que sustituye a su versión anterior', () => {
+    exige(existsSync(adr), `Falta ${adr}.`, true);
+    const texto = readFileSync(adr, 'utf8');
+    // El ADR-004 decía lo contrario de lo que dice hoy; si se pierde la marca de
+    // sustitución, quien lo lea creerá que el catálogo sigue en UTC.
+    expect(/sustituye/i.test(texto)).toBe(true);
+    expect(texto).toContain('fn_today_system');
+  });
+
+  test('el ADR conserva el contexto: currency_rates no tiene organization_id', () => {
     const texto = readFileSync(adr, 'utf8');
     expect(texto).toContain('currency_rates');
     expect(/no tiene .{0,20}organization_id/i.test(texto)).toBe(true);
   });
 
-  test('ninguna migración de la fase D reescribe una función de tasas', () => {
-    for (const archivo of MIGRACIONES_FASE_D) {
-      const texto = readFileSync(join(DIR_MIGRACIONES, archivo), 'utf8');
-      for (const nombre of TASAS_EN_UTC_A_PROPOSITO) {
-        const reescrita = new RegExp(
-          `CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+\\S*${nombre}\\s*\\(`,
-          'i',
-        ).test(texto);
+  test('el ADR dice qué pasa con las filas históricas', () => {
+    const texto = readFileSync(adr, 'utf8');
+    expect(/hist[oó]ric/i.test(texto)).toBe(true);
+    // El recuento medido tiene que estar escrito: un ADR que dice "algunas filas"
+    // no permite decidir nada.
+    expect(/\b2[\s.]?400\b/.test(texto)).toBe(true);
+  });
+
+  test('la migración existe y tiene reversión real', () => {
+    exige(existsSync(migracion), `Falta ${migracion}.`, true);
+    const rollback = join(DIR_ROLLBACKS, MIGRACION_TASAS.replace(/\.sql$/, '_rollback.sql'));
+    exige(
+      existsSync(rollback),
+      `Falta ${rollback}. Política de migraciones: la reversión va en el mismo commit.`,
+      true,
+    );
+    const textoRollback = readFileSync(rollback, 'utf8');
+    expect(textoRollback.length).toBeGreaterThan(500);
+    exige(
+      CURRENT_DATE_RE.test(textoRollback),
+      'La reversión no devuelve CURRENT_DATE: entonces no revierte nada.',
+      true,
+    );
+  });
+
+  test('la migración no borra funciones ni toca datos históricos', () => {
+    // Sobre el SQL SIN comentarios: la cabecera del archivo explica justamente
+    // que no hay `DROP FUNCTION`, y una comprobación ingenua se dispararía con
+    // su propia documentación.
+    const codigo = sinComentariosDeLinea(sqlMigracion);
+    expect(/\bDROP\s+FUNCTION\b/i.test(codigo)).toBe(false);
+    expect(/^UPDATE\s/im.test(codigo)).toBe(false);
+    expect(/^DELETE\s/im.test(codigo)).toBe(false);
+  });
+
+  test('la migración no redefine fn_today_system', () => {
+    // Tiene otros dos consumidores (`fn_set_task_date_tz` y el DEFAULT de
+    // `provider_pricing.valid_from`): se arreglan las llamadoras, no la llamada.
+    expect(
+      /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+\S*fn_today_system/i.test(
+        sinComentariosDeLinea(sqlMigracion),
+      ),
+    ).toBe(false);
+  });
+
+  test.each(FUNCIONES_DEL_CATALOGO_DE_TASAS)(
+    '%s: la migración la reescribe sin CURRENT_DATE y con fn_today_system()',
+    (nombre) => {
+      const defs = definiciones(sqlMigracion, nombre);
+      exige(
+        defs.length > 0,
+        `${MIGRACION_TASAS} no reescribe ${nombre}, que es una de las 7 del catálogo.`,
+        true,
+      );
+      for (const def of defs) {
         exige(
-          reescrita,
-          `${archivo} reescribe ${nombre}, que el ADR-004 deja en UTC a propósito.`,
+          CURRENT_DATE_RE.test(def.cuerpo),
+          `${nombre} conserva CURRENT_DATE (día UTC) en ${MIGRACION_TASAS}.`,
+          false,
+        );
+        exige(
+          /\bfn_today_system\s*\(/i.test(def.cuerpo),
+          `${nombre} no resuelve el día con fn_today_system(), que es el mismo ` +
+            'criterio que el DEFAULT de currency_rates.rate_date.',
+          true,
+        );
+        // Tampoco el equivalente escrito sobre timestamptz.
+        expect(DATE_TRUNC_DIA_NOW_RE.test(def.cuerpo)).toBe(false);
+      }
+    },
+  );
+
+  test('save_exchange_rates se reescribe con sus DOS sobrecargas, sin crear una nueva', () => {
+    const defs = definiciones(sqlMigracion, 'save_exchange_rates');
+    expect(defs).toHaveLength(2);
+    const firmas = defs.map((d) => normalizaFirma(d.parametros)).sort();
+    expect(firmas).toEqual(
+      [
+        normalizaFirma(
+          "org_id integer, base_currency_id uuid, rates jsonb, source text DEFAULT 'openexchangerates'::text",
+        ),
+        normalizaFirma(
+          "org_id integer, base_currency_id uuid, rates jsonb, source text DEFAULT 'openexchangerates'::text, api_timestamp bigint DEFAULT NULL::bigint",
+        ),
+      ].sort(),
+    );
+    // Las dos eran SECURITY DEFINER y tienen que seguir siéndolo.
+    for (const def of defs) expect(declaraSecurityDefiner(def.cabecera)).toBe(true);
+  });
+
+  test('las que NO eran SECURITY DEFINER no lo son ahora', () => {
+    for (const nombre of [
+      'auto_generate_missing_rates',
+      'fill_historical_rates_real_api',
+      'fill_missing_currency_dates',
+      'insert_fallback_rates',
+      'update_global_exchange_rates',
+    ]) {
+      for (const def of definiciones(sqlMigracion, nombre)) {
+        exige(
+          declaraSecurityDefiner(def.cabecera),
+          `${nombre} gana SECURITY DEFINER en ${MIGRACION_TASAS}: la migración era ` +
+            'de fechas, no de privilegios.',
           false,
         );
       }
     }
+  });
+
+  test('la variable local que se llamaba current_date desapareció', () => {
+    // `save_exchange_rates(...,bigint)` declaraba `current_date date := ...`, y
+    // ese NOMBRE casa con la expresión del inventario (`prosrc ~* CURRENT_DATE`).
+    // Sin renombrarla, el inventario nunca habría podido llegar a cero.
+    const defs = definiciones(sqlMigracion, 'save_exchange_rates');
+    for (const def of defs) {
+      expect(/^\s*current_date\s+date\b/im.test(def.cuerpo)).toBe(false);
+    }
+  });
+
+  test('la migración no escribe ninguna credencial', () => {
+    expect(/eyJ[A-Za-z0-9_-]{20,}/.test(sqlMigracion)).toBe(false);
+    expect(/service_role_key\s*=\s*['"]/.test(sqlMigracion)).toBe(false);
   });
 });
 

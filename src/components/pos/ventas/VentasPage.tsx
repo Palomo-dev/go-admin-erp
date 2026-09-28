@@ -306,8 +306,13 @@ export function VentasPage() {
     return r.filas.map((c) => ({ id: c.id, nombre: c.full_name ?? c.company_name ?? '', documento: c.identification_number, correo: c.email, telefono: c.phone }));
   }, []);
 
-  const nombreClienteFiltro =
-    clienteElegido?.id === l.filtros.cliente ? clienteElegido.nombre : filas.find((f) => f.cliente?.id === l.filtros.cliente)?.cliente?.nombre ?? null;
+  // Sin filtro de cliente no hay nombre que buscar: con `clienteElegido` nulo y
+  // el filtro sin definir, `undefined === undefined` leía `.nombre` de null.
+  const nombreClienteFiltro = !l.filtros.cliente
+    ? null
+    : clienteElegido && clienteElegido.id === l.filtros.cliente
+      ? clienteElegido.nombre
+      : filas.find((f) => f.cliente?.id === l.filtros.cliente)?.cliente?.nombre ?? null;
 
   const chips: ChipFiltro[] = [
     l.filtros.origen ? { clave: 'origen', etiqueta: t('listado.filtros.origenChip', { origen: t(`listado.origenes.${l.filtros.origen}` as never) }) } : null,

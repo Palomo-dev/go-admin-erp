@@ -11,6 +11,9 @@
  *   en el subtítulo y se elige dentro de «Filtros»; manda en el KPI «Facturado
  *   en el periodo» (`kpi_desde`/`kpi_hasta`) y limita el listado por emisión
  *   salvo `periodo=todo` (lo pone el KPI «Vencido», que mira toda la cartera).
+ * - Vencimiento (`vence`: vencidas, hoy, esta semana, este mes, próximos 15
+ *   días o un rango): lo resuelve la RPC con el día de la organización; solo
+ *   facturas con saldo. El KPI «Vence en 15 días» filtra con él.
  * - Acciones en lote sobre las rutas que ya existen: registrar pago (reparto
  *   del cliente, solo facturas de UN cliente), imprimir, exportar, descargar PDF
  *   y anular con motivo (regla L4 por factura; las que no se pueden, se dicen).
@@ -80,14 +83,21 @@ import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
 import { estadoPagoFactura } from '@/lib/finanzas/ventas/reglasFactura';
 import {
   CAMPOS_ORDEN_FACTURAS,
+  CLAVES_VENCE,
   FILTROS_PANTALLA_FACTURAS,
+  OPCIONES_VENCE,
+  esOpcionVence,
+  finDeMes,
   ordenFacturasRpc,
+  rangoVence,
+  type OpcionVence,
   type FilaFacturaListado,
   type RespuestaListadoFacturas,
 } from '@/lib/finanzas/ventas/listadoFacturas';
 import { MAX_IMPRESION_LOTE, anularEnLote, elegibilidadPagoLote, filaCobrable, repartirAnulacion } from '@/lib/finanzas/ventas/loteFacturas';
 import { ErrorPeticionFactura, anularFacturaVenta, pedirListadoFacturas } from '@/lib/finanzas/ventas/clienteFacturas';
 import { listarClientes } from '@/lib/services/clientesListadoService';
+import { addPlainDays } from '@/lib/utils/dateCore';
 import { aCsv, descargarCsv } from '@/lib/finanzas/csv';
 import { RegistrarPagoConectado, type DestinoPagoConectado } from '@/components/finanzas/pagos/RegistrarPagoConectado';
 import { ImportarCSVDialog } from '../ImportarCSVDialog';
@@ -449,12 +459,28 @@ export function ListadoFacturasVenta() {
         : filas.find((f) => f.cliente_id === l.filtros.cliente)?.cliente ?? null;
 
   const etiquetaFe = (v: string) => (v === 'sin' ? t('listado.fe.sin') : t(`listado.fe.${v}` as never));
+  const vence: OpcionVence | null = esOpcionVence(l.filtros.vence) ? l.filtros.vence : null;
+  const rangoVenceActual = vence ? rangoVence(vence, hoy, { desde: l.filtros.vence_desde, hasta: l.filtros.vence_hasta }) : null;
+  /** «1 – 31 oct 2026», «hasta el 27 sep 2026» o «desde el …» para el chip y la ayuda. */
+  const textoRangoVence = (r: { desde: string | null; hasta: string | null }) =>
+    r.desde && r.hasta
+      ? etiquetaRango({ desde: r.desde, hasta: r.hasta }, locale)
+      : r.hasta
+        ? t('listado.filtros.venceHasta', { dia: etiquetaRango({ desde: r.hasta, hasta: r.hasta }, locale) })
+        : r.desde
+          ? t('listado.filtros.venceDesde', { dia: etiquetaRango({ desde: r.desde, hasta: r.desde }, locale) })
+          : t('listado.filtros.todos');
+  const etiquetaChipVence = (v: OpcionVence) =>
+    t('listado.filtros.venceChip', {
+      opcion: v === 'rango' && rangoVenceActual ? textoRangoVence(rangoVenceActual) : t(`listado.filtros.venceCorto.${v}` as never),
+    });
   const chips: ChipFiltro[] = [
     todasLasFechas ? { clave: 'periodo', etiqueta: t('listado.filtros.todasFechasChip') } : null,
     !todasLasFechas && periodoElegido ? { clave: 'desde', etiqueta: t('listado.filtros.periodoChip', { rango: etiquetaRango(periodo, locale) }) } : null,
     l.filtros.estado_doc ? { clave: 'estado_doc', etiqueta: t('listado.filtros.estadoChip', { estado: t(`listado.filtros.doc.${l.filtros.estado_doc}` as never) }) } : null,
     l.filtros.estado_pago ? { clave: 'estado_pago', etiqueta: t('listado.filtros.pagoChip', { estado: t(`listado.estadoPago.${l.filtros.estado_pago}` as never) }) } : null,
     l.filtros.fe ? { clave: 'fe', etiqueta: t('listado.filtros.feChip', { estado: etiquetaFe(l.filtros.fe) }) } : null,
+    vence ? { clave: 'vence', etiqueta: etiquetaChipVence(vence) } : null,
     l.filtros.cliente
       ? { clave: 'cliente', etiqueta: nombreClienteFiltro ? t('listado.filtros.clienteChipNombre', { nombre: nombreClienteFiltro }) : t('listado.filtros.clienteChip') }
       : null,
@@ -464,11 +490,37 @@ export function ListadoFacturasVenta() {
 
   const quitarChip = (clave: string) => {
     if (clave === 'desde') l.actualizar({ filtros: sinClaves(l.filtros, ['desde', 'hasta']) });
+    else if (clave === 'vence') l.actualizar({ filtros: sinClaves(l.filtros, CLAVES_VENCE) });
     else l.setFiltro(clave, null);
   };
 
-  /** KPI que filtra: mira toda la cartera, así que quita el límite de emisión. */
-  const filtrarCartera = (estado: 'vencida' | 'abiertas') => l.actualizar({ filtros: { ...l.filtros, estado_pago: estado, periodo: 'todo' } });
+  /**
+   * Vencimiento elegido en «Filtros». Mira por fecha de vencimiento, no de
+   * emisión: si no hay un periodo de emisión elegido a mano, se quita el del
+   * mes en curso (queda el chip «Emitidas: todas las fechas», que se puede quitar).
+   */
+  const elegirVence = (opcion: OpcionVence | null) => {
+    const resto = sinClaves(l.filtros, CLAVES_VENCE);
+    if (!opcion) {
+      l.actualizar({ filtros: resto });
+      return;
+    }
+    const filtros: Record<string, string> = { ...resto, vence: opcion };
+    if (!periodoElegido) filtros.periodo = 'todo';
+    if (opcion === 'rango') {
+      filtros.vence_desde = inicioDeMes(hoy);
+      filtros.vence_hasta = finDeMes(hoy);
+    }
+    l.actualizar({ filtros });
+  };
+
+  /** KPI que filtra: mira toda la cartera, así que quita el límite de emisión (y el vencimiento, que lo contradiría). */
+  const filtrarCartera = (estado: 'vencida' | 'abiertas') =>
+    l.actualizar({ filtros: { ...sinClaves(l.filtros, CLAVES_VENCE), estado_pago: estado, periodo: 'todo' } });
+
+  /** KPI «Vence en 15 días»: el mismo filtro de vencimiento, sobre toda la cartera. */
+  const filtrarVence15 = () =>
+    l.actualizar({ filtros: { ...sinClaves(l.filtros, [...CLAVES_VENCE, 'estado_pago']), vence: 'proximos15', periodo: 'todo' } });
 
   // ── Columnas (orden y estilo del Figma 421:167503) ─────────────────────────
   const columnas: ColumnaTabla<FilaFacturaListado>[] = [
@@ -629,7 +681,8 @@ export function ListadoFacturasVenta() {
           valor={fmtKpi(kpi?.vence_15 ?? 0)}
           tono={kpi && kpi.facturas_vence_15 > 0 ? 'exito' : 'neutro'}
           tendencia={kpi && kpi.facturas_vence_15 > 0 ? 'sube' : undefined}
-          detalle={t('listado.kpis.nFacturas', { count: kpi?.facturas_vence_15 ?? 0, n: cuantasTexto(kpi?.facturas_vence_15 ?? 0) })}
+          detalle={t('listado.kpis.vencidasFiltrar', { count: kpi?.facturas_vence_15 ?? 0, n: cuantasTexto(kpi?.facturas_vence_15 ?? 0) })}
+          onClick={filtrarVence15}
         />
       </KpiStrip>
 
@@ -694,6 +747,39 @@ export function ListadoFacturasVenta() {
                     ))}
                   </SelectContent>
                 </Select>
+              )}
+            </FormField>
+            <FormField etiqueta={t('listado.filtros.vence')}>
+              {(c) => (
+                <div className="flex flex-col gap-2">
+                  <Select value={vence ?? 'todos'} onValueChange={(v) => elegirVence(esOpcionVence(v) ? v : null)}>
+                    <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} aria-describedby={vence ? `${c.id}-ayuda` : undefined} className="h-10 border-line-strong bg-surface">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">{t('listado.filtros.todos')}</SelectItem>
+                      {OPCIONES_VENCE.map((o) => (
+                        <SelectItem key={o} value={o}>
+                          {t(`listado.filtros.venceOpcion.${o}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {vence === 'rango' && (
+                    <DateRangeButton
+                      valor={{ desde: l.filtros.vence_desde ?? inicioDeMes(hoy), hasta: l.filtros.vence_hasta ?? finDeMes(hoy) }}
+                      hoy={hoy}
+                      max={addPlainDays(hoy, 3660)}
+                      etiqueta={t('listado.filtros.venceRango')}
+                      onValorChange={(r) => l.actualizar({ filtros: { ...l.filtros, vence: 'rango', vence_desde: r.desde, vence_hasta: r.hasta } })}
+                    />
+                  )}
+                  {rangoVenceActual && (
+                    <p id={`${c.id}-ayuda`} className="text-xs text-fg-muted">
+                      {t('listado.filtros.venceAyuda', { rango: textoRangoVence(rangoVenceActual) })}
+                    </p>
+                  )}
+                </div>
               )}
             </FormField>
             <CustomerPicker

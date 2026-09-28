@@ -141,7 +141,7 @@ describe('cabecera, KPIs y barra como el Figma', () => {
     expect(screen.getByText('32 facturas emitidas')).toBeTruthy();
     expect(screen.getByText('18 con saldo')).toBeTruthy();
     expect(screen.getByText('5 facturas · toca para filtrar →')).toBeTruthy();
-    expect(screen.getByText('9 facturas')).toBeTruthy();
+    expect(screen.getByText('9 facturas · toca para filtrar →')).toBeTruthy();
     // La tarjeta «Vencido» lleva el borde rojo.
     expect(screen.getByRole('button', { name: /Vencido/ }).className).toContain('border-line-danger');
   });
@@ -199,6 +199,58 @@ describe('filtros → chips → URL', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Limpiar filtros' }));
     expect(urlEscrita().toString()).toBe('');
+  });
+});
+
+describe('filtro «Vence: …» (vencimiento resuelto en el servidor)', () => {
+  it('la URL manda el atajo a la RPC y lo muestra como chip; quitarlo limpia las tres claves', async () => {
+    await montar('vence=mes&periodo=todo&estado_doc=emitida');
+    expect(ultimaQuery().get('vence')).toBe('mes');
+    expect(ultimaQuery().get('desde')).toBeNull();
+    expect(screen.getByText('Vence: este mes')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Vence: este mes/ }));
+    const url = urlEscrita();
+    expect(url.get('vence')).toBeNull();
+    expect(url.get('estado_doc')).toBe('emitida');
+  });
+
+  it('rango: chip con los días elegidos y vence_desde / vence_hasta en la query', async () => {
+    await montar('vence=rango&vence_desde=2026-10-01&vence_hasta=2026-10-15&periodo=todo');
+    expect(screen.getByText('Vence: 1 – 15 oct 2026')).toBeTruthy();
+    const q = ultimaQuery();
+    expect(q.get('vence')).toBe('rango');
+    expect(q.get('vence_desde')).toBe('2026-10-01');
+    expect(q.get('vence_hasta')).toBe('2026-10-15');
+
+    fireEvent.click(screen.getByRole('button', { name: /Vence: 1 – 15 oct 2026/ }));
+    const url = urlEscrita();
+    expect(url.get('vence')).toBeNull();
+    expect(url.get('vence_desde')).toBeNull();
+    expect(url.get('vence_hasta')).toBeNull();
+  });
+
+  it('un atajo desconocido en la URL no pinta chip', async () => {
+    await montar('vence=manana');
+    expect(screen.queryByText(/^Vence:/)).toBeNull();
+  });
+
+  it('«Vence en 15 días» filtra con el mismo filtro sobre toda la cartera', async () => {
+    await montar('estado_pago=vencida&periodo=todo');
+    fireEvent.click(screen.getByRole('button', { name: /Vence en 15 días/ }));
+    const url = urlEscrita();
+    expect(url.get('vence')).toBe('proximos15');
+    expect(url.get('periodo')).toBe('todo');
+    // Vencida y «vence en 15 días» se contradicen: la tarjeta deja solo el suyo.
+    expect(url.get('estado_pago')).toBeNull();
+  });
+
+  it('«Vencido» quita el filtro de vencimiento', async () => {
+    await montar('vence=mes&periodo=todo');
+    fireEvent.click(screen.getByRole('button', { name: /Vencido/ }));
+    const url = urlEscrita();
+    expect(url.get('estado_pago')).toBe('vencida');
+    expect(url.get('vence')).toBeNull();
   });
 });
 

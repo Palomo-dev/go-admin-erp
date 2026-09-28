@@ -12376,7 +12376,29 @@
         "todasFechasChip": "Émises : toutes les dates",
         "todasLasFechas": "Toutes les dates d'émission",
         "cliente": "Client",
-        "clienteChipNombre": "Client : {nombre}"
+        "clienteChipNombre": "Client : {nombre}",
+        "vence": "Échéance",
+        "venceOpcion": {
+          "vencidas": "En retard",
+          "hoy": "Échéance aujourd’hui",
+          "semana": "Échéance cette semaine",
+          "mes": "Échéance ce mois-ci",
+          "proximos15": "Échéance dans les 15 prochains jours",
+          "rango": "Plage de dates"
+        },
+        "venceCorto": {
+          "vencidas": "en retard",
+          "hoy": "aujourd’hui",
+          "semana": "cette semaine",
+          "mes": "ce mois-ci",
+          "proximos15": "15 prochains jours",
+          "rango": "plage"
+        },
+        "venceChip": "Échéance : {opcion}",
+        "venceRango": "Dates d’échéance",
+        "venceAyuda": "{rango} · uniquement les factures avec un solde dû",
+        "venceHasta": "jusqu’au {dia}",
+        "venceDesde": "à partir du {dia}"
       },
       "estadoPago": {
         "borrador": "Brouillon",

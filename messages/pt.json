@@ -12376,7 +12376,29 @@
         "todasFechasChip": "Emitidas: todas as datas",
         "todasLasFechas": "Todas as datas de emissão",
         "cliente": "Cliente",
-        "clienteChipNombre": "Cliente: {nombre}"
+        "clienteChipNombre": "Cliente: {nombre}",
+        "vence": "Vencimento",
+        "venceOpcion": {
+          "vencidas": "Vencidas",
+          "hoy": "Vence hoje",
+          "semana": "Vence esta semana",
+          "mes": "Vence este mês",
+          "proximos15": "Vence nos próximos 15 dias",
+          "rango": "Intervalo de datas"
+        },
+        "venceCorto": {
+          "vencidas": "vencidas",
+          "hoy": "hoje",
+          "semana": "esta semana",
+          "mes": "este mês",
+          "proximos15": "próximos 15 dias",
+          "rango": "intervalo"
+        },
+        "venceChip": "Vence: {opcion}",
+        "venceRango": "Datas de vencimento",
+        "venceAyuda": "{rango} · somente faturas com saldo pendente",
+        "venceHasta": "até {dia}",
+        "venceDesde": "a partir de {dia}"
       },
       "estadoPago": {
         "borrador": "Rascunho",

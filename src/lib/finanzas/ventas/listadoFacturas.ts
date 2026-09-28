@@ -3,8 +3,22 @@
  * `fn_facturas_venta_listado`). Módulo hoja: la ruta valida la query con estas
  * mismas listas blancas y la pantalla arma la query desde `useListadoServidor`.
  */
+import { addPlainDays } from '@/lib/utils/dateCore';
 
-export const FILTROS_FACTURAS = ['estado_doc', 'estado_pago', 'moneda', 'desde', 'hasta', 'cliente', 'fe', 'monto_min', 'monto_max'] as const;
+export const FILTROS_FACTURAS = [
+  'estado_doc',
+  'estado_pago',
+  'moneda',
+  'desde',
+  'hasta',
+  'cliente',
+  'fe',
+  'monto_min',
+  'monto_max',
+  'vence',
+  'vence_desde',
+  'vence_hasta',
+] as const;
 export type FiltroFacturas = (typeof FILTROS_FACTURAS)[number];
 
 /**
@@ -32,7 +46,59 @@ const VALORES: Partial<Record<FiltroFacturas, readonly string[]>> = {
   estado_doc: ['borrador', 'emitida', 'anulada'],
   estado_pago: ['pendiente', 'parcial', 'pagada', 'vencida', 'abiertas'],
   fe: ['sin', 'pending', 'processing', 'sent', 'accepted', 'rejected', 'failed', 'cancelled'],
+  vence: ['vencidas', 'hoy', 'semana', 'mes', 'proximos15', 'rango'],
 };
+
+/**
+ * Filtro por VENCIMIENTO (`vence`). Solo facturas con saldo. Los atajos se
+ * calculan en la base con el día de la zona de la sucursal de cada factura
+ * (`fn_facturas_venta_listado`); `rango` usa `vence_desde` / `vence_hasta`.
+ * `proximos15` es el del KPI «Vence en 15 días».
+ */
+export const OPCIONES_VENCE = ['vencidas', 'hoy', 'semana', 'mes', 'proximos15', 'rango'] as const;
+export type OpcionVence = (typeof OPCIONES_VENCE)[number];
+export const CLAVES_VENCE = ['vence', 'vence_desde', 'vence_hasta'] as const;
+
+export function esOpcionVence(valor: string | null | undefined): valor is OpcionVence {
+  return !!valor && (OPCIONES_VENCE as readonly string[]).includes(valor);
+}
+
+/** Último día del mes de `dia` (YYYY-MM-DD), sin pasar por la zona del proceso. */
+export function finDeMes(dia: string): string {
+  const [a, m] = dia.split('-').map(Number);
+  const siguiente = m === 12 ? `${a + 1}-01-01` : `${a}-${String(m + 1).padStart(2, '0')}-01`;
+  return addPlainDays(siguiente, -1);
+}
+
+/**
+ * Días que cubre cada atajo sobre el «hoy» de la organización: espejo de la
+ * RPC, para mostrarlo en la pantalla. Semana de lunes a domingo; mes del 1 al
+ * último día. `null` = sin límite por ese lado.
+ */
+export function rangoVence(
+  opcion: OpcionVence,
+  hoy: string,
+  rango: { desde?: string | null; hasta?: string | null } = {},
+): { desde: string | null; hasta: string | null } {
+  switch (opcion) {
+    case 'vencidas':
+      return { desde: null, hasta: addPlainDays(hoy, -1) };
+    case 'hoy':
+      return { desde: hoy, hasta: hoy };
+    case 'semana': {
+      const [a, m, d] = hoy.split('-').map(Number);
+      const diaSemana = new Date(Date.UTC(a, m - 1, d)).getUTCDay(); // 0 = domingo
+      const lunes = addPlainDays(hoy, -((diaSemana + 6) % 7));
+      return { desde: lunes, hasta: addPlainDays(lunes, 6) };
+    }
+    case 'mes':
+      return { desde: `${hoy.slice(0, 7)}-01`, hasta: finDeMes(hoy) };
+    case 'proximos15':
+      return { desde: hoy, hasta: addPlainDays(hoy, 15) };
+    case 'rango':
+      return { desde: rango.desde ?? null, hasta: rango.hasta ?? null };
+  }
+}
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DIA_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -64,7 +130,7 @@ export function consultaFacturasDesde(params: URLSearchParams): ConsultaFacturas
     if (!valor) continue;
     const permitidos = VALORES[clave];
     if (permitidos && !permitidos.includes(valor)) continue;
-    if ((clave === 'desde' || clave === 'hasta') && !DIA_RE.test(valor)) continue;
+    if ((clave === 'desde' || clave === 'hasta' || clave === 'vence_desde' || clave === 'vence_hasta') && !DIA_RE.test(valor)) continue;
     if (clave === 'cliente' && !UUID_RE.test(valor)) continue;
     if (clave === 'moneda' && !/^[A-Za-z]{3}$/.test(valor)) continue;
     if ((clave === 'monto_min' || clave === 'monto_max') && !Number.isFinite(Number(valor))) continue;

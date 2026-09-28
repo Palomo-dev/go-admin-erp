@@ -12481,7 +12481,29 @@
         "todasFechasChip": "Issued: all dates",
         "todasLasFechas": "All issue dates",
         "cliente": "Customer",
-        "clienteChipNombre": "Customer: {nombre}"
+        "clienteChipNombre": "Customer: {nombre}",
+        "vence": "Due date",
+        "venceOpcion": {
+          "vencidas": "Overdue",
+          "hoy": "Due today",
+          "semana": "Due this week",
+          "mes": "Due this month",
+          "proximos15": "Due in the next 15 days",
+          "rango": "Date range"
+        },
+        "venceCorto": {
+          "vencidas": "overdue",
+          "hoy": "today",
+          "semana": "this week",
+          "mes": "this month",
+          "proximos15": "next 15 days",
+          "rango": "range"
+        },
+        "venceChip": "Due: {opcion}",
+        "venceRango": "Due dates",
+        "venceAyuda": "{rango} · only invoices with an outstanding balance",
+        "venceHasta": "up to {dia}",
+        "venceDesde": "from {dia}"
       },
       "estadoPago": {
         "borrador": "Draft",

@@ -1597,9 +1597,15 @@ export class POSService {
       const tasaDeLinea = async (item: CartItem, itemTaxIncluded: boolean): Promise<number> => {
         const tasaPropia = Number(item.tax_rate) || 0;
         if (tasaPropia || !item.product_id) return tasaPropia;
+        // La tarifa 0 que ya decidió el carrito (CheckoutDialog reparte el
+        // impuesto y deja tax_amount en cada línea; la mesa trae el de la BD) es
+        // definitiva: un carrito todo exento no se cobra con la tarifa por
+        // defecto. Solo una línea sin cálculo previo consulta el resolver.
+        const decididaPorElCarrito = typeof item.tax_rate === 'number' && typeof item.tax_amount === 'number';
         try {
           const resolved = await resolveLineTax({
             itemTaxRate: item.tax_rate,
+            itemTaxIsFinal: decididaPorElCarrito,
             itemTaxCode: null,
             productId: item.product_id,
             organizationId: this.organizationId,

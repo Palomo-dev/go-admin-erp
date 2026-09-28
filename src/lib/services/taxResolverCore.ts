@@ -10,9 +10,17 @@
  *      si `itemTaxIsFinal`: la línea ya fija lo que se cobró, p. ej. una nota
  *      crédito que copia la línea de la factura original)
  *   2. Impuestos aplicados al documento (appliedTaxes / appliedTaxTotals)
- *   3. product_tax_relations del producto (filtrando organization_taxes.is_active)
- *   4. organization_taxes de la org con is_default = true
+ *   3. product_tax_relations del producto (filtrando organization_taxes.is_active).
+ *      Si el producto está relacionado con impuestos activos, ESA es su tarifa
+ *      aunque sume 0: exento/excluido configurado a propósito (2026-09-28; antes
+ *      una tarifa 0 caía al paso 4 y un producto exento se cobraba al 19 %).
+ *   4. organization_taxes de la org con is_default = true — solo para productos
+ *      SIN relación (decisión documentada en
+ *      docs/hallazgos/comisiones-e-impuestos-2026-09-28.md, B7).
  *   5. 0 (y advertir: "Esta línea no tiene impuesto asignado")
+ *
+ * Los impuestos personalizados (template_id NULL) cuentan: la plantilla se lee
+ * con join IZQUIERDO (antes `tax_templates!inner` los descartaba).
  *
  * Regla de total_line (la que lee fn_recalc_invoice_totals):
  *   tax_included = true  → total_line = qty * unit_price - discount_amount
@@ -135,18 +143,19 @@ export async function resolveLineTaxWith(client: TaxResolverClient, input: Resol
 
   const itemRate = Number(itemTaxRate) || 0;
 
-  const result = (rate: number, code: string | null): ResolvedTax => ({
+  const result = (rate: number, code: string | null, configured = false): ResolvedTax => ({
     tax_rate: rate,
     tax_code: code,
     tax_included: taxIncluded,
     total_line: computeLineTotal(qty, unitPrice, discountAmount, rate, taxIncluded),
-    has_no_tax: rate <= 0,
+    // Un 0 configurado (exento/excluido, o decidido por la línea) no se advierte.
+    has_no_tax: rate <= 0 && !configured,
   });
 
   // 1. Impuesto del item (seleccionado al agregar el producto o copiado de la
   //    línea original). Si es definitivo, vale aunque sea 0.
   if (itemRate > 0 || itemTaxIsFinal) {
-    return result(itemRate, itemTaxCode || null);
+    return result(itemRate, itemTaxCode || null, itemTaxIsFinal && !!itemTaxCode);
   }
 
   // 2. Impuestos aplicados al documento (checkboxes de ImpuestosFactura).
@@ -186,16 +195,15 @@ export async function resolveLineTaxWith(client: TaxResolverClient, input: Resol
         const taxIds = (relations as { tax_id: string }[]).map((r) => r.tax_id);
         const { data: taxes, error: taxError } = await client
           .from('organization_taxes')
-          .select('id, rate, is_active, template_id, tax_templates!inner(code)')
+          .select('id, rate, is_active, template_id, tax_templates(code)')
           .eq('organization_id', organizationId)
           .eq('is_active', true)
           .in('id', taxIds);
 
         if (!taxError && taxes && taxes.length > 0) {
+          // Relación explícita a impuestos activos: su suma manda, también si es 0.
           const { rate, code } = sumRates(taxes as OrganizationTaxRow[]);
-          if (rate > 0) {
-            return result(rate, code);
-          }
+          return result(rate, code, true);
         }
       }
     } catch (err) {
@@ -207,7 +215,7 @@ export async function resolveLineTaxWith(client: TaxResolverClient, input: Resol
   try {
     const { data: defaultTaxes, error: defError } = await client
       .from('organization_taxes')
-      .select('id, rate, is_default, template_id, tax_templates!inner(code)')
+      .select('id, rate, is_default, template_id, tax_templates(code)')
       .eq('organization_id', organizationId)
       .eq('is_active', true)
       .eq('is_default', true);

@@ -72,3 +72,32 @@ bastan para generar el movimiento cuando tesorería defina el egreso a terceros.
 - `crm/paymentService.ts` devenga una comisión de oportunidad al pagar la
   factura, sobre el total CON impuestos y siempre por porcentaje; si la factura
   también tiene vendedor, son dos comisiones por la misma venta.
+
+## B. Impuestos
+
+### B7 · Producto exento cobrado con la tarifa por defecto
+
+- `taxResolverCore.ts`, paso 3: un producto relacionado con un impuesto activo de
+  tarifa 0 caía al paso 4 (tarifa por defecto). `tax_templates!inner` descartaba
+  los impuestos personalizados (`template_id` NULL) en los pasos 3 y 4.
+- `posService.ts` (cobro): una línea con tasa 0 —la que ya calculó el carrito—
+  volvía a consultar el resolver sin `itemTaxIsFinal`; un carrito todo exento se
+  cobraba al 19 % en una organización con tarifa por defecto.
+- **Daño en datos: 0.** Solo la organización 2 tiene tarifa por defecto activa
+  (IVA 19 %); solo un producto (organización 120) está relacionado con un
+  impuesto de tarifa 0 y no tiene líneas vendidas. No hay impuestos
+  personalizados hoy (0 filas con `template_id` NULL).
+- Corrección: relación explícita a impuestos activos ⇒ su suma, también 0 (sin
+  advertir); join izquierdo con la plantilla; el cobro marca como definitiva la
+  tarifa que ya decidió el carrito (`tax_rate` y `tax_amount` presentes).
+- **«Sin relación» no cambia:** un producto sin impuesto configurado toma la
+  tarifa por defecto de la organización. Evidencia: `TarifaPorDefectoCard.tsx`
+  y `defaultTaxService.ts` documentan la tarifa por defecto exactamente para eso
+  («productos sin impuesto configurado»), y `taxCoverage.ts` no advierte en ese
+  caso. Queda fijado en `taxResolverExento.test.ts`.
+- La semántica de «Excluir impuesto», «Incluido» e «Impuestos incluidos» no se
+  tocó: `impuestosLineaCarrito.test.ts` e `impuestosCobroSobre.test.ts` pasan
+  igual.
+- Visto al pasar: el paso 3 SUMA todas las tarifas relacionadas; si alguien
+  relaciona un producto con RETE_4/RETE_11 o ICA (hoy 0 relaciones), la
+  retención se sumaría como impuesto de la línea.

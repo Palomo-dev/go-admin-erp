@@ -12107,7 +12107,10 @@
     "cuentaLabel": "¿De dónde sale el dinero?",
     "opcionRegla": "Según la regla contable",
     "opcionEfectivo": "Efectivo (caja abierta)",
-    "cuentaAyuda": "El asiento del pago acredita esta cuenta. Quién paga queda registrado."
+    "cuentaAyuda": "El asiento del pago acredita esta cuenta. Quién paga queda registrado.",
+    "mostrando": "Mostrando {shown} de {total} comisiones",
+    "cargarMas": "Cargar más",
+    "cargando": "Cargando…"
   },
   "saldosAFavor": {
     "errorCarga": "No se pudieron cargar los saldos a favor.",

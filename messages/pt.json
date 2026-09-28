@@ -12002,7 +12002,10 @@
     "cuentaLabel": "De onde sai o dinheiro?",
     "opcionRegla": "Conforme a regra contábil",
     "opcionEfectivo": "Dinheiro (caixa aberto)",
-    "cuentaAyuda": "O lançamento do pagamento credita esta conta. Quem pagou fica registrado."
+    "cuentaAyuda": "O lançamento do pagamento credita esta conta. Quem pagou fica registrado.",
+    "mostrando": "Mostrando {shown} de {total} comissões",
+    "cargarMas": "Carregar mais",
+    "cargando": "Carregando…"
   },
   "saldosAFavor": {
     "errorCarga": "Não foi possível carregar os saldos a favor.",

@@ -7,6 +7,7 @@
  */
 
 import { useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ import { REFRESH_BUTTON_ID, commissionFocusFallback } from '@/components/finanza
 
 export default function ComisionesPage() {
   const state = useComisiones();
+  const t = useTranslations('comisionesPago');
   // Moneda base de la organización; cada comisión se muestra en la suya si la trae.
   const { code: currency, paraDocumento } = useMonedaOrganizacion();
   const { members } = useOrgMembers();
@@ -102,6 +104,17 @@ export default function ComisionesPage() {
           onClawbackOne={setClawbackRow}
           hasActiveFilters={activeFilterCount(state.filters) > 0}
         />
+      )}
+
+      {state.rows.length > 0 && state.count > state.rows.length && (
+        <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
+          <p className="text-xs text-gray-500 dark:text-gray-400" aria-live="polite">
+            {t('mostrando', { shown: state.rows.length, total: state.count })}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => state.loadMore()} disabled={state.loadingMore}>
+            {state.loadingMore ? t('cargando') : t('cargarMas')}
+          </Button>
+        </div>
       )}
 
       <ConfirmDialog

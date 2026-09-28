@@ -12,7 +12,7 @@ import { fetchJson } from '@/lib/utils/fetchJson';
 import { describeError } from '@/lib/utils/errorMessage';
 import type { CommissionRow, MoneyAccountOption } from '@/lib/services/crm/commissionAdminService';
 import type { CurrencySummary } from '@/lib/services/crm/commissionTransitions';
-import { actionsForSelection, buildCommissionsQuery, commissionActionMessage, cuentaPagoABody, emptyFilters, type ComisionesFiltersState, type CuentaPagoValor } from './comisionesModel';
+import { actionsForSelection, appendCommissionPage, buildCommissionsQuery, commissionActionMessage, cuentaPagoABody, emptyFilters, type ComisionesFiltersState, type CuentaPagoValor } from './comisionesModel';
 
 interface ListResponse {
   success: boolean;
@@ -52,6 +52,9 @@ async function post<T>(url: string, body: unknown): Promise<T> {
 export function useComisiones() {
   const [filters, setFilters] = useState<ComisionesFiltersState>(emptyFilters);
   const [rows, setRows] = useState<CommissionRow[]>([]);
+  // Total del filtro según la API: la lista se pagina (200 por página) y ya no se trunca en silencio.
+  const [count, setCount] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [summary, setSummary] = useState<CurrencySummary>(EMPTY_SUMMARY);
   const [summaryOthers, setSummaryOthers] = useState<CurrencySummary[]>([]);
   const [currency, setCurrency] = useState<string | null>(null);
@@ -75,6 +78,7 @@ export function useComisiones() {
       const res = await fetchJson<ListResponse>(`/api/crm/commissions${qs ? `?${qs}` : ''}`, { signal: controller.signal });
       if (controller.signal.aborted) return;
       setRows(res.data);
+      setCount(res.count ?? res.data.length);
       setSummary(res.summary);
       setSummaryOthers(res.summary_others ?? []);
       setCurrency(res.currency ?? null);
@@ -106,6 +110,21 @@ export function useComisiones() {
       alive = false;
     };
   }, [canManage]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || rows.length >= count) return;
+    setLoadingMore(true);
+    try {
+      const qs = buildCommissionsQuery(filters, { offset: rows.length });
+      const res = await fetchJson<ListResponse>(`/api/crm/commissions?${qs}`);
+      setRows((prev) => appendCommissionPage(prev, res.data));
+      setCount(res.count ?? count);
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [count, filters, loadingMore, rows.length]);
 
   const selectedRows = useMemo(() => rows.filter((r) => selected.has(r.id)), [rows, selected]);
   const actions = useMemo(() => actionsForSelection(selectedRows), [selectedRows]);
@@ -183,6 +202,9 @@ export function useComisiones() {
     filters,
     setFilters,
     rows,
+    count,
+    loadMore,
+    loadingMore,
     summary,
     summaryOthers,
     currency,

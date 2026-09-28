@@ -12002,7 +12002,10 @@
     "cuentaLabel": "D'où sort l'argent ?",
     "opcionRegla": "Selon la règle comptable",
     "opcionEfectivo": "Espèces (caisse ouverte)",
-    "cuentaAyuda": "L'écriture du paiement crédite ce compte. La personne qui paie est enregistrée."
+    "cuentaAyuda": "L'écriture du paiement crédite ce compte. La personne qui paie est enregistrée.",
+    "mostrando": "{shown} commissions affichées sur {total}",
+    "cargarMas": "Charger plus",
+    "cargando": "Chargement…"
   },
   "saldosAFavor": {
     "errorCarga": "Les avoirs clients n’ont pas pu être chargés.",

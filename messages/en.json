@@ -12107,7 +12107,10 @@
     "cuentaLabel": "Where does the money come from?",
     "opcionRegla": "As set in the accounting rule",
     "opcionEfectivo": "Cash (open register)",
-    "cuentaAyuda": "The payment entry credits this account. Who paid is recorded."
+    "cuentaAyuda": "The payment entry credits this account. Who paid is recorded.",
+    "mostrando": "Showing {shown} of {total} commissions",
+    "cargarMas": "Load more",
+    "cargando": "Loading…"
   },
   "saldosAFavor": {
     "errorCarga": "Customer credits could not be loaded.",

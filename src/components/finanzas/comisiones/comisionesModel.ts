@@ -21,7 +21,10 @@ export function emptyFilters(): ComisionesFiltersState {
   return { status: 'all', source_type: 'all', payee_id: '', from: '', to: '', search: '' };
 }
 
-export function buildCommissionsQuery(f: ComisionesFiltersState): string {
+/** Tamaño de página de la lista (la API admite hasta 500; devuelve `count` total). */
+export const COMMISSIONS_PAGE_SIZE = 200;
+
+export function buildCommissionsQuery(f: ComisionesFiltersState, page?: { offset: number; limit?: number }): string {
   const p = new URLSearchParams();
   if (f.status !== 'all') p.set('status', f.status);
   if (f.source_type !== 'all') p.set('source_type', f.source_type);
@@ -30,7 +33,17 @@ export function buildCommissionsQuery(f: ComisionesFiltersState): string {
   if (f.to) p.set('to', f.to);
   const search = f.search.trim();
   if (search) p.set('search', search);
+  if (page && page.offset > 0) {
+    p.set('offset', String(page.offset));
+    p.set('limit', String(page.limit ?? COMMISSIONS_PAGE_SIZE));
+  }
   return p.toString();
+}
+
+/** Une una página nueva a la lista sin duplicar filas (si algo cambió entre páginas). */
+export function appendCommissionPage<T extends { id: string }>(prev: readonly T[], next: readonly T[]): T[] {
+  const seen = new Set(prev.map((r) => r.id));
+  return [...prev, ...next.filter((r) => !seen.has(r.id))];
 }
 
 export function activeFilterCount(f: ComisionesFiltersState): number {

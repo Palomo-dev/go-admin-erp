@@ -1,4 +1,10 @@
 {
+  "metodosPagoSeguridad": {
+    "sinPermiso": "No tienes permiso para cambiar los métodos de pago de la organización (permiso de facturación).",
+    "codigoInvalido": "El código solo admite letras, números, guion y guion bajo, de 2 a 40 caracteres.",
+    "codigoExiste": "Ya existe un método de pago con ese código. Elige otro.",
+    "nombreInvalido": "El nombre debe tener entre 2 y 80 caracteres."
+  },
   "monedasSeguridad": {
     "sinPermiso": "No tienes permiso para cambiar las monedas de la organización. Pídeselo a un administrador (permiso de facturación o de configuración de la organización).",
     "monedaNoAsignada": "La organización no tiene asignada esa moneda. Agrégala primero en la lista de monedas.",

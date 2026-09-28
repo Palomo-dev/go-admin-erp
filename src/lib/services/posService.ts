@@ -31,6 +31,7 @@ import {
 // URL pública de una imagen de Storage (compartida con el replicador del catálogo, fase 4D).
 import { getStorageImageUrl } from '@/lib/utils/storageImageUrl';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { nombreVisibleMetodo, ordenarMetodosDeLaOrganizacion } from '@/lib/finanzas/metodosPagoOrganizacion';
 import { precioVigente, importePrecioVigente, ProductoSinPrecioError } from '@/lib/pos/precioVigente';
 import { calcularLineaVenta, totalesDeLineas } from '@/lib/pos/lineaVenta';
 import { anularVentaEnServidor } from '@/lib/pos/anularVenta';
@@ -1801,7 +1802,9 @@ export class POSService {
   }): PaymentMethod {
     return {
       id: method.payment_method_code,
-      name: method.payment_methods?.name || method.payment_method_code,
+      // El nombre propio de la organización (settings.display_name) manda sobre
+      // el del catálogo global, que la organización ya no puede renombrar.
+      name: nombreVisibleMetodo(method.settings, method.payment_methods?.name, method.payment_method_code),
       code: method.payment_method_code,
       type: method.payment_method_code === 'cash' ? 'cash' :
             method.payment_method_code === 'card' ? 'card' : 'digital',
@@ -1815,8 +1818,10 @@ export class POSService {
   static async getPaymentMethods(): Promise<PaymentMethod[]> {
     try {
       // Desktop sin red: mismas filas desde el catálogo local, mismo mapeo.
+      // El orden es el de la organización (website_display_order, el que
+      // arrastra en «Métodos de pago»), en línea y sin red.
       if (this.usesLocalCatalog()) {
-        return (await posOfflineReads.getPaymentMethodRows(this.organizationId)).map((m) => this.mapPaymentMethodRow(m));
+        return ordenarMetodosDeLaOrganizacion(await posOfflineReads.getPaymentMethodRows(this.organizationId)).map((m) => this.mapPaymentMethodRow(m));
       }
 
       const { data, error } = await supabase
@@ -1825,16 +1830,20 @@ export class POSService {
           payment_method_code,
           is_active,
           settings,
+          website_display_order,
           payment_methods!inner (
             name
           )
         `)
         .eq('organization_id', this.organizationId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .order('website_display_order', { ascending: true, nullsFirst: false })
+        .order('payment_method_code', { ascending: true });
 
       if (error) throw error;
-      
-      return (data || []).map((method) => this.mapPaymentMethodRow(method as unknown as Parameters<typeof POSService.mapPaymentMethodRow>[0])) || [];
+
+      const filas = (data || []) as unknown as Array<Parameters<typeof POSService.mapPaymentMethodRow>[0] & { website_display_order?: number | null }>;
+      return ordenarMetodosDeLaOrganizacion(filas).map((method) => this.mapPaymentMethodRow(method));
     } catch (error) {
       console.error('Error getting payment methods:', error);
       // Fallback a métodos básicos

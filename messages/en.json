@@ -1,4 +1,10 @@
 {
+  "metodosPagoSeguridad": {
+    "sinPermiso": "You don't have permission to change the organization's payment methods (billing permission).",
+    "codigoInvalido": "The code may only contain letters, numbers, hyphens and underscores, 2 to 40 characters.",
+    "codigoExiste": "A payment method with that code already exists. Choose another one.",
+    "nombreInvalido": "The name must be between 2 and 80 characters."
+  },
   "monedasSeguridad": {
     "sinPermiso": "You don't have permission to change the organization's currencies. Ask an administrator (billing or organization settings permission).",
     "monedaNoAsignada": "That currency is not assigned to the organization. Add it to the currency list first.",

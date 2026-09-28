@@ -64,6 +64,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import Link from "next/link";
 import { PaymentMethod, OrganizationPaymentMethod } from "./PaymentMethodsPage";
+import { nombreVisibleMetodo, requiereReferenciaMetodo } from "@/lib/finanzas/metodosPagoOrganizacion";
 
 // Componente SortableRow para filas arrastrables
 // Métodos que requieren integración con pasarela
@@ -172,7 +173,7 @@ function SortableRow({
       </TableCell>
       <TableCell className="font-medium text-xs sm:text-sm dark:text-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center gap-1">
-          <span>{method.payment_method?.name}</span>
+          <span>{nombreVisibleMetodo(method.settings, method.payment_method?.name, method.payment_method_code)}</span>
           {method.payment_method?.is_system && (
             <Badge variant="secondary" className="text-xs w-fit dark:bg-gray-700 dark:text-gray-300">Sistema</Badge>
           )}
@@ -235,7 +236,7 @@ function SortableRow({
         )}
       </TableCell>
       <TableCell className="hidden 2xl:table-cell text-xs sm:text-sm dark:text-gray-300">
-        {method.payment_method?.requires_reference ? "Sí" : "No"}
+        {requiereReferenciaMetodo(method.settings, method.payment_method?.requires_reference) ? "Sí" : "No"}
       </TableCell>
       <TableCell className="hidden sm:table-cell">
         {getIntegrationBadge(method.payment_method_code, method.settings?.gateway, method.integration_connection_id)}
@@ -312,7 +313,7 @@ function SortableRow({
 interface PaymentMethodsListProps {
   paymentMethods: PaymentMethod[];
   orgPaymentMethods: OrganizationPaymentMethod[];
-  recommendedMethods: any[]; // Agregar métodos recomendados
+  recommendedMethods: Array<{ code?: string; payment_method_code?: string }>; // Métodos recomendados
   countryCode: string | null;
   onEdit: (method: OrganizationPaymentMethod) => void;
   isLoading: boolean;
@@ -377,12 +378,12 @@ export default function PaymentMethodsList({
         title: "Estado actualizado",
         description: `El método de pago ha sido ${newIsActive ? "activado" : "desactivado"}.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Revertir en caso de error
       setLocalOrgMethods(prev => 
         prev.map(m => m.id === orgMethod.id ? { ...m, is_active: !newIsActive } : m)
       );
-      console.error("Error al actualizar estado:", error.message);
+      console.error("Error al actualizar estado:", error);
       toast({
         title: "Error",
         description: "No se pudo actualizar el estado del método de pago.",
@@ -425,12 +426,12 @@ export default function PaymentMethodsList({
         title: "Visibilidad actualizada",
         description: `El método ${newShowOnWebsite ? "será visible" : "no será visible"} en el website.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Revertir en caso de error
       setLocalOrgMethods(prev => 
         prev.map(m => m.id === orgMethod.id ? { ...m, show_on_website: !newShowOnWebsite } : m)
       );
-      console.error("Error al actualizar visibilidad:", error.message);
+      console.error("Error al actualizar visibilidad:", error);
       toast({
         title: "Error",
         description: "No se pudo actualizar la visibilidad.",
@@ -487,10 +488,10 @@ export default function PaymentMethodsList({
         title: "Orden actualizado",
         description: "El orden de los métodos de pago ha sido guardado.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Revertir en caso de error
       setLocalOrgMethods(previousLocalMethods);
-      console.error("Error al actualizar orden:", error.message);
+      console.error("Error al actualizar orden:", error);
       toast({
         title: "Error",
         description: "No se pudo actualizar el orden.",
@@ -499,7 +500,10 @@ export default function PaymentMethodsList({
     }
   };
 
-  // Función para eliminar un método de pago personalizado
+  // Función para quitar un método de pago de la organización.
+  // GO-sec (2026-09-28): solo se borra el VÍNCULO de esta organización. La fila
+  // de `payment_methods` es del catálogo global (con ON DELETE CASCADE a los
+  // vínculos de otras organizaciones); antes se intentaba borrar aquí también.
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
@@ -521,15 +525,6 @@ export default function PaymentMethodsList({
         );
       }
 
-      // 2. Eliminar el método de pago personalizado (si no es del sistema)
-      if (!deleteTarget.payment_method?.is_system) {
-        const { error: methodError } = await supabase
-          .from('payment_methods')
-          .delete()
-          .eq('code', deleteTarget.payment_method_code);
-        if (methodError) console.warn('No se pudo eliminar el método de la tabla global:', methodError.message);
-      }
-
       // Actualizar estado local
       setLocalOrgMethods(prev => prev.filter(m => m.id !== deleteTarget.id));
 
@@ -538,11 +533,11 @@ export default function PaymentMethodsList({
         description: `El método "${deleteTarget.payment_method?.name}" ha sido eliminado.`,
       });
       setDeleteTarget(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error al eliminar método de pago:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo eliminar el método de pago: ' + error.message,
+        description: 'No se pudo eliminar el método de pago: ' + (error instanceof Error ? error.message : String(error)),
         variant: 'destructive',
       });
     } finally {

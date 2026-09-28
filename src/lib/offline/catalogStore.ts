@@ -194,6 +194,8 @@ export interface CatalogPaymentMethod {
   is_active: boolean | null;
   settings: Record<string, unknown> | null;
   payment_methods: { name: string } | null;
+  /** Orden propio de la organización (el POS lo respeta también sin red). */
+  website_display_order?: number | null;
 }
 
 export interface CatalogOrganizationTax {

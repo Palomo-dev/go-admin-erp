@@ -278,7 +278,7 @@ async function runReplication({ organizationId, client = supabase, onProgress, w
   // 7. Métodos de pago activos, con el nombre del catálogo global.
   const paymentMethods = new StoreWriter('payment_methods', org);
   const pmRows = unwrap<Omit<CatalogPaymentMethod, 'organization_id'>>(
-    await db.from('organization_payment_methods').select('payment_method_code, is_active, settings, payment_methods!inner ( name )').eq('organization_id', org).eq('is_active', true),
+    await db.from('organization_payment_methods').select('payment_method_code, is_active, settings, website_display_order, payment_methods!inner ( name )').eq('organization_id', org).eq('is_active', true),
     'organization_payment_methods',
   );
   await paymentMethods.write(pmRows.map((r) => ({ ...r, organization_id: org })));

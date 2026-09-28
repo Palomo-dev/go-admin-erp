@@ -1,4 +1,10 @@
 {
+  "metodosPagoSeguridad": {
+    "sinPermiso": "Vous n'avez pas l'autorisation de modifier les moyens de paiement de l'organisation (autorisation de facturation).",
+    "codigoInvalido": "Le code ne peut contenir que des lettres, des chiffres, des tirets et des tirets bas, de 2 à 40 caractères.",
+    "codigoExiste": "Un moyen de paiement avec ce code existe déjà. Choisissez-en un autre.",
+    "nombreInvalido": "Le nom doit comporter entre 2 et 80 caractères."
+  },
   "monedasSeguridad": {
     "sinPermiso": "Vous n'avez pas l'autorisation de modifier les devises de l'organisation. Demandez-la à un administrateur (autorisation de facturation ou de configuration de l'organisation).",
     "monedaNoAsignada": "Cette devise n'est pas attribuée à l'organisation. Ajoutez-la d'abord à la liste des devises.",

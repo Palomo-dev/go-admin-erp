@@ -1,16 +1,20 @@
 'use client';
 
 import * as React from 'react';
-import { CalendarDays, ChevronDown } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
-import { esFechaPlana, normalizarRango, presetDe, presetsRango, type IdPresetRango, type RangoFechas } from './rangoFechas';
-import { useEtiquetaRango, useKitT } from './useIdiomaKit';
+import { CalendarioMes } from './CalendarioMes';
+import { elegirEnRango, etiquetaDiaCorta } from './calendarioLogica';
+import { normalizarRango, presetDe, presetsRango, type IdPresetRango, type RangoFechas } from './rangoFechas';
+import { useEtiquetaRango, useKitT, useLocaleIntl } from './useIdiomaKit';
 
 /**
  * Botón de rango de fechas de la barra de un listado (Figma 680:407222:
- * «📅 1 – 22 sep 2026 ▾», 40 px, junto al buscador). Abre un panel con
- * atajos (Hoy, Últimos 7 días, Este mes…) y dos campos de día.
+ * «📅 1 – 22 sep 2026 ▾», 40 px, junto al buscador). Abre el panel del
+ * componente `DateRange` de Figma (104:3343): atajos en chips arriba,
+ * calendario con el tramo en Tinte GO y los extremos en Azul acción, y el pie
+ * «Desde … · Hasta …». El rango se elige con dos clics (inicio y fin).
  *
  * Trabaja con días calendario puros (`YYYY-MM-DD`). La zona horaria es de la
  * pantalla: pasa `hoy` con `useFormatDate().getToday()` y convierte a
@@ -25,22 +29,23 @@ export interface DateRangeButtonProps {
   etiqueta?: string;
   /** No se puede elegir más allá de este día (por defecto, `hoy`). */
   max?: string;
+  /** No se puede elegir antes de este día. */
+  min?: string;
+  /** Si llega, el pie muestra «Limpiar» (la pantalla decide a qué rango vuelve). */
+  onLimpiar?: () => void;
   deshabilitado?: boolean;
   className?: string;
 }
 
-/** Clave de `kit.rango.*` de cada atajo. */
-const CLAVE_PRESET: Record<IdPresetRango, string> = {
-  hoy: 'hoy',
-  ayer: 'ayer',
-  '7d': 'ultimos7',
-  '30d': 'ultimos30',
-  mes: 'esteMes',
-  mesPasado: 'mesPasado',
+/** Clave de `kit.rango.*` de cada atajo: [chip corto, nombre completo]. */
+const CLAVE_PRESET: Record<IdPresetRango, [string, string]> = {
+  hoy: ['hoy', 'hoy'],
+  ayer: ['ayer', 'ayer'],
+  '7d': ['dias7', 'ultimos7'],
+  '30d': ['dias30', 'ultimos30'],
+  mes: ['esteMes', 'esteMes'],
+  mesPasado: ['mesPasado', 'mesPasado'],
 };
-
-const CAMPO =
-  'h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
 
 export function DateRangeButton({
   valor,
@@ -48,40 +53,60 @@ export function DateRangeButton({
   hoy,
   etiqueta: etiquetaProp,
   max,
+  min,
+  onLimpiar,
   deshabilitado,
   className,
 }: DateRangeButtonProps) {
   const t = useKitT();
+  const locale = useLocaleIntl();
   const etiquetaRango = useEtiquetaRango();
   const etiqueta = etiquetaProp ?? t('rango.etiqueta');
   const [abierto, setAbierto] = React.useState(false);
-  const [borrador, setBorrador] = React.useState<RangoFechas>(valor);
-  const idDesde = React.useId();
-  const idHasta = React.useId();
+  /** Primer día elegido mientras falta el segundo. */
+  const [ancla, setAncla] = React.useState<string | null>(null);
+  /** Día bajo el puntero o el foco: vista previa del rango. */
+  const [activo, setActivo] = React.useState<string | null>(null);
   const tope = max ?? hoy;
+  const refBoton = React.useRef<HTMLButtonElement>(null);
 
   React.useEffect(() => {
-    if (abierto) setBorrador(valor);
-  }, [abierto, valor]);
+    if (!abierto) {
+      setAncla(null);
+      setActivo(null);
+    }
+  }, [abierto]);
 
   const presetActivo = presetDe(valor, hoy);
-  const valido = esFechaPlana(borrador.desde) && esFechaPlana(borrador.hasta);
+  const rangoVisible = ancla ? normalizarRango({ desde: ancla, hasta: activo ?? ancla }) : normalizarRango(valor);
 
   const aplicar = (rango: RangoFechas) => {
     onValorChange(normalizarRango(rango));
     setAbierto(false);
   };
 
+  const elegir = (dia: string) => {
+    const r = elegirEnRango(ancla, dia);
+    if (r.completo) {
+      aplicar({ desde: r.desde, hasta: r.hasta });
+    } else {
+      setAncla(r.ancla);
+      setActivo(dia);
+    }
+  };
+
   return (
     <PopoverPrimitive.Root open={abierto} onOpenChange={setAbierto}>
       <PopoverPrimitive.Trigger asChild>
         <button
+          ref={refBoton}
           type="button"
           disabled={deshabilitado}
+          aria-haspopup="dialog"
           aria-label={`${etiqueta}: ${etiquetaRango(valor)}`}
           className={cn(
             'inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-sm font-medium text-fg transition-colors hover:bg-hover',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:bg-hover',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:border-brand',
             className,
           )}
         >
@@ -91,82 +116,78 @@ export function DateRangeButton({
         </button>
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Content
-        align="start"
-        sideOffset={8}
-        collisionPadding={8}
-        className="z-50 w-[320px] rounded-xl border border-line bg-surface p-3 text-fg shadow-lg outline-none"
-      >
-        <div role="group" aria-label={t('rango.atajos')} className="grid grid-cols-2 gap-1">
-          {presetsRango(hoy).map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              aria-pressed={presetActivo === p.id}
-              onClick={() => aplicar(p.rango)}
-              className={cn(
-                'h-9 rounded-md px-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-                presetActivo === p.id ? 'bg-brand-tint font-medium text-brand-deep' : 'text-fg hover:bg-hover',
-              )}
-            >
-              {t(`rango.${CLAVE_PRESET[p.id]}`)}
-            </button>
-          ))}
-        </div>
-        <div className="my-3 h-px bg-line" />
-        <form
-          className="flex flex-col gap-3"
-          onSubmit={(e) => {
+        <PopoverPrimitive.Content
+          align="start"
+          sideOffset={4}
+          collisionPadding={8}
+          aria-label={etiqueta}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => {
             e.preventDefault();
-            if (valido) aplicar(borrador);
+            refBoton.current?.focus();
           }}
+          className="z-[70] flex w-[320px] max-w-[calc(100vw-16px)] flex-col gap-2 rounded-xl border border-line bg-surface p-3 text-fg shadow-md outline-none"
         >
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex flex-col gap-1">
-              <label htmlFor={idDesde} className="text-xs font-medium text-fg-secondary">
-                {t('rango.desde')}
-              </label>
-              <input
-                id={idDesde}
-                type="date"
-                value={borrador.desde}
-                max={tope}
-                onChange={(e) => setBorrador((b) => ({ ...b, desde: e.target.value }))}
-                className={CAMPO}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label htmlFor={idHasta} className="text-xs font-medium text-fg-secondary">
-                {t('rango.hasta')}
-              </label>
-              <input
-                id={idHasta}
-                type="date"
-                value={borrador.hasta}
-                max={tope}
-                onChange={(e) => setBorrador((b) => ({ ...b, hasta: e.target.value }))}
-                className={CAMPO}
-              />
-            </div>
+          <div role="group" aria-label={t('rango.atajos')} className="flex flex-wrap items-center gap-1.5">
+            {presetsRango(hoy).map((p) => {
+              const [corta, larga] = CLAVE_PRESET[p.id];
+              const activoPreset = presetActivo === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  aria-pressed={activoPreset}
+                  aria-label={t(`rango.${larga}`)}
+                  onClick={() => aplicar(p.rango)}
+                  className={cn(
+                    'inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                    activoPreset
+                      ? 'border-brand bg-brand-tint text-brand-deep'
+                      : 'border-line-strong bg-surface text-fg-secondary hover:bg-hover',
+                  )}
+                >
+                  {activoPreset && <Check aria-hidden="true" className="size-3.5" strokeWidth={1.5} />}
+                  {t(`rango.${corta}`)}
+                </button>
+              );
+            })}
           </div>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setAbierto(false)}
-              className="h-9 rounded-lg border border-line-strong bg-surface px-3 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
-              {t('comun.cancelar')}
-            </button>
-            <button
-              type="submit"
-              disabled={!valido}
-              className="h-9 rounded-lg bg-brand-action px-3 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {t('comun.aplicar')}
-            </button>
+          <CalendarioMes
+            rango={rangoVisible}
+            diaInicial={normalizarRango(valor).hasta}
+            onElegir={elegir}
+            onDiaActivo={(d) => {
+              if (ancla) setActivo(d);
+            }}
+            min={min}
+            max={tope}
+            hoy={hoy}
+            enfocarAlMontar
+          />
+          <div className="flex items-center justify-between gap-2 text-xs font-medium">
+            <p aria-live="polite" className="text-fg-secondary">
+              {ancla
+                ? t('calendario.eligeFin', { desde: etiquetaDiaCorta(ancla, locale) })
+                : t('calendario.pieRango', {
+                    desde: etiquetaDiaCorta(rangoVisible.desde, locale),
+                    hasta: etiquetaDiaCorta(rangoVisible.hasta, locale),
+                  })}
+            </p>
+            {onLimpiar && (
+              <button
+                type="button"
+                onClick={() => {
+                  onLimpiar();
+                  setAbierto(false);
+                }}
+                className="rounded-md px-1 py-0.5 text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                {t('calendario.limpiar')}
+              </button>
+            )}
           </div>
-        </form>
-      </PopoverPrimitive.Content>
+        </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>
   );

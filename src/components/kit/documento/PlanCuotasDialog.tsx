@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { CalendarRange } from 'lucide-react';
 import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { CampoFecha } from '../CampoFecha';
 import { CampoNumero } from '../CampoNumero';
 import { Dialogo } from '../Dialogo';
 import { FormField } from '../FormField';
@@ -131,15 +132,16 @@ export function PlanCuotasDialog({
           </FormField>
           <FormField etiqueta={t('documento.planCuotas.primera')} obligatorio error={errores.fecha ? t('documento.planCuotas.errores.fecha') : undefined}>
             {(c) => (
-              <input
+              <CampoFecha
                 id={c.id}
                 aria-describedby={c['aria-describedby']}
                 aria-invalid={c['aria-invalid']}
-                type="date"
+                aria-required={c['aria-required']}
                 min={hoy}
-                value={form.primera}
-                onChange={(e) => setForm((f) => ({ ...f, primera: e.target.value }))}
-                className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand aria-[invalid=true]:border-line-danger"
+                hoy={hoy}
+                limpiable={false}
+                valor={form.primera}
+                onValorChange={(primera) => setForm((f) => ({ ...f, primera }))}
               />
             )}
           </FormField>

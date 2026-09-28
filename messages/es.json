@@ -3073,7 +3073,20 @@
       "ultimos7": "Últimos 7 días",
       "ultimos30": "Últimos 30 días",
       "esteMes": "Este mes",
-      "mesPasado": "Mes pasado"
+      "mesPasado": "Mes pasado",
+      "dias7": "7 días",
+      "dias30": "30 días"
+    },
+    "calendario": {
+      "etiqueta": "Calendario",
+      "elegirFecha": "Elegir fecha",
+      "sinFecha": "sin fecha",
+      "mesAnterior": "Mes anterior",
+      "mesSiguiente": "Mes siguiente",
+      "hoy": "Hoy",
+      "limpiar": "Limpiar",
+      "pieRango": "Desde {desde} · Hasta {hasta}",
+      "eligeFin": "Desde {desde} · elige el día final"
     },
     "tabla": {
       "seleccionarPagina": "Seleccionar esta página",

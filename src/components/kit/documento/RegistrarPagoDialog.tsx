@@ -5,6 +5,7 @@ import { AlertTriangle, CircleAlert, CircleDollarSign } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { BotonImporte } from '../BotonImporte';
+import { CampoFecha } from '../CampoFecha';
 import { CampoNumero } from '../CampoNumero';
 import { FilaDato, ListaDatos } from '../FilaDato';
 import { FormField } from '../FormField';
@@ -278,7 +279,7 @@ export function RegistrarPagoDialog({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <FormField etiqueta={t('pago.fecha')} obligatorio error={textoError('fecha')}>
-          <input type="date" value={valor.fecha} max={hoy} onChange={(e) => cambiar({ fecha: e.target.value })} className={FECHA_CLASES} />
+          <CampoFecha valor={valor.fecha} max={hoy} hoy={hoy} limpiable={false} onValorChange={(fecha) => cambiar({ fecha })} />
         </FormField>
         <FormField etiqueta={t('pago.referencia')} obligatorio={exigeReferencia} error={textoError('referencia')}>
           <input

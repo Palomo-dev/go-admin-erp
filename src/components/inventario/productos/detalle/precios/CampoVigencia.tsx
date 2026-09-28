@@ -2,7 +2,7 @@
 
 import { useId } from 'react';
 import { useTranslations } from 'next-intl';
-import { SegmentedControl } from '@/components/kit';
+import { CampoFecha, SegmentedControl } from '@/components/kit';
 import { addPlainDays } from '@/lib/utils/dateCore';
 
 export type ModoVigencia = 'ahora' | 'programar';
@@ -53,15 +53,15 @@ export function CampoVigencia({
           <label htmlFor={idDia} className="text-xs font-medium text-fg-secondary">
             {t('dia')}
           </label>
-          <input
+          <CampoFecha
             id={idDia}
-            type="date"
             min={manana}
-            value={valor.dia}
-            onChange={(e) => onChange({ ...valor, dia: e.target.value })}
+            hoy={hoy}
+            valor={valor.dia}
+            onValorChange={(dia) => onChange({ ...valor, dia })}
             aria-invalid={!!error || undefined}
             aria-describedby={idAyuda}
-            className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-fg tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand aria-[invalid=true]:border-danger"
+            disabled={deshabilitado}
           />
           <p id={idAyuda} className={error ? 'text-xs text-danger-text' : 'text-xs text-fg-secondary'}>
             {error ?? t('ayudaProgramar')}

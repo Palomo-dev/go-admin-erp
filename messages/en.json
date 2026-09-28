@@ -3073,7 +3073,20 @@
       "ultimos7": "Last 7 days",
       "ultimos30": "Last 30 days",
       "esteMes": "This month",
-      "mesPasado": "Last month"
+      "mesPasado": "Last month",
+      "dias7": "7 days",
+      "dias30": "30 days"
+    },
+    "calendario": {
+      "etiqueta": "Calendar",
+      "elegirFecha": "Pick a date",
+      "sinFecha": "no date",
+      "mesAnterior": "Previous month",
+      "mesSiguiente": "Next month",
+      "hoy": "Today",
+      "limpiar": "Clear",
+      "pieRango": "From {desde} · To {hasta}",
+      "eligeFin": "From {desde} · pick the end date"
     },
     "tabla": {
       "seleccionarPagina": "Select this page",

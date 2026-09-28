@@ -2968,7 +2968,20 @@
       "ultimos7": "7 derniers jours",
       "ultimos30": "30 derniers jours",
       "esteMes": "Ce mois-ci",
-      "mesPasado": "Le mois dernier"
+      "mesPasado": "Le mois dernier",
+      "dias7": "7 jours",
+      "dias30": "30 jours"
+    },
+    "calendario": {
+      "etiqueta": "Calendrier",
+      "elegirFecha": "Choisir une date",
+      "sinFecha": "sans date",
+      "mesAnterior": "Mois précédent",
+      "mesSiguiente": "Mois suivant",
+      "hoy": "Aujourd'hui",
+      "limpiar": "Effacer",
+      "pieRango": "Du {desde} · Au {hasta}",
+      "eligeFin": "Du {desde} · choisissez le dernier jour"
     },
     "tabla": {
       "seleccionarPagina": "Sélectionner cette page",

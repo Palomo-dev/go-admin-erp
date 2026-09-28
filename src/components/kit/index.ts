@@ -20,6 +20,9 @@ export { FilterChip, type FilterChipProps } from './FilterChip';
 export { FilterChips, type FilterChipsProps, type ChipFiltro } from './FilterChips';
 export { ListToolbar, type ListToolbarProps } from './ListToolbar';
 export { DateRangeButton, type DateRangeButtonProps } from './DateRangeButton';
+export { CampoFecha, type CampoFechaProps } from './CampoFecha';
+export { CalendarioMes, type CalendarioMesProps } from './CalendarioMes';
+export { primerDiaDeSemana, grillaMes, etiquetaDiaTrigger, type CeldaDia } from './calendarioLogica';
 export {
   etiquetaRango,
   presetsRango,

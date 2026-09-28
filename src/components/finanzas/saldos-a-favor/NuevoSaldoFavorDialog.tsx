@@ -32,6 +32,7 @@ import {
 } from './saldosAFavorService';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface NuevoSaldoFavorDialogProps {
   open: boolean;
@@ -239,12 +240,12 @@ export function NuevoSaldoFavorDialog({
 
           <div className="grid gap-1.5">
             <Label htmlFor="expirySaldo">Vencimiento (opcional)</Label>
-            <Input
+            <CampoFecha
               id="expirySaldo"
-              type="date"
               min={contexto?.hoy || undefined}
-              value={expiry}
-              onChange={(e) => setExpiry(e.target.value)}
+              hoy={contexto?.hoy || undefined}
+              valor={expiry}
+              onValorChange={setExpiry}
             />
           </div>
 

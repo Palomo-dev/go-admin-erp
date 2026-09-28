@@ -27,6 +27,7 @@ import { formatMoneda } from '@/lib/utils/moneda';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { plainDayOfInstant } from '@/lib/services/businessInstant';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface RegistrarPagoModalProps {
   open: boolean;
@@ -313,19 +314,22 @@ export function RegistrarPagoModal({
             <Label htmlFor="payment_date" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               Fecha de Pago *
             </Label>
-            <Input
+            <CampoFecha
               id="payment_date"
-              type="date"
-              value={formData.payment_date}
-              onChange={(e) => {
-                setFormData(prev => ({ ...prev, payment_date: e.target.value }));
+              tamano="sm"
+              aria-required
+              aria-invalid={fechaError || undefined}
+              valor={formData.payment_date}
+              onValorChange={(dia) => {
+                setFormData(prev => ({ ...prev, payment_date: dia }));
                 if (diaEmision) {
-                  setFechaError(e.target.value < diaEmision);
+                  setFechaError(dia < diaEmision);
                 }
               }}
               max={getToday()}
               min={diaEmision || undefined}
-              className={`h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${fechaError ? 'border-red-500 dark:border-red-500' : ''}`}
+              hoy={getToday()}
+              className="sm:h-9"
             />
             {fechaError && (
               <p className="text-xs text-red-500 dark:text-red-400">La fecha no puede ser anterior a la emisión de la factura</p>

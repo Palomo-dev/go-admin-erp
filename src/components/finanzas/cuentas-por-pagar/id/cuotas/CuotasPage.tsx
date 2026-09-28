@@ -32,6 +32,7 @@ import { CuentaPorPagarDetalle, APInstallment } from '../types';
 import { formatCurrency } from '@/utils/Utils';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { asPlainDate, formatPlainDate } from '@/lib/utils/dateDisplay';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface CuotasPageProps {
   accountId: string;
@@ -681,11 +682,11 @@ export function CuotasPage({ accountId }: CuotasPageProps) {
           <div className="space-y-4 py-4">
             <div>
               <Label className="text-gray-700 dark:text-gray-300">Fecha de vencimiento</Label>
-              <Input
-                type="date"
-                value={editForm.due_date}
-                onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
-                className="mt-1 dark:bg-gray-900 dark:border-gray-600"
+              <CampoFecha
+                aria-label="Fecha de vencimiento"
+                valor={editForm.due_date}
+                onValorChange={(dia) => setEditForm({ ...editForm, due_date: dia })}
+                className="mt-1"
               />
             </div>
             <div>

@@ -28,6 +28,7 @@ import { useBranch } from '@/lib/context/BranchContext';
 
 import { CuentasPorPagarService } from './CuentasPorPagarService';
 import { FiltrosCuentasPorPagar, SupplierOption } from './types';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface CuentasPorPagarFiltrosProps {
   filtros: FiltrosCuentasPorPagar;
@@ -97,12 +98,12 @@ export function CuentasPorPagarFiltros({
     handleInputChange('vencimiento', value as FiltrosCuentasPorPagar['vencimiento']);
   };
 
-  const handleFechaDesdeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleInputChange('fechaDesde', e.target.value);
+  const handleFechaDesdeChange = (dia: string) => {
+    handleInputChange('fechaDesde', dia);
   };
 
-  const handleFechaHastaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleInputChange('fechaHasta', e.target.value);
+  const handleFechaHastaChange = (dia: string) => {
+    handleInputChange('fechaHasta', dia);
   };
 
   const handleMontoMinimoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -292,12 +293,12 @@ export function CuentasPorPagarFiltros({
                     <Calendar className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
                     <span>Vence desde</span>
                   </Label>
-                  <Input
+                  <CampoFecha
                     id="fechaDesde"
-                    type="date"
-                    value={filtros.fechaDesde}
-                    onChange={handleFechaDesdeChange}
-                    className="h-8 sm:h-9 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                    tamano="sm"
+                    valor={filtros.fechaDesde}
+                    onValorChange={handleFechaDesdeChange}
+                    className="sm:h-9"
                   />
                 </div>
 
@@ -307,12 +308,12 @@ export function CuentasPorPagarFiltros({
                     <Calendar className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
                     <span>Vence hasta</span>
                   </Label>
-                  <Input
+                  <CampoFecha
                     id="fechaHasta"
-                    type="date"
-                    value={filtros.fechaHasta}
-                    onChange={handleFechaHastaChange}
-                    className="h-8 sm:h-9 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                    tamano="sm"
+                    valor={filtros.fechaHasta}
+                    onValorChange={handleFechaHastaChange}
+                    className="sm:h-9"
                   />
                 </div>
               </div>

@@ -48,6 +48,7 @@ import { buscarProveedores, leerDetalleFacturaCompra } from '@/lib/services/comp
 import type { GuardarFacturaCompra } from '@/lib/services/compras/contrato';
 import { useBaseCompras } from '../rutasCompras';
 import { DialogoConfirmarCompra } from '../detalle/DialogosCompra';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface LineaForm {
   key: string;
@@ -563,16 +564,15 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
             </FormField>
             <FormField etiqueta={tf('campos.emision')} error={errores.emision} obligatorio>
               {(c) => (
-                <Input
+                <CampoFecha
                   {...aria(c)}
-                  type="date"
-                  value={emision}
+                  valor={emision}
                   max={getToday()}
-                  onChange={(e) => {
+                  hoy={getToday()}
+                  onValorChange={(dia) => {
                     marcar();
-                    setEmision(e.target.value);
+                    setEmision(dia);
                   }}
-                  className="h-10"
                 />
               )}
             </FormField>
@@ -593,17 +593,16 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
             </FormField>
             <FormField etiqueta={tf('campos.vence')} error={errores.vence}>
               {(c) => (
-                <Input
+                <CampoFecha
                   {...aria(c)}
-                  type="date"
-                  value={vence}
+                  valor={vence}
                   min={emision}
-                  onChange={(e) => {
+                  hoy={getToday()}
+                  onValorChange={(dia) => {
                     marcar();
                     setPlazo(null);
-                    setVence(e.target.value);
+                    setVence(dia);
                   }}
-                  className="h-10"
                 />
               )}
             </FormField>

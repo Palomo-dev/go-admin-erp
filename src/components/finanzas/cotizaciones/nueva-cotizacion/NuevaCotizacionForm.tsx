@@ -30,6 +30,7 @@ import { BranchSelectorField } from '@/components/inventario/BranchSelectorField
 import { PageBackHeader } from './PageBackHeader';
 import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
 import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 /** Totales por impuesto que entrega `ImpuestosFactura`. */
 interface TotalImpuesto {
@@ -369,20 +370,18 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Fecha de Emisión</Label>
-                <Input
-                  type="date"
-                  value={issueDate}
-                  onChange={(e) => setIssueDate(e.target.value)}
-                  className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
+                <CampoFecha
+                  aria-label="Fecha de Emisión"
+                  valor={issueDate}
+                  onValorChange={setIssueDate}
                 />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Válida hasta</Label>
-                <Input
-                  type="date"
-                  value={validUntil}
-                  onChange={(e) => setValidUntil(e.target.value)}
-                  className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
+                <CampoFecha
+                  aria-label="Válida hasta"
+                  valor={validUntil}
+                  onValorChange={setValidUntil}
                 />
               </div>
             </div>

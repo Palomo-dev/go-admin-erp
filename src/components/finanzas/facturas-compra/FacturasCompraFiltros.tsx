@@ -14,6 +14,7 @@ import {
 import { Search, Filter, X } from 'lucide-react';
 import { FacturasCompraService } from './FacturasCompraService';
 import { FiltrosFacturasCompra, SupplierBase } from './types';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface FacturasCompraFiltrosProps {
   onFiltrosChange: (filtros: FiltrosFacturasCompra) => void;
@@ -179,12 +180,12 @@ export function FacturasCompraFiltros({ onFiltrosChange }: FacturasCompraFiltros
               <Label htmlFor="fechaDesde" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                 Fecha desde
               </Label>
-              <Input
+              <CampoFecha
                 id="fechaDesde"
-                type="date"
-                value={filtros.fechaDesde}
-                onChange={(e) => actualizarFiltro('fechaDesde', e.target.value)}
-                className="h-8 sm:h-9 text-sm mt-1 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                tamano="sm"
+                valor={filtros.fechaDesde}
+                onValorChange={(dia) => actualizarFiltro('fechaDesde', dia)}
+                className="mt-1 sm:h-9"
               />
             </div>
 
@@ -192,12 +193,12 @@ export function FacturasCompraFiltros({ onFiltrosChange }: FacturasCompraFiltros
               <Label htmlFor="fechaHasta" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                 Fecha hasta
               </Label>
-              <Input
+              <CampoFecha
                 id="fechaHasta"
-                type="date"
-                value={filtros.fechaHasta}
-                onChange={(e) => actualizarFiltro('fechaHasta', e.target.value)}
-                className="h-8 sm:h-9 text-sm mt-1 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                tamano="sm"
+                valor={filtros.fechaHasta}
+                onValorChange={(dia) => actualizarFiltro('fechaHasta', dia)}
+                className="mt-1 sm:h-9"
               />
             </div>
 

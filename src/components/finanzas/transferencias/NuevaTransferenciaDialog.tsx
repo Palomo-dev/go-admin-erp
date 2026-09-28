@@ -29,6 +29,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface NuevaTransferenciaDialogProps {
   open: boolean;
@@ -276,12 +277,10 @@ export function NuevaTransferenciaDialog({
             <Label htmlFor="transfer_date" className="text-gray-700 dark:text-gray-300">
               Fecha de Transferencia
             </Label>
-            <Input
+            <CampoFecha
               id="transfer_date"
-              type="date"
-              value={formData.transfer_date}
-              onChange={(e) => setFormData({ ...formData, transfer_date: e.target.value })}
-              className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
+              valor={formData.transfer_date}
+              onValorChange={(dia) => setFormData({ ...formData, transfer_date: dia })}
             />
           </div>
 

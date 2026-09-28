@@ -40,6 +40,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz, getToday, plainDateToInstant } from '@/lib/utils/timezone';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 /** Mensaje de un error lanzado (Error o error de PostgREST, que trae `message`). */
 function mensajeDeError(error: unknown): string {
@@ -396,14 +397,15 @@ export function ProgramarPagoModal({
                 <Calendar className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
                 <span>Fecha Programada *</span>
               </Label>
-              <Input
+              <CampoFecha
                 id="scheduled_date"
                 name="scheduled_date"
-                type="date"
                 min={todayInTz(timezone)}
-                value={formData.scheduled_date}
-                onChange={(e) => handleInputChange('scheduled_date', e.target.value)}
-                className={`h-9 sm:h-10 text-sm sm:text-base dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${errors.scheduled_date ? 'border-red-500' : ''}`}
+                hoy={todayInTz(timezone)}
+                valor={formData.scheduled_date}
+                onValorChange={(dia) => handleInputChange('scheduled_date', dia)}
+                aria-invalid={!!errors.scheduled_date || undefined}
+                className="h-9 sm:h-10"
               />
               {errors.scheduled_date && (
                 <p className="text-xs sm:text-sm text-red-600 dark:text-red-400 flex items-center gap-1">

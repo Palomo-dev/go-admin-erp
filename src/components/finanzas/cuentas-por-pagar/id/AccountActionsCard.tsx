@@ -15,6 +15,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { useTimezoneFor } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz, toPlainDate } from '@/lib/utils/timezone';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface AccountActionsCardProps {
   account: CuentaPorPagarDetalle;
@@ -337,19 +338,21 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
                   <Label className="text-gray-700 dark:text-gray-300">
                     Fecha de Pago
                   </Label>
-                  <Input
-                    type="date"
-                    value={paymentData.paymentDate}
-                    onChange={(e) => {
-                      setPaymentData({ ...paymentData, paymentDate: e.target.value });
+                  <CampoFecha
+                    aria-label="Fecha de Pago"
+                    aria-invalid={fechaError || undefined}
+                    limpiable={false}
+                    valor={paymentData.paymentDate}
+                    onValorChange={(dia) => {
+                      setPaymentData({ ...paymentData, paymentDate: dia });
                       if (account.invoice_date) {
                         const fechaEmision = toPlainDate(new Date(account.invoice_date), timezone);
-                        setFechaError(e.target.value < fechaEmision);
+                        setFechaError(dia < fechaEmision);
                       }
                     }}
                     max={todayInTz(timezone)}
+                    hoy={todayInTz(timezone)}
                     min={account.invoice_date ? toPlainDate(new Date(account.invoice_date), timezone) : undefined}
-                    className={`dark:bg-gray-900 dark:border-gray-600 ${fechaError ? 'border-red-500 dark:border-red-500' : ''}`}
                   />
                   {fechaError && (
                     <p className="text-xs text-red-500 dark:text-red-400 mt-1">La fecha no puede ser anterior a la emisión</p>

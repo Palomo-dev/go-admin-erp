@@ -21,7 +21,7 @@ import { ItemsFactura } from './ItemsFactura';
 import { ImpuestosFactura } from './ImpuestosFactura';
 import { FormaPagoSelector } from './FormaPagoSelector';
 import { Save, ArrowLeft, RefreshCw, Coins, User, Percent, DollarSign, AlertCircle } from 'lucide-react';
-import { DatePicker } from '@/components/ui/date-picker';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
@@ -145,6 +145,24 @@ interface NuevaFacturaFormProps {
   onSubmit?: (datosFactura: DatosEdicionFactura) => Promise<void>;
   saving?: boolean;
   esEdicion?: boolean;
+}
+
+/**
+ * El formulario guarda las fechas como `Date` a medianoche local (lo que daba
+ * el DatePicker viejo). El campo de marca trabaja con el día plano: estas dos
+ * funciones hacen la ida y vuelta sin correr el día.
+ */
+function diaDeFechaLocal(fecha: Date | undefined): string {
+  if (!fecha) return '';
+  const m = String(fecha.getMonth() + 1).padStart(2, '0');
+  const d = String(fecha.getDate()).padStart(2, '0');
+  return `${fecha.getFullYear()}-${m}-${d}`;
+}
+
+function fechaLocalDeDia(dia: string): Date | undefined {
+  if (!dia) return undefined;
+  const [a, m, d] = dia.split('-').map(Number);
+  return new Date(a, m - 1, d);
 }
 
 export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }: NuevaFacturaFormProps = {}) {
@@ -1006,9 +1024,11 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           <Label htmlFor="issue-date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
             {t('formulario.fechaEmision')}
           </Label>
-          <DatePicker
-            date={issueDate}
-            onSelect={(date) => {
+          <CampoFecha
+            id="issue-date"
+            valor={diaDeFechaLocal(issueDate)}
+            onValorChange={(dia) => {
+              const date = fechaLocalDeDia(dia);
               setIssueDate(date);
 
               if (date) {
@@ -1024,9 +1044,10 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           <Label htmlFor="due-date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
             {t('formulario.fechaVencimiento')}
           </Label>
-          <DatePicker
-            date={dueDate}
-            onSelect={setDueDate}
+          <CampoFecha
+            id="due-date"
+            valor={diaDeFechaLocal(dueDate)}
+            onValorChange={(dia) => setDueDate(fechaLocalDeDia(dia))}
           />
         </div>
 

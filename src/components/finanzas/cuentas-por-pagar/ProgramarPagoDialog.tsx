@@ -19,6 +19,7 @@ import { toastSuccess } from '@/components/ui/use-toast';
 import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { validarMontoPago } from '@/lib/services/compras/logica';
 import { clienteCompras, ErrorPeticionCompra } from '@/lib/services/compras/clienteCompras';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 
 export interface ProgramarPagoDialogProps {
   abierto: boolean;
@@ -128,15 +129,15 @@ export function ProgramarPagoDialog({
         </FormField>
         <FormField etiqueta={t('fecha')} error={errorFecha ?? undefined} obligatorio>
           {(c) => (
-            <Input
+            <CampoFecha
               id={c.id}
-              type="date"
               min={hoy}
-              value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
+              hoy={hoy}
+              valor={fecha}
+              onValorChange={setFecha}
               aria-invalid={!!errorFecha}
               aria-describedby={c['aria-describedby']}
-              className="h-10"
+              aria-required={c['aria-required']}
             />
           )}
         </FormField>

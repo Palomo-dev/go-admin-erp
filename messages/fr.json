@@ -11811,7 +11811,39 @@
     "titulo": "Encaisser",
     "descripcion": "{productos, plural, one {# produit} other {# produits}} · Produits : {monto}",
     "postVenta": {
-      "titulo": "Vente terminée"
+      "titulo": "Vente terminée !",
+      "panel": "Vente",
+      "tituloPendiente": "Vente enregistrée hors ligne",
+      "descripcion": "Vente {numero} enregistrée.",
+      "descripcionPendiente": "Elle est gardée sur cet appareil et sera synchronisée au retour du réseau. La facture électronique et la livraison se font ensuite.",
+      "referenciaPendiente": "En attente de synchronisation · {numero}",
+      "total": "Total",
+      "pagado": "Payé",
+      "cambio": "Monnaie rendue",
+      "nuevaVenta": "Nouvelle vente",
+      "reimprimir": "Réimprimer",
+      "factura": "Facture électronique",
+      "cerrar": "Fermer",
+      "recibo": {
+        "enviando": "Envoi du reçu à l’imprimante de caisse…",
+        "enviado": "Reçu envoyé à l’imprimante de caisse.",
+        "sinImpresora": "Aucune imprimante de caisse n’est configurée pour cette succursale. Imprimez le reçu avec « Réimprimer ».",
+        "sinSucursal": "Cette vente n’a pas de succursale : le reçu n’a été envoyé à aucune imprimante.",
+        "error": "Le reçu n’a pas pu être envoyé à l’imprimante : {detalle}"
+      },
+      "avisos": {
+        "ventaSinRed": "Hors ligne : la vente {numero} est gardée sur cet appareil. Elle sera synchronisée au retour du réseau.",
+        "envioSinRed": "Hors ligne : la livraison à domicile devra être créée une fois la vente synchronisée.",
+        "facturaSinRed": "Hors ligne : la facture électronique pourra être envoyée depuis Facturation une fois la vente synchronisée.",
+        "enviandoFactura": "Envoi de la facture électronique…",
+        "facturaEnviada": "Facture électronique envoyée",
+        "facturaEnviadaDesc": "La facture {numero} a été envoyée pour validation.",
+        "facturaImpresora": "Facture électronique envoyée à l’imprimante",
+        "facturaImpresoraDesc": "La facture est en cours d’impression.",
+        "errorFactura": "La facture électronique n’a pas pu être envoyée",
+        "errorFacturaDesc": "Le prestataire n’a pas accepté la facture.",
+        "facturaNoEncontrada": "La facture de cette vente est introuvable : elle n’a pas été envoyée."
+      }
     },
     "resumen": {
       "totalAPagar": "Total à payer",

@@ -86,6 +86,17 @@ describe('L52 · qué se hace tras la venta', () => {
     expect(s.errores).toEqual([]);
   });
 
+  it('paso 13: alEncolar (opcional) recibe cuántos trabajos se encolaron, antes del aviso; sin él todo sigue igual', async () => {
+    const encolados: number[] = [];
+    const conImpresora = servicios(Promise.resolve({ enqueued: 2 }));
+    lanzarTicketYCajon({ ticket: 'encolar', abrirCajon: false }, { ...conImpresora.s, alEncolar: (n) => encolados.push(n) });
+    const sinImpresora = servicios(Promise.resolve({ enqueued: 0 }));
+    lanzarTicketYCajon({ ticket: 'encolar', abrirCajon: false }, { ...sinImpresora.s, alEncolar: (n) => encolados.push(n) });
+    await drenar();
+    expect(encolados).toEqual([2, 0]);
+    expect(sinImpresora.s.advertencias).toEqual([AVISO_SIN_IMPRESORA_CAJA]);
+  });
+
   it('sin impresora de caja: aviso y el recibo queda para impresión manual; si encolar falla, error visible', async () => {
     const sinImpresora = servicios(Promise.resolve({ enqueued: 0 }));
     lanzarTicketYCajon({ ticket: 'encolar', abrirCajon: false }, sinImpresora.s);

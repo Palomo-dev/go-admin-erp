@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { FileCheck2, Printer, CheckCircle, Banknote, User, Wallet, Plus, Trash2, X, Percent, Truck, QrCode, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { FileCheck2, CheckCircle, Banknote, User, Wallet, Plus, Trash2, X, Percent, Truck, QrCode, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
@@ -23,7 +22,7 @@ import { PrintJobsService } from '@/lib/services/printJobsService';
 import { CashDrawerService } from '@/lib/services/cashDrawerService';
 import { toast } from 'sonner';
 import { Cart, PaymentMethod, CheckoutData, Sale, Currency } from './types';
-import { cn, formatCurrency } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
 import { 
   calculateCartTaxes, 
   type OrganizationTax as TaxUtilOrganizationTax,
@@ -59,7 +58,8 @@ import { camposComisionDelSobre, comisionDeTasaResuelta, esPersonaAsignada, mont
 import { camposEntregaDelSobre, fleteDeTarifaElegida, opcionesDeTarifa, tarifaPorDefecto, tarifasVisiblesEnPos } from '@/lib/pos/venta/cobro/entregaCobro';
 import { lineasConSerial, seleccionSerialesCompleta } from '@/lib/pos/venta/cobro/serialesCobro';
 import { comprobarStockReceta, debeConfirmarStock } from '@/lib/pos/venta/cobro/stockRecetaCobro';
-import { lanzarTicketYCajon, planPostVenta } from '@/lib/pos/venta/cobro/postVentaCobro';
+import { AVISO_SIN_IMPRESORA_CAJA, AVISO_VENTA_SIN_SUCURSAL, PREFIJO_ERROR_TICKET, lanzarTicketYCajon, planPostVenta } from '@/lib/pos/venta/cobro/postVentaCobro';
+import { PostVenta, type EstadoRecibo } from '@/components/pos/venta/PostVenta';
 // Presentación del cobro (paso 11): contenedor, zona de totales y monto del pago.
 import { BotonImporte, KbdButton, SeccionPlegable, SegmentedControl, SelectorMetodoPago, clasesBoton, repartirMetodos, useAtajos, type Atajo } from '@/components/kit';
 import { Switch } from '@/components/ui/switch';
@@ -244,7 +244,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [showQrOnDisplay, setShowQrOnDisplay] = useState(false);
 
   // Estados para búsqueda de direcciones de clientes
-  const [addressSearch, setAddressSearch] = useState<string>('');
+  const [, setAddressSearch] = useState<string>('');
   const [addressResults, setAddressResults] = useState<Array<{ id: string; name: string; address: string; city?: string; phone?: string }>>([]);
   const [showAddressDropdown, setShowAddressDropdown] = useState<boolean>(false);
 
@@ -1210,7 +1210,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       });
       const isPendingSync = postVenta.pendienteSincronizar;
       if (isPendingSync) {
-        toast.warning(`Sin conexión: venta ${sale.receipt_number_local} guardada en este equipo. Se sincronizará al volver la red.`);
+        toast.warning(tPos('postVenta.avisos.ventaSinRed', { numero: sale.receipt_number_local ?? '' }));
       }
       setCompletedSale(sale);
       setShowReceipt(true);
@@ -1229,6 +1229,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
       // Ticket físico automático (sin impresora de caja: aviso) y cajón con
       // efectivo, en ese orden y best-effort: lanzarTicketYCajon.
+      setEstadoRecibo(postVenta.ticket === 'encolar' ? 'enviando' : null);
+      setDetalleRecibo(null);
       lanzarTicketYCajon(postVenta, {
         encolarTicket: () => PrintJobsService.enqueueSaleTicket(cart.branch_id, {
           saleId: sale.id,
@@ -1287,14 +1289,25 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           } : undefined,
         }),
         abrirCajon: () => CashDrawerService.open(cart.branch_id),
-        avisarAdvertencia: (mensaje) => toast.warning(mensaje),
-        avisarError: (mensaje) => toast.error(mensaje),
+        // Los avisos del recibo se ven en la post-venta (sin badge «Nuevo», H6), no como toast.
+        avisarAdvertencia: (mensaje) => {
+          if (mensaje === AVISO_SIN_IMPRESORA_CAJA) setEstadoRecibo('sinImpresora');
+          else if (mensaje === AVISO_VENTA_SIN_SUCURSAL) setEstadoRecibo('sinSucursal');
+          else toast.warning(mensaje);
+        },
+        avisarError: (mensaje) => {
+          setEstadoRecibo('error');
+          setDetalleRecibo(mensaje.startsWith(PREFIJO_ERROR_TICKET) ? mensaje.slice(PREFIJO_ERROR_TICKET.length) : mensaje);
+        },
+        alEncolar: (enqueued) => {
+          if (enqueued > 0) setEstadoRecibo('enviado');
+        },
       });
 
       // Crear shipment si es delivery propio
       // Sin red no hay venta en la BD todavía: el envío no puede crearse.
       if (postVenta.envio === 'avisar_sin_red') {
-        toast.warning('Sin conexión: el envío a domicilio debe crearse manualmente cuando la venta se sincronice.');
+        toast.warning(tPos('postVenta.avisos.envioSinRed'));
       }
       if (postVenta.envio === 'hacer') {
         try {
@@ -1366,7 +1379,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
       // Enviar a Factus (factura electrónica) si el toggle está activado
       if (postVenta.factura === 'avisar_sin_red') {
-        toast.warning('Sin conexión: la factura electrónica se podrá enviar a DIAN desde Facturación cuando la venta se sincronice.');
+        toast.warning(tPos('postVenta.avisos.facturaSinRed'));
       }
       if (postVenta.factura === 'hacer') {
         try {
@@ -1380,11 +1393,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             .maybeSingle();
 
           if (invoiceSale?.id) {
-            toast.info('Enviando factura a DIAN...');
+            toast.info(tPos('postVenta.avisos.enviandoFactura'));
             const result = await electronicInvoicingService.sendToFactus(invoiceSale.id, cart.organization_id);
             if (result.success) {
-              toast.success('Factura enviada a DIAN', {
-                description: `Factura ${invoiceSale.number} enviada para validación`,
+              toast.success(tPos('postVenta.avisos.facturaEnviada'), {
+                description: tPos('postVenta.avisos.facturaEnviadaDesc', { numero: invoiceSale.number }),
               });
 
               // Consultar el job de DIAN para obtener CUFE y QR
@@ -1462,8 +1475,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                       changeAmount: change > 0 ? change : undefined,
                     }).then(({ enqueued }) => {
                       if (enqueued > 0) {
-                        toast.success('Factura electrónica enviada a impresora', {
-                          description: 'El recibo DIAN se está imprimiendo',
+                        toast.success(tPos('postVenta.avisos.facturaImpresora'), {
+                          description: tPos('postVenta.avisos.facturaImpresoraDesc'),
                         });
                       }
                     }).catch((err) => {
@@ -1475,16 +1488,16 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                 console.warn('No se pudo consultar el CUFE para impresión:', queryErr);
               }
             } else {
-              toast.error('Error al enviar a DIAN', {
-                description: result.error || 'No se pudo enviar la factura',
+              toast.error(tPos('postVenta.avisos.errorFactura'), {
+                description: result.error || tPos('postVenta.avisos.errorFacturaDesc'),
               });
             }
           } else {
-            toast.warning('No se encontró la factura para enviar a DIAN');
+            toast.warning(tPos('postVenta.avisos.facturaNoEncontrada'));
           }
         } catch (factusError: any) {
           console.error('Error sending to Factus:', factusError);
-          toast.error('Error al enviar a DIAN: ' + (factusError.message || 'Error desconocido'));
+          toast.error(tPos('postVenta.avisos.errorFactura'), { description: factusError.message || tPos('errores.desconocido') });
         }
       }
 
@@ -1523,7 +1536,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             .eq('id', cart.customer_id)
             .single();
           if (fetched) printCustomerData = fetched as any;
-        } catch (e) {
+        } catch {
           console.warn('No se pudo obtener datos del cliente para impresión');
         }
       }
@@ -1674,6 +1687,15 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const formatearCobro = useMemo(() => crearFormateadorMoneda(monedaCobro), [monedaCobro]);
   const cobroEditable = open && !showReceipt && !showQrDialog && !showSerialSelector && !stockConfirm;
 
+  // Recibo automático (paso 13): lo que pasó al encolarlo, para el aviso de la post-venta.
+  const [estadoRecibo, setEstadoRecibo] = useState<EstadoRecibo | null>(null);
+  const [detalleRecibo, setDetalleRecibo] = useState<string | null>(null);
+  useEffect(() => {
+    if (open) return;
+    setEstadoRecibo(null);
+    setDetalleRecibo(null);
+  }, [open]);
+
   // Secciones plegables (paso 12): cerradas al abrir el cobro, con resumen.
   const [seccionesAbiertas, setSeccionesAbiertas] = useState<Record<SeccionCobro, boolean>>(SECCIONES_CERRADAS);
   const abrirSeccion = (seccion: SeccionCobro, abierta: boolean) => setSeccionesAbiertas((prev) => ({ ...prev, [seccion]: abierta }));
@@ -1777,6 +1799,55 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     if (showReceipt) handleCloseReceipt();
     else onOpenChange(false);
   };
+  // Imprimir la factura electrónica desde la post-venta (solo con CUFE): el
+  // mismo payload y el mismo generador de siempre (PrintService / @printing).
+  const handleImprimirFactura = () => {
+    if (!electronicInvoiceData) return;
+    import('@printing').then(() => {
+                    const payload = {
+                      invoiceId: electronicInvoiceData.invoiceId,
+                      invoiceNumber: electronicInvoiceData.invoiceNumber,
+                      cufe: electronicInvoiceData.cufe,
+                      qrData: electronicInvoiceData.qrData,
+                      environment: electronicInvoiceData.environment,
+                      validationDate: electronicInvoiceData.validationDate,
+                      createdAt: new Date().toISOString(),
+                      items: cart.items.map((item) => ({
+                        productName: (item as any).name || item.product?.name || 'Producto',
+                        quantity: item.quantity,
+                        unitPrice: item.unit_price,
+                        total: item.total,
+                        taxAmount: item.tax_amount,
+                        discountAmount: item.discount_amount,
+                        variantData: (item as any).product?.variant_data || null,
+                        modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
+                      })),
+                      total: cartTotal,
+                      subtotal: calculatedTotals.subtotal,
+                      taxTotal: calculatedTotals.totalTaxAmount,
+                      taxIncluded: taxIncluded,
+                      taxLines: taxBreakdown.length > 0 ? taxBreakdown : null,
+                      payments: pagosParaImpresion(payments, paymentMethods),
+                      businessName: organization?.name,
+                      businessNit: organization?.nit || organization?.tax_id,
+                      businessPhone: organization?.phone,
+                      businessAddress: organization?.address,
+                      businessEmail: organization?.email,
+                      businessCity: (organization as any)?.city,
+                      businessFiscalResponsibilities: (organization as any)?.fiscal_responsibilities || null,
+                      businessLogoUrl: (organization as any)?.logo_url || undefined,
+                      branchName: branch?.name,
+                      branchAddress: branch?.address,
+                      branchPhone: branch?.phone,
+                      cashierName: currentUser?.name,
+                      totalPaid,
+                      changeAmount: change > 0 ? change : undefined,
+                      timezone,
+                    } as any;
+                    PrintService.printElectronicInvoice(payload);
+    });
+  };
+
   // Al abrir, el foco va al monto (no a la «×»): se teclea el efectivo y
   // «Enter» completa si está cubierto.
   const enfocarMonto = (evento: Event) => {
@@ -1830,7 +1901,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     <CobroPanel
       abierto={open}
       onAbiertoChange={alCerrarPanel}
-      titulo={conRecibo ? tPos('postVenta.titulo') : tPos('titulo')}
+      titulo={conRecibo ? tPos('postVenta.panel') : tPos('titulo')}
       descripcion={conRecibo ? undefined : tPos('descripcion', { productos: cart.items.length, monto: formatearCobro(cart.total) })}
       ocupado={isProcessing}
       onFocoAlAbrir={enfocarMonto}
@@ -1878,136 +1949,24 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       )}
     >
         {conRecibo && completedSale ? (
-          /* Vista de recibo (la rehace el paso 13 con ResultadoOperacion) */
-          <div className="space-y-3 sm:space-y-4 text-center">
-            <div className="sr-only">
-              <h2>Recibo de venta</h2>
-            </div>
-            <div className="p-4 sm:p-6">
-              <div className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-3 sm:mb-4">
-                <svg viewBox="0 0 52 52" className="h-full w-full text-green-600 dark:text-green-400" fill="none" stroke="currentColor">
-                  <circle cx="26" cy="26" r="24" strokeWidth="3" className="opacity-20" />
-                  <path
-                    d="M14 27 L22 35 L38 17"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeDasharray="60"
-                    className="animate-draw-check"
-                    style={{ strokeDashoffset: 60 }}
-                  />
-                </svg>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-bold mb-2 dark:text-white text-gray-900">
-                ¡Venta Completada!
-              </h2>
-              <p className="text-sm sm:text-base dark:text-gray-400 text-gray-600">
-                Venta #{completedSale.id.slice(-8)} procesada exitosamente
-              </p>
-              {completedSale.pending_sync && (
-                <p
-                  role="status"
-                  className="mt-2 inline-block rounded-md bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-500/20 dark:text-amber-300"
-                >
-                  Pendiente de sincronizar · {completedSale.receipt_number_local}
-                </p>
-              )}
-
-              <div className="bg-gray-100 dark:bg-gray-800 p-3 sm:p-4 rounded-lg mt-3 sm:mt-4 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm sm:text-base dark:text-gray-400 text-gray-600">Total:</span>
-                  <span className="font-bold text-base sm:text-lg dark:text-white text-gray-900">
-                    {formatCurrency(cartTotal)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm sm:text-base dark:text-gray-400 text-gray-600">Pagado:</span>
-                  <span className="text-sm sm:text-base dark:text-green-400 text-green-600 font-semibold">
-                    {formatCurrency(totalPaid)}
-                  </span>
-                </div>
-                {change > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm sm:text-base dark:text-gray-400 text-gray-600">Cambio:</span>
-                    <span className="text-sm sm:text-base dark:text-blue-400 text-blue-600 font-semibold">
-                      {formatCurrency(change)}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2 mt-3 sm:mt-4">
-                <Button
-                  onClick={handlePrint}
-                  className="flex-1 h-10 sm:h-11 dark:bg-blue-600 dark:hover:bg-blue-700 bg-blue-600 hover:bg-blue-700 text-sm sm:text-base"
-                >
-                  <Printer className="h-4 w-4 mr-2" />
-                  Re-imprimir Recibo
-                </Button>
-                {electronicInvoiceData && (
-                  <Button
-                    onClick={() => {
-                      import('@printing').then(({ buildElectronicInvoiceHTML, getPaperSpec }) => {
-                        const payload = {
-                          invoiceId: electronicInvoiceData.invoiceId,
-                          invoiceNumber: electronicInvoiceData.invoiceNumber,
-                          cufe: electronicInvoiceData.cufe,
-                          qrData: electronicInvoiceData.qrData,
-                          environment: electronicInvoiceData.environment,
-                          validationDate: electronicInvoiceData.validationDate,
-                          createdAt: new Date().toISOString(),
-                          items: cart.items.map((item) => ({
-                            productName: (item as any).name || item.product?.name || 'Producto',
-                            quantity: item.quantity,
-                            unitPrice: item.unit_price,
-                            total: item.total,
-                            taxAmount: item.tax_amount,
-                            discountAmount: item.discount_amount,
-                            variantData: (item as any).product?.variant_data || null,
-                            modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
-                          })),
-                          total: cartTotal,
-                          subtotal: calculatedTotals.subtotal,
-                          taxTotal: calculatedTotals.totalTaxAmount,
-                          taxIncluded: taxIncluded,
-                          taxLines: taxBreakdown.length > 0 ? taxBreakdown : null,
-                          payments: pagosParaImpresion(payments, paymentMethods),
-                          businessName: organization?.name,
-                          businessNit: organization?.nit || organization?.tax_id,
-                          businessPhone: organization?.phone,
-                          businessAddress: organization?.address,
-                          businessEmail: organization?.email,
-                          businessCity: (organization as any)?.city,
-                          businessFiscalResponsibilities: (organization as any)?.fiscal_responsibilities || null,
-                          businessLogoUrl: (organization as any)?.logo_url || undefined,
-                          branchName: branch?.name,
-                          branchAddress: branch?.address,
-                          branchPhone: branch?.phone,
-                          cashierName: currentUser?.name,
-                          totalPaid,
-                          changeAmount: change > 0 ? change : undefined,
-                          timezone,
-                        } as any;
-                        PrintService.printElectronicInvoice(payload);
-                      });
-                    }}
-                    variant="outline"
-                    className="flex-1 h-10 sm:h-11 text-sm sm:text-base dark:border-green-600 dark:hover:bg-green-900/20 border-green-600 hover:bg-green-50"
-                  >
-                    <Printer className="h-4 w-4 mr-2" />
-                    Factura Electrónica
-                  </Button>
-                )}
-                <Button
-                  onClick={handleCloseReceipt}
-                  variant="outline"
-                  className="flex-1 h-10 sm:h-11 text-sm sm:text-base dark:border-gray-600 dark:hover:bg-gray-800"
-                >
-                  Cerrar
-                </Button>
-              </div>
-            </div>
-          </div>
+          /* Post-venta (paso 13): ResultadoOperacion del kit; imprimir y entregar la venta siguen aquí */
+          <PostVenta
+            moneda={monedaCobro}
+            total={cartTotal}
+            pagado={totalPaid}
+            cambio={change}
+            numeroVenta={`#${completedSale.id.slice(-8)}`}
+            numeroLocal={completedSale.receipt_number_local ?? null}
+            pendienteSincronizar={!!completedSale.pending_sync}
+            estadoRecibo={estadoRecibo}
+            detalleRecibo={detalleRecibo}
+            conFactura={!!electronicInvoiceData}
+            onNuevaVenta={handleCloseReceipt}
+            onReimprimir={handlePrint}
+            onFactura={handleImprimirFactura}
+            onCerrar={handleCloseReceipt}
+            activo={open && !showQrDialog && !showSerialSelector && !stockConfirm}
+          />
         ) : (
           <>
             {/* Arriba de la zona de pagos: advertencia, no bloquea el cobro. */}

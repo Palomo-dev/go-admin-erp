@@ -11916,7 +11916,39 @@
     "titulo": "Process payment",
     "descripcion": "{productos, plural, one {# product} other {# products}} · Products: {monto}",
     "postVenta": {
-      "titulo": "Sale completed"
+      "titulo": "Sale completed!",
+      "panel": "Sale",
+      "tituloPendiente": "Sale saved offline",
+      "descripcion": "Sale {numero} recorded.",
+      "descripcionPendiente": "It was saved on this device and will sync when the connection is back. The electronic invoice and the delivery happen later.",
+      "referenciaPendiente": "Pending sync · {numero}",
+      "total": "Total",
+      "pagado": "Paid",
+      "cambio": "Change",
+      "nuevaVenta": "New sale",
+      "reimprimir": "Reprint",
+      "factura": "Electronic invoice",
+      "cerrar": "Close",
+      "recibo": {
+        "enviando": "Sending the receipt to the register printer…",
+        "enviado": "Receipt sent to the register printer.",
+        "sinImpresora": "This branch has no register printer set up. Print the receipt with “Reprint”.",
+        "sinSucursal": "This sale has no branch: the receipt was not sent to any printer.",
+        "error": "The receipt could not be sent to the printer: {detalle}"
+      },
+      "avisos": {
+        "ventaSinRed": "Offline: sale {numero} was saved on this device. It will sync when the connection is back.",
+        "envioSinRed": "Offline: the home delivery must be created once the sale syncs.",
+        "facturaSinRed": "Offline: the electronic invoice can be sent from Invoicing once the sale syncs.",
+        "enviandoFactura": "Sending the electronic invoice…",
+        "facturaEnviada": "Electronic invoice sent",
+        "facturaEnviadaDesc": "Invoice {numero} was sent for validation.",
+        "facturaImpresora": "Electronic invoice sent to the printer",
+        "facturaImpresoraDesc": "The invoice is being printed.",
+        "errorFactura": "The electronic invoice could not be sent",
+        "errorFacturaDesc": "The provider did not accept the invoice.",
+        "facturaNoEncontrada": "The invoice for this sale was not found, so it was not sent."
+      }
     },
     "resumen": {
       "totalAPagar": "Amount due",

@@ -83,6 +83,8 @@ export function planPostVenta({ sale, branchId, payments, deliveryType, delivery
 
 export const AVISO_SIN_IMPRESORA_CAJA =
   'No hay impresora de caja configurada para esta sucursal. El recibo quedó disponible para impresión manual.';
+/** Inicio del error al encolar el ticket (la post-venta muestra solo el detalle). */
+export const PREFIJO_ERROR_TICKET = 'No se pudo encolar la impresión física del recibo: ';
 export const AVISO_VENTA_SIN_SUCURSAL = 'Esta venta no tiene sucursal asignada. No se encoló impresión física.';
 
 export interface ServiciosTicketYCajon {
@@ -92,6 +94,8 @@ export interface ServiciosTicketYCajon {
   abrirCajon: () => Promise<unknown>;
   avisarAdvertencia: (mensaje: string) => void;
   avisarError: (mensaje: string) => void;
+  /** Opcional (paso 13): cuántos trabajos se encolaron, para el aviso de la post-venta. */
+  alEncolar?: (enqueued: number) => void;
 }
 
 /** `err.message || err`, como estaba escrito en el diálogo, sin suponer la forma del error. */
@@ -110,11 +114,12 @@ export function lanzarTicketYCajon(plan: Pick<PlanPostVenta, 'ticket' | 'abrirCa
   // o falla, no bloquea el flujo; queda el botón "Imprimir Recibo" (PDF).
   if (plan.ticket === 'encolar') {
     servicios.encolarTicket().then(({ enqueued }) => {
+      servicios.alEncolar?.(enqueued);
       if (enqueued === 0) {
         servicios.avisarAdvertencia(AVISO_SIN_IMPRESORA_CAJA);
       }
     }).catch((err: unknown) => {
-      servicios.avisarError('No se pudo encolar la impresión física del recibo: ' + String(mensajeOError(err)));
+      servicios.avisarError(PREFIJO_ERROR_TICKET + String(mensajeOError(err)));
     });
   } else {
     servicios.avisarAdvertencia(AVISO_VENTA_SIN_SUCURSAL);

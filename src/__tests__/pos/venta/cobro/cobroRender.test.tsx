@@ -73,6 +73,8 @@ jest.mock('@/lib/pos/venta/cobro/facturaElectronicaCobro', () => ({
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
 import { POSService } from '@/lib/services/posService';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
+import { PrintJobsService } from '@/lib/services/printJobsService';
+import { PrintService } from '@/lib/services/printService';
 import { accionAtajoMetodo, enterCompletaVenta } from '@/components/pos/venta/cobro/teclasCobro';
 import { SelectorMetodoPago } from '@/components/kit/SelectorMetodoPago';
 
@@ -202,7 +204,7 @@ describe('Cobro · contenedor (paso 11)', () => {
       fireEvent.click(completar());
       fireEvent.click(completar());
     });
-    await screen.findByText('¡Venta Completada!');
+    await screen.findByText('¡Venta completada!');
     expect(mockCheckout).toHaveBeenCalledTimes(1);
     expect(mockCheckout.mock.calls[0][0]).toMatchObject({ total_paid: 23800, payments: [{ method: 'cash', amount: 23800 }] });
   });
@@ -218,7 +220,7 @@ describe('Cobro · contenedor (paso 11)', () => {
       fireEvent.keyDown(monto(), { key: 'Enter' });
       fireEvent.keyDown(monto(), { key: 'Enter' });
     });
-    await screen.findByText('¡Venta Completada!');
+    await screen.findByText('¡Venta completada!');
     expect(mockCheckout).toHaveBeenCalledTimes(1);
   });
 
@@ -259,6 +261,74 @@ describe('Cobro · contenedor (paso 11)', () => {
     await screen.findByRole('radio', { name: /Tarjeta/ });
     expect(screen.getByRole('dialog', { name: 'Process payment' })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Complete sale/ })).toBeTruthy();
+  });
+});
+
+describe('Post-venta (paso 13)', () => {
+  async function vender(venta: Sale = VENTA) {
+    mockCheckout.mockResolvedValue(venta);
+    const props = await abrirCobro({ currentUser: { name: 'Cajera' } });
+    await act(async () => {
+      fireEvent.click(completar());
+    });
+    return props;
+  }
+
+  test('ResultadoOperacion con cifras, «Nueva venta · Enter» con el foco y el aviso del recibo enviado (sin badge «Nuevo»)', async () => {
+    const { onCheckoutComplete, onOpenChange } = await vender();
+    await screen.findByText('¡Venta completada!');
+    expect(screen.getByText('Venta #00000001 registrada.')).toBeTruthy();
+    const nueva = screen.getByRole('button', { name: /Nueva venta/ });
+    expect(nueva.getAttribute('aria-keyshortcuts')).toBe('Enter');
+    expect(document.activeElement).toBe(nueva);
+    expect(screen.getByRole('button', { name: /Reimprimir/ }).getAttribute('aria-keyshortcuts')).toBe('P');
+    // Sin CUFE no se ofrece la factura electrónica.
+    expect(screen.queryByRole('button', { name: /Factura electrónica/ })).toBeNull();
+    await screen.findByText('Recibo enviado a la impresora de caja.');
+    expect(screen.queryByText('Nuevo')).toBeNull();
+    fireEvent.click(nueva);
+    expect(onCheckoutComplete).toHaveBeenCalledTimes(1);
+    expect(onCheckoutComplete).toHaveBeenCalledWith(VENTA);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  test('«P» reimprime con el ticket de siempre (PrintService); Esc entrega la venta y cierra', async () => {
+    (PrintService.printTicket as jest.Mock).mockClear();
+    const { onCheckoutComplete } = await vender();
+    await screen.findByText('¡Venta completada!');
+    await act(async () => {
+      fireEvent.keyDown(document.body, { key: 'p', code: 'KeyP' });
+    });
+    await waitFor(() => expect(PrintService.printTicket).toHaveBeenCalledTimes(1));
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    expect(onCheckoutComplete).toHaveBeenCalledTimes(1);
+  });
+
+  test('sin impresora de caja: el aviso lo dice en la post-venta (no un toast)', async () => {
+    (PrintJobsService.enqueueSaleTicket as jest.Mock).mockResolvedValueOnce({ enqueued: 0 });
+    await vender();
+    await screen.findByText(/No hay impresora de caja configurada para esta sucursal/);
+    expect(mockToast.warning).not.toHaveBeenCalled();
+  });
+
+  test('sin conexión: «Pendiente de sincronizar · OFF-…» con el tono de advertencia', async () => {
+    await vender({ ...VENTA, pending_sync: true, receipt_number_local: 'OFF-3F2A' } as Sale);
+    await screen.findByText('Venta guardada sin conexión');
+    expect(screen.getByText('Pendiente de sincronizar · OFF-3F2A')).toBeTruthy();
+    expect(mockToast.warning).toHaveBeenCalledWith(expect.stringContaining('OFF-3F2A'));
+  });
+
+  test('en portugués', async () => {
+    mockCheckout.mockResolvedValue(VENTA);
+    renderConIdioma(<CheckoutDialog cart={CARRITO} open onOpenChange={jest.fn()} onCheckoutComplete={jest.fn()} />, { idioma: 'pt' });
+    await screen.findByRole('radio', { name: /Tarjeta/ });
+    const concluir = screen.getByRole('button', { name: /Concluir venda/ }) as HTMLButtonElement;
+    await waitFor(() => expect(concluir.disabled).toBe(false));
+    await act(async () => {
+      fireEvent.click(concluir);
+    });
+    expect(await screen.findByText('Venda concluída!')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Nova venda/ })).toBeTruthy();
   });
 });
 

@@ -13,7 +13,7 @@ import { PanelAdaptable } from '@/components/kit';
  * Solo dibuja: el estado y la lógica del cobro siguen en `CheckoutDialog`.
  *
  * - `resumen`: zona izquierda (360 px, fondo suave) con el total y las cifras.
- *   Sin ella, una sola columna (la post-venta).
+ *   Sin ella, una sola columna de 520 px (la post-venta).
  * - `children`: zona derecha (pagos y secciones), con su propio scroll.
  * - `pie`: «Cancelar · Esc» y «Completar venta · Enter», siempre visibles.
  */
@@ -39,12 +39,12 @@ export function CobroPanel({ abierto, onAbiertoChange, titulo, descripcion, ocup
       titulo={titulo}
       descripcion={descripcion}
       icono={CreditCard}
-      ancho={1120}
+      ancho={resumen ? 1120 : 520}
       ocupado={ocupado}
       bloquearClicFuera
       onFocoAlAbrir={onFocoAlAbrir}
       pie={pie}
-      className="max-lg:h-[100dvh] max-lg:max-h-[100dvh] max-lg:rounded-none lg:h-[min(820px,calc(100dvh-48px))]"
+      className={resumen ? 'max-lg:h-[100dvh] max-lg:max-h-[100dvh] max-lg:rounded-none lg:h-[min(820px,calc(100dvh-48px))]' : undefined}
     >
       {resumen ? (
         <div className="-mx-5 -my-4 flex flex-col border-t border-line lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[360px_minmax(0,1fr)]">

@@ -11811,7 +11811,39 @@
     "titulo": "Processar pagamento",
     "descripcion": "{productos, plural, one {# produto} other {# produtos}} · Produtos: {monto}",
     "postVenta": {
-      "titulo": "Venda concluída"
+      "titulo": "Venda concluída!",
+      "panel": "Venda",
+      "tituloPendiente": "Venda salva sem conexão",
+      "descripcion": "Venda {numero} registrada.",
+      "descripcionPendiente": "Ficou salva neste equipamento e será sincronizada quando a rede voltar. A nota fiscal eletrônica e a entrega são feitas depois.",
+      "referenciaPendiente": "Aguardando sincronização · {numero}",
+      "total": "Total",
+      "pagado": "Pago",
+      "cambio": "Troco",
+      "nuevaVenta": "Nova venda",
+      "reimprimir": "Reimprimir",
+      "factura": "Nota fiscal eletrônica",
+      "cerrar": "Fechar",
+      "recibo": {
+        "enviando": "Enviando o recibo para a impressora do caixa…",
+        "enviado": "Recibo enviado para a impressora do caixa.",
+        "sinImpresora": "Não há impressora de caixa configurada para esta filial. Imprima o recibo com «Reimprimir».",
+        "sinSucursal": "Esta venda não tem filial: o recibo não foi enviado a nenhuma impressora.",
+        "error": "Não foi possível enviar o recibo para a impressora: {detalle}"
+      },
+      "avisos": {
+        "ventaSinRed": "Sem conexão: a venda {numero} ficou salva neste equipamento. Será sincronizada quando a rede voltar.",
+        "envioSinRed": "Sem conexão: a entrega em domicílio deve ser criada quando a venda for sincronizada.",
+        "facturaSinRed": "Sem conexão: a nota fiscal eletrônica poderá ser enviada em Faturamento quando a venda for sincronizada.",
+        "enviandoFactura": "Enviando a nota fiscal eletrônica…",
+        "facturaEnviada": "Nota fiscal eletrônica enviada",
+        "facturaEnviadaDesc": "A nota {numero} foi enviada para validação.",
+        "facturaImpresora": "Nota fiscal eletrônica enviada para a impressora",
+        "facturaImpresoraDesc": "A nota está sendo impressa.",
+        "errorFactura": "Não foi possível enviar a nota fiscal eletrônica",
+        "errorFacturaDesc": "O provedor não aceitou a nota.",
+        "facturaNoEncontrada": "A nota desta venda não foi encontrada, por isso não foi enviada."
+      }
     },
     "resumen": {
       "totalAPagar": "Total a pagar",

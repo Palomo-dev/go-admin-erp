@@ -11916,7 +11916,39 @@
     "titulo": "Procesar pago",
     "descripcion": "{productos, plural, one {# producto} other {# productos}} · Productos: {monto}",
     "postVenta": {
-      "titulo": "Venta completada"
+      "titulo": "¡Venta completada!",
+      "panel": "Venta",
+      "tituloPendiente": "Venta guardada sin conexión",
+      "descripcion": "Venta {numero} registrada.",
+      "descripcionPendiente": "Quedó en este equipo y se sincronizará al volver la red. La factura electrónica y el envío se hacen después.",
+      "referenciaPendiente": "Pendiente de sincronizar · {numero}",
+      "total": "Total",
+      "pagado": "Pagado",
+      "cambio": "Cambio",
+      "nuevaVenta": "Nueva venta",
+      "reimprimir": "Reimprimir",
+      "factura": "Factura electrónica",
+      "cerrar": "Cerrar",
+      "recibo": {
+        "enviando": "Enviando el recibo a la impresora de caja…",
+        "enviado": "Recibo enviado a la impresora de caja.",
+        "sinImpresora": "No hay impresora de caja configurada para esta sucursal. Imprime el recibo con «Reimprimir».",
+        "sinSucursal": "Esta venta no tiene sucursal asignada: el recibo no se envió a ninguna impresora.",
+        "error": "No se pudo enviar el recibo a la impresora: {detalle}"
+      },
+      "avisos": {
+        "ventaSinRed": "Sin conexión: la venta {numero} quedó guardada en este equipo. Se sincronizará al volver la red.",
+        "envioSinRed": "Sin conexión: el envío a domicilio se debe crear cuando la venta se sincronice.",
+        "facturaSinRed": "Sin conexión: la factura electrónica se podrá enviar desde Facturación cuando la venta se sincronice.",
+        "enviandoFactura": "Enviando la factura electrónica…",
+        "facturaEnviada": "Factura electrónica enviada",
+        "facturaEnviadaDesc": "La factura {numero} se envió para validación.",
+        "facturaImpresora": "Factura electrónica enviada a la impresora",
+        "facturaImpresoraDesc": "Se está imprimiendo la representación de la factura.",
+        "errorFactura": "No se pudo enviar la factura electrónica",
+        "errorFacturaDesc": "El proveedor no aceptó la factura.",
+        "facturaNoEncontrada": "No se encontró la factura de esta venta para enviarla."
+      }
     },
     "resumen": {
       "totalAPagar": "Total a pagar",

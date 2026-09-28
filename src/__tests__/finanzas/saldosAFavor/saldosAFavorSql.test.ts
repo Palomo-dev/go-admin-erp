@@ -159,3 +159,41 @@ describe('3 · crear un anticipo pasa por un pago real (20260928140200)', () => 
     expect(rollback).toMatch(/grant execute on function public\.fn_create_customer_credit\([^)]*\) to authenticated/);
   });
 });
+
+describe('4 · RLS y grants: lectura por pertenencia, escritura solo por RPC (20260928140300)', () => {
+  const sql = leer('supabase/migrations/20260928140300_saldo_favor_4_rls_solo_lectura.sql');
+  const rollback = leer('supabase/rollbacks/20260928140300_saldo_favor_4_rls_solo_lectura_rollback.sql');
+
+  /**
+   * Dry-run 2026-09-28 con `role = authenticated` (administrador de la org 144, transacción deshecha):
+   *   fn_saldo_favor_crear, fn_apply_customer_credit y fn_registrar_pago con sobrante → funcionan
+   *   SELECT del saldo y de la aplicación propios → 1 y 1
+   *   INSERT / UPDATE / DELETE directos en credit_notes y credit_note_applications
+   *     → permission denied (las 6)
+   *   fn_create_customer_credit directa → permission denied for function
+   * Con `role = anon`: SELECT de las dos tablas → permission denied.
+   * Grants resultantes: authenticated = SELECT; anon = nada; postgres y service_role sin cambios.
+   */
+  test('anon fuera y authenticated solo lee', () => {
+    expect(sql).toMatch(/revoke all on table public\.credit_notes from anon/);
+    expect(sql).toMatch(/revoke all on table public\.credit_note_applications from anon/);
+    expect(sql).toMatch(/revoke insert, update, delete, truncate, references, trigger on table public\.credit_notes from authenticated/);
+    expect(sql).toMatch(/revoke insert, update, delete, truncate, references, trigger on table public\.credit_note_applications from authenticated/);
+    expect(sql).toMatch(/grant select on table public\.credit_notes to authenticated/);
+  });
+
+  test('la política ALL se cambia por una de lectura; las de escritura de aplicaciones desaparecen', () => {
+    expect(sql).toMatch(/drop policy if exists "Users can only access credit notes from their organization"/);
+    expect(sql).toMatch(/create policy credit_notes_select_miembros on public\.credit_notes\s+for select to authenticated/);
+    for (const p of ['insert', 'update', 'delete']) {
+      expect(sql).toMatch(new RegExp(`drop policy if exists credit_note_applications_organization_${p}`));
+    }
+    // La restricción por sucursal existente no se toca.
+    expect(sql).not.toMatch(/drop policy[^;]*branch_access_restrictive/);
+  });
+
+  test('el rollback restaura grants y políticas', () => {
+    expect(rollback).toMatch(/grant all on table public\.credit_notes to anon, authenticated/);
+    expect(rollback).toMatch(/create policy credit_note_applications_organization_insert/);
+  });
+});

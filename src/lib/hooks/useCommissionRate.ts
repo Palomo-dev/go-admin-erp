@@ -9,10 +9,12 @@ import { resolverTasaComision } from '@/lib/services/comisiones/tasaComision';
  * Hook reutilizable para resolver la tasa de comisión de un vendedor
  * desde `vendor_commission_rates`.
  *
- * Cadena de resolución (una sola, en `resolverTasaComision`, que también usa
- * el servidor al convertir una cotización en factura):
- * 1. Tasa específica del vendedor (salesperson_id NOT NULL)
- * 2. Tasa general de la organización (salesperson_id IS NULL)
+ * Cadena de resolución (una sola, en `resolverTasaComision` → RPC
+ * `fn_tasa_comision_vigente`, que también usa el servidor al convertir una
+ * cotización en factura). La vigencia se compara contra el día de la
+ * organización, nunca contra el día UTC:
+ * 1. Tasa específica del vendedor vigente hoy (salesperson_id NOT NULL)
+ * 2. Tasa general de la organización vigente hoy (salesperson_id IS NULL)
  * 3. 0 (sin comisión)
  *
  * Lo usan: NuevaFacturaForm, CheckoutDialog (POS), pedidosService,

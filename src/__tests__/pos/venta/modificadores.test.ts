@@ -12,6 +12,7 @@ import {
   puedeConfirmarVariante,
   reglaDeSeleccion,
   validarModificadores,
+  faltanteModificadores,
   type SeleccionModificadores,
 } from '@/lib/pos/venta/modificadores';
 import type { ProductModifierGroup } from '@/lib/services/productModifiersService';
@@ -60,6 +61,10 @@ describe('modificadores (L20)', () => {
     const minimo2 = grupo({ id: 3, name: 'Toppings', min_selections: 2 });
     expect(validarModificadores([minimo2], { 3: new Set([1]) })).toBe('Selecciona al menos 2 opciones en "Toppings"');
     expect(validarModificadores([salsa, extras], { 1: new Set([1]) })).toBeNull();
+    // La misma regla sin texto (el diálogo la dice en el idioma activo, paso 16).
+    expect(faltanteModificadores([salsa, extras], {})).toEqual({ grupo: 'Salsa', minimo: 1 });
+    expect(faltanteModificadores([minimo2], { 3: new Set([1]) })).toEqual({ grupo: 'Toppings', minimo: 2 });
+    expect(faltanteModificadores([salsa, extras], { 1: new Set([1]) })).toBeNull();
   });
 
   it('la cabecera del grupo: «Elige 1», «Hasta N» o «Elige varias»', () => {

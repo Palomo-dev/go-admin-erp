@@ -11886,6 +11886,30 @@
       "quitar": "Remove",
       "frecuente": "Apply the frequent discount of {monto}",
       "excede": "The discount cannot exceed {tope}; at most that amount will be applied."
+    },
+    "variantes": {
+      "tituloVariante": "Choose a variant",
+      "tituloPersonalizar": "Customize product",
+      "descripcionVariante": "Choose the product variant before adding it to the cart.",
+      "descripcionPersonalizar": "Adjust the product options before adding it to the cart.",
+      "sku": "SKU: {sku}",
+      "masExtras": "{precio} + {extras} in extras",
+      "sinPrecio": "No price",
+      "eligeUna": "Choose 1",
+      "hasta": "Up to {n}",
+      "eligeVarias": "Choose several",
+      "faltaUna": "Select one option in «{grupo}»",
+      "faltanVarias": "Select at least {n} options in «{grupo}»",
+      "cancelar": "Cancel",
+      "agregar": "Add to cart"
+    },
+    "catalogoLocal": {
+      "sinRedSinCatalogo": "Offline and no local catalog: connect to the internet once to replicate it.",
+      "sinRed": "Local catalog from {fecha} · {productos, plural, one {# product} other {# products}} · {clientes, plural, one {# customer} other {# customers}}",
+      "conRed": "Local catalog: {productos, plural, one {# product} other {# products}} · updated {fecha}",
+      "sinReplicar": "Local catalog not replicated",
+      "actualizando": "Updating…",
+      "actualizar": "Update catalog now"
     }
   }
 }

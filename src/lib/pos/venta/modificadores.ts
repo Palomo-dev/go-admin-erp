@@ -80,12 +80,20 @@ export function extraDeModificadores(elegidos: Pick<ModificadorElegido, 'extraPr
  * muestra el diálogo, o null si todo está bien.
  */
 export function validarModificadores(groups: GrupoModificadores[], selected: SeleccionModificadores): string | null {
+  const falta = faltanteModificadores(groups, selected);
+  if (!falta) return null;
+  return `Selecciona ${falta.minimo > 1 ? `al menos ${falta.minimo} opciones` : 'una opción'} en "${falta.grupo}"`;
+}
+
+/**
+ * Lo mismo que `validarModificadores`, sin texto: el grupo que no cumple y
+ * cuántas opciones pide (el diálogo lo dice en el idioma activo).
+ */
+export function faltanteModificadores(groups: GrupoModificadores[], selected: SeleccionModificadores): { grupo: string; minimo: number } | null {
   for (const group of groups) {
     const count = (selected[group.id] || new Set()).size;
     const minRequired = group.required ? Math.max(group.min_selections, 1) : group.min_selections;
-    if (count < minRequired) {
-      return `Selecciona ${minRequired > 1 ? `al menos ${minRequired} opciones` : 'una opción'} en "${group.name}"`;
-    }
+    if (count < minRequired) return { grupo: group.name, minimo: minRequired };
   }
   return null;
 }

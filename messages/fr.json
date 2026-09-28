@@ -11781,6 +11781,30 @@
       "quitar": "Retirer",
       "frecuente": "Appliquer la remise fréquente de {monto}",
       "excede": "La remise ne peut pas dépasser {tope} ; ce montant sera appliqué au maximum."
+    },
+    "variantes": {
+      "tituloVariante": "Choisir une variante",
+      "tituloPersonalizar": "Personnaliser le produit",
+      "descripcionVariante": "Choisissez la variante du produit avant de l’ajouter au panier.",
+      "descripcionPersonalizar": "Ajustez les options du produit avant de l’ajouter au panier.",
+      "sku": "SKU : {sku}",
+      "masExtras": "{precio} + {extras} de suppléments",
+      "sinPrecio": "Sans prix",
+      "eligeUna": "Choisir 1",
+      "hasta": "Jusqu’à {n}",
+      "eligeVarias": "Choix multiple",
+      "faltaUna": "Sélectionnez une option dans « {grupo} »",
+      "faltanVarias": "Sélectionnez au moins {n} options dans « {grupo} »",
+      "cancelar": "Annuler",
+      "agregar": "Ajouter au panier"
+    },
+    "catalogoLocal": {
+      "sinRedSinCatalogo": "Hors ligne et sans catalogue local : connectez-vous une fois à internet pour le répliquer.",
+      "sinRed": "Catalogue local du {fecha} · {productos, plural, one {# produit} other {# produits}} · {clientes, plural, one {# client} other {# clients}}",
+      "conRed": "Catalogue local : {productos, plural, one {# produit} other {# produits}} · mis à jour {fecha}",
+      "sinReplicar": "Catalogue local non répliqué",
+      "actualizando": "Mise à jour…",
+      "actualizar": "Mettre à jour le catalogue"
     }
   }
 }

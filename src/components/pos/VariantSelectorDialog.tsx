@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -26,7 +27,7 @@ import {
   modificadoresElegidos,
   puedeConfirmarVariante,
   reglaDeSeleccion,
-  validarModificadores,
+  faltanteModificadores,
 } from '@/lib/pos/venta/modificadores';
 
 interface Variant {
@@ -66,6 +67,7 @@ export function VariantSelectorDialog({
   onSelectVariant,
 }: VariantSelectorDialogProps) {
   const { formatear } = useMonedaOrganizacion();
+  const t = useTranslations('posVenta.variantes');
   const [variants, setVariants] = useState<Variant[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
@@ -135,9 +137,10 @@ export function VariantSelectorDialog({
   const modifiersExtraTotal = extraDeModificadores(selectedModifiers);
 
   const validateModifiers = (): boolean => {
-    const error = validarModificadores(modifierGroups, selectedModifierIds);
-    if (error) {
-      setModifierError(error);
+    // Misma regla que validarModificadores (L20), con el texto en el idioma activo.
+    const falta = faltanteModificadores(modifierGroups, selectedModifierIds);
+    if (falta) {
+      setModifierError(falta.minimo > 1 ? t('faltanVarias', { n: falta.minimo, grupo: falta.grupo }) : t('faltaUna', { grupo: falta.grupo }));
       return false;
     }
     return true;
@@ -183,15 +186,13 @@ export function VariantSelectorDialog({
         <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-blue-600" />
-            {variants.length > 0 ? 'Seleccionar Variante' : 'Personalizar Producto'}
+            {variants.length > 0 ? t('tituloVariante') : t('tituloPersonalizar')}
           </DialogTitle>
           {/* Radix exige una descripción (o aria-describedby) en cada
               DialogContent; sin ella avisa por consola y el lector de pantalla
               anuncia el diálogo sin contexto. */}
           <DialogDescription className="sr-only">
-            {variants.length > 0
-              ? 'Elige la variante del producto y la cantidad antes de añadirlo al carrito.'
-              : 'Ajusta las opciones del producto antes de añadirlo al carrito.'}
+            {variants.length > 0 ? t('descripcionVariante') : t('descripcionPersonalizar')}
           </DialogDescription>
         </DialogHeader>
 
@@ -209,7 +210,7 @@ export function VariantSelectorDialog({
             {/* Nombre del producto */}
             <div className="text-center pb-2 border-b">
               <h3 className="font-semibold text-lg">{product.name}</h3>
-              <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
+              <p className="text-sm text-muted-foreground">{t('sku', { sku: product.sku })}</p>
               {variants.length === 0 && (
                 <p className="text-lg font-bold text-blue-600 mt-1">
                   {formatear((selectedVariant?.price || 0) + modifiersExtraTotal)}
@@ -264,7 +265,7 @@ export function VariantSelectorDialog({
                   <div>
                     <p className="font-medium">{resolveVariantDisplayName(selectedVariant.name, selectedVariant.variant_data, product.name)}</p>
                     <p className="text-sm text-muted-foreground">
-                      SKU: {selectedVariant.sku}
+                      {t('sku', { sku: selectedVariant.sku })}
                     </p>
                   </div>
                   <div className="text-right">
@@ -275,12 +276,12 @@ export function VariantSelectorDialog({
                         </p>
                         {modifiersExtraTotal > 0 && (
                           <p className="text-xs text-muted-foreground">
-                            {formatear(selectedVariant.price)} + {formatear(modifiersExtraTotal)} extras
+                            {t('masExtras', { precio: formatear(selectedVariant.price), extras: formatear(modifiersExtraTotal) })}
                           </p>
                         )}
                       </>
                     ) : (
-                      <Badge variant="destructive">Sin precio</Badge>
+                      <Badge variant="destructive">{t('sinPrecio')}</Badge>
                     )}
                   </div>
                 </div>
@@ -302,7 +303,7 @@ export function VariantSelectorDialog({
                         <span className="text-xs text-muted-foreground">
                           {(() => {
                             const regla = reglaDeSeleccion(group);
-                            return regla.tipo === 'uno' ? 'Elige 1' : regla.tipo === 'hasta' ? `Hasta ${regla.maximo}` : 'Elige varias';
+                            return regla.tipo === 'uno' ? t('eligeUna') : regla.tipo === 'hasta' ? t('hasta', { n: regla.maximo }) : t('eligeVarias');
                           })()}
                         </span>
                       </div>
@@ -364,7 +365,7 @@ export function VariantSelectorDialog({
                       <div>
                         <p className="font-medium">{resolveVariantDisplayName(variant.name, variant.variant_data, product.name)}</p>
                         <p className="text-sm text-muted-foreground">
-                          SKU: {variant.sku}
+                          {t('sku', { sku: variant.sku })}
                         </p>
                       </div>
                       <p className="font-bold">
@@ -385,14 +386,14 @@ export function VariantSelectorDialog({
                 className="flex-1"
                 onClick={resetAndClose}
               >
-                Cancelar
+                {t('cancelar')}
               </Button>
               <Button
                 className="flex-1 bg-blue-600 hover:bg-blue-700"
                 disabled={!puedeConfirmarVariante(selectedVariant)}
                 onClick={handleConfirm}
               >
-                Agregar al Carrito
+                {t('agregar')}
               </Button>
             </div>
       </DialogContent>

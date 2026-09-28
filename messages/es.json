@@ -11886,6 +11886,30 @@
       "quitar": "Quitar",
       "frecuente": "Aplicar el descuento frecuente de {monto}",
       "excede": "El descuento no puede superar {tope}; se aplicará como máximo esa cifra."
+    },
+    "variantes": {
+      "tituloVariante": "Seleccionar variante",
+      "tituloPersonalizar": "Personalizar producto",
+      "descripcionVariante": "Elige la variante del producto antes de añadirlo al carrito.",
+      "descripcionPersonalizar": "Ajusta las opciones del producto antes de añadirlo al carrito.",
+      "sku": "SKU: {sku}",
+      "masExtras": "{precio} + {extras} en extras",
+      "sinPrecio": "Sin precio",
+      "eligeUna": "Elige 1",
+      "hasta": "Hasta {n}",
+      "eligeVarias": "Elige varias",
+      "faltaUna": "Selecciona una opción en «{grupo}»",
+      "faltanVarias": "Selecciona al menos {n} opciones en «{grupo}»",
+      "cancelar": "Cancelar",
+      "agregar": "Agregar al carrito"
+    },
+    "catalogoLocal": {
+      "sinRedSinCatalogo": "Sin conexión y sin catálogo local: conecta a internet una vez para replicarlo.",
+      "sinRed": "Catálogo local del {fecha} · {productos, plural, one {# producto} other {# productos}} · {clientes, plural, one {# cliente} other {# clientes}}",
+      "conRed": "Catálogo local: {productos, plural, one {# producto} other {# productos}} · actualizado {fecha}",
+      "sinReplicar": "Catálogo local sin replicar",
+      "actualizando": "Actualizando…",
+      "actualizar": "Actualizar catálogo ahora"
     }
   }
 }

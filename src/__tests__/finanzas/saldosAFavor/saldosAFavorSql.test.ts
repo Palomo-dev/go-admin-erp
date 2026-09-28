@@ -248,8 +248,44 @@ describe('5 · anular el anticipo, devolver en dinero y vencer al leer (20260928
     expect(sql).not.toMatch(/set status = 'expired'/);
   });
 
-  test('el rollback devuelve fn_anular_pago a la versión que rechaza el anticipo', () => {
+  test('el rollback devuelve fn_anular_pago a la versión que rechaza el anticipo (sin la rama nueva)', () => {
+    expect(rollback).not.toMatch(/'customer_credit'\) then/);
     expect(rollback).toMatch(/'account_payable', 'credit_note'\) then/);
     expect(rollback).toMatch(/drop function if exists public\.fn_saldo_favor_devolver/);
+  });
+});
+
+describe('6 · el listado respeta la sucursal, el permiso y el estado vivo (20260928140500)', () => {
+  const sql = leer('supabase/migrations/20260928140500_saldo_favor_6_listado_por_sucursal.sql');
+  const rollback = leer('supabase/rollbacks/20260928140500_saldo_favor_6_listado_por_sucursal_rollback.sql');
+
+  /**
+   * Dry-run 2026-09-28 (org 144 con una segunda sucursal creada en la transacción, que se deshace):
+   *   administrador → ve los 2 anticipos; origen 'pago', anulable, estado active;
+   *                   p_branch de la otra sucursal → no trae el de la 119
+   *   miembro restringido a la sucursal 119 (con finance.view) → ve el de la 119 y no el de la otra
+   *                   (igual que la RLS directa sobre credit_notes)
+   *   organización ajena → Acceso denegado;  sin finance.view → sin_permiso
+   *
+   * Recorrido completo con las 6 migraciones (role authenticated, transacción deshecha):
+   *   factura 7.400: anticipo 3.000 aplicado → 4.400; nota crédito 1.000 → 3.400/partial;
+   *   pago 400 → 3.000/partial, cartera 3.000 (el saldo aplicado se mantiene).
+   *   factura 58.000 pagada solo con saldo a favor → 0/paid; nota de 5.000 → sigue 0/paid y el
+   *   excedente (5.000) vuelve a saldo a favor; v_cartera_vs_documentos «pagadas sin pago» 0 → 0.
+   */
+  test('finance.view y acceso por sucursal en la base', () => {
+    expect(sql).toMatch(/fn_finanzas_exigir_permiso\(p_org, array\['finance\.view'\]\)/);
+    expect(sql).toMatch(/public\.app_branch_access\(cn\.branch_id\)/);
+    expect(sql).toMatch(/\(p_branch is null or cn\.branch_id = p_branch\)/);
+  });
+
+  test('estado vivo, origen y anulable', () => {
+    expect(sql).toMatch(/public\.fn_saldo_favor_estado\(cn\.status, cn\.balance/);
+    expect(sql).toMatch(/then 'nota_credito'/);
+    expect(sql).toMatch(/branch_id integer, origen text, anulable boolean/);
+  });
+
+  test('el rollback restaura la firma de un parámetro', () => {
+    expect(rollback).toMatch(/CREATE OR REPLACE FUNCTION public\.fn_list_customer_credits\(p_org integer\)/);
   });
 });

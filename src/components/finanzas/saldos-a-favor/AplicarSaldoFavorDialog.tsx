@@ -56,6 +56,7 @@ export function AplicarSaldoFavorDialog({
   const [amount, setAmount] = useState<number>(0);
   // Una clave por apertura: un doble clic o un reintento no aplica dos veces.
   const [clave, setClave] = useState('');
+  const [errorFacturas, setErrorFacturas] = useState(false);
 
   const facturaSel = facturas.find((f) => f.id === invoiceId);
 
@@ -64,10 +65,14 @@ export function AplicarSaldoFavorDialog({
       setInvoiceId('');
       setAmount(0);
       setClave(nuevaClaveIdempotencia('aplicar'));
+      setErrorFacturas(false);
       saldosAFavorService
-        .listarFacturasPendientes(organizationId, saldo.customer_id)
+        .listarFacturasPendientes(saldo.customer_id)
         .then(setFacturas)
-        .catch(() => setFacturas([]));
+        .catch(() => {
+          setFacturas([]);
+          setErrorFacturas(true);
+        });
     }
   }, [open, saldo, organizationId]);
 
@@ -145,8 +150,12 @@ export function AplicarSaldoFavorDialog({
                 ))}
               </SelectContent>
             </Select>
-            {facturas.length === 0 && (
-              <p className="text-xs text-muted-foreground">Este cliente no tiene facturas pendientes.</p>
+            {errorFacturas ? (
+              <p className="text-xs text-red-600 dark:text-red-400">{t('errorFacturas')}</p>
+            ) : (
+              facturas.length === 0 && (
+                <p className="text-xs text-muted-foreground">Este cliente no tiene facturas pendientes.</p>
+              )
             )}
           </div>
 

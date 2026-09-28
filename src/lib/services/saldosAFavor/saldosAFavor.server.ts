@@ -18,6 +18,7 @@ import {
   type ResultadoAplicarSaldo,
   type ResultadoCrearSaldo,
   type ResultadoDevolverSaldo,
+  type SaldoAFavorFila,
   type SolicitudAplicarSaldo,
   type SolicitudCrearSaldo,
   type SolicitudDevolverSaldo,
@@ -105,17 +106,54 @@ export async function crearSaldo(ctx: Ctx, s: SolicitudCrearSaldo): Promise<Resu
 }
 
 /**
- * Métodos de la organización, cuentas bancarias, caja abierta de la sucursal y
- * el día: la misma lectura del diálogo único de pago (`contextoPago`).
+ * Métodos de la organización, cuentas bancarias, caja abierta de la sucursal, el
+ * día y —con cliente— sus facturas de venta abiertas: la misma lectura del
+ * diálogo único de pago (`contextoPago`), que ya descarta borradores, anuladas,
+ * notas crédito y cartera sin factura no aplica.
  */
-export async function contextoSaldo(ctx: Ctx, branchId: number | null): Promise<ContextoSaldoFavor> {
+export async function contextoSaldo(
+  ctx: Ctx,
+  entrada: { branchId: number | null; customerId?: string | null },
+): Promise<ContextoSaldoFavor> {
   try {
-    const c = await contextoPago(ctx, { direccion: 'cobro', branchId });
-    return { metodos: c.metodos, cuentasBancarias: c.cuentasBancarias, caja: c.caja, hoy: c.hoy };
+    const c = await contextoPago(ctx, {
+      direccion: 'cobro',
+      branchId: entrada.branchId,
+      customerId: entrada.customerId ?? undefined,
+    });
+    const facturas = c.documentos
+      .filter((d) => !!d.factura_id && d.saldo > 0)
+      .map((d) => ({
+        id: d.factura_id as string,
+        number: d.numero ?? '',
+        total: d.total,
+        balance: d.saldo,
+        issue_date: d.emision,
+      }));
+    return { metodos: c.metodos, cuentasBancarias: c.cuentasBancarias, caja: c.caja, hoy: c.hoy, facturas };
   } catch (err) {
     if (err instanceof ErrorPagoServidor) throw new ErrorSaldoFavorServidor('error_desconocido');
     throw err;
   }
+}
+
+/**
+ * Saldos a favor de la organización de la sesión (`fn_list_customer_credits`):
+ * finance.view, acceso por sucursal y estado vivo (vencido) resueltos en la base.
+ */
+export async function listarSaldos(ctx: Ctx, branchId: number | null): Promise<SaldoAFavorFila[]> {
+  const { data, error } = await ctx.supabase.rpc('fn_list_customer_credits', {
+    p_org: ctx.organizationId,
+    p_branch: branchId,
+  });
+  if (error) throw errorDeRpc('fn_list_customer_credits', ctx, error);
+  type Fila = Omit<SaldoAFavorFila, 'amount' | 'balance' | 'used'> & { amount: number | string; balance: number | string; used: number | string };
+  return ((data ?? []) as Fila[]).map((f) => ({
+    ...f,
+    amount: Number(f.amount),
+    balance: Number(f.balance),
+    used: Number(f.used),
+  }));
 }
 
 /**

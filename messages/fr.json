@@ -12025,6 +12025,7 @@
     "errorFacturas": "Les factures en attente n’ont pas pu être chargées.",
     "errorClientes": "Les clients n’ont pas pu être chargés.",
     "reintentar": "Réessayer",
+    "estadoAnulado": "Annulé",
     "nuevo": {
       "descripcion": "Enregistrez un acompte du client : il entre comme un paiement avec son reçu, s’ajoute à la caisse ou à la banque et reste comme avoir.",
       "metodo": "Moyen de paiement",

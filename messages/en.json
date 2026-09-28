@@ -12130,6 +12130,7 @@
     "errorFacturas": "Pending invoices could not be loaded.",
     "errorClientes": "Customers could not be loaded.",
     "reintentar": "Retry",
+    "estadoAnulado": "Voided",
     "nuevo": {
       "descripcion": "Record a customer advance: it comes in as a payment with its receipt, adds to the cash drawer or bank and stays as customer credit.",
       "metodo": "Payment method",

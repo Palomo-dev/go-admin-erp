@@ -146,12 +146,43 @@ export interface ResultadoCrearSaldo {
   monto: number;
 }
 
-/** Lo que necesita el diálogo del anticipo: métodos, cuentas y caja de la sucursal. */
+/** Factura de venta abierta del cliente, a la que se le puede aplicar saldo. */
+export interface FacturaAbiertaSaldo {
+  id: string;
+  number: string;
+  total: number;
+  balance: number;
+  issue_date: string | null;
+}
+
+/**
+ * Lo que necesitan los diálogos: métodos, cuentas y caja de la sucursal (anticipo)
+ * y, si se pidió un cliente, sus facturas abiertas (aplicar).
+ */
 export interface ContextoSaldoFavor {
   metodos: { code: string; name: string; requires_reference: boolean }[];
   cuentasBancarias: { id: number; name: string; bank_name: string | null; ultimos: string | null; currency: string | null }[];
   caja: { abierta: boolean; id: number | null };
   hoy: string;
+  facturas: FacturaAbiertaSaldo[];
+}
+
+/** Fila del listado (`fn_list_customer_credits`): estado vivo y acceso por sucursal. */
+export interface SaldoAFavorFila {
+  id: string;
+  customer_id: string;
+  customer_name: string | null;
+  amount: number;
+  balance: number;
+  used: number;
+  /** active | used | expired (vivo: venció y queda saldo) | cancelled */
+  status: string;
+  notes: string | null;
+  expiry_date: string | null;
+  created_at: string;
+  branch_id: number | null;
+  origen: 'pago' | 'nota_credito' | 'devolucion' | 'otro';
+  anulable: boolean;
 }
 
 /** Anular un anticipo sin usar: reversa pago, saldo y asiento (fn_anular_pago). */

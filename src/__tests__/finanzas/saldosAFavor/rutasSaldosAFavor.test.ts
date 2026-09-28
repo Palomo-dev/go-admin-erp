@@ -49,10 +49,17 @@ jest.mock('@/lib/utils/orgContext', () => {
   };
 });
 
-const contextoPagoFalso = jest.fn(async (_ctx: unknown, entrada: { branchId?: number | null }) => ({
+const contextoPagoFalso = jest.fn(async (_ctx: unknown, entrada: { branchId?: number | null; customerId?: string }) => ({
   direccion: 'cobro',
   tercero: null,
-  documentos: [],
+  documentos: entrada.customerId
+    ? [
+        // Factura abierta, cartera sin factura y factura ya saldada: solo la primera sirve para aplicar.
+        { documento: 'account_receivable', id: 'ar-1', cuenta_id: 'ar-1', factura_id: FACTURA, numero: 'FV-1', saldo: 300, total: 500, moneda: 'COP', vencimiento: null, emision: '2026-09-01', branch_id: 7, cuotas: [] },
+        { documento: 'account_receivable', id: 'ar-2', cuenta_id: 'ar-2', factura_id: null, numero: null, saldo: 80, total: 80, moneda: 'COP', vencimiento: null, emision: null, branch_id: 7, cuotas: [] },
+        { documento: 'account_receivable', id: 'ar-3', cuenta_id: 'ar-3', factura_id: SALDO, numero: 'FV-2', saldo: 0, total: 90, moneda: 'COP', vencimiento: null, emision: null, branch_id: 7, cuotas: [] },
+      ]
+    : [],
   metodos: [{ code: 'cash', name: 'Efectivo', requires_reference: false }],
   cuentasBancarias: [],
   caja: { abierta: entrada.branchId === 7, id: entrada.branchId === 7 ? 3 : null },
@@ -65,7 +72,7 @@ jest.mock('@/lib/services/pagos/pagos.server', () => {
 });
 
 import { POST as aplicar } from '@/app/api/saldos-a-favor/[id]/aplicar/route';
-import { POST as crear } from '@/app/api/saldos-a-favor/route';
+import { POST as crear, GET as listar } from '@/app/api/saldos-a-favor/route';
 import { GET as contexto } from '@/app/api/saldos-a-favor/contexto/route';
 import { POST as anular } from '@/app/api/saldos-a-favor/[id]/anular/route';
 import { POST as devolver } from '@/app/api/saldos-a-favor/[id]/devolver/route';
@@ -240,7 +247,18 @@ describe('GET /api/saldos-a-favor/contexto', () => {
     const j = await r.json();
     expect(j.caja).toEqual({ abierta: true, id: 3 });
     expect(j.metodos[0].code).toBe('cash');
-    expect(contextoPagoFalso).toHaveBeenLastCalledWith(expect.anything(), { direccion: 'cobro', branchId: 7 });
+    expect(contextoPagoFalso).toHaveBeenLastCalledWith(expect.anything(), { direccion: 'cobro', branchId: 7, customerId: undefined });
+    expect(j.facturas).toEqual([]);
+  });
+
+  test('con cliente: solo facturas abiertas con saldo (de la lectura del pago único)', async () => {
+    const CLIENTE = '33333333-4444-4555-8666-777777777777';
+    const r = await contexto(new Request(`http://x/api/saldos-a-favor/contexto?cliente=${CLIENTE}`), params);
+    expect(r.status).toBe(200);
+    const j = await r.json();
+    expect(j.facturas).toEqual([{ id: FACTURA, number: 'FV-1', total: 500, balance: 300, issue_date: '2026-09-01' }]);
+    const r2 = await contexto(new Request('http://x/api/saldos-a-favor/contexto?cliente=no-uuid'), params);
+    expect(r2.status).toBe(400);
   });
 
   test('sin finance.view → 403; sucursal mal formada → 400', async () => {
@@ -249,6 +267,36 @@ describe('GET /api/saldos-a-favor/contexto', () => {
     guion.permisos = new Set();
     const r2 = await contexto(new Request('http://x/api/saldos-a-favor/contexto?sucursal=7'), params);
     expect(r2.status).toBe(403);
+  });
+});
+
+describe('GET /api/saldos-a-favor', () => {
+  test('lista con la organización de la sesión y la sucursal pedida; números como números', async () => {
+    guion.datos.fn_list_customer_credits = [
+      { id: SALDO, customer_id: 'c', customer_name: 'X', amount: '500.00', balance: '200.00', used: '300.00', status: 'expired', notes: null, expiry_date: null, created_at: '2026-09-28', branch_id: 7, origen: 'pago', anulable: false },
+    ];
+    const r = await listar(new Request('http://x/api/saldos-a-favor?sucursal=7'), params);
+    expect(r.status).toBe(200);
+    expect(rpcs[0]).toEqual({ nombre: 'fn_list_customer_credits', args: { p_org: ORG, p_branch: 7 } });
+    const j = await r.json();
+    expect(j.saldos[0]).toMatchObject({ amount: 500, balance: 200, used: 300, status: 'expired' });
+  });
+
+  test('sin finance.view → 403; error de la base → código y estado (no lista vacía)', async () => {
+    guion.permisos = new Set();
+    const r1 = await listar(new Request('http://x/api/saldos-a-favor'), params);
+    expect(r1.status).toBe(403);
+    expect(rpcs).toHaveLength(0);
+    guion.permisos = new Set(['finance.view']);
+    guion.errorRpc = { message: 'sin_permiso' };
+    const r2 = await listar(new Request('http://x/api/saldos-a-favor'), params);
+    expect(r2.status).toBe(403);
+    expect((await r2.json()).codigo).toBe('sin_permiso');
+  });
+
+  test('organización ajena en la query → 403', async () => {
+    const r = await listar(new Request('http://x/api/saldos-a-favor?organization_id=999'), params);
+    expect(r.status).toBe(403);
   });
 });
 

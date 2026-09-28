@@ -186,6 +186,7 @@ async function documentosCobro(
       documento: filtro.documento === 'invoice_sales' ? 'invoice_sales' : 'account_receivable',
       id: filtro.documento === 'invoice_sales' && inv ? inv.id : f.id,
       cuenta_id: f.id,
+      factura_id: inv?.id ?? null,
       numero: inv?.number ?? null,
       saldo: inv ? num(inv.balance) : num(f.balance),
       total: inv ? num(inv.total) : num(f.amount),

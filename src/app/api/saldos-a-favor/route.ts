@@ -1,6 +1,10 @@
 /**
  * /api/saldos-a-favor
  *
+ * GET ?sucursal=<id> — saldos a favor de la organización de la sesión
+ * (`fn_list_customer_credits`): finance.view, solo sucursales con acceso y
+ * estado vivo ('expired' si venció y queda saldo).
+ *
  * POST — anticipo a mano: el dinero entra como un pago real (recibo, payments
  * y caja abierta si es efectivo) y queda como saldo a favor, en UNA RPC
  * (`fn_saldo_favor_crear`) con el cliente de la sesión. Permiso `finance.create`.
@@ -14,12 +18,29 @@ import { crearSaldoSchema } from '@/lib/finanzas/saldosAFavor/contrato';
 import {
   crearSaldo,
   ErrorSaldoFavorServidor,
+  listarSaldos,
   respuestaError,
   SIN_CACHE,
   sinClavesDeOrganizacion,
 } from '@/lib/services/saldosAFavor/saldosAFavor.server';
 
 export const dynamic = 'force-dynamic';
+
+export const GET = withOrg(async (ctx, req) => {
+  await readOrgBody(ctx, req, { route: 'GET /api/saldos-a-favor' });
+  const crudo = new URL(req.url).searchParams.get('sucursal');
+  const sucursal = crudo && /^\d+$/.test(crudo) ? Number(crudo) : null;
+  if (crudo && sucursal === null) return respuestaError('datos_invalidos');
+
+  if (!(await hasOrgAdminOrPermission(ctx, 'finance.view'))) return respuestaError('sin_permiso');
+
+  try {
+    return NextResponse.json({ saldos: await listarSaldos(ctx, sucursal) }, { headers: SIN_CACHE });
+  } catch (err) {
+    if (err instanceof ErrorSaldoFavorServidor) return respuestaError(err.codigo);
+    throw err;
+  }
+});
 
 export const POST = withOrg(async (ctx, req) => {
   const raw: unknown = await readOrgBody(ctx, req, { route: 'POST /api/saldos-a-favor' });

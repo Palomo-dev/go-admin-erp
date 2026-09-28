@@ -12025,6 +12025,7 @@
     "errorFacturas": "Não foi possível carregar as faturas pendentes.",
     "errorClientes": "Não foi possível carregar os clientes.",
     "reintentar": "Tentar novamente",
+    "estadoAnulado": "Anulado",
     "nuevo": {
       "descripcion": "Registre um adiantamento do cliente: entra como um pagamento com seu recibo, soma ao caixa ou ao banco e fica como saldo a favor.",
       "metodo": "Forma de pagamento",

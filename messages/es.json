@@ -12130,6 +12130,7 @@
     "errorFacturas": "No se pudieron cargar las facturas pendientes.",
     "errorClientes": "No se pudieron cargar los clientes.",
     "reintentar": "Reintentar",
+    "estadoAnulado": "Anulado",
     "nuevo": {
       "descripcion": "Registra un anticipo del cliente: entra como un pago con su recibo, suma a la caja o al banco y queda como saldo a favor.",
       "metodo": "Método de pago",

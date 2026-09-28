@@ -207,6 +207,8 @@ export interface DocumentoAbiertoPago {
   /** id del documento con el que se abrió (factura o cuenta). */
   id: string;
   cuenta_id: string;
+  /** Factura de la cuenta (null en cartera sin factura). */
+  factura_id?: string | null;
   numero: string | null;
   saldo: number;
   total: number;

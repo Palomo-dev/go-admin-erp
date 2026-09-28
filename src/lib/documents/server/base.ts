@@ -381,12 +381,15 @@ export function tonoEstado(estado: string): Tono {
       return 'exito';
     case 'partial':
     case 'sent':
+    case 'pending':
+    case 'processing':
       return 'aviso';
     case 'void':
     case 'voided':
     case 'cancelled':
     case 'rejected':
     case 'expired':
+    case 'failed':
       return 'peligro';
     case 'draft':
       return 'neutro';

@@ -11159,7 +11159,8 @@
       "cierre-caja": "Fechamento de caixa",
       "reporte-caja-abierta": "Relatório de caixa aberto",
       "arqueo-caja": "Conferência de caixa",
-      "estado-cuenta-proveedor": "Extrato do fornecedor"
+      "estado-cuenta-proveedor": "Extrato do fornecedor",
+      "nota-credito-electronica": "Nota de crédito eletrônica"
     },
     "sinNumero": "Sem numeração",
     "paginacion": {
@@ -11214,7 +11215,10 @@
         "sent": "Enviado",
         "accepted": "Aceito pela DIAN",
         "validated": "Aceito pela DIAN",
-        "rejected": "Rejeitado"
+        "rejected": "Rejeitado",
+        "processing": "Em processamento",
+        "failed": "Falhou",
+        "cancelled": "Anulado"
       },
       "pago": {
         "completed": "Aplicado",
@@ -11232,7 +11236,11 @@
           "partial": "Parcial",
           "closing": "Fechamento"
         }
-      }
+      },
+      "pending": "Pendente",
+      "accepted": "Aceita",
+      "processing": "Em processamento",
+      "failed": "Falhou"
     },
     "qr": {
       "verificacionDian": "Verifique na DIAN",
@@ -11298,7 +11306,8 @@
       "estado": "Status",
       "total": "Total",
       "vencido": "Vencido",
-      "porVencer": "A vencer"
+      "porVencer": "A vencer",
+      "facturaCompraAsociada": "Fatura de compra associada"
     },
     "formasPago": {
       "contado": "À vista",
@@ -13972,5 +13981,13 @@
         "editarVersiones": "Cada mudança salva uma versão nova; as anteriores são mantidas e as ordens de produção abertas seguem com a delas."
       }
     }
+  },
+  "accionesDocumento": {
+    "imprimir": "Imprimir",
+    "verPdf": "Ver PDF",
+    "descargarPdf": "Baixar PDF",
+    "descargando": "Gerando PDF…",
+    "errorTitulo": "Erro",
+    "error": "Não foi possível gerar o documento"
   }
 }

@@ -249,7 +249,10 @@ export async function cargarVenta(
   const secciones: SeccionTabla[] = [];
   if (pagos.length > 0) secciones.push(seccionPagos(pagos, t));
 
-  const tituloClave = esNota ? 'nota-credito' : cufe ? 'factura-venta-electronica' : 'factura-venta';
+  // Con CUDE (nota aceptada por la DIAN vía Factus, `xml_uuid`) la nota es electrónica.
+  const tituloClave = esNota
+    ? cufe ? 'nota-credito-electronica' : 'nota-credito'
+    : cufe ? 'factura-venta-electronica' : 'factura-venta';
   const qr = factura.status === 'draft'
     ? null
     : cufe

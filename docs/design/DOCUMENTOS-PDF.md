@@ -618,3 +618,63 @@ es el id global), **impuesto, descuento y referencia del proveedor por renglón*
 no guarda impuesto) y la marca de lote del producto (D4). Ruta propuesta:
 `GET /api/inventario/ordenes-compra/[uuid]/pdf`, que empieza por `getServerOrgContext()` y usa
 `buildDocumentHTML(payload, pageSpec)` como las demás variantes del motor.
+
+## 11. Estado de conexión al motor único (2026-09-28)
+
+Cotización, nota crédito y documento soporte ya salen por el motor único
+(`GET /api/documentos/[tipo]/[id]`, cliente `src/lib/documents/cliente.ts`). Con esto, todos los
+tipos de `TIPOS_DOCUMENTO` tienen al menos una pantalla que los pide.
+
+| Documento | Pantalla | Antes | Ahora |
+|---|---|---|---|
+| Factura de venta | detalle, listado, POS | motor | motor (sin cambios) |
+| Factura de compra | detalle v2, listado | motor | motor (sin cambios) |
+| Estado de cuenta (cliente y proveedor), recibo de caja, comprobante de egreso | CxC, CxP | motor | motor (sin cambios) |
+| Cierre y arqueo de caja | cajas | motor | motor (sin cambios) |
+| Cotización | detalle (`cotizaciones/id/DetalleCotizacion.tsx`) | `PDFService.printInvoiceHTML` armando un `InvoiceDataForPDF` con datos del navegador y leyendo `organizations` desde el cliente (el motor ya lo atendía por dentro, pero la pantalla seguía armando y leyendo todo) | «Imprimir» → `imprimirDocumento('cotizacion', id)`; nuevo «Ver PDF» → `abrirDocumento`. Ya no lee la organización ni arma datos |
+| Cotización | listado (`CotizacionesTable.tsx`) | sin impresión | «Imprimir» y «Ver PDF» en el menú de la fila |
+| Nota crédito | detalle (`notas-credito/NotaCreditoDetalle.tsx`) | «Descargar PDF» solo mostraba un aviso: no descargaba nada | «Imprimir» (`imprimirDocumento`) y «Descargar PDF» (`descargarDocumento('nota-credito', id)`, con respaldo HTML si no hay PDF) |
+| Nota crédito | listado (`NotasCreditoPage.tsx`) | sin impresión | «Imprimir» y «Ver PDF» en el menú de la fila |
+| Documento soporte | detalle (`documentos-soporte/SupportDocumentDetail.tsx`) | «PDF» y «XML» de Factus, solo con el documento aceptado | «Imprimir» y «PDF» del motor siempre (el borrador sale con marca de agua); el «XML» sigue siendo el de Factus cuando está aceptado |
+| Documento soporte | listado (`SupportDocumentsTable.tsx`) | sin impresión | botón «Imprimir» junto a «Ver detalle» |
+
+Cambios del motor en la misma entrega:
+
+- **Documento soporte** (`server/cargadores/compras.ts`): el cargador embebía
+  `supplier:suppliers(...)`, pero `support_documents` **no tiene llave foránea a `suppliers`**
+  (verificado con el MCP el 2026-09-28): PostgREST habría respondido error y la ruta un 500 en el
+  primer uso real. Ahora la contraparte sale del jsonb `provider` (la foto de los datos con que se
+  emitió ante la DIAN; tipo de documento DIAN → sigla), y el proveedor de `suppliers` se lee aparte
+  por `supplier_id` con la organización de la sesión, solo para completar lo que falte. Se añade la
+  factura de compra asociada (`invoice_purchase_id`), el estado anulado (`cancelled`) y un estado
+  desconocido se pinta como borrador en vez de mostrar la clave cruda.
+- **Nota crédito** (`server/cargadores/ventas.ts`): con CUDE (`invoice_sales.xml_uuid`, que llena
+  `/api/factus/credit-note` y el webhook de Factus) el título es «Nota crédito electrónica»; el QR
+  ya apuntaba a la verificación DIAN.
+- `tonoEstado`: `pending`/`processing` en aviso y `failed` en peligro.
+- Textos nuevos en los cuatro idiomas: `documentos.tipos.nota-credito-electronica`,
+  `documentos.estados.{pending,accepted,processing,failed}`,
+  `documentos.estados.soporte.{processing,failed,cancelled}`,
+  `documentos.campos.facturaCompraAsociada` y el namespace `accionesDocumento` (imprimir, ver PDF,
+  descargar PDF, error) para los botones.
+- Permisos: sin cambios en `server/permisos.ts`; el mapa ya cubría los tres tipos
+  (`nota-credito` y `documento-soporte` con `finance.view`; `cotizacion` con `finance.view` o
+  `sales_management`). Los tests nuevos lo fijan: `pos.view` no basta para la nota ni el soporte.
+- Tests (`src/lib/documents/__tests__/motor.test.ts`): nota crédito electrónica, cotización y
+  documento soporte con payload, permiso (403 sin leer la tabla), organización ajena → 404 y HTML
+  escapado; el doble de Supabase registra las columnas del `select` para impedir que vuelva el
+  embebido sin llave foránea.
+
+Lo que queda fuera del motor y por qué:
+
+- `src/lib/services/pdfService.ts` **se conserva**: sus métodos públicos ya delegan en el motor, y
+  aún lo importan `components/finanzas/facturas-compra/id/DetalleFacturaCompra.tsx` y el test
+  `src/lib/utils/__tests__/moneda.test.ts` (plantilla `generateInvoiceHTML`, deprecated).
+- `components/finanzas/facturas-compra/id/DetalleFacturaCompra.tsx` es **código muerto**: ninguna
+  ruta lo monta (`app/app/finanzas/facturas-compra/[id]/page.tsx` monta `DetalleFacturaCompraV2`) y
+  solo aparece en la lista de generadores del guardarraíl 28. Candidato a limpieza junto con los
+  métodos `generate*HTML` de `pdfService.ts` y el test que los usa.
+- Siguen con `window.print()` o HTML propio documentos que el motor **no** modela: recibo de
+  parqueadero, reserva de PMS, guía de envío, propuesta del CRM y etiquetas de producto (§9).
+- El PDF/XML de Factus de la factura electrónica (`/app/finanzas/facturacion-electronica`) es el
+  archivo del proveedor tecnológico, no una plantilla nuestra: se deja.

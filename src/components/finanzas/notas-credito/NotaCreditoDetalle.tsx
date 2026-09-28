@@ -17,6 +17,7 @@ import {
   Mail,
   FileCheck,
   ExternalLink,
+  Printer,
 } from 'lucide-react';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ import {
 } from '@/lib/services/notasCreditoService';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { descargarDocumento, imprimirDocumento } from '@/lib/documents/cliente';
 
 /** La nota es una fila de `invoice_sales` (select *): trae su propia `currency`. */
 type NotaConMoneda = NotaCredito & { currency?: string | null };
@@ -77,12 +79,14 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRetrying, setIsRetrying] = useState(false);
   const [isSendingDian, setIsSendingDian] = useState(false);
+  const [isDescargando, setIsDescargando] = useState(false);
   const [organizationTaxes, setOrganizationTaxes] = useState<{ id: string; name: string; rate: number; is_default?: boolean }[]>([]);
   // Importes en la moneda de la nota (la de su factura); sin ella, la base de la organización.
   const { paraDocumento } = useMonedaOrganizacion();
   const monedaNota = (nota as NotaConMoneda | null)?.currency ?? null;
   const formatCurrency = crearFormateadorMoneda(paraDocumento(monedaNota));
   const t = useTranslations('notasCredito');
+  const ta = useTranslations('accionesDocumento');
   // issue_date y created_at son timestamptz: el día sale en la zona de la organización.
   const { formatDate } = useFormatDate();
 
@@ -191,9 +195,19 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
     }
   };
 
-  const handleDownloadPDF = () => {
-    toast({ title: t('detalle.descargaTitulo'), description: t('detalle.generandoPdf') });
-    // Aquí iría la lógica de descarga de PDF
+  // PDF de marca del motor único (`GET /api/documentos/nota-credito/<id>`): el
+  // servidor lee la nota con la organización de la sesión, con su CUDE y el QR
+  // de la DIAN cuando la nota ya es electrónica. Antes este botón no descargaba nada.
+  const handleDownloadPDF = async () => {
+    if (!nota) return;
+    setIsDescargando(true);
+    try {
+      await descargarDocumento('nota-credito', nota.id);
+    } catch (error: unknown) {
+      toast({ title: ta('errorTitulo'), description: error instanceof Error && error.message ? error.message : ta('error'), variant: 'destructive' });
+    } finally {
+      setIsDescargando(false);
+    }
   };
 
   if (isLoading) {
@@ -245,8 +259,12 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={handleDownloadPDF} className="dark:border-gray-700">
-            <Download className="h-4 w-4 mr-2" />
+          <Button variant="outline" onClick={() => imprimirDocumento('nota-credito', nota.id)} className="dark:border-gray-700">
+            <Printer className="h-4 w-4 mr-2" />
+            {ta('imprimir')}
+          </Button>
+          <Button variant="outline" onClick={handleDownloadPDF} disabled={isDescargando} className="dark:border-gray-700">
+            {isDescargando ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
             {t('detalle.descargarPdf')}
           </Button>
           {/* Botón Enviar a DIAN: visible cuando no hay job o el job falló */}

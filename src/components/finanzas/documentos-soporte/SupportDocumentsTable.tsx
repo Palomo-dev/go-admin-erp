@@ -13,12 +13,13 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, FileCheck2 } from 'lucide-react';
+import { Eye, FileCheck2, Printer } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { TableSkeleton } from '@/components/common/PageSkeletons';
+import { imprimirDocumento } from '@/lib/documents/cliente';
 
 export interface SupportDocumentRow {
   id: string;
@@ -62,6 +63,8 @@ const statusConfig: Record<string, { className: string }> = {
 export function SupportDocumentsTable({ documents, isLoading }: SupportDocumentsTableProps) {
   const { paraDocumento } = useMonedaOrganizacion();
   const t = useTranslations('documentosSoporte');
+  // Imprimir: motor único de documentos (plantilla de marca, datos leídos en el servidor).
+  const ta = useTranslations('accionesDocumento');
   const { formatDate } = useFormatDate();
   if (isLoading) {
     return <TableSkeleton columns={6} rows={5} />;
@@ -150,7 +153,17 @@ export function SupportDocumentsTable({ documents, isLoading }: SupportDocuments
                     <span className="text-gray-400 dark:text-gray-500">-</span>
                   )}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right whitespace-nowrap">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    aria-label={ta('imprimir')}
+                    title={ta('imprimir')}
+                    onClick={() => imprimirDocumento('documento-soporte', doc.id)}
+                  >
+                    <Printer className="h-4 w-4" />
+                  </Button>
                   <Link href={`/app/finanzas/documentos-soporte/${doc.id}`}>
                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t('tabla.verDetalle')}>
                       <Eye className="h-4 w-4" />

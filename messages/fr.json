@@ -11159,7 +11159,8 @@
       "cierre-caja": "Clôture de caisse",
       "reporte-caja-abierta": "Rapport de caisse ouverte",
       "arqueo-caja": "Comptage de caisse",
-      "estado-cuenta-proveedor": "Relevé de compte fournisseur"
+      "estado-cuenta-proveedor": "Relevé de compte fournisseur",
+      "nota-credito-electronica": "Note de crédit électronique"
     },
     "sinNumero": "Sans numéro",
     "paginacion": {
@@ -11214,7 +11215,10 @@
         "sent": "Envoyé",
         "accepted": "Accepté par la DIAN",
         "validated": "Accepté par la DIAN",
-        "rejected": "Rejeté"
+        "rejected": "Rejeté",
+        "processing": "En cours",
+        "failed": "Échoué",
+        "cancelled": "Annulé"
       },
       "pago": {
         "completed": "Appliqué",
@@ -11232,7 +11236,11 @@
           "partial": "Partiel",
           "closing": "Clôture"
         }
-      }
+      },
+      "pending": "En attente",
+      "accepted": "Acceptée",
+      "processing": "En cours",
+      "failed": "Échouée"
     },
     "qr": {
       "verificacionDian": "Vérifier auprès de la DIAN",
@@ -11298,7 +11306,8 @@
       "estado": "Statut",
       "total": "Total",
       "vencido": "Échu",
-      "porVencer": "Non échu"
+      "porVencer": "Non échu",
+      "facturaCompraAsociada": "Facture d'achat associée"
     },
     "formasPago": {
       "contado": "Comptant",
@@ -13972,5 +13981,13 @@
         "editarVersiones": "Chaque changement enregistre une nouvelle version ; les précédentes sont conservées et les ordres de production ouverts gardent la leur."
       }
     }
+  },
+  "accionesDocumento": {
+    "imprimir": "Imprimer",
+    "verPdf": "Voir le PDF",
+    "descargarPdf": "Télécharger le PDF",
+    "descargando": "Génération du PDF…",
+    "errorTitulo": "Erreur",
+    "error": "Impossible de générer le document"
   }
 }

@@ -11264,7 +11264,8 @@
       "cierre-caja": "Cash register closing",
       "reporte-caja-abierta": "Open cash register report",
       "arqueo-caja": "Cash count",
-      "estado-cuenta-proveedor": "Supplier account statement"
+      "estado-cuenta-proveedor": "Supplier account statement",
+      "nota-credito-electronica": "Electronic credit note"
     },
     "sinNumero": "No number yet",
     "paginacion": {
@@ -11319,7 +11320,10 @@
         "sent": "Sent",
         "accepted": "Accepted by DIAN",
         "validated": "Accepted by DIAN",
-        "rejected": "Rejected"
+        "rejected": "Rejected",
+        "processing": "Processing",
+        "failed": "Failed",
+        "cancelled": "Voided"
       },
       "pago": {
         "completed": "Applied",
@@ -11337,7 +11341,11 @@
           "partial": "Partial",
           "closing": "Closing"
         }
-      }
+      },
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "processing": "Processing",
+      "failed": "Failed"
     },
     "qr": {
       "verificacionDian": "Verify with DIAN",
@@ -11403,7 +11411,8 @@
       "estado": "Status",
       "total": "Total",
       "vencido": "Overdue",
-      "porVencer": "Not yet due"
+      "porVencer": "Not yet due",
+      "facturaCompraAsociada": "Related purchase invoice"
     },
     "formasPago": {
       "contado": "Cash",
@@ -14077,5 +14086,13 @@
         "editarVersiones": "Each change saves a new version; previous ones are kept and open production orders keep theirs."
       }
     }
+  },
+  "accionesDocumento": {
+    "imprimir": "Print",
+    "verPdf": "View PDF",
+    "descargarPdf": "Download PDF",
+    "descargando": "Generating PDF…",
+    "errorTitulo": "Error",
+    "error": "The document could not be generated"
   }
 }

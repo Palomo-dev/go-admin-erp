@@ -25,6 +25,7 @@ import {
   Building2,
   Calendar,
   Hash,
+  Printer,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
@@ -34,6 +35,7 @@ import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { SendSupportDocumentButton } from '@/components/finanzas/documentos-soporte/SendSupportDocumentButton';
+import { descargarDocumento, imprimirDocumento } from '@/lib/documents/cliente';
 
 /** Proveedor tal como se guarda en `support_documents.provider` (jsonb). */
 interface ProveedorSoporte {
@@ -103,6 +105,7 @@ export function SupportDocumentDetail({ documentId }: SupportDocumentDetailProps
   const { toast } = useToast();
   const t = useTranslations('documentosSoporte.detalle');
   const tEstados = useTranslations('documentosSoporte.estados');
+  const ta = useTranslations('accionesDocumento');
   const { formatDate } = useFormatDate();
   const [organizationId, setOrganizationId] = useState<number>(0);
   const [doc, setDoc] = useState<SupportDocumentDetailData | null>(null);
@@ -151,7 +154,23 @@ export function SupportDocumentDetail({ documentId }: SupportDocumentDetailProps
     if (organizationId) loadDocument();
   }, [organizationId, loadDocument]);
 
-  const handleDownload = async (type: 'pdf' | 'xml') => {
+  // PDF de marca del motor único (`GET /api/documentos/documento-soporte/<id>`):
+  // el servidor lee el documento con la organización de la sesión, con su CUDS
+  // y el QR de la DIAN cuando ya fue aceptado. Sale también en borrador (con
+  // marca de agua). El XML sigue siendo el de Factus.
+  const handleDescargarPdf = async () => {
+    if (!doc) return;
+    setIsDownloading('pdf');
+    try {
+      await descargarDocumento('documento-soporte', doc.id);
+    } catch (error: unknown) {
+      toast({ title: ta('errorTitulo'), description: error instanceof Error && error.message ? error.message : ta('error'), variant: 'destructive' });
+    } finally {
+      setIsDownloading(null);
+    }
+  };
+
+  const handleDownload = async (type: 'xml') => {
     if (!doc?.number) {
       toast({
         title: t('toast.sinNumeroTitulo'),
@@ -430,20 +449,21 @@ export function SupportDocumentDetail({ documentId }: SupportDocumentDetailProps
           </Button>
         )}
 
+        <Button variant="outline" onClick={() => imprimirDocumento('documento-soporte', doc.id)}>
+          <Printer className="h-4 w-4 mr-2" />
+          {ta('imprimir')}
+        </Button>
+        <Button variant="outline" onClick={handleDescargarPdf} disabled={isDownloading !== null}>
+          {isDownloading === 'pdf' ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <FileDown className="h-4 w-4 mr-2" />
+          )}
+          PDF
+        </Button>
+
         {canDownload && (
           <>
-            <Button
-              variant="outline"
-              onClick={() => handleDownload('pdf')}
-              disabled={isDownloading !== null}
-            >
-              {isDownloading === 'pdf' ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <FileDown className="h-4 w-4 mr-2" />
-              )}
-              PDF
-            </Button>
             <Button
               variant="outline"
               onClick={() => handleDownload('xml')}

@@ -11,6 +11,8 @@ type Fila = Record<string, unknown>;
 export interface ConsultaRegistrada {
   tabla: string;
   filtros: Array<[string, string, unknown]>;
+  /** Columnas pedidas en `select` (para comprobar qué relaciones embebidas se piden). */
+  columnas?: string;
 }
 
 function comparar(valor: unknown, operador: string, esperado: unknown): boolean {
@@ -68,7 +70,10 @@ class Consulta implements PromiseLike<{ data: unknown; error: null }> {
     this.predicados.push((f) => comparar(f[col], op, v));
     return this;
   }
-  select() { return this; }
+  select(columnas?: string) {
+    if (columnas) this.registro.columnas = columnas;
+    return this;
+  }
   order() { return this; }
   limit() { return this; }
   eq(col: string, v: unknown) { return this.agregar(col, 'eq', v); }

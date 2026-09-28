@@ -391,6 +391,130 @@ describe('estado de cuenta', () => {
   });
 });
 
+/**
+ * Tipos conectados el 2026-09-28 (cotización, nota crédito y documento
+ * soporte): payload desde la base, permiso resuelto en el servidor,
+ * organización ajena → 404 y HTML escapado.
+ */
+describe('cotización, nota crédito y documento soporte: aislamiento, permisos y escape', () => {
+  const NC_E = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  const NC_AJENA = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  const Q_AJENA = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  const DS1 = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+  const DS_AJENO = '12121212-1212-4121-8121-121212121212';
+
+  type Tablas = ReturnType<typeof datos> & { support_documents: Array<Record<string, unknown>> };
+
+  function tablasExtendidas(): Tablas {
+    const t = datos() as Tablas;
+    const ventas = t.invoice_sales as Array<Record<string, unknown>>;
+    ventas.push(
+      { id: NC_E, organization_id: ORG, branch_id: 1, number: 'NC-2', issue_date: '2026-09-26T15:00:00Z', currency: 'COP', subtotal: 10, tax_total: 0, total: 10, balance: 0, status: 'issued', xml_uuid: 'cude0123456789abcdef', document_type: 'credit_note', related_invoice_id: FE1, description: `Motivo ${XSS}`, customer_id: C1, customer: cliente, items: [] },
+      { id: NC_AJENA, organization_id: AJENA, branch_id: 5, number: 'NC-OTRA', status: 'issued', total: 1, document_type: 'credit_note', customer: cliente, items: [] },
+    );
+    t.quotations.push({ ...t.quotations[0], id: Q_AJENA, organization_id: AJENA, number: 'COT-OTRA' });
+    t.support_documents = [
+      {
+        id: DS1, organization_id: ORG, branch_id: 1, supplier_id: 5, invoice_purchase_id: FC1, number: 'DS-9', reference_code: 'REF-DS-9',
+        issue_date: '2026-09-24T03:00:00Z', observation: `Observación ${XSS}`, subtotal: 100, tax_total: 19, total: 119, currency: 'COP',
+        status: 'accepted', cufe: 'cuds0123456789abcdef', created_at: '2026-09-24T03:00:00Z',
+        provider: { names: `Proveedor informal ${XSS}`, identification: '1020304050', identification_document_code: '13', address: 'Vereda 1', email: 'prov@example.com' },
+        items: [item],
+      },
+      { id: DS_AJENO, organization_id: AJENA, branch_id: 5, supplier_id: 6, number: 'DS-OTRO', reference_code: 'REF-X', status: 'draft', created_at: '2026-09-24T03:00:00Z', provider: { names: 'Ajeno' }, items: [] },
+    ];
+    return t;
+  }
+
+  it('nota crédito electrónica: CUDE, QR a la verificación DIAN, factura afectada y motivo escapado', async () => {
+    permisos.add('finance.view');
+    const { payload, html } = await pedir(sesion(tablasExtendidas()), 'nota-credito', NC_E);
+    expect(payload.tipo).toBe('nota-credito');
+    expect(payload.tituloClave).toBe('nota-credito-electronica');
+    expect(payload.pieLegal.codigoUnico).toEqual({ clave: 'cude', valor: 'cude0123456789abcdef' });
+    expect(payload.pieLegal.qr?.contenido).toBe('https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=cude0123456789abcdef');
+    expect(payload.referencia.find((c) => c.clave === 'cufeAfectado')?.valor).toEqual({ tipo: 'texto', v: 'cufe0123456789abcdef' });
+    expect(html).toContain('Nota crédito electrónica');
+    expect(html).not.toContain(XSS);
+    expect(html).toContain('&lt;script&gt;');
+  });
+
+  it('nota crédito: otra organización → 404; sin finance.view (aunque tenga pos.view) → 403 sin leer la nota', async () => {
+    permisos.add('finance.view');
+    expect(await codigoDe(pedir(sesion(tablasExtendidas()), 'nota-credito', NC_AJENA))).toBe('404 NOT_FOUND');
+    permisos.clear();
+    permisos.add('pos.view');
+    const s = sesion(tablasExtendidas());
+    expect(await codigoDe(pedir(s, 'nota-credito', NC_E))).toBe('403 PERMISSION_REQUIRED');
+    expect(s.supabase.consultas.some((c) => c.tabla === 'invoice_sales')).toBe(false);
+  });
+
+  it('cotización: otra organización → 404; sin finance.view ni sales_management → 403; cliente escapado', async () => {
+    permisos.add('finance.view');
+    expect(await codigoDe(pedir(sesion(tablasExtendidas()), 'cotizacion', Q_AJENA))).toBe('404 NOT_FOUND');
+    const { payload, html } = await pedir(sesion(tablasExtendidas()), 'cotizacion', Q1);
+    expect(payload.tipo).toBe('cotizacion');
+    expect(payload.bandas.map((b) => b.clave)).toContain('noEsFactura');
+    expect(html).not.toContain(XSS);
+    expect(html).toContain('&lt;script&gt;');
+    permisos.clear();
+    const s = sesion(tablasExtendidas());
+    expect(await codigoDe(pedir(s, 'cotizacion', Q1))).toBe('403 PERMISSION_REQUIRED');
+    expect(s.supabase.consultas.some((c) => c.tabla === 'quotations')).toBe(false);
+  });
+
+  it('documento soporte: contraparte del jsonb `provider`, CUDS con QR DIAN, factura de compra asociada y HTML escapado', async () => {
+    permisos.add('finance.view');
+    const s = sesion(tablasExtendidas());
+    const { payload, html } = await pedir(s, 'documento-soporte', DS1);
+    expect(payload.tipo).toBe('documento-soporte');
+    expect(payload.numero).toBe('DS-9');
+    expect(payload.estado).toEqual({ codigo: 'soporte.accepted', tono: 'exito' });
+    expect(payload.contraparte).toMatchObject({ rol: 'proveedor', tipoDocumento: 'CC', numeroDocumento: '1020304050', direccion: 'Vereda 1' });
+    expect(payload.pieLegal.codigoUnico).toEqual({ clave: 'cuds', valor: 'cuds0123456789abcdef' });
+    expect(payload.pieLegal.qr?.contenido).toBe('https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=cuds0123456789abcdef');
+    expect(payload.referencia.find((c) => c.clave === 'facturaCompraAsociada')?.valor).toEqual({ tipo: 'texto', v: 'PROV-77' });
+    expect(payload.lineas).toHaveLength(1);
+    // 03:00 UTC del 24 = 23 de septiembre en Bogotá.
+    expect(html).toContain('23/09/2026');
+    expect(html).toContain('Aceptado DIAN');
+    expect(html).not.toContain(XSS);
+    expect(html).toContain('&lt;script&gt;');
+    // `support_documents` no tiene FK a `suppliers`: no se embebe (PostgREST fallaría); se lee aparte.
+    const principal = s.supabase.consultas.find((c) => c.tabla === 'support_documents');
+    expect(principal?.columnas).not.toMatch(/suppliers\s*\(/);
+    expect(principal?.columnas).toMatch(/invoice_items\s*\(/);
+    const sinOrganizacion = s.supabase.consultas
+      .filter((c) => !['organizations', 'tax_templates', 'profiles'].includes(c.tabla))
+      .filter((c) => !c.filtros.some(([col, , v]) => col === 'organization_id' && v === ORG));
+    expect(sinOrganizacion).toEqual([]);
+  });
+
+  it('documento soporte: sin datos en `provider` usa el proveedor de la organización; estado desconocido sale como borrador', async () => {
+    permisos.add('finance.view');
+    const t = tablasExtendidas();
+    const ds = t.support_documents[0];
+    ds.provider = {};
+    ds.status = 'raro';
+    ds.cufe = null;
+    const { payload } = await pedir(sesion(t), 'documento-soporte', DS1);
+    expect(payload.contraparte).toMatchObject({ nombre: 'Proveedor Uno', numeroDocumento: '800' });
+    expect(payload.estado?.codigo).toBe('soporte.draft');
+    expect(payload.pieLegal.qr).toBeNull();
+  });
+
+  it('documento soporte: otra organización → 404; sin finance.view → 403 sin leer el documento', async () => {
+    permisos.add('finance.view');
+    expect(await codigoDe(pedir(sesion(tablasExtendidas()), 'documento-soporte', DS_AJENO))).toBe('404 NOT_FOUND');
+    expect(await codigoDe(pedir(sesion(tablasExtendidas()), 'documento-soporte', 'no-es-uuid'))).toBe('404 NOT_FOUND');
+    permisos.clear();
+    permisos.add('pos.view');
+    const s = sesion(tablasExtendidas());
+    expect(await codigoDe(pedir(s, 'documento-soporte', DS1))).toBe('403 PERMISSION_REQUIRED');
+    expect(s.supabase.consultas.some((c) => c.tabla === 'support_documents')).toBe(false);
+  });
+});
+
 it('contextoMoneda del doble es el real', () => {
   expect(contextoMoneda('USD').code).toBe('USD');
 });

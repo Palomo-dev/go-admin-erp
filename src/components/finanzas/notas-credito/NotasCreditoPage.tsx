@@ -20,6 +20,7 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  Printer,
 } from 'lucide-react';
 import {
   PageHeaderSkeleton,
@@ -57,6 +58,7 @@ import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { notasCreditoService, NotaCredito } from '@/lib/services/notasCreditoService';
+import { abrirDocumento, imprimirDocumento } from '@/lib/documents/cliente';
 import { CopyableId } from '@/components/common/CopyableId';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 
@@ -91,6 +93,8 @@ export function NotasCreditoPage() {
   // KPIs que suman varias notas: moneda base. Cada nota: su propia moneda.
   const { formatear, paraDocumento } = useMonedaOrganizacion();
   const t = useTranslations('notasCredito');
+  // Imprimir y PDF: motor único de documentos (plantilla de marca, datos leídos en el servidor).
+  const ta = useTranslations('accionesDocumento');
   // issue_date es timestamptz: el día sale en la zona de la organización.
   const { formatDate, getToday } = useFormatDate();
   const etiquetaEstado = (estado: string) => (ESTADOS_CONOCIDOS.has(estado) ? t(`estados.${estado}`) : estado);
@@ -408,6 +412,14 @@ export function NotasCreditoPage() {
                           >
                             <Eye className="h-4 w-4 mr-2" />
                             {t('listado.verDetalle')}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => imprimirDocumento('nota-credito', nota.id)} className="cursor-pointer">
+                            <Printer className="h-4 w-4 mr-2" />
+                            {ta('imprimir')}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => abrirDocumento('nota-credito', nota.id)} className="cursor-pointer">
+                            <FileText className="h-4 w-4 mr-2" />
+                            {ta('verPdf')}
                           </DropdownMenuItem>
                           {nota.status !== 'void' && nota.status !== 'accepted' && (
                             <>

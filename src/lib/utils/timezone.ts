@@ -28,6 +28,7 @@ import { DEFAULT_TIMEZONE, todayInTz } from '@/lib/utils/dateCore';
 
 export {
   DEFAULT_TIMEZONE,
+  addPlainDays,
   formatInstantWithOffset,
   getOffsetMinutesForTimezone,
   isUsableTimezone,

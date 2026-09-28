@@ -279,6 +279,25 @@ export function previousPlainDay(dateString: string): string {
   return desplazarDias(dateString, -1);
 }
 
+/**
+ * Dia calendario desplazado N dias (YYYY-MM-DD), sin tocar zonas horarias.
+ *
+ * Es la generalizacion de `nextPlainDay`/`previousPlainDay` y existe porque
+ * "hoy + 90 dias" o "hoy - 30 dias" aparecia en media docena de servicios
+ * resuelto con `new Date(); d.setDate(d.getDate() + n)`, que trabaja sobre la
+ * hora de pared del NAVEGADOR y luego se convertia a dia con `toISOString()`.
+ *
+ * Aritmetica de dias CALENDARIO, no de horas: sumar 1 aqui siempre avanza un
+ * dia del calendario, tambien en los dias de 23 h y 25 h del cambio de hora,
+ * donde `+ 24 * 60 * 60 * 1000` sobre un instante no lo hace.
+ *
+ * @param dateString Dia calendario YYYY-MM-DD de partida
+ * @param days Dias a sumar (negativo para restar)
+ */
+export function addPlainDays(dateString: string, days: number): string {
+  return desplazarDias(dateString, days);
+}
+
 function desplazarDias(dateString: string, dias: number): string {
   const [anio, mes, dia] = dateString.split('-').map(Number);
   const movido = new Date(Date.UTC(anio, mes - 1, dia + dias));

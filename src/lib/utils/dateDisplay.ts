@@ -32,7 +32,10 @@ import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 // Se reexportan aqui porque la mitad del repositorio los importa de
 // '@/lib/utils/dateDisplay' y la documentacion los nombra en este modulo.
 export {
+  addPlainDays,
+  nextPlainDay,
   plainDateToInstant,
+  previousPlainDay,
   toPlainDate,
   todayInTz,
 } from '@/lib/utils/dateCore';

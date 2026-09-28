@@ -11699,7 +11699,8 @@
       "anularPagos": "Pagamentos da dívida anulados se o caixa ainda estiver aberto",
       "anularStock": "O estoque volta para a filial",
       "detalleFactura": "Detalhe da nota",
-      "cargandoFactura": "Carregando a nota"
+      "cargandoFactura": "Carregando a nota",
+      "errorDescuento": "Não foi possível aplicar o desconto"
     },
     "resumen": {
       "titulo": "Resumo",
@@ -11760,6 +11761,23 @@
       "abrirCaja": "Abrir caixa para cobrar",
       "hojaCarrito": "Carrinho",
       "seguirComprando": "Continuar comprando"
+    },
+    "descuento": {
+      "titulo": "Desconto",
+      "descripcion": "Aplique um desconto a cada produto do carrinho.",
+      "tipo": "Tipo de desconto",
+      "aUnProducto": "Em um produto",
+      "aTodaLaVenta": "Em toda a venda",
+      "ventaNoDisponible": "O desconto em toda a venda chegará em breve.",
+      "listo": "Pronto",
+      "lineas": "Itens do carrinho",
+      "cantidadPorPrecio": "{cantidad} × {precio}",
+      "montoDe": "Desconto de {nombre}",
+      "monto": "Valor",
+      "aplicar": "Aplicar",
+      "quitar": "Remover",
+      "frecuente": "Aplicar o desconto frequente de {monto}",
+      "excede": "O desconto não pode passar de {tope}; será aplicado no máximo esse valor."
     }
   }
 }

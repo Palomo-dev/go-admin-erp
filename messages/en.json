@@ -11804,7 +11804,8 @@
       "anularPagos": "Debt payments voided if their register is still open",
       "anularStock": "Stock returns to the branch",
       "detalleFactura": "Invoice detail",
-      "cargandoFactura": "Loading the invoice"
+      "cargandoFactura": "Loading the invoice",
+      "errorDescuento": "The discount could not be applied"
     },
     "resumen": {
       "titulo": "Summary",
@@ -11865,6 +11866,23 @@
       "abrirCaja": "Open register to charge",
       "hojaCarrito": "Cart",
       "seguirComprando": "Keep shopping"
+    },
+    "descuento": {
+      "titulo": "Discount",
+      "descripcion": "Apply a discount to each product in the cart.",
+      "tipo": "Discount type",
+      "aUnProducto": "On a product",
+      "aTodaLaVenta": "On the whole sale",
+      "ventaNoDisponible": "Discounts on the whole sale are coming soon.",
+      "listo": "Done",
+      "lineas": "Cart items",
+      "cantidadPorPrecio": "{cantidad} × {precio}",
+      "montoDe": "Discount on {nombre}",
+      "monto": "Amount",
+      "aplicar": "Apply",
+      "quitar": "Remove",
+      "frecuente": "Apply the frequent discount of {monto}",
+      "excede": "The discount cannot exceed {tope}; at most that amount will be applied."
     }
   }
 }

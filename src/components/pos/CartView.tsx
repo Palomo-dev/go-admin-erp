@@ -5,6 +5,7 @@ import { Check, CheckCircle, ChefHat, FileText, Pause, Send, ShoppingCart } from
 import { Skeleton } from '@/components/ui/skeleton';
 import { CartTag, Dialogo, DialogoMotivo, EmptyState, FilaDato, FormField, ListaDatos, PanelAdaptable, useAtajos } from '@/components/kit';
 import { AccionesCarrito } from '@/components/pos/venta/AccionesCarrito';
+import { DialogoDescuento } from '@/components/pos/venta/DialogoDescuento';
 import { hayRafagaDelLector } from '@/hooks/useHardwareBarcodeScanner';
 import { teclaAtajo } from '@/lib/pos/venta/atajos';
 import { todayInTz } from '@/lib/utils/dateCore';
@@ -107,12 +108,13 @@ interface CartViewProps {
   requiereCaja?: boolean;
   /** «Abrir caja para cobrar · F9»: abre el diálogo de apertura (lo monta la página). */
   onAbrirCaja?: () => void;
-  /** «Descuento · D» del carrito (diálogo del paso 10); sin él no se muestra. */
-  onDescuento?: () => void;
 }
 
-export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true, atajosActivos = true, requiereCaja = true, onAbrirCaja, onDescuento }: CartViewProps) {
+export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true, atajosActivos = true, requiereCaja = true, onAbrirCaja }: CartViewProps) {
   const { timezone } = useOrgTimezone();
+  // «Descuento · D» (paso 10): diálogo con la pestaña «A un producto».
+  const [showDiscountDialog, setShowDiscountDialog] = useState(false);
+  const onDescuento = () => setShowDiscountDialog(true);
   const moneda = useMonedaOrganizacion();
   const { formatear } = moneda;
   const [showHoldDialog, setShowHoldDialog] = useState(false);
@@ -387,6 +389,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
       setDiscountInputValue('');
     } catch (error) {
       console.error('Error applying discount:', error);
+      toast.error(tCarrito('errorDescuento'), { description: mensajeErrorCobro(error, tCobro, tCarrito('errorDescuento')) });
     }
   };
 
@@ -699,7 +702,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         descripcion: tAtajosCarrito('lineaDescuento'),
         // Con el foco en una línea, D es el descuento de esa línea (lo registra LineasCarrito).
         cuando: () => !isEmpty && modo === 'activo' && !!onDescuento && !document.activeElement?.closest('[data-linea-carrito]'),
-        accion: () => onDescuento?.(),
+        accion: onDescuento,
       },
     ],
     { activo: atajosActivos, hayRafaga: hayRafagaDelLector },
@@ -816,6 +819,17 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
           />
         </div>
       )}
+
+      {/* Descuento · D: pestaña «A un producto» (paso 10) */}
+      <DialogoDescuento
+        abierto={showDiscountDialog}
+        onAbiertoChange={setShowDiscountDialog}
+        items={cart.items}
+        formatear={formatear}
+        frecuentes={frequentDiscountsMap}
+        onCargarFrecuentes={(productId) => void handleLoadFrequentDiscounts(productId)}
+        onAplicar={handleApplyDiscount}
+      />
 
       {/* Poner en espera */}
       <Dialogo

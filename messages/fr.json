@@ -11699,7 +11699,8 @@
       "anularPagos": "Paiements de la dette annulés si leur caisse est encore ouverte",
       "anularStock": "Le stock revient à la succursale",
       "detalleFactura": "Détail de la facture",
-      "cargandoFactura": "Chargement de la facture"
+      "cargandoFactura": "Chargement de la facture",
+      "errorDescuento": "Impossible d’appliquer la remise"
     },
     "resumen": {
       "titulo": "Récapitulatif",
@@ -11760,6 +11761,23 @@
       "abrirCaja": "Ouvrir la caisse pour encaisser",
       "hojaCarrito": "Panier",
       "seguirComprando": "Continuer les achats"
+    },
+    "descuento": {
+      "titulo": "Remise",
+      "descripcion": "Appliquez une remise à chaque produit du panier.",
+      "tipo": "Type de remise",
+      "aUnProducto": "Sur un produit",
+      "aTodaLaVenta": "Sur toute la vente",
+      "ventaNoDisponible": "La remise sur toute la vente arrive bientôt.",
+      "listo": "Terminé",
+      "lineas": "Articles du panier",
+      "cantidadPorPrecio": "{cantidad} × {precio}",
+      "montoDe": "Remise sur {nombre}",
+      "monto": "Montant",
+      "aplicar": "Appliquer",
+      "quitar": "Retirer",
+      "frecuente": "Appliquer la remise fréquente de {monto}",
+      "excede": "La remise ne peut pas dépasser {tope} ; ce montant sera appliqué au maximum."
     }
   }
 }

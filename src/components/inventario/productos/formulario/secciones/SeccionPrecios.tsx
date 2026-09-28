@@ -3,10 +3,9 @@
 import Link from 'next/link';
 import { History } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { FormField, SegmentedControl } from '@/components/kit';
+import { CampoFecha, FormField, SegmentedControl } from '@/components/kit';
 import { CampoNumero } from '@/components/kit/CampoNumero';
 import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
-import { Input } from '@/components/ui/input';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { addPlainDays } from '@/lib/utils/dateDisplay';
 import { calcularMargen, costoDesdeMargen, descuentoComparacion, tonoMargen } from '../../logica/margen';
@@ -152,19 +151,19 @@ export function SeccionPrecios({ estado, cambiar, errores, modo, moneda, hoy, pr
                   onValorChange={(v) => cambiar('precio_desde', v === 'ahora' ? null : fechas.toInstant(manana))}
                 />
                 {estado.precio_desde && (
-                  <Input
+                  <CampoFecha
                     id={campo.id}
-                    type="date"
                     aria-describedby={campo['aria-describedby']}
                     aria-invalid={campo['aria-invalid']}
                     aria-label={t('diaVigencia')}
                     min={manana}
-                    value={diaProgramado ?? manana}
-                    onChange={(e) => {
-                      const dia = e.target.value;
+                    hoy={hoy}
+                    valor={diaProgramado ?? manana}
+                    onValorChange={(dia) => {
                       cambiar('precio_desde', dia ? fechas.toInstant(dia < manana ? manana : dia) : null);
                     }}
-                    className="h-8 sm:w-44"
+                    tamano="sm"
+                    className="sm:w-44"
                   />
                 )}
               </div>

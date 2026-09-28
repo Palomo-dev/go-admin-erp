@@ -3,7 +3,7 @@
  * GET /api/factus/numbering-ranges
  *
  * Requiere sesión (`getServerOrgContext`: /api/factus está fuera del
- * middleware). Usa la cuenta de Factus DE LA ORGANIZACIÓN (Vault); la demo del
+ * middleware) y `finance.view`, resuelto en el servidor (403 sin él). Usa la cuenta de Factus DE LA ORGANIZACIÓN (Vault); la demo del
  * entorno solo en desarrollo. Ya no devuelve la respuesta cruda de Factus.
  * Para copiarlos a la numeración de una sucursal:
  * POST /api/factus/config { action: 'sincronizar_rangos', branchId }.
@@ -13,11 +13,13 @@ import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { NextResponse } from 'next/server';
 import { obtenerAccesoFactus, FacturacionNoActivadaError } from '@/lib/services/einvoicing/accesoFactus.server';
 import { leerRangosFactus } from '@/lib/services/einvoicing/rangosFactus.server';
+import { PERMISOS_FINANZAS, requireOrgPermission } from '@/lib/security/orgGuards';
 
 export async function GET(request: Request) {
   let ctx;
   try {
     ctx = await getServerOrgContext(request);
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, 'factus/numbering-ranges');
   } catch (err) {
     if (err instanceof OrgContextError) {
       return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });

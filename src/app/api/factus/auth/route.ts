@@ -3,7 +3,9 @@
  * POST /api/factus/auth
  *
  * Exige sesión y membresía (`getServerOrgContext`) y NUNCA devuelve el token
- * (2026-09-22: antes lo entregaba sin sesión).
+ * (2026-09-22: antes lo entregaba sin sesión). Probar la cuenta es tarea de
+ * configuración: administrador de la organización o `finance.approve`
+ * (como POST /api/factus/config), resuelto en el servidor.
  *
  * Desde 2026-09-23 prueba la cuenta de Factus DE LA ORGANIZACIÓN (credenciales
  * cifradas en Vault que carga la plataforma). Sin servicio activo → 409. Las
@@ -11,12 +13,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { getServerOrgContext, OrgContextError, requireOrgAdminOrPermission } from '@/lib/utils/orgContext';
 import { obtenerAccesoFactus, FacturacionNoActivadaError } from '@/lib/services/einvoicing/accesoFactus.server';
+import { PERMISOS_FINANZAS } from '@/lib/security/orgGuards';
 
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext(request);
+    await requireOrgAdminOrPermission(ctx, PERMISOS_FINANZAS.APROBAR);
     await obtenerAccesoFactus(ctx.organizationId);
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

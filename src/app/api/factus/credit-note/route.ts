@@ -4,7 +4,8 @@
  * Body: { invoiceId: <id de la nota crédito en invoice_sales>, reason, correctionConceptCode? }
  *
  * La organización sale de la sesión (el middleware no cubre /api/factus/): un
- * organizationId ajeno en el body o la query → 403.
+ * organizationId ajeno en el body o la query → 403. Permiso `finance.create`,
+ * resuelto en el servidor (403 sin él).
  *
  * Encola la nota y la envía por la cola (`colaFacturacion`), con el payload v2
  * de Factus: concepto de corrección, número DIAN de la factura, cliente y
@@ -18,12 +19,15 @@ import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
 import { encolarDocumento, procesarAhora } from '@/lib/services/einvoicing/colaFacturacion.server';
 import { CONCEPTOS_NOTA_CREDITO } from '@/lib/services/einvoicing/payloadsFactus';
 import { respuestaDeEnvio } from '@/lib/services/einvoicing/respuestaRuta';
+import { PERMISOS_FINANZAS, requireOrgPermission } from '@/lib/security/orgGuards';
 
 export const POST = withOrg(async (ctx, request) => {
   try {
     const body = await readOrgBody<{ invoiceId?: string; reason?: string; correctionConceptCode?: string }>(ctx, request, {
       route: 'factus/credit-note',
     });
+    // Enviar la nota a la DIAN emite un documento fiscal: `finance.create` (como /api/factus/jobs).
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.CREAR, 'factus/credit-note');
     const notaId = typeof body?.invoiceId === 'string' ? body.invoiceId : null;
     const motivo = typeof body?.reason === 'string' ? body.reason.trim() : '';
     if (!notaId || !motivo) {

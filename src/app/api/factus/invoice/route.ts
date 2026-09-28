@@ -3,8 +3,9 @@
  * POST /api/factus/invoice   Body: { invoiceId }
  *
  * Requiere sesión y membresía activa (`withOrg`; el middleware no cubre
- * /api/factus/). La organización sale de la sesión: un organizationId ajeno
- * en el body o la query → 403.
+ * /api/factus/) y el permiso `finance.create`, resuelto en el servidor (403
+ * sin él). La organización sale de la sesión: un organizationId ajeno en el
+ * body o la query → 403.
  *
  * Ya no envía por su cuenta: encola el documento (un solo job por factura) e
  * intenta enviarlo en el momento por el MISMO camino que usa el cron
@@ -17,10 +18,13 @@ import { NextResponse } from 'next/server';
 import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
 import { encolarDocumento, procesarAhora } from '@/lib/services/einvoicing/colaFacturacion.server';
 import { respuestaDeEnvio } from '@/lib/services/einvoicing/respuestaRuta';
+import { PERMISOS_FINANZAS, requireOrgPermission } from '@/lib/security/orgGuards';
 
 export const POST = withOrg(async (ctx, request) => {
   try {
     const body = await readOrgBody<{ invoiceId?: string }>(ctx, request, { route: 'factus/invoice' });
+    // Enviar a la DIAN emite un documento fiscal: `finance.create` (como /api/factus/jobs).
+    await requireOrgPermission(ctx, PERMISOS_FINANZAS.CREAR, 'factus/invoice');
     const invoiceId = typeof body?.invoiceId === 'string' ? body.invoiceId : null;
     if (!invoiceId) {
       return NextResponse.json({ error: 'Se requiere invoiceId' }, { status: 400 });

@@ -18,6 +18,8 @@ const FACTURA_AJENA = 'f0000000-0000-4000-8000-000000000002';
 let tablas: Tablas;
 let sesion: { organizationId: number; userId: string } | null;
 let esAdmin: boolean;
+/** Permisos del usuario de la sesión cuando NO es administrador (check_user_permission). */
+let permisos: string[];
 
 function tablasBase(): Tablas {
   return {
@@ -41,6 +43,7 @@ function tablasBase(): Tablas {
     electronic_invoicing_jobs: [],
     invoice_sequences: [],
     branches: [{ id: 107, organization_id: ORG }],
+    support_documents: [{ id: 'ds-1', organization_id: ORG, number: 'DS1' }],
   };
 }
 
@@ -56,8 +59,9 @@ jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError,
   readOrgBody,
   getServerOrgContext: async () => ctx(),
-  requireOrgAdminOrPermission: async () => {
-    if (!esAdmin) throw new OrgContextError('Requiere rol de administrador de la organización', 403, 'ADMIN_REQUIRED');
+  hasOrgAdminOrPermission: async (_c: unknown, code: string) => esAdmin || permisos.includes(code),
+  requireOrgAdminOrPermission: async (_c: unknown, code: string) => {
+    if (!esAdmin && !permisos.includes(code)) throw new OrgContextError('Requiere rol de administrador de la organización', 403, 'ADMIN_REQUIRED');
   },
   withOrg:
     (handler: (c: unknown, req: Request, rp: unknown) => Promise<Response>) =>
@@ -96,6 +100,12 @@ jest.mock('@/lib/services/einvoicing/rangosFactus.server', () => ({
   leerRangosFactus: async () => [],
   sincronizarRangos: async () => ({ importados: 0, desactivados: 0, omitidos: [] }),
 }));
+const factus = {
+  getAcquirer: jest.fn(async () => ({ name: 'Adquiriente', email: null })),
+  downloadSupportDocumentPDF: jest.fn(async () => Buffer.from('%PDF')),
+  downloadSupportDocumentXML: jest.fn(async () => '<xml/>'),
+};
+jest.mock('@/lib/services/factusService', () => ({ __esModule: true, default: factus }));
 
 import { NextRequest } from 'next/server';
 import * as invoice from '@/app/api/factus/invoice/route';
@@ -103,6 +113,10 @@ import * as creditNote from '@/app/api/factus/credit-note/route';
 import * as debitNote from '@/app/api/factus/debit-note/route';
 import * as config from '@/app/api/factus/config/route';
 import * as processPending from '@/app/api/factus/process-pending/route';
+import * as numberingRanges from '@/app/api/factus/numbering-ranges/route';
+import * as acquirer from '@/app/api/factus/acquirer/route';
+import * as supportDownload from '@/app/api/factus/support-document/download/route';
+import * as auth from '@/app/api/factus/auth/route';
 
 type Handler = (req: NextRequest, rp: { params: Promise<Record<string, string>> }) => Promise<Response>;
 
@@ -124,6 +138,7 @@ beforeEach(() => {
   tablas = tablasBase();
   sesion = { organizationId: ORG, userId: 'u-1' };
   esAdmin = true;
+  permisos = [];
   jest.clearAllMocks();
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   jest.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -146,6 +161,18 @@ describe('POST /api/factus/invoice', () => {
     const r = await call(invoice.POST, req('POST', '/api/factus/invoice', { invoiceId: FACTURA, organizationId: OTRA }));
     expect(r.status).toBe(403);
     expect(cola.encolarDocumento).not.toHaveBeenCalled();
+  });
+
+  test('sin finance.create → 403 y no encola; con finance.create (sin ser administrador) encola', async () => {
+    esAdmin = false;
+    permisos = ['finance.view'];
+    const r = await call(invoice.POST, req('POST', '/api/factus/invoice', { invoiceId: FACTURA }));
+    expect(r.status).toBe(403);
+    expect(r.json.code).toBe('PERMISSION_REQUIRED');
+    expect(cola.encolarDocumento).not.toHaveBeenCalled();
+    permisos = ['finance.create'];
+    expect((await call(invoice.POST, req('POST', '/api/factus/invoice', { invoiceId: FACTURA }))).status).toBe(202);
+    expect(cola.encolarDocumento).toHaveBeenCalledTimes(1);
   });
 
   test('factura de otra organización → 404 y no encola', async () => {
@@ -173,6 +200,14 @@ describe('POST /api/factus/invoice', () => {
 });
 
 describe('POST /api/factus/credit-note', () => {
+  test('sin finance.create → 403 y no encola', async () => {
+    esAdmin = false;
+    permisos = ['finance.view', 'finance.void'];
+    const r = await call(creditNote.POST, req('POST', '/api/factus/credit-note', { invoiceId: 'nc-1', reason: 'Devolución' }));
+    expect(r.status).toBe(403);
+    expect(cola.encolarDocumento).not.toHaveBeenCalled();
+  });
+
   test('concepto inválido → 400', async () => {
     const r = await call(creditNote.POST, req('POST', '/api/factus/credit-note', { invoiceId: 'nc-1', reason: 'x', correctionConceptCode: '9' }));
     expect(r.status).toBe(400);
@@ -213,6 +248,14 @@ describe('/api/factus/config', () => {
     expect((await call(config.GET, req('GET', '/api/factus/config'))).status).toBe(401);
   });
 
+  test('GET sin finance.view → 403 (antes bastaba la sesión); con finance.view → 200', async () => {
+    esAdmin = false;
+    permisos = [];
+    expect((await call(config.GET, req('GET', '/api/factus/config'))).status).toBe(403);
+    permisos = ['finance.view'];
+    expect((await call(config.GET, req('GET', '/api/factus/config'))).status).toBe(200);
+  });
+
   test('POST sin permiso de administración → 403 y no verifica', async () => {
     esAdmin = false;
     const r = await call(config.POST, req('POST', '/api/factus/config', { action: 'verificar' }));
@@ -242,6 +285,58 @@ describe('/api/factus/config', () => {
     expect(r.status).toBe(200);
     expect(cola.liberarRetenido).toHaveBeenCalledWith({ jobId: 'job-9', organizationId: ORG, actor: 'u-1' });
     expect(cola.procesarAhora).toHaveBeenCalledWith('job-9');
+  });
+});
+
+describe('lecturas de Factus: finance.view resuelto en el servidor', () => {
+  const casos: Array<[string, () => Promise<{ status: number }>]> = [
+    ['GET numbering-ranges', () => call(numberingRanges.GET, req('GET', '/api/factus/numbering-ranges'))],
+    ['GET acquirer', () => call(acquirer.GET, req('GET', '/api/factus/acquirer?documentType=13&documentNumber=123456789'))],
+    ['GET support-document/download', () => call(supportDownload.GET, req('GET', '/api/factus/support-document/download?type=xml&number=DS1'))],
+  ];
+
+  test.each(casos)('%s sin finance.view → 403 y no usa la cuenta de Factus', async (_n, pedir) => {
+    esAdmin = false;
+    permisos = ['finance.create'];
+    expect((await pedir()).status).toBe(403);
+    expect(acceso.obtenerAccesoFactus).not.toHaveBeenCalled();
+    expect(factus.getAcquirer).not.toHaveBeenCalled();
+    expect(factus.downloadSupportDocumentXML).not.toHaveBeenCalled();
+  });
+
+  test.each(casos)('%s con finance.view → responde', async (_n, pedir) => {
+    esAdmin = false;
+    permisos = ['finance.view'];
+    expect((await pedir()).status).toBe(200);
+    expect(acceso.obtenerAccesoFactus).toHaveBeenCalledWith(ORG, { permitirDemoDesarrollo: true });
+  });
+
+  test.each(casos)('%s sin sesión → 401', async (_n, pedir) => {
+    sesion = null;
+    expect((await pedir()).status).toBe(401);
+  });
+});
+
+describe('POST /api/factus/auth: administrador o finance.approve', () => {
+  test('con finance.view y finance.create (sin approve) → 403 y no prueba la cuenta', async () => {
+    esAdmin = false;
+    permisos = ['finance.view', 'finance.create'];
+    const r = await call(auth.POST, req('POST', '/api/factus/auth', {}));
+    expect(r.status).toBe(403);
+    expect(acceso.obtenerAccesoFactus).not.toHaveBeenCalled();
+  });
+
+  test('con finance.approve → prueba la cuenta de la organización de la sesión', async () => {
+    esAdmin = false;
+    permisos = ['finance.approve'];
+    const r = await call(auth.POST, req('POST', '/api/factus/auth', {}));
+    expect(r.status).toBe(200);
+    expect(r.json).toEqual({ success: true });
+    expect(acceso.obtenerAccesoFactus).toHaveBeenCalledWith(ORG);
+  });
+
+  test('administrador → 200', async () => {
+    expect((await call(auth.POST, req('POST', '/api/factus/auth', {}))).status).toBe(200);
   });
 });
 

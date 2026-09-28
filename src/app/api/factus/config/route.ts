@@ -1,7 +1,7 @@
 /**
  * API Route: configuración de facturación electrónica que ve el CLIENTE.
  *
- * GET  /api/factus/config
+ * GET  /api/factus/config  (`finance.view`)
  *   Estado del servicio de GO Admin para la organización de la sesión (activo,
  *   pendiente de activación, suspendido), su resolución y rangos, la cola y los
  *   documentos retenidos. NUNCA credenciales: las carga la plataforma
@@ -22,10 +22,14 @@ import { getServiceClient } from '@/lib/supabase/server-service';
 import { obtenerAccesoFactus, verificarYActivar, FacturacionNoActivadaError } from '@/lib/services/einvoicing/accesoFactus.server';
 import { leerRangosFactus, sincronizarRangos } from '@/lib/services/einvoicing/rangosFactus.server';
 import { liberarRetenido, procesarAhora } from '@/lib/services/einvoicing/colaFacturacion.server';
+import { PERMISOS_FINANZAS, requireOrgPermission } from '@/lib/security/orgGuards';
 
-const PERMISO_CONFIGURAR = 'finance.approve';
+const PERMISO_CONFIGURAR = PERMISOS_FINANZAS.APROBAR;
 
 export const GET = withOrg(async (ctx) => {
+  // La cola, los retenidos y la resolución: `finance.view`, resuelto en el servidor
+  // ANTES de leer con el cliente de servicio.
+  await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, 'factus/config');
   const db = getServiceClient();
   const org = ctx.organizationId;
 

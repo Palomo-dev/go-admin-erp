@@ -15,14 +15,17 @@ import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { NextRequest, NextResponse } from 'next/server';
 import factusService from '@/lib/services/factusService';
 import { obtenerAccesoFactus, FacturacionNoActivadaError } from '@/lib/services/einvoicing/accesoFactus.server';
+import { PERMISOS_FINANZAS, requireOrgPermission } from '@/lib/security/orgGuards';
 
 export async function GET(request: NextRequest) {
   try {
     // /api/factus está fuera del middleware: sin esta guarda, cualquiera en
-    // internet usaba la cuenta de Factus de la plataforma.
+    // internet usaba la cuenta de Factus de la plataforma. Además, `finance.view`
+    // resuelto en el servidor: consultar la DIAN gasta la cuenta de la organización.
     let ctx;
     try {
       ctx = await getServerOrgContext(request);
+      await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, 'factus/acquirer');
     } catch (err) {
       if (err instanceof OrgContextError) {
         return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });

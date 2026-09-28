@@ -397,7 +397,7 @@ const ARCHIVOS = [
   'src/components/finanzas/cuentas-por-pagar/ExportarBancaModal.tsx',
   'src/components/finanzas/cuentas-por-pagar/id/AccountActionsCard.tsx',
   'src/components/finanzas/cuentas-por-pagar/id/CuentaPorPagarDetailPage.tsx',
-  'src/components/finanzas/facturas-venta/FacturasTable.tsx',
+  'src/components/finanzas/facturas-venta/listado/ListadoFacturasVenta.tsx',
   'src/components/hrm/reportes/ReportTable.tsx',
   'src/components/inventario/TopSKUTable.tsx',
   'src/components/inventario/productos/CatalogoProductos.tsx',
@@ -417,8 +417,9 @@ describe('ninguno de los 13 archivos vuelve a derivar un día de toISOString()',
 });
 
 describe('los dos import prohibidos de @/utils/Utils están fuera', () => {
-  it('FacturasTable ya no importa parseLocalDate', () => {
-    const texto = leer('src/components/finanzas/facturas-venta/FacturasTable.tsx');
+  // 2026-09-24 (P15): `FacturasTable` se retiró; su sucesor es el listado del kit.
+  it('el listado de facturas de venta no importa parseLocalDate', () => {
+    const texto = leer('src/components/finanzas/facturas-venta/listado/ListadoFacturasVenta.tsx');
     // Se mira la linea de `import`, no el archivo entero: el archivo puede (y
     // debe) seguir NOMBRANDO el helper enterrado en un comentario que explique
     // por que lo esta.
@@ -466,15 +467,15 @@ describe('cada call-site usa el helper que le toca, en su sitio', () => {
     expect(texto).toContain('_${todayInTz(timezone)}.txt`');
   });
 
-  it('FacturasTable compara DÍAS de la organización, no instantes', () => {
-    const texto = leer('src/components/finanzas/facturas-venta/FacturasTable.tsx');
-    expect(texto).toContain('const { toDate } = useFormatDate();');
-    expect(texto).toContain('const diaEmision = toDate(new Date(factura.issue_date));');
-    expect(texto).toContain('diaEmision < toDate(filtros.fechaInicio)');
-    expect(texto).toContain('diaEmision > toDate(filtros.fechaFin)');
-    // `toDate` tiene que estar en las dependencias del useMemo: si no, un
-    // cambio de zona dejaría el filtro calculado con la zona anterior.
-    expect(texto).toContain('[facturas, filtros, toDate]');
+  it('el filtro por emisión compara DÍAS de la organización, en la base', () => {
+    // El listado manda días `YYYY-MM-DD` (lista blanca en consultaFacturasDesde)
+    // y la RPC compara el día de emisión en la zona de la organización.
+    const consulta = leer('src/lib/finanzas/ventas/listadoFacturas.ts');
+    expect(consulta).toMatch(/\\d\{4\}-\\d\{2\}-\\d\{2\}/);
+    const rpc = leer('supabase/migrations/20260924081336_listados_facturas_venta_y_cartera.sql');
+    expect(rpc).toContain('(i.issue_date at time zone z.tz)::date as dia_emision');
+    expect(rpc).toContain('dia_emision >= v_desde');
+    expect(rpc).toContain('dia_emision <= v_hasta');
   });
 
   it('ReportTable usa formatPlainDate en las tres columnas `date`', () => {

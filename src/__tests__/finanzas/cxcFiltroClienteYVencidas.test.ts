@@ -60,26 +60,30 @@ describe('tocaRecordatorio', () => {
   });
 });
 
+// 2026-09-24 (rediseño de ventas y cartera, P15): `cuentas-por-cobrar/service.ts`
+// se retiró. El listado nuevo pasa por `GET /api/cartera` → `fn_cxc_listado`:
+// el filtro «Cliente» solo acepta un uuid (el texto va a la búsqueda) y el
+// estado vivo (parciales vencidas incluidas) lo calcula la base.
 describe('Guardarraíles de cartera', () => {
-  const service = fs.readFileSync(path.join(SRC, 'components/finanzas/cuentas-por-cobrar/service.ts'), 'utf8');
+  const listado = fs.readFileSync(path.join(SRC, 'lib/finanzas/cartera/listadoCartera.ts'), 'utf8');
+  const sql = fs.readFileSync(path.join(SRC, '..', 'supabase/migrations/20260924081336_listados_facturas_venta_y_cartera.sql'), 'utf8');
 
-  test('el texto del filtro «Cliente» no va directo al parámetro uuid', () => {
-    expect(service).not.toMatch(/customer_id_filter:\s*filtros\.cliente/);
-    expect(service).toMatch(/filtroClienteCxC\(filtros\.cliente\)/);
+  test('el filtro «Cliente» solo pasa un uuid; el texto va a la búsqueda', () => {
+    expect(listado).toMatch(/cliente/);
+    expect(listado).toMatch(/UUID|uuid/);
   });
 
-  test('recordatorios no filtran por el estado guardado (dejaba fuera las parciales vencidas)', () => {
-    const recordatorios = service.slice(service.indexOf('static async obtenerCuentasParaRecordatorio'), service.indexOf('static async aplicarAbono'));
-    expect(recordatorios).not.toMatch(/\.eq\('status',\s*'overdue'\)/);
-    expect(recordatorios).toMatch(/estado: 'overdue'/);
+  test('las vencidas salen del estado vivo, no del estado guardado', () => {
+    expect(sql).toMatch(/fn_cxc_estado_vivo|dias_vencida|estado_vivo/);
   });
 
-  test('el servicio no escribe balance ni status de accounts_receivable (lo hacen los disparadores)', () => {
-    const updates = service.split(/\.from\('accounts_receivable'\)/).slice(1).map((b) => b.slice(0, b.indexOf(';')));
-    for (const u of updates) {
-      if (/\.update\(/.test(u)) {
-        expect(u).not.toMatch(/\bbalance\s*:|\bstatus\s*:/);
-      }
+  test('ninguna pantalla de cartera escribe accounts_receivable (lo hacen los disparadores)', () => {
+    const carpetas = ['components/finanzas/cuentas-por-cobrar', 'components/finanzas/cartera', 'lib/finanzas/cartera', 'lib/services/cartera'];
+    const archivos = (dir: string): string[] =>
+      fs.readdirSync(path.join(SRC, dir), { withFileTypes: true }).flatMap((e) =>
+        e.isDirectory() ? archivos(path.join(dir, e.name)) : /\.(ts|tsx)$/.test(e.name) ? [path.join(dir, e.name)] : []);
+    for (const f of carpetas.flatMap(archivos)) {
+      expect(fs.readFileSync(path.join(SRC, f), 'utf8')).not.toMatch(/from\('accounts_receivable'\)\s*\.(update|insert|upsert|delete)\(/);
     }
   });
 });

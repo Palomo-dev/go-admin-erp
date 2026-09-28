@@ -198,16 +198,22 @@ describe('vencimientos de cuotas', () => {
 const PROHIBIDO = /toISOString\(\)\.(split\('T'\)|slice\(0, *10\))/;
 const HORA_DEL_NAVEGADOR = /new Date\([^)]*\+ 'T' \+ new Date\(\)\.toTimeString\(\)/;
 
+// 2026-09-24 (rediseño de ventas y cartera, P15): la cartera vieja
+// (`cuentas-por-cobrar/service.ts`, `id/*`, `AplicarAbonoModal`) y
+// `FacturasProximasVencer` se retiraron; el pago de venta y de cartera va por
+// el pago único (`fn_registrar_pago`, con el día `date` que la base convierte
+// en la zona de la sucursal) y el listado filtra por días de la organización en
+// la RPC (`fn_facturas_venta_listado`, `fn_cxc_listado`). `id/RegistrarPagoDialog`
+// quedó como adaptador del pago único para el detalle viejo que monta el POS.
 const ARCHIVOS_TANDA_2 = [
-  'src/components/finanzas/cuentas-por-cobrar/AplicarAbonoModal.tsx',
-  'src/components/finanzas/cuentas-por-cobrar/id/AccountActionsCard.tsx',
-  'src/components/finanzas/cuentas-por-cobrar/id/service.ts',
   'src/components/finanzas/facturas-compra/RegistrarPagoModal.tsx',
   'src/components/finanzas/facturas-compra/FacturasCompraService.ts',
   'src/components/finanzas/facturas-venta/id/RegistrarPagoDialog.tsx',
   'src/components/finanzas/facturas-venta/id/DetalleFactura.tsx',
   'src/components/finanzas/facturas-venta/ImportarCSVDialog.tsx',
-  'src/components/finanzas/facturas-venta/FacturasProximasVencer.tsx',
+  'src/components/finanzas/pagos/RegistrarPagoConectado.tsx',
+  'src/components/finanzas/cuentas-por-cobrar/listado/ListadoCartera.tsx',
+  'src/components/finanzas/cuentas-por-cobrar/detalle/DetalleCuentaCartera.tsx',
 ];
 
 describe('los archivos de la tanda 2 no vuelven al día UTC', () => {
@@ -216,49 +222,29 @@ describe('los archivos de la tanda 2 no vuelven al día UTC', () => {
   });
 
   it('ningún pago compone ya el instante con la hora del navegador', () => {
-    for (const ruta of [
-      ...ARCHIVOS_TANDA_2,
-      'src/components/finanzas/cuentas-por-cobrar/service.ts',
-    ]) {
+    for (const ruta of ARCHIVOS_TANDA_2) {
       expect(leer(ruta)).not.toMatch(HORA_DEL_NAVEGADOR);
     }
   });
 
-  it('los cuatro servicios que insertan un pago resuelven la zona', () => {
-    for (const ruta of [
-      'src/components/finanzas/cuentas-por-cobrar/service.ts',
-      'src/components/finanzas/cuentas-por-cobrar/id/service.ts',
-      'src/components/finanzas/facturas-compra/FacturasCompraService.ts',
-    ]) {
-      const fuente = leer(ruta);
-      expect(fuente).toContain('resolveTimezone(');
-      expect(fuente).toContain('instantForDayInTz(');
-    }
-    // Los DOS puntos de escritura del detalle de cartera, uno por uno: el pago
-    // de la cuenta y el pago de una cuota. Comprobar solo que el helper aparece
-    // en el archivo dejaba pasar que uno de los dos volviera al día suelto.
-    const detalle = leer('src/components/finanzas/cuentas-por-cobrar/id/service.ts');
-    expect(detalle).toContain('instantForDayInTz(paymentDate, timezone)');
-    expect(detalle).toContain('instantForDayInTz(paymentDate, timezoneCuota)');
-    expect(leer('src/components/finanzas/cuentas-por-cobrar/service.ts')).toContain(
-      'instantForDayInTz(abono.payment_date, timezone)',
-    );
-    expect(leer('src/components/finanzas/facturas-compra/FacturasCompraService.ts')).toContain(
-      'instantForDayInTz(pagoData.payment_date, timezone)',
-    );
+  it('los servicios que insertan un pago resuelven la zona', () => {
+    const fuente = leer('src/components/finanzas/facturas-compra/FacturasCompraService.ts');
+    expect(fuente).toContain('resolveTimezone(');
+    expect(fuente).toContain('instantForDayInTz(pagoData.payment_date, timezone)');
 
-    // El dialogo de venta compone el instante en el cliente, con la zona de la
-    // sucursal de la factura que ya tiene el contexto.
+    // Venta y cartera: el pago va por el pago único. El navegador manda el DÍA
+    // (`date`) y la base lo lleva a la zona de la sucursal; ningún adaptador
+    // compone instantes ni escribe `payments`.
     const dialogo = leer('src/components/finanzas/facturas-venta/id/RegistrarPagoDialog.tsx');
-    expect(dialogo).toContain('instantForDayInTz(fechaPago, timezone)');
-    expect(dialogo).toContain('useFormatDate(factura?.branch_id)');
+    expect(dialogo).toContain('RegistrarPagoConectado');
+    expect(dialogo).not.toMatch(/from\('payments'\)/);
+    const rpc = leer('supabase/migrations/20260924072939_pago_unico_registrar_y_anular.sql');
+    expect(rpc).toMatch(/p_fecha date/);
   });
 
   it('los min/max y las comparaciones usan el día en la zona, no el UTC', () => {
     for (const ruta of [
-      'src/components/finanzas/cuentas-por-cobrar/id/AccountActionsCard.tsx',
       'src/components/finanzas/facturas-compra/RegistrarPagoModal.tsx',
-      'src/components/finanzas/facturas-venta/id/RegistrarPagoDialog.tsx',
       'src/components/finanzas/facturas-venta/id/DetalleFactura.tsx',
     ]) {
       const fuente = leer(ruta);
@@ -268,18 +254,17 @@ describe('los archivos de la tanda 2 no vuelven al día UTC', () => {
   });
 
   it('las cuotas se generan con aritmética de día calendario', () => {
-    const servicio = leer('src/components/finanzas/cuentas-por-cobrar/id/service.ts');
-    expect(servicio).toContain('sumarMesesAlDia(primerVencimiento, i - 1)');
-    expect(servicio).not.toContain('dueDate.setMonth(');
+    const cuotas = leer('src/lib/finanzas/cartera/cuotas.ts');
+    expect(cuotas).not.toContain('.setMonth(');
+    expect(cuotas).not.toMatch(PROHIBIDO);
   });
 
-  it('el filtro de facturas próximas a vencer compara instantes', () => {
-    const fuente = leer('src/components/finanzas/facturas-venta/FacturasProximasVencer.tsx');
-    expect(fuente).toContain('getDateRange(hoy, fechaLimite, timezone)');
-    expect(fuente).toContain(".gte('due_date', start)");
-    expect(fuente).toContain(".lte('due_date', end)");
-    // Y ya no formatea con la zona del navegador ni con el helper deprecado.
-    expect(fuente).not.toContain('parseLocalDate');
+  it('«vence en 15 días» se cuenta en días de la organización, en la base', () => {
+    // Reemplaza a FacturasProximasVencer: el KPI sale de fn_facturas_venta_listado
+    // con el día de emisión y de vencimiento en la zona de la organización.
+    const rpc = leer('supabase/migrations/20260924081336_listados_facturas_venta_y_cartera.sql');
+    expect(rpc).toContain('(i.issue_date at time zone z.tz)::date as dia_emision');
+    expect(rpc).toMatch(/vence_15/);
   });
 
   it('el CSV de facturas convierte el día a instante antes de guardarlo', () => {

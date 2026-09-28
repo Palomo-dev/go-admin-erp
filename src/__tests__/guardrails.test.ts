@@ -2399,7 +2399,8 @@ describe('28. Generadores de documentos: sin moneda fija', () => {
     'components/finanzas/cotizaciones/id/DetalleCotizacion.tsx',
     'components/finanzas/facturas-compra/id/DetalleFacturaCompra.tsx',
     'components/finanzas/cuentas-por-pagar/id/service.ts',
-    'components/finanzas/cuentas-por-cobrar/id/CuentaPorCobrarDetailPage.tsx',
+    // `components/finanzas/cuentas-por-cobrar/id/CuentaPorCobrarDetailPage.tsx` se retiró (2026-09-24):
+    // el detalle nuevo de CxC no genera documentos; el estado de cuenta lo arma el motor único.
     'components/finanzas/cuentas-por-pagar/id/CuentaPorPagarDetailPage.tsx',
     'components/finanzas/egresos/EgresoDetalle.tsx',
     'components/finanzas/ingresos/IngresoDetalle.tsx',

@@ -435,7 +435,8 @@ describe('2 · el estado Propina solo entra con tips.enabled', () => {
     const display = openDisplay(terminalId);
     await waitFor(() => display.view() === 'order', 2000, 'pedido');
 
-    await cardSaves({ tips: { enabled: true, presets: [10, 5, 20], allowCustom: false } });
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    await cardSaves({ tips: { enabled: true, presets: [10, 5, 8], allowCustom: false } });
     await waitFor(() => display.link.snapshot.hello?.settings?.tips.enabled === true, 2000, 'ajustes aplicados');
 
     checkoutOpens({ methodCode: 'cash', methodName: 'Efectivo', total: 27000, baseTotal: 27000 });
@@ -443,8 +444,8 @@ describe('2 · el estado Propina solo entra con tips.enabled', () => {
     expect(getPosDisplayEmitter().tipPhase).toBe('pending');
     const state = display.lastState()!;
     expect(state.mode).toBe('tip');
-    // Presets ordenados por settings.ts (5/10/20), allowCustom respetado, base = la del modal.
-    expect(state.tip).toEqual({ presets: [5, 10, 20], allowCustom: false, selected: null, base: 27000 });
+    // Presets ordenados por settings.ts (5/8/10), allowCustom respetado, base = la del modal.
+    expect(state.tip).toEqual({ presets: [5, 8, 10], allowCustom: false, selected: null, base: 27000 });
     expect(state.payment).toMatchObject({ method: 'cash', total: 27000 });
     expect(state.cart?.lines).toHaveLength(2);
   });
@@ -463,7 +464,8 @@ describe('2 · el estado Propina solo entra con tips.enabled', () => {
     await cardSaves({ tips: { enabled: true, presets: [1, 2, 3], allowCustom: false } });
     await waitFor(() => display.stateMessages().length >= n + 1, 2000, 'resaludo con state');
     expect(display.lastState()?.mode).toBe('tip');
-    expect(display.lastState()?.tip?.presets).toEqual([5, 10, 15]); // los de la fase, no los nuevos
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    expect(display.lastState()?.tip?.presets).toEqual([5, 10]); // los de la fase, no los nuevos
     expect(display.link.snapshot.hello?.settings?.tips.presets).toEqual([1, 2, 3]); // pero el hello sí lleva los nuevos
   });
 });
@@ -579,7 +581,8 @@ describe('4 · táctil / no táctil: detección + override `touch` de los ajuste
     checkoutOpens({ methodCode: 'cash', methodName: 'Efectivo', total: 27000 });
     await waitFor(() => display.view() === 'tip', 2000, 'propina informativa');
     // Con presets, la pantalla NO táctil sigue mostrando los importes (PLAN §4.4: informativo).
-    expect(display.lastState()?.tip?.presets).toEqual([5, 10, 15]);
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    expect(display.lastState()?.tip?.presets).toEqual([5, 10]);
     const notice = resolveTipWaitingNotice({
       phase: emitter.tipPhase,
       displayMode: emitter.getState().mode,
@@ -834,7 +837,8 @@ describe('5 · Cobro·QR con imagen, «Ya pagué» y Gracias', () => {
     // «Mostrar en pantalla» desmarcado / QR retirado sin cobrar: la pregunta vuelve.
     emitter.setPayment(toDisplayPayment({ methodCode: 'breb_qr', methodName: 'Bre-B', total: 27000, qr: null, expiresAt: null }));
     await waitFor(() => display.view() === 'tip', 2000, 'propina de vuelta');
-    expect(display.lastState()?.tip?.presets).toEqual([5, 10, 15]);
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    expect(display.lastState()?.tip?.presets).toEqual([5, 10]);
   });
 });
 
@@ -880,7 +884,8 @@ describe('5b · casos cruzados entre partes', () => {
       // Pero la caja YA pregunta la propina si se abre un cobro (getSettings lee la caché).
       checkoutOpens({ methodCode: 'cash', methodName: 'Efectivo', total: 27000 });
       await waitFor(() => display.view() === 'tip', 2000, 'propina con ajustes nuevos');
-      expect(display.lastState()?.tip?.presets).toEqual([5, 10, 15]);
+      // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+      expect(display.lastState()?.tip?.presets).toEqual([5, 10]);
 
       // El cajero vuelve a la pestaña: visibilitychange → reannounce → hello con los ajustes.
       fakeDocument.visibilityState = 'visible';
@@ -905,14 +910,16 @@ describe('5b · casos cruzados entre partes', () => {
     await waitFor(() => display.stateMessages().length >= 1, 2000, 'snapshot');
     expect(display.accepted.map((m) => m.t).slice(0, 2)).toEqual(['hello', 'state']);
     expect(display.lastState()?.mode).toBe('tip');
-    expect(display.lastState()?.tip).toEqual({ presets: [5, 10, 15], allowCustom: true, selected: null, base: 27000 });
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    expect(display.lastState()?.tip).toEqual({ presets: [5, 10], allowCustom: true, selected: null, base: 27000 });
     expect(display.touch()).toBe(true); // forzado por el hello que precede al state
     expect(display.view()).toBe('tip');
     await waitFor(() => getPosDisplayEmitter().lastDisplayCapabilities?.touch === true, 2000, 'caja enterada');
     // Y responde igual que una pantalla que estuvo desde el principio.
-    display.link.send({ t: 'tip_selected', cartId: cart.id, kind: 'percent', value: 15 });
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    display.link.send({ t: 'tip_selected', cartId: cart.id, kind: 'percent', value: 10 });
     await waitFor(() => getPosDisplayEmitter().tipPhase === 'done', 2000, 'elección');
-    expect(getPosDisplayEmitter().tipSelection?.amount).toBe(4050);
+    expect(getPosDisplayEmitter().tipSelection?.amount).toBe(2700);
   });
 
   it('doble pulsación (dos tip_selected seguidos): solo la primera cuenta; la segunda no reabre ni cambia la elección', async () => {
@@ -1034,7 +1041,8 @@ describe('7 · contratos estáticos: Aplicar → tip_amount → tabla tips; QR �
     expect(checkout).toMatch(/onApply=\{\(selection\) => \{\s*setTipPercentage\(selection\.percent\);\s*setTipAmount\(selection\.amount\);/);
     expect(checkout).toMatch(/tip_amount: tipAmount,/);
     // La misma aritmética que la pantalla (tip.ts): sin fórmula duplicada.
-    expect(checkout).toMatch(/const calculatedTip = computeTipAmount\(baseTotal, percentage\);/);
+    // Paso 12 del POS (D7): la base de la propina es el subtotal SIN impuestos (baseTip), no baseTotal.
+    expect(checkout).toMatch(/const calculatedTip = computeTipAmount\(baseTip, percentage\);/);
     expect(checkout).not.toMatch(/Math\.round\(baseTotal \* \(percentage \/ 100\)\)/);
   });
 
@@ -1049,10 +1057,12 @@ describe('7 · contratos estáticos: Aplicar → tip_amount → tabla tips; QR �
   });
 
   it('CheckoutDialog: onPaid del QR cierra la fase de propina (skipTip) y el efecto de cobro pasa la imagen por resolveDisplayQr', () => {
-    expect(checkout).toMatch(/onPaid=\{\(\) => \{\s*setShowQrDialog\(false\);\s*toast\.success\('Pago QR confirmado'\);[\s\S]*?getPosDisplayEmitter\(\)\.skipTip\(\);/);
+    // Paso 12 del POS: los textos del cobro salen de next-intl (posCobro); se busca la llamada, no el literal.
+    expect(checkout).toMatch(/onPaid=\{\(\) => \{\s*setShowQrDialog\(false\);\s*toast\.success\(tPos\('qr\.confirmado'\)\);[\s\S]*?getPosDisplayEmitter\(\)\.skipTip\(\);/);
     expect(checkout).toMatch(/resolveDisplayQr\(\{ imageUrl: qrImageUrl, data: qrData, expiresAt: qrExpiresAt \}\)/);
     expect(checkout).toMatch(/getPosDisplayEmitter\(\)\.onUp\(\(msg\) => \{\s*if \(msg\.t !== 'qr_paid_claim' \|\| msg\.cartId !== cart\.id\) return;/);
-    expect(checkout).toMatch(/getPosDisplayEmitter\(\)\.setTipBase\(baseTotal\);/);
+    // Paso 12 del POS (D7): la base de la propina es el subtotal SIN impuestos (baseTip), no baseTotal.
+    expect(checkout).toMatch(/getPosDisplayEmitter\(\)\.setTipBase\(baseTip\);/);
   });
 
   it('la tarjeta aplica los ajustes guardados en la caja de esta ventana sin recargar (applyPosDisplaySettings) y avisa a las otras', () => {

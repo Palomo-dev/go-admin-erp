@@ -405,7 +405,8 @@ describe('B. computeTipAmount frente a handleTipPercentage del modal', () => {
   it('F2B-R3-2 corregido (ronda 5): handleTipPercentage usa computeTipAmount de tip.ts (regla dura 7); la fórmula anterior difería en 1 con presets arbitrarios', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/pos/CheckoutDialog.tsx'), 'utf8');
     expect(src).toContain("import { computeTipAmount } from '@/lib/pos/display/tip';");
-    expect(src).toContain('const calculatedTip = computeTipAmount(baseTotal, percentage);');
+    // Paso 12 del POS (D7): la base de la propina es el subtotal SIN impuestos (baseTip), no baseTotal.
+    expect(src).toContain('const calculatedTip = computeTipAmount(baseTip, percentage);');
     expect(src).not.toContain('Math.round(baseTotal * (percentage / 100))');
     // Evidencia de por qué importaba: 25 × 58 % → 14 antes, 15 en la pantalla; 50 × 29 % → 14 / 15.
     expect(modalAntes(25, 58)).toBe(14);
@@ -415,15 +416,16 @@ describe('B. computeTipAmount frente a handleTipPercentage del modal', () => {
     expect(modalAntes(150, 41)).not.toBe(computeTipAmount(150, 41));
   });
 
-  it('lo que se APLICA es lo que el cliente vio: tip_selected percent 58 sobre base 25 llega a la caja con 15 (tip.ts), igual que la pantalla', () => {
-    const h = enTip({ settings: settings({ presets: [29, 58, 87] }) });
+  it('lo que se APLICA es lo que el cliente vio: tip_selected percent 7 sobre base 25 llega a la caja con computeTipAmount (tip.ts), igual que la pantalla', () => {
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan. Antes: presets 29/58/87.
+    const h = enTip({ settings: settings({ presets: [3, 7, 9] }) });
     h.emitter.setTipBase(25);
     h.flush();
     const seen: TipSelection[] = [];
     h.emitter.onTipSelected((s) => seen.push(s));
-    h.transport.emitUp(tipSelected('percent', 58));
+    h.transport.emitUp(tipSelected('percent', 7));
     expect(seen).toHaveLength(1);
-    expect(seen[0].amount).toBe(15);
+    expect(seen[0].amount).toBe(computeTipAmount(25, 7));
     expect(computeTipAmount(25, 58)).toBe(15);
   });
 });
@@ -449,7 +451,8 @@ describe('C. ajustes basura en organization_settings nunca producen un «tip» i
     for (const presets of [[5, 5, 5], [], ['a', 'b', 'c'], [0, 150, 10], [5, 10], null, 'x']) {
       const { h } = conAjustes({ enabled: true, tips: { enabled: true, presets, allowCustom: true } });
       expect(h.transport.lastState.mode).toBe('tip');
-      expect(h.transport.lastState.tip?.presets).toEqual([5, 10, 15]);
+      // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+      expect(h.transport.lastState.tip?.presets).toEqual([5, 10]);
     }
   });
 
@@ -464,7 +467,8 @@ describe('C. ajustes basura en organization_settings nunca producen un «tip» i
   it('presets desordenados válidos se ordenan y allowCustom no booleano cae a true', () => {
     const { h, parsed } = conAjustes({ enabled: true, tips: { enabled: true, presets: [20, 5, 10], allowCustom: 'nope' } });
     expect(parsed.tips.allowCustom).toBe(true);
-    expect(h.transport.lastState.tip?.presets).toEqual([5, 10, 20]);
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    expect(h.transport.lastState.tip?.presets).toEqual([5, 10]);
     expect(h.transport.lastState.tip?.allowCustom).toBe(true);
   });
 

@@ -410,7 +410,8 @@ describe('R · corte de handleQrPayment ≡ disabled del botón, con importes ra
   it('CheckoutDialog (estático): el corte va ANTES de setQrPaymentMethod y del fetch, y el botón usa la misma expresión de «otras entradas»', () => {
     const handler = CHECKOUT.slice(CHECKOUT.indexOf('const handleQrPayment = async'), CHECKOUT.indexOf('const loadTaxData = async'));
     expect(handler.length).toBeGreaterThan(0);
-    const cutIdx = handler.indexOf("toast.error('No hay saldo pendiente para cobrar con QR')");
+    // Paso 12 del POS: los textos del cobro salen de next-intl (posCobro); se busca la llamada, no el literal.
+    const cutIdx = handler.indexOf("toast.error(tPos('qr.sinSaldo'))");
     expect(cutIdx).toBeGreaterThan(0);
     expect(handler.indexOf('setQrPaymentMethod(methodCode)')).toBeGreaterThan(cutIdx);
     expect(handler.indexOf('await fetch(')).toBeGreaterThan(cutIdx);

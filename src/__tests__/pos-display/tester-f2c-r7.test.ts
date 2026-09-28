@@ -440,7 +440,8 @@ describe('D · doble pulsación de «Generar QR de pago» (F2C-R7-2, resuelto en
     expect(head).toContain('if (qrRequestInFlightRef.current) return;');
     expect(head).toContain('qrRequestInFlightRef.current = true;');
     expect(head).toContain('setIsCreatingQr(true);');
-    expect(head.indexOf('if (qrRequestInFlightRef.current) return;')).toBeLessThan(head.indexOf("toast.error('Se requiere una sucursal para procesar');"));
+    // Paso 12 del POS: los textos del cobro salen de next-intl (posCobro); se busca la llamada, no el literal.
+    expect(head.indexOf('if (qrRequestInFlightRef.current) return;')).toBeLessThan(head.indexOf("toast.error(tPos('errores.sinSucursal'));"));
     expect(head.indexOf('qrRequestInFlightRef.current = true;')).toBeLessThan(HANDLER.indexOf('const response = await fetch(endpoint, {'));
     // Se suelta en finally: cubre éxito, los `return` tempranos y el catch.
     const fin = HANDLER.slice(HANDLER.indexOf('} finally {'));
@@ -591,6 +592,7 @@ describe('F · bordes', () => {
   it('total 0 (cortesía): `amount` nunca viaja a la pantalla y la caja no genera QR', () => {
     const shown = toDisplayPayment({ methodCode: 'breb_qr', methodName: null, total: 0, qr: null, expiresAt: null, amount: 0 });
     expect('amount' in shown).toBe(false);
-    expect(CHECKOUT).toContain("toast.error('No hay saldo pendiente para cobrar con QR');");
+    // Paso 12 del POS: los textos del cobro salen de next-intl (posCobro); se busca la llamada, no el literal.
+    expect(CHECKOUT).toContain("toast.error(tPos('qr.sinSaldo'));");
   });
 });

@@ -11856,7 +11856,114 @@
     },
     "errores": {
       "titulo": "Le paiement n’a pas pu être traité",
-      "desconocido": "Erreur inconnue"
+      "desconocido": "Erreur inconnue",
+      "sinSucursal": "Une succursale est nécessaire pour traiter la vente"
+    },
+    "sinAsignar": "Non attribué",
+    "caja": {
+      "sinCaja": "Aucune caisse ouverte",
+      "sinCajaDesc": "Ouvrez une caisse avant de vendre. Allez dans POS › Caisses."
+    },
+    "entrega": {
+      "titulo": "Livraison",
+      "resumen": {
+        "recoger": "Retrait en magasin",
+        "propio": "Livraison propre · {flete}",
+        "tercero": "Livraison par un tiers · {flete}"
+      },
+      "tipo": "Type de livraison",
+      "recoger": "Retrait",
+      "propio": "Livraison propre",
+      "tercero": "Tiers",
+      "conductor": "Livreur attribué",
+      "conductorPlaceholder": "Choisir un livreur…",
+      "direccionCliente": "Adresse du client chargée. Vous pouvez la modifier si la livraison va ailleurs.",
+      "direccion": "Adresse de livraison",
+      "direccionPlaceholder": "Saisissez l’adresse ou cherchez par nom ou téléphone…",
+      "ciudad": "Ville",
+      "telefono": "Téléphone de contact",
+      "contacto": "Nom du contact",
+      "contactoPlaceholder": "Nom de la personne qui reçoit",
+      "instrucciones": "Instructions",
+      "instruccionesPlaceholder": "Portail noir, appartement 302…",
+      "tarifa": "Tarif de livraison",
+      "tarifaPlaceholder": "Choisir un tarif…",
+      "tarifaOpcion": "{nombre} · {costo}",
+      "pagoEnvio": "Paiement de la livraison",
+      "pagado": "Payé",
+      "pendiente": "En attente",
+      "avisoPendiente": "La livraison sera créée comme non payée. Vous pourrez la marquer payée à la remise."
+    },
+    "propina": {
+      "titulo": "Pourboire",
+      "resumenNinguna": "Sans pourboire",
+      "resumen": "{monto} · {mesero}",
+      "resumenPct": "{pct} % · {monto} · {mesero}",
+      "sinMesero": "sans serveur",
+      "porcentajes": "Pourboire suggéré",
+      "pct": "{pct} %",
+      "base": "Sur {monto}, hors taxes",
+      "otroValor": "Autre montant",
+      "tope": "Maximum {monto} (10 % hors taxes)",
+      "mesero": "Serveur",
+      "meseroPlaceholder": "Choisir…"
+    },
+    "comision": {
+      "titulo": "Commission du vendeur",
+      "resumenNinguna": "Sans vendeur",
+      "resumen": "{vendedor} · {tasa} · {monto}",
+      "tasaPct": "{tasa} %",
+      "vendedor": "Vendeur",
+      "placeholder": "Choisir…",
+      "valor": "Commission",
+      "tipo": "Mode de calcul de la commission",
+      "porcentaje": "%",
+      "monto": "Montant"
+    },
+    "factura": {
+      "titulo": "Facture électronique",
+      "activada": "Activée",
+      "activadaGlobal": "Activée · Globale",
+      "desactivada": "Désactivée",
+      "enviar": "Envoyer à l’administration fiscale à la fin de la vente",
+      "global": "La préférence globale la garde toujours activée.",
+      "motivoNoConfigurada": "Non configurée : l’organisation n’a pas activé le service de facturation électronique.",
+      "motivoPendiente": "En attente d’activation : le service de facturation électronique n’est pas encore actif.",
+      "motivoSuspendida": "Suspendue : le service de facturation électronique n’est pas actif."
+    },
+    "qr": {
+      "sinSaldo": "Il ne reste aucun solde à encaisser par QR",
+      "noSoportado": "Moyen QR non pris en charge",
+      "errorGenerar": "Impossible de générer le QR",
+      "errorGenerarPago": "Impossible de générer le QR de paiement",
+      "linkAbierto": "Lien de paiement ouvert",
+      "linkAbiertoDesc": "Le lien de paiement Bold s’est ouvert dans une nouvelle fenêtre.",
+      "confirmado": "Paiement QR confirmé",
+      "clienteDiceQuePago": "Le client indique avoir déjà payé",
+      "clienteDiceQuePagoDesc": "Confirmez le paiement comme d’habitude : par l’état du QR ou le justificatif.",
+      "mostrarEnPantalla": "Afficher sur l’écran client",
+      "sinPantalla": "(aucun écran connecté)"
+    },
+    "stock": {
+      "titulo": "Stock d’ingrédients insuffisant",
+      "pregunta": "Voulez-vous tout de même continuer la vente ?",
+      "cancelar": "Annuler",
+      "continuar": "Continuer"
+    },
+    "seriales": {
+      "titulo": "Numéros de série",
+      "descripcion": "Choisissez les numéros de série des produits vendus à l’unité. {n, plural, one {# produit sérialisé} other {# produits sérialisés}}.",
+      "skuCantidad": "SKU : {sku} · Quantité : {cantidad}",
+      "progreso": "{elegidos}/{requeridos}",
+      "cargando": "Chargement des numéros de série disponibles…",
+      "errorCarga": "Impossible de charger les numéros de série",
+      "sinDisponibles": "Aucun numéro de série en stock pour ce produit.",
+      "buscar": "Rechercher un numéro…",
+      "buscarAria": "Rechercher un numéro de série de {producto}",
+      "garantia": "Garantie jusqu’au : {fecha}",
+      "insuficientes": "Seulement {disponibles, plural, one {# numéro disponible} other {# numéros disponibles}} et {requeridos, plural, one {# requis} other {# requis}}.",
+      "confirmar": "Confirmer les numéros de série",
+      "lista": "Numéros de série de {producto}"
     }
   }
 }

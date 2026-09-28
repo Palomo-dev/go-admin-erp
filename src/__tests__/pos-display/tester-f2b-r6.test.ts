@@ -436,9 +436,10 @@ describe('B. pantalla NO táctil con propina activada (extremo a extremo)', () =
     expect(touches[0]).toBe(false);
     expect(touches).toContain(true);
     // Y una pulsación del cliente llega (la pantalla sí tiene botones).
-    pantalla.link.send({ t: 'tip_selected', cartId: 'cart-1', kind: 'percent', value: 15 });
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    pantalla.link.send({ t: 'tip_selected', cartId: 'cart-1', kind: 'percent', value: 10 });
     await waitFor(() => caja.selections.length === 1);
-    expect(caja.selections[0].amount).toBe(computeTipAmount(20250, 15));
+    expect(caja.selections[0].amount).toBe(computeTipAmount(20250, 10));
   });
 
   it('forzado `no-touch` sobre hardware táctil con presets vacíos y solo «Otro»: la pantalla cae al cobro y la caja no promete espera', async () => {

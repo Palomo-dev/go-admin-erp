@@ -11961,7 +11961,114 @@
     },
     "errores": {
       "titulo": "No se pudo procesar el pago",
-      "desconocido": "Error desconocido"
+      "desconocido": "Error desconocido",
+      "sinSucursal": "Se requiere una sucursal para procesar"
+    },
+    "sinAsignar": "Sin asignar",
+    "caja": {
+      "sinCaja": "No hay caja abierta",
+      "sinCajaDesc": "Abre una caja antes de vender. Ve a POS › Cajas."
+    },
+    "entrega": {
+      "titulo": "Entrega",
+      "resumen": {
+        "recoger": "Recoger en tienda",
+        "propio": "Envío propio · {flete}",
+        "tercero": "Envío por tercero · {flete}"
+      },
+      "tipo": "Tipo de entrega",
+      "recoger": "Recoger",
+      "propio": "Envío propio",
+      "tercero": "Tercero",
+      "conductor": "Conductor asignado",
+      "conductorPlaceholder": "Seleccionar conductor…",
+      "direccionCliente": "Dirección del cliente cargada. Puedes cambiarla si el envío es a otro lugar.",
+      "direccion": "Dirección de entrega",
+      "direccionPlaceholder": "Escribe la dirección o busca por nombre o teléfono…",
+      "ciudad": "Ciudad",
+      "telefono": "Teléfono de contacto",
+      "contacto": "Nombre de contacto",
+      "contactoPlaceholder": "Nombre de quien recibe",
+      "instrucciones": "Instrucciones",
+      "instruccionesPlaceholder": "Portón negro, apartamento 302…",
+      "tarifa": "Tarifa de envío",
+      "tarifaPlaceholder": "Seleccionar tarifa…",
+      "tarifaOpcion": "{nombre} · {costo}",
+      "pagoEnvio": "Pago del envío",
+      "pagado": "Pagado",
+      "pendiente": "Pendiente",
+      "avisoPendiente": "El envío se creará como pendiente de pago. Podrás marcarlo como pagado al entregar."
+    },
+    "propina": {
+      "titulo": "Propina",
+      "resumenNinguna": "Sin propina",
+      "resumen": "{monto} · {mesero}",
+      "resumenPct": "{pct} % · {monto} · {mesero}",
+      "sinMesero": "sin mesero",
+      "porcentajes": "Propina sugerida",
+      "pct": "{pct} %",
+      "base": "Sobre {monto}, antes de impuestos",
+      "otroValor": "Otro valor",
+      "tope": "Máximo {monto} (10 % antes de impuestos)",
+      "mesero": "Mesero",
+      "meseroPlaceholder": "Seleccionar…"
+    },
+    "comision": {
+      "titulo": "Comisión de vendedor",
+      "resumenNinguna": "Sin vendedor",
+      "resumen": "{vendedor} · {tasa} · {monto}",
+      "tasaPct": "{tasa} %",
+      "vendedor": "Vendedor",
+      "placeholder": "Seleccionar…",
+      "valor": "Comisión",
+      "tipo": "Cómo se calcula la comisión",
+      "porcentaje": "%",
+      "monto": "Monto"
+    },
+    "factura": {
+      "titulo": "Factura electrónica",
+      "activada": "Activada",
+      "activadaGlobal": "Activada · Global",
+      "desactivada": "Desactivada",
+      "enviar": "Enviar a la DIAN al completar la venta",
+      "global": "La preferencia global la deja siempre activa.",
+      "motivoNoConfigurada": "No configurada: la organización no tiene activo el servicio de facturación electrónica.",
+      "motivoPendiente": "Pendiente de activación: el servicio de facturación electrónica aún no está activo.",
+      "motivoSuspendida": "Suspendida: el servicio de facturación electrónica no está activo."
+    },
+    "qr": {
+      "sinSaldo": "No hay saldo pendiente para cobrar con QR",
+      "noSoportado": "Método QR no soportado",
+      "errorGenerar": "Error al generar el QR",
+      "errorGenerarPago": "Error al generar el QR de pago",
+      "linkAbierto": "Link de pago abierto",
+      "linkAbiertoDesc": "Se abrió el link de pago de Bold en una ventana nueva.",
+      "confirmado": "Pago QR confirmado",
+      "clienteDiceQuePago": "El cliente indica que ya pagó",
+      "clienteDiceQuePagoDesc": "Confirma el pago como siempre: por el estado del QR o el comprobante.",
+      "mostrarEnPantalla": "Mostrar en pantalla del cliente",
+      "sinPantalla": "(sin pantalla conectada)"
+    },
+    "stock": {
+      "titulo": "Stock insuficiente de ingredientes",
+      "pregunta": "¿Deseas continuar con la venta de todos modos?",
+      "cancelar": "Cancelar",
+      "continuar": "Continuar"
+    },
+    "seriales": {
+      "titulo": "Selección de seriales",
+      "descripcion": "Elige los seriales de los productos que se venden por unidad. {n, plural, one {# producto serializado} other {# productos serializados}}.",
+      "skuCantidad": "SKU: {sku} · Cantidad: {cantidad}",
+      "progreso": "{elegidos}/{requeridos}",
+      "cargando": "Cargando seriales disponibles…",
+      "errorCarga": "Error cargando seriales",
+      "sinDisponibles": "No hay seriales disponibles en stock para este producto.",
+      "buscar": "Buscar serial…",
+      "buscarAria": "Buscar serial de {producto}",
+      "garantia": "Garantía hasta: {fecha}",
+      "insuficientes": "Solo {disponibles, plural, one {hay # serial disponible} other {hay # seriales disponibles}} y se {requeridos, plural, one {requiere #} other {requieren #}}.",
+      "confirmar": "Confirmar seriales",
+      "lista": "Seriales de {producto}"
     }
   }
 }

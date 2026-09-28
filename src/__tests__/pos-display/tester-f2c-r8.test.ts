@@ -490,7 +490,8 @@ describe('D · bordes pedidos por el orquestador', () => {
     expect(resolveQrChargeAmount({ entryAmount: 5_000, othersTotal: 0, total: 0 })).toBe(0);
     // Guard de la caja: «No hay saldo pendiente» antes del fetch y dentro del try (el finally suelta el guard).
     const handler = CHECKOUT.slice(CHECKOUT.indexOf('const handleQrPayment = async'), CHECKOUT.indexOf('const loadTaxData'));
-    const cut = handler.indexOf("toast.error('No hay saldo pendiente para cobrar con QR')");
+    // Paso 12 del POS: los textos del cobro salen de next-intl (posCobro); se busca la llamada, no el literal.
+    const cut = handler.indexOf("toast.error(tPos('qr.sinSaldo'))");
     expect(cut).toBeGreaterThan(handler.indexOf('qrRequestInFlightRef.current = true'));
     expect(cut).toBeLessThan(handler.indexOf('await fetch('));
     expect(handler.indexOf('finally {')).toBeGreaterThan(cut);
@@ -582,7 +583,8 @@ describe('E · higiene de esta ronda', () => {
     const handler = CHECKOUT.slice(CHECKOUT.indexOf('const handleQrPayment = async'), CHECKOUT.indexOf('const loadTaxData'));
     const tryAt = handler.indexOf('try {');
     const finallyAt = handler.indexOf('finally {');
-    for (const marker of ["toast.error('Metodo QR no soportado')", 'window.open(data.payment_url', "toast.error('Error al generar QR', {"]) {
+    // Paso 12 del POS: los textos del cobro salen de next-intl (posCobro); se busca la llamada, no el literal.
+    for (const marker of ["toast.error(tPos('qr.noSoportado'))", 'window.open(data.payment_url', "toast.error(tPos('qr.errorGenerar'), {"]) {
       const at = handler.indexOf(marker);
       expect(at).toBeGreaterThan(tryAt);
       expect(at).toBeLessThan(finallyAt);

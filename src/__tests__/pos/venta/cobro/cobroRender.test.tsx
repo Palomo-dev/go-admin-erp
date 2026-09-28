@@ -64,8 +64,15 @@ jest.mock('@/lib/services/printJobsService', () => ({
 jest.mock('@/lib/services/cashDrawerService', () => ({ CashDrawerService: { open: jest.fn(async () => undefined) } }));
 jest.mock('@/lib/services/transportService', () => ({ transportService: { getDrivers: jest.fn(async () => []) } }));
 jest.mock('@/lib/utils/desktop', () => ({ ...jest.requireActual('@/lib/utils/desktop'), isDesktop: () => false }));
+const mockEstadoFactura = jest.fn(async (): Promise<string | null> => null);
+jest.mock('@/lib/pos/venta/cobro/facturaElectronicaCobro', () => ({
+  ...jest.requireActual('@/lib/pos/venta/cobro/facturaElectronicaCobro'),
+  leerEstadoFacturaElectronica: () => mockEstadoFactura(),
+}));
 
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
+import { POSService } from '@/lib/services/posService';
+import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { accionAtajoMetodo, enterCompletaVenta } from '@/components/pos/venta/cobro/teclasCobro';
 import { SelectorMetodoPago } from '@/components/kit/SelectorMetodoPago';
 
@@ -252,5 +259,71 @@ describe('Cobro · contenedor (paso 11)', () => {
     await screen.findByRole('radio', { name: /Tarjeta/ });
     expect(screen.getByRole('dialog', { name: 'Process payment' })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Complete sale/ })).toBeTruthy();
+  });
+});
+
+describe('Cobro · secciones plegables (paso 12)', () => {
+  const seccion = (nombre: RegExp) => screen.getByRole('button', { name: nombre });
+
+  beforeEach(() => {
+    mockEstadoFactura.mockReset();
+    mockEstadoFactura.mockResolvedValue(null);
+  });
+
+  test('cerradas al abrir, con su resumen y su atajo; Alt+D y Alt+P las abren', async () => {
+    await abrirCobro();
+    const entrega = seccion(/Entrega/);
+    expect(entrega.getAttribute('aria-expanded')).toBe('false');
+    expect(entrega.getAttribute('aria-keyshortcuts')).toBe('Alt+D');
+    expect(entrega.textContent).toContain('Recoger en tienda');
+    expect(seccion(/Propina/).textContent).toContain('Sin propina');
+    expect(seccion(/Comisión de vendedor/).textContent).toContain('Sin vendedor');
+    expect(seccion(/Comisión de vendedor/).getAttribute('aria-keyshortcuts')).toBeNull();
+    fireEvent.keyDown(document.body, { key: 'd', code: 'KeyD', altKey: true });
+    expect(seccion(/Entrega/).getAttribute('aria-expanded')).toBe('true');
+    fireEvent.keyDown(document.body, { key: 'p', code: 'KeyP', altKey: true });
+    expect(seccion(/Propina/).getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(screen.getByRole('radio', { name: /Envío propio/ }));
+    expect(seccion(/Entrega/).textContent).toContain('Envío propio');
+  });
+
+  test('propina 5 % y 10 % ANTES de impuestos, «otro valor» topado al 10 % y la misma base a la pantalla (D7)', async () => {
+    (POSService.getOrganizationTaxes as jest.Mock).mockResolvedValueOnce([{ id: 'iva', name: 'IVA', rate: 19, is_default: true, is_active: true }]);
+    // Sin abrirCobro(): con IVA el primer pago (precargado con el total del carrito) no cubre el total calculado.
+    renderConIdioma(<CheckoutDialog cart={CARRITO} open onOpenChange={jest.fn()} onCheckoutComplete={jest.fn()} />);
+    await screen.findByRole('radio', { name: /Tarjeta/ });
+    // Subtotal 23.800 + IVA 19 % (4.522) = 28.322 a pagar.
+    await waitFor(() => expect(screen.getByTestId('cobro-total-a-pagar').textContent).toContain('28.322'));
+    fireEvent.keyDown(document.body, { key: 'p', code: 'KeyP', altKey: true });
+    const botones = within(screen.getByRole('group', { name: 'Propina sugerida' })).getAllByRole('button');
+    expect(botones.map((b) => b.textContent)).toEqual([expect.stringContaining('5 %'), expect.stringContaining('10 %')]);
+    fireEvent.click(botones[1]);
+    // 10 % de 23.800 (sin IVA) = 2.380, no 2.832 (10 % del total con IVA).
+    expect(seccion(/Propina/).textContent).toMatch(/10 % · US\$\s2\.380/);
+    expect(screen.getByTestId('cobro-total-a-pagar').textContent).toContain('30.702');
+    expect(getPosDisplayEmitter().setTipBase).toHaveBeenLastCalledWith(23800);
+    const otro = screen.getByLabelText('Otro valor') as HTMLInputElement;
+    fireEvent.change(otro, { target: { value: '9000' } });
+    expect(otro.value).toBe('2380');
+    expect(screen.getByText(/Máximo .*2\.380 \(10 % antes de impuestos\)/)).toBeTruthy();
+  });
+
+  test('factura electrónica no configurada: deshabilitada con el motivo y Alt+F no la abre (E-30)', async () => {
+    mockEstadoFactura.mockResolvedValue('noConfigurada');
+    await abrirCobro();
+    await waitFor(() => expect(seccion(/Factura electrónica/).getAttribute('aria-disabled')).toBe('true'));
+    expect(screen.getByText(/No configurada: la organización no tiene activo/)).toBeTruthy();
+    fireEvent.keyDown(document.body, { key: 'f', code: 'KeyF', altKey: true });
+    expect(seccion(/Factura electrónica/).getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('factura electrónica activa: Alt+F la abre y el resumen dice si se envía', async () => {
+    mockEstadoFactura.mockResolvedValue('activa');
+    await abrirCobro();
+    expect(seccion(/Factura electrónica/).textContent).toContain('Desactivada');
+    fireEvent.keyDown(document.body, { key: 'f', code: 'KeyF', altKey: true });
+    expect(seccion(/Factura electrónica/).getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(screen.getByRole('switch', { name: /Enviar a la DIAN/ }));
+    expect(seccion(/Factura electrónica/).textContent).toContain('Activada');
   });
 });

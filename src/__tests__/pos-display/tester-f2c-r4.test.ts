@@ -695,7 +695,8 @@ describe('qr_paid_claim', () => {
     const start = CHECKOUT.indexOf("if (msg.t !== 'qr_paid_claim' || msg.cartId !== cart.id) return;");
     expect(start).toBeGreaterThan(0);
     const block = CHECKOUT.slice(start, CHECKOUT.indexOf('});', start));
-    expect(block).toContain("toast.info('El cliente indica que ya pagó'");
+    // Paso 12 del POS: los textos del cobro salen de next-intl (posCobro); se busca la llamada, no el literal.
+    expect(block).toContain("toast.info(tPos('qr.clienteDiceQuePago')");
     expect(block).not.toMatch(/setPayments|setShowQrDialog|onPaid|skipTip|setMode/);
   });
 });

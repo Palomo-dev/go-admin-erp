@@ -1,22 +1,22 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Package, AlertCircle, CheckCircle2, Search } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { AlertCircle, CheckCircle2, Loader2, Package, Search } from 'lucide-react';
+import { cn } from '@/utils/Utils';
+import { Dialogo } from '@/components/kit';
 import { Input } from '@/components/ui/input';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { serialTrackingService, type SerialNumber } from '@/lib/services/serialTrackingService';
 import type { CartItem } from '@/components/pos/types';
 
+/**
+ * Seriales obligatorios antes de cobrar (POS-PLAN L48). Paso 12 del rediseño:
+ * la presentación pasa al `Dialogo` del kit y los textos a `posCobro.seriales`
+ * (4 idiomas); la lógica (carga por producto, tope por cantidad, confirmar
+ * solo lo completo) es la de siempre. Props públicas intactas (las usa
+ * también la factura de venta nueva).
+ */
 interface SerialSelectorDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -41,6 +41,9 @@ export function SerialSelectorDialog({
   branchId,
   onConfirm,
 }: SerialSelectorDialogProps) {
+  const t = useTranslations('posCobro.seriales');
+  // `warranty_end` es una fecha pura (columna date): se pinta sin convertir de zona.
+  const { formatPlain } = useFormatDate();
   const [serialStates, setSerialStates] = useState<Record<number, ProductSerialState>>({});
   const [searchTerm, setSearchTerm] = useState<string>('');
 
@@ -76,24 +79,26 @@ export function SerialSelectorDialog({
             error: '',
           },
         }));
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const mensaje = err instanceof Error ? err.message : '';
         setSerialStates((prev) => ({
           ...prev,
           [item.product_id]: {
             available: [],
             selected: [],
             loading: false,
-            error: err?.message || 'Error cargando seriales',
+            error: mensaje || t('errorCarga'),
           },
         }));
       }
     }
-  }, [serializedItems, organizationId, branchId]);
+  }, [serializedItems, organizationId, branchId, t]);
 
   useEffect(() => {
     if (open && serializedItems.length > 0) {
       loadSerials();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- se carga al abrir, como siempre
   }, [open]);
 
   const handleToggleSerial = (productId: number, serialId: number, requiredQty: number) => {
@@ -143,162 +148,132 @@ export function SerialSelectorDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white dark:bg-gray-800 border dark:border-gray-700 max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="dark:text-white flex items-center gap-2">
-            <Package className="h-5 w-5 text-blue-600" />
-            Selección de Seriales
-          </DialogTitle>
-          <DialogDescription className="dark:text-gray-400">
-            Selecciona los seriales para los productos que requieren tracking individual.
-            Total: {serializedItems.length} producto(s) serializado(s).
-          </DialogDescription>
-        </DialogHeader>
+    <Dialogo
+      abierto={open}
+      onAbiertoChange={onOpenChange}
+      titulo={t('titulo')}
+      descripcion={t('descripcion', { n: serializedItems.length })}
+      icono={Package}
+      ancho={672}
+      primario={{ etiqueta: t('confirmar'), onClick: handleConfirm, deshabilitada: !allComplete }}
+    >
+      <div className="flex flex-col gap-3">
+        {serializedItems.map((item) => {
+          const state = serialStates[item.product_id];
+          const requiredQty = item.quantity;
+          const selectedCount = state?.selected.length ?? 0;
+          const isComplete = selectedCount === requiredQty;
+          const producto = item.product?.name ?? '';
 
-        <ScrollArea className="max-h-[500px] pr-4">
-          <div className="space-y-4">
-            {serializedItems.map((item) => {
-              const state = serialStates[item.product_id];
-              const requiredQty = item.quantity;
-              const selectedCount = state?.selected.length ?? 0;
-              const isComplete = selectedCount === requiredQty;
-
-              return (
-                <div
-                  key={item.id}
-                  className={`p-4 rounded-lg border transition-colors ${
-                    isComplete
-                      ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
-                      : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900'
-                  }`}
+          return (
+            <section
+              key={item.id}
+              aria-label={producto}
+              className={cn('rounded-lg border p-3', isComplete ? 'border-line-success bg-success-subtle' : 'border-line bg-subtle')}
+            >
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="break-words text-sm font-medium text-fg">{producto}</p>
+                  <p className="text-xs text-fg-secondary">{t('skuCantidad', { sku: item.product?.sku ?? '—', cantidad: requiredQty })}</p>
+                </div>
+                <span
+                  className={cn(
+                    'shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums',
+                    isComplete ? 'bg-success-subtle text-success-text' : 'bg-warning-subtle text-warning-text',
+                  )}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 dark:text-white break-words">
-                        {item.product?.name}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        SKU: {item.product?.sku} · Cantidad: {requiredQty}
-                      </p>
-                    </div>
-                    <Badge
-                      className={
-                        isComplete
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                          : 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
-                      }
-                    >
-                      {selectedCount}/{requiredQty}
-                    </Badge>
-                  </div>
+                  {t('progreso', { elegidos: selectedCount, requeridos: requiredQty })}
+                </span>
+              </div>
 
-                  {state?.loading && (
-                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 py-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Cargando seriales disponibles...
-                    </div>
-                  )}
+              {state?.loading && (
+                <p role="status" className="flex items-center gap-2 py-2 text-sm text-fg-secondary">
+                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  {t('cargando')}
+                </p>
+              )}
 
-                  {state?.error && (
-                    <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 py-2">
-                      <AlertCircle className="h-4 w-4" />
-                      {state.error}
-                    </div>
-                  )}
+              {state?.error && (
+                <p role="alert" className="flex items-center gap-2 py-2 text-sm text-danger-text">
+                  <AlertCircle aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                  {state.error}
+                </p>
+              )}
 
-                  {!state?.loading && !state?.error && state && (
+              {!state?.loading && !state?.error && state && (
+                <>
+                  {state.available.length === 0 ? (
+                    <p className="flex items-center gap-2 py-2 text-sm text-danger-text">
+                      <AlertCircle aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                      {t('sinDisponibles')}
+                    </p>
+                  ) : (
                     <>
-                      {state.available.length === 0 ? (
-                        <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 py-2">
-                          <AlertCircle className="h-4 w-4" />
-                          No hay seriales disponibles en stock para este producto.
-                        </div>
-                      ) : (
-                        <>
-                          <div className="relative mb-2">
-                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                            <Input
-                              placeholder="Buscar serial..."
-                              value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
-                              className="pl-8 h-9 dark:bg-gray-800 dark:border-gray-700"
-                            />
-                          </div>
-                          <div className="space-y-1 max-h-[200px] overflow-y-auto">
-                            {state.available
-                              .filter((s) =>
-                                searchTerm
-                                  ? s.serial.toLowerCase().includes(searchTerm.toLowerCase())
-                                  : true
-                              )
-                              .map((serial) => {
-                                const isSelected = state.selected.includes(serial.id);
-                                return (
-                                  <div
-                                    key={serial.id}
-                                    onClick={() =>
-                                      handleToggleSerial(item.product_id, serial.id, requiredQty)
-                                    }
-                                    className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition-colors ${
-                                      isSelected
-                                        ? 'bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700'
-                                        : 'hover:bg-gray-100 dark:hover:bg-gray-800 border border-transparent'
-                                    }`}
-                                  >
-                                    <div
-                                      className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${
-                                        isSelected
-                                          ? 'bg-blue-600 border-blue-600'
-                                          : 'border-gray-300 dark:border-gray-600'
-                                      }`}
-                                    >
-                                      {isSelected && (
-                                        <CheckCircle2 className="h-4 w-4 text-white" />
-                                      )}
-                                    </div>
-                                    <span className="text-sm font-mono text-gray-900 dark:text-white">
-                                      {serial.serial}
-                                    </span>
-                                    {serial.warranty_end && (
-                                      <Badge variant="outline" className="text-xs ml-auto">
-                                        Garantía hasta: {serial.warranty_end}
-                                      </Badge>
+                      <div className="relative mb-2">
+                        <Search aria-hidden="true" className="absolute left-2 top-2.5 size-4 text-fg-muted" strokeWidth={1.5} />
+                        <Input
+                          placeholder={t('buscar')}
+                          aria-label={t('buscarAria', { producto })}
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="h-9 pl-8"
+                        />
+                      </div>
+                      <ul aria-label={t('lista', { producto })} className="flex max-h-[200px] flex-col gap-1 overflow-y-auto">
+                        {state.available
+                          .filter((s) =>
+                            searchTerm
+                              ? s.serial.toLowerCase().includes(searchTerm.toLowerCase())
+                              : true
+                          )
+                          .map((serial) => {
+                            const isSelected = state.selected.includes(serial.id);
+                            return (
+                              <li key={serial.id}>
+                                <button
+                                  type="button"
+                                  role="checkbox"
+                                  aria-checked={isSelected}
+                                  onClick={() => handleToggleSerial(item.product_id, serial.id, requiredQty)}
+                                  className={cn(
+                                    'flex w-full items-center gap-3 rounded-md border p-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                                    isSelected ? 'border-line-brand bg-brand-tint' : 'border-transparent hover:bg-hover',
+                                  )}
+                                >
+                                  <span
+                                    aria-hidden="true"
+                                    className={cn(
+                                      'flex size-5 shrink-0 items-center justify-center rounded border',
+                                      isSelected ? 'border-brand bg-brand text-fg-on-brand' : 'border-line-strong',
                                     )}
-                                  </div>
-                                );
-                              })}
-                          </div>
-                          {state.available.length < requiredQty && (
-                            <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 mt-2">
-                              <AlertCircle className="h-4 w-4" />
-                              Solo hay {state.available.length} serial(es) disponible(s) pero se
-                              requieren {requiredQty}.
-                            </div>
-                          )}
-                        </>
+                                  >
+                                    {isSelected && <CheckCircle2 className="size-4" />}
+                                  </span>
+                                  <span className="font-mono text-sm text-fg">{serial.serial}</span>
+                                  {serial.warranty_end && (
+                                    <span className="ml-auto rounded border border-line px-1.5 text-xs text-fg-secondary">
+                                      {t('garantia', { fecha: formatPlain(serial.warranty_end) })}
+                                    </span>
+                                  )}
+                                </button>
+                              </li>
+                            );
+                          })}
+                      </ul>
+                      {state.available.length < requiredQty && (
+                        <p className="mt-2 flex items-center gap-2 text-sm text-danger-text">
+                          <AlertCircle aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                          {t('insuficientes', { disponibles: state.available.length, requeridos: requiredQty })}
+                        </p>
                       )}
                     </>
                   )}
-                </div>
-              );
-            })}
-          </div>
-        </ScrollArea>
-
-        <DialogFooter className="border-t dark:border-gray-700 pt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleConfirm}
-            disabled={!allComplete}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            Confirmar Seriales
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+                </>
+              )}
+            </section>
+          );
+        })}
+      </div>
+    </Dialogo>
   );
 }

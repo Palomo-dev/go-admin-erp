@@ -578,20 +578,21 @@ describe('D. emisor · la fase de propina y lo que pasa alrededor', () => {
     const selections: TipSelection[] = [];
     h.emitter.onTipSelected((s) => selections.push(s));
     h.emitter.setMode('order');
-    h.current.settings = settings({ presets: [8, 12] });
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    h.current.settings = settings({ presets: [6, 8] });
     h.emitter.setPayment(cashPayment());
     h.flush();
-    expect(h.transport.lastState.tip?.presets).toEqual([8, 12]);
+    expect(h.transport.lastState.tip?.presets).toEqual([6, 8]);
     h.transport.emitUp(tipSelected('percent', 10));
     expect(selections).toHaveLength(0);
     expect(h.emitter.tipPhase).toBe('pending');
-    h.transport.emitUp(tipSelected('percent', 12));
+    h.transport.emitUp(tipSelected('percent', 8));
     expect(selections).toHaveLength(1);
     // setMode('order') borró la base del cobro anterior (QA-1, ronda 2): hasta que CheckoutDialog vuelva a
-    // fijarla, la base es el total proyectado (5.000), no los 20.250 de antes. 12 % de 5.000 = 600.
+    // fijarla, la base es el total proyectado (5.000), no los 20.250 de antes. 8 % de 5.000 = 400.
     expect(h.transport.lastState.tip?.base).toBe(5000);
-    expect(selections[0]).toMatchObject({ percent: 12, amount: computeTipAmount(5000, 12) });
-    expect(selections[0].amount).toBe(600);
+    expect(selections[0]).toMatchObject({ percent: 8, amount: computeTipAmount(5000, 8) });
+    expect(selections[0].amount).toBe(400);
   });
 
   it('cambio de pestaña de carrito con el cobro abierto: la fase sigue (es de la venta), la pregunta pasa al carrito nuevo y la elección del carrito VIEJO se descarta', () => {
@@ -617,7 +618,8 @@ describe('D. emisor · la fase de propina y lo que pasa alrededor', () => {
     const selections: TipSelection[] = [];
     h.emitter.onTipSelected((s) => selections.push(s));
     h.transport.emitUp(tipSelected('percent', 10));
-    h.transport.emitUp(tipSelected('percent', 15));
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    h.transport.emitUp(tipSelected('percent', 10));
     h.transport.emitUp(tipSelected('none', 0));
     expect(selections).toHaveLength(1);
     expect(h.emitter.tipPhase).toBe('done');
@@ -640,8 +642,9 @@ describe('D. emisor · la fase de propina y lo que pasa alrededor', () => {
   });
 
   it('presets con más de tres valores válidos viajan TODOS (el emisor no recorta a 3): la pantalla decide cómo pintarlos', () => {
-    const h = enTip({ settings: settings({ presets: [5, 10, 15, 20, 25] }) });
-    expect(h.transport.lastState.tip?.presets).toEqual([5, 10, 15, 20, 25]);
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    const h = enTip({ settings: settings({ presets: [1, 2, 5, 8, 10] }) });
+    expect(h.transport.lastState.tip?.presets).toEqual([1, 2, 5, 8, 10]);
   });
 });
 
@@ -709,7 +712,8 @@ describe('F. pantalla NO táctil con tips activadas', () => {
     expect(h.emitter.lastDisplayCapabilities?.touch).toBe(false);
     const selections: TipSelection[] = [];
     h.emitter.onTipSelected((s) => selections.push(s));
-    h.transport.emitUp(tipSelected('percent', 15));
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    h.transport.emitUp(tipSelected('percent', 10));
     expect(selections).toHaveLength(1);
     expect(h.emitter.tipPhase).toBe('done');
   });

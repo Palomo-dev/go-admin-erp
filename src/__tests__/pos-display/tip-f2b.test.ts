@@ -456,7 +456,8 @@ describe('emitter.ts · fase de propina (F2-B)', () => {
     h.flush();
     const state = h.transport.lastState;
     expect(state.mode).toBe('tip');
-    expect(state.tip).toEqual({ presets: [5, 10, 15], allowCustom: true, selected: null, base: 20250 });
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    expect(state.tip).toEqual({ presets: [5, 10], allowCustom: true, selected: null, base: 20250 });
     expect(state.payment?.method).toBe('cash');
     expect(state.cart?.id).toBe('cart-1');
     expect(h.emitter.tipPhase).toBe('pending');
@@ -675,7 +676,8 @@ describe('emitter.ts · fase de propina (F2-B)', () => {
     h.flush();
     h.current.settings = settings({ presets: [20, 25, 30] });
     h.emitter.reannounce();
-    expect(h.transport.lastState.tip?.presets).toEqual([5, 10, 15]);
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    expect(h.transport.lastState.tip?.presets).toEqual([5, 10]);
   });
 
   it('un need_snapshot durante la fase responde hello + state en modo tip (la pantalla reconectada sigue preguntando)', () => {

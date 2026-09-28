@@ -432,9 +432,11 @@ describe('HALLAZGO R (medio) · corregido en r6: con el total ya cubierto por ot
     expect(resolveQrChargeAmount({ entryAmount: 0, othersTotal, total })).toBe(25_000);
     const handler = CHECKOUT.slice(CHECKOUT.indexOf('const handleQrPayment = async'), CHECKOUT.indexOf('setQrPaymentMethod(methodCode);'));
     expect(handler).toContain('if (Math.max(0, cartTotal - othersTotal) <= 0) {');
-    expect(handler).toContain("toast.error('No hay saldo pendiente para cobrar con QR');");
+    // Paso 12 del POS: los textos del cobro salen de next-intl (posCobro); se busca la llamada, no el literal.
+    expect(handler).toContain("toast.error(tPos('qr.sinSaldo'));");
     // El corte va ANTES de resolveQrChargeAmount y de cualquier fetch al proveedor.
-    expect(handler.indexOf('No hay saldo pendiente')).toBeLessThan(handler.indexOf('const amount = resolveQrChargeAmount('));
+    // Paso 12 del POS: los textos del cobro salen de next-intl (posCobro); se busca la llamada, no el literal.
+    expect(handler.indexOf("tPos('qr.sinSaldo')")).toBeLessThan(handler.indexOf('const amount = resolveQrChargeAmount('));
     expect(handler).not.toContain('fetch(');
     // Sin QR no hay onPaid: las entradas quedan como estaban (25.000 pagados, cambio 0).
     const totalPaid = entries.reduce((s, p) => s + p.amount, 0);
@@ -566,7 +568,8 @@ describe('qr_paid_claim no altera el estado (emisor) ni el cobro (caja)', () => 
     const effect = CHECKOUT.slice(CHECKOUT.lastIndexOf('useEffect(() => {', start), CHECKOUT.indexOf('}, [open, cart.id]);', start));
     expect(effect).toContain('if (!open) return;');
     expect(effect).toContain("if (msg.t !== 'qr_paid_claim' || msg.cartId !== cart.id) return;");
-    expect(effect).toContain("toast.info('El cliente indica que ya pagó'");
+    // Paso 12 del POS: los textos del cobro salen de next-intl (posCobro); se busca la llamada, no el literal.
+    expect(effect).toContain("toast.info(tPos('qr.clienteDiceQuePago')");
     for (const forbidden of ['setPayments', 'setShowQrDialog', 'onPaid', 'checkNow', 'setQr']) expect(effect).not.toContain(forbidden);
   });
 });

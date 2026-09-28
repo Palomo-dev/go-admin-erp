@@ -184,7 +184,8 @@ describe('QA-3 / tester-2 · el botón «Generar QR» se deshabilita cuando las 
     );
     // Ronda 8 (F2C-R7-2): también deshabilitado mientras hay una generación en vuelo.
     expect(CHECKOUT).toContain('disabled={othersCoverTotal || isCreatingQr}');
-    expect(CHECKOUT).toContain("toast.error('No hay saldo pendiente para cobrar con QR');");
+    // Paso 12 del POS: los textos del cobro salen de next-intl (posCobro); se busca la llamada, no el literal.
+    expect(CHECKOUT).toContain("toast.error(tPos('qr.sinSaldo'));");
   });
 
   it('total 0 (cortesía) con una sola entrada QR: 0 ≥ 0 ⇒ deshabilitado (el toast nunca llega por esa vía)', () => {

@@ -218,7 +218,8 @@ describe('A. coalescencia y orden de estados en una venta completa', () => {
     const state = h.transport.lastState;
     expect(state.mode).toBe('tip');
     expect(state.tip?.base).toBe(20250);
-    expect(state.tip?.presets).toEqual([5, 10, 15]);
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    expect(state.tip?.presets).toEqual([5, 10]);
     expect(state.cart?.total).toBe(20250);
   });
 
@@ -296,7 +297,8 @@ describe('A. coalescencia y orden de estados en una venta completa', () => {
     const frames = tipFrames();
     expect(frames).toHaveLength(3);
     for (const f of frames) {
-      expect(f.tip?.presets).toEqual([5, 10, 15]);
+      // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+      expect(f.tip?.presets).toEqual([5, 10]);
       expect(f.tip?.base).toBe(5000);
       expect(f.tip?.selected).toBeNull();
     }
@@ -387,7 +389,8 @@ describe('C. elecciones fuera del contrato congelado', () => {
     h.flush();
     h.emitter.setPayment(cashPayment());
     h.flush();
-    expect(h.transport.lastState.tip?.presets).toEqual([10, 15]);
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    expect(h.transport.lastState.tip?.presets).toEqual([10]);
     h.transport.emitUp(tipSelected('percent', 10));
     h.transport.emitUp(tipSelected('percent', 10));
     expect(h.selections).toHaveLength(1);
@@ -436,8 +439,9 @@ describe('D. ajustes rotos tal como pueden venir de la fila `pos_customer_displa
     h.emitter.setPayment(cashPayment());
     h.flush();
     expect(h.transport.lastState.mode).toBe('tip');
-    expect(h.transport.lastState.tip?.presets).toEqual([10, 100, 1]);
-    // Y la pantalla sanea igual lo que recibe: mismo resultado.
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    expect(h.transport.lastState.tip?.presets).toEqual([10, 1]);
+    // Y la pantalla sanea lo que recibe con el mismo criterio de validez (el tope lo pone la caja, no la pantalla).
     const last = h.transport.lastState;
     const sane = sanitizeDisplayState({ ...last, tip: { presets: raw.presets, allowCustom: true, selected: null, base: last.tip?.base } });
     expect(sane?.tip?.presets).toEqual([10, 100, 1]);

@@ -517,9 +517,10 @@ describe('E. Object.freeze superficial es suficiente: TipSelection es plana', ()
   it('describeTipSelection sobre la congelada no intenta escribir (no lanza en modo estricto)', () => {
     const h = harness();
     abrirCobro(h);
-    h.transport.emitUp(tipSelected('percent', 15));
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    h.transport.emitUp(tipSelected('percent', 10));
     expect(() => describeTipSelection(h.selections[0], 'COP')).not.toThrow();
-    expect(describeTipSelection(h.selections[0], 'COP')).toMatch(/^Cliente eligió 15 % \(/);
+    expect(describeTipSelection(h.selections[0], 'COP')).toMatch(/^Cliente eligió 10 % \(/);
   });
 
   it('(fuente) el onApply de CheckoutDialog solo LEE percent/amount de la selección', () => {

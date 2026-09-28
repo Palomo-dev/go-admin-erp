@@ -564,7 +564,8 @@ describe('F. la fase de propina no depende de la BD ni de pos_terminals', () => 
     caja.emitter.setPayment(cashPayment());
     await flush(3);
     await waitFor(() => pantalla.snap().state?.mode === 'tip');
-    expect(pantalla.snap().state?.tip?.presets).toEqual([5, 10, 15]);
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    expect(pantalla.snap().state?.tip?.presets).toEqual([5, 10]);
     clock += 1;
   });
 });

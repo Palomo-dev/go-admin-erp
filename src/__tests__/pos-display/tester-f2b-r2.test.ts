@@ -569,13 +569,14 @@ describe('B. emitter.ts · bordes de la ronda 2', () => {
     expect(phases).toEqual([null]);
     h.emitter.stop(); // repetido: no avisa
     expect(phases).toEqual([null]);
-    h.current.settings = settings({ presets: [20, 25, 30] });
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    h.current.settings = settings({ presets: [2, 4, 6] });
     h.emitter.start(START);
     h.emitter.setPayment(cashPayment());
     h.flush();
     expect(phases).toEqual([null, 'pending']);
     expect(h.transport.lastState.mode).toBe('tip');
-    expect(h.transport.lastState.tip?.presets).toEqual([20, 25, 30]);
+    expect(h.transport.lastState.tip?.presets).toEqual([2, 4, 6]);
     expect(h.transport.lastState.tip?.base).toBe(5000); // la base 20250 NO sobrevivió al stop()
   });
 

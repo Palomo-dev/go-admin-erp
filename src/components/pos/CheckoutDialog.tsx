@@ -1,11 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { DollarSign, Printer, CheckCircle, Banknote, User, Wallet, Plus, Trash2, X, Percent, Truck, MapPin, Phone, Navigation, UserCircle, Clock, QrCode, Loader2 } from 'lucide-react';
+import { FileCheck2, Printer, CheckCircle, Banknote, User, Wallet, Plus, Trash2, X, Percent, Truck, QrCode, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -32,7 +30,6 @@ import {
   type TaxCalculationItem 
 } from '@/lib/utils/taxCalculations';
 import { validateCompositeStock } from '@/lib/services/compositeStockValidation';
-import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
 import { CajasService } from '@/components/pos/cajas/CajasService';
@@ -57,14 +54,17 @@ import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
 import { cuentasDelCobro } from '@/lib/pos/venta/cobro/cuentasCobro';
 import { actualizarEntradaPago, entradaDePagoNueva, pagosDelSobre, pagosParaImpresion, puedeQuitarPagos, quitarEntradaPago } from '@/lib/pos/venta/cobro/pagosCobro';
 import { faltaParaEntrada, montosDeEntrada, muestraMontosRapidos } from '@/lib/pos/venta/cobro/montosRapidos';
-import { PORCENTAJES_PROPINA, meserosDesdeMiembros } from '@/lib/pos/venta/cobro/propinaCobro';
+import { PORCENTAJES_PROPINA, baseDePropina, meserosDesdeMiembros, propinaTopada, topePropina } from '@/lib/pos/venta/cobro/propinaCobro';
 import { camposComisionDelSobre, comisionDeTasaResuelta, esPersonaAsignada, montoComision } from '@/lib/pos/venta/cobro/comisionCobro';
 import { camposEntregaDelSobre, fleteDeTarifaElegida, opcionesDeTarifa, tarifaPorDefecto, tarifasVisiblesEnPos } from '@/lib/pos/venta/cobro/entregaCobro';
 import { lineasConSerial, seleccionSerialesCompleta } from '@/lib/pos/venta/cobro/serialesCobro';
 import { comprobarStockReceta, debeConfirmarStock } from '@/lib/pos/venta/cobro/stockRecetaCobro';
 import { lanzarTicketYCajon, planPostVenta } from '@/lib/pos/venta/cobro/postVentaCobro';
 // Presentación del cobro (paso 11): contenedor, zona de totales y monto del pago.
-import { BotonImporte, KbdButton, SelectorMetodoPago, clasesBoton, repartirMetodos, useAtajos, type Atajo } from '@/components/kit';
+import { BotonImporte, KbdButton, SeccionPlegable, SegmentedControl, SelectorMetodoPago, clasesBoton, repartirMetodos, useAtajos, type Atajo } from '@/components/kit';
+import { Switch } from '@/components/ui/switch';
+import { EntregaCobro } from '@/components/pos/venta/cobro/EntregaCobro';
+import { leerEstadoFacturaElectronica, type ClienteConfigFactura, type EstadoFacturaElectronica } from '@/lib/pos/venta/cobro/facturaElectronicaCobro';
 import { CobroPanel } from '@/components/pos/venta/CobroPanel';
 import { ResumenCobro } from '@/components/pos/venta/cobro/ResumenCobro';
 import { EditorPagoCobro } from '@/components/pos/venta/cobro/EditorPagoCobro';
@@ -77,6 +77,8 @@ import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 /** Botones de método visibles antes de «Otro» (Alt+1…Alt+5 por posición). */
 const MAX_BOTONES_METODO = 5;
 const ATAJOS_METODO = ['metodo1', 'metodo2', 'metodo3', 'metodo4', 'metodoOtro'] as const;
+type SeccionCobro = 'entrega' | 'propina' | 'comision' | 'factura';
+const SECCIONES_CERRADAS: Record<SeccionCobro, boolean> = { entrega: false, propina: false, comision: false, factura: false };
 
 interface CheckoutDialogProps {
   cart: Cart;
@@ -265,6 +267,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const cartTotal = cuentasCobro.cartTotal;
   const remaining = Math.max(0, cartTotal - totalPaid);
   const change = cuentasCobro.change;
+  // Base de la propina (D7, paso 12): el subtotal SIN impuestos que ya calculó
+  // el cobro, no `baseTotal` (con impuestos). La misma base va a la pantalla
+  // del cliente (setTipBase) para que «10 %» sea la misma cifra en las dos.
+  const baseTip = baseDePropina({ calculatedTotals, cart });
   const canComplete = cuentasCobro.canComplete;
 
   // Advertencia (no bloquea el cobro): líneas que se cobrarán sin IVA porque ni
@@ -380,20 +386,21 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     if (!open) return;
     return getPosDisplayEmitter().onUp((msg) => {
       if (msg.t !== 'qr_paid_claim' || msg.cartId !== cart.id) return;
-      toast.info('El cliente indica que ya pagó', {
-        description: 'Confirme el pago como siempre: por el estado del QR o el comprobante.',
+      toast.info(tPos('qr.clienteDiceQuePago'), {
+        description: tPos('qr.clienteDiceQuePagoDesc'),
       });
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tPos (next-intl) es estable por idioma
   }, [open, cart.id]);
 
   // Fase 2-B (Propina en pantalla): la base sobre la que la pantalla calcula
-  // los porcentajes es la MISMA que usa handleTipPercentage (total con
-  // impuestos, sin propina ni domicilio); así «10 %» es la misma cifra en la
+  // los porcentajes es la MISMA que usa handleTipPercentage (desde el paso 12,
+  // D7: el subtotal SIN impuestos, `baseTip`); así «10 %» es la misma cifra en la
   // pantalla y en la caja. La fase la abre el emisor al entrar en cobro.
   useEffect(() => {
     if (!open || showReceipt) return;
-    getPosDisplayEmitter().setTipBase(baseTotal);
-  }, [open, showReceipt, baseTotal]);
+    getPosDisplayEmitter().setTipBase(baseTip);
+  }, [open, showReceipt, baseTip]);
 
   useEffect(() => {
     if (open) {
@@ -432,8 +439,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           if (config.require_cash_session) {
             const activeSession = await CajasService.getActiveSession();
             if (!activeSession) {
-              toast.error('No hay caja abierta', {
-                description: 'Debe abrir una caja antes de realizar ventas. Vaya a POS → Cajas.',
+              toast.error(tPos('caja.sinCaja'), {
+                description: tPos('caja.sinCajaDesc'),
                 duration: 5000,
               });
               onOpenChange(false);
@@ -748,13 +755,15 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setTipPercentage(percentage);
       // Misma aritmética que la pantalla del cliente y «Aplicar» (tip.ts, regla dura 7): con presets
       // arbitrarios de la organización `Math.round(base * (pct / 100))` difería en 1 (25 × 58 % → 14 / 15).
-      const calculatedTip = computeTipAmount(baseTotal, percentage);
+      const calculatedTip = computeTipAmount(baseTip, percentage);
       setTipAmount(calculatedTip);
       followTipOnPrefilledPayment(calculatedTip);
     }
   };
 
-  const handleTipAmountChange = (value: number) => {
+  const handleTipAmountChange = (valorTecleado: number) => {
+    // D7: «otro valor» nunca pasa del 10 % de la base (antes de impuestos).
+    const value = propinaTopada(valorTecleado, baseTip);
     setTipPercentage(null);
     setTipAmount(value);
     followTipOnPrefilledPayment(value);
@@ -773,7 +782,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     // (F2C-R7-2). Antes del fetch y de cualquier setState.
     if (qrRequestInFlightRef.current) return;
     if (!cart.branch_id) {
-      toast.error('Se requiere una sucursal para procesar');
+      toast.error(tPos('errores.sinSucursal'));
       return;
     }
     qrRequestInFlightRef.current = true;
@@ -786,7 +795,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // caería al total y el proveedor crearía un cobro REAL sobre una venta
       // ya cubierta. Se corta antes del fetch.
       if (Math.max(0, cartTotal - othersTotal) <= 0) {
-        toast.error('No hay saldo pendiente para cobrar con QR');
+        toast.error(tPos('qr.sinSaldo'));
         return;
       }
       const amount = resolveQrChargeAmount({ entryAmount, othersTotal, total: cartTotal });
@@ -830,7 +839,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           // terminal_model y terminal_serial se resuelven en el backend
         };
       } else {
-        toast.error('Metodo QR no soportado');
+        toast.error(tPos('qr.noSoportado'));
         return;
       }
 
@@ -853,7 +862,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        toast.error('Error al generar QR', { description: errData.error || 'Error desconocido' });
+        toast.error(tPos('qr.errorGenerar'), { description: errData.error || tPos('errores.desconocido') });
         return;
       }
 
@@ -863,8 +872,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // Si solo hay payment_url (sin qr_data ni qr_image_url), abrir en nueva ventana
       if (data.payment_url && !data.qr_data && !data.qr_image_url) {
         window.open(data.payment_url, '_blank');
-        toast.success('Link de pago abierto', {
-          description: 'Se abrio el link de pago de Bold en una nueva ventana.',
+        toast.success(tPos('qr.linkAbierto'), {
+          description: tPos('qr.linkAbiertoDesc'),
         });
         return;
       }
@@ -889,7 +898,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setShowQrDialog(true);
     } catch (err) {
       console.error('Error en handleQrPayment:', err);
-      toast.error('Error al generar QR de pago');
+      toast.error(tPos('qr.errorGenerarPago'));
     } finally {
       // Siempre (éxito, retorno temprano o error): el botón vuelve a estar
       // disponible y la siguiente pulsación ya puede generar otro código.
@@ -1069,7 +1078,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     if (!canComplete) return;
 
     if (!cart.branch_id) {
-      toast.error('Se requiere una sucursal para procesar');
+      toast.error(tPos('errores.sinSucursal'));
       return;
     }
 
@@ -1665,6 +1674,58 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const formatearCobro = useMemo(() => crearFormateadorMoneda(monedaCobro), [monedaCobro]);
   const cobroEditable = open && !showReceipt && !showQrDialog && !showSerialSelector && !stockConfirm;
 
+  // Secciones plegables (paso 12): cerradas al abrir el cobro, con resumen.
+  const [seccionesAbiertas, setSeccionesAbiertas] = useState<Record<SeccionCobro, boolean>>(SECCIONES_CERRADAS);
+  const abrirSeccion = (seccion: SeccionCobro, abierta: boolean) => setSeccionesAbiertas((prev) => ({ ...prev, [seccion]: abierta }));
+  useEffect(() => {
+    if (!open) setSeccionesAbiertas(SECCIONES_CERRADAS);
+  }, [open]);
+  // Factura electrónica «no configurada» (E-30): la sección se deshabilita con
+  // el motivo. Sin respuesta (sin red) no se bloquea nada.
+  const [estadoFactura, setEstadoFactura] = useState<EstadoFacturaElectronica | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    let cancelado = false;
+    leerEstadoFacturaElectronica(supabase as unknown as ClienteConfigFactura, cart.organization_id).then((estado) => {
+      if (!cancelado) setEstadoFactura(estado);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [open, cart.organization_id]);
+  const facturaDisponible = estadoFactura === null || estadoFactura === 'activa';
+  const motivoFactura =
+    estadoFactura === 'noConfigurada'
+      ? tPos('factura.motivoNoConfigurada')
+      : estadoFactura === 'pendiente'
+        ? tPos('factura.motivoPendiente')
+        : estadoFactura === 'suspendida'
+          ? tPos('factura.motivoSuspendida')
+          : undefined;
+  const resumenFactura = sendToFactus
+    ? eInvoiceAlwaysEnabled
+      ? tPos('factura.activadaGlobal')
+      : tPos('factura.activada')
+    : tPos('factura.desactivada');
+  const resumenEntrega =
+    deliveryType === 'pickup'
+      ? tPos('entrega.resumen.recoger')
+      : tPos(deliveryType === 'delivery_own' ? 'entrega.resumen.propio' : 'entrega.resumen.tercero', { flete: formatearCobro(shippingFee) });
+  const nombreMesero = servers.find((s) => s.id === serverId)?.name ?? tPos('propina.sinMesero');
+  const resumenPropina =
+    tipAmount > 0
+      ? tipPercentage !== null
+        ? tPos('propina.resumenPct', { pct: tipPercentage, monto: formatearCobro(tipAmount), mesero: nombreMesero })
+        : tPos('propina.resumen', { monto: formatearCobro(tipAmount), mesero: nombreMesero })
+      : tPos('propina.resumenNinguna');
+  const resumenComision = esPersonaAsignada(salespersonId)
+    ? tPos('comision.resumen', {
+        vendedor: servers.find((s) => s.id === salespersonId)?.name ?? '',
+        tasa: commissionMethod === 'percentage' ? tPos('comision.tasaPct', { tasa: commissionRate }) : formatearCobro(commissionRate),
+        monto: formatearCobro(commissionAmount),
+      })
+    : tPos('comision.resumenNinguna');
+
   // Atajos del cobro (mapa canónico src/lib/pos/venta/atajos.ts): solo con el
   // cobro abierto y sin otro diálogo encima. Esc lo maneja el propio panel.
   const atajosCobro: Atajo[] = [
@@ -1685,6 +1746,16 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       permitirEnCampo: true,
       cuando: () => !isProcessing && !!pagoActivo,
       accion: ponerExacto,
+    },
+    // Alt+D / Alt+P / Alt+F abren o cierran su sección (la comisión no lleva atajo, D13).
+    { tecla: teclaAtajo('entrega'), descripcion: tAtajos('entrega'), permitirEnCampo: true, accion: () => abrirSeccion('entrega', !seccionesAbiertas.entrega) },
+    { tecla: teclaAtajo('propina'), descripcion: tAtajos('propina'), permitirEnCampo: true, accion: () => abrirSeccion('propina', !seccionesAbiertas.propina) },
+    {
+      tecla: teclaAtajo('facturaElectronica'),
+      descripcion: tAtajos('facturaElectronica'),
+      permitirEnCampo: true,
+      cuando: () => facturaDisponible,
+      accion: () => abrirSeccion('factura', !seccionesAbiertas.factura),
     },
     {
       // Enter completa SOLO con el pago cubierto y sin un control con foco que use Enter.
@@ -2044,229 +2115,61 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
               </label>
             </section>
 
-              {/* Sección de Entrega / Delivery - movida a columna izquierda */}
-              <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
-                <CardHeader className="p-4 sm:p-5 pb-2 sm:pb-3">
-                  <CardTitle className="text-sm sm:text-base dark:text-white text-gray-900 flex items-center gap-2">
-                    <Truck className="h-4 w-4 text-blue-500" />
-                    Entrega
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 sm:p-4 space-y-3">
-                  {/* Selector de tipo de entrega */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button
-                      size="sm"
-                      variant={deliveryType === 'pickup' ? 'default' : 'outline'}
-                      onClick={() => setDeliveryType('pickup')}
-                      className={`h-auto py-2 flex flex-col items-center gap-1 ${deliveryType === 'pickup' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      <span className="text-xs">Recoger</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={deliveryType === 'delivery_own' ? 'default' : 'outline'}
-                      onClick={() => setDeliveryType('delivery_own')}
-                      className={`h-auto py-2 flex flex-col items-center gap-1 ${deliveryType === 'delivery_own' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
-                    >
-                      <Truck className="h-4 w-4" />
-                      <span className="text-xs">Envío propio</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={deliveryType === 'delivery_third_party' ? 'default' : 'outline'}
-                      onClick={() => setDeliveryType('delivery_third_party')}
-                      className={`h-auto py-2 flex flex-col items-center gap-1 ${deliveryType === 'delivery_third_party' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
-                    >
-                      <Navigation className="h-4 w-4" />
-                      <span className="text-xs">Tercero</span>
-                    </Button>
-                  </div>
+            {/* Secciones plegables (paso 12): cerradas, con resumen y atajo */}
+            <SeccionPlegable
+              id="cobro-entrega"
+              titulo={tPos('entrega.titulo')}
+              icono={Truck}
+              atajo={teclaAtajo('entrega')}
+              resumen={resumenEntrega}
+              abierta={seccionesAbiertas.entrega}
+              onAbiertaChange={(v) => abrirSeccion('entrega', v)}
+            >
+              <EntregaCobro
+                tipo={deliveryType}
+                onTipo={setDeliveryType}
+                conductores={drivers}
+                conductorId={selectedDriverId}
+                onConductor={setSelectedDriverId}
+                direccionDelCliente={!!cart.customer?.address}
+                direccion={deliveryAddress}
+                onDireccion={(texto) => {
+                  setDeliveryAddress(texto);
+                  setAddressSearch(texto);
+                  searchCustomerAddresses(texto);
+                }}
+                resultados={addressResults}
+                mostrarResultados={showAddressDropdown}
+                onFocoDireccion={() => { if (addressResults.length > 0) setShowAddressDropdown(true); }}
+                onSalirDireccion={() => setTimeout(() => setShowAddressDropdown(false), 200)}
+                onElegirDireccion={selectCustomerAddress}
+                ciudad={deliveryCity}
+                onCiudad={setDeliveryCity}
+                telefono={deliveryContactPhone}
+                onTelefono={setDeliveryContactPhone}
+                contacto={deliveryContactName}
+                onContacto={setDeliveryContactName}
+                instrucciones={deliveryInstructions}
+                onInstrucciones={setDeliveryInstructions}
+                tarifas={shippingRates}
+                tarifaId={selectedRateId}
+                onTarifa={setSelectedRateId}
+                pagoEnvio={shipmentPaymentStatus}
+                onPagoEnvio={setShipmentPaymentStatus}
+                formatear={formatearCobro}
+              />
+            </SeccionPlegable>
 
-                  {/* Campos de delivery cuando no es pickup */}
-                  {deliveryType !== 'pickup' && (
-                    <div className="space-y-3 pt-2 border-t dark:border-gray-700 border-gray-200">
-                      {deliveryType === 'delivery_own' && drivers.length > 0 && (
-                        <div className="space-y-1">
-                          <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
-                            <UserCircle className="h-3 w-3" />
-                            Conductor asignado
-                          </Label>
-                          <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
-                            <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300">
-                              <SelectValue placeholder="Seleccionar conductor..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {drivers.map((driver) => (
-                                <SelectItem key={driver.id} value={driver.id}>
-                                  {driver.name}{driver.phone ? ` · ${driver.phone}` : ''}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                      {deliveryType === 'delivery_own' && cart.customer?.address && (
-                        <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          <span>Dirección del cliente cargada. Puedes modificarla si el envío es a otro lugar.</span>
-                        </div>
-                      )}
-                      <div className="space-y-1 relative">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          Dirección de entrega *
-                        </Label>
-                        <Input
-                          value={deliveryAddress}
-                          onChange={(e) => {
-                            setDeliveryAddress(e.target.value);
-                            setAddressSearch(e.target.value);
-                            searchCustomerAddresses(e.target.value);
-                          }}
-                          onFocus={() => { if (addressResults.length > 0) setShowAddressDropdown(true); }}
-                          onBlur={() => setTimeout(() => setShowAddressDropdown(false), 200)}
-                          placeholder="Escribe la dirección o busca por nombre/teléfono..."
-                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                        />
-                        {showAddressDropdown && addressResults.length > 0 && (
-                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                            {addressResults.map((addr) => (
-                              <button
-                                key={addr.id}
-                                type="button"
-                                onMouseDown={() => selectCustomerAddress(addr)}
-                                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-0"
-                              >
-                                <div className="text-sm font-medium dark:text-white text-gray-900">{addr.name}</div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                  <MapPin className="h-3 w-3 shrink-0" />
-                                  {addr.address}{addr.city ? `, ${addr.city}` : ''}
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <Label className="text-xs dark:text-gray-400 text-gray-600">
-                            Ciudad
-                          </Label>
-                          <Input
-                            value={deliveryCity}
-                            onChange={(e) => setDeliveryCity(e.target.value)}
-                            placeholder="Ciudad"
-                            className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            Teléfono contacto
-                          </Label>
-                          <Input
-                            value={deliveryContactPhone}
-                            onChange={(e) => setDeliveryContactPhone(e.target.value)}
-                            placeholder="300 123 4567"
-                            className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600">
-                          Nombre contacto
-                        </Label>
-                        <Input
-                          value={deliveryContactName}
-                          onChange={(e) => setDeliveryContactName(e.target.value)}
-                          placeholder="Nombre de quien recibe"
-                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600">
-                          Instrucciones
-                        </Label>
-                        <Input
-                          value={deliveryInstructions}
-                          onChange={(e) => setDeliveryInstructions(e.target.value)}
-                          placeholder="Portón negro, apartamento 302..."
-                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                        />
-                      </div>
-                      {shippingRates.length > 0 && (
-                        <div className="space-y-1 pt-2 border-t dark:border-gray-700 border-gray-200">
-                          <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
-                            <Truck className="h-3 w-3" />
-                            Tarifa de envío
-                          </Label>
-                          <Select value={selectedRateId} onValueChange={setSelectedRateId}>
-                            <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300">
-                              <SelectValue placeholder="Seleccionar tarifa..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {shippingRates.map((rate) => (
-                                <SelectItem key={rate.id} value={rate.id}>
-                                  {rate.rate_name} - {formatCurrency(rate.total_cost)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {/* Estado de pago del envío */}
-                      <div className="space-y-1 pt-2 border-t dark:border-gray-700 border-gray-200">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
-                          <Wallet className="h-3 w-3" />
-                          Pago del envío
-                        </Label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={shipmentPaymentStatus === 'paid' ? 'default' : 'outline'}
-                            onClick={() => setShipmentPaymentStatus('paid')}
-                            className={`h-auto py-2 ${shipmentPaymentStatus === 'paid' ? 'bg-green-600 hover:bg-green-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
-                          >
-                            <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                            <span className="text-xs">Pagado</span>
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={shipmentPaymentStatus === 'pending' ? 'default' : 'outline'}
-                            onClick={() => setShipmentPaymentStatus('pending')}
-                            className={`h-auto py-2 ${shipmentPaymentStatus === 'pending' ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
-                          >
-                            <Clock className="h-3.5 w-3.5 mr-1" />
-                            <span className="text-xs">Pendiente</span>
-                          </Button>
-                        </div>
-                        {shipmentPaymentStatus === 'pending' && (
-                          <p className="text-xs text-yellow-600 dark:text-yellow-400">
-            El envío se creará como pendiente de pago. Podrás marcarlo como pagado al entregar.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-            {/* Propina y comisión (el paso 12 las pasa a SeccionPlegable) */}
-            <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
-                  {/* Sección de Propina */}
-                  <div className="pt-3 border-t dark:border-gray-700 border-gray-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Banknote className="h-4 w-4 dark:text-green-400 text-green-600" />
-                      <Label className="text-sm font-medium dark:text-gray-200 text-gray-900">
-                        Propina (opcional)
-                      </Label>
-                    </div>
-                    
+            <SeccionPlegable
+              id="cobro-propina"
+              titulo={tPos('propina.titulo')}
+              icono={Banknote}
+              atajo={teclaAtajo('propina')}
+              resumen={resumenPropina}
+              abierta={seccionesAbiertas.propina}
+              onAbiertaChange={(v) => abrirSeccion('propina', v)}
+            >
+              <div className="flex flex-col gap-3">
                     {/* Propina elegida en la pantalla del cliente (F2-B): aviso no bloqueante; nada se aplica solo */}
                     <TipFromDisplayNotice
                       open={open && !showReceipt}
@@ -2288,55 +2191,56 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                     />
 
                     {/* Botones de porcentaje */}
-                    <div className="grid grid-cols-4 gap-2 mb-3">
+                    <div role="group" aria-label={tPos('propina.porcentajes')} className="grid grid-cols-2 gap-2">
                       {PORCENTAJES_PROPINA.map((pct) => (
-                        <Button
+                        <button
                           key={pct}
                           type="button"
-                          size="sm"
-                          variant={tipPercentage === pct ? "default" : "outline"}
+                          aria-pressed={tipPercentage === pct}
                           onClick={() => handleTipPercentage(pct)}
-                          className={`h-9 text-xs ${
-                            tipPercentage === pct
-                              ? 'bg-green-600 hover:bg-green-700 text-white'
-                              : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'
-                          }`}
+                          className={cn(
+                            'flex h-12 flex-col items-center justify-center rounded-lg border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                            tipPercentage === pct ? 'border-line-brand bg-brand-tint text-brand-deep ring-1 ring-brand' : 'border-line-strong bg-surface text-fg hover:bg-hover',
+                          )}
                         >
-                          {pct}%
-                        </Button>
+                          {tPos('propina.pct', { pct })}
+                          <span className="text-xs font-normal tabular-nums text-fg-secondary">{formatearCobro(computeTipAmount(baseTip, pct))}</span>
+                        </button>
                       ))}
                     </div>
-                    
-                    {/* Monto personalizado */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600">
-                          Monto personalizado
-                        </Label>
-                        <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
-                          <Input
-                            type="number"
-                            min="0"
-                            step="100"
-                            value={tipAmount || ''}
-                            onChange={(e) => handleTipAmountChange(Number(e.target.value) || 0)}
-                            placeholder="0"
-                            className="pl-10 dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                          />
-                        </div>
+                    <p className="text-xs text-fg-muted">{tPos('propina.base', { monto: formatearCobro(baseTip) })}</p>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="cobro-propina-otro" className="text-xs font-medium text-fg-secondary">
+                          {tPos('propina.otroValor')}
+                        </label>
+                        <Input
+                          id="cobro-propina-otro"
+                          type="number"
+                          inputMode="numeric"
+                          min="0"
+                          max={topePropina(baseTip)}
+                          step="100"
+                          value={tipAmount || ''}
+                          onChange={(e) => handleTipAmountChange(Number(e.target.value) || 0)}
+                          placeholder="0"
+                          aria-describedby="cobro-propina-tope"
+                        />
+                        <span id="cobro-propina-tope" className="text-xs text-fg-muted">
+                          {tPos('propina.tope', { monto: formatearCobro(topePropina(baseTip)) })}
+                        </span>
                       </div>
-                      
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600">
-                          Mesero (opcional)
-                        </Label>
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="cobro-propina-mesero" className="text-xs font-medium text-fg-secondary">
+                          {tPos('propina.mesero')}
+                        </label>
                         <Select value={serverId} onValueChange={setServerId}>
-                          <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300">
-                            <SelectValue placeholder="Seleccionar..." />
+                          <SelectTrigger id="cobro-propina-mesero">
+                            <SelectValue placeholder={tPos('propina.meseroPlaceholder')} />
                           </SelectTrigger>
-                          <SelectContent className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200">
-                            <SelectItem value="__none__">Sin asignar</SelectItem>
+                          <SelectContent>
+                            <SelectItem value="__none__">{tPos('sinAsignar')}</SelectItem>
                             {servers.map((server) => (
                               <SelectItem key={server.id} value={server.id}>
                                 {server.name}
@@ -2346,123 +2250,92 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                         </Select>
                       </div>
                     </div>
-                    
-                    {tipAmount > 0 && (
-                      <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="dark:text-green-400 text-green-700">Propina:</span>
-                          <span className="font-semibold dark:text-green-400 text-green-700">
-                            {formatCurrency(tipAmount)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+              </div>
+            </SeccionPlegable>
+
+            <SeccionPlegable
+              id="cobro-comision"
+              titulo={tPos('comision.titulo')}
+              icono={User}
+              resumen={resumenComision}
+              abierta={seccionesAbiertas.comision}
+              onAbiertaChange={(v) => abrirSeccion('comision', v)}
+            >
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="cobro-comision-vendedor" className="text-xs font-medium text-fg-secondary">
+                    {tPos('comision.vendedor')}
+                  </label>
+                  <Select value={salespersonId} onValueChange={handleSalespersonChange}>
+                    <SelectTrigger id="cobro-comision-vendedor">
+                      <SelectValue placeholder={tPos('comision.placeholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">{tPos('sinAsignar')}</SelectItem>
+                      {servers.map((server) => (
+                        <SelectItem key={server.id} value={server.id}>
+                          {server.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span id="cobro-comision-tipo" className="text-xs font-medium text-fg-secondary">
+                    {tPos('comision.valor')}
+                  </span>
+                  <div className="flex gap-2">
+                    <SegmentedControl
+                      etiqueta={tPos('comision.tipo')}
+                      valor={commissionMethod}
+                      tamano="sm"
+                      onValorChange={setCommissionMethod}
+                      opciones={[
+                        { valor: 'percentage' as const, etiqueta: tPos('comision.porcentaje') },
+                        { valor: 'fixed_amount' as const, etiqueta: tPos('comision.monto') },
+                      ]}
+                    />
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      max={commissionMethod === 'percentage' ? "100" : undefined}
+                      step={commissionMethod === 'percentage' ? "0.5" : "100"}
+                      value={commissionRate || ''}
+                      onChange={(e) => setCommissionRate(Number(e.target.value) || 0)}
+                      placeholder="0"
+                      aria-labelledby="cobro-comision-tipo"
+                      className="min-w-0 flex-1"
+                    />
                   </div>
+                </div>
+              </div>
+            </SeccionPlegable>
 
-                  {/* Sección de Comisión de Vendedor */}
-                  <div className="pt-3 border-t dark:border-gray-700 border-gray-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <User className="h-4 w-4 dark:text-blue-400 text-blue-600" />
-                      <Label className="text-sm font-medium dark:text-gray-200 text-gray-900">
-                        Comisión de Vendedor (opcional)
-                      </Label>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600">
-                          Vendedor
-                        </Label>
-                        <Select value={salespersonId} onValueChange={handleSalespersonChange}>
-                          <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300">
-                            <SelectValue placeholder="Seleccionar..." />
-                          </SelectTrigger>
-                          <SelectContent className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200">
-                            <SelectItem value="__none__">Sin asignar</SelectItem>
-                            {servers.map((server) => (
-                              <SelectItem key={server.id} value={server.id}>
-                                {server.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600">
-                          Comisión
-                        </Label>
-                        <div className="flex gap-1 mb-1">
-                          <Button
-                            type="button"
-                            variant={commissionMethod === 'percentage' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setCommissionMethod('percentage')}
-                            className="h-7 px-2 text-xs"
-                          >
-                            <Percent className="h-3 w-3 mr-1" /> %
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={commissionMethod === 'fixed_amount' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setCommissionMethod('fixed_amount')}
-                            className="h-7 px-2 text-xs"
-                          >
-                            <DollarSign className="h-3 w-3 mr-1" /> Monto
-                          </Button>
-                        </div>
-                        <div className="relative">
-                          {commissionMethod === 'percentage' ? (
-                            <Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
-                          ) : (
-                            <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
-                          )}
-                          <Input
-                            type="number"
-                            min="0"
-                            max={commissionMethod === 'percentage' ? "100" : undefined}
-                            step={commissionMethod === 'percentage' ? "0.5" : "100"}
-                            value={commissionRate || ''}
-                            onChange={(e) => setCommissionRate(Number(e.target.value) || 0)}
-                            placeholder="0"
-                            className="pl-10 dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {commissionAmount > 0 && (
-                      <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="dark:text-blue-400 text-blue-700">
-                            Comisión ({commissionMethod === 'percentage' ? `${commissionRate}%` : formatCurrency(commissionRate)}):
-                          </span>
-                          <span className="font-semibold dark:text-blue-400 text-blue-700">
-                            {formatCurrency(commissionAmount)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-            </div>
-
-            {/* Toggle Factura Electrónica */}
-            <div className="px-1 py-2">
-              <div className={`p-2 sm:p-3 rounded-lg flex items-center justify-between ${eInvoiceAlwaysEnabled ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800' : 'bg-gray-50 dark:bg-gray-800/50'}`}>
-                <ElectronicInvoiceToggle
+            <SeccionPlegable
+              id="cobro-factura"
+              titulo={tPos('factura.titulo')}
+              icono={FileCheck2}
+              atajo={teclaAtajo('facturaElectronica')}
+              resumen={facturaDisponible ? resumenFactura : undefined}
+              deshabilitada={!facturaDisponible}
+              motivo={motivoFactura}
+              abierta={seccionesAbiertas.factura}
+              onAbiertaChange={(v) => abrirSeccion('factura', v)}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="cobro-factura-enviar" className="text-sm text-fg">
+                  {tPos('factura.enviar')}
+                </label>
+                <Switch
+                  id="cobro-factura-enviar"
                   checked={sendToFactus}
                   onCheckedChange={setSendToFactus}
                   disabled={eInvoiceAlwaysEnabled}
-                  showLabel={true}
-                  showTooltip={true}
-                  size="md"
                 />
-                {eInvoiceAlwaysEnabled && (
-                  <span className="text-xs text-blue-600 dark:text-blue-400 font-medium ml-2">Global</span>
-                )}
               </div>
-            </div>
+              {eInvoiceAlwaysEnabled && <p className="mt-2 text-xs text-fg-muted">{tPos('factura.global')}</p>}
+            </SeccionPlegable>
           </>
         )}
     </CobroPanel>
@@ -2480,21 +2353,21 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         onTerminal={() => setQrDead(true)}
         extraControl={
           displayPresence.emitting ? (
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded"
+                className="size-4 rounded accent-brand"
                 checked={showQrOnDisplay}
                 onChange={(e) => setShowQrOnDisplay(e.target.checked)}
               />
-              <span>Mostrar en pantalla del cliente</span>
-              {!displayPresence.connected && <span className="text-xs text-gray-400">(sin pantalla conectada)</span>}
+              <span>{tPos('qr.mostrarEnPantalla')}</span>
+              {!displayPresence.connected && <span className="text-xs text-fg-muted">{tPos('qr.sinPantalla')}</span>}
             </label>
           ) : null
         }
         onPaid={() => {
           setShowQrDialog(false);
-          toast.success('Pago QR confirmado');
+          toast.success(tPos('qr.confirmado'));
           // Pantalla del cliente (F2-C, C1): con el pago confirmado la fase
           // de propina queda decidida (equivale a «Omitir» si seguía
           // pendiente); al reproyectar el medio sin código la pantalla pasa a
@@ -2564,11 +2437,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Stock insuficiente de ingredientes</AlertDialogTitle>
+            <AlertDialogTitle>{tPos('stock.titulo')}</AlertDialogTitle>
             <AlertDialogDescription className="whitespace-pre-line">
               {stockConfirm?.message}
               {'\n\n'}
-              ¿Deseas continuar con la venta de todos modos?
+              {tPos('stock.pregunta')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -2578,7 +2451,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                 setStockConfirm(null);
               }}
             >
-              Cancelar
+              {tPos('stock.cancelar')}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
@@ -2586,7 +2459,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                 setStockConfirm(null);
               }}
             >
-              Continuar
+              {tPos('stock.continuar')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -11856,7 +11856,114 @@
     },
     "errores": {
       "titulo": "Não foi possível processar o pagamento",
-      "desconocido": "Erro desconhecido"
+      "desconocido": "Erro desconhecido",
+      "sinSucursal": "É necessária uma filial para processar a venda"
+    },
+    "sinAsignar": "Sem atribuição",
+    "caja": {
+      "sinCaja": "Não há caixa aberto",
+      "sinCajaDesc": "Abra um caixa antes de vender. Vá em POS › Caixas."
+    },
+    "entrega": {
+      "titulo": "Entrega",
+      "resumen": {
+        "recoger": "Retirada na loja",
+        "propio": "Entrega própria · {flete}",
+        "tercero": "Entrega por terceiro · {flete}"
+      },
+      "tipo": "Tipo de entrega",
+      "recoger": "Retirada",
+      "propio": "Entrega própria",
+      "tercero": "Terceiro",
+      "conductor": "Entregador atribuído",
+      "conductorPlaceholder": "Selecionar entregador…",
+      "direccionCliente": "Endereço do cliente carregado. Você pode alterá-lo se a entrega for em outro lugar.",
+      "direccion": "Endereço de entrega",
+      "direccionPlaceholder": "Digite o endereço ou busque por nome ou telefone…",
+      "ciudad": "Cidade",
+      "telefono": "Telefone de contato",
+      "contacto": "Nome do contato",
+      "contactoPlaceholder": "Nome de quem recebe",
+      "instrucciones": "Instruções",
+      "instruccionesPlaceholder": "Portão preto, apartamento 302…",
+      "tarifa": "Tarifa de envio",
+      "tarifaPlaceholder": "Selecionar tarifa…",
+      "tarifaOpcion": "{nombre} · {costo}",
+      "pagoEnvio": "Pagamento da entrega",
+      "pagado": "Pago",
+      "pendiente": "Pendente",
+      "avisoPendiente": "A entrega será criada como pendente de pagamento. Você poderá marcá-la como paga ao entregar."
+    },
+    "propina": {
+      "titulo": "Gorjeta",
+      "resumenNinguna": "Sem gorjeta",
+      "resumen": "{monto} · {mesero}",
+      "resumenPct": "{pct} % · {monto} · {mesero}",
+      "sinMesero": "sem garçom",
+      "porcentajes": "Gorjeta sugerida",
+      "pct": "{pct} %",
+      "base": "Sobre {monto}, antes dos impostos",
+      "otroValor": "Outro valor",
+      "tope": "Máximo {monto} (10 % antes dos impostos)",
+      "mesero": "Garçom",
+      "meseroPlaceholder": "Selecionar…"
+    },
+    "comision": {
+      "titulo": "Comissão do vendedor",
+      "resumenNinguna": "Sem vendedor",
+      "resumen": "{vendedor} · {tasa} · {monto}",
+      "tasaPct": "{tasa} %",
+      "vendedor": "Vendedor",
+      "placeholder": "Selecionar…",
+      "valor": "Comissão",
+      "tipo": "Como a comissão é calculada",
+      "porcentaje": "%",
+      "monto": "Valor"
+    },
+    "factura": {
+      "titulo": "Nota fiscal eletrônica",
+      "activada": "Ativada",
+      "activadaGlobal": "Ativada · Global",
+      "desactivada": "Desativada",
+      "enviar": "Enviar ao fisco ao concluir a venda",
+      "global": "A preferência global a mantém sempre ativa.",
+      "motivoNoConfigurada": "Não configurada: a organização não tem o serviço de faturamento eletrônico ativo.",
+      "motivoPendiente": "Aguardando ativação: o serviço de faturamento eletrônico ainda não está ativo.",
+      "motivoSuspendida": "Suspensa: o serviço de faturamento eletrônico não está ativo."
+    },
+    "qr": {
+      "sinSaldo": "Não há saldo pendente para cobrar com QR",
+      "noSoportado": "Método QR não suportado",
+      "errorGenerar": "Erro ao gerar o QR",
+      "errorGenerarPago": "Erro ao gerar o QR de pagamento",
+      "linkAbierto": "Link de pagamento aberto",
+      "linkAbiertoDesc": "O link de pagamento da Bold foi aberto em uma nova janela.",
+      "confirmado": "Pagamento QR confirmado",
+      "clienteDiceQuePago": "O cliente informa que já pagou",
+      "clienteDiceQuePagoDesc": "Confirme o pagamento como sempre: pelo status do QR ou pelo comprovante.",
+      "mostrarEnPantalla": "Mostrar na tela do cliente",
+      "sinPantalla": "(sem tela conectada)"
+    },
+    "stock": {
+      "titulo": "Estoque insuficiente de ingredientes",
+      "pregunta": "Deseja continuar com a venda mesmo assim?",
+      "cancelar": "Cancelar",
+      "continuar": "Continuar"
+    },
+    "seriales": {
+      "titulo": "Números de série",
+      "descripcion": "Escolha os números de série dos produtos vendidos por unidade. {n, plural, one {# produto serializado} other {# produtos serializados}}.",
+      "skuCantidad": "SKU: {sku} · Quantidade: {cantidad}",
+      "progreso": "{elegidos}/{requeridos}",
+      "cargando": "Carregando números de série disponíveis…",
+      "errorCarga": "Erro ao carregar números de série",
+      "sinDisponibles": "Não há números de série em estoque para este produto.",
+      "buscar": "Buscar número de série…",
+      "buscarAria": "Buscar número de série de {producto}",
+      "garantia": "Garantia até: {fecha}",
+      "insuficientes": "Só {disponibles, plural, one {há # número disponível} other {há # números disponíveis}} e {requeridos, plural, one {é necessário #} other {são necessários #}}.",
+      "confirmar": "Confirmar números de série",
+      "lista": "Números de série de {producto}"
     }
   }
 }

@@ -195,7 +195,7 @@ import type {
   UpMessage,
 } from './protocol';
 import { projectCartForDisplay, type DisplayTotalsOverride } from './projection';
-import { isAcceptableTipChoice, isValidTipPercent, resolveTipSelection, type DisplayTipBlock, type TipSelection } from './tip';
+import { isAcceptableTipChoice, porcentajesPropinaOfrecidos, resolveTipSelection, type DisplayTipBlock, type TipSelection } from './tip';
 import type { DisplayCapabilitiesByOrigin, DisplaySeenByOrigin, DisplayTransport, HelloDraft } from './transport';
 
 /** Cuánto se muestra «Gracias» antes de volver al modo derivado (PLAN §4.2: 8 s o siguiente venta). */
@@ -1212,7 +1212,8 @@ export class DisplayEmitter {
     }
     const tips = settings?.tips;
     if (!tips || tips.enabled !== true) return;
-    const presets = Array.isArray(tips.presets) ? Array.from(new Set(tips.presets.filter(isValidTipPercent))) : [];
+    // Tope del 10 % (D7, tip.ts): los porcentajes configurados por encima no se ofrecen.
+    const presets = porcentajesPropinaOfrecidos(tips.presets);
     const allowCustom = tips.allowCustom === true;
     if (presets.length === 0 && !allowCustom) return;
     this.tipConfig = { presets, allowCustom };

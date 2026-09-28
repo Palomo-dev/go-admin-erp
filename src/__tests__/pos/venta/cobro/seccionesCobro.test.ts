@@ -10,7 +10,7 @@
  */
 
 import { computeTipAmount } from '@/lib/pos/display/tip';
-import { PORCENTAJES_PROPINA, meserosDesdeMiembros } from '@/lib/pos/venta/cobro/propinaCobro';
+import { PORCENTAJES_PROPINA, baseDePropina, meserosDesdeMiembros, propinaTopada } from '@/lib/pos/venta/cobro/propinaCobro';
 import {
   camposComisionDelSobre,
   comisionDeTasaResuelta,
@@ -30,10 +30,21 @@ import { lineasConSerial, seleccionSerialesCompleta } from '@/lib/pos/venta/cobr
 import { comprobarStockReceta, debeConfirmarStock } from '@/lib/pos/venta/cobro/stockRecetaCobro';
 
 describe('L44 · propina', () => {
-  it('ofrece 5/10/15/20 % fijos (no salen de la organización) sobre la base con impuestos', () => {
-    // H9 / D7: 15 y 20 % chocan con el tope del 10 % de cargos; se decide en el paso 12.
-    expect(PORCENTAJES_PROPINA).toEqual([5, 10, 15, 20]);
-    expect(PORCENTAJES_PROPINA.map((pct) => computeTipAmount(23800, pct))).toEqual([1190, 2380, 3570, 4760]);
+  it('paso 12 (D7): ofrece 5 y 10 % sobre el subtotal SIN impuestos, y «otro valor» topado al 10 % de esa base', () => {
+    // Antes del paso 12 se fijaba 5/10/15/20 % sobre el total con impuestos; el
+    // dueño decidió D7 (tope del 10 %, antes de impuestos). Ejemplo: subtotal
+    // 20.000 + IVA 19 % = 23.800; la propina del 10 % es 2.000, no 2.380.
+    expect(PORCENTAJES_PROPINA).toEqual([5, 10]);
+    const base = baseDePropina({ calculatedTotals: { subtotal: 20000 }, cart: { subtotal: 99999 } });
+    expect(base).toBe(20000);
+    expect(PORCENTAJES_PROPINA.map((pct) => computeTipAmount(base, pct))).toEqual([1000, 2000]);
+    expect(propinaTopada(5000, base)).toBe(2000);
+    expect(propinaTopada(1500, base)).toBe(1500);
+    expect(propinaTopada(-3, base)).toBe(0);
+    expect(propinaTopada(Number.NaN, base)).toBe(0);
+    // Sin totales calculados todavía: el subtotal del carrito; nunca negativa.
+    expect(baseDePropina({ calculatedTotals: { subtotal: 0 }, cart: { subtotal: 18000 } })).toBe(18000);
+    expect(baseDePropina({ calculatedTotals: { subtotal: 0 }, cart: { subtotal: -1 } })).toBe(0);
   });
 
   it('mesero (y vendedor): todos los miembros; nombre completo → nombre → correo → «Sin nombre»', () => {

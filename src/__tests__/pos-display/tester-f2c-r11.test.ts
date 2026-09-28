@@ -744,7 +744,8 @@ describe('qr_paid_claim · lado caja (estático sobre CheckoutDialog) y guard', 
   it('CheckoutDialog descarta el claim de OTRO carrito (msg.cartId !== cart.id) y no toca ningún estado: solo toast.info', () => {
     const block = CHECKOUT.slice(CHECKOUT.indexOf("msg.t !== 'qr_paid_claim'"), CHECKOUT.indexOf("msg.t !== 'qr_paid_claim'") + 400);
     expect(block).toContain('msg.cartId !== cart.id) return;');
-    expect(block).toContain("toast.info('El cliente indica que ya pagó'");
+    // Paso 12 del POS: los textos del cobro salen de next-intl (posCobro); se busca la llamada, no el literal.
+    expect(block).toContain("toast.info(tPos('qr.clienteDiceQuePago')");
     // Nada de setPayments / setShowQrDialog / confirmQrPaymentEntry dentro del oyente.
     const listener = CHECKOUT.slice(CHECKOUT.indexOf("msg.t !== 'qr_paid_claim'"), CHECKOUT.indexOf('}, [open, cart.id]);'));
     expect(listener).not.toMatch(/setPayments|setShowQrDialog|confirmQrPaymentEntry|setTouchedIds|handleQrPayment/);
@@ -808,7 +809,8 @@ describe('Regresión · ajustes, presets, subtotal 0, no táctil, terminal, dos 
     expect(computeTipAmount(0, 100)).toBe(0);
     expect(resolveTipSelection('c', 0, { kind: 'percent', value: 100 }).amount).toBe(0);
     // La guarda de la caja existe tal cual (HALLAZGO R).
-    expect(CHECKOUT).toContain("toast.error('No hay saldo pendiente para cobrar con QR')");
+    // Paso 12 del POS: los textos del cobro salen de next-intl (posCobro); se busca la llamada, no el literal.
+    expect(CHECKOUT).toContain("toast.error(tPos('qr.sinSaldo'))");
   });
 
   it('pantalla NO táctil con propinas activadas y presets válidos: se muestra la propina (el cajero la aplica desde la caja); sin presets cae al cobro QR con instrucciones', () => {

@@ -11961,7 +11961,114 @@
     },
     "errores": {
       "titulo": "The payment could not be processed",
-      "desconocido": "Unknown error"
+      "desconocido": "Unknown error",
+      "sinSucursal": "A branch is required to process the sale"
+    },
+    "sinAsignar": "Unassigned",
+    "caja": {
+      "sinCaja": "No register is open",
+      "sinCajaDesc": "Open a register before selling. Go to POS › Registers."
+    },
+    "entrega": {
+      "titulo": "Delivery",
+      "resumen": {
+        "recoger": "In-store pickup",
+        "propio": "Own delivery · {flete}",
+        "tercero": "Third-party delivery · {flete}"
+      },
+      "tipo": "Delivery type",
+      "recoger": "Pickup",
+      "propio": "Own delivery",
+      "tercero": "Third party",
+      "conductor": "Assigned driver",
+      "conductorPlaceholder": "Select a driver…",
+      "direccionCliente": "Customer address loaded. You can change it if the delivery goes elsewhere.",
+      "direccion": "Delivery address",
+      "direccionPlaceholder": "Type the address or search by name or phone…",
+      "ciudad": "City",
+      "telefono": "Contact phone",
+      "contacto": "Contact name",
+      "contactoPlaceholder": "Name of the recipient",
+      "instrucciones": "Instructions",
+      "instruccionesPlaceholder": "Black gate, apartment 302…",
+      "tarifa": "Shipping rate",
+      "tarifaPlaceholder": "Select a rate…",
+      "tarifaOpcion": "{nombre} · {costo}",
+      "pagoEnvio": "Delivery payment",
+      "pagado": "Paid",
+      "pendiente": "Pending",
+      "avisoPendiente": "The delivery will be created as unpaid. You can mark it as paid on delivery."
+    },
+    "propina": {
+      "titulo": "Tip",
+      "resumenNinguna": "No tip",
+      "resumen": "{monto} · {mesero}",
+      "resumenPct": "{pct}% · {monto} · {mesero}",
+      "sinMesero": "no server",
+      "porcentajes": "Suggested tip",
+      "pct": "{pct}%",
+      "base": "On {monto}, before taxes",
+      "otroValor": "Other amount",
+      "tope": "Up to {monto} (10% before taxes)",
+      "mesero": "Server",
+      "meseroPlaceholder": "Select…"
+    },
+    "comision": {
+      "titulo": "Sales commission",
+      "resumenNinguna": "No salesperson",
+      "resumen": "{vendedor} · {tasa} · {monto}",
+      "tasaPct": "{tasa}%",
+      "vendedor": "Salesperson",
+      "placeholder": "Select…",
+      "valor": "Commission",
+      "tipo": "How the commission is calculated",
+      "porcentaje": "%",
+      "monto": "Amount"
+    },
+    "factura": {
+      "titulo": "Electronic invoice",
+      "activada": "On",
+      "activadaGlobal": "On · Global",
+      "desactivada": "Off",
+      "enviar": "Send to the tax authority when the sale is completed",
+      "global": "The global preference keeps it always on.",
+      "motivoNoConfigurada": "Not set up: the organization does not have the electronic invoicing service active.",
+      "motivoPendiente": "Pending activation: the electronic invoicing service is not active yet.",
+      "motivoSuspendida": "Suspended: the electronic invoicing service is not active."
+    },
+    "qr": {
+      "sinSaldo": "There is no balance left to charge by QR",
+      "noSoportado": "QR method not supported",
+      "errorGenerar": "Could not generate the QR",
+      "errorGenerarPago": "Could not generate the payment QR",
+      "linkAbierto": "Payment link opened",
+      "linkAbiertoDesc": "The Bold payment link opened in a new window.",
+      "confirmado": "QR payment confirmed",
+      "clienteDiceQuePago": "The customer says they already paid",
+      "clienteDiceQuePagoDesc": "Confirm the payment as usual: through the QR status or the receipt.",
+      "mostrarEnPantalla": "Show on the customer display",
+      "sinPantalla": "(no display connected)"
+    },
+    "stock": {
+      "titulo": "Not enough ingredient stock",
+      "pregunta": "Do you want to continue with the sale anyway?",
+      "cancelar": "Cancel",
+      "continuar": "Continue"
+    },
+    "seriales": {
+      "titulo": "Serial numbers",
+      "descripcion": "Choose the serial numbers of the products sold by unit. {n, plural, one {# serialized product} other {# serialized products}}.",
+      "skuCantidad": "SKU: {sku} · Quantity: {cantidad}",
+      "progreso": "{elegidos}/{requeridos}",
+      "cargando": "Loading available serial numbers…",
+      "errorCarga": "Could not load serial numbers",
+      "sinDisponibles": "There are no serial numbers in stock for this product.",
+      "buscar": "Search serial…",
+      "buscarAria": "Search a serial of {producto}",
+      "garantia": "Warranty until: {fecha}",
+      "insuficientes": "Only {disponibles, plural, one {# serial number is} other {# serial numbers are}} available and {requeridos, plural, one {# is} other {# are}} required.",
+      "confirmar": "Confirm serial numbers",
+      "lista": "Serial numbers of {producto}"
     }
   }
 }

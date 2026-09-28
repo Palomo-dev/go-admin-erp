@@ -402,13 +402,14 @@ describe('B. emitter.ts · lo que la caja acepta frente a lo que ofreció', () =
     const h2 = enTip();
     const seen2: TipSelection[] = [];
     h2.emitter.onTipSelected((s) => seen2.push(s));
-    h2.transport.emitUp(tipSelected('percent', 100)); // la pantalla propia solo ofrece 5/10/15
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    h2.transport.emitUp(tipSelected('percent', 100)); // la pantalla propia solo ofrece 5/10
     expect(h2.emitter.tipPhase).toBe('pending');
     expect(seen2).toEqual([]);
     // Lo ofrecido sigue entrando: la fase no se cerró y el cliente puede volver a elegir.
-    h2.transport.emitUp(tipSelected('percent', 15));
+    h2.transport.emitUp(tipSelected('percent', 10));
     expect(h2.emitter.tipPhase).toBe('done');
-    expect(seen2[0]).toEqual(expect.objectContaining({ kind: 'percent', percent: 15, amount: 3038 }));
+    expect(seen2[0]).toEqual(expect.objectContaining({ kind: 'percent', percent: 10, amount: 2025 }));
   });
 
   it('lo ofrecido se acepta tal cual: amount con allowCustom:true, «none» siempre (también con allowCustom:false y presets vacíos… no: sin presets ni custom no hay fase)', () => {
@@ -427,7 +428,7 @@ describe('B. emitter.ts · lo que la caja acepta frente a lo que ofreció', () =
     expect(seenG[0]).toEqual(expect.objectContaining({ kind: 'none', amount: 0 }));
   });
 
-  it('bordes de percent: 0 y 101 se descartan (fase sigue pending, sin aviso); 1 y 100 se aceptan cuando están entre los presets', () => {
+  it('bordes de percent: 0 y 101 se descartan (fase sigue pending, sin aviso); 1 y 10 (el tope) se aceptan cuando están entre los presets', () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     for (const bad of [0, 101, -5, 1e9]) {
       const h = enTip();
@@ -440,9 +441,10 @@ describe('B. emitter.ts · lo que la caja acepta frente a lo que ofreció', () =
     expect(warn).toHaveBeenCalled();
     for (const [ok, amount] of [
       [1, 203],
-      [100, 20250],
+      [10, 2025],
     ] as const) {
-      const h = enTip({ settings: settings({ presets: [1, 10, 100] }) });
+      // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan. Antes: 100 %.
+      const h = enTip({ settings: settings({ presets: [1, 5, 10] }) });
       const seen: TipSelection[] = [];
       h.emitter.onTipSelected((s) => seen.push(s));
       h.transport.emitUp(tipSelected('percent', ok));
@@ -486,14 +488,15 @@ describe('B. emitter.ts · lo que la caja acepta frente a lo que ofreció', () =
     const before = h.emitter.emittedStateCount;
     const phases: TipPhase[] = [];
     h.emitter.onTipPhaseChange((p) => phases.push(p));
-    h.current.settings = settings({ presets: [10, 20, 30] });
+    // Paso 12 del POS (D7): la caja ofrece como máximo el 10 %; los porcentajes configurados por encima no viajan.
+    h.current.settings = settings({ presets: [3, 6, 9] });
     h.emitter.setPayment(null);
     h.emitter.setPayment(cashPayment());
     h.flush();
     expect(phases).toEqual([null, 'pending']);
     expect(h.emitter.emittedStateCount).toBe(before + 1);
     expect(h.transport.lastState.mode).toBe('tip');
-    expect(h.transport.lastState.tip?.presets).toEqual([10, 20, 30]);
+    expect(h.transport.lastState.tip?.presets).toEqual([3, 6, 9]);
     // La base se borró con setPayment(null): el frame nuevo lleva el total proyectado (5000), no 20250.
     expect(h.transport.lastState.tip?.base).toBe(5000);
   });

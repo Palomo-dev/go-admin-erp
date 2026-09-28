@@ -45,7 +45,7 @@ function deps(over: Partial<WonCloseDeps> = {}): WonCloseDeps & { calls: { conve
     timezone: 'America/Bogota',
     now: () => new Date(NOW),
     getLatestProposal: async () => ({ id: 'q-1', branch_id: 3 }),
-    convertToInvoice: async (...args) => { calls.convert.push(args); return 'inv-00000001-abcd'; },
+    convertToInvoice: async (...args) => { calls.convert.push(args); return { invoiceId: 'inv-00000001-abcd', numero: 'FACT-0042', yaConvertida: false }; },
     accrueCommission: async (...args) => { calls.accrue.push(args); return { id: 'cm-new', base_amount: 1200000, commission_rate: 10, commission_amount: 120000, status: 'accrued' }; },
     ...over,
   };
@@ -66,15 +66,18 @@ describe('pasos del modal', () => {
     }
   });
 
-  it('factura: convertToInvoice recibe opportunity_id (M53) con la sucursal del contexto; informa la cartera', async () => {
+  it('factura: convertToInvoice (servidor, borrador) recibe opportunity_id (M53) con la sucursal del contexto; sin organización del cliente', async () => {
     const d = deps();
     const out = await executeInvoice(opp, d);
-    expect(d.calls.convert).toEqual([['q-1', 120, 7, 'op-1']]);
-    expect(out).toMatch(/cartera creada/);
+    expect(d.calls.convert).toEqual([['q-1', 7, 'op-1']]);
+    expect(out).toBe('Factura en borrador: FACT-0042 — emítela en Finanzas › Facturas de venta');
+    // Ya convertida (idempotente en la base): lo dice y no duplica.
+    const again = deps({ convertToInvoice: async () => ({ invoiceId: 'inv-00000001-abcd', numero: 'FACT-0042', yaConvertida: true }) });
+    expect(await executeInvoice(opp, again)).toBe('La cotización ya tenía factura: FACT-0042 — no se duplicó');
     // sin sucursal de contexto → la de la propuesta; sin ninguna → se omite sin llamar
     const d2 = deps({ contextBranchId: null });
     await executeInvoice(opp, d2);
-    expect(d2.calls.convert[0][2]).toBe(3);
+    expect(d2.calls.convert[0][1]).toBe(3);
     const d3 = deps({ contextBranchId: null, getLatestProposal: async () => ({ id: 'q-1', branch_id: null }) });
     expect(await executeInvoice(opp, d3)).toMatch(/se omitió la factura/);
     expect(d3.calls.convert).toEqual([]);

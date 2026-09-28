@@ -12238,6 +12238,48 @@
         "datos_invalidos": "The data sent is not valid.",
         "error_desconocido": "The credit note could not be voided. Please try again."
       }
+    },
+    "cotizaciones": {
+      "errores": {
+        "no_autenticado": "Your session ended. Please sign in again.",
+        "sin_permiso": "You do not have permission for this action on quotations.",
+        "sin_acceso_sucursal": "You do not have access to this quotation’s branch.",
+        "cotizacion_no_encontrada": "The quotation does not exist in this organization.",
+        "sucursal_invalida": "Choose a branch of the organization.",
+        "cliente_invalido": "Choose a customer of the organization.",
+        "vendedor_invalido": "The salesperson does not belong to the organization.",
+        "oportunidad_invalida": "The opportunity does not belong to the organization.",
+        "vigencia_invalida": "The valid-until date cannot be earlier than the issue date.",
+        "cotizacion_sin_lineas": "Add at least one line.",
+        "linea_invalida": "A line has an invalid quantity, price, discount or tax.",
+        "producto_invalido": "A product does not belong to the organization.",
+        "cotizacion_no_editable": "Only draft or sent quotations can be edited.",
+        "transicion_invalida": "That status change is not allowed.",
+        "cotizacion_vencida": "The quotation has expired: edit it to renew its validity or duplicate it.",
+        "cotizacion_no_eliminable": "Only draft quotations can be deleted.",
+        "cotizacion_rechazada": "A rejected quotation cannot be converted into an invoice.",
+        "numero_duplicado": "The number is already in use. Please try again.",
+        "datos_invalidos": "The data sent is not valid.",
+        "cliente_sin_correo": "The customer has no email address.",
+        "correo_no_configurado": "Email sending is not set up for the organization.",
+        "cliente_sin_consentimiento": "The customer does not accept emails.",
+        "correo_invalido": "The destination email is not valid.",
+        "proveedor_correo": "The email provider rejected the message. Please try later.",
+        "error_desconocido": "The action could not be completed. Please try again."
+      },
+      "correo": {
+        "asunto": "Quotation {numero} from {organizacion}",
+        "saludo": "Hello {nombre},",
+        "cuerpo": "{organizacion} sends you quotation {numero} for {total}. You will find it attached.",
+        "despedida": "Kind regards, {organizacion}",
+        "sinAdjunto": "Sent to {destino}, without the PDF attached (it could not be generated)."
+      },
+      "conversion": {
+        "titulo": "Draft invoice",
+        "borrador": "Invoice {numero} was created as a draft, with its sale, taxes and commission. Issue it from Sales invoices.",
+        "yaConvertida": "This quotation already had invoice {numero}: no other invoice was created.",
+        "faltantes": "{n, plural, one {One product does not have enough stock} other {# products do not have enough stock}}: check before issuing."
+      }
     }
   }
 }

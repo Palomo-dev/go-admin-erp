@@ -7,8 +7,11 @@
  * se leen después de comprobar que la oportunidad es de la organización.
  *
  * Reusa `quotations` (opportunity_id, sections_json) y `quotation_items`; la
- * narrativa la construye `proposalNarrative` (puro). `issue_date` la pone el
- * trigger `trg_set_quotation_issue_date_tz` en la zona de la organización.
+ * narrativa la construye `proposalNarrative` (puro). Crear, regenerar y
+ * marcar enviada van por las RPC de cotizaciones de Finanzas (20260928172526:
+ * `fn_cotizacion_guardar`, `fn_cotizacion_cambiar_estado`): número COT- y
+ * totales en la base, cabecera y líneas siempre alineadas y la sucursal de la
+ * oportunidad. Una sola numeración y una sola regla con Finanzas.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -39,6 +42,8 @@ export interface ProposalContextData {
   discovery: Record<string, unknown>;
   objections: ObjectionLite[];
   pricing: { currency: string; lines: PricingLine[]; total: number; billingCycleMonths: number | null };
+  /** Sucursal de la oportunidad (la de la propuesta); null si la oportunidad no tiene. */
+  branchId: number | null;
 }
 
 export interface ProposalRecord {
@@ -92,7 +97,7 @@ export function addDaysPlain(plain: string, days: number): string {
 export async function loadProposalContext(orgId: number, opportunityId: string, supabase: SupabaseClient): Promise<ProposalContextData | null> {
   const { data: opp, error } = await supabase
     .from('opportunities')
-    .select('id, name, customer_id, amount, currency, salesperson_id, vertical_id, discovery_data, billing_cycle_months')
+    .select('id, name, customer_id, amount, currency, salesperson_id, vertical_id, discovery_data, billing_cycle_months, branch_id')
     .eq('id', opportunityId)
     .eq('organization_id', orgId)
     .maybeSingle();
@@ -173,6 +178,7 @@ export async function loadProposalContext(orgId: number, opportunityId: string, 
     discovery,
     objections,
     pricing: { currency, lines, total, billingCycleMonths: typeof o.billing_cycle_months === 'number' ? o.billing_cycle_months : null },
+    branchId: typeof o.branch_id === 'number' ? o.branch_id : null,
   };
 }
 
@@ -193,14 +199,67 @@ export async function getProposal(orgId: number, quotationId: string, supabase: 
   return data ? toRecord(data as Record<string, unknown>) : null;
 }
 
-async function nextQuotationNumber(orgId: number, supabase: SupabaseClient): Promise<string> {
-  // Misma regla que CotizacionesService.generateQuotationNumber (cliente de navegador): COT-0001 correlativo.
-  const { data } = await supabase.from('quotations').select('number').eq('organization_id', orgId).like('number', 'COT-%').order('created_at', { ascending: false }).limit(1);
-  let next = 1;
-  const last = (data as Array<{ number: string }> | null)?.[0]?.number;
-  const m = last ? /COT-(\d+)/.exec(last) : null;
-  if (m) next = Number.parseInt(m[1], 10) + 1;
-  return `COT-${String(next).padStart(4, '0')}`;
+/** Sucursal de la propuesta: la de la oportunidad; si no tiene, la principal de la organización (o la primera activa). */
+async function sucursalPropuesta(orgId: number, branchId: number | null, supabase: SupabaseClient): Promise<number | null> {
+  if (branchId) return branchId;
+  const { data } = await supabase
+    .from('branches')
+    .select('id, is_main')
+    .eq('organization_id', orgId)
+    .eq('is_active', true)
+    .order('is_main', { ascending: false })
+    .order('id', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return (data as { id: number } | null)?.id ?? null;
+}
+
+/**
+ * Líneas de la propuesta en la forma de `fn_cotizacion_guardar`: sin impuesto
+ * (como antes) y con el total de la oportunidad respetado — si la línea trae un
+ * total menor que cantidad × precio, la diferencia es descuento. Sin líneas,
+ * una sola con el valor de la oportunidad, para que cabecera y líneas cuadren.
+ */
+function lineasPropuesta(ctx: ProposalContextData): Array<Record<string, unknown>> {
+  const lineas = ctx.pricing.lines.length
+    ? ctx.pricing.lines
+    : [{ description: ctx.opportunityName || 'Propuesta', qty: 1, unit_price: ctx.opportunityAmount, total: ctx.opportunityAmount }];
+  return lineas.map((l) => {
+    const qty = l.qty > 0 ? l.qty : 1;
+    const bruto = qty * l.unit_price;
+    const total = Number.isFinite(l.total) ? l.total : bruto;
+    const unit = total > bruto ? Math.round((total / qty) * 100) / 100 : l.unit_price;
+    return {
+      description: l.description,
+      qty,
+      unit_price: Math.max(unit, 0),
+      discount_amount: total < bruto ? Math.round((bruto - total) * 100) / 100 : 0,
+      tax_rate: 0,
+      tax_included: false,
+    };
+  });
+}
+
+/** Error de las RPC de cotizaciones con su estado HTTP (lo mapea `failResponse` por `statusCode`). */
+export class ProposalRpcError extends Error {
+  readonly statusCode: number;
+  readonly code: string;
+  constructor(code: string) {
+    const estados: Record<string, number> = {
+      sin_permiso: 403, sin_acceso_sucursal: 403, cotizacion_no_encontrada: 404, cotizacion_no_editable: 409,
+      transicion_invalida: 409, cotizacion_vencida: 409, sucursal_invalida: 400, cliente_invalido: 400,
+    };
+    super(code);
+    this.name = 'ProposalRpcError';
+    this.code = code;
+    this.statusCode = estados[code] ?? 500;
+  }
+}
+
+function errorRpc(error: { message: string }): ProposalRpcError {
+  const texto = (error.message ?? '').trim();
+  if (texto.startsWith('Acceso denegado a la organización')) return new ProposalRpcError('cotizacion_no_encontrada');
+  return new ProposalRpcError(texto.split(/[\s:]/)[0] || 'error_desconocido');
 }
 
 async function logActivity(orgId: number, opportunityId: string, userId: string | null, notes: string, metadata: Record<string, unknown>, supabase: SupabaseClient): Promise<void> {
@@ -269,55 +328,63 @@ export async function generateProposal(orgId: number, opportunityId: string, sup
     pricing: ctx.pricing,
   });
   const existing = await getLatestProposal(orgId, opportunityId, supabase);
+  const items = lineasPropuesta(ctx);
   const total = ctx.pricing.lines.length ? ctx.pricing.total : ctx.opportunityAmount;
 
   if (existing) {
     if (isConvertedProposal(existing)) throw new ProposalConvertedError(existing.number);
     const sections = mergeSections(existing.sections, generated, { force: opts.force === true });
-    const { data, error } = await supabase
+    // Regenerar reescribe cabecera Y líneas en una transacción (antes solo el
+    // total de la cabecera: quedaba desalineada con sus líneas).
+    const { data: actual } = await supabase
       .from('quotations')
-      .update({ sections_json: sections, total, subtotal: total, updated_at: new Date().toISOString() })
+      .select('branch_id, customer_id, issue_date, valid_until, currency, payment_terms, payment_method, notes, terms_conditions, salesperson_id, opportunity_id')
       .eq('id', existing.id)
       .eq('organization_id', orgId)
-      .select(QUOTATION_SELECT)
       .maybeSingle();
-    if (error) throw new Error(`No se pudo actualizar la propuesta: ${error.message}`);
-    return { proposal: data ? toRecord(data as Record<string, unknown>) : { ...existing, sections, total }, isNew: false };
+    const cab = (actual ?? {}) as Record<string, unknown>;
+    const branchId = await sucursalPropuesta(orgId, (cab.branch_id as number | null) ?? ctx.branchId, supabase);
+    const { error } = await supabase.rpc('fn_cotizacion_guardar', {
+      p_org: orgId,
+      p_id: existing.id,
+      p_datos: {
+        ...cab,
+        branch_id: branchId,
+        customer_id: cab.customer_id ?? ctx.customerId,
+        opportunity_id: opportunityId,
+        tax_included: false,
+        sections_json: sections,
+        items,
+      },
+    });
+    if (error) throw errorRpc(error);
+    const proposal = await getProposal(orgId, existing.id, supabase);
+    return { proposal: proposal ?? { ...existing, sections, total }, isNew: false };
   }
 
   if (!ctx.customerId) throw new ProposalCustomerRequiredError();
-  const number = await nextQuotationNumber(orgId, supabase);
+  const branchId = await sucursalPropuesta(orgId, ctx.branchId, supabase);
   const validUntil = addDaysPlain(todayInTz(opts.timezone), 30);
-  const { data, error } = await supabase
-    .from('quotations')
-    .insert({
-      organization_id: orgId,
-      number,
+  const { data: creada, error } = await supabase.rpc('fn_cotizacion_guardar', {
+    p_org: orgId,
+    p_id: null,
+    p_datos: {
+      branch_id: branchId,
       customer_id: ctx.customerId,
       valid_until: validUntil,
       currency: ctx.currency,
-      subtotal: total,
-      tax_total: 0,
-      discount_total: 0,
-      total,
-      status: 'draft',
       salesperson_id: ctx.salespersonId,
       opportunity_id: opportunityId,
+      tax_included: false,
       sections_json: generated,
-      created_by: opts.userId,
-    })
-    .select(QUOTATION_SELECT)
-    .single();
-  if (error || !data) throw new Error(`No se pudo crear la propuesta: ${error?.message ?? 'sin datos'}`);
-  const record = toRecord(data as Record<string, unknown>);
-
-  if (ctx.pricing.lines.length) {
-    const { error: itemsError } = await supabase.from('quotation_items').insert(
-      ctx.pricing.lines.map((l) => ({ quotation_id: record.id, description: l.description, qty: l.qty, unit_price: l.unit_price, tax_rate: 0, tax_included: false, total_line: l.total, discount_amount: 0 })),
-    );
-    if (itemsError) console.warn('[proposalServerService] líneas no insertadas:', itemsError.message);
-  }
-  await logActivity(orgId, opportunityId, opts.userId, `Propuesta generada: ${number} (${formatMoney(total, ctx.currency)})`, { quotation_id: record.id, quotation_number: number, action: 'generated' }, supabase);
+      items,
+    },
+  });
+  if (error) throw errorRpc(error);
+  const id = String((creada as { id?: string } | null)?.id ?? '');
+  const record = await getProposal(orgId, id, supabase);
+  if (!record) throw new Error('No se pudo leer la propuesta creada');
+  await logActivity(orgId, opportunityId, opts.userId, `Propuesta generada: ${record.number} (${formatMoney(record.total, ctx.currency)})`, { quotation_id: record.id, quotation_number: record.number, action: 'generated' }, supabase);
   return { proposal: record, isNew: true };
 }
 
@@ -346,8 +413,9 @@ export async function markProposalSent(orgId: number, quotationId: string, supab
   if (isConvertedProposal(proposal)) throw new ProposalConvertedError(proposal.number);
   const now = Date.now();
   const nextContact = new Date(now + 24 * 60 * 60 * 1000).toISOString();
-  const { error } = await supabase.from('quotations').update({ status: 'sent', updated_at: new Date(now).toISOString() }).eq('id', quotationId).eq('organization_id', orgId);
-  if (error) throw new Error(`No se pudo marcar la propuesta como enviada: ${error.message}`);
+  // Misma transición que Finanzas (fn_cotizacion_cambiar_estado): desde borrador o enviada, no vencida.
+  const { error } = await supabase.rpc('fn_cotizacion_cambiar_estado', { p_org: orgId, p_id: quotationId, p_estado: 'sent' });
+  if (error) throw errorRpc(error);
   if (proposal.opportunity_id) {
     await logActivity(orgId, proposal.opportunity_id, opts.userId, `Propuesta enviada al cliente: ${proposal.number}`, { quotation_id: quotationId, action: 'sent', email_message_id: opts.emailMessageId ?? null }, supabase);
     const { error: oppError } = await supabase.from('opportunities').update({ next_contact_at: nextContact, updated_at: new Date(now).toISOString() }).eq('id', proposal.opportunity_id).eq('organization_id', orgId);

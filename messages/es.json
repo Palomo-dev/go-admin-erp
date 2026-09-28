@@ -12238,6 +12238,48 @@
         "datos_invalidos": "Los datos enviados no son válidos.",
         "error_desconocido": "No se pudo anular la nota crédito. Inténtalo de nuevo."
       }
+    },
+    "cotizaciones": {
+      "errores": {
+        "no_autenticado": "Tu sesión terminó. Vuelve a iniciar sesión.",
+        "sin_permiso": "No tienes permiso para esta acción sobre cotizaciones.",
+        "sin_acceso_sucursal": "No tienes acceso a la sucursal de esta cotización.",
+        "cotizacion_no_encontrada": "La cotización no existe en esta organización.",
+        "sucursal_invalida": "Elige una sucursal de la organización.",
+        "cliente_invalido": "Elige un cliente de la organización.",
+        "vendedor_invalido": "El vendedor no pertenece a la organización.",
+        "oportunidad_invalida": "La oportunidad no pertenece a la organización.",
+        "vigencia_invalida": "La fecha de vigencia no puede ser anterior a la de emisión.",
+        "cotizacion_sin_lineas": "Agrega al menos una línea.",
+        "linea_invalida": "Hay una línea con cantidad, precio, descuento o impuesto no válidos.",
+        "producto_invalido": "Hay un producto que no es de la organización.",
+        "cotizacion_no_editable": "Solo se editan cotizaciones en borrador o enviadas.",
+        "transicion_invalida": "Ese cambio de estado no está permitido.",
+        "cotizacion_vencida": "La cotización está vencida: edítala para renovar su vigencia o duplícala.",
+        "cotizacion_no_eliminable": "Solo se eliminan cotizaciones en borrador.",
+        "cotizacion_rechazada": "Una cotización rechazada no se convierte en factura.",
+        "numero_duplicado": "El número ya está en uso. Inténtalo de nuevo.",
+        "datos_invalidos": "Los datos enviados no son válidos.",
+        "cliente_sin_correo": "El cliente no tiene correo.",
+        "correo_no_configurado": "La organización no tiene configurado el envío de correos.",
+        "cliente_sin_consentimiento": "El cliente no acepta correos.",
+        "correo_invalido": "El correo de destino no es válido.",
+        "proveedor_correo": "El proveedor de correo rechazó el envío. Inténtalo más tarde.",
+        "error_desconocido": "No se pudo completar la acción. Inténtalo de nuevo."
+      },
+      "correo": {
+        "asunto": "Cotización {numero} de {organizacion}",
+        "saludo": "Hola {nombre}:",
+        "cuerpo": "{organizacion} te envía la cotización {numero} por {total}. La encuentras adjunta.",
+        "despedida": "Quedamos atentos. {organizacion}",
+        "sinAdjunto": "Enviada a {destino}, sin el PDF adjunto (no se pudo generar)."
+      },
+      "conversion": {
+        "titulo": "Factura en borrador",
+        "borrador": "Se creó la factura {numero} en borrador, con su venta, impuestos y comisión. Emítela desde Facturas de venta.",
+        "yaConvertida": "Esta cotización ya tenía la factura {numero}: no se creó otra.",
+        "faltantes": "{n, plural, one {Un producto no tiene existencias suficientes} other {# productos no tienen existencias suficientes}}: revísalo antes de emitir."
+      }
     }
   }
 }

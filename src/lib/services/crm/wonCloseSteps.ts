@@ -59,7 +59,13 @@ export interface WonCloseDeps {
   timezone: string;
   now?: () => Date;
   getLatestProposal: (opportunityId: string) => Promise<{ id: string; branch_id: number | null } | null>;
-  convertToInvoice: (quotationId: string, orgId: number, branchId: number, opportunityId: string) => Promise<string>;
+  /**
+   * Convierte la cotización en factura BORRADOR en el servidor
+   * (`POST /api/cotizaciones/[id]/convertir` → `fn_cotizacion_convertir`):
+   * venta ligada, impuestos y comisión en una transacción, idempotente. La
+   * organización sale de la sesión, no de aquí.
+   */
+  convertToInvoice: (quotationId: string, branchId: number, opportunityId: string) => Promise<{ invoiceId: string; numero: string | null; yaConvertida: boolean }>;
   accrueCommission: (opportunityId: string, salespersonId: string, baseAmount: number) => Promise<CommissionAccrualResult | null>;
   /** F11 (deuda D1). Opcional: por defecto el servicio real; las pruebas lo doblan. */
   startOnboarding?: typeof startOnboardingForWonOpportunity;
@@ -69,7 +75,7 @@ export interface WonCloseDeps {
 
 export function buildInitialSteps(): CloseStep[] {
   return [
-    { id: 'invoice', label: 'Generar factura', description: 'Convierte la última cotización en factura (invoice_sales.opportunity_id)', autoExecute: true, status: 'pending' },
+    { id: 'invoice', label: 'Generar factura', description: 'Convierte la última cotización en factura borrador (invoice_sales.opportunity_id); se emite en Finanzas', autoExecute: true, status: 'pending' },
     { id: 'pos_sale', label: 'Generar venta POS', description: 'Crea venta en POS vinculada a la oportunidad (sales.opportunity_id)', autoExecute: false, status: 'pending', optional: true },
     { id: 'reservations', label: 'Crear reservas', description: 'Crea reservas desde opportunity_spaces con opportunity_id', autoExecute: true, status: 'pending' },
     { id: 'onboarding', label: 'Crear oportunidad de Onboarding', description: 'Crea oportunidad hija en pipeline type=onboarding', autoExecute: true, status: 'pending' },
@@ -85,18 +91,19 @@ function requireOrg(deps: WonCloseDeps): number {
 }
 
 export async function executeInvoice(opp: OpportunityData, deps: WonCloseDeps): Promise<string> {
-  const orgId = requireOrg(deps);
+  requireOrg(deps);
   const latestProposal = await deps.getLatestProposal(opp.id);
   if (!latestProposal) return 'Sin cotización vinculada — se omitió la factura';
   const branchId = deps.contextBranchId ?? latestProposal.branch_id;
   if (!branchId) return 'Sin sucursal definida (selecciona una sucursal concreta, no "Todas") — se omitió la factura';
 
-  // opportunity_id viaja en el INSERT; la cartera la crea el trigger tr_create_account_receivable (status <> 'draft'),
-  // verificado por MCP el 2026-09-15: aquí solo se comprueba y se informa.
-  const invoiceId = await deps.convertToInvoice(latestProposal.id, orgId, branchId, opp.id);
-  const { data: ar } = await deps.supabase.from('accounts_receivable').select('id, balance').eq('invoice_id', invoiceId).eq('organization_id', orgId).maybeSingle();
-  const arNote = ar ? 'cartera creada' : 'sin cartera: revisa la factura en Finanzas';
-  return `Factura generada: ${invoiceId.substring(0, 8)}… (${arNote})`;
+  // La misma conversión que Finanzas (fn_cotizacion_convertir): factura BORRADOR
+  // con venta ligada, impuestos y comisión, opportunity_id y quotation_id. La
+  // cartera y el asiento nacen al emitirla (no antes, como hacía el camino viejo).
+  const r = await deps.convertToInvoice(latestProposal.id, branchId, opp.id);
+  const ref = r.numero ?? `${r.invoiceId.substring(0, 8)}…`;
+  if (r.yaConvertida) return `La cotización ya tenía factura: ${ref} — no se duplicó`;
+  return `Factura en borrador: ${ref} — emítela en Finanzas › Facturas de venta`;
 }
 
 export async function executePosSale(opp: OpportunityData, deps: WonCloseDeps): Promise<string> {

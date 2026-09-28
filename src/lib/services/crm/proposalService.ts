@@ -20,7 +20,7 @@ import type { ProposalSections } from '@/lib/services/crm/proposalNarrative';
 export type { ProposalSections };
 
 export interface Proposal extends Quotation {
-  opportunity_id?: string | null;
+  opportunity_id: string | null;
   sections_json?: ProposalSections | null;
 }
 

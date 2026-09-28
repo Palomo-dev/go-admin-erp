@@ -12133,6 +12133,48 @@
         "datos_invalidos": "Les données envoyées ne sont pas valides.",
         "error_desconocido": "Impossible d’annuler l’avoir. Réessayez."
       }
+    },
+    "cotizaciones": {
+      "errores": {
+        "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
+        "sin_permiso": "Vous n’avez pas l’autorisation pour cette action sur les devis.",
+        "sin_acceso_sucursal": "Vous n’avez pas accès à l’agence de ce devis.",
+        "cotizacion_no_encontrada": "Le devis n’existe pas dans cette organisation.",
+        "sucursal_invalida": "Choisissez une agence de l’organisation.",
+        "cliente_invalido": "Choisissez un client de l’organisation.",
+        "vendedor_invalido": "Le commercial n’appartient pas à l’organisation.",
+        "oportunidad_invalida": "L’opportunité n’appartient pas à l’organisation.",
+        "vigencia_invalida": "La date de validité ne peut pas précéder la date d’émission.",
+        "cotizacion_sin_lineas": "Ajoutez au moins une ligne.",
+        "linea_invalida": "Une ligne a une quantité, un prix, une remise ou une taxe non valide.",
+        "producto_invalido": "Un produit n’appartient pas à l’organisation.",
+        "cotizacion_no_editable": "Seuls les devis en brouillon ou envoyés se modifient.",
+        "transicion_invalida": "Ce changement de statut n’est pas permis.",
+        "cotizacion_vencida": "Le devis a expiré : modifiez-le pour renouveler sa validité ou dupliquez-le.",
+        "cotizacion_no_eliminable": "Seuls les devis en brouillon se suppriment.",
+        "cotizacion_rechazada": "Un devis refusé ne se convertit pas en facture.",
+        "numero_duplicado": "Le numéro est déjà utilisé. Réessayez.",
+        "datos_invalidos": "Les données envoyées ne sont pas valides.",
+        "cliente_sin_correo": "Le client n’a pas d’adresse e-mail.",
+        "correo_no_configurado": "L’envoi d’e-mails n’est pas configuré pour l’organisation.",
+        "cliente_sin_consentimiento": "Le client n’accepte pas les e-mails.",
+        "correo_invalido": "L’adresse e-mail de destination n’est pas valide.",
+        "proveedor_correo": "Le fournisseur d’e-mail a refusé l’envoi. Réessayez plus tard.",
+        "error_desconocido": "L’action n’a pas pu aboutir. Réessayez."
+      },
+      "correo": {
+        "asunto": "Devis {numero} de {organizacion}",
+        "saludo": "Bonjour {nombre},",
+        "cuerpo": "{organizacion} vous envoie le devis {numero} d’un montant de {total}. Vous le trouverez en pièce jointe.",
+        "despedida": "Cordialement, {organizacion}",
+        "sinAdjunto": "Envoyé à {destino}, sans le PDF joint (il n’a pas pu être généré)."
+      },
+      "conversion": {
+        "titulo": "Facture en brouillon",
+        "borrador": "La facture {numero} a été créée en brouillon, avec sa vente, ses taxes et sa commission. Émettez-la depuis Factures de vente.",
+        "yaConvertida": "Ce devis avait déjà la facture {numero} : aucune autre n’a été créée.",
+        "faltantes": "{n, plural, one {Un produit n’a pas assez de stock} other {# produits n’ont pas assez de stock}} : vérifiez avant d’émettre."
+      }
     }
   }
 }

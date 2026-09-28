@@ -12133,6 +12133,48 @@
         "datos_invalidos": "Os dados enviados não são válidos.",
         "error_desconocido": "Não foi possível anular a nota de crédito. Tente novamente."
       }
+    },
+    "cotizaciones": {
+      "errores": {
+        "no_autenticado": "Sua sessão terminou. Entre novamente.",
+        "sin_permiso": "Você não tem permissão para esta ação em cotações.",
+        "sin_acceso_sucursal": "Você não tem acesso à filial desta cotação.",
+        "cotizacion_no_encontrada": "A cotação não existe nesta organização.",
+        "sucursal_invalida": "Escolha uma filial da organização.",
+        "cliente_invalido": "Escolha um cliente da organização.",
+        "vendedor_invalido": "O vendedor não pertence à organização.",
+        "oportunidad_invalida": "A oportunidade não pertence à organização.",
+        "vigencia_invalida": "A data de validade não pode ser anterior à data de emissão.",
+        "cotizacion_sin_lineas": "Adicione pelo menos uma linha.",
+        "linea_invalida": "Há uma linha com quantidade, preço, desconto ou imposto inválidos.",
+        "producto_invalido": "Há um produto que não é da organização.",
+        "cotizacion_no_editable": "Só se editam cotações em rascunho ou enviadas.",
+        "transicion_invalida": "Essa mudança de status não é permitida.",
+        "cotizacion_vencida": "A cotação venceu: edite-a para renovar a validade ou duplique-a.",
+        "cotizacion_no_eliminable": "Só se excluem cotações em rascunho.",
+        "cotizacion_rechazada": "Uma cotação rejeitada não se converte em fatura.",
+        "numero_duplicado": "O número já está em uso. Tente novamente.",
+        "datos_invalidos": "Os dados enviados não são válidos.",
+        "cliente_sin_correo": "O cliente não tem e-mail.",
+        "correo_no_configurado": "O envio de e-mails não está configurado para a organização.",
+        "cliente_sin_consentimiento": "O cliente não aceita e-mails.",
+        "correo_invalido": "O e-mail de destino não é válido.",
+        "proveedor_correo": "O provedor de e-mail recusou o envio. Tente mais tarde.",
+        "error_desconocido": "Não foi possível concluir a ação. Tente novamente."
+      },
+      "correo": {
+        "asunto": "Cotação {numero} de {organizacion}",
+        "saludo": "Olá, {nombre}:",
+        "cuerpo": "{organizacion} envia a cotação {numero} no valor de {total}. Ela está em anexo.",
+        "despedida": "Atenciosamente, {organizacion}",
+        "sinAdjunto": "Enviada para {destino}, sem o PDF anexado (não foi possível gerá-lo)."
+      },
+      "conversion": {
+        "titulo": "Fatura em rascunho",
+        "borrador": "A fatura {numero} foi criada em rascunho, com a venda, os impostos e a comissão. Emita-a em Faturas de venda.",
+        "yaConvertida": "Esta cotação já tinha a fatura {numero}: nenhuma outra foi criada.",
+        "faltantes": "{n, plural, one {Um produto não tem estoque suficiente} other {# produtos não têm estoque suficiente}}: verifique antes de emitir."
+      }
     }
   }
 }

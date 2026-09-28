@@ -101,7 +101,7 @@ export function WonCloseModal({ open, onOpenChange, opportunityId, opportunityNa
         const p = await proposalService.getLatestProposalForOpportunity(id);
         return p ? { id: p.id, branch_id: p.branch_id ?? null } : null;
       },
-      convertToInvoice: (quotationId, orgId, branchId, oppId) => CotizacionesService.convertToInvoice(quotationId, orgId, branchId, oppId),
+      convertToInvoice: (quotationId, branchId, oppId) => CotizacionesService.convertToInvoice(quotationId, { branchId, opportunityId: oppId }),
       accrueCommission: (id, salespersonId, baseAmount) => commissionService.accrueCommission(id, salespersonId, baseAmount),
     };
 

@@ -91,7 +91,10 @@ export async function cargarCotizacion(
   const nombreImpuesto = nombreImpuestoUnico(lineas);
   const descuentos = num(cot.discount_total);
 
-  const totales: FilaTotal[] = [{ clave: 'subtotal', valor: num(cot.subtotal) }];
+  // `subtotal` ya viene neto de descuentos (regla de facturas, fn_cotizacion_recalcular):
+  // se pinta el bruto para que «subtotal − descuentos + impuestos = total» cuadre
+  // (antes el descuento se restaba dos veces).
+  const totales: FilaTotal[] = [{ clave: 'subtotal', valor: num(cot.subtotal) + (descuentos > 0 ? descuentos : 0) }];
   if (descuentos > 0) totales.push({ clave: 'descuentos', valor: descuentos, estilo: 'descuento', resta: true });
   totales.push(
     nombreImpuesto

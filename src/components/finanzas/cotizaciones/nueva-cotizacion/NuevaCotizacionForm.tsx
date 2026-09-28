@@ -12,12 +12,14 @@ import { Loader2, Save } from 'lucide-react';
 import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { formatMoneda } from '@/lib/utils/moneda';
-import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useOpcionesMoneda } from '@/components/transporte/useOpcionesMoneda';
 import { supabase } from '@/lib/supabase/config';
 import { describeError, logError } from '@/lib/utils/errorMessage';
-import { CotizacionesService, type QuotationItem } from '@/lib/services/cotizacionesService';
+import { CotizacionesService, type QuotationInput, type QuotationItem } from '@/lib/services/cotizacionesService';
+import { todayInTz } from '@/lib/utils/dateDisplay';
+import { sumarDiasCalendario } from '@/lib/utils/taskReminderDates';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { ClienteSelector } from '@/components/finanzas/facturas-venta/nueva-factura/ClienteSelector';
 import { ItemsFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ItemsFactura';
 import { ImpuestosFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ImpuestosFactura';
@@ -66,10 +68,9 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
   const [total, setTotal] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentTerms, setPaymentTerms] = useState(30);
-  const [validUntil, setValidUntil] = useState<string>(
-    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  );
-  const [issueDate, setIssueDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const { timezone } = useOrgTimezone();
+  const [validUntil, setValidUntil] = useState<string>(() => sumarDiasCalendario(todayInTz(timezone), 30));
+  const [issueDate, setIssueDate] = useState<string>(() => todayInTz(timezone));
   // Moneda de la cotización: vacía hasta conocer la base (nunca COP supuesto).
   const [currency, setCurrency] = useState('');
   const { code: monedaBase, resuelta: monedaResuelta, paraDocumento } = useMonedaOrganizacion();
@@ -231,9 +232,16 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
     try {
       setLoading(true);
       const cot = await CotizacionesService.getQuotationById(cotizacionId!);
-      if (!cot) return;
+      if (!cot) {
+        toastError('Error', 'No se pudo cargar la cotización');
+        return;
+      }
 
       setCustomerId(cot.customer_id);
+      // Antes no se cargaban: en modo «Todas» las sucursales la edición fallaba
+      // y la oportunidad se perdía al guardar.
+      setBranchId(cot.branch_id ?? null);
+      setSelectedOpportunityId(cot.opportunity_id ?? 'none');
       setIssueDate(cot.issue_date);
       setValidUntil(cot.valid_until || '');
       setCurrency(cot.currency);
@@ -242,7 +250,7 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
       setNotes(cot.notes || '');
       setTermsConditions(cot.terms_conditions || '');
       setSalespersonId(cot.salesperson_id || 'none');
-      setTaxIncluded(cot.quotation_items?.[0]?.tax_included || false);
+      setTaxIncluded(cot.tax_included ?? cot.quotation_items?.[0]?.tax_included ?? false);
 
       if (cot.quotation_items) {
         const mappedItems: InvoiceItem[] = cot.quotation_items.map((item) => ({
@@ -285,14 +293,6 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
     try {
       setSaving(true);
 
-      const { data: userData } = await supabase.auth.getUser();
-      // Sin moneda elegida: la base resuelta de la organización.
-      const monedaGuardar = currency || (await resolveOrgCurrency(supabase, Number(organizationId))).code;
-      const quotationNumber =
-        mode === 'create'
-          ? await CotizacionesService.generateQuotationNumber(organizationId)
-          : '';
-
       const quotationItems: QuotationItem[] = items.map((item) => ({
         product_id: item.product_id,
         description: item.description,
@@ -301,52 +301,35 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
         discount_amount: item.discount_amount || 0,
         tax_code: item.tax_code || null,
         tax_rate: item.tax_rate || 0,
-        tax_included: item.tax_included,
+        tax_included: taxIncluded,
         total_line: item.total_line,
       }));
 
-      const quotationData = {
-        organization_id: organizationId,
-        branch_id: branchId,
-        number: quotationNumber,
+      // Cabecera completa, sin organización ni número ni totales: los pone el
+      // servidor (fn_cotizacion_guardar), con la moneda base si no se eligió.
+      const datos: QuotationInput = {
         customer_id: customerId,
-        issue_date: issueDate,
+        branch_id: branchId,
+        issue_date: issueDate || null,
         valid_until: validUntil || null,
-        currency: monedaGuardar,
-        subtotal,
-        tax_total: taxTotal,
-        discount_total: items.reduce((sum, i) => sum + (i.discount_amount || 0), 0),
-        total,
-        status: 'draft' as const,
+        currency: currency || monedaBase || null,
         payment_terms: paymentTerms,
         payment_method: paymentMethod || null,
         notes: notes || null,
         terms_conditions: termsConditions || null,
         salesperson_id: salespersonId !== 'none' ? salespersonId : null,
         opportunity_id: selectedOpportunityId !== 'none' ? selectedOpportunityId : null,
-        created_by: userData.user?.id || null,
+        tax_included: taxIncluded,
       };
+      const contexto = { appliedTaxes, appliedTaxTotals: taxTotals };
 
       if (mode === 'edit' && cotizacionId) {
-        await CotizacionesService.updateQuotation(cotizacionId, {
-          issue_date: issueDate,
-          valid_until: validUntil || null,
-          currency: monedaGuardar,
-          subtotal,
-          tax_total: taxTotal,
-          discount_total: items.reduce((sum, i) => sum + (i.discount_amount || 0), 0),
-          total,
-          payment_terms: paymentTerms,
-          payment_method: paymentMethod || null,
-          notes: notes || null,
-          terms_conditions: termsConditions || null,
-          salesperson_id: salespersonId !== 'none' ? salespersonId : null,
-        }, quotationItems, { appliedTaxes, appliedTaxTotals: taxTotals });
+        await CotizacionesService.updateQuotation(cotizacionId, datos, quotationItems, contexto);
         toastSuccess('Cotización actualizada', 'Los cambios se guardaron correctamente');
         router.push(`/app/finanzas/cotizaciones/${cotizacionId}`);
       } else {
-        const created = await CotizacionesService.createQuotation(quotationData, quotationItems, { appliedTaxes, appliedTaxTotals: taxTotals });
-        toastSuccess('Cotización creada', `Cotización ${created.number} creada exitosamente`);
+        const created = await CotizacionesService.createQuotation(datos, quotationItems, contexto);
+        toastSuccess('Cotización creada', `Cotización ${created.numero} creada exitosamente`);
         router.push(`/app/finanzas/cotizaciones/${created.id}`);
       }
     } catch (error) {

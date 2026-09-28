@@ -1,8 +1,25 @@
-import { supabase } from '@/lib/supabase/config';
+/**
+ * Cotizaciones — cliente del navegador. Ya no escribe en la base: cada acción
+ * es un `fetch` a `/api/cotizaciones/**`, que resuelve la organización de la
+ * sesión, exige el permiso en el servidor y escribe por RPC transaccional
+ * (número, totales, transiciones y conversión en la base). Ver
+ * `contratoCotizaciones.ts` y la migración 20260928172526.
+ *
+ * Lo único que sigue en el navegador es lo mismo que hace el formulario de
+ * facturas antes de guardar: evaluar las promociones del canal Finanzas.
+ */
 import { promotionEngine } from '@/lib/services/promotionEngine';
-import { resolveLineTax } from '@/lib/services/taxResolver';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import type {
+  CotizacionDetalle,
+  CotizacionResumen,
+  DatosCotizacion,
+  EstadoCotizacion,
+  ResultadoConversion,
+  ResultadoGuardarCotizacion,
+} from '@/lib/finanzas/ventas/contratoCotizaciones';
 
-export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired' | 'converted';
+export type QuotationStatus = EstadoCotizacion;
 
 export interface QuotationItem {
   id?: string;
@@ -18,42 +35,14 @@ export interface QuotationItem {
   total_line: number;
 }
 
-export interface Quotation {
-  id: string;
-  organization_id: number;
-  branch_id?: number | null;
-  number: string;
-  customer_id: string;
-  issue_date: string;
-  valid_until?: string | null;
-  currency: string;
-  subtotal: number;
-  tax_total: number;
-  discount_total: number;
-  total: number;
-  status: QuotationStatus;
-  payment_terms?: number | null;
-  payment_method?: string | null;
+/** Cotización como la entrega el servidor: `status` es el estado VIVO ('expired' derivado al leer). */
+export type Quotation = Omit<CotizacionDetalle, 'quotation_items' | 'notes' | 'terms_conditions' | 'tax_included' | 'converted_invoice_number'> & {
   notes?: string | null;
   terms_conditions?: string | null;
-  salesperson_id?: string | null;
-  converted_invoice_id?: string | null;
-  opportunity_id?: string | null;
-  created_by?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  customers?: {
-    id: string;
-    full_name: string;
-    email?: string;
-    phone?: string;
-    address?: string;
-    identification_number?: string;
-    identification_type?: string;
-    avatar_url?: string | null;
-  } | null;
+  tax_included?: boolean;
+  converted_invoice_number?: string | null;
   quotation_items?: QuotationItem[];
-}
+};
 
 export interface QuotationFilters {
   busqueda?: string;
@@ -64,469 +53,170 @@ export interface QuotationFilters {
 }
 
 /**
- * Impuestos marcados en el documento (ImpuestosFactura). Se pasan al resolver
+ * Impuestos marcados en el documento (ImpuestosFactura). Viajan al servidor
  * para que una línea sin tarifa propia tome la del documento, igual que en la
- * factura: sin esto la cotización mostraba IVA en los totales y guardaba sus
- * líneas en 0 %.
+ * factura.
  */
 export interface QuotationTaxContext {
   appliedTaxes?: { [key: string]: boolean };
   appliedTaxTotals?: { [key: string]: { rate: number; base: number; amount: number; name: string; included: boolean } };
 }
 
+/** Cabecera que envía el formulario (sin organización, número ni totales). */
+export type QuotationInput = Omit<DatosCotizacion, 'items' | 'applied_taxes'>;
+
+/** Error de una ruta: `codigo` estable y `message` ya en el idioma del usuario. */
+export class ErrorPeticionCotizacion extends Error {
+  constructor(
+    public readonly codigo: string,
+    public readonly estado: number,
+    mensaje: string,
+  ) {
+    super(mensaje);
+  }
+}
+
+function cabeceras(json = false): HeadersInit {
+  const org = getOrganizationId();
+  return {
+    ...(json ? { 'Content-Type': 'application/json' } : {}),
+    ...(org > 0 ? { 'x-organization-id': String(org) } : {}),
+  };
+}
+
+async function pedir<T>(url: string, init: RequestInit = {}): Promise<T> {
+  const r = await fetch(url, { credentials: 'same-origin', cache: 'no-store', ...init, headers: cabeceras(init.body !== undefined) });
+  const cuerpo = (await r.json().catch(() => null)) as ({ error?: string; codigo?: string } & Record<string, unknown>) | null;
+  if (!r.ok) {
+    const codigo = cuerpo?.codigo ?? 'error_desconocido';
+    throw new ErrorPeticionCotizacion(codigo, r.status, cuerpo?.error ?? codigo);
+  }
+  return cuerpo as T;
+}
+
+const url = (id: string, accion = '') => `/api/cotizaciones/${encodeURIComponent(id)}${accion ? `/${accion}` : ''}`;
+
+function aplicados(ctx: QuotationTaxContext): DatosCotizacion['applied_taxes'] {
+  const marcados = ctx.appliedTaxes ?? {};
+  return Object.keys(marcados)
+    .filter((k) => marcados[k])
+    .map((k) => ({ tax_code: k, tax_rate: Number(ctx.appliedTaxTotals?.[k]?.rate) || 0 }));
+}
+
+function lineas(items: QuotationItem[]): DatosCotizacion['items'] {
+  return items.map((it) => ({
+    product_id: it.product_id ?? null,
+    description: it.description,
+    qty: Number(it.qty) || 0,
+    unit_price: Number(it.unit_price) || 0,
+    discount_amount: Number(it.discount_amount) || 0,
+    tax_code: it.tax_code ?? null,
+    tax_rate: Number(it.tax_rate) || 0,
+    tax_included: it.tax_included,
+  }));
+}
+
+function aQuotation(c: CotizacionResumen | CotizacionDetalle): Quotation {
+  return c as Quotation;
+}
+
 export class CotizacionesService {
-  static async generateQuotationNumber(organizationId: number): Promise<string> {
-    try {
-      const { data, error } = await supabase
-        .from('quotations')
-        .select('number')
-        .eq('organization_id', organizationId)
-        .like('number', 'COT-%')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (error) throw error;
-
-      let nextNumber = 1;
-      if (data && data.length > 0) {
-        const match = data[0].number.match(/COT-(\d+)/);
-        if (match) {
-          nextNumber = parseInt(match[1], 10) + 1;
-        }
-      }
-      return `COT-${nextNumber.toString().padStart(4, '0')}`;
-    } catch (error) {
-      console.error('Error generating quotation number:', error);
-      return `COT-${Date.now()}`;
-    }
+  static async listQuotations(_organizationId: number, filters?: QuotationFilters, branchId?: number | null): Promise<Quotation[]> {
+    const q = new URLSearchParams();
+    if (filters?.status && filters.status !== 'todos') q.set('estado', filters.status);
+    if (filters?.busqueda?.trim()) q.set('busqueda', filters.busqueda.trim());
+    if (filters?.fechaInicio) q.set('desde', filters.fechaInicio);
+    if (filters?.fechaFin) q.set('hasta', filters.fechaFin);
+    if (filters?.customer_id) q.set('customer_id', filters.customer_id);
+    if (branchId != null) q.set('branch_id', String(branchId));
+    const r = await pedir<{ cotizaciones: CotizacionResumen[] }>(`/api/cotizaciones${q.size ? `?${q}` : ''}`);
+    return r.cotizaciones.map(aQuotation);
   }
 
-  static async listQuotations(
-    organizationId: number,
-    filters?: QuotationFilters,
-    branchId?: number | null
-  ): Promise<Quotation[]> {
-    try {
-      let query = supabase
-        .from('quotations')
-        .select(
-          `id, number, customer_id, issue_date, valid_until, currency, subtotal, tax_total, discount_total, total, status, payment_terms, payment_method, salesperson_id, converted_invoice_id, opportunity_id, created_at, updated_at, customers (id, full_name, email, phone)`
-        )
-        .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false });
-
-      if (branchId != null) {
-        query = query.eq('branch_id', branchId);
-      }
-
-      if (filters?.status && filters.status !== 'todos') {
-        query = query.eq('status', filters.status);
-      }
-      if (filters?.customer_id) {
-        query = query.eq('customer_id', filters.customer_id);
-      }
-      if (filters?.fechaInicio) {
-        query = query.gte('issue_date', filters.fechaInicio);
-      }
-      if (filters?.fechaFin) {
-        query = query.lte('issue_date', filters.fechaFin);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      let result = data as unknown as Quotation[];
-
-      if (filters?.busqueda) {
-        const term = filters.busqueda.toLowerCase();
-        result = result.filter(
-          (q) =>
-            q.number?.toLowerCase().includes(term) ||
-            q.customers?.full_name?.toLowerCase().includes(term)
-        );
-      }
-
-      return result;
-    } catch (error) {
-      console.error('Error listing quotations:', error);
-      throw error;
-    }
-  }
-
+  /** null si no existe o es de otra organización (404). */
   static async getQuotationById(id: string): Promise<Quotation | null> {
     try {
-      const { data, error } = await supabase
-        .from('quotations')
-        .select(
-          `*,
-          customers (id, full_name, email, phone, address, identification_number, identification_type, avatar_url),
-          quotation_items (*)
-          `
-        )
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-      return data as Quotation;
-    } catch (error) {
-      console.error('Error getting quotation:', error);
-      throw error;
+      return aQuotation((await pedir<{ cotizacion: CotizacionDetalle }>(url(id))).cotizacion);
+    } catch (err) {
+      if (err instanceof ErrorPeticionCotizacion && err.estado === 404) return null;
+      throw err;
     }
   }
 
-  static async createQuotation(
-    quotationData: Omit<Quotation, 'id' | 'created_at' | 'updated_at'>,
-    items: QuotationItem[],
-    taxContext: QuotationTaxContext = {}
-  ): Promise<Quotation> {
+  /** Crea en el servidor; antes aplica las promociones del canal Finanzas, como el formulario de facturas. */
+  static async createQuotation(datos: QuotationInput, items: QuotationItem[], taxContext: QuotationTaxContext = {}): Promise<ResultadoGuardarCotizacion> {
+    let evaluados = items;
     try {
-      // --- Evaluar promociones activas para Finanzas (cotizaciones) ---
-      let evaluatedItems = items;
-      try {
-        const promoResult = await promotionEngine.evaluate({
-          channel: 'finances',
-          items: items.map(it => ({
-            product_id: it.product_id || 0,
-            quantity: Number(it.qty) || 0,
-            unit_price: Number(it.unit_price) || 0,
-          })),
-          organization_id: quotationData.organization_id,
-          branch_id: quotationData.branch_id ?? undefined,
+      const promo = await promotionEngine.evaluate({
+        channel: 'finances',
+        items: items.map((it) => ({ product_id: it.product_id || 0, quantity: Number(it.qty) || 0, unit_price: Number(it.unit_price) || 0 })),
+        organization_id: getOrganizationId(),
+        branch_id: datos.branch_id ?? undefined,
+      });
+      if (promo.discountTotal > 0) {
+        evaluados = items.map((it) => {
+          if (it.discount_amount) return it;
+          const descuento = promo.itemDiscounts[it.product_id || 0] || 0;
+          return descuento > 0 ? { ...it, discount_amount: descuento } : it;
         });
-
-        if (promoResult.discountTotal > 0) {
-          evaluatedItems = items.map(it => {
-            if (!it.discount_amount || it.discount_amount === 0) {
-              const promoDiscount = promoResult.itemDiscounts[it.product_id || 0] || 0;
-              if (promoDiscount > 0) {
-                return { ...it, discount_amount: promoDiscount };
-              }
-            }
-            return it;
-          });
-        }
-      } catch (promoErr) {
-        console.warn('[cotizacionesService] No se pudieron evaluar promociones:', promoErr);
       }
-
-      // F-42: Resolver impuestos de cada línea antes de insertar.
-      const itemsWithoutTax = evaluatedItems.filter(it =>
-        !Number(it.tax_rate) || Number(it.tax_rate) === 0
-      );
-      if (itemsWithoutTax.length > 0) {
-        evaluatedItems = await Promise.all(
-          evaluatedItems.map(async (item) => {
-            const resolved = await resolveLineTax({
-              itemTaxRate: item.tax_rate,
-              itemTaxCode: item.tax_code,
-              productId: item.product_id,
-              organizationId: quotationData.organization_id,
-              appliedTaxes: taxContext.appliedTaxes,
-              appliedTaxTotals: taxContext.appliedTaxTotals,
-              taxIncluded: item.tax_included,
-              qty: Number(item.qty) || 0,
-              unitPrice: Number(item.unit_price) || 0,
-              discountAmount: Number(item.discount_amount) || 0,
-            });
-            return {
-              ...item,
-              tax_rate: resolved.tax_rate,
-              tax_code: resolved.tax_code,
-              tax_included: resolved.tax_included,
-              total_line: resolved.total_line,
-            };
-          })
-        );
-      }
-
-      const { data, error } = await supabase
-        .from('quotations')
-        .insert(quotationData)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const quotationId = data.id;
-      const itemsToInsert = evaluatedItems.map((item) => ({
-        ...item,
-        quotation_id: quotationId,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('quotation_items')
-        .insert(itemsToInsert);
-
-      if (itemsError) throw itemsError;
-
-      return data as Quotation;
-    } catch (error) {
-      console.error('Error creating quotation:', error);
-      throw error;
+    } catch (promoErr) {
+      console.warn('[cotizacionesService] No se pudieron evaluar promociones:', promoErr);
     }
+    const r = await pedir<{ resultado: ResultadoGuardarCotizacion }>('/api/cotizaciones', {
+      method: 'POST',
+      body: JSON.stringify({ ...datos, applied_taxes: aplicados(taxContext), items: lineas(evaluados) }),
+    });
+    return r.resultado;
   }
 
-  static async updateQuotation(
-    id: string,
-    updates: Partial<Quotation>,
-    items?: QuotationItem[],
-    taxContext: QuotationTaxContext = {}
-  ): Promise<Quotation> {
-    try {
-      const { data, error } = await supabase
-        .from('quotations')
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      if (items) {
-        // F-42: Resolver impuestos de cada línea antes de insertar.
-        const resolvedItems = await Promise.all(
-          items.map(async (item) => {
-            const resolved = await resolveLineTax({
-              itemTaxRate: item.tax_rate,
-              itemTaxCode: item.tax_code,
-              productId: item.product_id,
-              // La organización sale de la fila actualizada: los llamadores no la
-              // envían en `updates` y con 0 el resolver no encuentra el impuesto
-              // por defecto de la organización.
-              organizationId: updates.organization_id ?? data.organization_id,
-              appliedTaxes: taxContext.appliedTaxes,
-              appliedTaxTotals: taxContext.appliedTaxTotals,
-              taxIncluded: item.tax_included,
-              qty: Number(item.qty) || 0,
-              unitPrice: Number(item.unit_price) || 0,
-              discountAmount: Number(item.discount_amount) || 0,
-            });
-            return {
-              ...item,
-              tax_rate: resolved.tax_rate,
-              tax_code: resolved.tax_code,
-              tax_included: resolved.tax_included,
-              total_line: resolved.total_line,
-            };
-          })
-        );
-        await supabase.from('quotation_items').delete().eq('quotation_id', id);
-        const itemsToInsert = resolvedItems.map((item) => ({
-          ...item,
-          quotation_id: id,
-          id: undefined,
-        }));
-        const { error: itemsError } = await supabase
-          .from('quotation_items')
-          .insert(itemsToInsert);
-        if (itemsError) throw itemsError;
-      }
-
-      return data as Quotation;
-    } catch (error) {
-      console.error('Error updating quotation:', error);
-      throw error;
-    }
+  /** Edita (solo borrador o enviada): cabecera completa y líneas; totales en la base. */
+  static async updateQuotation(id: string, datos: QuotationInput, items: QuotationItem[], taxContext: QuotationTaxContext = {}): Promise<ResultadoGuardarCotizacion> {
+    const r = await pedir<{ resultado: ResultadoGuardarCotizacion }>(url(id), {
+      method: 'PUT',
+      body: JSON.stringify({ ...datos, applied_taxes: aplicados(taxContext), items: lineas(items) }),
+    });
+    return r.resultado;
   }
 
-  static async changeStatus(
-    id: string,
-    status: QuotationStatus
-  ): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('quotations')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', id);
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error changing quotation status:', error);
-      throw error;
-    }
+  static async changeStatus(id: string, status: 'sent' | 'accepted' | 'rejected'): Promise<{ status: string; sinCambio: boolean }> {
+    const r = await pedir<{ resultado: { status: string; sinCambio: boolean } }>(url(id, 'estado'), {
+      method: 'POST',
+      body: JSON.stringify({ estado: status }),
+    });
+    return r.resultado;
   }
 
-  static async duplicateQuotation(id: string): Promise<Quotation | null> {
-    try {
-      const original = await this.getQuotationById(id);
-      if (!original) throw new Error('Cotización no encontrada');
-
-      const newNumber = await this.generateQuotationNumber(original.organization_id);
-
-      const { data, error } = await supabase
-        .from('quotations')
-        .insert({
-          organization_id: original.organization_id,
-          branch_id: original.branch_id,
-          number: newNumber,
-          customer_id: original.customer_id,
-          issue_date: new Date().toISOString().split('T')[0],
-          valid_until: original.valid_until,
-          currency: original.currency,
-          subtotal: original.subtotal,
-          tax_total: original.tax_total,
-          discount_total: original.discount_total,
-          total: original.total,
-          status: 'draft',
-          payment_terms: original.payment_terms,
-          payment_method: original.payment_method,
-          notes: original.notes,
-          terms_conditions: original.terms_conditions,
-          salesperson_id: original.salesperson_id,
-          opportunity_id: original.opportunity_id || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      if (original.quotation_items && original.quotation_items.length > 0) {
-        const itemsToInsert = original.quotation_items.map((item) => ({
-          quotation_id: data.id,
-          product_id: item.product_id,
-          description: item.description,
-          qty: item.qty,
-          unit_price: item.unit_price,
-          discount_amount: item.discount_amount,
-          tax_code: item.tax_code,
-          tax_rate: item.tax_rate,
-          tax_included: item.tax_included,
-          total_line: item.total_line,
-        }));
-        const { error: itemsError } = await supabase
-          .from('quotation_items')
-          .insert(itemsToInsert);
-        if (itemsError) throw itemsError;
-      }
-
-      return data as Quotation;
-    } catch (error) {
-      console.error('Error duplicating quotation:', error);
-      throw error;
-    }
+  static async duplicateQuotation(id: string): Promise<{ id: string; number: string }> {
+    const r = await pedir<{ resultado: { id: string; numero: string } }>(url(id, 'duplicar'), { method: 'POST', body: '{}' });
+    return { id: r.resultado.id, number: r.resultado.numero };
   }
 
+  /**
+   * Convierte en factura BORRADOR en el servidor (venta ligada, impuestos,
+   * comisión; se emite después). Sin sucursal, la de la cotización.
+   */
   static async convertToInvoice(
     quotationId: string,
-    organizationId: number,
-    branchId: number,
-    opportunityId?: string | null
-  ): Promise<string> {
-    try {
-      const quotation = await this.getQuotationById(quotationId);
-      if (!quotation) throw new Error('Cotización no encontrada');
-      if (quotation.status === 'converted')
-        throw new Error('Esta cotización ya fue convertida a factura');
+    opciones: { branchId?: number | null; opportunityId?: string | null } = {},
+  ): Promise<ResultadoConversion> {
+    const r = await pedir<{ resultado: ResultadoConversion }>(url(quotationId, 'convertir'), {
+      method: 'POST',
+      body: JSON.stringify({ branch_id: opciones.branchId ?? null, opportunity_id: opciones.opportunityId ?? null }),
+    });
+    return r.resultado;
+  }
 
-      const { data: invoiceNumberData } = await supabase
-        .from('invoice_sales')
-        .select('number')
-        .eq('organization_id', organizationId)
-        .like('number', 'FACT-%')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      let nextInvoiceNumber = 1;
-      if (invoiceNumberData && invoiceNumberData.length > 0) {
-        const match = invoiceNumberData[0].number.match(/FACT-(\d+)/);
-        if (match) nextInvoiceNumber = parseInt(match[1], 10) + 1;
-      }
-      const invoiceNumber = `FACT-${nextInvoiceNumber.toString().padStart(4, '0')}`;
-
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + (quotation.payment_terms || 30));
-
-      const { data: invoiceData, error: invoiceError } = await supabase
-        .from('invoice_sales')
-        .insert({
-          organization_id: organizationId,
-          branch_id: branchId,
-          customer_id: quotation.customer_id,
-          number: invoiceNumber,
-          issue_date: new Date().toISOString().split('T')[0],
-          due_date: dueDate.toISOString().split('T')[0],
-          currency: quotation.currency,
-          subtotal: quotation.subtotal,
-          tax_total: quotation.tax_total,
-          total: quotation.total,
-          balance: quotation.total,
-          status: 'issued',
-          payment_method: quotation.payment_method,
-          payment_terms: quotation.payment_terms,
-          notes: quotation.notes,
-          tax_included: quotation.quotation_items?.[0]?.tax_included || false,
-          salesperson_id: quotation.salesperson_id,
-          opportunity_id: opportunityId || quotation.opportunity_id || null,
-        })
-        .select()
-        .single();
-
-      if (invoiceError) throw invoiceError;
-
-      if (quotation.quotation_items && quotation.quotation_items.length > 0) {
-        // F-42: Resolver impuestos de cada línea antes de insertar en invoice_items.
-        const resolvedItems = await Promise.all(
-          quotation.quotation_items.map(async (item) => {
-            const resolved = await resolveLineTax({
-              itemTaxRate: item.tax_rate,
-              itemTaxCode: item.tax_code,
-              productId: item.product_id,
-              organizationId,
-              taxIncluded: item.tax_included,
-              qty: Number(item.qty) || 0,
-              unitPrice: Number(item.unit_price) || 0,
-              discountAmount: Number(item.discount_amount) || 0,
-            });
-            return {
-              ...item,
-              tax_rate: resolved.tax_rate,
-              tax_code: resolved.tax_code,
-              tax_included: resolved.tax_included,
-              total_line: resolved.total_line,
-            };
-          })
-        );
-        const invoiceItemsToInsert = resolvedItems.map((item) => ({
-          invoice_sales_id: invoiceData.id,
-          invoice_id: invoiceData.id,
-          invoice_type: 'sale' as const,
-          product_id: item.product_id,
-          description: item.description,
-          qty: item.qty,
-          unit_price: item.unit_price,
-          tax_code: item.tax_code,
-          tax_rate: item.tax_rate || 0,
-          tax_included: item.tax_included,
-          total_line: item.total_line,
-          discount_amount: item.discount_amount || 0,
-        }));
-
-        const { error: itemsError } = await supabase
-          .from('invoice_items')
-          .insert(invoiceItemsToInsert);
-        if (itemsError) throw itemsError;
-      }
-
-      await this.changeStatus(quotationId, 'converted');
-
-      await supabase
-        .from('quotations')
-        .update({ converted_invoice_id: invoiceData.id })
-        .eq('id', quotationId);
-
-      return invoiceData.id;
-    } catch (error) {
-      console.error('Error converting quotation to invoice:', error);
-      throw error;
-    }
+  /** Envía por correo con el PDF del motor de documentos; un borrador queda enviado. */
+  static async sendByEmail(id: string, opciones: { para?: string; mensaje?: string } = {}): Promise<{ destino: string; adjunto: boolean; status: string }> {
+    const r = await pedir<{ resultado: { destino: string; adjunto: boolean; status: string } }>(url(id, 'enviar'), {
+      method: 'POST',
+      body: JSON.stringify(opciones),
+    });
+    return r.resultado;
   }
 
   static async deleteQuotation(id: string): Promise<void> {
-    try {
-      const { error } = await supabase.from('quotations').delete().eq('id', id);
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error deleting quotation:', error);
-      throw error;
-    }
+    await pedir(url(id), { method: 'DELETE' });
   }
 }

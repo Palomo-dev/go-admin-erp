@@ -153,6 +153,33 @@ Comprobaciones de cuadre ya dibujadas:
   tablas existen: `journal_entries`, `journal_lines`, `fiscal_periods`,
   `bank_accounts`, `bank_transactions`, `purchase_orders`, `invoice_purchase`
   y `stock_movements`.
+- **Día en UTC en 13 archivos de reportes.** Arman el rango con
+  `` `${fecha}T00:00:00Z` ``: contabilidad, CRM, chat, parking, PMS, HRM,
+  transporte, notificaciones, organización, roles, operaciones, PM e
+  integraciones. En Bogotá, el «día» de esos reportes empieza a las 7:00 p. m.
+  del día anterior. El visor contable v2 dice «se calcula por día», así que ese
+  día tiene que ser el de la organización (`getOrgDateRange`).
+- **Topes que truncan sumas:**
+  - `.limit(50)` en `inventarioReports.ts:429` (rentabilidad por producto).
+  - `.limit(500)` y `.limit(1000)` en `serialTrackingReports.ts`.
+  - Consultas sin `.range` que se quedan en el techo de filas por defecto de
+    PostgREST.
+- **«Rentabilidad por producto» no tiene costo ni margen.** Reutiliza la RPC de
+  rotación.
+- **El cierre corre en el navegador.** `ejecutarCierre` se llama desde
+  `src/app/app/reportes/page.tsx` y dibuja el PDF con jsPDF
+  (`pdfExportService`). No usa el motor de documentos de marca ni
+  `pos_caja_esperado`.
+- **El historial no reproduce el cierre.** Al volver a descargarlo, el PDF se
+  regenera con los datos actuales (`page.tsx:213`) y con otro número; el
+  snapshot solo guarda los KPIs.
+- **`/app/reportes` no tiene i18n** (no hay `useTranslations` en
+  `src/components/reportes/**`). Además usa colores sueltos (`bg-blue-600`,
+  `bg-gray-50` y hex en `ReporteChart.tsx`) y casi no usa el kit (`PageHeader`,
+  `StatCard`, `DataTable`, `FilterChips`, `EmptyState`).
+- **Tres stacks de reportes sin motor común:** `/app/reportes`,
+  `/app/pos/reportes` y las páginas de reportes de inventario y finanzas. El
+  rediseño v2 supone un solo catálogo.
 - **Textos que conviene renombrar en la interfaz:** «Funnel de Ventas» →
   «Embudo de ventas» y «Performance de Agentes» → «Desempeño de agentes».
   Todo en 4 idiomas.

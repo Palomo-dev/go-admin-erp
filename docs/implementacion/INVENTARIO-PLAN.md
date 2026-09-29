@@ -948,3 +948,131 @@ Capacidad sugerida: 6 agentes a la vez como máximo (B1, B2, B3, B5, B6a, B7 tra
 | P9 | **98 garantías corriendo en bodega** (orgs 133, 143). ¿Se reinician para que arranquen al vender? | B4 | Sí: se borra `warranty_start/end` de los seriales `in_stock`; los vendidos no se tocan |
 | P10 | **Reservas huérfanas** (1.690 uds en 4 orgs). ¿Se liberan? | B10 | Sí, las que no tengan pedido web pendiente ni oportunidad de CRM abierta |
 | P11 | **Precios y costos con varias vigencias abiertas** (16.359 productos con más de un precio vigente, 59 con más de un costo). ¿Se cierran las viejas? | B7, B10 | Sí: por producto queda abierta la de `effective_from` más reciente que ya empezó; las anteriores se cierran en el `effective_from` de la siguiente. Antes se comprueba que el POS, la tienda y la factura ya leen esa misma (si alguno lee otra, el precio que ve el cliente cambiaría) |
+
+---
+
+## Anexo B0 — Núcleo de existencias: estado al 2026-09-29 (hecho)
+
+Bloque 0 aplicado con las decisiones del dueño del 2026-09-28 (P1–P11 con la recomendación de §6).
+Todo por el MCP, cada migración con su rollback y probada antes con `begin … rollback` / `DO … RAISE`.
+
+### B0.1 Migraciones (`supabase/migrations/` + `supabase/rollbacks/`)
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929020000_inv_b0_1_esquema` | `stock_movements.created_by` (default `auth.uid()`) y `avg_cost_after`; índice de kardex `(organization_id, product_id, branch_id, created_at, id)`; `lots.organization_id` (relleno: 3 lotes, 0 choques), `branch_id`, `notes`, `created_by`, UNIQUE `(organization_id, product_id, lot_code)` y disparador que completa la organización; `products.track_lots` (default false) |
+| `20260929020100_inv_b0_2_permisos` | `fn_inventario_permisos(org)` → `{ver, crear, editar_catalogo, eliminar, ajustar, trasladar, recibir, producir, garantias, costos, configurar}`; `fn_inventario_exigir_permiso(org, acciones[])` (42501 `sin_permiso`); `fn_inventario_config` / `fn_inventario_config_guardar` con `bloquear_venta_sin_stock` (P5, false por defecto) en `organization_settings` key `inventario` |
+| `20260929020200_inv_b0_3_primitiva` | `fn_inv_int_mover` (la primitiva), `fn_inv_int_mover_fila`, `fn_inv_int_fila`, `fn_inv_int_costo_promedio` (la regla única). Sin EXECUTE para `anon` ni `authenticated` |
+| `20260929020300_inv_b0_4_escritores_por_la_primitiva` | Misma firma, por dentro la primitiva: `decrement_stock_on_sale`, `fn_stock_entrada`, `fn_stock_entrada_devolucion`, `fn_register_stock_entry`, `fn_producto_int_ajustar_stock` (reescritas) y `fn_kardex_entrada_compra_int`, `fn_void_purchase_invoice` (parche sobre la definición viva, md5 comprobado y marcador único). Respaldo exacto en `private.respaldo_funciones` |
+| `20260929020400_inv_b0_5_reservas` | `stock_reservations` (RLS solo lectura) + `fn_inv_int_reservar` / `fn_inv_int_liberar` (receta expandida con el resolutor único, bloqueo en orden de producto, liberación exacta); `reserve_stock_for_web_order` y `release_stock_for_order` con la misma firma (la segunda ahora exige pertenencia y fija `search_path`); `fn_stock_reservar`, `fn_stock_liberar_reserva` (fachada TS); `fn_inv_reversion_entrada` (camino temporal de `folio_item_reversal`) |
+| `20260929020500_inv_b0_6_documento_de_movimiento` | `fn_inv_documentos(org, refs[])` en lote (máx. 500) y `fn_documento_de_movimiento`: tipo, número legible y ruta para los 24 orígenes, solo documentos de la organización |
+| `20260929020600_inv_b0_7_asiento_unico_ajuste` | P4: el movimiento de un documento de ajuste `gain`/`loss` ya no asienta (lo hace el documento). Los `adjustment` sin documento siguen asentando |
+| `20260929020700_inv_b0_8_primitiva_escala` | La primitiva redondea la cantidad a 3 decimales antes de mover y guarda en `avg_cost_after` el promedio tal como queda en la fila (numeric(12,2)): kardex y saldo no se separan en milésimas |
+
+`get_advisors` (security): ningún aviso nuevo en `anon_security_definer_function_executable`,
+`function_search_path_mutable` ni `rls_*` por objetos de B0 (`release_stock_for_order` sale de
+`function_search_path_mutable`). Las RPC públicas nuevas aparecen, como todas las del repositorio,
+en `authenticated_security_definer_function_executable`: es su diseño (validan organización y
+permiso dentro).
+
+### B0.2 Qué pasa ya por la primitiva
+
+| Flujo | Función (misma firma) | Cambio observable |
+|---|---|---|
+| POS, mesa, pedido web, folio PMS | `decrement_stock_with_recipe` → `decrement_stock_on_sale` | Bloqueo de la fila (dos ventas simultáneas ya no pierden una resta); FEFO si `track_lots` (hoy 0 productos); rechaza producto o sucursal de otra organización (0 casos históricos); cantidad 0 se omite |
+| Factura de venta, anulación, nota crédito | `decrement_stock_with_recipe`, `fn_stock_entrada` | `fn_stock_entrada` salta productos con `track_stock = false` (antes les creaba fila; 0 movimientos históricos de NC/anulación sobre ellos) |
+| Devolución, anulación POS | `fn_stock_entrada_devolucion` | Ninguno (entra al costo de la salida, sin mover el promedio) |
+| Alta de producto, importación, entrada de ajuste | `fn_register_stock_entry` | **Promedio ponderado** en vez de «último costo» (§2 F1.4); exige permiso de inventario (`crear`, `editar_catalogo` o `ajustar`), no solo pertenencia; bloqueo de la fila. En 90 días hubo entradas de ajuste en las orgs 142 (103), 144 (29), 132 (21), 129 (10), 120 (5), 115 y 134 (2), 130, 143 y 199 (1): esas son las que desde hoy promedian |
+| Stock masivo, variantes | `fn_producto_int_ajustar_stock` | Bloqueo antes de calcular la diferencia; mismo costo |
+| Compra (factura y recepción) | `fn_kardex_entrada_compra_int` | El lote de la línea debe ser del producto y de la organización |
+| Anulación de factura de compra | `fn_void_purchase_invoice` | Si no había fila, se crea (en negativo) en vez de dejar un movimiento que el saldo no refleja |
+| Reservas web (tienda y panel) y CRM | `reserve_stock_for_web_order`, `release_stock_for_order`, `fn_stock_reservar`, `fn_stock_liberar_reserva` | Receta expandida en SQL; lo reservado queda registrado por documento y se libera exacto; reservar dos veces no duplica; liberar un pedido ajeno → 42501 |
+| Borrar consumo del folio (PMS) | `fn_inv_reversion_entrada` | Entra al costo con que salió, ya no al **precio de venta** |
+
+Escenario comparado en la base (org 2, producto de prueba, `begin … rollback`) antes y después:
+apertura 10×500, compra 10×1.000, venta 4, NC 1, devolución 2, stock masivo a 25, entrada de ajuste
+5×1.250, venta 40 y variante nueva 7×900 → mismas cantidades y mismos costos en todos los pasos
+salvo la entrada de ajuste (antes 1.250 «último costo», ahora 833,33 ponderado) y la venta siguiente
+(sale a 833,33). Venta con receta como cajero de la org 142 y anulación real de una factura de compra
+de la org 132: correctas; el cajero (solo `inventory.view`) ya no puede llamar
+`fn_register_stock_entry` (42501).
+
+### B0.3 Qué NO pasa todavía por la primitiva (dueño y bloque)
+
+SQL: `complete_production_order` (B5, v2 con costo real; hoy es invocador y la primitiva no se
+le expone), `assistant_create_adjustment`, `assistant_register_sale`,
+`assistant_void_purchase_invoice` (B9). `fn_importar_productos_lote`,
+`fn_producto_int_stock_inicial`, `fn_producto_int_variante_guardar` y `update_product_min_stock`
+solo escriben `min_level` o filas en 0 (no mueven stock).
+
+TS (guardarraíl 33 de `src/__tests__/guardrails.test.ts`, la lista solo puede achicarse):
+`app/api/web-orders/[id]/refund/route.ts` (B9), `components/inventario/lotes/LotesService.ts` (B1),
+`components/inventario/productos/bulk/bulkService.ts` (B7),
+`components/inventario/transferencias/TransferenciasService.ts` (B3), `lib/ai/assistant/undoService.ts`
+(B9), `lib/services/adjustmentService.ts` (B2), `lib/services/aiActionsService.ts` (B9),
+`lib/services/webOrderServerConfirmation.ts` (B9). `stockMovementService.ts` ya salió: es fachada de RPC.
+
+### B0.4 Contratos para B1–B10
+
+- **Tipos**: `src/lib/inventario/nucleo/tipos.ts` (primitiva, opciones, errores, permisos, config,
+  documentos, reservas, entrada de compra, lotes y las firmas acordadas de `fn_stock_registrar_movimiento`,
+  `fn_lote_guardar`, `fn_ajuste_aplicar`, `fn_traslado_recibir`, `complete_production_order` v2,
+  `fn_oc_recepcionar`, `fn_pedido_web_confirmar_stock`). Punto de entrada `@/lib/inventario/nucleo`.
+- **Regla para toda RPC nueva que mueva stock**: SECURITY DEFINER, `fn_inventario_exigir_permiso(org,
+  array['<acción>'])` (o `fn_assert_acceso_org` + permiso de su dominio), el movimiento SOLO con
+  `public.fn_inv_int_mover(...)`, `REVOKE … FROM anon, public` en la misma migración. Opciones de la
+  primitiva: `recalcular_costo`, `costo_fijo`, `permitir_negativo`, `fefo`, `incluir_vencidos`,
+  `forzar`, `seriales`, `estado_serial`. Traslado (B3): salida `transfer_out` con
+  `estado_serial: 'in_transit'` y entrada `transfer_in` con `unit_cost` = costo de la salida (recalcula
+  en destino). Ajuste (B2): el movimiento con `source_id` = id del ajuste; el asiento lo hace el
+  documento (P4). Producción (B5): consumos `out` y terminado `in` con `recalcular_costo` y costo =
+  Σ consumos ÷ producido.
+- **Permisos en la UI**: `usePermisosInventario()` (`@/lib/inventario/usePermisosInventario`);
+  pantalla sin permiso = `EmptyState variante="forbidden"` con `inventario.permisos.*`.
+  `components/inventario/categorias/usePermisosCatalogo.ts` (B6b) puede pasar a leer
+  `editar_catalogo` de aquí.
+- **Errores**: `claveErrorInventario(error)` → `inventario.errores.<clave>`;
+  `detalleStockInsuficiente(error)` para «disponible X, solicitado Y».
+- **Kit** (`@/components/kit/inventario`): `BadgeOrigenMovimiento` (Figma 530:65022, 24 orígenes, el
+  ÚNICO mapa está en `lib/inventario/origenesMovimientoStock.ts` → `META_ORIGEN`),
+  `EnlaceDocumento` + `useDocumentosMovimiento(org, filas)` (una llamada por página),
+  `LotPicker` en línea y `DialogoLotes` (diálogo en escritorio, hoja en móvil; Figma 530:65092,
+  530:65099, 530:65161), `BadgeVencimiento` + `useTextoVencimiento`, `SaldoCorridoCell`.
+  `hoy` siempre `todayInTz(zonaDeLaOrganizacion)`.
+- **i18n**: namespace `inventario` (orígenes, documentos, vencimiento, lotes, saldo, errores,
+  permisos) en es/en/fr/pt; los bloques usan su propio namespace (§5.13).
+- **Costo en pantalla**: `costoPromedioTrasEntrada` (`nucleo/costo.ts`) es el espejo de la regla SQL,
+  solo para mostrar; nunca se escribe `avg_cost` desde el navegador.
+
+### B0.5 Avisos para otros bloques
+
+- **B9 / POS**: `pos_checkout_v1` captura cualquier error de stock y lo deja como advertencia. Si una
+  organización activa `bloquear_venta_sin_stock`, la factura de venta sí falla con
+  `stock_insuficiente`, pero el POS vendería sin descontar: B9 tiene que hacer que el POS respete
+  ese error antes de ofrecer el ajuste en la interfaz (hoy ninguna organización lo tiene activo).
+- **B9 / PMS**: el doble descuento de los consumos de habitación sigue (`spaceConsumptionService.ts:250`);
+  la reversión del folio ya no corrompe el costo. Cuando B9 pase la reversión a
+  `fn_stock_entrada_devolucion`, `fn_inv_reversion_entrada` puede retirarse.
+- **B1**: `fn_inv_documentos` resuelve el número; cuando B2/B3/B5 añadan `code`, se actualiza allí
+  (hoy `AJ-<id>`, `TR-<id>`, `OP-<id>`). Hay 620 filas con `qty_reserved > 0` (orgs 113: 139,
+  135: 228, 137: 14, 145: 240) sin registro en `stock_reservations`: se liberan con la regla
+  anterior hasta que B10 las limpie (P10).
+- **B10**: 28 filas negativas (orgs 132 y 144: 11 cada una; 129 y 142: 2; 112 y 134: 1). Las filas de
+  `private.respaldo_funciones` sirven para los rollbacks de B0: no borrarlas.
+
+### B0.6 Ajustes con doble asiento (P4) — para el contador
+
+Hacia adelante hay un solo asiento por ajuste. Los históricos (documento `inventory_adjustment` +
+asiento por movimiento `stock_movements`), por organización y id de ajuste:
+
+| Org | Ajustes | Ids |
+|---|---|---|
+| 115 | 2 | 34, 35 |
+| 129 | 12 | 20, 21, 22, 23, 25, 26, 27, 28, 31, 32, 33, 45 |
+| 132 | 23 | 29, 36–44, 46–58 |
+| 134 | 3 | 60, 61, 63 |
+| 143 | 1 | 77 |
+| 144 | 39 | 80–89, 91, 92, 98, 99, 101, 102, 104–111, 113, 114, 115, 120–123, 126, 127, 130–135 |
+| 199 | 1 | 147 |
+
+(81 ajustes; el contador reversa el asiento por movimiento o el del documento, no ambos.)

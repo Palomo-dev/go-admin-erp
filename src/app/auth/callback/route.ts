@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { parseCodigoTarifaPorDefecto, setOrganizationDefaultTaxByCode } from '@/lib/services/defaultTaxService';
+import { sendConversionEvent } from '@/lib/marketing/conversionTracking';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -529,6 +530,32 @@ export async function completeSignupAfterEmailConfirmation(supabase: SupabaseCli
         throw subscriptionError;
       }
       console.log('✅ Subscription updated successfully');
+      
+      // 6. Enviar evento CompleteRegistration a Meta CAPI y GA4 MP
+      // Solo se envía si marketing_consent = true en signup_attribution
+      console.log('6️⃣ Enviando evento CompleteRegistration...');
+      try {
+        await sendConversionEvent(
+          {
+            eventName: 'CompleteRegistration',
+            eventId: user.id,
+            eventSourceUrl: 'https://app.goadmin.io/auth/signup',
+            actionSource: 'website',
+            userData: {
+              email: user.email,
+              externalId: user.id,
+              firstName: signupData.firstName || metadata.first_name,
+              lastName: signupData.lastName || metadata.last_name,
+              city: signupData.organizationCity,
+              country: 'co',
+            },
+          },
+          supabase
+        );
+        console.log('✅ Evento CompleteRegistration enviado');
+      } catch (err) {
+        console.warn('⚠️ Error enviando evento CompleteRegistration (no crítico):', err);
+      }
       
       console.log('🎉 Complete signup finished successfully!');
     } else {

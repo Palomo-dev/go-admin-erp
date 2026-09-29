@@ -155,6 +155,8 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   }, [organization?.id, selectedBranchId]);
 
   const n = selectedIds.length;
+  // La organización sale del contexto de la sesión; el servidor vuelve a validarla.
+  const orgId = organization?.id ?? 0;
   const alcance = t('alcance', { count: n, n: entero(n) });
 
   // Mientras se procesa, el diálogo no se cierra (ni con Esc ni fuera).
@@ -193,7 +195,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     const cantidad = modoAjuste === 'fijo' ? cantidadRaw : (direccion === 'disminuir' ? -cantidadRaw : cantidadRaw);
     setProcessing(true);
     try {
-      const r = await bulkUpdatePrices(selectedIds, tipoPrecio, modoAjuste, cantidad);
+      const r = await bulkUpdatePrices(orgId, selectedIds, tipoPrecio, modoAjuste, cantidad);
       mostrarResultado(t('resultado.precios'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
@@ -226,7 +228,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   const handleEstado = async (status: EstadoMasivo) => {
     setProcessing(true);
     try {
-      const r = await bulkUpdateStatus(selectedIds, status);
+      const r = await bulkUpdateStatus(orgId, selectedIds, status);
       mostrarResultado(t('resultado.estado'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
@@ -240,7 +242,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     }
     setProcessing(true);
     try {
-      const r = await bulkAssignCategory(selectedIds, parseInt(selectedCategoria));
+      const r = await bulkAssignCategory(orgId, selectedIds, parseInt(selectedCategoria));
       mostrarResultado(t('resultado.categoria'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
@@ -250,7 +252,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   const handleEliminar = async () => {
     setProcessing(true);
     try {
-      const r = await bulkDelete(selectedIds);
+      const r = await bulkDelete(orgId, selectedIds);
       mostrarResultado(t('resultado.eliminados'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
@@ -260,7 +262,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
   const handleCopiarComparacion = async () => {
     setProcessing(true);
     try {
-      const r = await bulkCopyPriceToCompare(selectedIds, sobrescribirComparacion);
+      const r = await bulkCopyPriceToCompare(orgId, selectedIds, sobrescribirComparacion);
       mostrarResultado(t('resultado.comparacion'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);
@@ -287,7 +289,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
 
     setProcessing(true);
     try {
-      const r = await bulkRoundPrices(selectedIds, tipoRedondeo, modoRedondeo, multiplo, dCount, digitosValor);
+      const r = await bulkRoundPrices(orgId, selectedIds, tipoRedondeo, modoRedondeo, multiplo, dCount, digitosValor);
       mostrarResultado(t('resultado.redondeados'), r.exitosos, r.fallidos, r.errores);
     } finally {
       setProcessing(false);

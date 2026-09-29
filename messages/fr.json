@@ -6992,7 +6992,9 @@
         "sinCosto": "Produit {producto} : aucun coût",
         "sinPermisoProducto": "Produit {producto} : autorisation refusée",
         "producto": "Produit {producto} : {detalle}",
-        "detalle": "{detalle}"
+        "detalle": "{detalle}",
+        "sinPermiso": "Vous n'avez pas l'autorisation pour cette action sur les produits",
+        "noEncontrados": "{count, plural, one {{n} produit n'existe plus ou appartient à une autre organisation} other {{n} produits n'existent plus ou appartiennent à une autre organisation}}"
       }
     },
     "tabla": {

@@ -1,5 +1,17 @@
 /**
- * Servicio para acciones masivas sobre productos
+ * Acciones masivas del catálogo de productos. Todo corre en el servidor:
+ *
+ * - Precio, comparación y costo: `fn_productos_masivo_alcance` expande la
+ *   selección una sola vez (padre ↔ variantes) y `fn_productos_precio_masivo`
+ *   fija cada producto por lotes con la misma regla de vigencia del detalle
+ *   (`fn_producto_int_fijar_precio/costo`). Ya no se cierra ni se inserta
+ *   `product_prices`/`product_costs` desde el navegador (así nacieron las
+ *   vigencias duplicadas de D19/D20) ni se pisa `stock_levels.avg_cost`.
+ * - Estado (incluido eliminar) y categoría: `fn_productos_estado_masivo` y
+ *   `fn_productos_categoria_masiva`, que arrastran las variantes de los padres.
+ * - Stock: `fn_productos_ajuste_masivo_stock` por el kardex.
+ *
+ * Migración 20260929160100_inv_b7_2_acciones_masivas. Permisos en el servidor.
  */
 import { supabase } from '@/lib/supabase/config';
 import {
@@ -10,415 +22,132 @@ import {
   type ModoStock,
   type ResumenAjusteStock,
 } from './ajusteMasivoStock';
+import {
+  errorDeRpc,
+  errorMasivo,
+  LOTE_CATALOGO,
+  LOTE_PRECIOS,
+  resultadoVacio,
+  sumarResumenCatalogo,
+  sumarResumenPrecios,
+  type ResultadoMasivo,
+  type ResumenCatalogoMasivo,
+  type ResumenPrecioMasivo,
+} from './resumenMasivo';
 
 export type { ModoStock } from './ajusteMasivoStock';
+export type { CodigoErrorMasivo, ErrorMasivo, ResultadoMasivo } from './resumenMasivo';
 export type TipoPrecio = 'venta' | 'compra' | 'comparacion';
 export type ModoAjuste = 'fijo' | 'valor' | 'porcentaje';
 export type ModoRedondeo = 'multiplo' | 'digitos';
 
-/** Mensaje legible de un error de Supabase, de JS o desconocido. */
-const mensajeDe = (e: unknown, porDefecto: string): string => {
-  if (e instanceof Error && e.message) return e.message;
-  if (e && typeof e === 'object' && 'message' in e && typeof (e as { message: unknown }).message === 'string') {
-    return (e as { message: string }).message || porDefecto;
-  }
-  return porDefecto;
-};
-
-type FilaJerarquia = { id: number; is_parent: boolean | null; parent_product_id: number | null };
+type OperacionPrecio = 'ajustar' | 'redondear' | 'copiar_a_comparacion';
 
 interface ConteoMasivo {
   exitosos: number;
   fallidos: number;
 }
 
-/**
- * Motivo de un fallo de una acción masiva. El texto se arma en pantalla con
- * `productos.masivas.errores.<codigo>` (4 idiomas); `detalle` es el mensaje
- * crudo de la base cuando lo hay.
- */
-export type CodigoErrorMasivo =
-  | 'expandir'
-  | 'sinProductos'
-  | 'sinCostoPrevio'
-  | 'cerrarCostos'
-  | 'insertarCostos'
-  | 'cerrarPrecios'
-  | 'insertarPrecios'
-  | 'lote'
-  | 'sinPrecio'
-  | 'sinCosto'
-  | 'sinPermisoProducto'
-  | 'producto'
-  | 'detalle';
-
-export interface ErrorMasivo {
-  codigo: CodigoErrorMasivo;
-  valores?: Record<string, string | number>;
-}
-
-const errorMasivo = (codigo: CodigoErrorMasivo, valores?: Record<string, string | number>): ErrorMasivo =>
-  valores ? { codigo, valores } : { codigo };
-
-export interface ResultadoMasivo extends ConteoMasivo {
-  errores: ErrorMasivo[];
-}
+/** Ids enteros positivos sin repetir. */
+const idsValidos = (ids: readonly number[]): number[] =>
+  Array.from(new Set(ids.filter((id) => Number.isInteger(id) && id > 0)));
 
 /**
- * Calcula el nuevo valor según el modo de ajuste
+ * Precio/costo masivo: una expansión para toda la selección y lotes sin
+ * repetir un producto (un porcentaje nunca se aplica dos veces a la misma
+ * variante). Cada lote es una transacción.
  */
-const calcularNuevoValor = (actual: number, modo: ModoAjuste, cantidad: number): number => {
-  switch (modo) {
-    case 'fijo':
-      return cantidad;
-    case 'valor':
-      return Math.max(0, actual + cantidad);
-    case 'porcentaje':
-      return Math.max(0, actual * (1 + cantidad / 100));
-    default:
-      return actual;
-  }
-};
-
-/**
- * Ejecuta una query de Supabase con reintentos ante errores transitorios
- * (503/PGRST002, errores de red). Lanza si todos los intentos fallan.
- */
-async function retrySupabaseQuery<T>(
-  queryFn: () => PromiseLike<{ data: T | null; error: unknown }>,
-  label: string,
-  maxRetries = 3,
-  baseDelay = 1000
-): Promise<T> {
-  let lastError: unknown = null;
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const { data, error } = await queryFn();
-    if (!error && data !== null) return data;
-    lastError = error;
-    if (attempt < maxRetries) {
-      const delay = baseDelay * Math.pow(2, attempt);
-      console.warn(`[retrySupabaseQuery] ${label}: intento ${attempt + 1}/${maxRetries + 1} falló, reintentando en ${delay}ms`, mensajeDe(error, String(error)));
-      await new Promise((res) => setTimeout(res, delay));
-    }
-  }
-  throw new Error(`${label}: ${mensajeDe(lastError, 'Error desconocido tras reintentos')}`);
-}
-
-/**
- * Expande IDs de productos para incluir padres e hijos (variantes).
- * Consulta en lotes para evitar URLs demasiado largas en PostgREST.
- * Lanza un error si no puede expandir (no falla silenciosamente).
- */
-async function expandProductIds(productIds: number[]): Promise<number[]> {
-  const EXPAND_BATCH = 300;
-  const expandedIds = new Set<number>(productIds);
-  const parentIdsToExpand: number[] = [];
-
-  // Consultar productos seleccionados en lotes
-  for (let i = 0; i < productIds.length; i += EXPAND_BATCH) {
-    const batch = productIds.slice(i, i + EXPAND_BATCH);
-    let data: FilaJerarquia[];
-    try {
-      data = await retrySupabaseQuery(
-        () => supabase
-          .from('products')
-          .select('id, is_parent, parent_product_id')
-          .in('id', batch)
-          .neq('status', 'deleted'),
-        `[expandProductIds] query productos lote ${i}`
-      );
-    } catch (e) {
-      console.error('[expandProductIds] Error querying products:', e);
-      continue;
-    }
-    for (const p of data) {
-      expandedIds.add(p.id);
-      if (p.is_parent) parentIdsToExpand.push(p.id);
-      if (p.parent_product_id && !productIds.includes(p.parent_product_id)) {
-        parentIdsToExpand.push(p.parent_product_id);
-      }
-    }
-  }
-
-  console.log(`[expandProductIds] ${parentIdsToExpand.length} padres para expandir, ${expandedIds.size} IDs hasta ahora`);
-
-  // Consultar hijos y padres adicionales en lotes
-  if (parentIdsToExpand.length > 0) {
-    const uniqueParentIds = [...new Set(parentIdsToExpand)];
-    const childrenIds: number[] = [];
-    const parentIdsNotInSelection = uniqueParentIds.filter((pid) => !productIds.includes(pid));
-
-    for (let i = 0; i < uniqueParentIds.length; i += EXPAND_BATCH) {
-      const batch = uniqueParentIds.slice(i, i + EXPAND_BATCH);
-      try {
-        const children = await retrySupabaseQuery(
-          () => supabase
-            .from('products')
-            .select('id')
-            .in('parent_product_id', batch)
-            .neq('status', 'deleted'),
-          `[expandProductIds] query hijos lote ${i}`
-        );
-        children.forEach((c: { id: number }) => childrenIds.push(c.id));
-      } catch (e) {
-        // Si no se pueden obtener los hijos, lanzar para que el caller
-        // sepa que la expansión fue incompleta y no proceda con datos parciales.
-        throw new Error(`No se pudieron obtener las variantes de los productos padre: ${mensajeDe(e, String(e))}. ` +
-          'Es probable que el servicio de base de datos esté recargando su caché (503). Intente de nuevo en unos segundos.');
-      }
-    }
-
-    console.log(`[expandProductIds] ${childrenIds.length} hijos encontrados`);
-
-    for (let i = 0; i < parentIdsNotInSelection.length; i += EXPAND_BATCH) {
-      const batch = parentIdsNotInSelection.slice(i, i + EXPAND_BATCH);
-      try {
-        const parents = await retrySupabaseQuery(
-          () => supabase
-            .from('products')
-            .select('id')
-            .in('id', batch)
-            .neq('status', 'deleted'),
-          `[expandProductIds] query padres lote ${i}`
-        );
-        parents.forEach((p: { id: number }) => expandedIds.add(p.id));
-      } catch (e) {
-        console.error('[expandProductIds] Error querying parents:', e);
-      }
-    }
-
-    childrenIds.forEach((id) => expandedIds.add(id));
-  }
-
-  console.log(`[expandProductIds] Total expandido: ${expandedIds.size} (original: ${productIds.length})`);
-  return Array.from(expandedIds);
-}
-
-/**
- * Actualización masiva de precios (venta, compra o comparación)
- * Expande automáticamente padres → hijos y hijos → padres.
- * Optimizado con operaciones en lote (batch) para miles de productos.
- */
-export async function bulkUpdatePrices(
+async function precioMasivo(
+  organizationId: number,
   productIds: number[],
   tipo: TipoPrecio,
-  modo: ModoAjuste,
-  cantidad: number
+  operacion: OperacionPrecio,
+  opciones: Record<string, unknown>,
 ): Promise<ResultadoMasivo> {
-  const resultado: ResultadoMasivo = { exitosos: 0, fallidos: 0, errores: [] };
-  const ahora = new Date().toISOString();
-  const BATCH_SIZE = 200; // 200 por lote para evitar 500 errors en PostgREST
-  const INSERT_CHUNK = 100; // inserts en sub-lotes más pequeños
-
-  // 1. Expandir IDs: incluir hijos de padres y padres de hijos (en lotes)
-  let allIds: number[];
-  try {
-    allIds = await expandProductIds(productIds);
-  } catch (e) {
-    resultado.fallidos = productIds.length;
-    console.error('[bulk] expandir padres → variantes:', mensajeDe(e, String(e)));
-    resultado.errores.push(errorMasivo('expandir'));
-    return resultado;
-  }
-  if (allIds.length === 0) {
-    resultado.fallidos = productIds.length;
+  let resultado = resultadoVacio();
+  const seleccion = idsValidos(productIds);
+  if (seleccion.length === 0) {
     resultado.errores.push(errorMasivo('sinProductos'));
     return resultado;
   }
-
-  for (let i = 0; i < allIds.length; i += BATCH_SIZE) {
-    const batchIds = allIds.slice(i, i + BATCH_SIZE);
-
-    try {
-      if (tipo === 'compra') {
-        // ── COSTOS ──
-        const { data: costos, error: qErr } = await supabase
-          .from('product_costs')
-          .select('id, product_id, cost, supplier_id')
-          .in('product_id', batchIds)
-          .or('effective_to.is.null,effective_to.gt.' + ahora)
-          .order('effective_from', { ascending: false });
-
-        if (qErr) throw qErr;
-
-        // Agrupar por product_id (el más reciente primero)
-        const costoPorProducto = new Map<number, { id: number; cost: number; supplier_id: string | null }>();
-        for (const c of costos || []) {
-          const pid = c.product_id as number;
-          if (!costoPorProducto.has(pid)) {
-            costoPorProducto.set(pid, {
-              id: c.id as number,
-              cost: Number(c.cost) || 0,
-              supplier_id: (c as { supplier_id?: string | null }).supplier_id || null,
-            });
-          }
-        }
-
-        const idsACerrar: number[] = [];
-        const nuevosCostos: Array<{ product_id: number; cost: number; supplier_id: string | null; effective_from: string }> = [];
-        let sinCostoPrevio = 0;
-
-        for (const productId of batchIds) {
-          const costo = costoPorProducto.get(productId);
-          const costoActual = costo?.cost || 0;
-          const nuevoCosto = calcularNuevoValor(costoActual, modo, cantidad);
-
-          // Si el costo previo era 0 y el modo es porcentaje, el resultado es 0
-          // (0 * (1 + x/100) = 0). No tiene sentido crear un registro en $0.
-          // Saltar el producto y notificar al usuario.
-          if (costoActual === 0 && modo === 'porcentaje' && nuevoCosto === 0) {
-            sinCostoPrevio++;
-            continue;
-          }
-
-          if (costo?.id) idsACerrar.push(costo.id);
-
-          nuevosCostos.push({
-            product_id: productId,
-            cost: Math.round(nuevoCosto * 100) / 100,
-            supplier_id: costo?.supplier_id || null,
-            effective_from: ahora,
-          });
-        }
-
-        if (sinCostoPrevio > 0) {
-          resultado.fallidos += sinCostoPrevio;
-          resultado.errores.push(errorMasivo('sinCostoPrevio', { count: sinCostoPrevio, n: sinCostoPrevio }));
-        }
-
-        if (idsACerrar.length > 0) {
-          const { error: closeErr } = await supabase
-            .from('product_costs')
-            .update({ effective_to: ahora })
-            .in('product_id', batchIds)
-            .is('effective_to', null);
-          if (closeErr) {
-            resultado.fallidos += nuevosCostos.length;
-            resultado.errores.push(errorMasivo('cerrarCostos', { detalle: closeErr.message }));
-            continue;
-          }
-        }
-
-        if (nuevosCostos.length > 0) {
-          // Insertar en sub-lotes para evitar 500 errors
-          for (let j = 0; j < nuevosCostos.length; j += INSERT_CHUNK) {
-            const chunk = nuevosCostos.slice(j, j + INSERT_CHUNK);
-            const { error: insErr } = await supabase.from('product_costs').insert(chunk);
-            if (insErr) {
-              resultado.fallidos += chunk.length;
-              resultado.errores.push(errorMasivo('insertarCostos', { detalle: insErr.message }));
-            } else {
-              resultado.exitosos += chunk.length;
-            }
-          }
-
-          // Sincronizar stock_levels.avg_cost con el nuevo costo vigente.
-          // Sin este paso, el dashboard/reportes seguirían mostrando valor $0
-          // porque leen de stock_levels.avg_cost y no de product_costs.
-          // Agrupar por costo para hacer updates en lote con .in('product_id', ids)
-          const idsPorCosto = new Map<number, number[]>();
-          for (const nc of nuevosCostos) {
-            const arr = idsPorCosto.get(nc.cost) || [];
-            arr.push(nc.product_id);
-            idsPorCosto.set(nc.cost, arr);
-          }
-          for (const [costo, ids] of idsPorCosto) {
-            for (let j = 0; j < ids.length; j += INSERT_CHUNK) {
-              const chunkIds = ids.slice(j, j + INSERT_CHUNK);
-              const { error: syncErr } = await supabase
-                .from('stock_levels')
-                .update({ avg_cost: costo, updated_at: ahora })
-                .in('product_id', chunkIds);
-              if (syncErr) {
-                console.error(`[bulkUpdatePrices] Error sincronizando avg_cost (lote):`, syncErr);
-              }
-            }
-          }
-        }
-      } else {
-        // ── PRECIOS (venta o comparación) ──
-        const { data: precios, error: qErr } = await supabase
-          .from('product_prices')
-          .select('id, product_id, price, compare_price')
-          .in('product_id', batchIds)
-          .or('effective_to.is.null,effective_to.gt.' + ahora)
-          .order('effective_from', { ascending: false });
-
-        if (qErr) throw qErr;
-
-        // Agrupar por product_id (el más reciente primero)
-        const precioPorProducto = new Map<number, { id: number; price: number; compare_price: number }>();
-        for (const p of precios || []) {
-          const pid = p.product_id as number;
-          if (!precioPorProducto.has(pid)) {
-            precioPorProducto.set(pid, {
-              id: p.id as number,
-              price: Number(p.price) || 0,
-              compare_price: Number(p.compare_price) || 0,
-            });
-          }
-        }
-
-        const idsACerrar: number[] = [];
-        const nuevosPrecios: Array<{ product_id: number; price: number; compare_price: number | null; effective_from: string }> = [];
-
-        for (const productId of batchIds) {
-          const precio = precioPorProducto.get(productId);
-          const precioActual = precio?.price || 0;
-          const compareActual = precio?.compare_price || 0;
-
-          let nuevoPrecio = precioActual;
-          let nuevoCompare: number | null = compareActual || null;
-
-          if (tipo === 'venta') {
-            nuevoPrecio = calcularNuevoValor(precioActual, modo, cantidad);
-          } else {
-            nuevoCompare = calcularNuevoValor(compareActual, modo, cantidad);
-          }
-
-          if (precio?.id) idsACerrar.push(precio.id);
-
-          nuevosPrecios.push({
-            product_id: productId,
-            price: Math.round(nuevoPrecio * 100) / 100,
-            compare_price: nuevoCompare ? Math.round(nuevoCompare * 100) / 100 : null,
-            effective_from: ahora,
-          });
-        }
-
-        if (idsACerrar.length > 0) {
-          const { error: closeErr } = await supabase
-            .from('product_prices')
-            .update({ effective_to: ahora })
-            .in('product_id', batchIds)
-            .is('effective_to', null);
-          if (closeErr) {
-            resultado.fallidos += nuevosPrecios.length;
-            resultado.errores.push(errorMasivo('cerrarPrecios', { detalle: closeErr.message }));
-            continue;
-          }
-        }
-
-        if (nuevosPrecios.length > 0) {
-          // Insertar en sub-lotes para evitar 500 errors
-          for (let j = 0; j < nuevosPrecios.length; j += INSERT_CHUNK) {
-            const chunk = nuevosPrecios.slice(j, j + INSERT_CHUNK);
-            const { error: insErr } = await supabase.from('product_prices').insert(chunk);
-            if (insErr) {
-              resultado.fallidos += chunk.length;
-              resultado.errores.push(errorMasivo('insertarPrecios', { detalle: insErr.message }));
-            } else {
-              resultado.exitosos += chunk.length;
-            }
-          }
-        }
-      }
-    } catch (e) {
-      resultado.fallidos += batchIds.length;
-      resultado.errores.push(errorMasivo('lote', { desde: i, hasta: i + batchIds.length, detalle: mensajeDe(e, 'error') }));
+  const { data: alcance, error: errorAlcance } = await supabase.rpc('fn_productos_masivo_alcance', {
+    p_organization_id: organizationId,
+    p_product_ids: seleccion,
+  });
+  if (errorAlcance) {
+    resultado.fallidos = seleccion.length;
+    resultado.errores.push(errorAlcance.code === '42501' ? errorMasivo('sinPermiso') : errorMasivo('expandir'));
+    return resultado;
+  }
+  const ids = ((alcance as number[] | null) ?? []).map(Number);
+  if (ids.length === 0) {
+    resultado.fallidos = seleccion.length;
+    resultado.errores.push(errorMasivo('sinProductos'));
+    return resultado;
+  }
+  let desde = 0;
+  for (const lote of partirEnLotes(ids, LOTE_PRECIOS)) {
+    const { data, error } = await supabase.rpc('fn_productos_precio_masivo', {
+      p_organization_id: organizationId,
+      p_product_ids: lote,
+      p_tipo: tipo,
+      p_operacion: operacion,
+      p_opciones: opciones,
+    });
+    if (error) {
+      resultado.fallidos += lote.length;
+      resultado.errores.push(errorDeRpc(error, desde, desde + lote.length));
+    } else {
+      resultado = sumarResumenPrecios(resultado, data as ResumenPrecioMasivo);
     }
+    desde += lote.length;
   }
   return resultado;
+}
+
+/** Actualización masiva de precio de venta, de comparación o de costo. */
+export function bulkUpdatePrices(
+  organizationId: number,
+  productIds: number[],
+  tipo: TipoPrecio,
+  modo: ModoAjuste,
+  cantidad: number,
+): Promise<ResultadoMasivo> {
+  return precioMasivo(organizationId, productIds, tipo, 'ajustar', { modo, cantidad });
+}
+
+/**
+ * Copia el precio de venta al de comparación (los que ya tienen uno se dejan,
+ * salvo `sobrescribir`).
+ */
+export function bulkCopyPriceToCompare(
+  organizationId: number,
+  productIds: number[],
+  sobrescribir: boolean = false,
+): Promise<ResultadoMasivo> {
+  return precioMasivo(organizationId, productIds, 'venta', 'copiar_a_comparacion', { sobrescribir });
+}
+
+/**
+ * Redondeo masivo: `multiplo` (al múltiplo más cercano) o `digitos` (reemplaza
+ * los últimos N dígitos por `digitosValor`). Mismo cálculo que antes, ahora en
+ * `fn_productos_int_redondear`.
+ */
+export function bulkRoundPrices(
+  organizationId: number,
+  productIds: number[],
+  tipo: TipoPrecio,
+  modo: ModoRedondeo,
+  multiplo: number,
+  digitosCount: number,
+  digitosValor: string,
+): Promise<ResultadoMasivo> {
+  return precioMasivo(organizationId, productIds, tipo, 'redondear', {
+    modo,
+    multiplo,
+    digitos: digitosCount,
+    valor: digitosValor,
+  });
 }
 
 export interface ResultadoAjusteStock extends ConteoMasivo {
@@ -491,437 +220,52 @@ export async function bulkUpdateStock(
   return resultado;
 }
 
-/**
- * Cambio masivo de estado (activar/desactivar/descontinuar)
- */
-export async function bulkUpdateStatus(
+/** Estado y categoría: lotes de la selección; el servidor suma las variantes. */
+async function catalogoMasivo(
   productIds: number[],
-  status: 'active' | 'inactive' | 'discontinued'
+  llamar: (lote: number[]) => PromiseLike<{ data: unknown; error: { code?: string; message?: string } | null }>,
 ): Promise<ResultadoMasivo> {
-  const resultado: ResultadoMasivo = { exitosos: 0, fallidos: 0, errores: [] };
-  const BATCH_SIZE = 300;
-  const ahora = new Date().toISOString();
-
-  for (let i = 0; i < productIds.length; i += BATCH_SIZE) {
-    const batch = productIds.slice(i, i + BATCH_SIZE);
-    const { error } = await supabase
-      .from('products')
-      .update({ status, updated_at: ahora })
-      .in('id', batch);
-
-    if (error) {
-      resultado.fallidos += batch.length;
-      resultado.errores.push(errorMasivo('detalle', { detalle: error.message }));
-    } else {
-      resultado.exitosos += batch.length;
-    }
-  }
-  return resultado;
-}
-
-/**
- * Eliminación masiva (soft delete via RPC existente)
- */
-export async function bulkDelete(productIds: number[]): Promise<ResultadoMasivo> {
-  const resultado: ResultadoMasivo = { exitosos: 0, fallidos: 0, errores: [] };
-
-  for (const productId of productIds) {
-    try {
-      const { data, error } = await supabase.rpc('soft_delete_product', {
-        p_product_id: productId,
-      });
-      if (error) throw error;
-      if (!data) {
-        resultado.fallidos++;
-        resultado.errores.push(errorMasivo('sinPermisoProducto', { producto: productId }));
-        continue;
-      }
-      resultado.exitosos++;
-    } catch (e) {
-      resultado.fallidos++;
-      resultado.errores.push(errorMasivo('producto', { producto: productId, detalle: mensajeDe(e, 'error') }));
-    }
-  }
-  return resultado;
-}
-
-/**
- * Copia el precio de venta al precio de comparación de los productos
- * que NO tienen precio de comparación. Los que ya tienen, se dejan igual.
- * Expande automáticamente padres → hijos y hijos → padres (igual que bulkUpdateStock).
- * Optimizado con operaciones en lote (batch) para miles de productos.
- */
-export async function bulkCopyPriceToCompare(
-  productIds: number[],
-  sobrescribir: boolean = false
-): Promise<ResultadoMasivo> {
-  const resultado: ResultadoMasivo = { exitosos: 0, fallidos: 0, errores: [] };
-  const ahora = new Date().toISOString();
-  const BATCH_SIZE = 200;
-  const INSERT_CHUNK = 100;
-
-  // 1. Expandir IDs: incluir hijos de padres y padres de hijos (en lotes)
-  let allIds: number[];
-  try {
-    allIds = await expandProductIds(productIds);
-  } catch (e) {
-    resultado.fallidos = productIds.length;
-    console.error('[bulk] expandir padres → variantes:', mensajeDe(e, String(e)));
-    resultado.errores.push(errorMasivo('expandir'));
-    return resultado;
-  }
-  if (allIds.length === 0) {
-    resultado.fallidos = productIds.length;
+  let resultado = resultadoVacio();
+  const seleccion = idsValidos(productIds);
+  if (seleccion.length === 0) {
     resultado.errores.push(errorMasivo('sinProductos'));
     return resultado;
   }
-
-  // 2. Particionar los IDs en lotes para evitar límites de URL de PostgREST
-  for (let i = 0; i < allIds.length; i += BATCH_SIZE) {
-    const batchIds = allIds.slice(i, i + BATCH_SIZE);
-
-    try {
-      // Obtener todos los precios vigentes del lote en una sola query
-      const { data: precios, error: queryError } = await supabase
-        .from('product_prices')
-        .select('id, product_id, price, compare_price')
-        .in('product_id', batchIds)
-        .or('effective_to.is.null,effective_to.gt.' + ahora)
-        .order('effective_from', { ascending: false });
-
-      if (queryError) throw queryError;
-
-      // Agrupar por product_id y quedarse con el más reciente (ya ordenado desc)
-      const precioPorProducto = new Map<number, { id: number; price: number; compare_price: number }>();
-      for (const p of precios || []) {
-        const pid = p.product_id as number;
-        if (!precioPorProducto.has(pid)) {
-          precioPorProducto.set(pid, {
-            id: p.id as number,
-            price: Number(p.price) || 0,
-            compare_price: Number(p.compare_price) || 0,
-          });
-        }
-      }
-
-      // Filtrar productos que necesitan actualización
-      const idsACerrar: number[] = [];
-      const nuevosPrecios: Array<{ product_id: number; price: number; compare_price: number; effective_from: string }> = [];
-
-      for (const productId of batchIds) {
-        const precio = precioPorProducto.get(productId);
-        if (!precio || precio.price <= 0) {
-          resultado.fallidos++;
-          resultado.errores.push(errorMasivo('sinPrecio', { producto: productId }));
-          continue;
-        }
-
-        // Si ya tiene compare_price y no se solicita sobrescribir, saltar
-        if (precio.compare_price > 0 && !sobrescribir) {
-          resultado.exitosos++;
-          continue;
-        }
-
-        idsACerrar.push(precio.id);
-        nuevosPrecios.push({
-          product_id: productId,
-          price: Math.round(precio.price * 100) / 100,
-          compare_price: Math.round(precio.price * 100) / 100,
-          effective_from: ahora,
-        });
-      }
-
-      // Cerrar precios anteriores en lote
-      if (idsACerrar.length > 0) {
-        const { error: closeError } = await supabase
-          .from('product_prices')
-          .update({ effective_to: ahora })
-          .in('product_id', batchIds)
-          .is('effective_to', null);
-        if (closeError) {
-          resultado.fallidos += nuevosPrecios.length;
-          resultado.errores.push(errorMasivo('cerrarPrecios', { detalle: closeError.message }));
-          continue;
-        }
-      }
-
-      // Insertar nuevos precios en sub-lotes
-      if (nuevosPrecios.length > 0) {
-        for (let j = 0; j < nuevosPrecios.length; j += INSERT_CHUNK) {
-          const chunk = nuevosPrecios.slice(j, j + INSERT_CHUNK);
-          const { error: insertError } = await supabase
-            .from('product_prices')
-            .insert(chunk);
-          if (insertError) {
-            resultado.fallidos += chunk.length;
-            resultado.errores.push(errorMasivo('insertarPrecios', { detalle: insertError.message }));
-          } else {
-            resultado.exitosos += chunk.length;
-          }
-        }
-      }
-    } catch (e) {
-      resultado.fallidos += batchIds.length;
-      resultado.errores.push(errorMasivo('lote', { desde: i, hasta: i + batchIds.length, detalle: mensajeDe(e, 'error') }));
-    }
-  }
-  return resultado;
-}
-
-/**
- * Calcula el precio redondeado según el modo seleccionado
- * - multiplo: redondea al múltiplo más cercano de N (ej: múltiplo de 100 → 1234 → 1200)
- * - digitos: reemplaza los últimos N dígitos con un valor específico (ej: últimos 3 = "990" → 1234 → 1990)
- */
-function calcularRedondeo(
-  precio: number,
-  modo: ModoRedondeo,
-  multiplo: number,
-  digitosCount: number,
-  digitosValor: string
-): number {
-  if (precio <= 0) return precio;
-
-  if (modo === 'multiplo') {
-    if (multiplo <= 0) return precio;
-    return Math.round(precio / multiplo) * multiplo;
-  }
-
-  // modo === 'digitos'
-  if (digitosCount <= 0 || !digitosValor) return precio;
-  const valorNum = parseInt(digitosValor, 10);
-  if (isNaN(valorNum)) return precio;
-
-  // Divisor = 10^digitosCount (ej: 3 dígitos → 1000)
-  const divisor = Math.pow(10, digitosCount);
-  // Parte alta del precio (sin los últimos N dígitos)
-  const parteAlta = Math.floor(precio / divisor) * divisor;
-  // Reemplazar los últimos N dígitos con el valor especificado
-  return parteAlta + valorNum;
-}
-
-/**
- * Redondeo masivo de precios (venta, compra o comparación)
- * Expande automáticamente padres → hijos y padres de hijos.
- */
-export async function bulkRoundPrices(
-  productIds: number[],
-  tipo: TipoPrecio,
-  modo: ModoRedondeo,
-  multiplo: number,
-  digitosCount: number,
-  digitosValor: string
-): Promise<ResultadoMasivo> {
-  const resultado: ResultadoMasivo = { exitosos: 0, fallidos: 0, errores: [] };
-  const ahora = new Date().toISOString();
-  const BATCH_SIZE = 200;
-  const INSERT_CHUNK = 100;
-
-  // 1. Expandir IDs: incluir hijos de padres y padres de hijos (en lotes)
-  let allIds: number[];
-  try {
-    allIds = await expandProductIds(productIds);
-  } catch (e) {
-    resultado.fallidos = productIds.length;
-    console.error('[bulk] expandir padres → variantes:', mensajeDe(e, String(e)));
-    resultado.errores.push(errorMasivo('expandir'));
-    return resultado;
-  }
-  if (allIds.length === 0) {
-    resultado.fallidos = productIds.length;
-    resultado.errores.push(errorMasivo('sinProductos'));
-    return resultado;
-  }
-
-  for (let i = 0; i < allIds.length; i += BATCH_SIZE) {
-    const batchIds = allIds.slice(i, i + BATCH_SIZE);
-
-    try {
-      if (tipo === 'compra') {
-        // ── COSTOS ──
-        const { data: costos, error: qErr } = await supabase
-          .from('product_costs')
-          .select('id, product_id, cost, supplier_id')
-          .in('product_id', batchIds)
-          .or('effective_to.is.null,effective_to.gt.' + ahora)
-          .order('effective_from', { ascending: false });
-
-        if (qErr) throw qErr;
-
-        const costoPorProducto = new Map<number, { id: number; cost: number; supplier_id: string | null }>();
-        for (const c of costos || []) {
-          const pid = c.product_id as number;
-          if (!costoPorProducto.has(pid)) {
-            costoPorProducto.set(pid, {
-              id: c.id as number,
-              cost: Number(c.cost) || 0,
-              supplier_id: (c as { supplier_id?: string | null }).supplier_id || null,
-            });
-          }
-        }
-
-        const idsACerrar: number[] = [];
-        const nuevosCostos: Array<{ product_id: number; cost: number; supplier_id: string | null; effective_from: string }> = [];
-
-        for (const productId of batchIds) {
-          const costo = costoPorProducto.get(productId);
-          const costoActual = costo?.cost || 0;
-          if (costoActual <= 0) {
-            resultado.fallidos++;
-            resultado.errores.push(errorMasivo('sinCosto', { producto: productId }));
-            continue;
-          }
-          const nuevoCosto = calcularRedondeo(costoActual, modo, multiplo, digitosCount, digitosValor);
-          if (costo?.id) idsACerrar.push(costo.id);
-          nuevosCostos.push({
-            product_id: productId,
-            cost: Math.round(nuevoCosto * 100) / 100,
-            supplier_id: costo?.supplier_id || null,
-            effective_from: ahora,
-          });
-        }
-
-        if (idsACerrar.length > 0) {
-          const { error: closeErr } = await supabase
-            .from('product_costs')
-            .update({ effective_to: ahora })
-            .in('product_id', batchIds)
-            .is('effective_to', null);
-          if (closeErr) {
-            resultado.fallidos += nuevosCostos.length;
-            resultado.errores.push(errorMasivo('cerrarCostos', { detalle: closeErr.message }));
-            continue;
-          }
-        }
-
-        if (nuevosCostos.length > 0) {
-          for (let j = 0; j < nuevosCostos.length; j += INSERT_CHUNK) {
-            const chunk = nuevosCostos.slice(j, j + INSERT_CHUNK);
-            const { error: insErr } = await supabase.from('product_costs').insert(chunk);
-            if (insErr) {
-              resultado.fallidos += chunk.length;
-              resultado.errores.push(errorMasivo('insertarCostos', { detalle: insErr.message }));
-            } else {
-              resultado.exitosos += chunk.length;
-            }
-          }
-        }
-      } else {
-        // ── PRECIOS (venta o comparación) ──
-        const { data: precios, error: qErr } = await supabase
-          .from('product_prices')
-          .select('id, product_id, price, compare_price')
-          .in('product_id', batchIds)
-          .or('effective_to.is.null,effective_to.gt.' + ahora)
-          .order('effective_from', { ascending: false });
-
-        if (qErr) throw qErr;
-
-        const precioPorProducto = new Map<number, { id: number; price: number; compare_price: number }>();
-        for (const p of precios || []) {
-          const pid = p.product_id as number;
-          if (!precioPorProducto.has(pid)) {
-            precioPorProducto.set(pid, {
-              id: p.id as number,
-              price: Number(p.price) || 0,
-              compare_price: Number(p.compare_price) || 0,
-            });
-          }
-        }
-
-        const idsACerrar: number[] = [];
-        const nuevosPrecios: Array<{ product_id: number; price: number; compare_price: number | null; effective_from: string }> = [];
-
-        for (const productId of batchIds) {
-          const precio = precioPorProducto.get(productId);
-          const precioActual = precio?.price || 0;
-          const compareActual = precio?.compare_price || 0;
-
-          let nuevoPrecio = precioActual;
-          let nuevoCompare: number | null = compareActual || null;
-
-          if (tipo === 'venta') {
-            if (precioActual <= 0) {
-              resultado.fallidos++;
-              resultado.errores.push(errorMasivo('sinPrecio', { producto: productId }));
-              continue;
-            }
-            nuevoPrecio = calcularRedondeo(precioActual, modo, multiplo, digitosCount, digitosValor);
-          } else if (tipo === 'comparacion') {
-            if (compareActual <= 0) {
-              // No es error, simplemente no tiene precio de comparación - omitir
-              continue;
-            }
-            nuevoCompare = calcularRedondeo(compareActual, modo, multiplo, digitosCount, digitosValor);
-          }
-
-          if (precio?.id) idsACerrar.push(precio.id);
-          nuevosPrecios.push({
-            product_id: productId,
-            price: Math.round(nuevoPrecio * 100) / 100,
-            compare_price: nuevoCompare ? Math.round(nuevoCompare * 100) / 100 : null,
-            effective_from: ahora,
-          });
-        }
-
-        if (idsACerrar.length > 0) {
-          const { error: closeErr } = await supabase
-            .from('product_prices')
-            .update({ effective_to: ahora })
-            .in('product_id', batchIds)
-            .is('effective_to', null);
-          if (closeErr) {
-            resultado.fallidos += nuevosPrecios.length;
-            resultado.errores.push(errorMasivo('cerrarPrecios', { detalle: closeErr.message }));
-            continue;
-          }
-        }
-
-        if (nuevosPrecios.length > 0) {
-          for (let j = 0; j < nuevosPrecios.length; j += INSERT_CHUNK) {
-            const chunk = nuevosPrecios.slice(j, j + INSERT_CHUNK);
-            const { error: insErr } = await supabase.from('product_prices').insert(chunk);
-            if (insErr) {
-              resultado.fallidos += chunk.length;
-              resultado.errores.push(errorMasivo('insertarPrecios', { detalle: insErr.message }));
-            } else {
-              resultado.exitosos += chunk.length;
-            }
-          }
-        }
-      }
-    } catch (e) {
-      resultado.fallidos += batchIds.length;
-      resultado.errores.push(errorMasivo('lote', { desde: i, hasta: i + batchIds.length, detalle: mensajeDe(e, 'error') }));
-    }
-  }
-  return resultado;
-}
-
-/**
- * Asignación masiva de categoría
- */
-export async function bulkAssignCategory(
-  productIds: number[],
-  categoryId: number
-): Promise<ResultadoMasivo> {
-  const resultado: ResultadoMasivo = { exitosos: 0, fallidos: 0, errores: [] };
-  const BATCH_SIZE = 300;
-  const ahora = new Date().toISOString();
-
-  for (let i = 0; i < productIds.length; i += BATCH_SIZE) {
-    const batch = productIds.slice(i, i + BATCH_SIZE);
-    const { error } = await supabase
-      .from('products')
-      .update({ category_id: categoryId, updated_at: ahora })
-      .in('id', batch);
-
+  let desde = 0;
+  for (const lote of partirEnLotes(seleccion, LOTE_CATALOGO)) {
+    const { data, error } = await llamar(lote);
     if (error) {
-      resultado.fallidos += batch.length;
-      resultado.errores.push(errorMasivo('detalle', { detalle: error.message }));
+      resultado.fallidos += lote.length;
+      resultado.errores.push(errorDeRpc(error, desde, desde + lote.length));
     } else {
-      resultado.exitosos += batch.length;
+      resultado = sumarResumenCatalogo(resultado, data as ResumenCatalogoMasivo);
     }
+    desde += lote.length;
   }
   return resultado;
+}
+
+/** Cambio masivo de estado (activar, desactivar, descontinuar); incluye variantes. */
+export function bulkUpdateStatus(
+  organizationId: number,
+  productIds: number[],
+  status: 'active' | 'inactive' | 'discontinued',
+): Promise<ResultadoMasivo> {
+  return catalogoMasivo(productIds, (lote) =>
+    supabase.rpc('fn_productos_estado_masivo', { p_organization_id: organizationId, p_product_ids: lote, p_status: status }),
+  );
+}
+
+/** Eliminación masiva (estado `deleted`, con el permiso de eliminar); incluye variantes. */
+export function bulkDelete(organizationId: number, productIds: number[]): Promise<ResultadoMasivo> {
+  return catalogoMasivo(productIds, (lote) =>
+    supabase.rpc('fn_productos_estado_masivo', { p_organization_id: organizationId, p_product_ids: lote, p_status: 'deleted' }),
+  );
+}
+
+/** Asignación masiva de categoría; incluye variantes. */
+export function bulkAssignCategory(organizationId: number, productIds: number[], categoryId: number): Promise<ResultadoMasivo> {
+  return catalogoMasivo(productIds, (lote) =>
+    supabase.rpc('fn_productos_categoria_masiva', { p_organization_id: organizationId, p_product_ids: lote, p_category_id: categoryId }),
+  );
 }

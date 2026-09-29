@@ -7097,7 +7097,9 @@
         "sinCosto": "Producto {producto}: sin costo",
         "sinPermisoProducto": "Producto {producto}: sin permisos",
         "producto": "Producto {producto}: {detalle}",
-        "detalle": "{detalle}"
+        "detalle": "{detalle}",
+        "sinPermiso": "No tienes permiso para esta acción sobre productos",
+        "noEncontrados": "{count, plural, one {{n} producto ya no existe o es de otra organización} other {{n} productos ya no existen o son de otra organización}}"
       }
     },
     "tabla": {

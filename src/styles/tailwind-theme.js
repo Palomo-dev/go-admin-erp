@@ -130,6 +130,27 @@ const colors = {
     warning: t('badge-on-solid-warning'),
   },
 
+  // --- Acceso (auth): el cielo y el viajero (Figma `auth/*`, `night/*`) ---
+  // Modo claro = día (cielo Azul GO, viajero de pie); oscuro = noche (cielo
+  // tinta, trazo `night/line`). Solo los usa `src/components/kit/acceso`.
+  auth: {
+    'cielo-alto': t('auth-cielo-alto'),
+    'cielo-medio': t('auth-cielo-medio'),
+    'cielo-bajo': t('auth-cielo-bajo'),
+    'ilus-linea': t('auth-ilus-linea'),
+    'ilus-relleno': t('auth-ilus-relleno'),
+    'ilus-acento': t('auth-ilus-acento'),
+    'ilus-acento-suave': t('auth-ilus-acento-suave'),
+    'ilus-rubor': t('auth-ilus-rubor'),
+    estrella: t('auth-estrella'),
+  },
+  night: {
+    900: '#0b1024',
+    800: '#121a36',
+    700: '#1b2540',
+    line: '#e3e8ff',
+  },
+
   // --- Compatibilidad con shadcn/ui ---
   background: t('bg-canvas'),
   foreground: t('text-primary'),

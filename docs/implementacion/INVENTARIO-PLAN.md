@@ -1727,3 +1727,128 @@ fn_oc_recepcionar»); 23 y 26b ajustados con su porqué. La lista de pendientes 
 **Estado al parar (2026-09-29)**: todo lo de B8 está en HEAD (`33382c6a`, `e109b120`, `341b54ff`);
 las 3 migraciones aplicadas tienen su `.sql` y su rollback; sin archivos de B8 por commitear.
 Falta: `tsc` en copia limpia de HEAD y la revisión visual en el navegador.
+
+---
+
+## Anexo B7 — Productos: catálogo, detalle, formulario, importación y códigos (2026-09-29)
+
+Commits: `8f3f0234` P11 vigencias · `200812b5` acciones masivas por RPC · `5eebf51d` lotes desde el
+formulario · `906e2f7b` catálogo (Tarjetas, `?etiqueta=`/`?proveedor=`, código muerto) · `aa8bdf3b`
+detalle sobre el kit · `c0a51e59` «Crear ingrediente» con el alta rápida · `dc783fec` recuento de la
+importación · `477c71c0` pestaña Producción montada y «Crear ingrediente» repuesto (el commit `6cc775f6` de B5 dejó fuera del árbol lo de `c0a51e59`; B8 `341b54ff` y B6a `8ed4b997` repusieron otras piezas de B7 que sus commits habían pisado; se comprobó archivo por archivo que todo B7 está en HEAD). Solo archivos de B7 (§5.8) y los namespaces `productos`, `productoForm` y
+`productosImportar` en es/en/fr/pt (más `productoService.ts` por el contrato del formulario, la línea de
+`bulkService` en el guardarraíl 33 y el mock muerto de `facebookFeedService.test.ts`).
+
+### B7.1 Migraciones (`supabase/migrations/` + `supabase/rollbacks/`)
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929160000_inv_b7_1_vigencias_duplicadas` | **P11 (datos)**. Por producto queda abierta la fila ya iniciada de `effective_from` más reciente (desempate: id mayor) y cada fila abierta anterior se cierra en el `effective_from` de la siguiente. Rastro fila por fila en `private.inv_b7_vigencias_cerradas` (sin acceso para `anon`/`authenticated`); el rollback reabre solo lo que sigue con la fecha que puso la migración. Comprobación dentro de la migración: 0 productos con dos vigencias abiertas iniciadas |
+| `20260929160100_inv_b7_2_acciones_masivas` | `fn_productos_masivo_alcance` (una expansión padre ↔ variantes para toda la selección), `fn_productos_precio_masivo` (venta, comparación y costo: ajustar fijo/valor/porcentaje, redondear múltiplo/dígitos, copiar a comparación; cada producto por `fn_producto_int_fijar_precio/costo`; **no toca `avg_cost`**), `fn_productos_estado_masivo` (activar, desactivar, descontinuar, **eliminar**; arrastra las variantes y nunca revive una eliminada) y `fn_productos_categoria_masiva` (categoría de la organización, con variantes). Permisos como el detalle: editar = `inventory.edit`/`product_management`/`inventory_management`; eliminar = `inventory.delete`/… (antes el borrado masivo solo pedía pertenencia) |
+| `20260929160200_inv_b7_3_lotes_desde_el_producto` | `fn_producto_guardar` acepta `producto.track_lots` en editar (parche sobre la definición viva con ancla única y marcador: la función la tocan recetas, membresías y venta por peso); disparadores para que las variantes hereden `track_lots` del padre; `fn_producto_int_stock_inicial` con lotes: la entrada inicial va al lote `lot_code` (existente o creado con `fn_lote_guardar` de B1, vencimiento opcional, `L-AAAAMMDD` si viene vacío) y el movimiento por `fn_inv_int_mover` con origen `initial` |
+| `20260929160300_inv_b7_4_lotes_al_crear` | Complemento: crear y duplicar hacen un INSERT aparte, así que `track_lots` también se fija tras el INSERT y antes del stock inicial (se vio en la base: el producto nacía sin lotes) |
+
+Todas DEFINER con `search_path` fijo, permiso resuelto en el servidor (`fn_productos_exigir_permiso` →
+`fn_assert_acceso_org`; `fn_inventario_exigir_permiso` en el stock inicial con lote) y `REVOKE … FROM
+public, anon`; las internas sin EXECUTE para `authenticated`. `get_advisors` (security): ningún aviso
+nuevo de `anon_security_definer_function_executable`, `function_search_path_mutable` ni `rls_*`; las 4
+RPC públicas aparecen, como todas, en `authenticated_security_definer_function_executable`.
+
+### B7.2 P11 — vigencias cerradas y qué precio lee cada canal
+
+**Cerradas** (antes → después: 16.359 → 0 productos con más de un precio abierto; 59 → 0 con más de
+un costo abierto; migración en 3,7 s):
+
+| Tabla | Org | Productos | Filas cerradas |
+|---|---|---|---|
+| `product_prices` | 137 | 15.953 | 33.427 |
+| `product_prices` | 138 | 208 | 208 |
+| `product_prices` | 199 | 186 | 275 |
+| `product_prices` | 142 | 8 | 9 |
+| `product_prices` | 144 | 2 | 2 |
+| `product_prices` | 128 | 2 | 2 |
+| `product_costs` | 199 | 58 | 89 |
+| `product_costs` | 144 | 1 | 1 |
+
+Total: 33.923 filas de precio y 90 de costo. No había filas abiertas a futuro ni sin
+`effective_from`, ni empates de `effective_from` entre filas abiertas.
+
+**Qué fila lee cada canal** (verificado antes de aplicar):
+
+| Canal | Lector | Regla | ¿Cambia lo que ve el cliente? |
+|---|---|---|---|
+| POS (servidor, cobro) | `fn_pos_precio_base_vigente` / `pos_checkout_v1` | vigente ahora, `effective_from desc, id desc` | No: es la fila que queda abierta. Probado con 3.000 productos: mismo precio antes y después |
+| POS (navegador, carrito, catálogo local del escritorio) | `lib/pos/precioVigente.ts` | la misma, desempate por orden de llegada | No (no hay empates) |
+| Factura de venta y de compra | `lib/services/documentos/vigencia.ts` | la misma | No |
+| Catálogo de inventario | `get_catalogo_productos` / `catalogo_productos_lote` | vigente, `effective_from desc` | No |
+| Tienda web, listados y ficha | `goadmin-websites` `normalizeProductPrices` / `getCurrentPrice` | la abierta de **id mayor**, sin mirar `effective_from` | No: coincidía con la vigente en los 16.359 productos (0 diferencias) |
+| Tienda web, componentes que leen `product_prices[0]` sin normalizar (carrito, categoría, menú) | orden del embebido de PostgREST (en la práctica la fila más vieja) | **Sí, se corrige**: con varias abiertas podían mostrar un precio viejo (la fila más antigua difería de la vigente en todos los productos duplicados); ahora solo queda la vigente |
+| GO Assistant, herramienta `buscar_productos` | RPC `buscar_productos` | el **menor** precio entre las abiertas | **Sí, se corrige**: 860 productos (137: 490, 138: 208, 199: 153, 142: 8, 144: 1) mostraban un precio menor al vigente |
+
+Avisos para la tienda (repositorio `goadmin-websites`, fuera de B7): `getCurrentPrice` ignora
+`effective_from` (un precio programado se vería antes de tiempo) y `api/orders` toma el precio que
+manda el navegador (`item.price`) en lugar de recalcularlo en el servidor.
+
+### B7.3 Pantallas
+
+- **Catálogo** (`/app/inventario/productos`): vista **Tarjetas** de Figma (`120:13625`, `ViewToggle`
+  Tabla | Tarjetas en escritorio, orden en la barra, tarjeta con casilla, menú ⋮, estado sobre la
+  imagen, código · categoría, precio con la comparación tachada, existencias por sucursal y
+  variantes; en móvil sigue la lista, Figma no dibuja cuadrícula móvil; la preferencia queda en el
+  dispositivo). Lee `?etiqueta=` y `?proveedor=` dentro de la organización (intersección si vienen
+  los dos) y los muestra como chips; el tiempo real respeta el filtro.
+- **Acciones masivas**: precio, costo, comparación, redondeo, estado, categoría y eliminar por las
+  RPC de B7.1 (`bulkService.ts` ya no escribe tablas: sale del guardarraíl 33).
+- **Formulario**: «Maneja lotes y vencimientos» en Trazabilidad (deshabilitado sin control de
+  existencias); en crear/duplicar, **Lote** y **Vence** por sucursal en el stock inicial. «Cómo se
+  vende» (peso), recetas y membresías se conservaron.
+- **Crear ingrediente** (receta del formulario): `kit/documento/FormularioRapidoProducto` (variante
+  compra) en lugar del formulario completo en diálogo. El `QuickCreateDialog` de productos no tenía
+  usos y se borró: hay un solo alta rápida.
+- **Detalle**: los bloques del Resumen usan el `FormSection` del kit (Figma usa instancias de
+  `FormSection`); las tarjetas de Precios y costos, la `Tarjeta` del kit. «Transferir» lleva
+  `producto_id` y, si hay sucursal en la cabecera, `origen`. Monta la pestaña **Producción** de B5 con su contrato
+  (`<PestanaProduccion producto permisos />`), visible si `debeMostrarPestanaProduccion` lo dice
+  (compuesto o preparación; el detalle ahora carga `production_type` y `track_lots`) o si se llega por
+  enlace directo (`?tab=produccion`).
+- **Importar**: resultado según D5 — Importados · Omitidos (gris) · Fallidos · Sin intentar, con la
+  línea «N seleccionados · … » que prueba la suma. Sucursal destino, costo e impuesto ya eran
+  explícitos en el asistente.
+- **Código retirado**: `NuevoProductoForm.tsx`, `facebookCatalogExport.ts` (y su mock en
+  `facebookFeedService.test.ts`), `nuevo/QuickCreateDialog.tsx`, carpeta vacía `scraping/`.
+
+### B7.4 Verificación
+
+- En la base (transacciones deshechas, `DO … RAISE`): P11 completo con el precio del POS igual
+  antes y después; precio +10 % y redondeo a 100 (16.500 → 18.150 → 18.200), costo +50 sin tocar
+  `avg_cost`, copia a comparación, producto de otra organización ignorado (`no_encontrados`); estado
+  masivo sobre un padre con 7 variantes (arrastra 7, la eliminada sigue eliminada); categoría de otra
+  organización → 22023; otra organización → 42501; miembro sin permiso de edición (org 142) → 42501
+  al eliminar; `anon` → 42501. Producto nuevo con lotes: `track_lots` guardado, lote `LT-001` con
+  vencimiento, movimiento `initial` al lote con su costo, sin código → `L-20260929`; editar sin la
+  clave conserva, con `false` apaga; una variante nueva hereda y se apaga con el padre.
+- Pruebas nuevas: `bulk/__tests__/accionesMasivasRpc.test.ts`, `__tests__/formularioLotes.test.ts`,
+  `__tests__/catalogoEtiquetaProveedorCuadricula.test.tsx`, `__tests__/altaRapidaIngrediente.test.ts`,
+  `__tests__/recuentoImportacion.test.ts`.
+- Copia limpia de HEAD (`git archive` de `2c9c0d89` con `node_modules` enlazado): jest de
+  `components/inventario/productos` y `facebookFeedService` 20 suites / 245 pruebas en verde;
+  `src/__tests__/timezone` + `guardrails.test.ts` con `TZ=UTC` y con `TZ=America/Bogota` 21 suites /
+  692 pruebas en verde cada una; `tsc` (8 GB) en el árbol de trabajo sin errores en archivos de B7 (los que quedan son de trabajos en curso de B5/B6a/compras); en la copia limpia no terminó antes de parar (máquina cargada con los `tsc` de otros bloques): repetirlo al retomar. eslint limpio en todos los archivos de B7.
+
+### B7.5 Pendiente (fuera de B7 o con dueño)
+
+- **Resumen con `FilaDato`**: la auditoría pedía `FilaDato`/`ListaDatos`, pero Figma dibuja el Resumen
+  con los datos apilados (etiqueta sobre valor, dos columnas) dentro de `FormSection`; `FilaDato` es
+  etiqueta a la izquierda y valor a la derecha. Se dejó igual a Figma; si se quiere `FilaDato`, primero
+  en Figma.
+- **Tarjeta de producto del kit**: la cuadrícula usa una tarjeta propia del catálogo (el `ProductCard`
+  del kit es la del POS, con «Elegir»); si se quiere una variante `catalogo` en el kit, la añade quien
+  mantiene el kit.
+- **D4 del importador web** (casilla «Crear proveedor y categorías que no existan» y «Qué se creó»):
+  necesita cambiar `fn_importar_productos_lote`; no se tocó.
+- **B10**: `product_prices`/`product_costs` siguen escribibles desde el navegador por RLS; el único
+  escritor TS que quedaba era `bulkService` (ya por RPC) y `ai/assistant/undoService.ts` (B9). Con
+  eso, cerrar la RLS a solo lectura evitaría que vuelvan las vigencias duplicadas.
+- Revisión visual en el navegador pendiente (no se arrancó el servidor de desarrollo del dueño).
+
+**Estado al parar (orden del dueño)**: todo B7 está commiteado; no quedan archivos de B7 sin commit en el árbol (`detalle/precios/CampoVigencia.tsx` sigue con cambios de otra sesión, no tocados). Falta: lo de B7.5 y repetir `tsc` en copia limpia de HEAD.

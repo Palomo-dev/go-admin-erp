@@ -10588,7 +10588,8 @@
       "pago_en_caja_cerrada": "El pago entró en una caja ya cerrada: registre una devolución.",
       "pago_no_anulable": "Uno de los pagos no se puede anular desde aquí. {detalle}",
       "sesion_mesa_invalida": "La mesa ya no está abierta con esta cuenta. Vuelva a abrir la mesa y cobre de nuevo.",
-      "no_es_venta_de_mesa": "Esta venta no es la cuenta de una mesa."
+      "no_es_venta_de_mesa": "Esta venta no es la cuenta de una mesa.",
+      "pago_excede_saldo": "El cobro supera lo que falta por pagar de la cuenta (¿esta parte ya se cobró?). Revise el saldo de la mesa. {detalle}"
     },
     "ventaAnulada": "Venta anulada: se revirtieron pagos, stock y factura.",
     "anulacionFallida": "No se pudo anular la venta",

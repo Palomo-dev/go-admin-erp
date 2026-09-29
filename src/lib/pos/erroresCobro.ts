@@ -36,6 +36,8 @@ export const CODIGOS_ERROR_COBRO = [
   // Punto 1: la mesa cobra con pos_checkout_v1.
   'sesion_mesa_invalida',
   'no_es_venta_de_mesa',
+  // Cuenta dividida (20260929060000): un cobro de mesa no abona más que el saldo.
+  'pago_excede_saldo',
 ] as const;
 
 export type CodigoErrorCobro = (typeof CODIGOS_ERROR_COBRO)[number];

@@ -10483,7 +10483,8 @@
       "pago_en_caja_cerrada": "Le paiement est entré dans une caisse déjà fermée : enregistrez un retour.",
       "pago_no_anulable": "Un des paiements ne peut pas être annulé ici. {detalle}",
       "sesion_mesa_invalida": "La table n'est plus ouverte avec cette addition. Rouvrez la table et encaissez à nouveau.",
-      "no_es_venta_de_mesa": "Cette vente n'est pas l'addition d'une table."
+      "no_es_venta_de_mesa": "Cette vente n'est pas l'addition d'une table.",
+      "pago_excede_saldo": "L'encaissement dépasse le reste à payer de l'addition (cette part a-t-elle déjà été encaissée ?). Vérifiez le solde de la table. {detalle}"
     },
     "ventaAnulada": "Vente annulée : paiements, stock et facture ont été annulés.",
     "anulacionFallida": "La vente n’a pas pu être annulée",

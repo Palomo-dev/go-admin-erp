@@ -44,6 +44,7 @@ import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
 import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
 // Lógica pura del cobro extraída LITERAL (POS-PLAN §2.6 L41–L52, paso 1):
 import { cuentasDelCobro } from '@/lib/pos/venta/cobro/cuentasCobro';
+import { camposCantidadImpresa } from '@/lib/pos/peso/modoVenta';
 import { actualizarEntradaPago, entradaDePagoNueva, pagosDelSobre, pagosParaImpresion, puedeQuitarPagos, quitarEntradaPago } from '@/lib/pos/venta/cobro/pagosCobro';
 import { faltaParaEntrada, montosDeEntrada, muestraMontosRapidos } from '@/lib/pos/venta/cobro/montosRapidos';
 import { PORCENTAJES_PROPINA, baseDePropina, meserosDesdeMiembros, propinaTopada, topePropina } from '@/lib/pos/venta/cobro/propinaCobro';
@@ -1250,6 +1251,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           items: updatedCart.items.map((item) => ({
             productName: (item as any).name || item.product?.name || 'Producto',
             quantity: item.quantity,
+            ...camposCantidadImpresa(item.product),
             unitPrice: item.unit_price,
             total: item.total,
             taxAmount: item.tax_amount,
@@ -1444,6 +1446,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                       items: updatedCart.items.map((item) => ({
                         productName: (item as any).name || item.product?.name || 'Producto',
                         quantity: item.quantity,
+                        ...camposCantidadImpresa(item.product),
                         unitPrice: item.unit_price,
                         total: item.total,
                         taxAmount: item.tax_amount,
@@ -1820,6 +1823,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                       items: cart.items.map((item) => ({
                         productName: (item as any).name || item.product?.name || 'Producto',
                         quantity: item.quantity,
+                        ...camposCantidadImpresa(item.product),
                         unitPrice: item.unit_price,
                         total: item.total,
                         taxAmount: item.tax_amount,

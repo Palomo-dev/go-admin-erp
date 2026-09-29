@@ -55,6 +55,7 @@ export function TarjetaProductos({ venta, moneda, formatear }: { venta: DetalleV
     sku: l.sku,
     nota: l.nota,
     cantidad: l.cantidad,
+    unidad: l.unidad,
     precioUnitario: l.precio,
     descuento: l.descuento > 0 ? l.descuento : null,
     impuestos: (l.tasa !== null && l.tasa > 0) || l.impuesto > 0 ? [{ nombre: t('productos.impuesto'), tarifa: l.tasa, incluido: venta.impuestos_incluidos }] : [],

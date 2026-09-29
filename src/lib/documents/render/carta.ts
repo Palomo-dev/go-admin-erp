@@ -199,8 +199,9 @@ function tablaLineas(lineas: LineaDocumento[], f: Formateador, t: Traductor): st
   <td>${l.codigo ? `<span class="codigo">${e(l.codigo)}</span><br/>` : ''}${e(l.descripcion)}
     ${l.nota ? `<span class="detalle">${e(l.nota)}</span>` : ''}
     ${l.seriales.length > 0 ? `<span class="detalle">${e(t('lineas.seriales', { lista: l.seriales.join(', ') }))}</span>` : ''}</td>
-  <td class="num">${e(f.numero(l.cantidad))}</td>
-  <td class="num">${e(f.dinero(l.precioUnitario))}</td>
+  <td class="num">${e(l.unidad ? f.numero(l.cantidad, l.decimalesCantidad ?? 3, l.decimalesCantidad ?? 3) : f.numero(l.cantidad))}</td>
+  <td class="centro">${e(l.unidad || t('lineas.unidadPorDefecto'))}</td>
+  <td class="num">${e(f.dinero(l.precioUnitario))}${l.unidad ? `<span class="detalle">/ ${e(l.unidad)}</span>` : ''}</td>
   <td class="num">${l.descuento > 0 ? `<span class="descuento">- ${e(f.dinero(l.descuento))}</span>` : '—'}</td>
   <td>${impuesto}</td>
   <td class="num">${e(f.dinero(l.total))}</td>
@@ -209,9 +210,9 @@ function tablaLineas(lineas: LineaDocumento[], f: Formateador, t: Traductor): st
     .join('');
   return `<h2>${e(t('secciones.detalle'))}</h2>
 <table>
-  <colgroup><col style="width:5%"/><col style="width:36%"/><col style="width:8%"/><col style="width:13%"/><col style="width:11%"/><col style="width:12%"/><col style="width:15%"/></colgroup>
-  <thead><tr><th class="centro">#</th><th>${e(t('columnas.descripcion'))}</th><th class="num">${e(t('columnas.cantidad'))}</th><th class="num">${e(t('columnas.precioUnitario'))}</th><th class="num">${e(t('columnas.descuento'))}</th><th>${e(t('columnas.impuesto'))}</th><th class="num">${e(t('columnas.valor'))}</th></tr></thead>
-  <tbody>${filas || `<tr><td colspan="7" class="centro">${e(t('vacios.lineas'))}</td></tr>`}</tbody>
+  <colgroup><col style="width:5%"/><col style="width:31%"/><col style="width:8%"/><col style="width:6%"/><col style="width:13%"/><col style="width:10%"/><col style="width:12%"/><col style="width:15%"/></colgroup>
+  <thead><tr><th class="centro">#</th><th>${e(t('columnas.descripcion'))}</th><th class="num">${e(t('columnas.cantidad'))}</th><th class="centro">${e(t('columnas.unidad'))}</th><th class="num">${e(t('columnas.precioUnitario'))}</th><th class="num">${e(t('columnas.descuento'))}</th><th>${e(t('columnas.impuesto'))}</th><th class="num">${e(t('columnas.valor'))}</th></tr></thead>
+  <tbody>${filas || `<tr><td colspan="8" class="centro">${e(t('vacios.lineas'))}</td></tr>`}</tbody>
 </table>`;
 }
 

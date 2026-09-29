@@ -52,6 +52,8 @@ export function payloadTicketVenta(doc: DocumentoPayload, t: Traductor): SaleTic
     items: (doc.lineas ?? []).map((l) => ({
       productName: e(l.descripcion),
       quantity: l.cantidad,
+      unit: l.unidad ?? null,
+      qtyDecimals: l.decimalesCantidad ?? null,
       unitPrice: l.precioUnitario,
       total: l.total,
       discountAmount: l.descuento > 0 ? l.descuento : undefined,

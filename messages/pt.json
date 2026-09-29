@@ -11976,7 +11976,8 @@
     "lineas": {
       "impuesto": "Imposto",
       "incluido": "(incl.)",
-      "seriales": "Números de série: {lista}"
+      "seriales": "Números de série: {lista}",
+      "unidadPorDefecto": "un."
     },
     "secciones": {
       "detalle": "Detalhe",
@@ -12024,7 +12025,8 @@
       "denominacion": "Valor de face",
       "subtotal": "Subtotal",
       "base": "Base",
-      "tarifa": "Alíquota (%)"
+      "tarifa": "Alíquota (%)",
+      "unidad": "Unidade"
     },
     "vacios": {
       "lineas": "Sem linhas.",

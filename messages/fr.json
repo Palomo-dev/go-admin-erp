@@ -11976,7 +11976,8 @@
     "lineas": {
       "impuesto": "Taxe",
       "incluido": "(incl.)",
-      "seriales": "Numéros de série : {lista}"
+      "seriales": "Numéros de série : {lista}",
+      "unidadPorDefecto": "u."
     },
     "secciones": {
       "detalle": "Détail",
@@ -12024,7 +12025,8 @@
       "denominacion": "Coupure",
       "subtotal": "Sous-total",
       "base": "Base",
-      "tarifa": "Taux (%)"
+      "tarifa": "Taux (%)",
+      "unidad": "Unité"
     },
     "vacios": {
       "lineas": "Aucune ligne.",

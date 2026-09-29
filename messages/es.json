@@ -12081,7 +12081,8 @@
     "lineas": {
       "impuesto": "Impuesto",
       "incluido": "(incl.)",
-      "seriales": "Seriales: {lista}"
+      "seriales": "Seriales: {lista}",
+      "unidadPorDefecto": "und"
     },
     "secciones": {
       "detalle": "Detalle",
@@ -12129,7 +12130,8 @@
       "denominacion": "Denominación",
       "subtotal": "Subtotal",
       "base": "Base",
-      "tarifa": "Tarifa (%)"
+      "tarifa": "Tarifa (%)",
+      "unidad": "Unidad"
     },
     "vacios": {
       "lineas": "Sin líneas.",

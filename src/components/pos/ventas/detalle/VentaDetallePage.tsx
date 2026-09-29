@@ -174,6 +174,7 @@ export function VentaDetallePage({ ventaId }: { ventaId: string }) {
         items: venta.lineas.map((l) => ({
           productName: l.nombre ?? t('detalle.productos.sinNombre'),
           quantity: l.cantidad,
+          ...(l.unidad ? { unit: l.unidad, qtyDecimals: l.decimales ?? 3 } : {}),
           unitPrice: l.precio,
           total: l.total,
           taxAmount: l.impuesto,

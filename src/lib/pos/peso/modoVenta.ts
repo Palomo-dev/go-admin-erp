@@ -138,3 +138,12 @@ export function pasoCantidad(decimales: number): number {
   const d = Math.max(0, Math.min(3, Math.trunc(decimales)));
   return d === 0 ? 1 : Number((1 / 10 ** d).toFixed(d));
 }
+
+/**
+ * Campos de cantidad de una línea impresa (`@printing`): unidad y decimales
+ * solo en productos por peso o medida; nada en los demás (siguen «3x»).
+ */
+export function camposCantidadImpresa(p: ProductoModoVenta | null | undefined): { unit?: string; qtyDecimals?: number } {
+  const unit = unidadVisible(p);
+  return unit ? { unit, qtyDecimals: decimalesCantidad(p) } : {};
+}

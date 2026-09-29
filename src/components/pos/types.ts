@@ -1,5 +1,6 @@
 // Tipos para el sistema POS
 import type { MembresiaVendida } from '@/lib/pos/venta/membresias';
+import type { Pesaje } from '@/lib/pos/peso/pesada';
 
 export interface Category {
   id: number;
@@ -58,6 +59,19 @@ export interface Product {
    * marca una membresía, que exige cliente titular en el cobro (P1).
    */
   service_type?: string | null;
+  /**
+   * Cómo se vende (docs/design/PRODUCTOS-POR-PESO-BASCULA.md): 'unit' (hoy),
+   * 'weight' (kg/lb, se pesa) o 'measure' (m/L con decimales). El precio
+   * (`price`) es siempre por `unit_code`.
+   */
+  sale_mode?: 'unit' | 'weight' | 'measure' | null;
+  qty_decimals?: number | null;
+  price_ref_qty?: number | string | null;
+  price_ref_unit_code?: string | null;
+  min_sale_qty?: number | string | null;
+  default_tare_qty?: number | string | null;
+  tare_required?: boolean | null;
+  require_scale?: boolean | null;
 }
 
 export interface Customer {
@@ -118,6 +132,11 @@ export interface CartItem {
   /** Si lo último enviado de esta línea era alergia. */
   kitchen_sent_allergy?: boolean;
   modifiers?: CartItemModifier[];
+  /**
+   * Pesada de una línea por peso (`notes.pesaje` en `pos_checkout_v1`). Cada
+   * pesada es una línea propia: no se funde con otra del mismo producto.
+   */
+  pesaje?: Pesaje;
   created_at: string;
   updated_at: string;
 }

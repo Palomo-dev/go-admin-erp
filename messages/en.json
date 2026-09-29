@@ -8614,7 +8614,11 @@
         "toastProgramadoDetalle": "{precio} will take effect on {dia}.",
         "toastSinCambios": "No changes",
         "toastSinCambiosDetalle": "The price was already that.",
-        "toastError": "The price could not be updated"
+        "toastError": "The price could not be updated",
+        "cadaReferencia": "per {cantidad} {unidad}",
+        "nuevoPrecioReferencia": "New price {referencia}",
+        "nuevoPrecioPor": "New price per {unidad}",
+        "seGuardaComo": "Stored as {precio} / {unidad}"
       },
       "dialogoCosto": {
         "titulo": "Update cost",

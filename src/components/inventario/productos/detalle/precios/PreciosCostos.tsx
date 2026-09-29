@@ -25,6 +25,7 @@ import {
 import { DialogoCosto } from './DialogoCosto';
 import { DialogoPrecio } from './DialogoPrecio';
 import { GraficoPrecios } from './GraficoPrecios';
+import { unidadVisible, type ProductoModoVenta } from '@/lib/pos/peso/modoVenta';
 
 const LIMITE = 500;
 
@@ -40,6 +41,9 @@ export function PreciosCostos() {
   const ta = useTranslations('productoDetalle.acciones');
   const tc = useTranslations('productoDetalle.comun');
   const { producto, organizacionId, resumen, cargandoResumen, permisos, moneda, fechas, recargar, mensajeError } = useProductoDetalle();
+  // Por peso o medida el precio y el costo son por la unidad de venta: «$ 18.900 / kg».
+  const unidadVenta = unidadVisible(producto as ProductoModoVenta);
+  const porUnidad = unidadVenta ? ` / ${unidadVenta}` : '';
   const locale = useLocaleIntl();
 
   const [filas, setFilas] = useState<FilaVigencia[]>([]);
@@ -145,7 +149,7 @@ export function PreciosCostos() {
       encabezado: vista === 'precio' ? t('tabla.precio') : t('tabla.costo'),
       variante: 'importe',
       alinear: 'derecha',
-      celda: (f) => <span className={f.cancelado ? 'text-fg-muted line-through' : 'font-semibold'}>{moneda.formatear(f.valor)}</span>,
+      celda: (f) => <span className={f.cancelado ? 'text-fg-muted line-through' : 'font-semibold'}>{moneda.formatear(f.valor)}{porUnidad}</span>,
     },
     ...(vista === 'precio'
       ? ([
@@ -186,7 +190,10 @@ export function PreciosCostos() {
       {/* Tarjetas: precio, costo y programado (A.9 #1-#3) */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Tarjeta titulo={t('precioActual')} ayuda={t('precioActualAyuda')} cargando={cargandoResumen && !resumen}>
-          <p className="text-3xl font-semibold tabular-nums text-fg">{precio !== null ? moneda.formatear(precio) : t('sinPrecio')}</p>
+          <p className="text-3xl font-semibold tabular-nums text-fg">
+            {precio !== null ? moneda.formatear(precio) : t('sinPrecio')}
+            {precio !== null && porUnidad ? <span className="ml-1 text-base font-normal text-fg-muted">{porUnidad}</span> : null}
+          </p>
           {descuento !== null && comparacion !== null && (
             <p className="mt-1 flex items-center gap-2 text-sm">
               <Badge tono="peligro" tamano="sm">
@@ -199,7 +206,10 @@ export function PreciosCostos() {
         </Tarjeta>
 
         <Tarjeta titulo={t('costoActual')} ayuda={t('costoActualAyuda')} cargando={cargandoResumen && !resumen}>
-          <p className="text-3xl font-semibold tabular-nums text-fg">{costo !== null ? moneda.formatear(costo) : t('sinCosto')}</p>
+          <p className="text-3xl font-semibold tabular-nums text-fg">
+            {costo !== null ? moneda.formatear(costo) : t('sinCosto')}
+            {costo !== null && porUnidad ? <span className="ml-1 text-base font-normal text-fg-muted">{porUnidad}</span> : null}
+          </p>
           <p className="mt-1 flex items-center gap-2 text-sm text-fg-secondary">
             {margen !== null ? <Badge tono={tonoMargen(margen)} tamano="sm">{t('margen', { valor: margen })}</Badge> : t('sinMargen')}
           </p>
@@ -309,7 +319,7 @@ export function PreciosCostos() {
                   {t('tabla.hasta')}: {badgeVigencia(f)}
                 </span>
               }
-              valor={<span className={f.cancelado ? 'text-fg-muted line-through' : undefined}>{moneda.formatear(f.valor)}</span>}
+              valor={<span className={f.cancelado ? 'text-fg-muted line-through' : undefined}>{moneda.formatear(f.valor)}{porUnidad}</span>}
               meta={incluirVariantes ? nombreProducto(f) : vista === 'costo' ? (f.proveedor ?? undefined) : undefined}
               etiquetas={
                 <>

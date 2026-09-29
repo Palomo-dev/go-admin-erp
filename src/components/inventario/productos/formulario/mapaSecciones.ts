@@ -75,6 +75,8 @@ export const PASO_DE_CAMPO: Record<CampoFormulario, PasoMovil> = {
   dimensiones: 'detalles',
   receta: 'detalles',
   service_type: 'esencial',
+  // «Cómo se vende» va con el precio de venta (paso 1, Figma P6).
+  modo_venta: 'esencial',
   // Móvil: la configuración de la membresía vive en el paso 2 (Figma A2 980:1146).
   membresia_duracion: 'inventario',
   membresia_cobro: 'inventario',

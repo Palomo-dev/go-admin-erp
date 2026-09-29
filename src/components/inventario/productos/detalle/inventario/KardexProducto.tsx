@@ -57,7 +57,7 @@ export function KardexProducto() {
   const tc = useTranslations('productoDetalle.comun');
   const { producto, organizacionId, resumen, sucursalActiva, fechas, moneda, mensajeError } = useProductoDetalle();
   const { toast } = useToast();
-  const cantidad = useCantidad();
+  const cantidad = useCantidad(producto);
   const localeIntl = useLocaleIntl();
   const etiquetaRango = useEtiquetaRango();
   const hoy = fechas.getToday();

@@ -110,4 +110,11 @@ export interface ProductoDetalle {
   product_suppliers?: ProveedorDeProducto[];
   product_tax_relations?: { tax_id: string; organization_taxes: { id: string; name: string; rate: number | string } | null }[];
   units?: { code: string; name: string } | null;
+  /** Cómo se vende (PRODUCTOS-POR-PESO-BASCULA.md): el precio es por `unit_code` (por kg). */
+  sale_mode?: 'unit' | 'weight' | 'measure' | string | null;
+  qty_decimals?: number | null;
+  price_ref_qty?: number | string | null;
+  price_ref_unit_code?: string | null;
+  min_sale_qty?: number | string | null;
+  require_scale?: boolean | null;
 }

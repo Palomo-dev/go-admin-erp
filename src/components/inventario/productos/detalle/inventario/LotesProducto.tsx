@@ -39,7 +39,7 @@ export function LotesProducto() {
   const t = useTranslations('productoDetalle.inventario');
   const tc = useTranslations('productoDetalle.comun');
   const { producto, organizacionId, sucursalActiva, fechas, mensajeError, irA } = useProductoDetalle();
-  const cantidad = useCantidad();
+  const cantidad = useCantidad(producto);
   const localeIntl = useLocaleIntl();
   const [lotes, setLotes] = useState<LoteProducto[] | null>(null);
   const [error, setError] = useState<string | null>(null);

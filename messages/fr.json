@@ -8509,7 +8509,11 @@
         "toastProgramadoDetalle": "{precio} s’appliquera à partir du {dia}.",
         "toastSinCambios": "Aucun changement",
         "toastSinCambiosDetalle": "Le prix était déjà celui-ci.",
-        "toastError": "Impossible de mettre à jour le prix"
+        "toastError": "Impossible de mettre à jour le prix",
+        "cadaReferencia": "les {cantidad} {unidad}",
+        "nuevoPrecioReferencia": "Nouveau prix {referencia}",
+        "nuevoPrecioPor": "Nouveau prix le {unidad}",
+        "seGuardaComo": "Enregistré comme {precio} / {unidad}"
       },
       "dialogoCosto": {
         "titulo": "Mettre à jour le coût",

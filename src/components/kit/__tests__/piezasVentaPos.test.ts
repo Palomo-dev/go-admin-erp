@@ -94,10 +94,13 @@ describe('CartLine: controles, descuento y cantidad', () => {
     expect(mostrarAgregarDescuento({ hayAccion: false })).toBe(false);
   });
 
-  test('el campo de cantidad no acepta ≤ 0 ni vacío (parseInt, como hoy)', () => {
+  test('el campo de cantidad no acepta ≤ 0 ni vacío; por unidad solo enteros', () => {
     expect(cantidadDesdeTexto('3')).toBe(3);
     expect(cantidadDesdeTexto(' 12 ')).toBe(12);
-    expect(cantidadDesdeTexto('2.7')).toBe(2);
+    // Antes parseInt truncaba «2.7» a 2 en silencio (PRODUCTOS-POR-PESO-BASCULA.md §1.3):
+    // por unidad un decimal ya no es una cantidad; por peso se admiten sus decimales.
+    expect(cantidadDesdeTexto('2.7')).toBeNull();
+    expect(cantidadDesdeTexto('2,7', 3)).toBe(2.7);
     expect(cantidadDesdeTexto('0')).toBeNull();
     expect(cantidadDesdeTexto('-1')).toBeNull();
     expect(cantidadDesdeTexto('')).toBeNull();

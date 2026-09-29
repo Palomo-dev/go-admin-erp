@@ -20984,5 +20984,241 @@
       "reenviando": "Sending…",
       "espera": "We sent several links in a row. Wait a few minutes."
     }
+  },
+  "inventarioUnidades": {
+    "tituloUnidades": "Units of measure",
+    "tituloConversiones": "Unit conversions",
+    "migaInventario": "Inventory",
+    "migaUnidades": "Units of measure",
+    "migaConversiones": "Conversions",
+    "cargando": "Loading units…",
+    "subtituloUnidades": "{sistema} system · {propias, plural, =0 {none of your own} one {# of your own} other {# of your own}}",
+    "subtituloConversiones": "{total, plural, one {# conversion} other {# conversions}} · {sistema} system",
+    "subtituloMovilUnidades": "{n, plural, one {# unit} other {# units}}",
+    "subtituloMovilConversiones": "{n, plural, one {# conversion} other {# conversions}}",
+    "nuevaUnidad": "New unit",
+    "nuevaConversion": "New conversion",
+    "pestanas": {
+      "unidades": "Units",
+      "conversiones": "Conversions"
+    },
+    "buscarUnidad": "Search by code or name",
+    "buscarConversion": "Search by unit (KG, gram…) or product",
+    "verResultados": "Show {n, plural, one {# result} other {# results}}",
+    "errorCarga": "We couldn't load the units",
+    "inactiva": "Inactive",
+    "dianCorto": "E-invoice: {codigo} · {nombre}",
+    "revisar": "Review",
+    "notaAgrupadas": "System inverses are grouped in the same row.",
+    "tipos": {
+      "count": "Count",
+      "weight": "Weight",
+      "volume": "Volume",
+      "length": "Length",
+      "area": "Area"
+    },
+    "ambitos": {
+      "sistema": "System",
+      "organizacion": "My company",
+      "producto": "Per product",
+      "productoDe": "Only {producto}"
+    },
+    "acciones": {
+      "verProductos": "View its {n, plural, one {# product} other {# products}}",
+      "verConversiones": "View its {n, plural, one {# conversion} other {# conversions}}",
+      "nuevaConversionDesde": "New conversion from {codigo}",
+      "editar": "Edit",
+      "eliminar": "Delete",
+      "motivoUnidadEnUso": "Products or recipes use it",
+      "exportar": "Export CSV",
+      "actualizar": "Refresh",
+      "verRecetas": "View recipes that use it",
+      "editarFactor": "Edit factor",
+      "versionOrganizacion": "Create a version for my company",
+      "porProducto": "Define per product…",
+      "verInversa": "View the inverse",
+      "crearInversa": "Create the inverse"
+    },
+    "columnas": {
+      "codigo": "Code",
+      "nombre": "Name",
+      "tipo": "Type",
+      "ambito": "Scope",
+      "productos": "Products",
+      "conversiones": "Conversions",
+      "equivalencia": "Equivalence",
+      "inversa": "Inverse",
+      "enRecetas": "In recipes"
+    },
+    "filtros": {
+      "tipo": "Type",
+      "todos": "All",
+      "ambito": "Scope",
+      "ambitoTodas": "System and my company",
+      "uso": "In use",
+      "usos": {
+        "todas": "All",
+        "conProductos": "With products",
+        "sinUso": "Unused"
+      },
+      "conversiones": "Conversions",
+      "sinConversion": "No conversion",
+      "nota": "System units are read-only.",
+      "unidad": "Unit",
+      "soloRevisar": "To review",
+      "notaConversiones": "System conversions are read-only: create a version for your company or per product."
+    },
+    "kpi": {
+      "etiquetaUnidades": "Units summary",
+      "enUso": "Units in use",
+      "enUsoDetalle": "Of {n} available",
+      "sinUnidad": "Products without a unit",
+      "sinUnidadDetalle": "Assign from the catalog",
+      "sinUnidadNinguno": "All have a unit",
+      "sinConversion": "Units without conversion",
+      "sinConversionNinguna": "All have a conversion",
+      "recetasMezcladas": "Recipes with mixed units",
+      "recetasSinConversion": "{n, plural, one {# without conversion: consumption can't be converted} other {# without conversion: consumption can't be converted}}",
+      "recetasTodasConConversion": "All have a conversion",
+      "etiquetaConversiones": "Conversions summary",
+      "conversiones": "Conversions",
+      "conversionesDetalle": "{sistema} system · {organizacion} my company{producto, plural, =0 {} other { · # per product}}",
+      "usadasRecetas": "Used in recipes",
+      "usadasRecetasDetalle": "They convert consumption when producing",
+      "porRevisar": "To review",
+      "porRevisarDetalle": "{unidades} aren't the same for every product",
+      "porRevisarNinguna": "None",
+      "ingredientesSinConversion": "Ingredients without conversion",
+      "ingredientesSinConversionDetalle": "Consumption can't be converted",
+      "ingredientesTodos": "All can be converted"
+    },
+    "tarjeta": {
+      "conversiones": "{n, plural, one {# conversion} other {# conversions}}",
+      "sinConversion": "No conversion",
+      "propia": "Own",
+      "sinConv": "No conv.",
+      "recetas": "{n, plural, =0 {No recipes} one {In # recipe} other {In # recipes}}"
+    },
+    "vacio": {
+      "unidades": {
+        "titulo": "No units",
+        "descripcion": "Create your first unit (bag, bundle…)."
+      },
+      "conversiones": {
+        "titulo": "No conversions",
+        "descripcion": "Create one to buy in one unit and deduct in another."
+      }
+    },
+    "sinPermiso": {
+      "titulo": "You don't have access to units",
+      "descripcion": "Ask an administrator for the inventory permission to see them."
+    },
+    "sustantivo": {
+      "unidad": "unit",
+      "unidades": "units",
+      "conversion": "conversion",
+      "conversiones": "conversions"
+    },
+    "masivo": {
+      "exportar": "Export",
+      "eliminar": "Delete",
+      "motivoEliminarUnidades": "Only your own unused units are deleted",
+      "motivoEliminarConversiones": "System conversions aren't deleted"
+    },
+    "unidad": {
+      "tituloNueva": "New unit",
+      "tituloEditar": "Edit {codigo}",
+      "codigo": "Code",
+      "ayudaCodigo": "Up to 3 letters or numbers: that's what fits in conversions.",
+      "ayudaCodigoFijo": "The code doesn't change: products, recipes and conversions use it.",
+      "errorCodigo": "1 to 3 letters or numbers, no spaces.",
+      "errorCodigoEnUso": "The code {codigo} already exists. Choose another.",
+      "nombre": "Name",
+      "errorNombre": "Enter the name.",
+      "tipo": "Type",
+      "dian": "Unit on the e-invoice",
+      "ayudaDian": "The DIAN unit used on invoice lines for products in this unit. If none: 94 Unit.",
+      "dianNinguna": "94 · Unit (default)",
+      "activa": "Active · offered in forms",
+      "guardar": "Save changes",
+      "crear": "Create unit",
+      "errorTipoConConversiones": "It has conversions with units of another type: change or delete them first."
+    },
+    "toast": {
+      "unidadCreada": "Unit {codigo} created",
+      "unidadActualizada": "Unit {codigo} updated",
+      "unidadesEliminadas": "{n, plural, one {# unit deleted} other {# units deleted}}",
+      "conversionesEliminadas": "{n, plural, one {# conversion deleted} other {# conversions deleted}}",
+      "conversionCreada": "Conversion created",
+      "conversionActualizada": "Factor updated"
+    },
+    "errores": {
+      "sinPermiso": "You don't have permission to change units.",
+      "desconocido": "We couldn't save. Try again.",
+      "conversionEnUso": "Not deleted: {n, plural, one {an active recipe line would be left} other {# active recipe lines would be left}} without a conversion.",
+      "unidadEnUso": "Not deleted: products, recipes or productions use the unit."
+    },
+    "eliminar": {
+      "tituloConversion": "Delete {equivalencia}?",
+      "tituloConversiones": "Delete {n, plural, one {# conversion} other {# conversions}}?",
+      "descripcionConversiones": "If an active recipe needs it to convert its consumption, it isn't deleted.",
+      "tituloUnidad": "Delete the unit {codigo}?",
+      "tituloUnidades": "Delete {n, plural, one {# unit} other {# units}}?",
+      "descripcionUnidades": "Only your own unused units are deleted, with their conversions."
+    },
+    "csv": {
+      "codigo": "Code",
+      "nombre": "Name",
+      "tipo": "Type",
+      "ambito": "Scope",
+      "dian": "DIAN unit",
+      "productos": "Products",
+      "conversiones": "Conversions",
+      "de": "From",
+      "a": "To",
+      "factor": "Factor",
+      "producto": "Product",
+      "recetas": "In recipes"
+    },
+    "dialogoConversion": {
+      "tituloEditar": "Edit {de} → {a}",
+      "descripcion": "To buy in one unit and deduct in another.",
+      "elegirUnidad": "Choose a unit",
+      "intercambiar": "Swap units",
+      "a": "To",
+      "equivale": "1 {unidad} equals",
+      "aplicaA": "Applies to",
+      "toda": "Whole organization",
+      "soloEste": "Only this product",
+      "unProducto": "A product",
+      "soloDe": "Only for {producto}.",
+      "producto": "Product",
+      "buscarProducto": "Search product by name or SKU",
+      "productoVacio": "Type to search",
+      "productoSinResultados": "No product matches",
+      "productoError": "We couldn't search products",
+      "eligeProducto": "Choose the product",
+      "tiposDistintos": "{de} and {a} are different types: they can't be converted without the product's density or weight. Define the conversion per product.",
+      "ejemplo": "Receiving 2 {de} adds {total} {a} to the stock ledger.",
+      "alcanceOrganizacion": "It's saved for the whole organization.",
+      "guardarCambios": "Save factor",
+      "crear": "Create conversion",
+      "tipos": {
+        "count": "Count",
+        "weight": "Weight",
+        "volume": "Volume",
+        "length": "Length",
+        "area": "Area"
+      },
+      "errores": {
+        "conversion_repetida": "That conversion already exists with the same scope: edit its factor.",
+        "tipos_distintos": "They're units of different types: only a per-product conversion can cross types.",
+        "sin_permiso": "You don't have permission to create conversions.",
+        "misma_unidad": "Choose two different units.",
+        "factor_invalido": "The factor must be greater than 0.",
+        "producto_ajeno": "The product isn't from your organization.",
+        "conversion_del_sistema": "System conversions are read-only."
+      }
+    }
   }
 }

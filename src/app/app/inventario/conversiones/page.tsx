@@ -1,7 +1,13 @@
-'use client';
+import { Suspense } from 'react';
+import { UnidadesPage } from '@/components/inventario/unidades';
 
-import { ConversionesPage } from '@/components/inventario/unidades';
-
-export default function Page() {
-  return <ConversionesPage />;
+/** «Conversiones de unidades» (pestaña Conversiones de «Unidades y conversiones»). */
+export default function InventarioConversionesPage() {
+  return (
+    <div className="min-h-full bg-canvas">
+      <Suspense fallback={null}>
+        <UnidadesPage pestana="conversiones" />
+      </Suspense>
+    </div>
+  );
 }

@@ -7,6 +7,6 @@ export { EditorReceta, type EditorRecetaProps } from './EditorReceta';
 export { FilaIngrediente, type FilaIngredienteProps } from './FilaIngrediente';
 export { ResumenCostoReceta, type ResumenCostoRecetaProps } from './ResumenCostoReceta';
 export { SelectorAlcanceReceta, type SelectorAlcanceRecetaProps, type VarianteAlcance } from './SelectorAlcanceReceta';
-export { DialogoConversion, type DialogoConversionProps } from './DialogoConversion';
+export { DialogoConversion, type DialogoConversionProps, type ProductoConversion, type ConversionEditable } from './DialogoConversion';
 export { useCostoReceta, type EstadoCostoReceta } from './useCostoReceta';
 export * from './recetaLogica';

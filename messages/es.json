@@ -20984,5 +20984,241 @@
       "reenviando": "Enviando…",
       "espera": "Enviamos varios enlaces seguidos. Espera unos minutos."
     }
+  },
+  "inventarioUnidades": {
+    "tituloUnidades": "Unidades de medida",
+    "tituloConversiones": "Conversiones de unidades",
+    "migaInventario": "Inventario",
+    "migaUnidades": "Unidades de medida",
+    "migaConversiones": "Conversiones",
+    "cargando": "Cargando unidades…",
+    "subtituloUnidades": "{sistema} del sistema · {propias, plural, =0 {ninguna propia} one {# propia} other {# propias}}",
+    "subtituloConversiones": "{total, plural, one {# conversión} other {# conversiones}} · {sistema} del sistema",
+    "subtituloMovilUnidades": "{n, plural, one {# unidad} other {# unidades}}",
+    "subtituloMovilConversiones": "{n, plural, one {# conversión} other {# conversiones}}",
+    "nuevaUnidad": "Nueva unidad",
+    "nuevaConversion": "Nueva conversión",
+    "pestanas": {
+      "unidades": "Unidades",
+      "conversiones": "Conversiones"
+    },
+    "buscarUnidad": "Buscar por código o nombre",
+    "buscarConversion": "Buscar por unidad (KG, gramo…) o producto",
+    "verResultados": "Ver {n, plural, one {# resultado} other {# resultados}}",
+    "errorCarga": "No pudimos cargar las unidades",
+    "inactiva": "Inactiva",
+    "dianCorto": "Factura electrónica: {codigo} · {nombre}",
+    "revisar": "Revisar",
+    "notaAgrupadas": "Las inversas del sistema se agrupan en la misma fila.",
+    "tipos": {
+      "count": "Conteo",
+      "weight": "Peso",
+      "volume": "Volumen",
+      "length": "Longitud",
+      "area": "Área"
+    },
+    "ambitos": {
+      "sistema": "Del sistema",
+      "organizacion": "Mi empresa",
+      "producto": "Por producto",
+      "productoDe": "Solo {producto}"
+    },
+    "acciones": {
+      "verProductos": "Ver sus {n, plural, one {# producto} other {# productos}}",
+      "verConversiones": "Ver sus {n, plural, one {# conversión} other {# conversiones}}",
+      "nuevaConversionDesde": "Nueva conversión desde {codigo}",
+      "editar": "Editar",
+      "eliminar": "Eliminar",
+      "motivoUnidadEnUso": "La usan productos o recetas",
+      "exportar": "Exportar CSV",
+      "actualizar": "Actualizar",
+      "verRecetas": "Ver recetas que la usan",
+      "editarFactor": "Editar factor",
+      "versionOrganizacion": "Crear versión para mi empresa",
+      "porProducto": "Definir por producto…",
+      "verInversa": "Ver la inversa",
+      "crearInversa": "Crear la inversa"
+    },
+    "columnas": {
+      "codigo": "Código",
+      "nombre": "Nombre",
+      "tipo": "Tipo",
+      "ambito": "Ámbito",
+      "productos": "Productos",
+      "conversiones": "Conversiones",
+      "equivalencia": "Equivalencia",
+      "inversa": "Inversa",
+      "enRecetas": "En recetas"
+    },
+    "filtros": {
+      "tipo": "Tipo",
+      "todos": "Todos",
+      "ambito": "Ámbito",
+      "ambitoTodas": "Del sistema y de mi empresa",
+      "uso": "En uso",
+      "usos": {
+        "todas": "Todas",
+        "conProductos": "Con productos",
+        "sinUso": "Sin uso"
+      },
+      "conversiones": "Conversiones",
+      "sinConversion": "Sin conversión",
+      "nota": "Las unidades del sistema son de solo lectura.",
+      "unidad": "Unidad",
+      "soloRevisar": "Por revisar",
+      "notaConversiones": "Las conversiones del sistema son de solo lectura: crea una versión para tu empresa o por producto."
+    },
+    "kpi": {
+      "etiquetaUnidades": "Resumen de unidades",
+      "enUso": "Unidades en uso",
+      "enUsoDetalle": "De {n} disponibles",
+      "sinUnidad": "Productos sin unidad",
+      "sinUnidadDetalle": "Asignar desde el catálogo",
+      "sinUnidadNinguno": "Todos tienen unidad",
+      "sinConversion": "Unidades sin conversión",
+      "sinConversionNinguna": "Todas tienen conversión",
+      "recetasMezcladas": "Recetas con unidades mezcladas",
+      "recetasSinConversion": "{n, plural, one {# sin conversión: el consumo no se puede convertir} other {# sin conversión: el consumo no se puede convertir}}",
+      "recetasTodasConConversion": "Todas tienen conversión",
+      "etiquetaConversiones": "Resumen de conversiones",
+      "conversiones": "Conversiones",
+      "conversionesDetalle": "{sistema} del sistema · {organizacion} de mi empresa{producto, plural, =0 {} other { · # por producto}}",
+      "usadasRecetas": "Usadas en recetas",
+      "usadasRecetasDetalle": "Convierten consumos al producir",
+      "porRevisar": "Por revisar",
+      "porRevisarDetalle": "{unidades} no son iguales para todos los productos",
+      "porRevisarNinguna": "Ninguna",
+      "ingredientesSinConversion": "Ingredientes sin conversión",
+      "ingredientesSinConversionDetalle": "El consumo no se puede convertir",
+      "ingredientesTodos": "Todos se pueden convertir"
+    },
+    "tarjeta": {
+      "conversiones": "{n, plural, one {# conversión} other {# conversiones}}",
+      "sinConversion": "Sin conversión",
+      "propia": "Propia",
+      "sinConv": "Sin conv.",
+      "recetas": "{n, plural, =0 {Sin recetas} one {En # receta} other {En # recetas}}"
+    },
+    "vacio": {
+      "unidades": {
+        "titulo": "No hay unidades",
+        "descripcion": "Crea la primera unidad propia (bulto, atado…)."
+      },
+      "conversiones": {
+        "titulo": "No hay conversiones",
+        "descripcion": "Crea una para comprar en una unidad y descontar en otra."
+      }
+    },
+    "sinPermiso": {
+      "titulo": "No tienes acceso a las unidades",
+      "descripcion": "Pide a un administrador el permiso de inventario para verlas."
+    },
+    "sustantivo": {
+      "unidad": "unidad",
+      "unidades": "unidades",
+      "conversion": "conversión",
+      "conversiones": "conversiones"
+    },
+    "masivo": {
+      "exportar": "Exportar",
+      "eliminar": "Eliminar",
+      "motivoEliminarUnidades": "Solo se eliminan unidades propias sin uso",
+      "motivoEliminarConversiones": "Las conversiones del sistema no se eliminan"
+    },
+    "unidad": {
+      "tituloNueva": "Nueva unidad",
+      "tituloEditar": "Editar {codigo}",
+      "codigo": "Código",
+      "ayudaCodigo": "Máximo 3 letras o números: así cabe en conversiones.",
+      "ayudaCodigoFijo": "El código no cambia: lo usan productos, recetas y conversiones.",
+      "errorCodigo": "De 1 a 3 letras o números, sin espacios.",
+      "errorCodigoEnUso": "El código {codigo} ya existe. Elige otro.",
+      "nombre": "Nombre",
+      "errorNombre": "Escribe el nombre.",
+      "tipo": "Tipo",
+      "dian": "Unidad en la factura electrónica",
+      "ayudaDian": "La unidad DIAN con la que salen las líneas de los productos en esta unidad. Sin elegir: 94 Unidad.",
+      "dianNinguna": "94 · Unidad (por defecto)",
+      "activa": "Activa · se ofrece en los formularios",
+      "guardar": "Guardar cambios",
+      "crear": "Crear unidad",
+      "errorTipoConConversiones": "Tiene conversiones con unidades de otro tipo: cámbialas o elimínalas primero."
+    },
+    "toast": {
+      "unidadCreada": "Unidad {codigo} creada",
+      "unidadActualizada": "Unidad {codigo} actualizada",
+      "unidadesEliminadas": "{n, plural, one {# unidad eliminada} other {# unidades eliminadas}}",
+      "conversionesEliminadas": "{n, plural, one {# conversión eliminada} other {# conversiones eliminadas}}",
+      "conversionCreada": "Conversión creada",
+      "conversionActualizada": "Factor actualizado"
+    },
+    "errores": {
+      "sinPermiso": "No tienes permiso para cambiar las unidades.",
+      "desconocido": "No pudimos guardar. Intenta de nuevo.",
+      "conversionEnUso": "No se eliminó: {n, plural, one {una línea de receta activa se quedaría} other {# líneas de recetas activas se quedarían}} sin conversión.",
+      "unidadEnUso": "No se eliminó: la unidad la usan productos, recetas o producciones."
+    },
+    "eliminar": {
+      "tituloConversion": "¿Eliminar {equivalencia}?",
+      "tituloConversiones": "¿Eliminar {n, plural, one {# conversión} other {# conversiones}}?",
+      "descripcionConversiones": "Si una receta activa la necesita para convertir su consumo, no se elimina.",
+      "tituloUnidad": "¿Eliminar la unidad {codigo}?",
+      "tituloUnidades": "¿Eliminar {n, plural, one {# unidad} other {# unidades}}?",
+      "descripcionUnidades": "Solo se eliminan unidades propias sin uso, con sus conversiones."
+    },
+    "csv": {
+      "codigo": "Código",
+      "nombre": "Nombre",
+      "tipo": "Tipo",
+      "ambito": "Ámbito",
+      "dian": "Unidad DIAN",
+      "productos": "Productos",
+      "conversiones": "Conversiones",
+      "de": "De",
+      "a": "A",
+      "factor": "Factor",
+      "producto": "Producto",
+      "recetas": "En recetas"
+    },
+    "dialogoConversion": {
+      "tituloEditar": "Editar {de} → {a}",
+      "descripcion": "Para comprar en una unidad y descontar en otra.",
+      "elegirUnidad": "Elige una unidad",
+      "intercambiar": "Intercambiar unidades",
+      "a": "A",
+      "equivale": "1 {unidad} equivale a",
+      "aplicaA": "Aplica a",
+      "toda": "Toda la organización",
+      "soloEste": "Solo este producto",
+      "unProducto": "Un producto",
+      "soloDe": "Solo para {producto}.",
+      "producto": "Producto",
+      "buscarProducto": "Buscar producto por nombre o SKU",
+      "productoVacio": "Escribe para buscar",
+      "productoSinResultados": "Ningún producto coincide",
+      "productoError": "No pudimos buscar productos",
+      "eligeProducto": "Elige el producto",
+      "tiposDistintos": "{de} y {a} son de distinto tipo: no se puede convertir sin la densidad o el peso del producto. Define la conversión por producto.",
+      "ejemplo": "Al recibir 2 {de} entran {total} {a} al kardex.",
+      "alcanceOrganizacion": "Se guarda para toda la organización.",
+      "guardarCambios": "Guardar factor",
+      "crear": "Crear conversión",
+      "tipos": {
+        "count": "Conteo",
+        "weight": "Peso",
+        "volume": "Volumen",
+        "length": "Longitud",
+        "area": "Área"
+      },
+      "errores": {
+        "conversion_repetida": "Ya existe esa conversión con el mismo alcance: edita su factor.",
+        "tipos_distintos": "Son unidades de distinto tipo: solo una conversión de un producto puede cruzar tipos.",
+        "sin_permiso": "No tienes permiso para crear conversiones.",
+        "misma_unidad": "Elige dos unidades distintas.",
+        "factor_invalido": "El factor debe ser mayor que 0.",
+        "producto_ajeno": "El producto no es de tu organización.",
+        "conversion_del_sistema": "Las conversiones del sistema son de solo lectura."
+      }
+    }
   }
 }

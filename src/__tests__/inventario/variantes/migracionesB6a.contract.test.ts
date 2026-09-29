@@ -44,7 +44,8 @@ describe('migraciones B6a', () => {
       const sql = sinComentarios(fs.readFileSync(path.join(MIGRACIONES, f), 'utf8'));
       for (const fn of funciones(sql)) {
         if (!fn.definer || fn.nombre.includes('_int_')) continue;
-        const exige = /fn_inventario_exigir_permiso|fn_inventario_permisos/.test(fn.cuerpo);
+        // Lectura sin datos sensibles (factor de conversión): basta la pertenencia.
+        const exige = /fn_inventario_exigir_permiso|fn_inventario_permisos/.test(fn.cuerpo) || (fn.nombre === 'fn_unidad_convertir' && /fn_assert_acceso_org/.test(fn.cuerpo));
         const comoActor = fn.nombre === 'fn_variantes_como_actor';
         if (!exige && !comoActor) malas.push(`${f}: ${fn.nombre} no exige permiso`);
         const revoca = new RegExp(`revoke all on function public\\.${fn.nombre}\\([^)]*\\) from public, anon`, 'i').test(sql);
@@ -65,7 +66,9 @@ describe('migraciones B6a', () => {
     const malas: string[] = [];
     for (const f of archivos) {
       const sql = sinComentarios(fs.readFileSync(path.join(MIGRACIONES, f), 'utf8'));
-      for (const fn of funciones(sql).filter((x) => x.nombre.includes('_int_'))) {
+      // `fn_receta_int_factor` (de B5) es invocadora y ya tenía EXECUTE para
+      // authenticated: su sobrecarga con producto mantiene ese contrato.
+      for (const fn of funciones(sql).filter((x) => x.nombre.includes('_int_') && x.nombre !== 'fn_receta_int_factor')) {
         const revoca = new RegExp(`revoke all on function public\\.${fn.nombre}\\([^)]*\\) from public, anon, authenticated`, 'i').test(sql);
         if (!revoca) malas.push(`${f}: ${fn.nombre}`);
         if (new RegExp(`grant execute on function public\\.${fn.nombre}\\(`, 'i').test(sql)) malas.push(`${f}: ${fn.nombre} con grant`);

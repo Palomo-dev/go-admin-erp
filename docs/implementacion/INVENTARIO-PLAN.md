@@ -1273,3 +1273,68 @@ asiento de ajustes sale de esa lista); las 6 RPC nuevas aparecen en
 - Un conteo con sobrantes y faltantes asienta el **neto** (una regla `gain` o `loss`), como pide P4;
   si el contador prefiere separar ganancia y pérdida, hace falta un asiento de varias líneas.
 - Tableta sin frames en Figma (se usa la vista de escritorio desde 640 px).
+
+---
+
+## Anexo B1 — Stock, Movimientos, Kardex y Lotes (2026-09-29)
+
+Commits: `193d3aa9` servidor (migraciones, rollbacks y contrato) · `21e36d6d` Stock, Movimientos y
+Lotes · `1069dc7d` Kardex · `88d54485` kardex y lotes del producto, tercer kardex retirado. Solo
+archivos de B1 (§5.2) y los namespaces `inventarioStock`, `inventarioMovimientos`,
+`inventarioKardex` e `inventarioLotes` en es/en/fr/pt.
+
+**Migraciones** (MCP; `.sql` y rollback en el repo; todas DEFINER con
+`fn_inventario_exigir_permiso` —que pasa por `fn_assert_acceso_org`— y `REVOKE … FROM anon, public`):
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929100000_inv_b1_1_stock_listado` | `fn_stock_listado`: paginado en el servidor, una fila por producto, variantes bajo su padre (P1: la fila propia del padre no se suma, sale en `sin_asignar`; con `agrupar=false`, aparte como «sin asignar a variante»), disponible = existencia − reservado, mínimo por (producto, sucursal), estados `negativo/agotado/bajo_minimo/disponible`, filtros (búsqueda por nombre, SKU, código de barras o lote; estado, categoría, seguimiento, proveedor, producto) y KPI reales. 0,31 s en la org más grande (137) |
+| `20260929100100_inv_b1_2_movimientos_kardex` | `fn_movimientos_listado`, `fn_kardex_saldo_corrido` (saldo corrido por producto sobre toda la historia del alcance; el período se aplica después) y `fn_kardex_descuadres` (pares producto-sucursal cuyo kardex no cuadra + filas sin historia). Días en la zona de la organización. Internas `fn_inv_int_filtro_movimientos` y `fn_inv_int_fila_movimiento` sin EXECUTE para `authenticated` |
+| `20260929100200_inv_b1_3_registrar_movimiento` | Primera versión de `fn_stock_registrar_movimiento` y `update_product_min_stock` endurecida con la misma firma (misma organización, permiso `ajustar` o `editar_catalogo`, `search_path`, mínimo ≥ 0; antes bastaba ser miembro, incluso inactivo) |
+| `20260929100300_inv_b1_4_lotes` | `fn_lotes_listado` (una fila por lote y sucursal, estado por vencimiento en el día de la organización, umbral 15/30/60/90), `fn_lotes_de_producto` (LotPicker), `fn_lote_guardar` (código único por producto → 23505 `lote_repetido`; sin código propone `L-AAAAMMDD`; la cantidad inicial entra por el ajuste), `fn_lote_ajustar`, `fn_lote_eliminar` (solo sin existencias, reservas ni historia) |
+| `20260929100400_inv_b1_5_registrar_por_el_ajuste` | Regla dura 7: `fn_stock_registrar_movimiento` pasa a **fachada de `fn_ajuste_guardar` + `fn_ajuste_aplicar` de B2** (un ajuste `entrada`/`salida` aplicado de una línea, `AJ-0001`, el movimiento solo por `fn_inv_int_mover` y un solo asiento del documento, P4). Rechaza padre con variantes (P1), exige lote si el producto maneja lotes y manda los productos con seriales a Ajustes |
+
+Pruebas en la base (DO … RAISE, sin dejar datos): entrada de 5 a 1.000 sobre 24 a 0 → `AJ-0161`
+aplicado, un asiento `inventory_adjustment`, kardex con origen `adjustment` y `avg_cost_after`
+172,41; salida mayor que la existencia → 23514 `stock_insuficiente`; lote nuevo con 12 uds →
+aparece en Lotes (por vencer), en Stock (existencia y conteo de lotes) y en el LotPicker; ajustar
+el lote a 10 → salida de 2 (`AJ-0164`); código repetido → 23505; eliminar un lote con existencias
+→ 23514. Un usuario con solo `inventory.view` (org 142) lista, pero registrar y fijar mínimos dan
+42501; otra organización y `anon` → 42501. **`fn_kardex_descuadres` sumado en todas las
+organizaciones = 4.899 pares, igual que D2.** `get_advisors` (security): ningún aviso nuevo de
+`anon_security_definer_function_executable` ni `function_search_path_mutable` por objetos de B1; las 11 RPC públicas aparecen, como todas, en `authenticated_security_definer_function_executable` (validan organización y permiso dentro) y las dos internas no.
+
+**Pantallas** (escritorio y móvil, estados vacío / cargando / sin resultados / error / sin
+permiso / sin sucursal, permisos de `usePermisosInventario`, fechas por `useFormatDate`, moneda por
+`useMonedaOrganizacion`, cantidades con 3 decimales):
+
+- Stock `581:276750`: KPI, aviso de negativos, aviso P1, filtros en la URL, menú ⋯ (kardex, lotes,
+  producto, registrar entrada/salida, trasladar → B3 con producto y sucursal, mínimo), selección
+  (trasladar, ajuste por conteo → B2, mínimo, exportar), «Nuevo movimiento» (entrada, salida,
+  conteo, traslado, recibir OC). Diálogos «Registrar entrada/salida» y «Definir stock mínimo».
+- Movimientos `586:286574`: `BadgeOrigenMovimiento` (el único mapa) y `EnlaceDocumento` resuelto
+  en una llamada por página; período del mes por defecto; tipos, dirección, ingredientes, «sin
+  documento», «solo los de <persona>»; aviso de los orígenes que la base rechazaba antes del 23/09.
+- Kardex `516:270497`: sin exigir `?producto=`; saldo del servidor; cuadre verde/rojo y diálogo de
+  descuadres; exportar filtros / página / histórico del producto.
+- Lotes `518:59165`: nuevo, editar, ajustar cantidad, dar de baja por merma, eliminar, rastrear
+  (Trazabilidad de B4); acepta `?busqueda=` (el enlace de Trazabilidad).
+- Detalle del producto › Inventario › Kardex y Lotes `525:64175`: mismas RPC y diálogos.
+- Reportes: el tercer kardex se retiró; la pestaña enlaza al kardex único.
+
+**Código retirado**: `StockTable/Filters/Header/Stats`, `MovimientosTable/Filters/Header/Stats`,
+`KardexTable/Filters/Header/Stats`, la pestaña de kardex de Reportes y los mapas duplicados de
+orígenes y rutas de `logicaInventario.ts`. `stockService`, `kardexService` y `LotesService` son
+fachadas de RPC; `LotesService` sale del guardarraíl 33.
+
+**Pendiente** (fuera de B1 o con dueño):
+- Menú lateral: «Kardex» sigue sin entrada en `lib/navigation/catalog.ts` (B10).
+- Figma dibuja y no se hizo: exportar a Excel (solo CSV), «Marcar vencidos», «Imprimir etiquetas de
+  lote» (B8), «bloquear la venta de vencidos» como ajuste de la organización (POS, B9) y el filtro
+  «Quién lo registró» como lista (se filtra desde el menú ⋯ de la fila). Tableta sin frames.
+- Ningún producto tiene `track_lots = true` y ningún formulario lo activa (B7): los lotes se crean y
+  se mueven, pero la venta no los descuenta por FEFO hasta que el producto lo active.
+- P2 (movimiento de apertura por la diferencia de D2/D3) queda para B10: la pantalla solo informa.
+- El commit `193d3aa9` llevó también el namespace `inventarioAjustes` de B2 (carrera con una
+  enmienda de otra sesión sobre `messages/*.json`); su contenido es el de B2, sin cambios.
+- Verificación en el navegador: no se hizo (sin sesión en el servidor de desarrollo del dueño).

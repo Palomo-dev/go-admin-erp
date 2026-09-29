@@ -1,210 +1,137 @@
 'use client';
 
-// Forzar renderizado dinámico para evitar errores de useSearchParams
-export const dynamic = 'force-dynamic';
-
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+/**
+ * Aceptar invitación — acceso v3 (R11; Figma sección 18, filas 7 a 7c;
+ * docs/design/AUTH-ACCESO-V2.md §11 y §13).
+ *
+ * Valida el código en el servidor (/api/auth/invite/context: 404 uniforme,
+ * nunca devuelve el código; 39999d0f) y pasa al asistente. Estados: sin
+ * código, invitación no válida o vencida (con «Pedir un enlace nuevo»), error
+ * con Reintentar. Al terminar se entra directo a la organización.
+ */
+import { useEffect, useState, Suspense } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { Link2Off, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import InvitationWizard, { type InvitationWizardData } from '@/components/auth/InvitationWizard';
 import type { EstadoCuentaInvitacion } from '@/lib/auth/cuentaInvitacion';
-import { useTranslations } from 'next-intl';
-import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { EscenaAcceso, TarjetaAcceso, IconoDestacado, Enlace } from '@/components/kit/acceso';
+
+type Estado =
+  | { tipo: 'cargando' }
+  | { tipo: 'sin_codigo' }
+  | { tipo: 'no_valida' }
+  | { tipo: 'error' }
+  | { tipo: 'lista'; datos: InvitationWizardData; cuenta: EstadoCuentaInvitacion; sesion: string | null };
 
 function InviteContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const t = useTranslations('auth.invite');
-  const tc = useTranslations('common');
-  const inviteCode = searchParams?.get('invite_code');
-  console.log('🔍 Invite code obtenido:', inviteCode);
-  
-  // Debug: Mostrar TODOS los parámetros de la URL
-  console.log('🔍 Todos los parámetros de URL:');
-  searchParams?.forEach((value, key) => {
-    console.log(`  ${key}: ${value}`);
-  });
-  console.log('🔍 URL completa:', typeof window !== 'undefined' ? window.location.href : 'SSR');
-  
+  const t = useTranslations('acceso.invitacion');
+  const tc = useTranslations('acceso.comun');
+  const params = useSearchParams();
+  const codigo = params?.get('invite_code') ?? null;
+  const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
 
-  const [inviteData, setInviteData] = useState<InvitationWizardData | null>(null);
-  const [accountState, setAccountState] = useState<EstadoCuentaInvitacion>('nueva');
-  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [loadingMessage, setLoadingMessage] = useState('');
-  
-  console.log('✅ Componente renderizando');
-  
-  // useEffect para ejecutar la validación una sola vez
   useEffect(() => {
-    console.log('🔥 useEffect ejecutándose con inviteCode:', inviteCode);
-    validateAndSignInDirectly();
-  }, [inviteCode]); // Solo se ejecuta cuando cambia inviteCode
-
-  // Función de validación 
-  async function validateAndSignInDirectly() {
-    console.log('🚀 validateAndSignInDirectly iniciando...');
-    
-    if (!inviteCode) {
-      console.log('❌ No se proporciono un codigo de invitacion');
-      setError(t('noCode'));
-      setIsLoading(false);
-      return;
-    }
-
-    console.log('Limpiando code:', inviteCode);  
-    
-    // Ignorar errores de Supabase en la URL (son del flujo automático que no usamos)
-    // Limpiar la URL de parámetros de error para mejor UX
-    if (typeof window !== 'undefined' && (window.location.hash.includes('error=') || searchParams?.get('error'))) {
-      console.log('Limpiando error de la URL');
-      console.log('Limpiando error de la URL:', window.location.hash);
-      const cleanUrl = `${window.location.pathname}?invite_code=${inviteCode}`;
-      window.history.replaceState({}, '', cleanUrl);
-    }
-    console.log('Avanzo code:', inviteCode);  
-    
-    try {
-      // PASO 1: Validar la invitación y saber, desde el SERVIDOR, si el correo
-      // invitado ya tiene cuenta. Antes se deducía aquí con la sesión y el
-      // perfil, y sin sesión (enlace copiado, token consumido por el correo)
-      // a un usuario existente se le pedía registrarse con contraseña nueva.
-      setLoadingMessage(t('validating'));
-      const res = await fetch(`/api/auth/invite/context?code=${encodeURIComponent(inviteCode)}`, {
-        cache: 'no-store',
-      });
-      const contexto = await res.json().catch(() => null);
-
-      if (res.status === 404) {
-        setError(t('invalidOrExpired'));
-        setIsLoading(false);
+    let vivo = true;
+    (async () => {
+      if (!codigo) {
+        setEstado({ tipo: 'sin_codigo' });
         return;
       }
-      if (!res.ok || !contexto?.invitation) {
-        setError(t('errorValidating', { message: contexto?.error || `HTTP ${res.status}` }));
-        setIsLoading(false);
-        return;
+      // Errores de Supabase en el fragmento (flujo automático que no se usa): fuera de la URL.
+      if (typeof window !== 'undefined' && (window.location.hash.includes('error=') || params?.get('error'))) {
+        window.history.replaceState({}, '', `${window.location.pathname}?invite_code=${encodeURIComponent(codigo)}`);
       }
+      try {
+        const res = await fetch(`/api/auth/invite/context?code=${encodeURIComponent(codigo)}`, { cache: 'no-store' });
+        const contexto = (await res.json().catch(() => null)) as {
+          invitation?: Omit<InvitationWizardData, 'code'>;
+          account_state?: EstadoCuentaInvitacion;
+        } | null;
+        if (!vivo) return;
+        if (res.status === 404) {
+          setEstado({ tipo: 'no_valida' });
+          return;
+        }
+        if (!res.ok || !contexto?.invitation) {
+          setEstado({ tipo: 'error' });
+          return;
+        }
+        const { data } = await supabase.auth.getSession();
+        if (!vivo) return;
+        setEstado({
+          tipo: 'lista',
+          // El servidor no devuelve el código: se canjea el del enlace.
+          datos: { ...contexto.invitation, code: codigo } as InvitationWizardData,
+          cuenta: contexto.account_state ?? 'nueva',
+          sesion: data.session?.user?.email ?? null,
+        });
+      } catch {
+        if (vivo) setEstado({ tipo: 'error' });
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [codigo, params]);
 
-      // El servidor no devuelve el código: el del enlace es el que se canjea.
-      const invitationData: InvitationWizardData = { ...contexto.invitation, code: inviteCode };
-
-      // PASO 2: Sesión activa en el navegador (viene de verifyOtp tras el clic
-      // en el correo, o es la de otro usuario). El asistente decide con ella.
-      setLoadingMessage(t('autoSignIn'));
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('Sesión activa:', session?.user?.email ?? 'ninguna', '| cuenta invitada:', contexto.account_state);
-
-      setSessionEmail(session?.user?.email ?? null);
-      setAccountState(contexto.account_state);
-      setInviteData(invitationData);
-      setIsLoading(false);
-
-    } catch (err) {
-      console.log('Error en el proceso de validación y login:', err);
-      setError(t('errorProcessing'));
-      setIsLoading(false);
-    }
-  }
-  
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black px-4 relative overflow-hidden">
-        <AuthSceneBackground />
-        <div className="text-center relative z-10">
-          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-t-2 border-b-2 border-blue-600 mx-auto mb-3 sm:mb-4"></div>
-          <p className="text-sm sm:text-base text-white">{loadingMessage || t('validating')}</p>
-        </div>
-      </div>
-    );
-  }
-  
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4 bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black relative overflow-hidden">
-        <AuthSceneBackground />
-        <div className="bg-white dark:bg-gray-800 shadow-lg sm:shadow-2xl rounded-lg sm:rounded-xl w-full max-w-md overflow-hidden relative z-10">
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">{t('errorTitle')}</h2>
-          </div>
-          <div className="p-4 sm:p-6">
-            <div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 dark:border-red-500 p-3 sm:p-4 mb-3 sm:mb-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-2 sm:ml-3">
-                  <p className="text-xs sm:text-sm text-red-700 dark:text-red-300">{error}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700 space-y-2">
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-            >
-              {tc('retry')}
-            </button>
-            <button
-              onClick={() => router.push('/auth/login')}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-            >
-              {t('goToLogin')}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
-  // Mostrar el wizard si tenemos datos de invitación válidos.
-  // El wizard funciona CON o SIN sesión: si hay sesión usa el flujo original
-  // (supabase.auth.updateUser), si no hay sesión usa el API server-side
-  // (/api/auth/accept-invitation con admin key).
-  if (inviteData) {
+  if (estado.tipo === 'lista') {
     return (
       <InvitationWizard
-        inviteData={inviteData}
-        accountState={accountState}
-        sessionEmail={sessionEmail}
-        onComplete={() => {
-          // Navegación completa, no router.push: la organización activa acaba
-          // de cambiar (cookies + localStorage) y el AppLayout debe releerla;
-          // además, con el servidor ocupado, la navegación suave se quedaba
-          // colgada en el paso "Completado" sin cambiar de página.
-          window.location.assign('/app/inicio');
-        }}
+        inviteData={estado.datos}
+        accountState={estado.cuenta}
+        sessionEmail={estado.sesion}
+        // Navegación completa: la organización activa acaba de cambiar.
+        onComplete={() => window.location.assign('/app/inicio')}
       />
     );
   }
-  
-  // Este caso no debería ocurrir, pero por seguridad
+
+  if (estado.tipo === 'cargando') {
+    return (
+      <EscenaAcceso>
+        <TarjetaAcceso titulo={t('validando')} centrado icono={<Loader2 className="size-8 animate-spin text-brand" aria-hidden="true" />} />
+      </EscenaAcceso>
+    );
+  }
+
+  const pie = <p className="text-center"><Enlace href="/auth/login">{tc('irAlLogin')}</Enlace></p>;
+
+  if (estado.tipo === 'error') {
+    return (
+      <EscenaAcceso>
+        <TarjetaAcceso titulo={t('errorTitulo')} descripcion={t('errorDescripcion')} icono={<IconoDestacado icono={Link2Off} tono="peligro" />} centrado pie={pie}>
+          <button type="button" onClick={() => window.location.reload()} className={clasesBoton({ anchoCompleto: true })}>
+            {tc('reintentar')}
+          </button>
+        </TarjetaAcceso>
+      </EscenaAcceso>
+    );
+  }
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black relative overflow-hidden">
-      <AuthSceneBackground />
-      <div className="text-center relative z-10">
-        <p className="text-white">{t('settingUp')}</p>
-      </div>
-    </div>
+    <EscenaAcceso>
+      <TarjetaAcceso
+        titulo={estado.tipo === 'sin_codigo' ? t('sinCodigoTitulo') : t('vencidaTitulo')}
+        descripcion={estado.tipo === 'sin_codigo' ? t('sinCodigo') : t('vencidaDescripcion')}
+        icono={<IconoDestacado icono={Link2Off} tono="advertencia" />}
+        centrado
+        pie={pie}
+      >
+        <Link href="/auth/verify/failed?type=invite" className={clasesBoton({ anchoCompleto: true })}>
+          {t('pedirEnlace')}
+        </Link>
+      </TarjetaAcceso>
+    </EscenaAcceso>
   );
 }
 
-/**
- * Página de invitación con Suspense
- */
 export default function InvitePage() {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black">
-        <div className="text-center">
-          <p className="text-white">Loading...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={null}>
       <InviteContent />
     </Suspense>
   );

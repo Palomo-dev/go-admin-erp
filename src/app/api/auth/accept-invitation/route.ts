@@ -4,6 +4,8 @@ import { estadoCuentaInvitacion } from '@/lib/auth/cuentaInvitacion';
 import { buscarInvitacionVigentePorCodigo, normalizarCorreo, referenciaCodigo } from '@/lib/auth/invitaciones';
 import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit';
 import { getRateLimitStore } from '@/lib/security/rateLimitStore';
+import { LONGITUD_MINIMA_CONTRASENA } from '@/lib/auth/politicaContrasena';
+import { validarContrasenaServidor } from '@/lib/auth/servidorAcceso';
 
 /**
  * Acepta una invitación SIN sesión previa: crea la cuenta del invitado con la
@@ -47,9 +49,12 @@ export async function POST(request: Request) {
     const lastName = typeof body.lastName === 'string' ? body.lastName : null;
     const phone = typeof body.phone === 'string' ? body.phone : null;
 
-    if (typeof password !== 'string' || password.length < 8) {
+    // Política única (acceso v3, decisión v2-5): aquí solo el tipo y la
+    // longitud, antes de tocar la base; el resto (distinta del correo, no
+    // filtrada) cuando ya se sabe el correo invitado.
+    if (typeof password !== 'string' || password.length < LONGITUD_MINIMA_CONTRASENA) {
       return NextResponse.json(
-        { error: 'La contraseña debe tener al menos 8 caracteres' },
+        { error: 'La contraseña no cumple la política', codigo: 'longitud' },
         { status: 400 }
       );
     }
@@ -80,6 +85,11 @@ export async function POST(request: Request) {
     if (email && normalizarCorreo(email) !== correoInvitado) {
       console.warn('accept-invitation: el correo del body no es el invitado, invitación', invitation.id, 'ip:', ip);
       return invitacionNoValida();
+    }
+
+    const motivo = await validarContrasenaServidor(password, correoInvitado, 'accept-invitation');
+    if (motivo) {
+      return NextResponse.json({ error: 'La contraseña no cumple la política', codigo: motivo }, { status: 400 });
     }
 
     // 2. Estado de la cuenta: lo decide el servidor, nunca el cliente.

@@ -839,3 +839,30 @@ las entradas de `SIN_PUERTA` del registro y del reenvío ya están en HEAD).
   anon DEFINER 15, authenticated DEFINER 442; la fase 3 no añadió funciones DEFINER).
 - Pendiente del dueño en el panel de Supabase: encender «Leaked password protection» y mínimo 10
   caracteres en Auth › Password security (hoy la protección la hace el servidor de la app).
+
+### 13.4 Cerrado el 2026-09-29: permisos de miembros y suscripciones
+
+Migración `20260929200000_miembros_y_suscripciones_cierre_rls` (aplicada en la base, con reversión en
+`supabase/rollbacks/`). Cierra los tres hallazgos críticos de §13.3:
+
+- Se eliminó `organization_members_insert_request`: nadie se inserta solo en una organización. Las
+  altas de dueño siguen por `organization_members_insert_owner` y las invitaciones por sus funciones
+  SECURITY DEFINER.
+- Disparador `trg_organization_members_proteger_propia_fila`: por la API, en la propia fila solo se
+  puede «salir» (`is_active` de true a false). Rol, organización, super admin, cargo y reactivarse
+  quedan para el servidor (42501).
+- `subscriptions`: fuera la política ALL por pertenencia. Insertar y actualizar exige
+  `fn_puede_gestionar_suscripcion` (dueño, admin activo o `billing_management`); borrar, solo service
+  role.
+
+Probado en transacción deshecha: insertarse en otra organización, subirse el rol, cambiarse de
+organización, marcarse super admin y reactivarse quedan bloqueados; salir sigue funcionando; un
+empleado no cambia ni borra la suscripción (0 filas); el dueño y un admin que no es dueño sí la
+actualizan; `fn_alta_organizacion` crea la organización con el dueño como admin y la suscripción en
+prueba. `get_advisors`: sin avisos nuevos salvo la función de la política, ejecutable por
+`authenticated` a propósito.
+
+Efecto en pantallas: `MembersTab` y `RoleAssignment` cambian el rol de otros miembros desde el
+navegador; eso ya no funcionaba antes (no hay política de UPDATE para filas ajenas) y ahora, si alguien
+intenta cambiarse su propio rol, recibe un error en vez de lograrlo. Pasar esa gestión a una ruta de
+servidor con permiso de admin queda pendiente dentro de la fase 5.

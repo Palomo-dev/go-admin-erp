@@ -729,3 +729,38 @@ nuevas, opcionales: `sucursal: { filtro, nombre }` (stock por variante vía
 `cantidadInicial` (la cantidad llega como tercer argumento de `onSelectVariant`) y `varianteInicialId` (el
 escáner leyó una variante de un producto con modificadores: abre con ella, B-06). Agotado = regla única
 `lib/pos/stockDisponible.ts` (`agotadoPorStock`), la misma de la tarjeta del catálogo.
+«Mesas: Plano |
+## Anexo de la auditoría de componentes faltantes (2026-09-28)«Mesas: Plano |
+«Mesas: Plano |
+Detalle y estado por página: `docs/design/AUDITORIA-COMPONENTES-FALTANTES-2026-09-28.md`.«Mesas: Plano |
+«Mesas: Plano |
+### Kit de receta — `src/components/kit/receta/`«Mesas: Plano |
+«Mesas: Plano |
+Figma «Componentes — Recetas y subsecciones» (`957:583020`); diseño en«Mesas: Plano |
+`docs/design/PRODUCTO-RECETAS-Y-SUBSECCIONES.md` §4. Se importa de `@/components/kit/receta` (tiene su propio«Mesas: Plano |
+`index.ts`; no pasa por `kit/index.ts`). Textos en el namespace `receta`. Hoy solo lo usa el formulario de«Mesas: Plano |
+producto (`inventario/productos/formulario/secciones/SeccionReceta.tsx`); el detalle del producto, la pantalla«Mesas: Plano |
+Recetas y Costos lo adoptan en los bloques de inventario (B5, B7).«Mesas: Plano |
+«Mesas: Plano |
+| Pieza | Contrato |«Mesas: Plano |
+|---|---|«Mesas: Plano |
+| `EditorReceta` | `valor: RecetaBorrador` + `onCambio`, `organizacionId`, `sucursal: { id, nombre }` (costo y existencias de esa sucursal), `unidades`, `excluirIds` (el producto y sus variantes no son ingredientes de sí mismos), `precioVenta` (margen), `formatearMoneda`, `tituloIngredientes`, `onCrearIngrediente(texto, agregar)` (alta rápida), `lateral` (a la derecha del costo), `soloLectura`, `idBase` |«Mesas: Plano |
+| `FilaIngrediente` | `ingrediente` + `onCambio` / `onQuitar`, `linea` (costo, conversión y existencia calculados en el servidor), `error`, `unidades`, `sucursalNombre`, `permitidoCostos`, formateadores, `layout: 'fila' \| 'tarjeta'` (tarjeta en móvil), `onFusionar`, `onCrearConversion(de, a)`, `onMover(±1)` (↑/↓ en el asa) y `arrastre` (ratón), `soloLectura`, `idBase` |«Mesas: Plano |
+| `ResumenCostoReceta` | `costo`, `cargando`, `error`, `sucursalNombre`, `unidadRinde`, `precioVenta` (margen), formateadores |«Mesas: Plano |
+| `SelectorAlcanceReceta` | `alcance: 'compartida' \| 'por_variante'` + `onAlcanceChange` (`SegmentedControl`), `variantes: { clave, nombre, estado }[]` (chips de estado por variante), `deshabilitado` |«Mesas: Plano |
+| `DialogoConversion` | `abierto` / `onAbiertoChange`, `organizacionId`, `de`, `a`, `unidades`, `ingrediente`, `onCreada`. Crea la conversión (y su inversa, opcional) con `unitConversionService`; no deja guardar entre tipos de unidad distintos |«Mesas: Plano |
+| `useCostoReceta(org, sucursal, borrador, ms = 400)` | `{ costo, cargando, error, recalcular }`: costo en el servidor (`recipeService.costo`) con espera y descarte de respuestas viejas |«Mesas: Plano |
+| `recetaLogica.ts` | tipos (`RecetaBorrador`, `IngredienteBorrador`, `CostoReceta`, `AlcanceReceta`…) y reglas puras (`recetaAPayload`, `unidadLimpia`…) |«Mesas: Plano |
+«Mesas: Plano |
+### Exportaciones nuevas en `kit/index.ts`«Mesas: Plano |
+«Mesas: Plano |
+- `RelatedLinkCard` (+ `RelatedLinkCardProps`, `TonoRelatedLink`): existía y lo importaban por ruta directa el«Mesas: Plano |
+  detalle de categoría y el de proveedor; ahora también sale del índice.«Mesas: Plano |
+- `SelectorVariantes` y su lógica (`selectorVariantesLogica`).«Mesas: Plano |
+«Mesas: Plano |
+### Corrección a una fila de arriba«Mesas: Plano |
+«Mesas: Plano |
+La fila de `ViewToggle` (sección «Cobro y post-venta, vista y selectores de tercero») dice «Mesas: Plano |
+Cuadrícula con las mismas props». Ya no es así: el dueño fijó el 2026-09-24 `SelectorVista` con texto (`868:31799`) + `SelectorDensidad` (`868:31832`) para Mesas«Mesas: Plano |
+(POS-UX-V2 §7.5; frame `870:98618`, instancias `917:116263` y `917:116278`). `SelectorDensidad` aún no existe en«Mesas: Plano |
+el kit (pendiente P2 de la auditoría).«Mesas: Plano |

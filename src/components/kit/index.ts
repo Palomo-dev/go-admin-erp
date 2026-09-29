@@ -207,3 +207,27 @@ export {
 export { CategoryBar, type CategoryBarProps } from './CategoryBar';
 export { opcionesBarra, esTopCategoria, type CategoriaBarra, type ValorCategoria, type IdCategoria } from './categoryBarLogica';
 // ── POS: piezas de venta (fin)
+
+// ── Selector de variantes (Figma `VariantModifierDialog` 155:7980) y enlace relacionado
+export {
+  SelectorVariantes,
+  type SelectorVariantesProps,
+  type AtributoSelector,
+  type ValorAtributoSelector,
+  type VarianteListaSelector,
+  type StockVarianteSelector,
+  type ResumenVarianteSelector,
+  type GrupoSelector,
+  type OpcionGrupoSelector,
+  type ReglaGrupoSelector,
+  type BloqueoSelector,
+} from './SelectorVariantes';
+export {
+  CANTIDAD_MAXIMA_SELECTOR,
+  nombreEnFrase,
+  atributosEnFrase,
+  etiquetaResumenVariante,
+  acotarCantidad,
+  totalSelector,
+} from './selectorVariantesLogica';
+export { RelatedLinkCard, type RelatedLinkCardProps, type TonoRelatedLink } from './RelatedLinkCard';

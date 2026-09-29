@@ -7554,7 +7554,12 @@
         "actualizados": "Updated",
         "conAvisos": "With warnings",
         "fallidos": "Failed",
-        "pendientes": "{n, plural, =0 {none pending} one {# pending} other {# pending}}"
+        "pendientes": "{n, plural, =0 {none pending} one {# pending} other {# pending}}",
+        "importados": "Imported",
+        "importadosDetalle": "{creados} created · {actualizados} updated",
+        "omitidos": "Skipped",
+        "omitidosDetalle": "Already existed",
+        "sinIntentar": "Not attempted"
       },
       "omitidos": "{n, plural, one {# row skipped} other {# rows skipped}} because of the chosen mode.",
       "errorLote": "Batch {n} could not be imported: {mensaje}. Its rows were not imported.",
@@ -7578,7 +7583,9 @@
         "resultado": "Result",
         "mensajes": "Messages",
         "archivo": "product_import_report"
-      }
+      },
+      "cuadre": "{seleccionados} selected · {importados} imported + {omitidos} skipped + {fallidos} failed + {sinIntentar} not attempted",
+      "conAvisosLinea": "{n, plural, one {# product imported with warnings} other {# products imported with warnings}}: see the report."
     },
     "mensajes": {
       "sinNombre": "Name is missing",

@@ -294,7 +294,7 @@ function SelectOrganizationContent() {
         }
       >
         {orgs.length > 3 && (
-          <SearchInput value={texto} onChange={setTexto} onValueChange={setTexto} placeholder={t('buscar')} etiqueta={t('buscar')} atajo={false} />
+          <SearchInput value={texto} onChange={setTexto} onValueChange={setTexto} placeholder={t('buscar')} etiqueta={t('buscar')} />
         )}
         <ul className="flex max-h-[420px] flex-col gap-2 overflow-y-auto" aria-label={t('titulo')}>
           {lista.length === 0 && <li className="py-6 text-center text-sm text-fg-secondary">{t('sinResultados', { texto })}</li>}

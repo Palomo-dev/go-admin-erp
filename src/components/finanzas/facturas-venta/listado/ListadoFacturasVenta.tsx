@@ -699,7 +699,6 @@ export function ListadoFacturasVenta() {
             cargando={cargando}
             placeholder={t('listado.buscar.placeholder')}
             etiqueta={t('listado.buscar.etiqueta')}
-            pistaAtajo={false}
           />
         }
         filtros={

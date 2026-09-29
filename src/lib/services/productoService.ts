@@ -79,6 +79,16 @@ export const CODIGOS_ERROR_PRODUCTO = [
   'membresia_gracia_invalida',
   'membresia_sede_invalida',
   'plan_producto_invalido',
+  // Cómo se vende (fn_producto_int_modo_venta · 20260929120200)
+  'modo_venta_invalido',
+  'modo_venta_servicio',
+  'modo_venta_con_variantes',
+  'unidad_peso_invalida',
+  'unidad_medida_invalida',
+  'referencia_precio_invalida',
+  'decimales_invalidos',
+  'minimo_invalido',
+  'tara_invalida',
 ] as const;
 
 export type CodigoErrorProducto = (typeof CODIGOS_ERROR_PRODUCTO)[number] | 'desconocido';
@@ -608,6 +618,16 @@ export interface ProductoCampos {
   width_cm?: number | null;
   height_cm?: number | null;
   is_composite?: boolean;
+  /**
+   * Cómo se vende (PRODUCTOS-POR-PESO-BASCULA.md): 'unit' | 'weight' | 'measure'.
+   * El precio de `precio.price` es SIEMPRE por `unit_code` (por kg).
+   */
+  sale_mode?: 'unit' | 'weight' | 'measure';
+  /** Presentación del precio («cada 100 g» = 100 + 'GR'); sin valor, por la unidad de venta. */
+  price_ref_qty?: number | null;
+  price_ref_unit_code?: string | null;
+  min_sale_qty?: number | null;
+  require_scale?: boolean;
 }
 
 export interface ProveedorEntrada {

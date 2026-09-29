@@ -3509,7 +3509,10 @@
       "descuentoGeneral": "générale",
       "descuentoManualTitulo": "Remise manuelle",
       "descuentoGeneralTitulo": "Part de la remise générale de la vente",
-      "descuentoPromocionTitulo": "Remise d’une promotion"
+      "descuentoPromocionTitulo": "Remise d’une promotion",
+      "cambiarPeso": "Modifier le poids",
+      "cambiarPesoDe": "Modifier le poids de {nombre} ({cantidad})",
+      "precioPorUnidadMedida": "× {precio} / {unidad}"
     },
     "producto": {
       "elegir": "Choisir",
@@ -3531,7 +3534,8 @@
       "favorita": "Favori",
       "receta": "Voir la recette",
       "recetaDe": "Voir la recette de {nombre}",
-      "sinFoto": "Sans photo"
+      "sinFoto": "Sans photo",
+      "porUnidadVenta": "Au {unidad}"
     },
     "categorias": {
       "etiqueta": "Catégories",
@@ -9281,7 +9285,16 @@
       "membresia_ventana_invalida": "Les jours avant activation doivent être supérieurs ou égaux à 1.",
       "membresia_tope_invalido": "Les plafonds doivent être des nombres entiers supérieurs ou égaux à 0.",
       "membresia_horario_dias": "Choisissez au moins un jour de la semaine.",
-      "membresia_horario_invalido": "Vérifiez la plage : «De» doit précéder «À» (sans passer minuit)."
+      "membresia_horario_invalido": "Vérifiez la plage : «De» doit précéder «À» (sans passer minuit).",
+      "modo_venta_invalido": "Choisissez le mode de vente du produit.",
+      "modo_venta_servicio": "Un service se vend à l’unité.",
+      "modo_venta_con_variantes": "Un produit vendu au poids ou à la mesure n’a pas de variantes : créez chaque présentation comme un autre produit.",
+      "unidad_peso_invalida": "Au poids, l’unité doit être le kilogramme ou la livre.",
+      "unidad_medida_invalida": "À la mesure, l’unité doit être le mètre ou le litre.",
+      "referencia_precio_invalida": "Le prix se saisit au kg ou pour 500, 250, 100 ou 50 g.",
+      "decimales_invalidos": "La quantité admet de 1 à 3 décimales.",
+      "minimo_invalido": "La vente minimale doit être supérieure à 0 et respecter les décimales de l’unité.",
+      "tara_invalida": "La tare ne peut pas être négative."
     },
     "imagenes": {
       "insignias": {
@@ -9740,7 +9753,32 @@
       "diaVigencia": "Jour d’entrée en vigueur",
       "historial": "Historique",
       "verHistorial": "Voir l’historique des prix",
-      "historialAyuda": "Chaque changement clôt la période précédente."
+      "historialAyuda": "Chaque changement clôt la période précédente.",
+      "comoSeVende": "Mode de vente",
+      "comoSeVendeAyuda": "À l’unité : quantité entière, comme toujours.",
+      "comoSeVendeAyudaPeso": "Au poids : le POS pèse (ou le poids est saisi avec autorisation) et la quantité inclut les grammes.",
+      "comoSeVendeAyudaMedida": "À la mesure : le POS saisit une quantité décimale (mètres ou litres).",
+      "porUnidad": "À l’unité",
+      "porPeso": "Au poids",
+      "porMedida": "À la mesure",
+      "unidadPeso": "Unité de poids",
+      "unidadMedida": "Unité de mesure",
+      "kilogramo": "Kilogramme (kg)",
+      "libra": "Livre (lb)",
+      "metro": "Mètre (m)",
+      "litro": "Litre (L)",
+      "precioEscrito": "Saisir le prix",
+      "precioEscritoAyuda": "Change seulement la saisie et l’affichage : il est toujours enregistré au kg.",
+      "porUnidadVenta": "le {unidad}",
+      "cadaCantidad": "les {cantidad} {unidad}",
+      "precioVentaCada": "Prix de vente {referencia}",
+      "precioVentaPor": "Prix de vente le {unidad}",
+      "seGuardaComo": "Enregistré comme {precio} / {unidad}",
+      "ventaMinima": "Vente minimale ({unidad})",
+      "ventaMinimaAyuda": "Facultatif. Le POS ne vend pas moins que cette quantité.",
+      "exigirBascula": "Exiger une balance",
+      "exigirBasculaAyuda": "Jamais vendu avec un poids saisi à la main (viandes ou produits chers). Tant que le poste ne lit pas de balance, il ne pourra pas être vendu au POS.",
+      "costoPor": "Coût le {unidad}"
     },
     "impuestos": {
       "etiqueta": "Taxes",
@@ -10741,7 +10779,8 @@
       "serialInvalido": "L'un des numéros de série n'appartient pas à cette vente ou n'est plus vendu.",
       "lineaNoPerteneceALaVenta": "L'une des lignes n'appartient pas à cette vente.",
       "sinAccesoSucursal": "Vous n'avez pas accès à la succursale de cette vente.",
-      "generico": "Erreur lors du traitement du retour"
+      "generico": "Erreur lors du traitement du retour",
+      "cantidadDecimales": "La quantité retournée a plus de décimales que le produit n’en admet."
     },
     "comun": {
       "cancelar": "Annuler",
@@ -10879,7 +10918,10 @@
         "check": "Chèque",
         "credit_note": "Avoir",
         "original_method": "Mode d'origine"
-      }
+      },
+      "cantidadOriginalUnidad": "Vendu : {cantidad} {unidad}",
+      "reingresa": "Remettre en stock",
+      "reingresaDe": "{producto} : remettre en stock"
     },
     "historial": {
       "errorCarga": "Impossible de charger l'historique des retours",
@@ -11034,7 +11076,13 @@
       "pago_no_anulable": "Un des paiements ne peut pas être annulé ici. {detalle}",
       "sesion_mesa_invalida": "La table n'est plus ouverte avec cette addition. Rouvrez la table et encaissez à nouveau.",
       "no_es_venta_de_mesa": "Cette vente n'est pas l'addition d'une table.",
-      "pago_excede_saldo": "L'encaissement dépasse le reste à payer de l'addition (cette part a-t-elle déjà été encaissée ?). Vérifiez le solde de la table. {detalle}"
+      "pago_excede_saldo": "L'encaissement dépasse le reste à payer de l'addition (cette part a-t-elle déjà été encaissée ?). Vérifiez le solde de la table. {detalle}",
+      "cantidad_decimales": "Une ligne au poids ou à la mesure a plus de décimales que le produit n’en admet. Pesez-la de nouveau. {detalle}",
+      "cantidad_bajo_minimo": "Une ligne est inférieure à la vente minimale du produit. {detalle}",
+      "origen_peso_invalido": "L’origine du poids d’une ligne n’est pas valide. Pesez-la de nouveau. {detalle}",
+      "origen_peso_no_disponible": "La lecture de balance et les étiquettes de poids ne sont pas encore disponibles. {detalle}",
+      "peso_exige_bascula": "Un produit exige une balance et ne peut pas être vendu avec un poids saisi à la main. {detalle}",
+      "sin_permiso_peso_manual": "La saisie manuelle du poids exige l’autorisation « Peser à la main au POS ». {detalle}"
     },
     "ventaAnulada": "Vente annulée : paiements, stock et facture ont été annulés.",
     "anulacionFallida": "La vente n’a pas pu être annulée",
@@ -13722,7 +13770,8 @@
       "nuevaVenta": "Nouvelle vente",
       "reimprimir": "Réimprimer le reçu",
       "factura": "Facture électronique",
-      "cerrarPostVenta": "Fermer"
+      "cerrarPostVenta": "Fermer",
+      "lineaPeso": "Modifier le poids de la ligne"
     },
     "catalogo": {
       "titulo": "Produits",
@@ -17628,6 +17677,51 @@
         "sucursal": "Succursale",
         "cantidad": "Quantité"
       }
+    }
+  },
+  "posPeso": {
+    "tarjeta": {
+      "pesar": "Peser",
+      "cantidad": "Quantité"
+    },
+    "dialogo": {
+      "titulo": "Peser · {producto}",
+      "tituloMedida": "Quantité · {producto}",
+      "tituloCambiar": "Modifier le poids · {producto}",
+      "precioPor": "{precio} / {unidad}",
+      "existencias": "stock {cantidad}",
+      "sinBascula": "pas de balance sur ce poste",
+      "estadoManual": "Sans balance · poids saisi",
+      "estadoMedida": "Quantité saisie",
+      "ingresoManual": "Saisie manuelle",
+      "campo": "Poids en {unidad}",
+      "campoMedida": "Quantité en {unidad}",
+      "ayudaManual": "Enregistré comme poids saisi à la main avec votre utilisateur.",
+      "ayudaMedida": "Jusqu’à {decimales} décimales.",
+      "calculo": "{cantidad} × {precio} / {unidad}",
+      "minimo": "Minimum {minimo}",
+      "cobroAlGramo": "facturé au gramme",
+      "agregar": "Ajouter {importe} · Entrée",
+      "agregarDeshabilitado": "Ajouter",
+      "guardar": "Enregistrer le poids · Entrée",
+      "cancelar": "Annuler · Échap",
+      "errores": {
+        "bajoMinimo": "La vente minimale est de {minimo}.",
+        "demasiadosDecimales": "Jusqu’à {decimales} décimales.",
+        "pesoInvalido": "Saisissez un poids supérieur à 0.",
+        "cantidadInvalida": "Saisissez une quantité supérieure à 0."
+      },
+      "exigeBascula": {
+        "titulo": "Ce produit exige une balance",
+        "texto": "« {producto} » ne se vend que pesé sur une balance. Ce poste ne lit pas encore de balance : il ne peut pas être vendu avec un poids saisi à la main."
+      },
+      "sinPermiso": {
+        "titulo": "Vous ne pouvez pas saisir le poids",
+        "texto": "La saisie manuelle du poids exige l’autorisation « Peser à la main au POS ». Demandez-la à un administrateur."
+      },
+      "sinPrecio": "« {producto} » n’a pas de prix en vigueur. Configurez-le dans Inventaire.",
+      "precioNoConsultado": "Impossible de vérifier le prix de « {producto} ». Vérifiez la connexion et réessayez.",
+      "errorAgregar": "Impossible d’ajouter « {producto} » au panier."
     }
   }
 }

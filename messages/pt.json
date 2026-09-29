@@ -3509,7 +3509,10 @@
       "descuentoGeneral": "geral",
       "descuentoManualTitulo": "Desconto manual",
       "descuentoGeneralTitulo": "Parte do desconto geral da venda",
-      "descuentoPromocionTitulo": "Desconto de uma promoção"
+      "descuentoPromocionTitulo": "Desconto de uma promoção",
+      "cambiarPeso": "Alterar peso",
+      "cambiarPesoDe": "Alterar o peso de {nombre} ({cantidad})",
+      "precioPorUnidadMedida": "× {precio} / {unidad}"
     },
     "producto": {
       "elegir": "Escolher",
@@ -3531,7 +3534,8 @@
       "favorita": "Favorita",
       "receta": "Ver receita",
       "recetaDe": "Ver a receita de {nombre}",
-      "sinFoto": "Sem foto"
+      "sinFoto": "Sem foto",
+      "porUnidadVenta": "Por {unidad}"
     },
     "categorias": {
       "etiqueta": "Categorias",
@@ -9281,7 +9285,16 @@
       "membresia_ventana_invalida": "Os dias para ativar devem ser 1 ou mais.",
       "membresia_tope_invalido": "Os tetos devem ser números inteiros de 0 ou mais.",
       "membresia_horario_dias": "Escolha pelo menos um dia da semana.",
-      "membresia_horario_invalido": "Revise a faixa: «De» deve ser antes de «Até» (sem passar da meia-noite)."
+      "membresia_horario_invalido": "Revise a faixa: «De» deve ser antes de «Até» (sem passar da meia-noite).",
+      "modo_venta_invalido": "Escolha como o produto é vendido.",
+      "modo_venta_servicio": "Um serviço é vendido por unidade.",
+      "modo_venta_con_variantes": "Um produto vendido por peso ou medida não tem variantes: crie cada apresentação como outro produto.",
+      "unidad_peso_invalida": "Por peso, a unidade deve ser quilograma ou libra.",
+      "unidad_medida_invalida": "Por medida, a unidade deve ser metro ou litro.",
+      "referencia_precio_invalida": "O preço é digitado por kg ou a cada 500, 250, 100 ou 50 g.",
+      "decimales_invalidos": "A quantidade admite de 1 a 3 casas decimais.",
+      "minimo_invalido": "A venda mínima deve ser maior que 0 e usar as casas decimais da unidade.",
+      "tara_invalida": "A tara não pode ser negativa."
     },
     "imagenes": {
       "insignias": {
@@ -9740,7 +9753,32 @@
       "diaVigencia": "Dia em que entra em vigor",
       "historial": "Histórico",
       "verHistorial": "Ver histórico de preços",
-      "historialAyuda": "Cada mudança encerra a vigência anterior."
+      "historialAyuda": "Cada mudança encerra a vigência anterior.",
+      "comoSeVende": "Como é vendido",
+      "comoSeVendeAyuda": "Por unidade: quantidade inteira, como sempre.",
+      "comoSeVendeAyudaPeso": "Por peso: o PDV pesa (ou o peso é digitado com permissão) e a quantidade leva gramas.",
+      "comoSeVendeAyudaMedida": "Por medida: o PDV recebe uma quantidade decimal (metros ou litros).",
+      "porUnidad": "Por unidade",
+      "porPeso": "Por peso",
+      "porMedida": "Por medida",
+      "unidadPeso": "Unidade de peso",
+      "unidadMedida": "Unidade de medida",
+      "kilogramo": "Quilograma (kg)",
+      "libra": "Libra (lb)",
+      "metro": "Metro (m)",
+      "litro": "Litro (L)",
+      "precioEscrito": "Digitar o preço",
+      "precioEscritoAyuda": "Só muda como é digitado e exibido: é sempre salvo por kg.",
+      "porUnidadVenta": "por {unidad}",
+      "cadaCantidad": "a cada {cantidad} {unidad}",
+      "precioVentaCada": "Preço de venda {referencia}",
+      "precioVentaPor": "Preço de venda por {unidad}",
+      "seGuardaComo": "Salvo como {precio} / {unidad}",
+      "ventaMinima": "Venda mínima ({unidad})",
+      "ventaMinimaAyuda": "Opcional. O PDV não vende menos que esta quantidade.",
+      "exigirBascula": "Exigir balança",
+      "exigirBasculaAyuda": "Nunca é vendido com o peso digitado (carnes ou produtos caros). Enquanto o equipamento não ler balanças, não poderá ser vendido no PDV.",
+      "costoPor": "Custo por {unidad}"
     },
     "impuestos": {
       "etiqueta": "Impostos",
@@ -10741,7 +10779,8 @@
       "serialInvalido": "Um dos números de série não pertence a esta venda ou já não está vendido.",
       "lineaNoPerteneceALaVenta": "Uma das linhas não pertence a esta venda.",
       "sinAccesoSucursal": "Você não tem acesso à filial desta venda.",
-      "generico": "Erro ao processar a devolução"
+      "generico": "Erro ao processar a devolução",
+      "cantidadDecimales": "A quantidade devolvida tem mais casas decimais do que o produto admite."
     },
     "comun": {
       "cancelar": "Cancelar",
@@ -10879,7 +10918,10 @@
         "check": "Cheque",
         "credit_note": "Nota de crédito",
         "original_method": "Forma original"
-      }
+      },
+      "cantidadOriginalUnidad": "Vendido: {cantidad} {unidad}",
+      "reingresa": "Volta ao estoque",
+      "reingresaDe": "{producto}: volta ao estoque"
     },
     "historial": {
       "errorCarga": "Não foi possível carregar o histórico de devoluções",
@@ -11034,7 +11076,13 @@
       "pago_no_anulable": "Um dos pagamentos não pode ser cancelado aqui. {detalle}",
       "sesion_mesa_invalida": "A mesa não está mais aberta com esta conta. Reabra a mesa e cobre novamente.",
       "no_es_venta_de_mesa": "Esta venda não é a conta de uma mesa.",
-      "pago_excede_saldo": "A cobrança ultrapassa o que falta pagar da conta (esta parte já foi cobrada?). Verifique o saldo da mesa. {detalle}"
+      "pago_excede_saldo": "A cobrança ultrapassa o que falta pagar da conta (esta parte já foi cobrada?). Verifique o saldo da mesa. {detalle}",
+      "cantidad_decimales": "Uma linha por peso ou medida tem mais casas decimais do que o produto admite. Pese novamente. {detalle}",
+      "cantidad_bajo_minimo": "Uma linha está abaixo da venda mínima do produto. {detalle}",
+      "origen_peso_invalido": "A origem do peso de uma linha não é válida. Pese novamente. {detalle}",
+      "origen_peso_no_disponible": "A leitura de balança e as etiquetas de peso ainda não estão disponíveis. {detalle}",
+      "peso_exige_bascula": "Um produto exige balança e não pode ser vendido com o peso digitado. {detalle}",
+      "sin_permiso_peso_manual": "Pesar manualmente exige a permissão “Pesar manualmente no PDV”. {detalle}"
     },
     "ventaAnulada": "Venda cancelada: pagamentos, estoque e fatura foram revertidos.",
     "anulacionFallida": "Não foi possível cancelar a venda",
@@ -13722,7 +13770,8 @@
       "nuevaVenta": "Nova venda",
       "reimprimir": "Reimprimir o recibo",
       "factura": "Nota fiscal eletrônica",
-      "cerrarPostVenta": "Fechar"
+      "cerrarPostVenta": "Fechar",
+      "lineaPeso": "Alterar o peso da linha"
     },
     "catalogo": {
       "titulo": "Produtos",
@@ -17628,6 +17677,51 @@
         "sucursal": "Filial",
         "cantidad": "Quantidade"
       }
+    }
+  },
+  "posPeso": {
+    "tarjeta": {
+      "pesar": "Pesar",
+      "cantidad": "Quantidade"
+    },
+    "dialogo": {
+      "titulo": "Pesar · {producto}",
+      "tituloMedida": "Quantidade · {producto}",
+      "tituloCambiar": "Alterar peso · {producto}",
+      "precioPor": "{precio} / {unidad}",
+      "existencias": "estoque {cantidad}",
+      "sinBascula": "sem balança neste equipamento",
+      "estadoManual": "Sem balança · peso manual",
+      "estadoMedida": "Quantidade digitada",
+      "ingresoManual": "Entrada manual",
+      "campo": "Peso em {unidad}",
+      "campoMedida": "Quantidade em {unidad}",
+      "ayudaManual": "Fica registrado como peso manual com o seu usuário.",
+      "ayudaMedida": "Até {decimales} casas decimais.",
+      "calculo": "{cantidad} × {precio} / {unidad}",
+      "minimo": "Mínimo {minimo}",
+      "cobroAlGramo": "cobrado por grama",
+      "agregar": "Adicionar {importe} · Enter",
+      "agregarDeshabilitado": "Adicionar",
+      "guardar": "Salvar peso · Enter",
+      "cancelar": "Cancelar · Esc",
+      "errores": {
+        "bajoMinimo": "A venda mínima é {minimo}.",
+        "demasiadosDecimales": "Até {decimales} casas decimais.",
+        "pesoInvalido": "Digite um peso maior que 0.",
+        "cantidadInvalida": "Digite uma quantidade maior que 0."
+      },
+      "exigeBascula": {
+        "titulo": "Este produto exige balança",
+        "texto": "“{producto}” só é vendido pesado em balança. Este equipamento ainda não lê balanças, então não pode ser vendido com o peso digitado."
+      },
+      "sinPermiso": {
+        "titulo": "Você não pode pesar manualmente",
+        "texto": "Pesar manualmente exige a permissão “Pesar manualmente no PDV”. Peça a um administrador."
+      },
+      "sinPrecio": "“{producto}” não tem preço vigente. Configure-o em Estoque.",
+      "precioNoConsultado": "Não foi possível consultar o preço de “{producto}”. Verifique a conexão e tente de novo.",
+      "errorAgregar": "Não foi possível adicionar “{producto}” ao carrinho."
     }
   }
 }

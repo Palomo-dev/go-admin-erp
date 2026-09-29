@@ -3,6 +3,7 @@ import type {
   DatosFormularioProducto,
   ModoFormularioProducto,
   PayloadGuardarProducto,
+  ProductoCampos,
 } from '@/lib/services/productoService';
 import {
   payloadRecetaProducto,
@@ -23,6 +24,15 @@ import {
 } from './membresiaProducto';
 import { validarPatron } from './seriales';
 import { claveAtributos, nombreVariante, type Atributos } from './variantes';
+import {
+  decimalesCantidad,
+  modoVenta,
+  redondearCantidadProducto,
+  UNIDADES_MEDIDA,
+  UNIDADES_PESO,
+  type ModoVenta,
+} from '@/lib/pos/peso/modoVenta';
+import { referenciaValida, type ReferenciaPrecio } from '@/lib/pos/peso/precioReferencia';
 
 /**
  * Estado, validación y payload del formulario único de producto
@@ -79,6 +89,7 @@ export type CampoFormulario =
   | 'dimensiones'
   | 'receta'
   | 'service_type'
+  | 'modo_venta'
   | CampoMembresia;
 
 /** Sección donde vive cada campo (índice lateral y paso del stepper móvil). */
@@ -102,6 +113,7 @@ export const SECCION_DE_CAMPO: Record<CampoFormulario, SeccionFormulario> = {
   dimensiones: 'avanzado',
   receta: 'avanzado',
   service_type: 'informacion',
+  modo_venta: 'precios',
   membresia_duracion: 'membresia',
   membresia_cobro: 'membresia',
   membresia_gracia: 'membresia',
@@ -144,6 +156,12 @@ export type CodigoValidacion =
   | 'receta_con_errores'
   | 'receta_al_producir_sin_inventario'
   | 'membresia_con_variantes'
+  | 'modo_venta_servicio'
+  | 'modo_venta_con_variantes'
+  | 'unidad_peso_invalida'
+  | 'unidad_medida_invalida'
+  | 'referencia_precio_invalida'
+  | 'minimo_invalido'
   | CodigoValidacionMembresia;
 
 export type ErroresFormulario = Partial<Record<CampoFormulario, CodigoValidacion>>;
@@ -268,6 +286,18 @@ export interface EstadoFormularioProducto {
   brand: string;
   reference: string;
   unit_code: string;
+  /**
+   * Cómo se vende (PRODUCTOS-POR-PESO-BASCULA.md §2.1): por unidad, por peso
+   * (kg o lb) o por medida (metro o litro). `price` y `cost` son SIEMPRE por
+   * `unit_code` (por kg); «cada 100 g» es solo cómo se escribe el precio.
+   */
+  sale_mode: ModoVenta;
+  /** Referencia del precio escrito: '' (por la unidad de venta) o «500GR», «250GR», «100GR», «50GR». */
+  precio_referencia: string;
+  /** Venta mínima de una línea, en `unit_code`. */
+  min_sale_qty: number | null;
+  /** «Exigir báscula»: nunca se vende con el peso escrito a mano. */
+  require_scale: boolean;
   station: string | null;
   proveedor: ProveedorForm;
   /** Otros proveedores del producto (editar/duplicar): se conservan tal cual. */
@@ -389,6 +419,10 @@ export function estadoInicial(sucursales: readonly SucursalBasica[] = []): Estad
     brand: '',
     reference: '',
     unit_code: 'UN',
+    sale_mode: 'unit',
+    precio_referencia: '',
+    min_sale_qty: null,
+    require_scale: false,
     station: null,
     proveedor: { ...PROVEEDOR_VACIO },
     otros_proveedores: [],
@@ -516,7 +550,11 @@ export function estadoDesdeDatos(
     barcode: dup ? '' : s(p.barcode),
     brand: s(p.brand),
     reference: s(p.reference),
-    unit_code: s(p.unit_code) || 'UN',
+    unit_code: s(p.unit_code).trim() || 'UN',
+    sale_mode: modoVenta(p as { sale_mode?: string | null }),
+    precio_referencia: referenciaComoTexto(p as { price_ref_qty?: unknown; price_ref_unit_code?: unknown }),
+    min_sale_qty: n((p as { min_sale_qty?: unknown }).min_sale_qty),
+    require_scale: (p as { require_scale?: unknown }).require_scale === true,
     station: p.station ? s(p.station) : null,
     proveedor:
       preferido && (!dup || copiar.proveedores)
@@ -662,12 +700,72 @@ export function validarFormulario(
     excluirIds: idsPropios(e, contexto.productId),
   });
   if (errReceta) err.receta = errReceta;
+  const errModo = validarModoVenta(e);
+  if (errModo) err.modo_venta = errModo;
   if (esMembresia(e)) {
     // Cada plan es un producto: una membresía no lleva variantes (la base también lo rechaza).
     if (e.tiene_variantes) err.service_type = 'membresia_con_variantes';
     Object.assign(err, validarMembresia(e.membresia));
   }
   return err;
+}
+
+// ── Cómo se vende (productos por peso o medida) ────────────────────────────
+
+/** «100GR» desde `price_ref_qty` + `price_ref_unit_code`; '' si el precio es por la unidad de venta. */
+export function referenciaComoTexto(p: { price_ref_qty?: unknown; price_ref_unit_code?: unknown }): string {
+  const q = Number(p.price_ref_qty);
+  const u = String(p.price_ref_unit_code ?? '').trim().toUpperCase();
+  return Number.isFinite(q) && q > 0 && u ? `${q}${u}` : '';
+}
+
+/** Referencia del texto del formulario («100GR» → 100 g); `null` = por la unidad de venta. */
+export function referenciaDesdeTexto(texto: string): ReferenciaPrecio | null {
+  const m = /^(\d+(?:\.\d+)?)([A-Z]{1,4})$/.exec((texto ?? '').trim().toUpperCase());
+  return m ? { cantidad: Number(m[1]), unidad: m[2] } : null;
+}
+
+/** Unidad por defecto al cambiar cómo se vende (kg por peso, metro por medida, unidad por unidad). */
+export function unidadParaModo(modo: ModoVenta, actual: string): string {
+  const u = (actual ?? '').trim().toUpperCase();
+  if (modo === 'weight') return (UNIDADES_PESO as readonly string[]).includes(u) ? u : 'KG';
+  if (modo === 'measure') return (UNIDADES_MEDIDA as readonly string[]).includes(u) ? u : 'MT';
+  return (UNIDADES_PESO as readonly string[]).includes(u) || (UNIDADES_MEDIDA as readonly string[]).includes(u) ? 'UN' : u || 'UN';
+}
+
+/** Validación de «Cómo se vende» (la misma de fn_producto_int_modo_venta). */
+export function validarModoVenta(e: EstadoFormularioProducto): CodigoValidacion | null {
+  if (e.sale_mode === 'unit') return null;
+  if (e.product_type === 'service') return 'modo_venta_servicio';
+  if (e.tiene_variantes) return 'modo_venta_con_variantes';
+  const u = (e.unit_code ?? '').trim().toUpperCase();
+  if (e.sale_mode === 'weight' && !(UNIDADES_PESO as readonly string[]).includes(u)) return 'unidad_peso_invalida';
+  if (e.sale_mode === 'measure' && !(UNIDADES_MEDIDA as readonly string[]).includes(u)) return 'unidad_medida_invalida';
+  const ref = referenciaDesdeTexto(e.precio_referencia);
+  if (e.sale_mode === 'weight' && ref && !referenciaValida(ref, u)) return 'referencia_precio_invalida';
+  if (e.min_sale_qty !== null) {
+    const dec = decimalesCantidad({ sale_mode: e.sale_mode });
+    if (!(e.min_sale_qty > 0) || redondearCantidadProducto(e.min_sale_qty, dec) !== e.min_sale_qty) return 'minimo_invalido';
+  }
+  return null;
+}
+
+/** Campos de «Cómo se vende» para `payload.producto` (siempre viajan: 'unit' deja todo por defecto). */
+export function camposModoVenta(e: EstadoFormularioProducto): Pick<
+  ProductoCampos,
+  'sale_mode' | 'price_ref_qty' | 'price_ref_unit_code' | 'min_sale_qty' | 'require_scale'
+> {
+  if (e.sale_mode === 'unit' || e.product_type === 'service') {
+    return { sale_mode: 'unit', price_ref_qty: null, price_ref_unit_code: null, min_sale_qty: null, require_scale: false };
+  }
+  const ref = e.sale_mode === 'weight' ? referenciaDesdeTexto(e.precio_referencia) : null;
+  return {
+    sale_mode: e.sale_mode,
+    price_ref_qty: ref ? ref.cantidad : null,
+    price_ref_unit_code: ref ? ref.unidad : null,
+    min_sale_qty: e.min_sale_qty,
+    require_scale: e.sale_mode === 'weight' && e.require_scale,
+  };
 }
 
 /** Servicio de tipo membresía: muestra «Configuración de membresía» y envía `payload.membresia`. */
@@ -758,6 +856,16 @@ export function campoDeErrorRpc(codigo: CodigoErrorProducto): CampoFormulario | 
     case 'membresia_unidad_invalida':
     case 'membresia_duracion_invalida':
       return 'membresia_duracion';
+    case 'modo_venta_invalido':
+    case 'modo_venta_servicio':
+    case 'modo_venta_con_variantes':
+    case 'unidad_peso_invalida':
+    case 'unidad_medida_invalida':
+    case 'referencia_precio_invalida':
+    case 'decimales_invalidos':
+    case 'minimo_invalido':
+    case 'tara_invalida':
+      return 'modo_venta';
     case 'membresia_cobro_invalido':
       return 'membresia_cobro';
     case 'membresia_gracia_invalida':
@@ -818,6 +926,7 @@ export function construirPayload(
       width_cm: e.product_type === 'service' ? null : e.width_cm,
       height_cm: e.product_type === 'service' ? null : e.height_cm,
       is_composite: e.receta.activa,
+      ...camposModoVenta(e),
     },
     impuestos: [...e.impuestos],
     categorias_adicionales: e.categorias_adicionales.filter((c) => c !== e.category_id),

@@ -3614,7 +3614,10 @@
       "descuentoGeneral": "general",
       "descuentoManualTitulo": "Manual discount",
       "descuentoGeneralTitulo": "Part of the sale’s general discount",
-      "descuentoPromocionTitulo": "Promotion discount"
+      "descuentoPromocionTitulo": "Promotion discount",
+      "cambiarPeso": "Change weight",
+      "cambiarPesoDe": "Change the weight of {nombre} ({cantidad})",
+      "precioPorUnidadMedida": "× {precio} / {unidad}"
     },
     "producto": {
       "elegir": "Select",
@@ -3636,7 +3639,8 @@
       "favorita": "Favorite",
       "receta": "View recipe",
       "recetaDe": "View the recipe of {nombre}",
-      "sinFoto": "No photo"
+      "sinFoto": "No photo",
+      "porUnidadVenta": "Per {unidad}"
     },
     "categorias": {
       "etiqueta": "Categories",
@@ -9386,7 +9390,16 @@
       "membresia_ventana_invalida": "Days to activate must be 1 or more.",
       "membresia_tope_invalido": "Caps must be whole numbers of 0 or more.",
       "membresia_horario_dias": "Choose at least one day of the week.",
-      "membresia_horario_invalido": "Check the time window: «From» must be before «To» (without crossing midnight)."
+      "membresia_horario_invalido": "Check the time window: «From» must be before «To» (without crossing midnight).",
+      "modo_venta_invalido": "Choose how the product is sold.",
+      "modo_venta_servicio": "A service is sold by unit.",
+      "modo_venta_con_variantes": "A product sold by weight or measure has no variants: create each presentation as another product.",
+      "unidad_peso_invalida": "By weight, the unit must be kilogram or pound.",
+      "unidad_medida_invalida": "By measure, the unit must be meter or liter.",
+      "referencia_precio_invalida": "The price is entered per kg or per 500, 250, 100 or 50 g.",
+      "decimales_invalidos": "The quantity allows 1 to 3 decimals.",
+      "minimo_invalido": "The minimum sale must be greater than 0 and use the unit's decimals.",
+      "tara_invalida": "The tare cannot be negative."
     },
     "imagenes": {
       "insignias": {
@@ -9845,7 +9858,32 @@
       "diaVigencia": "Day it takes effect",
       "historial": "History",
       "verHistorial": "View price history",
-      "historialAyuda": "Each change closes the previous period."
+      "historialAyuda": "Each change closes the previous period.",
+      "comoSeVende": "How it is sold",
+      "comoSeVendeAyuda": "By unit: whole quantities, as always.",
+      "comoSeVendeAyudaPeso": "By weight: the POS weighs it (or the weight is typed with permission) and the quantity carries grams.",
+      "comoSeVendeAyudaMedida": "By measure: the POS takes a decimal quantity (meters or liters).",
+      "porUnidad": "By unit",
+      "porPeso": "By weight",
+      "porMedida": "By measure",
+      "unidadPeso": "Weight unit",
+      "unidadMedida": "Measure unit",
+      "kilogramo": "Kilogram (kg)",
+      "libra": "Pound (lb)",
+      "metro": "Meter (m)",
+      "litro": "Liter (L)",
+      "precioEscrito": "Enter the price",
+      "precioEscritoAyuda": "Only changes how it is typed and shown: it is always stored per kg.",
+      "porUnidadVenta": "per {unidad}",
+      "cadaCantidad": "per {cantidad} {unidad}",
+      "precioVentaCada": "Sale price {referencia}",
+      "precioVentaPor": "Sale price per {unidad}",
+      "seGuardaComo": "Stored as {precio} / {unidad}",
+      "ventaMinima": "Minimum sale ({unidad})",
+      "ventaMinimaAyuda": "Optional. The POS won't sell less than this quantity.",
+      "exigirBascula": "Require a scale",
+      "exigirBasculaAyuda": "Never sold with a typed weight (meat or expensive items). Until the device reads scales, it can't be sold in the POS.",
+      "costoPor": "Cost per {unidad}"
     },
     "impuestos": {
       "etiqueta": "Taxes",
@@ -10846,7 +10884,8 @@
       "serialInvalido": "One of the serial numbers does not belong to this sale or is no longer sold.",
       "lineaNoPerteneceALaVenta": "One of the lines does not belong to this sale.",
       "sinAccesoSucursal": "You do not have access to the branch of this sale.",
-      "generico": "Error processing the return"
+      "generico": "Error processing the return",
+      "cantidadDecimales": "The returned quantity has more decimals than the product allows."
     },
     "comun": {
       "cancelar": "Cancel",
@@ -10984,7 +11023,10 @@
         "check": "Check",
         "credit_note": "Credit note",
         "original_method": "Original method"
-      }
+      },
+      "cantidadOriginalUnidad": "Sold: {cantidad} {unidad}",
+      "reingresa": "Return to inventory",
+      "reingresaDe": "{producto}: return to inventory"
     },
     "historial": {
       "errorCarga": "Could not load the return history",
@@ -11139,7 +11181,13 @@
       "pago_no_anulable": "One of the payments cannot be voided from here. {detalle}",
       "sesion_mesa_invalida": "The table is no longer open with this bill. Reopen the table and charge again.",
       "no_es_venta_de_mesa": "This sale is not a table bill.",
-      "pago_excede_saldo": "The payment exceeds what is still owed on the bill (was this part already charged?). Check the table balance. {detalle}"
+      "pago_excede_saldo": "The payment exceeds what is still owed on the bill (was this part already charged?). Check the table balance. {detalle}",
+      "cantidad_decimales": "A weight or measure line has more decimals than the product allows. Weigh it again. {detalle}",
+      "cantidad_bajo_minimo": "A line is below the product's minimum sale. {detalle}",
+      "origen_peso_invalido": "The weight source of a line is not valid. Weigh it again. {detalle}",
+      "origen_peso_no_disponible": "Scale readings and weight labels are not available yet. {detalle}",
+      "peso_exige_bascula": "A product requires a scale and can't be sold with a typed weight. {detalle}",
+      "sin_permiso_peso_manual": "Manual weighing requires the “Weigh manually in the POS” permission. {detalle}"
     },
     "ventaAnulada": "Sale voided: payments, stock and invoice were reversed.",
     "anulacionFallida": "The sale could not be voided",
@@ -13827,7 +13875,8 @@
       "nuevaVenta": "New sale",
       "reimprimir": "Reprint the receipt",
       "factura": "E-invoice",
-      "cerrarPostVenta": "Close"
+      "cerrarPostVenta": "Close",
+      "lineaPeso": "Change the line weight"
     },
     "catalogo": {
       "titulo": "Products",
@@ -17733,6 +17782,51 @@
         "sucursal": "Branch",
         "cantidad": "Quantity"
       }
+    }
+  },
+  "posPeso": {
+    "tarjeta": {
+      "pesar": "Weigh",
+      "cantidad": "Quantity"
+    },
+    "dialogo": {
+      "titulo": "Weigh · {producto}",
+      "tituloMedida": "Quantity · {producto}",
+      "tituloCambiar": "Change weight · {producto}",
+      "precioPor": "{precio} / {unidad}",
+      "existencias": "stock {cantidad}",
+      "sinBascula": "no scale on this device",
+      "estadoManual": "No scale · manual weight",
+      "estadoMedida": "Typed quantity",
+      "ingresoManual": "Manual entry",
+      "campo": "Weight in {unidad}",
+      "campoMedida": "Quantity in {unidad}",
+      "ayudaManual": "It is recorded as a manual weight under your user.",
+      "ayudaMedida": "Up to {decimales} decimals.",
+      "calculo": "{cantidad} × {precio} / {unidad}",
+      "minimo": "Minimum {minimo}",
+      "cobroAlGramo": "charged by the gram",
+      "agregar": "Add {importe} · Enter",
+      "agregarDeshabilitado": "Add",
+      "guardar": "Save weight · Enter",
+      "cancelar": "Cancel · Esc",
+      "errores": {
+        "bajoMinimo": "The minimum sale is {minimo}.",
+        "demasiadosDecimales": "Up to {decimales} decimals allowed.",
+        "pesoInvalido": "Enter a weight greater than 0.",
+        "cantidadInvalida": "Enter a quantity greater than 0."
+      },
+      "exigeBascula": {
+        "titulo": "This product requires a scale",
+        "texto": "“{producto}” is only sold weighed on a scale. This device cannot read scales yet, so it cannot be sold with a typed weight."
+      },
+      "sinPermiso": {
+        "titulo": "You can't enter weights manually",
+        "texto": "Manual weighing requires the “Weigh manually in the POS” permission. Ask an administrator for it."
+      },
+      "sinPrecio": "“{producto}” has no current price. Set it in Inventory.",
+      "precioNoConsultado": "The price of “{producto}” could not be checked. Check your connection and try again.",
+      "errorAgregar": "“{producto}” could not be added to the cart."
     }
   }
 }

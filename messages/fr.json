@@ -9396,7 +9396,9 @@
         "costoUnitario": "Coût unitaire",
         "costo": "Coût",
         "total": "Total",
-        "acciones": "Actions"
+        "acciones": "Actions",
+        "lote": "Lot",
+        "vence": "Péremption"
       },
       "cantidadEn": "Quantité initiale à {sucursal}",
       "minimoEn": "Stock minimum à {sucursal}",
@@ -9407,7 +9409,12 @@
       "totalExistencia": "Total {unidades} unités",
       "notaKardex": "{count, plural, one {# succursale active} other {# succursales actives}}. L’entrée initiale est enregistrée dans la fiche de stock à l’enregistrement. Coût unitaire vide = coût du produit.",
       "notaEditar": "Le stock se modifie par un ajustement d’inventaire : « Ajuster » l’ouvre dans un nouvel onglet pour ne pas perdre les modifications non enregistrées. Le minimum se modifie ici.",
-      "avisoSinCosto": "Certaines quantités n’ont pas de coût : saisissez le coût unitaire ou le coût du produit dans « Prix et coûts »."
+      "avisoSinCosto": "Certaines quantités n’ont pas de coût : saisissez le coût unitaire ou le coût du produit dans « Prix et coûts ».",
+      "loteEn": "Lot du stock initial à {sucursal}",
+      "venceEn": "Date de péremption du lot à {sucursal}",
+      "lotePlaceholder": "Automatique",
+      "vencePlaceholder": "Sans péremption",
+      "notaLotes": "Chaque quantité entre dans le lot indiqué ; sans code, un lot est créé avec la date du jour."
     },
     "trazabilidad": {
       "titulo": "Traçabilité",
@@ -9445,6 +9452,13 @@
           "n3": "Compteur (3 chiffres)",
           "n2": "Compteur (2 chiffres)"
         }
+      },
+      "lotes": {
+        "etiqueta": "Gérer les lots et les dates de péremption",
+        "ayuda": "Chaque entrée va dans un lot avec sa date de péremption et la vente sort d'abord celui qui expire le plus tôt.",
+        "sinInventario": "Activez « Suivre le stock » pour gérer les lots.",
+        "notaEditar": "Le stock existant reste sans lot : placez-le dans un lot depuis Inventaire › Lots ou avec un ajustement.",
+        "notaVariantes": "Les variantes gèrent aussi les lots ; chaque lot appartient à une variante."
       }
     },
     "variantes": {

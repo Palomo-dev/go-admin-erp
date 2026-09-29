@@ -9501,7 +9501,9 @@
         "costoUnitario": "Costo unitario",
         "costo": "Costo",
         "total": "Total",
-        "acciones": "Acciones"
+        "acciones": "Acciones",
+        "lote": "Lote",
+        "vence": "Vence"
       },
       "cantidadEn": "Cantidad inicial en {sucursal}",
       "minimoEn": "Stock mínimo en {sucursal}",
@@ -9512,7 +9514,12 @@
       "totalExistencia": "Total {unidades} uds",
       "notaKardex": "{count, plural, one {# sucursal activa} other {# sucursales activas}}. La entrada inicial queda registrada en el kardex al guardar. Costo unitario vacío = costo del producto.",
       "notaEditar": "La existencia se cambia con un ajuste de inventario: «Ajustar» lo abre en otra pestaña para que no pierdas los cambios sin guardar. El mínimo sí se edita aquí.",
-      "avisoSinCosto": "Hay cantidades sin costo: escribe el costo unitario o el costo del producto en «Precios y costos»."
+      "avisoSinCosto": "Hay cantidades sin costo: escribe el costo unitario o el costo del producto en «Precios y costos».",
+      "loteEn": "Lote de la entrada inicial en {sucursal}",
+      "venceEn": "Vencimiento del lote en {sucursal}",
+      "lotePlaceholder": "Automático",
+      "vencePlaceholder": "Sin vencimiento",
+      "notaLotes": "Cada cantidad entra al lote indicado; sin código se crea uno con la fecha de hoy."
     },
     "trazabilidad": {
       "titulo": "Trazabilidad",
@@ -9550,6 +9557,13 @@
           "n3": "Consecutivo (3 dígitos)",
           "n2": "Consecutivo (2 dígitos)"
         }
+      },
+      "lotes": {
+        "etiqueta": "Maneja lotes y vencimientos",
+        "ayuda": "Cada entrada queda en un lote con su vencimiento y la venta descuenta primero el que vence antes.",
+        "sinInventario": "Activa «Rastrear inventario» para manejar lotes.",
+        "notaEditar": "Las existencias que ya tiene quedan sin lote: pásalas a un lote desde Inventario › Lotes o con un ajuste.",
+        "notaVariantes": "Las variantes también manejan lotes; cada lote pertenece a una variante."
       }
     },
     "variantes": {

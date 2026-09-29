@@ -180,8 +180,9 @@ export function DialogoRecibir({ trasladoId, onAbiertoChange, onRecibido, detall
                         alinear="derecha"
                         aria-label={t('recibidoDe', { producto: item.nombre })}
                         aria-invalid={!!error}
+                        aria-describedby={error ? `recibir-error-${item.id}` : undefined}
                       />
-                      {error && <p className="mt-1 text-xs text-danger-text" role="alert">{error}</p>}
+                      {error && <p id={`recibir-error-${item.id}`} className="mt-1 text-xs text-danger-text" role="alert">{error}</p>}
                     </td>
                     <td className={cn('px-3 py-3 text-right tabular-nums', dif > 0 ? 'font-medium text-danger-text' : 'text-fg')}>
                       {dif > 0 ? `−${cantidad(dif)}` : '0'}
@@ -221,13 +222,14 @@ export function DialogoRecibir({ trasladoId, onAbiertoChange, onRecibido, detall
                       alinear="derecha"
                       aria-label={t('recibidoDe', { producto: item.nombre })}
                       aria-invalid={!!error}
+                      aria-describedby={error ? `recibir-error-m-${item.id}` : undefined}
                     />
                   </div>
                   <p className={cn('pb-2 text-sm tabular-nums', dif > 0 ? 'font-medium text-danger-text' : 'text-fg-secondary')}>
                     {dif > 0 ? `−${cantidad(dif)}` : t('completo')}
                   </p>
                 </div>
-                {error && <p className="mt-1 text-xs text-danger-text" role="alert">{error}</p>}
+                {error && <p id={`recibir-error-m-${item.id}`} className="mt-1 text-xs text-danger-text" role="alert">{error}</p>}
                 {dif > 0 && (
                   <div className="mt-3">
                     {decision(item, l)}

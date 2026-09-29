@@ -19334,6 +19334,7 @@
       "orden_produccion_invalida": "L'ordre de production n'est pas terminé dans cette succursale.",
       "excede_orden_produccion": "On distribue plus que ce qui reste de l'ordre.",
       "excede_orden_produccion_detalle": "On distribue plus que ce qui reste de l'ordre : produit {producido}, déjà distribué {ya}.",
+      "traslado_solo_por_rpc": "Ce transfert est déjà parti : il ne change qu’en l’expédiant, en le recevant ou en le renvoyant.",
       "organizacion_no_permitida": "L'organisation ne correspond pas à votre session.",
       "sin_sesion": "Votre session a expiré : reconnectez-vous.",
       "error_desconocido": "L'opération n'a pas pu aboutir. Réessayez."

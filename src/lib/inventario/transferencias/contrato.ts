@@ -414,6 +414,7 @@ export const ERRORES_TRASLADO = [
   'demasiados_renglones',
   'orden_produccion_invalida',
   'excede_orden_produccion',
+  'traslado_solo_por_rpc',
   'organizacion_no_permitida',
   'sin_sesion',
   'error_desconocido',
@@ -445,6 +446,7 @@ export function estadoHttpErrorTraslado(codigo: ErrorTraslado): number {
     case 'sucursal_ajena':
     case 'producto_ajeno':
     case 'organizacion_no_permitida':
+    case 'traslado_solo_por_rpc':
       return 403;
     case 'sin_sesion':
       return 401;

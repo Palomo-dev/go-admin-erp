@@ -19439,6 +19439,7 @@
       "orden_produccion_invalida": "The production order is not completed at this branch.",
       "excede_orden_produccion": "More is being distributed than what is left from the order.",
       "excede_orden_produccion_detalle": "More is being distributed than what is left from the order: produced {producido}, already distributed {ya}.",
+      "traslado_solo_por_rpc": "This transfer has already left: it only changes by shipping, receiving or returning it.",
       "organizacion_no_permitida": "The organization does not match your session.",
       "sin_sesion": "Your session ended: sign in again.",
       "error_desconocido": "The operation could not be completed. Try again."

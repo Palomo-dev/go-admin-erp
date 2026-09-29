@@ -19334,6 +19334,7 @@
       "orden_produccion_invalida": "A ordem de produção não está concluída nesta filial.",
       "excede_orden_produccion": "Está distribuindo mais do que resta da ordem.",
       "excede_orden_produccion_detalle": "Está distribuindo mais do que resta da ordem: produzido {producido}, já distribuído {ya}.",
+      "traslado_solo_por_rpc": "Esta transferência já saiu: só muda despachando, recebendo ou devolvendo.",
       "organizacion_no_permitida": "A organização não coincide com a da sua sessão.",
       "sin_sesion": "Sua sessão terminou: entre novamente.",
       "error_desconocido": "Não foi possível concluir a operação. Tente de novo."

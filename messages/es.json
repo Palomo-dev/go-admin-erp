@@ -19439,6 +19439,7 @@
       "orden_produccion_invalida": "La orden de producción no está completada en esta sucursal.",
       "excede_orden_produccion": "Se reparte más de lo que falta distribuir de la orden.",
       "excede_orden_produccion_detalle": "Se reparte más de lo que falta distribuir de la orden: producido {producido}, ya distribuido {ya}.",
+      "traslado_solo_por_rpc": "Este traslado ya salió: solo se cambia despachando, recibiendo o devolviéndolo.",
       "organizacion_no_permitida": "La organización no coincide con la de tu sesión.",
       "sin_sesion": "Tu sesión terminó: vuelve a iniciar sesión.",
       "error_desconocido": "No se pudo completar la operación. Intenta de nuevo."

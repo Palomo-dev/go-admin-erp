@@ -368,7 +368,7 @@ export function NuevaTransferenciaForm({ trasladoId }: { trasladoId?: number }) 
     );
   };
 
-  const campoCantidad = (r: RenglonFormulario) => {
+  const campoCantidad = (r: RenglonFormulario, sufijo = 'e') => {
     const error = errorRenglon(r);
     return (
       <>
@@ -381,9 +381,10 @@ export function NuevaTransferenciaForm({ trasladoId }: { trasladoId?: number }) 
           data-cantidad-traslado=""
           aria-label={t('cantidadDe', { producto: r.producto.nombre })}
           aria-invalid={!!error}
+          aria-describedby={error ? `traslado-error-${sufijo}-${r.clave}` : undefined}
         />
         {error && (
-          <p className="mt-1 text-xs text-danger-text" role="alert">
+          <p id={`traslado-error-${sufijo}-${r.clave}`} className="mt-1 text-xs text-danger-text" role="alert">
             {error}
           </p>
         )}
@@ -481,7 +482,7 @@ export function NuevaTransferenciaForm({ trasladoId }: { trasladoId?: number }) 
                         <p className="text-xs text-fg-secondary">{t('disponibleEnOrigen', { n: cantidad(disponible) })}</p>
                         {error === 'supera_disponible' && <p className="text-xs text-warning-text">{t('soloHay', { n: cantidad(disponible) })}</p>}
                       </div>
-                      <div className="w-28">{campoCantidad(r)}</div>
+                      <div className="w-28">{campoCantidad(r, 'm')}</div>
                     </div>
                     {r.producto.track_lots && <div className="mt-3">{selectorLote(r, true)}</div>}
                     <Button

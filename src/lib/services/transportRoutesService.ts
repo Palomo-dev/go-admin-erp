@@ -90,7 +90,7 @@ export interface RouteSchedule {
   created_at: string;
   updated_at: string;
   transport_routes?: TransportRoute;
-  vehicles?: { id: string; plate_number: string; model?: string };
+  vehicles?: { id: string; plate: string; model?: string };
   driver_credentials?: { id: string; license_number: string };
 }
 
@@ -340,7 +340,7 @@ export const transportRoutesService = {
       .select(`
         *,
         transport_routes (id, name, code, route_type),
-        vehicles (id, plate_number, model),
+        vehicles (id, plate, model),
         driver_credentials (id, license_number)
       `)
       .eq('organization_id', organizationId)
@@ -358,7 +358,7 @@ export const transportRoutesService = {
       .from('route_schedules')
       .select(`
         *,
-        vehicles (id, plate_number, model),
+        vehicles (id, plate, model),
         driver_credentials (id, license_number)
       `)
       .eq('route_id', routeId)
@@ -505,10 +505,14 @@ export const transportRoutesService = {
   async getVehicles(organizationId: number) {
     const { data, error } = await supabase
       .from('vehicles')
-      .select('id, plate_number, model, capacity_passengers')
+      // `plate` y `passenger_capacity` son los nombres reales (MCP).
+      // OJO: `.eq('status', 'active')` no casa con el CHECK de la tabla
+      // (available | in_use | maintenance | inactive). Se deja como estaba:
+      // cambiarlo decide QUE vehiculos se ofrecen, y eso es producto.
+      .select('id, plate, model, passenger_capacity')
       .eq('organization_id', organizationId)
       .eq('status', 'active')
-      .order('plate_number', { ascending: true });
+      .order('plate', { ascending: true });
 
     if (error) {
       console.warn('Error fetching vehicles:', error.message);
@@ -541,7 +545,7 @@ export const transportRoutesService = {
         trip_date,
         departure_time,
         status,
-        vehicles (plate_number),
+        vehicles (plate),
         driver_credentials (license_number)
       `)
       .eq('route_id', routeId)

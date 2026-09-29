@@ -13,7 +13,7 @@ interface Trip {
   trip_date: string;
   departure_time?: string;
   status: string;
-  vehicles?: { plate_number: string };
+  vehicles?: { plate: string };
   driver_credentials?: { license_number: string };
 }
 
@@ -112,7 +112,7 @@ export function RouteTripsHistory({ routeId }: RouteTripsHistoryProps) {
                     {trip.vehicles && (
                       <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
                         <Bus className="h-4 w-4" />
-                        {trip.vehicles.plate_number}
+                        {trip.vehicles.plate}
                       </div>
                     )}
                     {trip.driver_credentials && (

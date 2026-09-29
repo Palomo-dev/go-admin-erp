@@ -1417,3 +1417,117 @@ navegación, zona horaria, `sin_fe` en `kit.estados`, sitio web conocido).
 - B5: el vínculo con la orden usa `OP-<id>` y `/app/inventario/produccion?orden=<id>`; si B5 añade
   `code`, actualizar `fn_traslados_listado`, `fn_traslado_detalle` y `fn_distribucion_ordenes`.
 - Revisión visual en el navegador pendiente (no se arrancó el servidor de desarrollo del dueño).
+
+---
+
+## Anexo B5 — Recetas, costo de recetas, producción y pestaña Producción (2026-09-29)
+
+Commits: `6cc775f6` servidor + Producción + Recetas + Costo de recetas + kit (`HojaDetalle`,
+`TablaSubseccion`) · `d55e49ee` pestaña Producción del producto · `bacabfcf` nombre de la descarga del costo de recetas (guardarraíl 16). Solo archivos de B5 (§5.6) y los
+namespaces `inventarioProduccion`, `inventarioRecetas` y `subseccion` en es/en/fr/pt. Decisiones
+P1–P11 con la recomendación del §6.
+
+### B5.1 Migraciones (`supabase/migrations/` + `supabase/rollbacks/`, aplicadas por el MCP)
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929150000_inv_b5_1_esquema` | `production_orders`: `confirmed_at/by`, `started_by`, `completed_by`, `cancelled_at/by`, `cancel_reason`, `total_cost`, `unit_cost`, `client_key`, `complete_key` (todas NULL-ables) e índices; `production_order_consumptions`: `unit_cost`, `total_cost`, `lot_id`; `product_recipes.created_by` (default `auth.uid()`). **Guardia** `fn_produccion_int_guardia`: `authenticated`/`anon` directo ya no escriben `production_orders`, sus consumos, `product_recipes` ni `recipe_ingredients` (`produccion_solo_por_rpc` / `receta_solo_por_rpc`, 42501); las RPC DEFINER sí |
+| `20260929150100_inv_b5_2_produccion` | `complete_production_order` **v2** (misma firma de 3 argumentos + `p_confirmar_faltante`, `p_clave` con default; DEFINER, `fn_inventario_exigir_permiso(org de la orden, 'producir')`): valida todo antes de mover (ingrediente, conversión, 150 %, decimales del producto, faltantes), consumos **solo por `fn_inv_int_mover`** (bloqueo de la fila, FEFO si el ingrediente lleva lotes, una fila de consumo por movimiento con su costo y lote), ingredientes sin inventario se costean con el costo vigente sin mover stock, opcionales fuera; terminado por `fn_inv_int_mover` con `recalcular_costo` y **costo = Σ consumos ÷ producido**; idempotente por clave. Nuevas: `fn_produccion_guardar` (borrador o confirmada, idempotente), `fn_produccion_cambiar_estado` (confirmar · iniciar · cancelar con motivo · eliminar borrador), `fn_produccion_necesidades` (+ interna `fn_produccion_int_necesidades`: líneas de `fn_receta_costo` escaladas a N ÷ rinde). Reversión: devuelve la v1 |
+| `20260929150150_inv_b5_2b_produccion_lectura` | `fn_produccion_listado` (paginado, filtros, KPI del mes en la zona de la organización; costo estimado y primer faltante de las abiertas) y `fn_produccion_detalle` (necesidades o consumos reales con movimiento, lote y costo, terminado con el promedio después, traslados de distribución). Importes solo con `costos` |
+| `20260929150200_inv_b5_3_recetas` | `fn_recetas_listado` (una fila por producto con su versión activa o la última; costo, margen, fuente y KPI en la sucursal elegida, **todo con `fn_receta_costo`**; margen ponderado por ventas pagadas de 30 días), `fn_receta_versiones`, `fn_receta_desactivar` (sin recetas activas el producto deja de ser compuesto), `fn_receta_reactivar` (copia una versión como N+1 por `fn_receta_guardar`). `fn_recetas_listado` se re-aplicó el mismo día (decimales e inventario del producto; margen nulo si no hay ningún costo); el archivo trae la definición viva |
+| `20260929150250_inv_b5_3b_producto_produccion` | `fn_producto_produccion_resumen` (receta efectiva o heredada, versiones, variantes con receta, usado como ingrediente, órdenes, traslados, movimientos de producción, conversiones, permisos) y `fn_producto_distribucion` (traslados que llevan el producto) |
+
+Todas las públicas: SECURITY DEFINER, `search_path` fijo, pertenencia por `fn_assert_acceso_org`
+(dentro de `fn_inventario_exigir_permiso` o `fn_productos_exigir_permiso`) y `REVOKE … FROM public,
+anon`; las internas sin EXECUTE para `authenticated`. `get_advisors` (security): ningún aviso nuevo
+en `anon_security_definer_function_executable`, `function_search_path_mutable` ni `rls_*`; las 11
+RPC públicas aparecen, como todas, en `authenticated_security_definer_function_executable`.
+
+### B5.2 Verificación en la base (transacción deshecha, `DO … RAISE`, org 2, dueño)
+
+- Receta «Pan» rinde 12 UN: harina 1.500 **GR** con merma 10 % (el ingrediente se lleva en **KG**) y
+  huevo 6 UN. Orden de 24, confirmada: necesidades 3,333 KG y 12 UN, costo estimado 12.666,67.
+- Completar 24 → 2 consumos enlazados a su movimiento del kardex (`production`, `OP-2`): harina
+  3,333 KG × 2.000, huevo 12 × 500; el pan entra 24 a **527,75** c/u (antes entraba a 0) y la fila
+  queda en ese promedio. Repetir con la misma clave → `ya_completada`, no mueve nada.
+- **Fallo tardío** (un disparador de prueba rechaza la entrada del terminado, después de los
+  consumos): la orden sigue `confirmed`, 0 consumos y la harina sigue en 10. Sin respaldo: el
+  servicio ya no marca `completed` cuando la RPC falla.
+- 40 sobre 24 → `excede_lo_planeado` (máx. 36). Ingrediente que no alcanza sin confirmar →
+  `faltante_sin_confirmar` (23514) con la lista; confirmando queda en negativo y se completa.
+- **Por peso**: masa en KG (`sale_mode = weight`), 2,5555 → `cantidad_decimales` (3); 2,5
+  confirmada, iniciada y completada en 2,4 kg: consumos con 3 decimales, terminado 2,400 a 3.936,79.
+- **Costo de receta vs. venta** (misma sucursal): `fn_receta_costo` 1.383,33 por unidad; vender 1
+  con `decrement_stock_with_recipe` descuenta 1.384,10. La diferencia (0,77) es el redondeo del
+  kardex a 3 decimales (0,166667 KG → 0,167 KG); la regla de costo es la misma (promedio de la fila
+  sin lote → costo vigente).
+- UPDATE directo a `production_orders`, `product_recipes` o `recipe_ingredients` como
+  `authenticated` → 42501. Otra organización (142) al listar, guardar o completar → 42501; `anon`
+  → sin EXECUTE. Cancelar sin motivo → `motivo_requerido`; eliminar solo borradores.
+- Versiones: guardar v2, reactivar v1 → v3 igual a v1; desactivar → sin receta efectiva y el
+  producto deja de ser compuesto.
+
+### B5.3 Pantallas y código
+
+- **Producción** `/app/inventario/produccion` (Figma `603:153432`): KPI (por confirmar, en proceso,
+  completadas del mes con costo real, diferencia planeado vs. producido), búsqueda por OP o
+  producto, filtros en la URL, costo estimado/real y primer faltante por fila, acción rápida y menú
+  por estado, selección (exportar, confirmar borradores), móvil con tarjetas. `?orden=<id>` (enlace
+  del kardex y de los traslados) abre el detalle.
+- **Detalle** `/app/inventario/produccion/[id]`: paso a paso, necesidades con lo disponible en la
+  sucursal (pedir traslado / crear OC) o consumos reales con lote, costo y enlace al kardex,
+  producto terminado con costo real y promedio después, resumen y «Cómo se conecta».
+- **Nueva orden** (G1 `970:177054`): producto con receta activa, sucursal, cantidad con los
+  decimales del producto, versión que guarda la orden, necesidades y costo estimado en vivo;
+  «Guardar borrador» o «Crear y confirmar». **Completar** (G2 `604:158843`; sustituye al
+  `prompt()`): > 0, ≤ 150 %, decimales, qué entra y qué sale, costo real y casilla si algo queda en
+  negativo. Cancelar con motivo (`DialogoMotivo`).
+- **Recetas** `/app/inventario/recetas` (`598:142703`): KPI (activas, costo incompleto, margen bajo,
+  órdenes del mes), filtros, costo por unidad y margen en la sucursal del encabezado, menú
+  (editar, versiones, crear orden, costo, producto, reactivar, desactivar **con confirmación**).
+  **Editar** `/app/inventario/recetas/editar?producto=` usa el **mismo `EditorReceta`** del
+  formulario (no un segundo editor): modo «al producir / al vender», costo en vivo, versiones y
+  «Cómo se conecta»; guardar crea la versión N+1. `RecipeDialog.tsx` retirado.
+- **Costo de recetas** `/app/inventario/reportes/costo-recetas` (`601:148806`): sobre
+  `fn_recetas_listado` + `fn_receta_costo` por fila desplegada (cantidad en la unidad de la receta
+  y en la suya, costo unitario y fuente, subtotal y % del costo, «Crear conversión» con
+  `DialogoConversion` del kit, «Registrar costo»). `CostoRecetasService.ts` (máximo `avg_cost`
+  entre sucursales, sin conversiones) retirado.
+- **Pestaña Producción del producto** (D1–D6): `components/inventario/productos/detalle/produccion`
+  exporta `<PestanaProduccion producto={…} permisos={…} />` (sub-pestaña en `?psub=`) y
+  `debeMostrarPestanaProduccion`. Receta (solo lectura + costo con `ResumenCostoReceta`, «Receta
+  de:», usado como ingrediente, menú), Costo (sucursal y versión, costo por versión), Órdenes
+  (hoja de la orden con `HojaDetalle`, nueva orden y completar), Distribución (traslados de B3) y
+  Unidades (conversiones que aplican; la gestión es de B6a).
+- Kit: `kit/HojaDetalle.tsx` (panel derecho en escritorio, hoja inferior en móvil) y
+  `kit/TablaSubseccion.tsx` (título con contador, «Nuevo …», menú ⋯, `DataTable`), importados por
+  ruta (no se tocó `kit/index.ts`, que tenía cambios ajenos).
+- `productionOrderService` y `recipeService` son fachadas de RPC (ya no escriben tablas).
+- Pruebas: `src/__tests__/db/inventarioB5Produccion.test.ts` (contrato de las migraciones),
+  `produccion/__tests__/produccion.test.ts`, `produccion/__tests__/traducciones.test.ts` (paridad de
+  los 3 namespaces en 4 idiomas), `productos/detalle/produccion/__tests__/pestanaProduccion.test.tsx`
+  (render en 4 idiomas y «Completar» con faltante).
+
+### B5.4 Pendiente (fuera de B5 o con dueño)
+
+- **B7**: montar `<PestanaProduccion producto={producto} permisos={permisos} />` en
+  `DetalleProducto.tsx` (pestaña `produccion`; mostrarla con `debeMostrarPestanaProduccion` o con
+  `mostrar` del resumen, que además cuenta «usado como ingrediente»).
+- **B3**: el asistente de Distribución no preselecciona la orden al llegar con `?orden=<id>` (hoy
+  filtra los traslados de esa orden; la orden se elige en el paso 1).
+- **B6a**: la pestaña Unidades enlaza a Conversiones; el alcance «Solo este producto» y
+  `DialogoConversion` con esa opción son de B6a.
+- **B0** (`nucleo/tipos.ts`): `ParamsCompletarProduccion` no lista `p_confirmar_faltante` ni
+  `p_clave`; el servicio usa su propio tipo.
+- **Dato heredado**: la única orden anterior (org 142, `OP-1`) sigue `completed` sin consumos (entró
+  por el respaldo que no movía stock); el detalle lo avisa. No se corrigió sin tu visto bueno.
+- **Contabilidad**: los consumos (salida) y el terminado (entrada) asientan por la regla
+  «inventory · adjusted» de cada movimiento, como antes; ahora el terminado entra con costo, así que
+  los dos asientos se compensan. Un asiento de producción propio (materias primas → producto en
+  proceso → terminado) queda para el contador.
+- `fn_recetas_listado` calcula el costo de todas las recetas de la organización en cada llamada
+  (0,95 s en la org con más recetas, 27). Si crece, conviene cachear el costo por sucursal.
+- B3 (su anexo): el vínculo con la orden sigue siendo `OP-<id>` y `/app/inventario/produccion?orden=<id>`; B5 no añadió `code`, así que no hay que tocar sus funciones. La ruta vieja redirige al detalle nuevo.
+- Figma dibuja y no se hizo: comparar versiones, «Duplicar a otras variantes», tableta con frames
+  propios, móvil del reporte de costo con tarjetas (hoy la tabla se desplaza).
+- Verificación en el navegador: no se hizo (sin sesión en el servidor de desarrollo del dueño).

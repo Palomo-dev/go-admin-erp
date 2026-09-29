@@ -660,3 +660,164 @@ No se versionan (el commit lleva solo este documento).
 | 6 | ¿«Agregar productos» de compra muestra el plazo de entrega del proveedor (`lead_time_days`)? | Sí, en la línea secundaria, solo cuando el producto tiene ese dato para el proveedor elegido |
 | 7 | ¿Atajos de teclado (M6) también en compra? | Sí, los mismos; Ctrl+Enter abre «Confirmar factura» |
 | 8 | ¿Se corrige la variante «Hoja móvil» de `Diálogo · Agregar productos` antes de dibujar la hoja móvil de compra? | Sí; la corrige quien mantiene el componente y después se agrega el frame a esta sección |
+
+---
+
+## 8. Implementación en código (2026-09-28)
+
+Encargo del dueño: «Apruebo lo que hiciste en facturas de venta en Figma, impleméntalo… y agrega todos los
+componentes que van a compartir con otras páginas… también en factura de compra». Decisiones §6 aplicadas
+con su recomendación; la 8 (consumidor final) quedó fuera por lo que se explica en §8.6.
+
+### 8.1 Qué ve ahora el dueño
+
+- **Nueva y editar factura de venta** (`/app/finanzas/facturas-venta/nuevo`, `/[id]/editar`, también
+  `?duplicar=` y `?cliente=`): un solo componente `facturas-venta/formulario/FormularioFacturaVenta.tsx` con
+  la estructura del frame base `1034:97035`: cabecera con Cancelar · Guardar borrador (Guardar cambios al
+  editar) · **Emitir factura**; fila «Datos del documento» (numeración que se asigna al emitir con «Número
+  manual» como opción avanzada, emisión, términos con «emisión + N días = fecha», vencimiento, sucursal,
+  moneda, forma de pago, oportunidad del CRM, factura electrónica al emitir con «Global», incluir en el
+  arqueo) y tarjeta **Cliente** (Elegir cliente con cartera y plazo); **Líneas** a todo el ancho con
+  «Buscar producto · F3» y «Agregar ítem manual · Alt+M», impuestos por línea, avisos de stock, seriales y
+  promoción en la línea; abajo **Notas para el cliente**, **Términos y condiciones** y **Comisión del
+  vendedor** (tasa sugerida); a la derecha, fijo, el **Resumen** (bases por impuesto, incluidos), la tarjeta
+  **Impuestos de la organización** («Precios con impuestos incluidos») y **Atajos**. En móvil, total y
+  «Emitir factura» fijos abajo.
+- Modos: nueva vacía («Emitir» deshabilitado con «Elige un cliente y agrega una línea»), nueva con datos
+  (banda «Copia de la factura …»), editar borrador, cargando (la cabecera no se esqueletiza), **no editable**
+  (emitida o anulada: solo lectura con el motivo y Ver factura · Duplicar como nueva · Crear nota crédito, que
+  abre la nota en el detalle con `?accion=nota-credito`), errores en línea con **«Revisa n campos»** arriba y
+  enlace a cada campo, guardando y emitiendo.
+- **Emitir** guarda y emite en un paso. Con faltantes, el diálogo lista cada producto («Pides 5 · hay 3») y
+  **muestra el ajuste antes** («Zapatilla: 5 → 3»); «Ajustar y emitir» lo aplica y reintenta, «Seguir como
+  borrador» cierra y «Ver existencias» abre el stock.
+- **Salir con cambios** (Cancelar o ←): Seguir editando · Salir sin guardar · **Guardar borrador y salir**.
+  Cerrar la pestaña con cambios lo avisa el navegador. **Autoguardado** cada 30 s solo si el borrador ya
+  existe y hay cambios, sin toast.
+- **Factura de compra** (`facturas-compra/formulario/FormularioFacturaCompra.tsx`, en Finanzas e
+  Inventario): la **misma estructura** (§7) con sus botones y flujos: Cancelar · Guardar borrador ·
+  **Confirmar factura** (abre el diálogo de siempre con recepción y documento soporte); Datos del documento
+  con el número del proveedor y **«#»** («Usar consecutivo interno — solo si la factura del proveedor no trae
+  número»), sucursal que recibe (fija desde una orden), emisión, plazo, vencimiento, moneda, «Los precios
+  incluyen IVA» y la nota «la recepción y el documento soporte se eligen al confirmar»; tarjeta
+  **Proveedor**; Líneas con el IVA por línea desde los impuestos de la organización (uno por línea), aviso
+  «Diferencia con la orden»; **Notas internas** y **Retenciones** elegidas de las configuradas (clase
+  `withholding`, con su `tax_code`) o escritas a mano; Resumen con **neto a pagar** y tarjeta **Pago al
+  proveedor**. Confirmada o anulada: solo lectura con motivo y «Ver factura y pagos».
+- **Por qué dos formularios y no uno parametrizado**: venta y compra comparten la estructura y las piezas,
+  no el flujo ni el contrato (emitir con resolución, factura electrónica, comisión y arqueo frente a número
+  del proveedor, plazo, recepción, retenciones y documento soporte; `fn_factura_venta_*` frente a
+  `fn_factura_compra_*`). Un componente con variante se llenaría de condiciones por tipo; dos formularios
+  delgados sobre `FormularioDocumentoLayout` y las mismas piezas mantienen la estructura idéntica sin mezclar
+  reglas (aclaración del dueño: «la misma estructura, no los mismos botones»).
+- **Orden de compra** (nueva y editar): «Elegir proveedor» y «Agregar productos a la orden» compartidos, y
+  la tabla de líneas del kit (`inventario/ordenes-compra/LineasOrdenCompra.tsx`); los seriales se siguen
+  capturando bajo la tabla.
+
+### 8.2 Componentes compartidos y dónde se usan
+
+| Pieza | Dónde vive | Venta | Compra | Orden de compra |
+|---|---|---|---|---|
+| Estructura (`FormularioDocumentoLayout`, `ResumenErrores`, `DialogoSalirConCambios`, `useAvisoSalida`, `useAutoguardado`, `TarjetaAtajos`) | `kit/documento/FormularioDocumento.tsx` | sí | sí (sin autoguardado) | — |
+| Tabla de líneas con estados e impuestos por línea (`DocumentoLineas` + `ImpuestosLinea`) | `kit/documento/` | varios impuestos | un impuesto | sin impuestos ni descuento |
+| Elegir cliente / proveedor (chips, NIT · DV, «Por cobrar|pagar» / «Al día», alta en línea, «Más datos») | `kit/SelectorEntidad` + `finanzas/documento/terceros.tsx` | `ElegirCliente` | `ElegirProveedor` | `ElegirProveedor` |
+| Agregar productos (escáner, chips, lista/cuadrícula, crear producto) | `kit/documento/AgregarProductosDialog` + `finanzas/documento/productos.tsx` | precio y stock | costo del proveedor, «Solo del proveedor», entrega | ídem, sin servicios |
+| Ítem manual | `kit/documento/DialogoItemManual` | nota que sale en el PDF | costo | — |
+| Nota y seriales de línea | `kit/documento/DialogoTextoLinea` | nota | nota y seriales | — |
+| Totales | `kit/documento/DocumentoTotales` | venta | compra (neto a pagar) | — |
+
+`ProductSearchDialog` (`shared/product-search`) ya no se usa en finanzas ni en compras. Lo siguen usando el
+CRM (`crm/oportunidades/OpportunityForm.tsx`, `crm/pipeline/modals/BulkActionsDialog.tsx`) y el formulario
+viejo de compra `facturas-compra/nueva-factura/ItemsListForm.tsx` (ya sin página que lo monte). El buscador
+en línea `ProductSearchCombobox` sigue en ajustes, transferencias y recetas de inventario.
+
+### 8.3 Paridad: nada se perdió
+
+Los 97 controles de §1.1 y las lógicas L1–L23 de §1.2 quedaron en el formulario v2 como dice la columna
+«En v2», con estas precisiones:
+
+| Lógica | Cómo quedó | Prueba |
+|---|---|---|
+| L1 duplicar · L2 `?cliente=` | igual, con banda «Copia de …» | `caracterizacionFormularioVenta` |
+| L3 moneda · L4 sucursal · L5 vencimiento | igual; el vencimiento en días calendario | ídem + `lineasFacturaVenta` |
+| L6 oportunidad | igual; las líneas toman el impuesto del producto al cargar (H9) | — |
+| L7 tasa sugerida · L8 comisión | igual, con «Tasa sugerida por la configuración de comisiones» | ídem |
+| L9 seriales | el borrador se guarda sin seriales; **emitir** los exige | ídem |
+| L10 promociones | se ven en la línea antes de guardar (M10) y se aplican al guardar a líneas sin descuento manual | ídem |
+| L11 F-42 | el impuesto se resuelve AL AGREGAR la línea (producto → predeterminado de la organización), no al guardar; «Sin impuesto» deja la línea al 0 % con aviso | ídem |
+| L12 totales desde las líneas | `lib/finanzas/ventas/lineasFacturaVenta.ts`, misma regla que la RPC | `lineasFacturaVenta` |
+| L13 aviso sin impuesto | en la línea («Sin impuesto asignado · Se facturará al 0 %») y en el resumen | — |
+| L14 impuestos aplicados | `invoice_applied_taxes` con los códigos y tarifas usados en las líneas | ídem |
+| L15 incluidos en precios | interruptor del documento (aplica a todas las líneas) | — |
+| L16 guardar · L17 editar | `guardarFacturaVenta` (crear y editar) | ídem |
+| L18 faltantes · L19 emitir | diálogo con ajuste previo; `emitirFacturaVenta` numera | ídem |
+| L20 FE global · L21 impuestos al editar | igual; al editar se leen `impuestos_linea` o `tax_code`/`tax_rate` (nada se pierde) | ídem |
+| L22 errores del servidor · L23 permisos | banda de error por código; la organización y el permiso siguen en el servidor | ídem |
+
+Cambio a propósito: **«Número»** deja de ser obligatorio y de generarse en el navegador (decisión 2): el
+borrador va sin número y la emisión lo asigna con la resolución de la sucursal; «Número manual» conserva la
+validación de duplicado (en el servidor).
+
+### 8.4 Hallazgos corregidos
+
+| # | Corrección | Dónde |
+|---|---|---|
+| H1 | La factura electrónica se envía después de emitir; guardar el borrador nunca la envía | `FormularioFacturaVenta` (`emitir`) |
+| H2 | Editar carga y conserva «incluir en el arqueo» | ídem (`cargarFactura`) |
+| H3 | Editar manda los impuestos aplicados con su tarifa (mismo payload que crear) | ídem (`payload`) |
+| H4 | Un solo estado de impuestos (por línea) | ídem |
+| H5 | Fuera los 32 `console.log` de `ImpuestosFactura` (sigue en cotizaciones y documento soporte) | `nueva-factura/ImpuestosFactura.tsx` |
+| H6 | Formas de pago en una consulta (también en `FormaPagoSelector`, que siguen usando cotizaciones y soporte) | `metodosPagoOrganizacion`, `FormaPagoSelector` |
+| H7 | Salir con cambios pregunta, en venta y en compra (compra ya no usa `window.confirm`) | `DialogoSalirConCambios` |
+| H8 | Sin número inventado en el navegador | migración `20260929010100` |
+| H9 | Líneas de oportunidad y duplicados con el impuesto del producto al cargar | `productosPorId` |
+| H10 | Tabla en tarjetas por debajo de `lg` (sin desplazamiento lateral en móvil) | `DocumentoLineas` |
+| — | Descripciones de producto con HTML crudo en el buscador de compras | `textoSinHtml` en el servicio y en el diálogo |
+| — | Costo $ 0 en compras: el costo sale del catálogo del proveedor o del último costo **vigente** (la RPC vieja no filtraba vigencia ni estado) | `buscarProductosDocumento` |
+
+### 8.5 Migraciones
+
+| Archivo | Qué hace | Rollback |
+|---|---|---|
+| `20260929010000_factura_venta_nota_impuestos_terminos.sql` | `invoice_items.impuestos_linea` (jsonb, detalle cuando la línea lleva varios impuestos), `invoice_sales.terms_conditions` (text) y `fn_factura_venta_guardar` igual a la de `20260924104430` más esas escrituras y la nota de línea (`invoice_items.note`, que ya existía). `tax_rate` sigue siendo la suma y `tax_code` el del primero: totales, asiento y cartera no cambian. Revoke a `anon`/`public` | restaura la función anterior y quita las dos columnas (advierte que borra esos datos) |
+| `20260929010100_factura_venta_numero_al_emitir.sql` | `invoice_sales.number` admite NULL (solo borradores; lo numera la emisión). No cambia tipos ni filas | vuelve a NOT NULL (falla si quedan borradores sin número; lo advierte) |
+
+Aplicadas por el MCP. Probadas antes con `DO … RAISE` en una transacción que se revierte: el borrador queda
+sin número, con la nota y el detalle de impuestos de la línea y los términos; la emisión le asigna número.
+El PDF muestra los términos (`documents/server/cargadores/ventas.ts`) y la nota de la línea (ya la leía).
+
+### 8.6 Lo que quedó fuera y por qué
+
+- **Consumidor final (decisión 8)**: el POS no tiene un cliente genérico: vende con el cliente vacío y solo
+  el payload de la DIAN usa `222222222222` al emitir. No se inventó un cliente; el atajo no está.
+- **Retenciones informativas en venta (M7)**: no hay una regla de quién retiene y cuánto según la
+  responsabilidad fiscal del cliente que se pueda aplicar sin inventarla. `DocumentoTotales` ya las pinta si
+  un servicio las entrega.
+- **Descuento en % por línea (M9)**: la tabla del kit edita el descuento en valor; el % queda pendiente.
+- **Términos por defecto de la organización (M8)**: no existe ese ajuste; el campo arranca vacío (al editar,
+  el guardado).
+- **Candado de sucursal y moneda** cuando la venta ligada ya reservó seriales: no se implementó (la RPC
+  valida la sucursal al guardar).
+- **Factura electrónica con varios impuestos en una línea**: el envío a Factus usa `tax_rate` de la línea
+  (la suma); separar el detalle de `impuestos_linea` en el payload es trabajo del frente de facturación
+  electrónica.
+- **Autoguardado en compra**: no; una compra se registra de una vez contra la factura del proveedor (§7,
+  aclaración del dueño). Sí tiene los atajos (misma captura).
+- **Hoja móvil de «Agregar productos»**: en código el nombre del producto va en su propio renglón y no se
+  recorta; la variante de Figma (`1042:34652`, Estado=Hoja móvil) sigue con el defecto anotado en §7.5.
+- **Piezas viejas que siguen vivas**: `ClienteSelector`, `ItemsFactura`, `ImpuestosFactura` y
+  `FormaPagoSelector` los usan la cotización y el documento soporte; se quedan (el tipo `InvoiceItem` pasó a
+  `nueva-factura/tipos.ts`). Se retiraron `NuevaFacturaForm`, `EditarFacturaVenta` y el `PageBackHeader` de
+  venta.
+
+### 8.7 Pruebas y verificación
+
+- F0: `src/__tests__/finanzas/ventas/caracterizacionFormularioVenta.test.tsx` (sobre el v2, 21 casos, H1–H3,
+  H6 y H8 invertidos a propósito) y `src/__tests__/finanzas/compras/caracterizacionFormularioCompra.test.tsx`
+  (10 casos). Tag local `backup/antes-factura-venta-v2-2026-09-28` (sin push).
+- Lógica: `src/__tests__/finanzas/ventas/lineasFacturaVenta.test.ts` (19), `kit/__tests__/edicionDocumento.test.ts`
+  (16); render: `kit/__tests__/renderEdicionDocumento.test.tsx` (10); servicio:
+  `src/__tests__/finanzas/documentos/edicionDocumentoServicio.test.ts` (8); `guardarFactura.test.ts` apunta
+  al formulario nuevo.
+- Cada fase se verificó sobre una copia limpia de `HEAD` (`git archive` + junction a `node_modules`): `tsc`
+  sin errores y las suites de kit, finanzas, guardrails, documentos y zonas horarias en verde.

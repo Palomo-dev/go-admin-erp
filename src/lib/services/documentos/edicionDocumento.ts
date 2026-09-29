@@ -71,6 +71,8 @@ export interface CriteriosProductosDocumento {
   proveedor?: number | null;
   conStock?: boolean;
   soloProveedor?: boolean;
+  /** Orden de compra: sin servicios (solo lo que entra al inventario). */
+  sinServicios?: boolean;
   limite?: number;
 }
 
@@ -117,6 +119,7 @@ type FilaProducto = {
   description: string | null;
   track_stock: boolean | null;
   track_serial: boolean | null;
+  product_type?: string | null;
   product_prices: { price: number | string; effective_from: string | null; effective_to: string | null }[] | null;
   product_costs: { cost: number | string; effective_from: string | null; effective_to: string | null }[] | null;
   product_tax_relations: { organization_taxes: FilaImpuesto | FilaImpuesto[] | null }[] | null;
@@ -160,12 +163,13 @@ export async function buscarProductosDocumento(org: number, c: CriteriosProducto
   }
   if (ids && ids.length === 0) return [];
 
-  const productos = await consultarProductos(org, { texto: c.texto, ids, limite }, senal);
+  const filas = await consultarProductos(org, { texto: c.texto, ids, limite }, senal);
+  const productos = c.sinServicios ? filas.filter((p) => p.product_type !== 'service') : filas;
   return mapearProductos(productos, c, delProveedor, senal);
 }
 
 const SELECT_PRODUCTO_DOCUMENTO =
-  'id, name, sku, barcode, description, track_stock, track_serial, product_prices(price, effective_from, effective_to), product_costs(cost, effective_from, effective_to), product_tax_relations(organization_taxes(id, name, rate, is_default, is_active, kind, tax_templates(code))), product_images(storage_path, is_primary, display_order)';
+  'id, name, sku, barcode, description, product_type, track_stock, track_serial, product_prices(price, effective_from, effective_to), product_costs(cost, effective_from, effective_to), product_tax_relations(organization_taxes(id, name, rate, is_default, is_active, kind, tax_templates(code))), product_images(storage_path, is_primary, display_order)';
 
 async function consultarProductos(org: number, f: { texto?: string; ids: number[] | null; limite: number; conPadres?: boolean }, senal?: AbortSignal): Promise<FilaProducto[]> {
   let q = supabase.from('products').select(SELECT_PRODUCTO_DOCUMENTO).eq('organization_id', org);

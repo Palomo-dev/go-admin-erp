@@ -764,3 +764,33 @@ La fila de `ViewToggle` (sección «Cobro y post-venta, vista y selectores de te
 Cuadrícula con las mismas props». Ya no es así: el dueño fijó el 2026-09-24 `SelectorVista` con texto (`868:31799`) + `SelectorDensidad` (`868:31832`) para Mesas«Mesas: Plano |
 (POS-UX-V2 §7.5; frame `870:98618`, instancias `917:116263` y `917:116278`). `SelectorDensidad` aún no existe en«Mesas: Plano |
 el kit (pendiente P2 de la auditoría).«Mesas: Plano |
+
+## Adenda 2026-09-28 — formulario de documento: venta, compra y orden de compra
+
+Piezas del formulario v2 de factura de venta (docs/design/FACTURA-VENTA-FORMULARIO-V2.md, §8) que
+comparten la factura de venta, la factura de compra y la orden de compra. Una sola implementación con
+variante `venta` · `compra`; se extendió lo que existía antes de crear nada. Textos en `kit.documentoEdicion`
+(4 idiomas). Ninguna pieza consulta Supabase ni calcula el negocio: los datos llegan por props y las
+funciones del dominio (`calcularTotal`, `buscar`, `onCrear`) las pasa la pantalla.
+
+| Figma | Código | Contrato |
+|---|---|---|
+| `LineaDocumentoEdicion` `1032:33591` (estados de la tabla, decisión 1) | `documento/DocumentoLineas.tsx` (extendido) + `documentoLineasLogica.ts` | Línea: `aviso` (fila en advertencia), `insignias: { texto, tono }[]`, `descripcionEditable` (ítem manual), `impuestosSeleccion: { ids, incluido }`, `detalleTotal`. Props: `impuestosDisponibles`, `impuestosMultiples`, `sinIncluidoPorLinea`, `avisoSinImpuesto`. `CambioLinea` suma `descripcion` e `impuestos`. `tonoLinea()` (el error manda sobre el aviso) |
+| `ImpuestosLinea` `1032:32779` | `documento/ImpuestosLinea.tsx` | `opciones` (impuestos de la organización, sin retenciones), `valor: { ids, incluido }`, `multiple` (venta sí, compra no: la RPC de compra guarda una tarifa), `sinIncluido`, `avisoSinImpuesto`. Popover con casillas o radios, «Incluido en el precio» y «Sin impuesto (excluir esta línea)»; ↑/↓ y Espacio |
+| `Diálogo · Agregar productos` `1042:34652` | `documento/AgregarProductosDialog.tsx` | `variante`, `destino` (`factura` · `orden`), `buscar(texto, { conStock, soloProveedor }, señal)`, `onAgregar`, `hayProveedor`, `formularioCrear({ texto, onCreado, onCancelar })`. Escáner (coincidencia exacta de SKU o código de barras), Enter agrega el primero, ↑/↓, lista o cuadrícula, «Listo (n agregados)», hoja en móvil (`PanelAdaptable`) con el nombre en su propio renglón. Descripciones en texto plano (`textoSinHtml`, `lib/utils/textoPlano.ts`) |
+| `Diálogo · Agregar ítem manual` `1042:134761` | `documento/DialogoItemManual.tsx` | `variante`, `moneda`, `impuestos`, `impuestosMultiples`, `sinIncluido`, `calcularTotal(item)` (vista previa con la regla del documento), `onAgregar({ descripcion, cantidad, precio, impuestos, incluido, nota })`. Foco en «Descripción», Enter en la nota agrega |
+| `QuickCustomerForm` · «Crear proveedor — formulario rápido» | `documento/FormularioRapidoTercero.tsx` | `variante` (`cliente` · `proveedor`), `texto` (lo escrito en el buscador), `onCrear(datos)` (el alta de la app), `onCreado`, `onMasDatos`, `mensajeError`. DV del NIT calculado con `nitCheckDigit` |
+| «Crear producto» (venta `1045:105410` · compra `1045:105970`) | `documento/FormularioRapidoProducto.tsx` | `variante`, `texto`, `moneda`, `impuestos`, `onCrear(datos)` (`fn_producto_guardar` en la pantalla), `onCreado` |
+| — | `documento/DialogoTextoLinea.tsx` | Subido de compras: nota de línea y seriales (uno por renglón) |
+| Chip de filtro que se prende | `documento/ChipAlternable.tsx` | `etiqueta`, `activo`, `onAlternar` (`aria-pressed`) |
+| `CustomerPicker` / `SupplierPicker` Layout=dialog (`1041:33841`) | `SelectorEntidad.tsx` + `selectorEntidadLogica.ts` (extendidos) | `filtros: { id, etiqueta, activoPorDefecto? }[]` (llegan a `buscar` como tercer argumento), `formularioCrear` (alta dentro de la misma capa, vuelve con el tercero elegido), `textoCrearNuevo`. `OpcionEntidad` suma `etiqueta` (Persona/Empresa) e `insignia` («Por cobrar $…» advertencia · «Al día» éxito). `ClientePicker` suma `tipo`, `contacto`, `saldoPorCobrar`, `alDia`, `plazoDias`; `ProveedorPicker` suma `tipo`, `alDia`, `creditDays`. Sin esas props, los selectores de siempre no cambian |
+| `DocumentHeader formulario` | `PageHeader` / `DocumentoCabecera` (extendidos) | `onVolver`: «←» pasa por la pantalla (salir con cambios) |
+| Estructura v2 (venta `1034:97025`, compra `1066:105465`) | `documento/FormularioDocumento.tsx` | `FormularioDocumentoLayout` (`cabecera`, `avisos`, `datos`, `tercero`, `lineas`, `complementos`, `resumen`, `pieMovil`, `dialogos`), `ResumenErrores` («Revisa n campos» con enlace a cada campo), `DialogoSalirConCambios` (Seguir editando · Salir sin guardar · Guardar borrador y salir), `useAvisoSalida`, `useAutoguardado({ activo, sucio, guardar, intervaloMs })`, `TarjetaAtajos` |
+
+Conectadas a sus datos (fuera del kit, `components/finanzas/documento/`): `ElegirCliente`, `ElegirProveedor`,
+`AgregarProductosDocumento`, `useImpuestosOrganizacion`, sobre `lib/services/documentos/edicionDocumento.ts`
+(búsqueda de productos con precio o costo vigente y stock de la sucursal, terceros sobre las RPC de los
+listados, altas rápidas con los servicios de siempre, formas de pago en una consulta).
+
+Pruebas: `kit/__tests__/edicionDocumento.test.ts` (lógica), `kit/__tests__/renderEdicionDocumento.test.tsx`
+(render), `src/__tests__/finanzas/documentos/edicionDocumentoServicio.test.ts` (servicio).

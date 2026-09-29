@@ -3764,7 +3764,8 @@
         "describe": "Describe el ítem",
         "descripcionDe": "Descripción del ítem",
         "itemSinNombre": "Ítem sin descripción",
-        "itemManual": "Ítem manual"
+        "itemManual": "Ítem manual",
+        "seriales": "Seriales {n}/{total}"
       },
       "impuestos": {
         "sinAsignar": "Sin impuesto asignado",
@@ -3826,7 +3827,9 @@
         "listo": "Listo ({n, plural, one {# agregado} other {# agregados}})",
         "subtituloVenta": "Precio de venta · stock de {sucursal}",
         "subtituloCompra": "Costo de {proveedor} · stock de {sucursal}",
-        "subtituloCompraSinProveedor": "Último costo · stock de {sucursal}"
+        "subtituloCompraSinProveedor": "Último costo · stock de {sucursal}",
+        "vacioOrden": "Busca productos del proveedor (F3) para armar la orden.",
+        "buscarOrden": "Buscar producto"
       },
       "crearProducto": {
         "nombre": "Nombre del producto",
@@ -11403,6 +11406,46 @@
         "linea": "Cantidad, precio o descuento inválidos.",
         "descripcion": "La línea necesita una descripción.",
         "retencion": "Revisa la base y la tarifa de la retención."
+      },
+      "v2": {
+        "seriales": "Seriales {n}/{total}",
+        "diferenciaOrden": "Diferencia con la orden",
+        "avisoOrden": "La orden pedía {pedido} y llegaron {recibido}: se factura lo recibido.",
+        "detalleIva": "IVA {importe}",
+        "bandaOrden": "Desde la orden {orden}: se precargó lo recibido. La sucursal y el proveedor son los de la orden.",
+        "secciones": {
+          "documento": "Datos del documento",
+          "proveedor": "Proveedor",
+          "lineas": "Líneas de la factura ({n})"
+        },
+        "numeroAyuda": "Tal como aparece en la factura del proveedor. «#» solo si no trae número.",
+        "consecutivoInterno": "Usar consecutivo interno — solo si la factura del proveedor no trae número",
+        "sucursalRecibe": "Sucursal que recibe",
+        "sucursalFija": "Fija: la de la orden de compra.",
+        "venceAyuda": "Al cambiarla, el plazo se vacía.",
+        "recepcionAlConfirmar": "La recepción de la mercancía y el documento soporte se eligen al confirmar la factura.",
+        "vacioDescripcion": "Busca un producto (F3) o agrega un ítem manual (Alt+M).",
+        "buscarProducto": "Buscar producto",
+        "itemManual": "Agregar ítem manual",
+        "retencionConfigurada": "Retención",
+        "retencionOtra": "Otra (escribir el concepto)",
+        "pagoProveedor": "Pago al proveedor",
+        "pagoSinProveedor": "Elige el proveedor para ver cuándo vence el pago.",
+        "pagoCxp": "La cuenta por pagar se crea al confirmar, por el neto.",
+        "netoPagar": "Neto a pagar",
+        "total": "Total",
+        "tituloFactura": "Factura de compra {numero}",
+        "verFactura": "Ver factura",
+        "verYPagar": "Ver factura y pagos",
+        "motivoAnulada": "Esta factura está anulada: no se puede editar.",
+        "motivoConfirmada": "Esta factura está {estado}: ya no es un borrador y no se puede editar. Los pagos y la anulación se hacen desde el detalle.",
+        "atajos": {
+          "proveedor": "Elegir proveedor",
+          "productos": "Buscar producto",
+          "manual": "Ítem manual",
+          "guardar": "Guardar borrador",
+          "confirmar": "Confirmar factura"
+        }
       }
     }
   },

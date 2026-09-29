@@ -3659,7 +3659,8 @@
         "describe": "Descreva o item",
         "descripcionDe": "Descrição do item",
         "itemSinNombre": "Item sem descrição",
-        "itemManual": "Item manual"
+        "itemManual": "Item manual",
+        "seriales": "Séries {n}/{total}"
       },
       "impuestos": {
         "sinAsignar": "Sem imposto atribuído",
@@ -3721,7 +3722,9 @@
         "listo": "Pronto ({n, plural, one {# adicionado} other {# adicionados}})",
         "subtituloVenta": "Preço de venda · estoque de {sucursal}",
         "subtituloCompra": "Custo de {proveedor} · estoque de {sucursal}",
-        "subtituloCompraSinProveedor": "Último custo · estoque de {sucursal}"
+        "subtituloCompraSinProveedor": "Último custo · estoque de {sucursal}",
+        "vacioOrden": "Busque produtos do fornecedor (F3) para montar o pedido.",
+        "buscarOrden": "Buscar produto"
       },
       "crearProducto": {
         "nombre": "Nome do produto",
@@ -11298,6 +11301,46 @@
         "linea": "Quantidade, preço ou desconto inválidos.",
         "descripcion": "A linha precisa de uma descrição.",
         "retencion": "Revise a base e a alíquota da retenção."
+      },
+      "v2": {
+        "seriales": "Séries {n}/{total}",
+        "diferenciaOrden": "Diferença com o pedido",
+        "avisoOrden": "O pedido era de {pedido} e chegaram {recibido}: fatura-se o recebido.",
+        "detalleIva": "IVA {importe}",
+        "bandaOrden": "Do pedido {orden}: o recebido foi pré-carregado. Filial e fornecedor são os do pedido.",
+        "secciones": {
+          "documento": "Dados do documento",
+          "proveedor": "Fornecedor",
+          "lineas": "Linhas da fatura ({n})"
+        },
+        "numeroAyuda": "Como aparece na fatura do fornecedor. «#» só se ela não tiver número.",
+        "consecutivoInterno": "Usar sequência interna — só se a fatura do fornecedor não tiver número",
+        "sucursalRecibe": "Filial que recebe",
+        "sucursalFija": "Fixa: a do pedido de compra.",
+        "venceAyuda": "Ao alterá-la, o prazo fica vazio.",
+        "recepcionAlConfirmar": "O recebimento da mercadoria e o documento de suporte são escolhidos ao confirmar a fatura.",
+        "vacioDescripcion": "Busque um produto (F3) ou adicione um item manual (Alt+M).",
+        "buscarProducto": "Buscar produto",
+        "itemManual": "Adicionar item manual",
+        "retencionConfigurada": "Retenção",
+        "retencionOtra": "Outra (escrever o conceito)",
+        "pagoProveedor": "Pagamento ao fornecedor",
+        "pagoSinProveedor": "Escolha o fornecedor para ver quando vence o pagamento.",
+        "pagoCxp": "A conta a pagar é criada ao confirmar, pelo líquido.",
+        "netoPagar": "Líquido a pagar",
+        "total": "Total",
+        "tituloFactura": "Fatura de compra {numero}",
+        "verFactura": "Ver fatura",
+        "verYPagar": "Ver fatura e pagamentos",
+        "motivoAnulada": "Esta fatura está anulada: não pode ser editada.",
+        "motivoConfirmada": "Esta fatura está {estado}: não é mais um rascunho e não pode ser editada. Pagamentos e anulação são feitos no detalhe.",
+        "atajos": {
+          "proveedor": "Escolher fornecedor",
+          "productos": "Buscar produto",
+          "manual": "Item manual",
+          "guardar": "Salvar rascunho",
+          "confirmar": "Confirmar fatura"
+        }
       }
     }
   },

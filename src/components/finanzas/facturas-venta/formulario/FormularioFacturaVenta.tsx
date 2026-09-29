@@ -739,7 +739,7 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
 
   const listaErrores: ErrorFormulario[] = Object.entries(errores)
     .filter(([, v]) => !!v)
-    .map(([campo, mensaje]) => ({ campo, mensaje: mensaje as string, idControl: campo.startsWith('linea.') ? 'lineas-factura' : `fv-${campo}` }));
+    .map(([campo, mensaje]) => ({ campo, mensaje: mensaje as string, idControl: campo.startsWith('linea') ? 'lineas-factura' : `fv-${campo}` }));
 
   const errComision = errorComision(metodoComision, Number(tasaComision) || 0, totales.subtotal, totales.total);
   const motivoEmitir = !cliente || lineas.length === 0 ? t('motivoEmitir') : undefined;
@@ -821,13 +821,12 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
       datos={
         <FormSection titulo={t('secciones.documento')} icono={ReceiptText} columnas={2}>
           <div className="md:col-span-2">
-            <FormField etiqueta={t('campos.numeracion')} ayuda={verNumeroManual ? t('campos.numeroManualAyuda') : undefined} error={errores.numero}>
+            <FormField id="fv-numero" etiqueta={t('campos.numeracion')} ayuda={verNumeroManual ? t('campos.numeroManualAyuda') : undefined} error={errores.numero}>
               {(c) =>
                 verNumeroManual ? (
                   <div className="flex gap-2">
                     <Input
                       {...aria(c)}
-                      id="fv-numero"
                       value={numeroManual}
                       maxLength={60}
                       placeholder={t('campos.numeroEjemplo')}
@@ -861,8 +860,8 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
               }
             </FormField>
           </div>
-          <FormField etiqueta={t('campos.emision')} obligatorio error={errores.emision}>
-            {(c) => <CampoFecha {...aria(c)} id="fv-emision" valor={emision} hoy={getToday()} onValorChange={cambiarEmision} />}
+          <FormField id="fv-emision" etiqueta={t('campos.emision')} obligatorio error={errores.emision}>
+            {(c) => <CampoFecha {...aria(c)} valor={emision} hoy={getToday()} onValorChange={cambiarEmision} />}
           </FormField>
           <FormField etiqueta={t('campos.terminos')} ayuda={vence ? t('campos.venceEl', { dias: terminos, fecha: formatPlain(vence) }) : undefined}>
             {(c) => (
@@ -902,11 +901,10 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
               </div>
             )}
           </FormField>
-          <FormField etiqueta={t('campos.vence')} error={errores.vence}>
+          <FormField id="fv-vence" etiqueta={t('campos.vence')} error={errores.vence}>
             {(c) => (
               <CampoFecha
                 {...aria(c)}
-                id="fv-vence"
                 valor={vence}
                 min={emision}
                 hoy={getToday()}
@@ -917,11 +915,10 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
               />
             )}
           </FormField>
-          <FormField etiqueta={t('campos.sucursal')} obligatorio error={errores.sucursal}>
+          <FormField id="fv-sucursal" etiqueta={t('campos.sucursal')} obligatorio error={errores.sucursal}>
             {(c) => (
               <select
                 {...aria(c)}
-                id="fv-sucursal"
                 value={sucursal ?? ''}
                 onChange={(e) => {
                   marcar();
@@ -1152,6 +1149,7 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
               )}
             </FormField>
             <FormField
+              id="fv-comision"
               etiqueta={t('comision.comision')}
               ayuda={tasaSugerida ? t('comision.sugerida') : undefined}
               error={errComision ? t(`comision.${errComision}`) : errores.comision}
@@ -1160,7 +1158,6 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
                 <div className="flex flex-col gap-2">
                   <CampoNumero
                     {...aria(c)}
-                    id="fv-comision"
                     valor={tasaComision}
                     decimales={metodoComision === 'percentage' ? 2 : ctxMoneda.decimals}
                     minimo={0}

@@ -1,227 +1,51 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { purchaseOrderService, type PurchaseOrderItemInput } from '@/lib/services/purchaseOrderService';
-import { supplierService } from '@/lib/services/supplierService';
-import type { Supplier } from '@/lib/services/supplierService';
+import { purchaseOrderService } from '@/lib/services/purchaseOrderService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
-import { Skeleton } from '@/components/ui/skeleton';
-import { QuickCreateDialog } from '@/components/inventario/productos/nuevo/QuickCreateDialog';
-import { NuevoProveedorForm } from '@/components/inventario/proveedores/nuevo';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
-
-import { ProductSearchCombobox, type ProductOption } from '../ProductSearchCombobox';
-import { SearchSelectCombobox, type SearchSelectOption } from '../SearchSelectCombobox';
-import { SerialCaptureSection } from '@/components/shared/SerialCaptureSection';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { 
-  ArrowLeft, 
-  Save, 
-  Send,
-  Loader2, 
-  Building2, 
-  Truck,
-  Plus,
-  Trash2,
-  Package
-} from 'lucide-react';
+import { ElegirProveedor, type ProveedorDocumento } from '@/components/finanzas/documento/terceros';
+import { LineasOrdenCompra, type LineaOrden } from '../LineasOrdenCompra';
+import { ArrowLeft, Save, Send, Loader2, Building2, Package } from 'lucide-react';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
-interface OrderItem extends PurchaseOrderItemInput {
-  id: string;
-  productName: string;
-  sku: string;
-  image?: string | null;
-  track_serial?: boolean;
-}
-
-/** Campos de variante y serial que `getProducts` trae además de los tipados en ProductOption. */
-interface ProductoConVariante {
-  parent_image?: string | null;
-  parent_name?: string | null;
-  variant_data?: Record<string, unknown> | null;
-  track_serial?: boolean | null;
-}
-
+/**
+ * Nueva orden de compra. El proveedor y los productos usan las piezas
+ * compartidas del formulario de documento (F3 de
+ * docs/design/FACTURA-VENTA-FORMULARIO-V2.md): «Elegir proveedor» con filtros
+ * y alta rápida, y «Agregar productos a la orden» con costo del proveedor.
+ * Guardar sigue siendo `purchaseOrderService.createPurchaseOrder`.
+ */
 export function NuevaOrdenCompraForm() {
   const router = useRouter();
-  const { selectedBranchId } = useBranch();
-  const { formatear } = useMonedaOrganizacion();
+  const { selectedBranchId, branches } = useBranch();
+  const moneda = useMonedaOrganizacion();
+  const { formatear } = moneda;
 
   // Estados del formulario
-  const [supplierId, setSupplierId] = useState<string>('');
+  const [proveedor, setProveedor] = useState<ProveedorDocumento | null>(null);
   const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   const [expectedDate, setExpectedDate] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [items, setItems] = useState<OrderItem[]>([]);
+  const [items, setItems] = useState<LineaOrden[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Datos de selectores
-  const [suppliers, setSuppliers] = useState<SearchSelectOption[]>([]);
-  const [, setBranches] = useState<SearchSelectOption[]>([]);
-  const [products, setProducts] = useState<ProductOption[]>([]);
-
-  // Item temporal para agregar
-  const [selectedProduct, setSelectedProduct] = useState<string>('');
-  const [itemQuantity, setItemQuantity] = useState<string>('1');
-  const [itemCost, setItemCost] = useState<string>('0');
-
-  // Productos filtrados por proveedor
-  const [supplierProductIds, setSupplierProductIds] = useState<Set<number>>(new Set());
-  const [supplierCosts, setSupplierCosts] = useState<Map<number, number>>(new Map());
-  const [showAllProducts, setShowAllProducts] = useState(false);
-  const [showSupplierDialog, setShowSupplierDialog] = useState(false);
-
-  // Recargar proveedores tras crear uno nuevo desde el diálogo
-  const reloadSuppliers = async () => {
-    const organizationId = getOrganizationId();
-    const suppliersData = await purchaseOrderService.getSuppliers(organizationId);
-    setSuppliers(suppliersData);
-  };
-
-  const handleSupplierCreated = (supplier: Supplier) => {
-    setShowSupplierDialog(false);
-    reloadSuppliers();
-    if (supplier?.id) setSupplierId(supplier.id.toString());
-  };
-
-  // Cargar datos iniciales
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        const organizationId = getOrganizationId();
-        const [suppliersData, branchesData, productsData] = await Promise.all([
-          purchaseOrderService.getSuppliers(organizationId),
-          purchaseOrderService.getBranches(organizationId),
-          purchaseOrderService.getProducts(organizationId)
-        ]);
-        setSuppliers(suppliersData);
-        setBranches(branchesData);
-        setProducts(productsData);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadData();
-  }, []);
-
-  // Cargar productos del proveedor cuando se selecciona
-  useEffect(() => {
-    if (!supplierId) {
-      setSupplierProductIds(new Set());
-      setSupplierCosts(new Map());
-      return;
-    }
-    const loadSupplierProducts = async () => {
-      const supplierProducts = await supplierService.getProductsBySupplier(parseInt(supplierId));
-      const ids = new Set(supplierProducts.map(p => p.product_id));
-      const costs = new Map(supplierProducts.map(p => [p.product_id, p.cost]));
-      setSupplierProductIds(ids);
-      setSupplierCosts(costs);
-      setShowAllProducts(false);
-    };
-    loadSupplierProducts();
-  }, [supplierId]);
-
-  // Productos a mostrar: filtrados por proveedor o todos
-  const displayedProducts = showAllProducts || supplierProductIds.size === 0
-    ? products
-    : products.filter(p => supplierProductIds.has(p.id));
-
-  // Agregar item
-  const handleAddItem = () => {
-    if (!selectedProduct) {
-      toastError('Error', 'Selecciona un producto');
-      return;
-    }
-
-    const product = products.find(p => p.id.toString() === selectedProduct);
-    if (!product) return;
-
-    const quantity = parseFloat(itemQuantity) || 1;
-    const cost = parseFloat(itemCost) || 0;
-
-    // Construir nombre con atributos de variante si aplica
-    const variante = product as unknown as ProductoConVariante;
-    let displayName = product.name;
-    if (variante.parent_name && variante.variant_data) {
-      const entries = Object.entries(variante.variant_data)
-        .filter(([, v]) => v && String(v).trim() !== '');
-      if (entries.length > 0) {
-        const attrs = entries.map(([k, v]) => `${k}: ${v}`).join(' · ');
-        displayName = `${variante.parent_name} · ${attrs}`;
-      }
-    }
-
-    const newItem: OrderItem = {
-      id: `temp-${Date.now()}`,
-      product_id: product.id,
-      productName: displayName,
-      sku: product.sku,
-      image: product.image || variante.parent_image || null,
-      quantity,
-      unit_cost: cost,
-      track_serial: variante.track_serial === true,
-      requires_serial: variante.track_serial === true,
-      serial_numbers: [],
-    };
-
-    setItems([...items, newItem]);
-    setSelectedProduct('');
-    setItemQuantity('1');
-    setItemCost('0');
-  };
-
-  // Eliminar item
-  const handleRemoveItem = (itemId: string) => {
-    setItems(items.filter(i => i.id !== itemId));
-  };
-
-  // Actualizar item
-  const handleUpdateItem = (itemId: string, field: 'quantity' | 'unit_cost', value: string) => {
-    setItems(items.map(item => {
-      if (item.id === itemId) {
-        return { ...item, [field]: parseFloat(value) || 0 };
-      }
-      return item;
-    }));
-  };
-
-  // Actualizar seriales de un item
-  const handleSerialsChange = (itemId: string, serials: string[]) => {
-    setItems(items.map(item => {
-      if (item.id === itemId) {
-        return { ...item, serial_numbers: serials };
-      }
-      return item;
-    }));
-  };
 
   // Calcular total
-  const total = items.reduce((sum, item) => sum + (item.quantity * item.unit_cost), 0);
+  const total = items.reduce((sum, item) => sum + item.quantity * item.unit_cost, 0);
 
   // Guardar orden
   const handleSubmit = async (sendToSupplier: boolean = false) => {
-    if (!supplierId) {
+    if (!proveedor) {
       toastError('Error', 'Selecciona un proveedor');
       return;
     }
@@ -235,14 +59,9 @@ export function NuevaOrdenCompraForm() {
     }
 
     // Validar que los productos con track_serial tengan todos los seriales capturados
-    const incompleteSerialItems = items.filter(
-      (item) => item.track_serial && (item.serial_numbers || []).length < Math.floor(item.quantity)
-    );
+    const incompleteSerialItems = items.filter((item) => item.track_serial && (item.serial_numbers || []).length < Math.floor(item.quantity));
     if (incompleteSerialItems.length > 0) {
-      toastError(
-        'Seriales incompletos',
-        `Faltan seriales por capturar en ${incompleteSerialItems.length} producto(s) con trazabilidad.`
-      );
+      toastError('Seriales incompletos', `Faltan seriales por capturar en ${incompleteSerialItems.length} producto(s) con trazabilidad.`);
       return;
     }
 
@@ -253,19 +72,19 @@ export function NuevaOrdenCompraForm() {
       const { data, error } = await purchaseOrderService.createPurchaseOrder(
         organizationId,
         {
-          supplier_id: parseInt(supplierId),
+          supplier_id: parseInt(proveedor.id),
           branch_id: branchId!,
           expected_date: expectedDate || undefined,
           notes: notes || undefined,
-          status: sendToSupplier ? 'sent' : 'draft'
+          status: sendToSupplier ? 'sent' : 'draft',
         },
-        items.map(item => ({
+        items.map((item) => ({
           product_id: item.product_id,
           quantity: item.quantity,
           unit_cost: item.unit_cost,
           serial_numbers: item.serial_numbers && item.serial_numbers.length > 0 ? item.serial_numbers : undefined,
           requires_serial: item.requires_serial || false,
-        }))
+        })),
       );
 
       if (error) throw error;
@@ -274,9 +93,7 @@ export function NuevaOrdenCompraForm() {
         setHasSaved(true);
         toastSuccess(
           sendToSupplier ? 'Orden enviada' : 'Orden creada',
-          sendToSupplier
-            ? 'La orden ha sido creada y enviada al proveedor'
-            : 'La orden ha sido guardada como borrador'
+          sendToSupplier ? 'La orden ha sido creada y enviada al proveedor' : 'La orden ha sido guardada como borrador',
         );
         router.push(`/app/inventario/ordenes-compra/${data.uuid}`);
       } else {
@@ -290,19 +107,6 @@ export function NuevaOrdenCompraForm() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          <Skeleton className="h-64 w-full lg:col-span-2" />
-          <Skeleton className="h-48 w-full" />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -314,12 +118,8 @@ export function NuevaOrdenCompraForm() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Nueva Orden de Compra
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Crea una nueva orden de compra para un proveedor
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Nueva Orden de Compra</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Crea una nueva orden de compra para un proveedor</p>
         </div>
       </div>
 
@@ -335,56 +135,23 @@ export function NuevaOrdenCompraForm() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <BranchSelectorField
-                value={branchId}
-                onChange={setBranchId}
-                required
-              />
+              <BranchSelectorField value={branchId} onChange={setBranchId} required />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="dark:text-gray-300">Proveedor *</Label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowSupplierDialog(true)}
-                      className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 gap-1"
-                      title="Crear nuevo proveedor"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      Nuevo
-                    </Button>
-                  </div>
-                  <SearchSelectCombobox
-                    options={suppliers}
-                    value={supplierId}
-                    onSelect={(opt) => setSupplierId(opt ? opt.id.toString() : '')}
-                    placeholder="Buscar proveedor..."
-                    icon={<Truck className="h-4 w-4 text-gray-400" />}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="oc-proveedor" className="dark:text-gray-300">
+                  Proveedor *
+                </Label>
+                <ElegirProveedor id="oc-proveedor" layout="campo" proveedor={proveedor} onCambiar={setProveedor} onQuitar={() => setProveedor(null)} />
               </div>
 
               <div className="space-y-2">
                 <Label className="dark:text-gray-300">Fecha Esperada de Entrega</Label>
-                <Input
-                  type="date"
-                  value={expectedDate}
-                  onChange={(e) => setExpectedDate(e.target.value)}
-                  className="dark:bg-gray-900 dark:border-gray-700"
-                />
+                <Input type="date" value={expectedDate} onChange={(e) => setExpectedDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-700" />
               </div>
 
               <div className="space-y-2">
                 <Label className="dark:text-gray-300">Notas</Label>
-                <RichTextEditor
-                  value={notes}
-                  onChange={(html) => setNotes(html)}
-                  placeholder="Notas adicionales para la orden..."
-                  className="dark:bg-gray-900 dark:border-gray-700"
-                />
+                <RichTextEditor value={notes} onChange={(html) => setNotes(html)} placeholder="Notas adicionales para la orden..." className="dark:bg-gray-900 dark:border-gray-700" />
               </div>
             </CardContent>
           </Card>
@@ -398,176 +165,15 @@ export function NuevaOrdenCompraForm() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Agregar producto */}
-              <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-500 dark:text-gray-400">Buscar Producto</Label>
-                  <ProductSearchCombobox
-                    products={displayedProducts}
-                    value={selectedProduct}
-                    onSelect={(product) => {
-                      setSelectedProduct(product ? product.id.toString() : '');
-                      if (product) {
-                        const supplierCost = supplierCosts.get(product.id);
-                        if (supplierCost && supplierCost > 0) {
-                          setItemCost(supplierCost.toString());
-                        } else if (product.cost && product.cost > 0) {
-                          setItemCost(product.cost.toString());
-                        }
-                      }
-                    }}
-                    placeholder="Buscar por nombre o SKU..."
-                  />
-                  {supplierProductIds.size > 0 && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <button
-                        type="button"
-                        onClick={() => setShowAllProducts(!showAllProducts)}
-                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        {showAllProducts
-                          ? `Mostrar solo productos del proveedor (${supplierProductIds.size})`
-                          : `Mostrar todos los productos (${products.length})`}
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3 items-end">
-                  <div className="flex-1 sm:w-32 space-y-1">
-                    <Label className="text-xs text-gray-500 dark:text-gray-400">Cantidad</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={itemQuantity}
-                      onChange={(e) => setItemQuantity(e.target.value)}
-                      placeholder="1"
-                      className="dark:bg-gray-800 dark:border-gray-700"
-                    />
-                  </div>
-                  <div className="flex-1 sm:w-40 space-y-1">
-                    <Label className="text-xs text-gray-500 dark:text-gray-400">Costo Unitario ($)</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={itemCost}
-                      onChange={(e) => setItemCost(e.target.value)}
-                      placeholder="0.00"
-                      className="dark:bg-gray-800 dark:border-gray-700"
-                    />
-                  </div>
-                  <Button 
-                    onClick={handleAddItem} 
-                    className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
-                    disabled={!selectedProduct}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Agregar Producto
-                  </Button>
-                </div>
-              </div>
-
-              {/* Tabla de items */}
-              {items.length > 0 ? (
-                <div className="rounded-lg border dark:border-gray-700 overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-gray-50 dark:bg-gray-900">
-                        <TableHead className="dark:text-gray-300">Producto</TableHead>
-                        <TableHead className="w-28 dark:text-gray-300">Cantidad</TableHead>
-                        <TableHead className="w-32 dark:text-gray-300">Costo Unit.</TableHead>
-                        <TableHead className="w-32 text-right dark:text-gray-300">Subtotal</TableHead>
-                        <TableHead className="w-16"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map((item) => (
-                        <React.Fragment key={item.id}>
-                        <TableRow className="dark:border-gray-700">
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                                {item.image ? (
-                                  <img
-                                    src={item.image}
-                                    alt={item.productName}
-                                    className="h-full w-full object-cover"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.style.display = 'none';
-                                      target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-                                    }}
-                                  />
-                                ) : (
-                                  <Package className="h-5 w-5 text-gray-400" />
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-medium text-gray-900 dark:text-white break-words whitespace-normal">{item.productName}</p>
-                                <p className="text-xs text-blue-600 dark:text-blue-400 font-mono">{item.sku}</p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={item.quantity}
-                              onChange={(e) => handleUpdateItem(item.id, 'quantity', e.target.value)}
-                              className="w-20 h-8 dark:bg-gray-900 dark:border-gray-700"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.unit_cost}
-                              onChange={(e) => handleUpdateItem(item.id, 'unit_cost', e.target.value)}
-                              className="w-28 h-8 dark:bg-gray-900 dark:border-gray-700"
-                            />
-                          </TableCell>
-                          <TableCell className="text-right font-medium text-gray-900 dark:text-white">
-                            {formatear(item.quantity * item.unit_cost)}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRemoveItem(item.id)}
-                              className="h-8 w-8 text-red-500 hover:text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                        {item.track_serial && branchId && (
-                          <TableRow className="dark:border-gray-700 bg-blue-50/30 dark:bg-blue-900/5">
-                            <TableCell colSpan={5} className="py-3">
-                              <SerialCaptureSection
-                                productId={item.product_id}
-                                productName={item.productName}
-                                productSku={item.sku}
-                                organizationId={getOrganizationId() || 0}
-                                branchId={branchId}
-                                quantity={Math.floor(item.quantity)}
-                                serials={item.serial_numbers || []}
-                                onSerialsChange={(serials) => handleSerialsChange(item.id, serials)}
-                                compact
-                              />
-                            </TableCell>
-                          </TableRow>
-                        )}
-                        </React.Fragment>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  No hay productos agregados. Usa el formulario de arriba para agregar productos.
-                </div>
-              )}
+              <LineasOrdenCompra
+                items={items}
+                onItemsChange={setItems}
+                proveedor={proveedor ? { id: Number(proveedor.id), nombre: proveedor.nombre } : null}
+                sucursal={branchId}
+                nombreSucursal={branches.find((b) => b.id === branchId)?.name ?? null}
+                moneda={moneda.paraDocumento(null)}
+                conSeriales
+              />
             </CardContent>
           </Card>
         </div>
@@ -585,41 +191,20 @@ export function NuevaOrdenCompraForm() {
               </div>
               <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
                 <span className="text-gray-600 dark:text-gray-400">Unidades Total</span>
-                <span className="font-medium text-gray-900 dark:text-white">
-                  {items.reduce((sum, i) => sum + i.quantity, 0)}
-                </span>
+                <span className="font-medium text-gray-900 dark:text-white">{items.reduce((sum, i) => sum + i.quantity, 0)}</span>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className="text-gray-600 dark:text-gray-400 font-medium">Total</span>
-                <span className="text-xl font-bold text-green-600 dark:text-green-400">
-                  {formatear(total)}
-                </span>
+                <span className="text-xl font-bold text-green-600 dark:text-green-400">{formatear(total)}</span>
               </div>
 
               <div className="pt-4 space-y-3">
-                <Button
-                  onClick={() => handleSubmit(false)}
-                  disabled={isSaving || hasSaved}
-                  variant="outline"
-                  className="w-full dark:border-gray-700"
-                >
-                  {isSaving ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
+                <Button onClick={() => handleSubmit(false)} disabled={isSaving || hasSaved} variant="outline" className="w-full dark:border-gray-700">
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                   Guardar Borrador
                 </Button>
-                <Button
-                  onClick={() => handleSubmit(true)}
-                  disabled={isSaving || hasSaved}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                >
-                  {isSaving ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Send className="h-4 w-4 mr-2" />
-                  )}
+                <Button onClick={() => handleSubmit(true)} disabled={isSaving || hasSaved} className="w-full bg-blue-600 hover:bg-blue-700">
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
                   Guardar y Enviar
                 </Button>
               </div>
@@ -627,21 +212,6 @@ export function NuevaOrdenCompraForm() {
           </Card>
         </div>
       </div>
-
-      {/* Diálogo: crear proveedor rápido */}
-      <QuickCreateDialog
-        open={showSupplierDialog}
-        onOpenChange={setShowSupplierDialog}
-        title="Nuevo Proveedor"
-        description="Crea un proveedor y se seleccionará automáticamente para esta orden."
-        maxWidth="max-w-7xl"
-      >
-        <NuevoProveedorForm
-          embedded
-          onSuccess={handleSupplierCreated}
-          onCancel={() => setShowSupplierDialog(false)}
-        />
-      </QuickCreateDialog>
     </div>
   );
 }

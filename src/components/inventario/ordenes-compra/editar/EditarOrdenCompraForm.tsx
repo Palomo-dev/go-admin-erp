@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { purchaseOrderService, type PurchaseOrderItemInput } from '@/lib/services/purchaseOrderService';
-import { supplierService } from '@/lib/services/supplierService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,24 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ProductSearchCombobox, type ProductOption } from '../ProductSearchCombobox';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { 
-  ArrowLeft, 
-  Save, 
-  Loader2, 
-  Building2, 
-  Plus,
-  Trash2,
-  Package
-} from 'lucide-react';
+import { ElegirProveedor, type ProveedorDocumento } from '@/components/finanzas/documento/terceros';
+import { LineasOrdenCompra } from '../LineasOrdenCompra';
+import { ArrowLeft, Save, Loader2, Building2, Package } from 'lucide-react';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
@@ -51,20 +35,13 @@ interface OrderItem extends PurchaseOrderItemInput {
   image?: string | null;
 }
 
-/** Campos de imagen y variante que `getProducts` trae además de los tipados en el estado. */
-interface ProductoConVariante {
-  image?: string | null;
-  parent_image?: string | null;
-  parent_name?: string | null;
-  variant_data?: Record<string, string> | null;
-}
-
 export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps) {
   const router = useRouter();
-  const { formatear } = useMonedaOrganizacion();
+  const moneda = useMonedaOrganizacion();
+  const { formatear } = moneda;
 
   // Estados del formulario
-  const [supplierId, setSupplierId] = useState<string>('');
+  const [proveedor, setProveedor] = useState<ProveedorDocumento | null>(null);
   const [branchId, setBranchId] = useState<string>('');
   const [expectedDate, setExpectedDate] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
@@ -73,19 +50,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
   const [isSaving, setIsSaving] = useState(false);
 
   // Datos de selectores
-  const [suppliers, setSuppliers] = useState<{ id: number; uuid: string; name: string }[]>([]);
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
-  const [products, setProducts] = useState<{ id: number; uuid: string; sku: string; name: string }[]>([]);
-
-  // Item temporal para agregar
-  const [selectedProduct, setSelectedProduct] = useState<string>('');
-  const [itemQuantity, setItemQuantity] = useState<string>('1');
-  const [itemCost, setItemCost] = useState<string>('0');
-
-  // Productos filtrados por proveedor
-  const [supplierProductIds, setSupplierProductIds] = useState<Set<number>>(new Set());
-  const [supplierCosts, setSupplierCosts] = useState<Map<number, number>>(new Map());
-  const [showAllProducts, setShowAllProducts] = useState(false);
 
   // Cargar datos iniciales
   const loadData = useCallback(async () => {
@@ -93,11 +58,10 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
       setIsLoading(true);
       const organizationId = getOrganizationId();
 
-      const [orderResult, suppliersData, branchesData, productsData] = await Promise.all([
+      const [orderResult, suppliersData, branchesData] = await Promise.all([
         purchaseOrderService.getPurchaseOrderByUuid(orderUuid, organizationId),
         purchaseOrderService.getSuppliers(organizationId),
         purchaseOrderService.getBranches(organizationId),
-        purchaseOrderService.getProducts(organizationId)
       ]);
 
       if (orderResult.error || !orderResult.data) {
@@ -116,7 +80,8 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
       }
 
       // Cargar datos del formulario
-      setSupplierId(order.supplier_id.toString());
+      const proveedorOrden = (suppliersData as { id: number; name: string }[]).find((x) => x.id === order.supplier_id);
+      setProveedor({ id: String(order.supplier_id), nombre: proveedorOrden?.name ?? String(order.supplier_id) });
       setBranchId(order.branch_id.toString());
       setExpectedDate(order.expected_date || '');
       setNotes(order.notes || '');
@@ -134,9 +99,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
       }));
       setItems(orderItems);
 
-      setSuppliers(suppliersData);
       setBranches(branchesData);
-      setProducts(productsData);
     } catch (error: unknown) {
       console.error('Error cargando datos:', error);
       toastError('Error', (error as { message?: string } | null)?.message || 'No se pudo cargar la orden');
@@ -150,89 +113,12 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
     loadData();
   }, [loadData]);
 
-  // Cargar productos del proveedor cuando se selecciona
-  useEffect(() => {
-    if (!supplierId) {
-      setSupplierProductIds(new Set());
-      setSupplierCosts(new Map());
-      return;
-    }
-    const loadSupplierProducts = async () => {
-      const supplierProducts = await supplierService.getProductsBySupplier(parseInt(supplierId));
-      setSupplierProductIds(new Set(supplierProducts.map(p => p.product_id)));
-      setSupplierCosts(new Map(supplierProducts.map(p => [p.product_id, p.cost])));
-      setShowAllProducts(false);
-    };
-    loadSupplierProducts();
-  }, [supplierId]);
-
-  // Productos a mostrar: filtrados por proveedor o todos
-  const displayedProducts = showAllProducts || supplierProductIds.size === 0
-    ? products
-    : products.filter(p => supplierProductIds.has(p.id));
-
-  // Agregar item
-  const handleAddItem = () => {
-    if (!selectedProduct) {
-      toastError('Error', 'Selecciona un producto');
-      return;
-    }
-
-    const product = products.find(p => p.id.toString() === selectedProduct);
-    if (!product) return;
-
-    const quantity = parseFloat(itemQuantity) || 1;
-    const cost = parseFloat(itemCost) || 0;
-
-    // Construir nombre con atributos de variante si aplica
-    const variante = product as unknown as ProductoConVariante;
-    let displayName = product.name;
-    if (variante.parent_name && variante.variant_data) {
-      const entries = Object.entries(variante.variant_data)
-        .filter(([, v]) => v && v.trim() !== '');
-      if (entries.length > 0) {
-        const attrs = entries.map(([k, v]) => `${k}: ${v}`).join(' · ');
-        displayName = `${variante.parent_name} · ${attrs}`;
-      }
-    }
-
-    const newItem: OrderItem = {
-      id: `temp-${Date.now()}`,
-      product_id: product.id,
-      productName: displayName,
-      sku: product.sku,
-      image: variante.image || variante.parent_image || null,
-      quantity,
-      unit_cost: cost
-    };
-
-    setItems([...items, newItem]);
-    setSelectedProduct('');
-    setItemQuantity('1');
-    setItemCost('0');
-  };
-
-  // Eliminar item
-  const handleRemoveItem = (itemId: string) => {
-    setItems(items.filter(i => i.id !== itemId));
-  };
-
-  // Actualizar item
-  const handleUpdateItem = (itemId: string, field: 'quantity' | 'unit_cost', value: string) => {
-    setItems(items.map(item => {
-      if (item.id === itemId) {
-        return { ...item, [field]: parseFloat(value) || 0 };
-      }
-      return item;
-    }));
-  };
-
   // Calcular total
   const total = items.reduce((sum, item) => sum + (item.quantity * item.unit_cost), 0);
 
   // Guardar orden
   const handleSubmit = async () => {
-    if (!supplierId) {
+    if (!proveedor) {
       toastError('Error', 'Selecciona un proveedor');
       return;
     }
@@ -253,7 +139,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
         orderUuid,
         organizationId,
         {
-          supplier_id: parseInt(supplierId),
+          supplier_id: parseInt(proveedor.id),
           branch_id: parseInt(branchId),
           expected_date: expectedDate || undefined,
           notes: notes || undefined
@@ -321,19 +207,10 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="dark:text-gray-300">Proveedor *</Label>
-                  <Select value={supplierId} onValueChange={setSupplierId}>
-                    <SelectTrigger className="dark:bg-gray-900 dark:border-gray-700">
-                      <SelectValue placeholder="Seleccionar proveedor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {suppliers.map((s) => (
-                        <SelectItem key={s.id} value={s.id.toString()}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="oc-proveedor" className="dark:text-gray-300">
+                    Proveedor *
+                  </Label>
+                  <ElegirProveedor id="oc-proveedor" layout="campo" proveedor={proveedor} onCambiar={setProveedor} onQuitar={() => setProveedor(null)} />
                 </div>
 
                 <div className="space-y-2">
@@ -384,157 +261,14 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Agregar producto */}
-              <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                <div className="space-y-1">
-                  <Label className="text-xs text-gray-500 dark:text-gray-400">Buscar Producto</Label>
-                  <ProductSearchCombobox
-                    products={displayedProducts as ProductOption[]}
-                    value={selectedProduct}
-                    onSelect={(product) => {
-                      setSelectedProduct(product ? product.id.toString() : '');
-                      if (product) {
-                        const supplierCost = supplierCosts.get(product.id);
-                        if (supplierCost && supplierCost > 0) {
-                          setItemCost(supplierCost.toString());
-                        } else if (product.cost && product.cost > 0) {
-                          setItemCost(product.cost.toString());
-                        }
-                      }
-                    }}
-                    placeholder="Buscar por nombre o SKU..."
-                  />
-                  {supplierProductIds.size > 0 && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <button
-                        type="button"
-                        onClick={() => setShowAllProducts(!showAllProducts)}
-                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        {showAllProducts
-                          ? `Mostrar solo productos del proveedor (${supplierProductIds.size})`
-                          : `Mostrar todos los productos (${products.length})`}
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3 items-end">
-                  <div className="flex-1 sm:w-32 space-y-1">
-                    <Label className="text-xs text-gray-500 dark:text-gray-400">Cantidad</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={itemQuantity}
-                      onChange={(e) => setItemQuantity(e.target.value)}
-                      placeholder="1"
-                      className="dark:bg-gray-800 dark:border-gray-700"
-                    />
-                  </div>
-                  <div className="flex-1 sm:w-40 space-y-1">
-                    <Label className="text-xs text-gray-500 dark:text-gray-400">Costo Unitario ($)</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={itemCost}
-                      onChange={(e) => setItemCost(e.target.value)}
-                      placeholder="0.00"
-                      className="dark:bg-gray-800 dark:border-gray-700"
-                    />
-                  </div>
-                  <Button 
-                    onClick={handleAddItem} 
-                    className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
-                    disabled={!selectedProduct}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Agregar Producto
-                  </Button>
-                </div>
-              </div>
-
-              {/* Tabla de items */}
-              {items.length > 0 ? (
-                <div className="rounded-lg border dark:border-gray-700 overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-gray-50 dark:bg-gray-900">
-                        <TableHead className="dark:text-gray-300">Producto</TableHead>
-                        <TableHead className="w-28 dark:text-gray-300">Cantidad</TableHead>
-                        <TableHead className="w-32 dark:text-gray-300">Costo Unit.</TableHead>
-                        <TableHead className="w-32 text-right dark:text-gray-300">Subtotal</TableHead>
-                        <TableHead className="w-16"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map((item) => (
-                        <TableRow key={item.id} className="dark:border-gray-700">
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                                {item.image ? (
-                                  <img
-                                    src={item.image}
-                                    alt={item.productName}
-                                    className="h-full w-full object-cover"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.style.display = 'none';
-                                      target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-                                    }}
-                                  />
-                                ) : (
-                                  <Package className="h-5 w-5 text-gray-400" />
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-medium text-gray-900 dark:text-white break-words whitespace-normal">{item.productName}</p>
-                                <p className="text-xs text-blue-600 dark:text-blue-400 font-mono">{item.sku}</p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={item.quantity}
-                              onChange={(e) => handleUpdateItem(item.id, 'quantity', e.target.value)}
-                              className="w-20 h-8 dark:bg-gray-900 dark:border-gray-700"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.unit_cost}
-                              onChange={(e) => handleUpdateItem(item.id, 'unit_cost', e.target.value)}
-                              className="w-28 h-8 dark:bg-gray-900 dark:border-gray-700"
-                            />
-                          </TableCell>
-                          <TableCell className="text-right font-medium text-gray-900 dark:text-white">
-                            {formatear(item.quantity * item.unit_cost)}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRemoveItem(item.id)}
-                              className="h-8 w-8 text-red-500 hover:text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  No hay productos agregados.
-                </div>
-              )}
+              <LineasOrdenCompra
+                items={items}
+                onItemsChange={(nuevas) => setItems(nuevas.map((n) => ({ ...n, notes: n.notes })))}
+                proveedor={proveedor ? { id: Number(proveedor.id), nombre: proveedor.nombre } : null}
+                sucursal={branchId ? Number(branchId) : null}
+                nombreSucursal={branches.find((b) => String(b.id) === branchId)?.name ?? null}
+                moneda={moneda.paraDocumento(null)}
+              />
             </CardContent>
           </Card>
         </div>

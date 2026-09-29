@@ -744,3 +744,29 @@ listado filtrado por «Vencido».
   «Ir a» del frame móvil no se tocaron en esta ronda.
 - Verificación en el navegador: el servidor de desarrollo no estaba arriba y no se arrancó (instrucción del
   dueño); la pantalla quedó cubierta con pruebas de render (`listado/__tests__/ListadoFacturasVenta.test.tsx`).
+
+## 10. Formulario de factura de venta v2 en código (P8, 2026-09-28)
+
+Detalle completo en `docs/design/FACTURA-VENTA-FORMULARIO-V2.md` §8. Resumen para este plan:
+
+- **P8 cerrado**: `/nuevo` y `/[id]/editar` montan el mismo `facturas-venta/formulario/FormularioFacturaVenta`
+  (nueva, editar borrador, duplicar, `?cliente=`, oportunidad y solo lectura para emitidas o anuladas).
+  Guardar sigue siendo `POST/PUT /api/facturas-venta` → `fn_factura_venta_guardar`; «Emitir factura»
+  guarda y llama a `POST /api/facturas-venta/[id]/emitir` en un paso, con el diálogo de faltantes
+  («Ajustar y emitir» muestra el cambio antes). La factura electrónica se envía después de emitir.
+- **D9 aplicado**: el borrador se guarda sin número (`invoice_sales.number` admite NULL desde
+  `20260929010100`) y `fn_factura_venta_emitir` numera con la resolución de la sucursal. «Número manual»
+  queda como opción avanzada.
+- **Impuestos por línea** (decisión 5): cada línea elige uno o varios impuestos de la organización;
+  `tax_rate` = suma, `tax_code` = el del primero y el detalle va en `invoice_items.impuestos_linea`
+  (`20260929010000`, que también guarda la nota de línea y `invoice_sales.terms_conditions`).
+- **Piezas compartidas** con la factura de compra y la orden de compra en `kit/documento` y
+  `components/finanzas/documento` (tabla de líneas con estados, impuestos por línea, elegir cliente/proveedor
+  con alta en línea, agregar productos, ítem manual, estructura del formulario). Contratos en
+  `docs/design/KIT-CODIGO.md` (adenda 2026-09-28).
+- **Retirados**: `NuevaFacturaForm`, `EditarFacturaVenta` y el `PageBackHeader` de venta. `ClienteSelector`,
+  `ItemsFactura`, `ImpuestosFactura` y `FormaPagoSelector` siguen para cotizaciones y documento soporte (sin
+  los `console.log` y con una sola consulta de formas de pago).
+- **Pendientes que no son de este paso**: retenciones informativas en venta (M7), descuento en % (M9),
+  términos por defecto de la organización, el envío a Factus de una línea con varios impuestos, y el atajo
+  «Consumidor final» (el POS no tiene un cliente genérico que reutilizar).

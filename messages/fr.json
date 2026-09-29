@@ -3659,7 +3659,8 @@
         "describe": "Décrivez l’article",
         "descripcionDe": "Description de l’article",
         "itemSinNombre": "Article sans description",
-        "itemManual": "Article manuel"
+        "itemManual": "Article manuel",
+        "seriales": "Séries {n}/{total}"
       },
       "impuestos": {
         "sinAsignar": "Aucune taxe attribuée",
@@ -3721,7 +3722,9 @@
         "listo": "Terminé ({n, plural, one {# ajouté} other {# ajoutés}})",
         "subtituloVenta": "Prix de vente · stock de {sucursal}",
         "subtituloCompra": "Coût de {proveedor} · stock de {sucursal}",
-        "subtituloCompraSinProveedor": "Dernier coût · stock de {sucursal}"
+        "subtituloCompraSinProveedor": "Dernier coût · stock de {sucursal}",
+        "vacioOrden": "Recherchez les produits du fournisseur (F3) pour préparer la commande.",
+        "buscarOrden": "Rechercher un produit"
       },
       "crearProducto": {
         "nombre": "Nom du produit",
@@ -11298,6 +11301,46 @@
         "linea": "Quantité, prix ou remise invalide.",
         "descripcion": "La ligne doit avoir une description.",
         "retencion": "Vérifiez la base et le taux de la retenue."
+      },
+      "v2": {
+        "seriales": "Séries {n}/{total}",
+        "diferenciaOrden": "Écart avec la commande",
+        "avisoOrden": "La commande demandait {pedido} et {recibido} sont arrivés : on facture le reçu.",
+        "detalleIva": "TVA {importe}",
+        "bandaOrden": "Depuis la commande {orden} : le reçu a été préchargé. La succursale et le fournisseur sont ceux de la commande.",
+        "secciones": {
+          "documento": "Données du document",
+          "proveedor": "Fournisseur",
+          "lineas": "Lignes de la facture ({n})"
+        },
+        "numeroAyuda": "Tel qu’il figure sur la facture du fournisseur. « # » seulement s’il n’y a pas de numéro.",
+        "consecutivoInterno": "Utiliser la numérotation interne — uniquement si la facture du fournisseur n’a pas de numéro",
+        "sucursalRecibe": "Succursale de réception",
+        "sucursalFija": "Fixe : celle de la commande.",
+        "venceAyuda": "La modifier vide le délai.",
+        "recepcionAlConfirmar": "La réception des marchandises et le document justificatif se choisissent à la confirmation.",
+        "vacioDescripcion": "Recherchez un produit (F3) ou ajoutez un article manuel (Alt+M).",
+        "buscarProducto": "Rechercher un produit",
+        "itemManual": "Ajouter un article manuel",
+        "retencionConfigurada": "Retenue",
+        "retencionOtra": "Autre (saisir le libellé)",
+        "pagoProveedor": "Paiement au fournisseur",
+        "pagoSinProveedor": "Choisissez le fournisseur pour voir l’échéance du paiement.",
+        "pagoCxp": "La dette fournisseur est créée à la confirmation, pour le net.",
+        "netoPagar": "Net à payer",
+        "total": "Total",
+        "tituloFactura": "Facture d’achat {numero}",
+        "verFactura": "Voir la facture",
+        "verYPagar": "Voir la facture et les paiements",
+        "motivoAnulada": "Cette facture est annulée : elle ne peut pas être modifiée.",
+        "motivoConfirmada": "Cette facture est {estado} : ce n’est plus un brouillon et elle ne peut pas être modifiée. Les paiements et l’annulation se font depuis le détail.",
+        "atajos": {
+          "proveedor": "Choisir le fournisseur",
+          "productos": "Rechercher un produit",
+          "manual": "Article manuel",
+          "guardar": "Enregistrer le brouillon",
+          "confirmar": "Confirmer la facture"
+        }
       }
     }
   },

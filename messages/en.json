@@ -3764,7 +3764,8 @@
         "describe": "Describe the item",
         "descripcionDe": "Item description",
         "itemSinNombre": "Item without description",
-        "itemManual": "Manual item"
+        "itemManual": "Manual item",
+        "seriales": "Serials {n}/{total}"
       },
       "impuestos": {
         "sinAsignar": "No tax assigned",
@@ -3826,7 +3827,9 @@
         "listo": "Done ({n} added)",
         "subtituloVenta": "Sale price · stock at {sucursal}",
         "subtituloCompra": "Cost from {proveedor} · stock at {sucursal}",
-        "subtituloCompraSinProveedor": "Last cost · stock at {sucursal}"
+        "subtituloCompraSinProveedor": "Last cost · stock at {sucursal}",
+        "vacioOrden": "Search the supplier’s products (F3) to build the order.",
+        "buscarOrden": "Search product"
       },
       "crearProducto": {
         "nombre": "Product name",
@@ -11403,6 +11406,46 @@
         "linea": "Invalid quantity, price or discount.",
         "descripcion": "The line needs a description.",
         "retencion": "Check the withholding base and rate."
+      },
+      "v2": {
+        "seriales": "Serials {n}/{total}",
+        "diferenciaOrden": "Differs from the order",
+        "avisoOrden": "The order asked for {pedido} and {recibido} arrived: what was received is invoiced.",
+        "detalleIva": "VAT {importe}",
+        "bandaOrden": "From order {orden}: what was received was preloaded. Branch and supplier are the order’s.",
+        "secciones": {
+          "documento": "Document details",
+          "proveedor": "Supplier",
+          "lineas": "Invoice lines ({n})"
+        },
+        "numeroAyuda": "As it appears on the supplier’s invoice. Use “#” only if it has no number.",
+        "consecutivoInterno": "Use internal sequence — only if the supplier’s invoice has no number",
+        "sucursalRecibe": "Receiving branch",
+        "sucursalFija": "Fixed: the purchase order’s.",
+        "venceAyuda": "Changing it clears the term.",
+        "recepcionAlConfirmar": "Goods receipt and the support document are chosen when you confirm the invoice.",
+        "vacioDescripcion": "Search a product (F3) or add a manual item (Alt+M).",
+        "buscarProducto": "Search product",
+        "itemManual": "Add manual item",
+        "retencionConfigurada": "Withholding",
+        "retencionOtra": "Other (type the concept)",
+        "pagoProveedor": "Supplier payment",
+        "pagoSinProveedor": "Choose the supplier to see when payment is due.",
+        "pagoCxp": "The payable is created on confirm, for the net amount.",
+        "netoPagar": "Net payable",
+        "total": "Total",
+        "tituloFactura": "Purchase invoice {numero}",
+        "verFactura": "View invoice",
+        "verYPagar": "View invoice and payments",
+        "motivoAnulada": "This invoice is voided: it cannot be edited.",
+        "motivoConfirmada": "This invoice is {estado}: it is no longer a draft and cannot be edited. Payments and voiding are done from the detail.",
+        "atajos": {
+          "proveedor": "Choose supplier",
+          "productos": "Search product",
+          "manual": "Manual item",
+          "guardar": "Save draft",
+          "confirmar": "Confirm invoice"
+        }
       }
     }
   },

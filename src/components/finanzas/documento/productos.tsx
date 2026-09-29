@@ -75,10 +75,10 @@ export function AgregarProductosDocumento({
     (texto: string, f: FiltrosProductos, senal: AbortSignal) =>
       buscarProductosDocumento(
         getOrganizationId(),
-        { texto, variante, sucursal, proveedor: proveedor?.id ?? null, conStock: f.conStock, soloProveedor: f.soloProveedor },
+        { texto, variante, sucursal, proveedor: proveedor?.id ?? null, conStock: f.conStock, soloProveedor: f.soloProveedor, sinServicios: destino === 'orden' },
         senal,
       ) as Promise<ProductoDocumento[]>,
-    [variante, sucursal, proveedor?.id],
+    [variante, sucursal, proveedor?.id, destino],
   );
   const descripcion =
     variante === 'venta'

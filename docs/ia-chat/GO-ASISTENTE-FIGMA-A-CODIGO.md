@@ -247,3 +247,14 @@ confirma solo con `actionId`; saldo antes y cobro después; un stream cortado no
 5. **Voz de salida**: con la organización sin voz, el botón se ve deshabilitado con el motivo. ¿O se
    oculta?
 6. **Atajo Ctrl/⌘+J** (Chrome lo usa para Descargas; el panel lo intercepta solo dentro del ERP).
+
+## Decisiones del dueño (2026-09-30)
+
+Aprobadas tal como quedaron implementadas:
+
+1. La tarjeta de acción dice «Confirmar no gasta créditos» (no «≈1 crédito»): confirmar no cobra.
+2. Doble confirmación en acciones de riesgo alto (facturas, ajustes, cargas masivas).
+3. Modo ampliado solo desde 1280 px; por debajo el panel se queda en 400 px.
+4. El saldo de créditos lo ven todos los usuarios.
+5. Con la voz apagada en la organización, «Escuchar» se ve deshabilitado con el motivo.
+6. Atajo Ctrl/⌘+J (dentro del ERP lo toma el asistente, aunque en Chrome abre Descargas).

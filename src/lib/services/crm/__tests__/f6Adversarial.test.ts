@@ -54,6 +54,15 @@ import { issueWsSessionToken, verifyWsSessionToken } from '@/lib/security/wsSess
 import { VOICE_AGENT_TOOLS } from '@/lib/services/integrations/twilio/voiceAgent/voiceAgentTools';
 import { VOICE_AGENT_TOOL_DEFINITIONS, ALL_TOOL_NAMES } from '@/lib/services/crm/voiceAgentTools';
 
+/**
+ * Compuertas legales (2026-09-30): la cola exige la URL de la política de
+ * tratamiento de datos y una verificación RNE vigente por campaña. Los
+ * escenarios de despacho las traen cumplidas; sus casos propios viven en
+ * `src/__tests__/voz/` y `voiceAgent/__tests__/`.
+ */
+const POLITICA_DATOS = 'https://example.com/politica-de-datos';
+const RNE_VIGENTE = { id: 'rne-1', checked_at: '2026-09-01T00:00:00Z', valid_until: '2999-01-01T00:00:00Z' };
+
 // ─── Esquema real (verificado por MCP contra jgmgphmzusbluqhuqihj) ────────────
 
 const DB = {
@@ -206,13 +215,14 @@ function scenario(
   };
   const resolver: Resolver = (op) => {
     if (op.table === 'voice_agent_campaigns' && op.verb === 'select') return { data: [campaign] };
+    if (op.table === 'voice_campaign_rne_checks') return { data: [RNE_VIGENTE] };
     if (op.table === 'comm_settings') {
       return {
         data: {
           voice_caller_id: '+573001234567', voice_recording_enabled: true,
           voice_consent_message: 'Esta llamada será grabada.',
           // r2: el despachador comprueba que el canal esté habilitado (F-NEW-11).
-          voice_agent_enabled: true,
+          voice_agent_enabled: true, data_policy_url: POLITICA_DATOS,
           is_active: true,
           voice_max_concurrent_calls: 3,
         },
@@ -429,7 +439,8 @@ describe('B. Concurrencia y topes del despachador de campañas', () => {
       if (op.table === 'voice_agent_campaigns' && op.verb === 'select') {
         return { data: [{ id: 'camp-1', organization_id: 7, voice_agent_id: 'a', target_source: 'pipeline_stage', target_config: { stage_id: 'st-1' }, schedule: null, max_calls_per_day: 50, max_calls_per_hour: 20, max_concurrent: 3, emergency_stop: false, consecutive_failures: 0, status: 'running' }] };
       }
-      if (op.table === 'comm_settings') return { data: { voice_caller_id: '+573001234567', voice_recording_enabled: true, voice_agent_enabled: true, is_active: true } };
+      if (op.table === 'voice_campaign_rne_checks') return { data: [RNE_VIGENTE] };
+      if (op.table === 'comm_settings') return { data: { voice_caller_id: '+573001234567', voice_recording_enabled: true, voice_agent_enabled: true, data_policy_url: POLITICA_DATOS, is_active: true } };
       if (op.table === 'voice_agent_call_attempts' && op.head) return { count: 0 };
       if (op.table === 'voice_agent_calls' && op.head) return { count: 0 };
       if (op.table === 'voice_agent_calls' && op.verb === 'select') return { data: [] };
@@ -498,8 +509,9 @@ describe('B. Concurrencia y topes del despachador de campañas', () => {
       if (op.table === 'voice_agent_campaigns' && op.verb === 'select') {
         return { data: [{ id: 'camp-1', organization_id: 7, voice_agent_id: 'agent-1', target_source: 'pipeline_stage', target_config: { stage_id: 's' }, schedule: null, max_calls_per_day: 50, max_calls_per_hour: 20, max_concurrent: 3, emergency_stop: false, consecutive_failures: 0, status: 'running' }] };
       }
+      if (op.table === 'voice_campaign_rne_checks') return { data: [RNE_VIGENTE] };
       if (op.table === 'comm_settings') {
-        return { data: { voice_caller_id: '+573001234567', voice_recording_enabled: true, voice_agent_enabled: true, is_active: true } };
+        return { data: { voice_caller_id: '+573001234567', voice_recording_enabled: true, voice_agent_enabled: true, data_policy_url: POLITICA_DATOS, is_active: true } };
       }
       // El conteo de intentos: el libro entero (todas las filas son de hoy).
       if (op.table === 'voice_agent_call_attempts' && op.head) return { count: ledger.length };
@@ -691,9 +703,15 @@ describe('C. Créditos y coste', () => {
     expect(src.indexOf('creditsToCharge')).toBeGreaterThan(endIdx);
 
     // Si la llamada no llega a hablar (nadie contesta / falla), la reserva se devuelve.
+    // 2026-09-30: la devolución vive en `reservaCreditos.ts` (una sola
+    // implementación para el statusCallback y el TwiML con AMD) y cubre también
+    // el buzón de voz.
     const status = SRC('src/app/api/voice/ai-agent/status/route.ts');
-    expect(status).toContain('NO_CONVERSATION');
-    expect(status).toContain('p_amount: -reserved');
+    expect(status).toContain('devolverReservaSinConversacion');
+    const reserva = SRC('src/lib/services/crm/voiceAgent/reservaCreditos.ts');
+    expect(reserva).toMatch(/ESTADOS_SIN_CONVERSACION = \['no_answer', 'failed', 'canceled', 'voicemail'\]/);
+    expect(reserva).toContain('p_amount: -reservado');
+    expect(reserva).toContain('credits_settled_at');
   });
 
   test('C5 [CORREGIDO r1] el camino de la voz clonada existe: catálogo, ttsProvider y voice en el TwiML', () => {
@@ -1370,13 +1388,14 @@ function manualScenario(
   let ledgerCall = 0;
   const resolver: Resolver = (op) => {
     if (op.table === 'voice_agents' && op.verb === 'select') return { data: agent };
+    if (op.table === 'voice_campaign_rne_checks') return { data: [RNE_VIGENTE] };
     if (op.table === 'comm_settings') {
       return {
         data: {
           voice_caller_id: over.callerId === undefined ? '+573001234567' : over.callerId,
           voice_recording_enabled: true,
           voice_consent_message: 'Grabada.',
-          voice_agent_enabled: over.agentEnabled ?? true,
+          voice_agent_enabled: over.agentEnabled ?? true, data_policy_url: POLITICA_DATOS,
           is_active: true,
           voice_max_concurrent_calls: 3,
         },
@@ -1897,8 +1916,9 @@ describe('K bis. Presupuesto UNICO del agente (R3-5)', () => {
           emergency_stop: false, consecutive_failures: 0, status: 'running', stats: {},
         }] };
       }
+      if (op.table === 'voice_campaign_rne_checks') return { data: [RNE_VIGENTE] };
       if (op.table === 'comm_settings') {
-        return { data: { voice_caller_id: '+573001234567', voice_recording_enabled: true, voice_agent_enabled: true, is_active: true, voice_max_concurrent_calls: 3 } };
+        return { data: { voice_caller_id: '+573001234567', voice_recording_enabled: true, voice_agent_enabled: true, data_policy_url: POLITICA_DATOS, is_active: true, voice_max_concurrent_calls: 3 } };
       }
       if (op.table === 'voice_agents' && op.verb === 'select') {
         return { data: { is_active: true, max_calls_per_day: 50, max_calls_per_hour: 20, retry_policy: {} } };
@@ -2382,10 +2402,11 @@ describe('M. Menores cerrados en la ronda 3', () => {
   /** Escenario completo de despacho puntual, con las filas vivas que se le den. */
   function escenarioDespacho(vivas: Array<{ id: string; status: string }>) {
     const resolver: Resolver = (op) => {
+      if (op.table === 'voice_campaign_rne_checks') return { data: [RNE_VIGENTE] };
       if (op.table === 'comm_settings') {
         return { data: {
           voice_caller_id: '+573001234567', voice_recording_enabled: true, voice_consent_message: 'Esta llamada será grabada.',
-          voice_agent_enabled: true, is_active: true, voice_max_concurrent_calls: 3,
+          voice_agent_enabled: true, data_policy_url: POLITICA_DATOS, is_active: true, voice_max_concurrent_calls: 3,
         } };
       }
       if (op.table === 'voice_agents' && op.verb === 'select') {

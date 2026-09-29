@@ -25,6 +25,7 @@ import {
   ENDED_CALL_STATUSES,
   type VoiceAgentCallLiveStatus,
 } from '@/lib/services/crm/voiceAgent/callStatusMap';
+import { devolverReservaSinConversacion, sinConversacion } from '@/lib/services/crm/voiceAgent/reservaCreditos';
 
 export const runtime = 'nodejs';
 
@@ -95,11 +96,14 @@ export async function POST(request: Request) {
       parseInt(params.CallDuration || params.SessionDuration || '0', 10) || null;
 
     const nextStatus = mapTwilioCallStatus(callStatus, answeredBy);
-    // Una llamada transferida no vuelve atrás cuando llega el `completed` del tramo.
-    const keepTransferred = vac.status === 'transferred';
+    // Una llamada transferida no vuelve atrás cuando llega el `completed` del
+    // tramo, y una que el TwiML ya cerró como buzón (AMD) tampoco: el
+    // `completed` posterior puede llegar sin `AnsweredBy` y la convertiría en
+    // un contacto efectivo que nunca existió.
+    const keepTerminal = vac.status === 'transferred' || vac.status === 'voicemail';
 
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (nextStatus && !keepTransferred) patch.status = nextStatus;
+    if (nextStatus && !keepTerminal) patch.status = nextStatus;
     if (nextStatus && TERMINAL_VAC_STATUSES.includes(nextStatus)) {
       patch.completed_at = new Date().toISOString();
       patch.locked_by = null;
@@ -110,25 +114,14 @@ export async function POST(request: Request) {
       patch.outcome = String(params.HandoffData).slice(0, 500);
     }
 
-    // F-NEW-6: si la llamada no llegó a hablar (nadie contestó, comunicaba, falló o
-    // se canceló), el ws-server nunca concilia y la reserva de crédito se quedaba
-    // cobrada. Aquí se devuelve, una sola vez (`credits_settled_at`).
-    const NO_CONVERSATION: string[] = ['no_answer', 'failed', 'canceled'];
-    const reserved = vac.credits_reserved ?? 0;
-    if (
-      nextStatus &&
-      NO_CONVERSATION.includes(nextStatus) &&
-      reserved > 0 &&
-      !vac.credits_settled_at
-    ) {
-      const { error: refundError } = await supabase.rpc('deduct_comm_credits', {
-        p_org_id: vac.organization_id,
-        p_channel: 'voice',
-        p_amount: -reserved,
-      });
-      if (refundError) throw refundError;
-      patch.credits_reserved = 0;
-      patch.credits_settled_at = new Date().toISOString();
+    // F-NEW-6: si la llamada no llegó a hablar (nadie contestó, comunicaba, falló,
+    // se canceló o contestó un buzón), el ws-server nunca concilia y la reserva de
+    // crédito se quedaba cobrada. Aquí se devuelve, una sola vez
+    // (`credits_settled_at`), con la MISMA función que usa el TwiML del agente.
+    const efectivo = keepTerminal ? vac.status : nextStatus;
+    if (sinConversacion(efectivo)) {
+      const devolucion = await devolverReservaSinConversacion(supabase, vac);
+      if (devolucion) Object.assign(patch, devolucion);
     }
 
     const { error: updError } = await supabase

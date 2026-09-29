@@ -21,6 +21,8 @@ export interface TelephonySettingsDto {
   voice_minutes_remaining: number | null;
   voice_twiml_app_sid: string | null;
   voice_agent_enabled: boolean;
+  /** URL de la política de tratamiento de datos; sin ella las campañas del agente no llaman. */
+  data_policy_url: string | null;
   has_subaccount: boolean;
   consent_voice: string;
   consent_language: string;

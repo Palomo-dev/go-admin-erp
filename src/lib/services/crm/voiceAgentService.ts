@@ -27,7 +27,19 @@
  *    `voice_agent_calls.provider_call_sid`.
  *  - C-F6-09: la llamada graba en dual channel y el TwiML anuncia el consentimiento.
  *
- * Tablas: voice_agents, voice_agent_campaigns, voice_agent_calls, calls, stage_agents
+ *  - Cumplimiento (2026-09-30), en `dialClaimedCall`, que es el punto ÚNICO por
+ *    donde sale toda llamada (cola de campañas y despacho puntual):
+ *      · Ley 2300 de 2023: horario del destinatario (L-V 7–19, sáb 8–15, nunca
+ *        domingos ni festivos de Colombia) y tope semanal de contactos
+ *        efectivos; fuera de eso la fila se reprograma a la siguiente ventana.
+ *      · Registro de Números Excluidos: un número de `crm_excluded_numbers` no
+ *        se marca. La cola exige además una verificación RNE vigente por
+ *        campaña y la URL de la política de tratamiento de datos.
+ *      · Contestadora: AMD de Twilio (ver `voiceAgent/amd.ts`); si contesta una
+ *        máquina, `twiml/ai-agent` cuelga y registra `buzon`.
+ *
+ * Tablas: voice_agents, voice_agent_campaigns, voice_agent_calls, calls, stage_agents,
+ *         crm_excluded_numbers, voice_campaign_rne_checks
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -44,6 +56,16 @@ import {
   type VoiceAgentPurpose,
   type VoiceAgentEngine as EnumVoiceAgentEngine,
 } from '@/lib/crm/enums';
+import { describirMotivoLey2300, ventanaLey2300Abierta, ZONA_COLOMBIA } from '@/lib/services/crm/voiceAgent/ley2300';
+import { parametrosAmd } from '@/lib/services/crm/voiceAgent/amd';
+import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
+import { normalizarNumeroRne } from '@/lib/services/crm/voiceAgent/rne';
+import {
+  campanaConRneVigente,
+  evaluarLey2300Cliente,
+  numeroExcluido,
+  politicaDatosValida,
+} from '@/lib/services/crm/voiceAgent/cumplimiento';
 
 // ─── Tipos: Voice Agents ─────────────────────────────────────────────────────
 
@@ -602,21 +624,19 @@ export function isWithinSchedule(schedule: ScheduleConfig | null, timezone?: str
 }
 
 /**
- * Franja legal de contacto del cliente (D9). Sin zona horaria se usa America/Bogota
- * (`customers.timezone` es NOT NULL DEFAULT 'America/Bogota'), nunca «permitir todo».
+ * Franja legal de contacto del cliente: la de la Ley 2300 de 2023 (lunes a
+ * viernes 7:00–19:00, sábados 8:00–15:00, nunca domingos ni festivos de
+ * Colombia). Antes era 08:00–20:00 sin festivos. Sin zona horaria se usa
+ * America/Bogota (`customers.timezone` es NOT NULL DEFAULT 'America/Bogota'),
+ * nunca «permitir todo»; con una zona inválida, fail-closed.
+ *
+ * El despachador no usa esta función sino `evaluarLey2300Cliente`, que además
+ * aplica el tope semanal y la zona del número (+57 → Colombia). Se conserva para
+ * el diagnóstico del panel.
  */
-export function isWithinCustomerHours(
-  timezone?: string | null,
-  window: { startHour: number; endHour: number; allowSunday: boolean } = {
-    startHour: 8,
-    endHour: 20,
-    allowSunday: false,
-  }
-): boolean {
-  const local = localHourAndDay(timezone || DEFAULT_TIMEZONE);
-  if (!local) return false; // zona inválida → fail-closed
-  if (!window.allowSunday && local.day === 0) return false;
-  return local.hour >= window.startHour && local.hour < window.endHour;
+export function isWithinCustomerHours(timezone?: string | null, now: Date = new Date()): boolean {
+  if (!localHourAndDay(timezone || ZONA_COLOMBIA, now)) return false; // zona inválida → fail-closed
+  return ventanaLey2300Abierta(now, timezone || ZONA_COLOMBIA);
 }
 
 // ─── Consentimiento y créditos ───────────────────────────────────────────────
@@ -981,6 +1001,14 @@ export async function runCampaignQueue(
     result.errors.push('El agente de voz está desactivado para esta organización (comm_settings.voice_agent_enabled)');
     return result;
   }
+  // Compuerta legal (Ley 1581 de 2012): sin política de tratamiento de datos
+  // publicada no se hace prospección. El agente la cita si el prospecto pregunta.
+  if (!orgSettings.dataPolicyUrl) {
+    result.errors.push(
+      'Falta la URL de la política de tratamiento de datos (Configuración › CRM › Telefonía): sin ella las campañas no llaman'
+    );
+    return result;
+  }
 
   const { client: twilioClient, fromNumber } = await getTwilioClientForOrg(orgId, supabase);
   // N-3: sin caller id PROPIO no se marca. Antes se usaba el número global de la
@@ -1016,6 +1044,15 @@ export async function runCampaignQueue(
     const agentCaps = await getAgentCaps(supabase, orgId, campaign.voice_agent_id);
     if (!agentCaps || !agentCaps.is_active) {
       result.errors.push(`Campaña ${campaign.id}: el agente está desactivado`);
+      continue;
+    }
+
+    // Compuerta RNE: ningún lote de la campaña sale sin una verificación contra
+    // el Registro de Números Excluidos vigente (`voice_campaign_rne_checks`).
+    if (!(await campanaConRneVigente(supabase, orgId, campaign.id))) {
+      result.errors.push(
+        `Campaña ${campaign.id}: sin verificación vigente contra el Registro de Números Excluidos (RNE). Verifícala en la campaña antes de llamar`
+      );
       continue;
     }
 
@@ -1170,11 +1207,14 @@ async function enqueueCampaignTargets(
       .in('status', ['pending', 'queued', 'in_progress'])
   ) || []) as Array<{ customer_id: string }>;
   const alreadyQueued = new Set(existing.map((r) => r.customer_id));
+  const excluidos = await customersInExclusionList(supabase, orgId, customerIds);
 
   const rows: Record<string, unknown>[] = [];
   for (const target of targets) {
     if (rows.length >= room) break;
     if (alreadyQueued.has(target.customer_id)) continue;
+    // RNE: un número excluido no llega ni a la cola.
+    if (excluidos.has(target.customer_id)) continue;
     // C-F6-10: baja voluntaria antes incluso de encolar.
     if (!(await canCallCustomer(orgId, target.customer_id, supabase))) continue;
 
@@ -1214,6 +1254,40 @@ async function enqueueCampaignTargets(
     throw new VoiceAgentDbError('enqueueCampaignTargets.insert', una.error);
   }
   return encoladas;
+}
+
+/**
+ * Clientes (de `customerIds`) cuyo teléfono está en `crm_excluded_numbers`.
+ * Falla cerrado: si la lectura falla, se propaga y no se encola nada.
+ */
+async function customersInExclusionList(
+  supabase: SupabaseClient,
+  orgId: number,
+  customerIds: string[]
+): Promise<Set<string>> {
+  const fuera = new Set<string>();
+  if (customerIds.length === 0) return fuera;
+  const clientes = (unwrap(
+    'customersInExclusionList.customers',
+    await supabase.from('customers').select('id, phone').eq('organization_id', orgId).in('id', customerIds)
+  ) || []) as Array<{ id: string; phone: string | null }>;
+  const porNumero = new Map<string, string[]>();
+  for (const c of clientes) {
+    const n = normalizarNumeroRne(c.phone);
+    if (!n) continue;
+    porNumero.set(n, [...(porNumero.get(n) ?? []), c.id]);
+  }
+  if (porNumero.size === 0) return fuera;
+  const filas = (unwrap(
+    'customersInExclusionList.excluded',
+    await supabase
+      .from('crm_excluded_numbers')
+      .select('phone_e164')
+      .eq('organization_id', orgId)
+      .in('phone_e164', Array.from(porNumero.keys()))
+  ) || []) as Array<{ phone_e164: string }>;
+  for (const f of filas) for (const id of porNumero.get(f.phone_e164) ?? []) fuera.add(id);
+  return fuera;
 }
 
 async function findStageAgentId(
@@ -1284,6 +1358,11 @@ export interface OrgVoiceSettings extends RecordingSettings {
   /** F-NEW-11: si el canal está apagado, el ws-server cuelga. No hay que marcar. */
   agentEnabled: boolean;
   maxConcurrentCalls: number;
+  /**
+   * URL (https) de la política de tratamiento de datos (`comm_settings.data_policy_url`).
+   * Sin ella la cola de campañas no marca (compuerta legal, 2026-09-30).
+   */
+  dataPolicyUrl: string | null;
 }
 
 /**
@@ -1299,7 +1378,7 @@ export async function getOrgVoiceSettings(
     'getOrgVoiceSettings',
     await supabase
       .from('comm_settings')
-      .select('voice_recording_enabled, voice_consent_message, voice_agent_enabled, is_active, voice_max_concurrent_calls')
+      .select('voice_recording_enabled, voice_consent_message, voice_agent_enabled, is_active, voice_max_concurrent_calls, data_policy_url')
       .eq('organization_id', orgId)
       .maybeSingle()
   ) as {
@@ -1308,6 +1387,7 @@ export async function getOrgVoiceSettings(
     voice_agent_enabled?: boolean;
     is_active?: boolean;
     voice_max_concurrent_calls?: number;
+    data_policy_url?: string | null;
   } | null;
 
   return {
@@ -1323,6 +1403,7 @@ export async function getOrgVoiceSettings(
     // Sin fila de `comm_settings` no hay canal configurado: fail-closed.
     agentEnabled: data ? data.voice_agent_enabled !== false && data.is_active !== false : false,
     maxConcurrentCalls: Number(data?.voice_max_concurrent_calls) > 0 ? Number(data?.voice_max_concurrent_calls) : 3,
+    dataPolicyUrl: politicaDatosValida(data?.data_policy_url) ? (data?.data_policy_url as string) : null,
   };
 }
 
@@ -1366,8 +1447,9 @@ interface DialOutcome {
 }
 
 /**
- * Marca una fila ya reclamada. Orden: cliente → consentimiento → franja → crédito →
- * fila en `calls` → proveedor → correlación.
+ * Marca una fila ya reclamada. Orden: cliente → consentimiento → teléfono marcable →
+ * RNE → Ley 2300 (horario + tope semanal) → crédito → fila en `calls` → proveedor →
+ * correlación. Es el punto ÚNICO por donde sale toda llamada del agente.
  */
 async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
   const { supabase, orgId, campaign, vac, twilioClient, fromNumber, webhookBase, recording } = p;
@@ -1398,25 +1480,6 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
     return { initiated: false, reason: 'baja voluntaria' };
   }
 
-  if (!isWithinCustomerHours(customer.timezone)) {
-    // Vuelve a la cola: no es un fallo, es «ahora no».
-    // `claimed_at` se anula a propósito para que la fila vuelva a poder reclamarse;
-    // el intento YA quedó contado en `voice_agent_call_attempts` (F-NEW-2), así que
-    // esta anulación no lo borra del tope.
-    const res = await supabase
-      .from('voice_agent_calls')
-      .update({
-        status: 'pending',
-        claimed_at: null,
-        locked_by: null,
-        scheduled_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', vac.id);
-    if (res.error) throw new VoiceAgentDbError('dialClaimedCall.reschedule', res.error);
-    return { initiated: false, reason: 'fuera de la franja horaria del cliente' };
-  }
-
   if (!customer.phone) {
     await releaseCall(supabase, vac.id, 'skipped', 'Cliente sin teléfono', null);
     return { initiated: false, reason: 'sin teléfono' };
@@ -1425,10 +1488,51 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
   // Gemelo de B1: `formatE164` es un formateador, no un validador — con él un
   // teléfono de 5 dígitos se convertía en `+57xxxxx` y se marcaba igual,
   // gastando el minuto de Twilio. Se comprueba ANTES de reservar créditos.
-  const dialableTo = normalizeDialableE164(customer.phone);
+  const dialableTo = normalizarNumeroRne(customer.phone) ?? normalizeDialableE164(customer.phone);
   if (!dialableTo) {
     await releaseCall(supabase, vac.id, 'skipped', `Teléfono no marcable: ${customer.phone}`, null);
     return { initiated: false, reason: 'teléfono no marcable' };
+  }
+
+  // Registro de Números Excluidos (CRC): un número inscrito no se marca nunca,
+  // venga de campaña o de despacho puntual. Es definitivo: no se reprograma.
+  if (await numeroExcluido(supabase, orgId, dialableTo)) {
+    await releaseCall(supabase, vac.id, 'skipped', 'Número inscrito en el Registro de Números Excluidos (RNE)', 'RNE');
+    return { initiated: false, reason: 'número en el RNE' };
+  }
+
+  // Ley 2300 de 2023: horario del DESTINATARIO (+57 → Colombia), festivos y
+  // tope semanal de contactos efectivos. «Ahora no» no es un fallo: la fila
+  // vuelve a la cola para la siguiente ventana legal.
+  // `claimed_at` se anula a propósito para que la fila vuelva a poder reclamarse;
+  // el intento YA quedó contado en `voice_agent_call_attempts` (F-NEW-2), así que
+  // esta anulación no lo borra del tope.
+  const ley2300 = await evaluarLey2300Cliente(supabase, orgId, {
+    id: customer.id,
+    phone: dialableTo,
+    timezone: customer.timezone,
+  });
+  if (ley2300.accion === 'reprogramar') {
+    const res = await supabase
+      .from('voice_agent_calls')
+      .update({
+        status: 'pending',
+        claimed_at: null,
+        locked_by: null,
+        scheduled_at: ley2300.en.toISOString(),
+        error_message: `Reprogramada: ${describirMotivoLey2300(ley2300.motivo)}`,
+        last_error_code: 'LEY2300',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', vac.id);
+    if (res.error) throw new VoiceAgentDbError('dialClaimedCall.reschedule', res.error);
+    return {
+      initiated: false,
+      reason:
+        ley2300.motivo === 'fuera_de_horario'
+          ? 'fuera de la franja horaria del cliente'
+          : describirMotivoLey2300(ley2300.motivo),
+    };
   }
 
   // D6: crédito reservado ANTES de gastar en el proveedor.
@@ -1505,7 +1609,10 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
       statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
       statusCallbackMethod: 'POST',
       timeout: 30,
-      machineDetection: 'Enable',
+      // AMD síncrono (`voiceAgent/amd.ts`): Twilio espera el veredicto y lo
+      // manda como `AnsweredBy` al TwiML; si es una máquina, `twiml/ai-agent`
+      // cuelga sin abrir la conversación y registra `buzon`.
+      ...parametrosAmd(),
       // C-F6-09 / A-2: la grabación dual-channel NO se pide aquí. `record: true`
       // en el `calls.create` arranca a grabar en cuanto contestan, es decir
       // ANTES de que suene el aviso: el acta quedaba bien fechada pero la
@@ -1637,10 +1744,13 @@ export const MAX_ATTEMPTS_PER_CUSTOMER_PER_DAY = 2;
 
 export class VoiceDispatchBlocked extends Error {
   readonly reason: string;
-  constructor(reason: string, message: string) {
+  /** ISO del primer instante en que se puede reintentar (solo `ley2300`). */
+  readonly retryAt?: string;
+  constructor(reason: string, message: string, retryAt?: string) {
     super(message);
     this.name = 'VoiceDispatchBlocked';
     this.reason = reason;
+    this.retryAt = retryAt;
   }
 }
 
@@ -1760,6 +1870,34 @@ export async function dispatchAgentCall(
   }
   if (!isWithinSchedule(businessHours, agentTimezone)) {
     throw new VoiceDispatchBlocked('agent_schedule', 'Fuera del horario configurado para este agente.');
+  }
+
+  // Cumplimiento ANTES de crear la fila: una fila sin campaña que se quedara
+  // `pending` por la hora no la reclamaría nadie (`fn_claim_voice_agent_calls`
+  // filtra por campaña). El job `ai_call` reprograma con `retryAt`.
+  // `dialClaimedCall` lo vuelve a comprobar: es la barrera definitiva.
+  const clienteRes = await supabase
+    .from('customers')
+    .select('id, phone, timezone')
+    .eq('id', customerId)
+    .eq('organization_id', orgId)
+    .maybeSingle();
+  if (clienteRes.error) throw new VoiceAgentDbError('dispatchAgentCall.customer', clienteRes.error);
+  const cliente = clienteRes.data as { id: string; phone: string | null; timezone: string | null } | null;
+  if (!cliente) throw new Error('Cliente no encontrado');
+  const telefono = normalizarNumeroRne(cliente.phone) ?? normalizeDialableE164(cliente.phone);
+  if (telefono) {
+    if (await numeroExcluido(supabase, orgId, telefono)) {
+      throw new VoiceDispatchBlocked('rne', 'El número está inscrito en el Registro de Números Excluidos (RNE). No se llama.');
+    }
+    const ley2300 = await evaluarLey2300Cliente(supabase, orgId, { id: cliente.id, phone: telefono, timezone: cliente.timezone });
+    if (ley2300.accion === 'reprogramar') {
+      throw new VoiceDispatchBlocked(
+        'ley2300',
+        `No se llama ahora: ${describirMotivoLey2300(ley2300.motivo)}. Próxima oportunidad: ${formatDateTimeInTz(ley2300.en, ley2300.zona, { locale: 'es-CO' })} (${ley2300.zona}).`,
+        ley2300.en.toISOString()
+      );
+    }
   }
 
   const stageAgentId = stageId ? await findStageAgentId(supabase, orgId, stageId) : null;

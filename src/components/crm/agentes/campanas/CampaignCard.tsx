@@ -17,6 +17,7 @@ import {
   describeCampaignTarget,
   type CampaignRow,
 } from "./campaignModel";
+import { CampaignRnePanel } from "./CampaignRnePanel";
 
 interface Props {
   campaign: CampaignRow;
@@ -71,6 +72,8 @@ export function CampaignCard({ campaign: c, stages, pipelines, busy, onActivate,
           {status.detail}
         </p>
       )}
+      {/* RNE (CRC): la cola no marca un lote de la campaña sin verificación vigente. */}
+      <CampaignRnePanel campaignId={c.id} />
       <div className="mt-3">
         {canActivate ? (
           <Button

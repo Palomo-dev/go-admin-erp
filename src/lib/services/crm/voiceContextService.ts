@@ -85,6 +85,8 @@ export interface TelephonySettings {
   voice_twiml_app_sid: string | null;
   twilio_subaccount_sid: string | null;
   voice_agent_enabled: boolean;
+  /** URL (https) de la política de tratamiento de datos; sin ella las campañas del agente no llaman. */
+  data_policy_url: string | null;
 }
 
 export const DEFAULT_CONSENT_MESSAGE =
@@ -102,10 +104,11 @@ const DEFAULT_SETTINGS: Omit<TelephonySettings, 'organization_id'> = {
   voice_twiml_app_sid: null,
   twilio_subaccount_sid: null,
   voice_agent_enabled: false,
+  data_policy_url: null,
 };
 
 export const TELEPHONY_SETTINGS_COLUMNS =
-  'organization_id, phone_number, voice_caller_id, voice_recording_enabled, voice_recording_retention_days, voice_consent_message, voice_ring_timeout_seconds, voice_max_concurrent_calls, voice_minutes_remaining, voice_twiml_app_sid, twilio_subaccount_sid, voice_agent_enabled';
+  'organization_id, phone_number, voice_caller_id, voice_recording_enabled, voice_recording_retention_days, voice_consent_message, voice_ring_timeout_seconds, voice_max_concurrent_calls, voice_minutes_remaining, voice_twiml_app_sid, twilio_subaccount_sid, voice_agent_enabled, data_policy_url';
 
 /** Ajustes de telefonía de la org (defaults seguros si no hay fila). */
 export async function getTelephonySettings(orgId: number, client?: SupabaseClient): Promise<TelephonySettings> {

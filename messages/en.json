@@ -10464,14 +10464,51 @@
       "agente_inactivo": "The calling agent is inactive. Activate it on the “Agents” tab.",
       "agente_no_encontrado": "The campaign's agent no longer exists.",
       "fuera_de_franja_campana": "Outside the campaign's time window ({desde}:00–{hasta}:00, zone {zona}).",
-      "fuera_de_franja_cliente": "Outside the legal contact window (08:00–20:00, never on Sunday; zone {zona}).",
+      "fuera_de_franja_cliente": "Outside legal contact hours (Law 2300: Monday to Friday 7:00–19:00, Saturday 8:00–15:00, never on Sundays or public holidays; zone {zona}).",
       "tope_diario": "Daily cap reached: {hechos} of {tope} attempts.",
       "tope_hora": "Hourly cap reached: {hechos} of {tope} attempts.",
       "sin_objetivos": "The campaign has nobody to call: the selected pipeline stage has no customers.",
       "objetivos_sin_telefono": "{sinTelefono, plural, =0 {None of the {revisados} customers checked has a phone number.} one {# of the {revisados} customers checked has no phone number.} other {# of the {revisados} customers checked have no phone number.}}",
       "objetivos_sin_consentimiento": "{bloqueados, plural, =0 {All {revisados} customers checked are blocked by consent or by “do not call”.} one {# of the {revisados} customers checked is blocked by consent or by “do not call”.} other {# of the {revisados} customers checked are blocked by consent or by “do not call”.}}",
-      "twilio_no_verificable": "Whether the Twilio credentials and the number are active cannot be checked without actually dialing ({cuenta, select, subcuenta_propia {organization's own subaccount} other {platform master account}})."
+      "twilio_no_verificable": "Whether the Twilio credentials and the number are active cannot be checked without actually dialing ({cuenta, select, subcuenta_propia {organization's own subaccount} other {platform master account}}).",
+      "sin_politica_datos": "The data processing policy URL is missing (Settings › CRM › Telephony). Without it, campaigns do not call.",
+      "sin_verificacion_rne": "The campaign has not been checked against the Do-Not-Call Registry (RNE). Upload it on the campaign card.",
+      "verificacion_rne_vencida": "The RNE check has expired. Upload the RNE list again on the campaign card."
+    },
+    "politicaDatos": {
+      "titulo": "Data processing policy",
+      "etiqueta": "Policy URL (https)",
+      "ayuda": "Required for voice agent campaigns to call. The agent cites it when the customer asks how we handle their data.",
+      "faltante": "Without this URL no voice agent campaign dials.",
+      "invalida": "The URL must start with https:// and contain no spaces.",
+      "guardar": "Save URL",
+      "guardando": "Saving…",
+      "guardada": "Data processing policy saved",
+      "quitada": "Data processing policy removed",
+      "errorGuardar": "Could not save the policy"
     }
+  },
+  "vozRne": {
+    "titulo": "Do-Not-Call Registry (RNE)",
+    "ayuda": "Before calling, upload the list downloaded from the CRC RNE (CSV or TXT). Numbers on it are not called. The check is valid for {dias} days.",
+    "cargando": "Checking the verification…",
+    "sinVerificacion": "Not checked: the campaign will not call until you upload the RNE list.",
+    "estadoVigente": "Checked",
+    "estadoVencida": "Expired",
+    "estadoSin": "Not checked",
+    "verificar": "Check against RNE",
+    "verificando": "Checking…",
+    "resultado": "{n, plural, =0 {No campaign number is on the RNE.} one {# campaign number is on the RNE and was excluded.} other {# campaign numbers are on the RNE and were excluded.}}",
+    "verificada": "Checked on",
+    "validaHasta": "Valid until",
+    "numerosArchivo": "Numbers in the file",
+    "objetivosRevisados": "Targets checked",
+    "excluidos": "Excluded",
+    "omitidas": "Pending calls skipped",
+    "demasiadoGrande": "The file is larger than 8 MB.",
+    "errorCargar": "Could not load the RNE check",
+    "errorVerificar": "Could not check against the RNE",
+    "sinPermiso": "Uploading the RNE list requires the organization administrator role."
   },
   "facturacionElectronica": {
     "configuracion": {

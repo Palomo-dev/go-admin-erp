@@ -10359,14 +10359,51 @@
       "agente_inactivo": "L'agent qui appelle est inactif. Activez-le dans l'onglet « Agents ».",
       "agente_no_encontrado": "L'agent de la campagne n'existe plus.",
       "fuera_de_franja_campana": "Hors de la plage horaire de la campagne ({desde}:00–{hasta}:00, zone {zona}).",
-      "fuera_de_franja_cliente": "Hors de la plage légale de contact (08:00–20:00, jamais le dimanche ; zone {zona}).",
+      "fuera_de_franja_cliente": "Hors des horaires légaux de contact (loi 2300 : du lundi au vendredi 7:00–19:00, samedi 8:00–15:00, jamais le dimanche ni les jours fériés ; zone {zona}).",
       "tope_diario": "Plafond quotidien atteint : {hechos} sur {tope} tentatives.",
       "tope_hora": "Plafond horaire atteint : {hechos} sur {tope} tentatives.",
       "sin_objetivos": "La campagne n'a personne à appeler : l'étape du pipeline choisie n'a aucun client.",
       "objetivos_sin_telefono": "{sinTelefono, plural, =0 {Aucun des {revisados} clients vérifiés n'a de téléphone.} one {# des {revisados} clients vérifiés n'a pas de téléphone.} other {# des {revisados} clients vérifiés n'ont pas de téléphone.}}",
       "objetivos_sin_consentimiento": "{bloqueados, plural, =0 {Les {revisados} clients vérifiés sont bloqués par le consentement ou par « ne pas appeler ».} one {# des {revisados} clients vérifiés est bloqué par le consentement ou par « ne pas appeler ».} other {# des {revisados} clients vérifiés sont bloqués par le consentement ou par « ne pas appeler ».}}",
-      "twilio_no_verificable": "Vérifier que les identifiants Twilio et le numéro sont actifs est impossible sans composer réellement ({cuenta, select, subcuenta_propia {sous-compte propre de l'organisation} other {compte maître de la plateforme}})."
+      "twilio_no_verificable": "Vérifier que les identifiants Twilio et le numéro sont actifs est impossible sans composer réellement ({cuenta, select, subcuenta_propia {sous-compte propre de l'organisation} other {compte maître de la plateforme}}).",
+      "sin_politica_datos": "L'URL de la politique de traitement des données manque (Paramètres › CRM › Téléphonie). Sans elle, les campagnes n'appellent pas.",
+      "sin_verificacion_rne": "La campagne n'a pas été vérifiée contre le registre des numéros exclus (RNE). Chargez-le dans la carte de la campagne.",
+      "verificacion_rne_vencida": "La vérification RNE a expiré. Chargez de nouveau la liste du RNE dans la carte de la campagne."
+    },
+    "politicaDatos": {
+      "titulo": "Politique de traitement des données",
+      "etiqueta": "URL de la politique (https)",
+      "ayuda": "Obligatoire pour que les campagnes de l'agent vocal appellent. L'agent la cite quand le client demande comment nous traitons ses données.",
+      "faltante": "Sans cette URL, aucune campagne de l'agent vocal ne compose.",
+      "invalida": "L'URL doit commencer par https:// et ne pas contenir d'espaces.",
+      "guardar": "Enregistrer l'URL",
+      "guardando": "Enregistrement…",
+      "guardada": "Politique de traitement des données enregistrée",
+      "quitada": "Politique de traitement des données retirée",
+      "errorGuardar": "Impossible d'enregistrer la politique"
     }
+  },
+  "vozRne": {
+    "titulo": "Registre des numéros exclus (RNE)",
+    "ayuda": "Avant d'appeler, chargez la liste téléchargée du RNE de la CRC (CSV ou TXT). Les numéros qui y figurent ne sont pas appelés. La vérification est valable {dias} jours.",
+    "cargando": "Vérification en cours…",
+    "sinVerificacion": "Non vérifiée : la campagne n'appelle pas tant que la liste du RNE n'est pas chargée.",
+    "estadoVigente": "Vérifiée",
+    "estadoVencida": "Expirée",
+    "estadoSin": "Non vérifiée",
+    "verificar": "Vérifier contre le RNE",
+    "verificando": "Vérification…",
+    "resultado": "{n, plural, =0 {Aucun numéro de la campagne ne figure au RNE.} one {# numéro de la campagne figure au RNE et a été exclu.} other {# numéros de la campagne figurent au RNE et ont été exclus.}}",
+    "verificada": "Vérifiée le",
+    "validaHasta": "Valable jusqu'au",
+    "numerosArchivo": "Numéros dans le fichier",
+    "objetivosRevisados": "Cibles vérifiées",
+    "excluidos": "Exclus",
+    "omitidas": "Appels en attente ignorés",
+    "demasiadoGrande": "Le fichier dépasse 8 Mo.",
+    "errorCargar": "Impossible de consulter la vérification RNE",
+    "errorVerificar": "Impossible de vérifier contre le RNE",
+    "sinPermiso": "Charger la liste du RNE requiert le rôle d'administrateur de l'organisation."
   },
   "facturacionElectronica": {
     "configuracion": {

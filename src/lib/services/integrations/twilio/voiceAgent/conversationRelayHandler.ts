@@ -11,7 +11,7 @@ import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import type WebSocket from 'ws';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { buildVoiceAgentPrompt, type VoiceAgentContext } from './voiceAgentPrompts';
+import { buildVoiceAgentPrompt, tipoDeNegocio, type VoiceAgentContext } from './voiceAgentPrompts';
 import { VOICE_AGENT_TOOLS, executeToolCall } from './voiceAgentTools';
 import { consumeWsSessionJti, verifyWsSessionToken, type WsSessionClaims } from '@/lib/security/wsSessionToken';
 // F6: cuando la llamada trae `agentId`, el cerebro es el del agente del CRM
@@ -377,7 +377,7 @@ async function handlePrompt(
   // Llamar a OpenAI con streaming
   const openai = getOpenAIClient();
   let fullResponse = '';
-  let toolCalls: Array<{
+  const toolCalls: Array<{
     id: string;
     name: string;
     arguments: string;
@@ -680,9 +680,12 @@ function sendEnd(ws: WebSocket): void {
 async function buildAgentContext(orgId: number): Promise<VoiceAgentContext> {
   const sb = getServiceSupabase();
   // F-NEW-8: las dos lecturas comprueban su error y lo propagan con el mensaje real.
+  // `organizations` no tiene `business_type`: el tipo de negocio es
+  // `organization_types.name` por `type_id`. Pedir la columna inexistente hacía
+  // fallar esta lectura, y con ella todo el flujo genérico (sin agente del CRM).
   const { data: org, error: orgError } = await sb
     .from('organizations')
-    .select('name, business_type')
+    .select('name, organization_types(name)')
     .eq('id', orgId)
     .maybeSingle();
   if (orgError) throw new Error(`organizations: ${orgError.message}`);
@@ -697,7 +700,7 @@ async function buildAgentContext(orgId: number): Promise<VoiceAgentContext> {
 
   return {
     organizationName: org?.name || 'Negocio',
-    organizationType: org?.business_type || 'hotel',
+    organizationType: tipoDeNegocio(org) || 'hotel',
     language: voiceConfig.language || 'es',
     tone: voiceConfig.tone || 'profesional',
     customRules: voiceConfig.customRules || '',

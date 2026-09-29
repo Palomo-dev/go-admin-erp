@@ -23,6 +23,8 @@ import {
 } from '@/lib/services/crm/voiceAgentTools';
 import { recordingEnabledForCall } from '@/lib/services/crm/consentService';
 import { loadOrgModelSettings, resolveModel } from '@/lib/ai/agent/modelRouter';
+import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
+import { politicaDatosValida, zonaHorariaOrganizacion } from './cumplimiento';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -299,11 +301,20 @@ export async function buildRuntimeConfig(
 
   const commRes = await supabase
     .from('comm_settings')
-    .select('voice_recording_enabled, voice_consent_message')
+    .select('voice_recording_enabled, voice_consent_message, data_policy_url')
     .eq('organization_id', orgId)
     .maybeSingle();
   if (commRes.error) throw new AgentRuntimeError('db_error', `comm_settings: ${commRes.error.message}`);
-  const commRow = commRes.data as { voice_recording_enabled?: boolean; voice_consent_message?: string } | null;
+  const commRow = commRes.data as {
+    voice_recording_enabled?: boolean;
+    voice_consent_message?: string;
+    data_policy_url?: string | null;
+  } | null;
+  const politicaDatosUrl = politicaDatosValida(commRow?.data_policy_url) ? commRow?.data_policy_url ?? null : null;
+  // «Agendar falla» (2026-09-29): el modelo no sabía qué día era hoy y calculaba
+  // las fechas de `book_meeting` con su conocimiento (años atrás → «en el
+  // pasado»). Se le da la fecha y hora actuales en la zona de la organización.
+  const zonaHoraria = await zonaHorariaOrganizacion(supabase, orgId);
   // F-2 (ronda 7 de voz): con fila `calls` enlazada manda ESA fila
   // (`recording_enabled`, fijada al marcar por `voiceAgentService`), la misma
   // que lee `twiml/ai-agent` para decidir `<Start><Recording>`. Releer
@@ -344,6 +355,7 @@ export async function buildRuntimeConfig(
     customerName,
     recordingEnabled,
     consentMessage,
+    contexto: { ahora: new Date(), zonaHoraria, politicaDatosUrl },
   });
 
   const greeting = buildGreeting({
@@ -406,10 +418,40 @@ export function buildSystemPrompt(p: {
   customerName: string | null;
   recordingEnabled: boolean;
   consentMessage: string;
+  /** Fecha/hora actuales, zona de la organización y política de datos. */
+  contexto?: { ahora: Date; zonaHoraria: string; politicaDatosUrl: string | null };
 }): string {
   const parts: string[] = [];
 
   parts.push(mandatoryGuardrails(p.organizationName, p.identityDisclosure));
+
+  if (p.contexto) {
+    const { ahora, zonaHoraria, politicaDatosUrl } = p.contexto;
+    const hoy = formatDateTimeInTz(ahora, zonaHoraria, {
+      locale: 'es-CO',
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    parts.push(
+      `FECHA Y HORA ACTUALES: ${hoy} (zona horaria ${zonaHoraria}). Úsalas para calcular cualquier fecha ` +
+        '(«mañana», «el jueves»). Al agendar con book_meeting envía start_at en ISO 8601 CON el desfase de esa ' +
+        'zona y confirma antes el día y la hora en voz alta. Nunca propongas domingos ni festivos.'
+    );
+    parts.push(
+      politicaDatosUrl
+        ? `TRATAMIENTO DE DATOS: si el cliente pregunta cómo obtuvimos su número o cómo tratamos sus datos, dile ` +
+            `que ${p.organizationName} trata sus datos conforme a la Ley 1581 de 2012, que puede consultar la ` +
+            `política en ${politicaDatosUrl} y que, si lo desea, registras ahora mismo que no le volvamos a contactar ` +
+            '(log_consent_opt_out).'
+        : 'TRATAMIENTO DE DATOS: si el cliente pregunta cómo tratamos sus datos, dile que la política de tratamiento ' +
+            'de datos se la envía un asesor y ofrécele registrar que no le volvamos a contactar (log_consent_opt_out).'
+    );
+  }
 
   if (p.recordingEnabled) {
     parts.push(

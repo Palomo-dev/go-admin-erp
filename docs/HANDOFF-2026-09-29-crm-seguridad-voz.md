@@ -165,3 +165,80 @@ encendido, minutos).
   aplicado en la base y qué quedó a medias en el árbol antes de relanzar.
 - **Nada de cadenas en línea para escribir archivos**: bytes de control entraron por comillas dobles de
   PowerShell y por `python -c`. Scripts en archivo con UTF-8 explícito.
+
+---
+
+## 7. Agente de voz: agendar, contestadora, Ley 2300, RNE y política de datos (2026-09-30, sin commit)
+
+Todo en el árbol local, **sin commit**. Dos migraciones **ya aplicadas** por MCP, con su `.sql` y su
+rollback en el árbol: súbanse en el mismo commit que el código (regla dura 1).
+
+| Migración | Qué |
+|---|---|
+| `20260930140500_voz_ley2300_rne_politica_datos` | `comm_settings.data_policy_url` (+CHECK https); tablas `crm_excluded_numbers` y `voice_campaign_rne_checks` (RLS de lectura por membresía, sin escritura para `authenticated`); RPC `fn_rne_registrar_verificacion` (solo `service_role`) y `fn_contactos_efectivos_semana` (SECURITY INVOKER). Probada en `begin … rollback` antes de aplicarla. |
+| `20260930140600_voz_agente_pedro_guion_prospeccion` | Guion de prospección B2B del agente «Pedro, asistente comercial» de la org 125 (la de la plataforma). Aborta si no hay exactamente una fila. El rollback devuelve el texto anterior byte a byte (base64 + md5); probado en transacción revertida. |
+
+### 7.1 «Agendar la reunión falla» — causa raíz
+
+`bookMeeting` (`src/lib/services/crm/voiceAgentTools.ts`) insertaba `calendar_events.status = 'scheduled'`;
+el CHECK real `calendar_events_status_check` solo admite `confirmed | tentative | cancelled` → **23514 en
+todas las llamadas** (reproducido en la base en una transacción revertida). `meetingsService` ya usaba
+`confirmed`. Dos defectos más en el mismo camino: el modelo no sabía qué día era (calculaba fechas «en el
+pasado») y una hora sin desfase se leía en UTC (el ws-server corre en UTC) con la zona cableada a Bogotá.
+Arreglo: `status: 'confirmed'`, zona de la organización (`zonaHorariaOrganizacion`, sin arrastrar el cliente
+de navegador al ws-server), `resolverInicioReunion` (hora de pared de la organización) y el prompt lleva la
+fecha y hora actuales. No había ninguna llamada real del agente en la base (`voice_agent_calls`,
+`voice_agent_tool_runs` y `calls` con `mode='ai_agent'` vacías): el servidor de voz sigue caído (§1.2).
+
+### 7.2 Contestadora (AMD)
+
+`calls.create` ya pedía `machineDetection: 'Enable'` (síncrono), pero `twiml/ai-agent` ignoraba
+`AnsweredBy` y abría el ConversationRelay contra el buzón. Ahora (`voiceAgent/amd.ts`): máquina o fax →
+`<Hangup/>` sin conversación, fila `voicemail`/`buzon` (fax: `no_answer`/`fax`), `calls.status =
+'voicemail'`, reserva de minutos devuelta (`voiceAgent/reservaCreditos.ts`, misma función que el
+`statusCallback`, que ya no pisa un `voicemail` con el `completed` posterior). No cuenta como contacto
+efectivo. No hay campo de «mensaje de buzón» en campaña ni agente: se cuelga (`parametrosAmd(mensaje)`
+pasa a `DetectMessageEnd` el día que exista).
+
+### 7.3 Ley 2300 de 2023
+
+`voiceAgent/ley2300.ts` (puro, probado con TZ=UTC, Bogotá y Katmandú): L-V 7:00–19:00, sábado
+8:00–15:00, nunca domingos ni festivos (calendario Ley 51/1983 + Pascua calculado: no existía ninguno en el
+repo ni en la base); hora del destinatario (+57 → America/Bogota); tope semanal de contactos **efectivos**
+(1 por canal, 2 en total) sobre `fn_contactos_efectivos_semana` (voz contestada, correo enviado,
+mensajería iniciada por la empresa; SMS no se registra por cliente y no cuenta). Se aplica en
+`dialClaimedCall`, el punto único por donde sale toda llamada: fuera de ventana o semana llena → la fila
+vuelve a `pending` con `scheduled_at` = siguiente ventana legal (`LEY2300`). El despacho puntual lo
+comprueba antes de crear la fila y el job `ai_call` se reencola para esa ventana. No se replicó en SQL: el
+disparo no es por SQL (pg_cron solo llama a `/api/crm/jobs/run`).
+
+Fuente: art. 3 («Horarios y periodicidad») de la Ley 2300 de 2023; exequible por la C-278 de 2024. El
+texto literal de la periodicidad está redactado para la cobranza; para prospección se aplica la regla del
+dueño (igual o más estricta). El horario se sustituye también en `isWithinCustomerHours` (antes 8–20).
+
+### 7.4 RNE y política de datos
+
+- Compuerta de campaña: `runCampaignQueue` no reclama filas de una campaña sin verificación RNE vigente
+  (30 días, decisión de producto: conviene verificar cada semana) ni de ninguna campaña si falta
+  `comm_settings.data_policy_url`. `dialClaimedCall` omite (`skipped`, `RNE`) todo número de
+  `crm_excluded_numbers`, y la cola ni lo encola. El diagnóstico del panel dice cuál falta.
+- Pantalla: tarjeta de campaña → «Verificar contra RNE» (`CampaignRnePanel`, kit) → `POST
+  /api/crm/voice-agents/campaigns/[id]/rne` (admin; organización de la sesión; 401/403 probados). La URL de
+  la política se guarda en Configuración › CRM › Telefonía (`DataPolicySection`). Textos es/en/fr/pt.
+- El agente cita la URL si el prospecto pregunta por sus datos (lo inyecta `agentRuntime`).
+
+### 7.5 ws-server
+
+`npm audit --omit=dev` de `ws-server/` = 0 avisos: `@supabase/supabase-js` 2.50.5 y `tsx` 4.23.15 (antes 3
+avisos bajos: auth-js y esbuild). Arranque verificado con la misma disposición que el Dockerfile
+(`/health` responde). El cierre de imports sigue siendo exactamente el de `ws-server/package.json`.
+
+### 7.6 Pendiente del dueño
+
+1. Commit y push de §7 (con sus dos migraciones) y después `main → master` (Railway).
+2. Publicar la política el 2-oct y guardar su URL en Telefonía: **hasta entonces ninguna campaña llama**.
+3. Descargar la lista del RNE y cargarla en cada campaña antes de activarla.
+4. Abrir el caso con Twilio por el número 604 (Resolución CRC 8308 de **2026**, no de 2025).
+5. Preexistentes, ajenos a esta ronda: `f6Adversarial` H2 (middleware) y `f10Proposals.contract` fallan
+   también sin estos cambios. `get_business_info` y `buildAgentContext` (flujo genérico de entrada) leen
+   `organizations.business_type`, que no existe.

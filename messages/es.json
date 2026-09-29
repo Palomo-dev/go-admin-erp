@@ -10464,14 +10464,51 @@
       "agente_inactivo": "El agente que llama está inactivo. Actívalo en la pestaña «Agentes».",
       "agente_no_encontrado": "El agente de la campaña ya no existe.",
       "fuera_de_franja_campana": "Fuera de la franja horaria de la campaña ({desde}:00–{hasta}:00, zona {zona}).",
-      "fuera_de_franja_cliente": "Fuera de la franja legal de contacto (08:00–20:00, nunca domingo; zona {zona}).",
+      "fuera_de_franja_cliente": "Fuera del horario legal de contacto (Ley 2300: lunes a viernes 7:00–19:00, sábados 8:00–15:00, nunca domingos ni festivos; zona {zona}).",
       "tope_diario": "Tope diario alcanzado: {hechos} de {tope} intentos.",
       "tope_hora": "Tope por hora alcanzado: {hechos} de {tope} intentos.",
       "sin_objetivos": "La campaña no tiene a quién llamar: la etapa del embudo elegida no tiene clientes.",
       "objetivos_sin_telefono": "{sinTelefono, plural, =0 {Ninguno de los {revisados} clientes revisados tiene teléfono.} one {# de los {revisados} clientes revisados no tiene teléfono.} other {# de los {revisados} clientes revisados no tienen teléfono.}}",
       "objetivos_sin_consentimiento": "{bloqueados, plural, =0 {Los {revisados} clientes revisados tienen la llamada bloqueada por consentimiento o por «no llamar».} one {# de los {revisados} clientes revisados tiene la llamada bloqueada por consentimiento o por «no llamar».} other {# de los {revisados} clientes revisados tienen la llamada bloqueada por consentimiento o por «no llamar».}}",
-      "twilio_no_verificable": "Que las credenciales de Twilio y el número estén activos no se puede comprobar sin marcar de verdad ({cuenta, select, subcuenta_propia {subcuenta propia de la organización} other {cuenta maestra de la plataforma}})."
+      "twilio_no_verificable": "Que las credenciales de Twilio y el número estén activos no se puede comprobar sin marcar de verdad ({cuenta, select, subcuenta_propia {subcuenta propia de la organización} other {cuenta maestra de la plataforma}}).",
+      "sin_politica_datos": "Falta la URL de la política de tratamiento de datos (Configuración › CRM › Telefonía). Sin ella las campañas no llaman.",
+      "sin_verificacion_rne": "La campaña no se ha verificado contra el Registro de Números Excluidos (RNE). Cárgalo en la tarjeta de la campaña.",
+      "verificacion_rne_vencida": "La verificación contra el RNE venció. Vuelve a cargar la lista del RNE en la tarjeta de la campaña."
+    },
+    "politicaDatos": {
+      "titulo": "Política de tratamiento de datos",
+      "etiqueta": "URL de la política (https)",
+      "ayuda": "Obligatoria para que las campañas del agente de voz llamen. El agente la cita cuando el cliente pregunta cómo tratamos sus datos.",
+      "faltante": "Sin esta URL ninguna campaña del agente de voz marca.",
+      "invalida": "La URL debe empezar por https:// y no llevar espacios.",
+      "guardar": "Guardar URL",
+      "guardando": "Guardando…",
+      "guardada": "Política de tratamiento de datos guardada",
+      "quitada": "Política de tratamiento de datos quitada",
+      "errorGuardar": "No se pudo guardar la política"
     }
+  },
+  "vozRne": {
+    "titulo": "Registro de Números Excluidos (RNE)",
+    "ayuda": "Antes de llamar, carga la lista descargada del RNE de la CRC (CSV o TXT). Los números que aparezcan no se llaman. La verificación vale {dias} días.",
+    "cargando": "Comprobando la verificación…",
+    "sinVerificacion": "Sin verificación: la campaña no llama hasta que cargues la lista del RNE.",
+    "estadoVigente": "Verificada",
+    "estadoVencida": "Vencida",
+    "estadoSin": "Sin verificar",
+    "verificar": "Verificar contra RNE",
+    "verificando": "Verificando…",
+    "resultado": "{n, plural, =0 {Ningún número de la campaña está en el RNE.} one {# número de la campaña está en el RNE y quedó excluido.} other {# números de la campaña están en el RNE y quedaron excluidos.}}",
+    "verificada": "Verificada",
+    "validaHasta": "Válida hasta",
+    "numerosArchivo": "Números en el archivo",
+    "objetivosRevisados": "Objetivos revisados",
+    "excluidos": "Excluidos",
+    "omitidas": "Llamadas pendientes omitidas",
+    "demasiadoGrande": "El archivo supera 8 MB.",
+    "errorCargar": "No se pudo consultar la verificación RNE",
+    "errorVerificar": "No se pudo verificar contra el RNE",
+    "sinPermiso": "Cargar la lista del RNE requiere rol de administrador de la organización."
   },
   "facturacionElectronica": {
     "configuracion": {

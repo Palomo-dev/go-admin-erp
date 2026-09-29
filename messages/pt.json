@@ -10359,14 +10359,51 @@
       "agente_inactivo": "O agente que liga está inativo. Ative-o na aba «Agentes».",
       "agente_no_encontrado": "O agente da campanha já não existe.",
       "fuera_de_franja_campana": "Fora da faixa horária da campanha ({desde}:00–{hasta}:00, zona {zona}).",
-      "fuera_de_franja_cliente": "Fora da faixa legal de contato (08:00–20:00, nunca domingo; zona {zona}).",
+      "fuera_de_franja_cliente": "Fora do horário legal de contato (Lei 2300: segunda a sexta 7:00–19:00, sábado 8:00–15:00, nunca domingos nem feriados; zona {zona}).",
       "tope_diario": "Limite diário alcançado: {hechos} de {tope} tentativas.",
       "tope_hora": "Limite por hora alcançado: {hechos} de {tope} tentativas.",
       "sin_objetivos": "A campanha não tem quem ligar: a etapa do funil escolhida não tem clientes.",
       "objetivos_sin_telefono": "{sinTelefono, plural, =0 {Nenhum dos {revisados} clientes verificados tem telefone.} one {# dos {revisados} clientes verificados não tem telefone.} other {# dos {revisados} clientes verificados não têm telefone.}}",
       "objetivos_sin_consentimiento": "{bloqueados, plural, =0 {Os {revisados} clientes verificados estão bloqueados por consentimento ou por «não ligar».} one {# dos {revisados} clientes verificados está bloqueado por consentimento ou por «não ligar».} other {# dos {revisados} clientes verificados estão bloqueados por consentimento ou por «não ligar».}}",
-      "twilio_no_verificable": "Se as credenciais da Twilio e o número estão ativos não é possível verificar sem discar de verdade ({cuenta, select, subcuenta_propia {subconta própria da organização} other {conta mestra da plataforma}})."
+      "twilio_no_verificable": "Se as credenciais da Twilio e o número estão ativos não é possível verificar sem discar de verdade ({cuenta, select, subcuenta_propia {subconta própria da organização} other {conta mestra da plataforma}}).",
+      "sin_politica_datos": "Falta a URL da política de tratamento de dados (Configurações › CRM › Telefonia). Sem ela, as campanhas não ligam.",
+      "sin_verificacion_rne": "A campanha não foi verificada contra o Registro de Números Excluídos (RNE). Carregue-o no cartão da campanha.",
+      "verificacion_rne_vencida": "A verificação do RNE venceu. Carregue novamente a lista do RNE no cartão da campanha."
+    },
+    "politicaDatos": {
+      "titulo": "Política de tratamento de dados",
+      "etiqueta": "URL da política (https)",
+      "ayuda": "Obrigatória para que as campanhas do agente de voz liguem. O agente a cita quando o cliente pergunta como tratamos seus dados.",
+      "faltante": "Sem esta URL nenhuma campanha do agente de voz disca.",
+      "invalida": "A URL deve começar com https:// e não ter espaços.",
+      "guardar": "Salvar URL",
+      "guardando": "Salvando…",
+      "guardada": "Política de tratamento de dados salva",
+      "quitada": "Política de tratamento de dados removida",
+      "errorGuardar": "Não foi possível salvar a política"
     }
+  },
+  "vozRne": {
+    "titulo": "Registro de Números Excluídos (RNE)",
+    "ayuda": "Antes de ligar, carregue a lista baixada do RNE da CRC (CSV ou TXT). Os números que aparecerem não são chamados. A verificação vale {dias} dias.",
+    "cargando": "Verificando…",
+    "sinVerificacion": "Sem verificação: a campanha não liga até você carregar a lista do RNE.",
+    "estadoVigente": "Verificada",
+    "estadoVencida": "Vencida",
+    "estadoSin": "Sem verificação",
+    "verificar": "Verificar contra o RNE",
+    "verificando": "Verificando…",
+    "resultado": "{n, plural, =0 {Nenhum número da campanha está no RNE.} one {# número da campanha está no RNE e foi excluído.} other {# números da campanha estão no RNE e foram excluídos.}}",
+    "verificada": "Verificada em",
+    "validaHasta": "Válida até",
+    "numerosArchivo": "Números no arquivo",
+    "objetivosRevisados": "Alvos verificados",
+    "excluidos": "Excluídos",
+    "omitidas": "Chamadas pendentes omitidas",
+    "demasiadoGrande": "O arquivo tem mais de 8 MB.",
+    "errorCargar": "Não foi possível consultar a verificação do RNE",
+    "errorVerificar": "Não foi possível verificar contra o RNE",
+    "sinPermiso": "Carregar a lista do RNE requer a função de administrador da organização."
   },
   "facturacionElectronica": {
     "configuracion": {

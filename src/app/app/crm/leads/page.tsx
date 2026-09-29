@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   Table,
   TableBody,
@@ -38,6 +40,7 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  Upload,
 } from 'lucide-react';
 import { SearchInput } from '@/components/kit/SearchInput';
 
@@ -123,6 +126,7 @@ function getTemperatureIcon(temperature: string | null) {
 
 export default function LeadsPage() {
   const router = useRouter();
+  const tImportar = useTranslations('leadsImportar');
   const { branchFilter } = useBranch();
 
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -270,6 +274,12 @@ export default function LeadsPage() {
               <RefreshCw className="h-3.5 w-3.5" />
             )}
             Actualizar
+          </Button>
+          <Button variant="outline" size="sm" asChild className="h-8">
+            <Link href="/app/crm/leads/importar">
+              <Upload className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
+              {tImportar('boton')}
+            </Link>
           </Button>
           <Button
             size="sm"

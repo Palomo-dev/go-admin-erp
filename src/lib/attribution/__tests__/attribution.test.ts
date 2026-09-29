@@ -297,30 +297,22 @@ describe('Atribución de marketing', () => {
 
   describe('Supervivencia de ?ref= a través de confirmación de correo', () => {
     it('debe preservar ref en user_metadata para recuperarlo después de confirmar', () => {
-      // Simular flujo completo:
+      // Flujo que cumple el contrato de Legal (27-sep-2026):
+      // Sin consentimiento de marketing, nada persiste más allá de la sesión.
       // 1. Usuario visita signup con ?ref=ABC123
-      // 2. Se guarda en localStorage
+      // 2. Se guarda en sessionStorage (solo esta sesión)
       // 3. Se envía al API de registro
-      // 4. Se guarda en user_metadata
-      // 5. Después de confirmar correo, se lee de localStorage o metadata
-      
-      // Este test verifica la lógica de guardado/lectura
-      // El flujo real se prueba en E2E
+      // 4. Se guarda en user_metadata (sobrevive entre dispositivos)
+      // 5. Después de confirmar correo, se lee de sessionStorage o metadata
       
       const ref = 'ABC123';
       
-      // Guardar en localStorage (como lo hace el componente)
-      localStorage.setItem('go-referido', JSON.stringify({ 
-        codigo: ref, 
-        hasta: Date.now() + 30 * 24 * 60 * 60 * 1000 
-      }));
+      // Guardar en sessionStorage (como lo hace el componente)
+      sessionStorage.setItem('go-referido', ref);
       
       // Verificar que se puede leer
-      const stored = localStorage.getItem('go-referido');
-      expect(stored).toBeTruthy();
-      
-      const parsed = JSON.parse(stored!);
-      expect(parsed.codigo).toBe(ref);
+      const stored = sessionStorage.getItem('go-referido');
+      expect(stored).toBe(ref);
       
       // Simular que el API lo guardó en user_metadata
       const userMetadata = {
@@ -333,25 +325,47 @@ describe('Atribución de marketing', () => {
       const refFromMeta = userMetadata.referido;
       expect(refFromMeta).toBe(ref);
       
-      // O de localStorage si está disponible
-      const refFromLocal = parsed.codigo;
-      const refFinal = refFromLocal || refFromMeta;
+      // O de sessionStorage si está disponible
+      const refFromSession = stored;
+      const refFinal = refFromSession || refFromMeta;
       expect(refFinal).toBe(ref);
     });
 
-    it('debe usar metadata como fallback si localStorage no está disponible', () => {
-      // Simular que localStorage fue borrado pero metadata tiene el ref
+    it('debe usar metadata como fallback si sessionStorage no está disponible', () => {
+      // Simular que sessionStorage fue borrado pero metadata tiene el ref
       const userMetadata = {
         referido: 'VENDOR99',
         first_name: 'Test',
       };
       
-      // localStorage vacío
-      const refLocal = null;
+      // sessionStorage vacío
+      const refSession = null;
       const refMeta = userMetadata.referido;
-      const refFinal = refLocal || refMeta;
+      const refFinal = refSession || refMeta;
       
       expect(refFinal).toBe('VENDOR99');
+    });
+
+    it('sin consentimiento no debe haber ref en localStorage ni cookies de larga duración', () => {
+      // Verificar que cumplimos el contrato de Legal:
+      // Sin consentimiento de marketing, nada persiste más allá de la sesión
+      
+      const ref = 'TEST123';
+      
+      // Guardar ref (va a sessionStorage)
+      sessionStorage.setItem('go-referido', ref);
+      
+      // Verificar que NO está en localStorage
+      const inLocalStorage = localStorage.getItem('go-referido');
+      expect(inLocalStorage).toBeFalsy();
+      
+      // Verificar que NO hay cookie de larga duración (solo sessionStorage)
+      const hasPersistentCookie = document.cookie.includes('go-referido=');
+      expect(hasPersistentCookie).toBe(false);
+      
+      // El ref SOLO debe estar en sessionStorage
+      const inSessionStorage = sessionStorage.getItem('go-referido');
+      expect(inSessionStorage).toBe(ref);
     });
   });
 });

@@ -63,6 +63,28 @@ export function accionesDeCategoria(
   ];
 }
 
+/** Qué permiso de catálogo pide cada acción del menú (el servidor exige lo mismo). */
+const PERMISO_ACCION: Readonly<Record<string, 'crear' | 'editar' | 'eliminar'>> = {
+  editar: 'editar',
+  subcategoria: 'crear',
+  mover: 'editar',
+  raiz: 'editar',
+  duplicar: 'crear',
+  estado: 'editar',
+  eliminar: 'eliminar',
+};
+
+/** Oculta las acciones que el usuario no puede hacer (`usePermisosCatalogo`). */
+export function segunPermisos(
+  acciones: readonly AccionFila[],
+  permisos: { crear: boolean; editar: boolean; eliminar: boolean },
+): AccionFila[] {
+  return acciones.map((a) => {
+    const requiere = PERMISO_ACCION[a.id];
+    return requiere && !permisos[requiere] ? { ...a, oculta: true } : a;
+  });
+}
+
 /** `hint` de las RPC de categorías → clave de `categorias.errores.*`. */
 const CLAVES_ERROR: Readonly<Record<string, string>> = {
   CATEGORIA_CICLO: 'ciclo',

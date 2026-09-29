@@ -61,6 +61,8 @@ export interface CategoryStats {
 }
 
 export interface CategoryImportRow {
+  /** Número de fila del archivo (para los mensajes de la revisión). */
+  fila?: number;
   name?: string;
   parent_name?: string;
   slug?: string;
@@ -756,88 +758,20 @@ const categoryService = {
     return doc.output('blob');
   },
 
-  /** Importa categorías desde un array de filas */
-  async importCategories(
-    organizationId: number,
-    items: CategoryImportRow[]
-  ): Promise<{ success: number; errors: { row: number; error: string }[] }> {
-    const existing = await this.getAll(organizationId);
-    const nameToId = new Map<string, number>();
-    existing.forEach(c => nameToId.set(c.name.toLowerCase(), c.id));
-
-    const sorted = [...items].sort((a, b) => {
-      const aHasParent = a.parent_name ? 1 : 0;
-      const bHasParent = b.parent_name ? 1 : 0;
-      return aHasParent - bHasParent;
+  /**
+   * Importar categorías (Figma «Importar categorías» `973:186211`) por
+   * `fn_categorias_importar`: con `aplicar = false` solo revisa (cada fila con
+   * su acción y su motivo); con `true` crea en UNA transacción lo válido, los
+   * padres antes que sus hijas. Permiso de catálogo en el servidor.
+   */
+  async importarCategorias(organizationId: number, filas: readonly CategoryImportRow[], aplicar: boolean): Promise<unknown> {
+    const { data, error } = await supabase.rpc('fn_categorias_importar', {
+      p_org: organizationId,
+      p_filas: filas,
+      p_aplicar: aplicar,
     });
-
-    let success = 0;
-    const errors: { row: number; error: string }[] = [];
-
-    for (let i = 0; i < sorted.length; i++) {
-      const item = sorted[i];
-      const rowNumber = i + 1;
-
-      const name = (item.name || '').trim();
-      if (!name) {
-        errors.push({ row: rowNumber, error: 'El nombre es obligatorio' });
-        continue;
-      }
-
-      let parentId: number | null = null;
-      if (item.parent_name) {
-        const parentName = item.parent_name.trim().toLowerCase();
-        if (nameToId.has(parentName)) {
-          parentId = nameToId.get(parentName)!;
-        } else {
-          errors.push({ row: rowNumber, error: `No se encontró la categoría padre "${item.parent_name}"` });
-          continue;
-        }
-      }
-
-      const slug = item.slug || generateSlug(name);
-      const color = item.color || '#6366f1';
-      const isActive = item.is_active !== undefined ? item.is_active : true;
-      const displayOrder = item.display_order !== undefined ? item.display_order : 0;
-      const requiresPreparation = item.requires_preparation !== undefined ? item.requires_preparation : false;
-
-      try {
-        const { data, error } = await supabase
-          .from('categories')
-          .insert({
-            organization_id: organizationId,
-            name,
-            slug,
-            parent_id: parentId,
-            rank: 0,
-            icon: item.icon || null,
-            color,
-            description: item.description || null,
-            is_active: isActive,
-            display_order: displayOrder,
-            meta_title: item.meta_title || null,
-            meta_description: item.meta_description || null,
-            metadata: {},
-            station: item.station || null,
-            requires_preparation: requiresPreparation,
-          })
-          .select()
-          .single();
-
-        if (error) {
-          errors.push({ row: rowNumber, error: error.message });
-          continue;
-        }
-
-        nameToId.set(name.toLowerCase(), data.id);
-        success++;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Error al insertar';
-        errors.push({ row: rowNumber, error: message });
-      }
-    }
-
-    return { success, errors };
+    if (error) throw error;
+    return data;
   },
 };
 

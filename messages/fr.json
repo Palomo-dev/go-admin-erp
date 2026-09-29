@@ -5046,6 +5046,10 @@
         "etiqueta": "Catégorie active",
         "activa": "Active · visible au PDV et dans la boutique",
         "inactiva": "Inactive · masquée au PDV et dans la boutique"
+      },
+      "sinPermiso": {
+        "titulo": "Vous ne pouvez pas créer ni modifier de catégories",
+        "descripcion": "Demandez à un administrateur de l'organisation l'autorisation d'inventaire pour modifier le catalogue."
       }
     },
     "reglas": {
@@ -5174,7 +5178,7 @@
     },
     "importar": {
       "titulo": "Importer des catégories",
-      "descripcion": "Chargez des catégories depuis un fichier CSV ou Excel. Utilisez le modèle pour garantir le bon format.",
+      "descripcion": "Depuis un fichier .xlsx ou .csv avec le modèle. Les parents sont créés avant leurs enfants.",
       "descargarPlantilla": "Télécharger le modèle",
       "limpiar": "Effacer",
       "seleccionarArchivo": "Sélectionner un fichier (.csv ou .xlsx)",
@@ -5192,7 +5196,7 @@
       "fila": "Ligne {fila} : {error}",
       "cancelar": "Annuler",
       "importando": "Importation...",
-      "importarN": "Importer ({n})",
+      "importarN": "{count, plural, one {Importer {n} catégorie} other {Importer {n} catégories}}",
       "toasts": {
         "formatoNoSoportado": "Format non pris en charge",
         "useCsvXlsx": "Utilisez .csv ou .xlsx",
@@ -5205,6 +5209,40 @@
         "revisarErrores": "Vérifiez les erreurs",
         "errorDesconocido": "Erreur inconnue",
         "errorImportacion": "Erreur d'importation"
+      },
+      "nombrePlantilla": "modele_categories.csv",
+      "arrastra": "Glissez un fichier .xlsx ou .csv",
+      "elegir": "ou cliquez pour le choisir",
+      "cambiar": "Glissez un autre fichier ou cliquez pour le changer",
+      "elegirArchivo": "Choisir le fichier des catégories",
+      "cambiarArchivo": "Changer le fichier des catégories",
+      "archivoFilas": "{archivo} · {count, plural, one {{n} ligne} other {{n} lignes}}",
+      "conError": "{count, plural, one {{n} en erreur} other {{n} en erreur}}",
+      "subcategorias": "{count, plural, one {{n} sous-catégorie} other {{n} sous-catégories}}",
+      "filaError": "Ligne {fila} · « {nombre} » : {motivo}",
+      "yMas": "{count, plural, one {et {n} autre ligne en erreur} other {et {n} autres lignes en erreur}}",
+      "motivos": {
+        "nombre_obligatorio": "le nom est manquant.",
+        "ya_existe": "existe déjà sous ce nom (ignorée ; pas de doublon).",
+        "repetida": "est répétée dans le fichier (seule la première est importée).",
+        "padre_si_misma": "ne peut pas être son propre parent.",
+        "padre_no_existe": "le parent « {padre} » n'existe pas et n'est pas dans le fichier."
+      },
+      "resumen": "{count, plural, one {{n} catégorie active sera créée.} other {{n} catégories actives seront créées.}}",
+      "resumenErrores": "Les lignes en erreur ne sont pas importées ; vous pouvez corriger le fichier et le téléverser à nouveau.",
+      "nadaValido": "Aucune ligne ne peut être importée. Corrigez le fichier et téléversez-le à nouveau.",
+      "importar": "Importer",
+      "sinValidas": "Aucune ligne valide à importer",
+      "errores": {
+        "formato": "Format non pris en charge : utilisez .xlsx, .xls ou .csv",
+        "tamano": "Le fichier dépasse 10 Mo",
+        "vacio": "Le fichier n'a aucune ligne sous l'en-tête",
+        "leer": "Impossible de lire ou de vérifier le fichier",
+        "sinPermiso": "Vous n'avez pas l'autorisation d'importer des catégories"
+      },
+      "toast": {
+        "importadas": "{count, plural, one {{n} catégorie importée} other {{n} catégories importées}}",
+        "error": "Impossible d'importer les catégories"
       }
     }
   },

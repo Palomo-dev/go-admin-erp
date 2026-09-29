@@ -5151,6 +5151,10 @@
         "etiqueta": "Active category",
         "activa": "Active · visible in the POS and the store",
         "inactiva": "Inactive · hidden in the POS and the store"
+      },
+      "sinPermiso": {
+        "titulo": "You can't create or edit categories",
+        "descripcion": "Ask an administrator of the organization for the inventory permission to edit the catalog."
       }
     },
     "reglas": {
@@ -5279,11 +5283,11 @@
     },
     "importar": {
       "titulo": "Import categories",
-      "descripcion": "Upload categories from a CSV or Excel file. Use the template to make sure the format is correct.",
+      "descripcion": "From an .xlsx or .csv file with the template. Parents are created before their children.",
       "descargarPlantilla": "Download template",
       "limpiar": "Clear",
       "seleccionarArchivo": "Select file (.csv or .xlsx)",
-      "validas": "{n} valid",
+      "validas": "{count, plural, one {{n} valid} other {{n} valid}}",
       "invalidas": "{n} invalid",
       "total": "{n} total",
       "columnas": {
@@ -5297,7 +5301,7 @@
       "fila": "Row {fila}: {error}",
       "cancelar": "Cancel",
       "importando": "Importing...",
-      "importarN": "Import ({n})",
+      "importarN": "{count, plural, one {Import {n} category} other {Import {n} categories}}",
       "toasts": {
         "formatoNoSoportado": "Unsupported format",
         "useCsvXlsx": "Use .csv or .xlsx",
@@ -5310,6 +5314,40 @@
         "revisarErrores": "Review the errors",
         "errorDesconocido": "Unknown error",
         "errorImportacion": "Import error"
+      },
+      "nombrePlantilla": "categories_template.csv",
+      "arrastra": "Drag an .xlsx or .csv file",
+      "elegir": "or click to choose it",
+      "cambiar": "Drag another file or click to change it",
+      "elegirArchivo": "Choose the categories file",
+      "cambiarArchivo": "Change the categories file",
+      "archivoFilas": "{archivo} · {count, plural, one {{n} row} other {{n} rows}}",
+      "conError": "{count, plural, one {{n} with errors} other {{n} with errors}}",
+      "subcategorias": "{count, plural, one {{n} subcategory} other {{n} subcategories}}",
+      "filaError": "Row {fila} · “{nombre}”: {motivo}",
+      "yMas": "{count, plural, one {and {n} more row with errors} other {and {n} more rows with errors}}",
+      "motivos": {
+        "nombre_obligatorio": "the name is missing.",
+        "ya_existe": "already exists with that name (skipped; not duplicated).",
+        "repetida": "is repeated in the file (only the first one is imported).",
+        "padre_si_misma": "can't be its own parent.",
+        "padre_no_existe": "the parent “{padre}” doesn't exist and isn't in the file."
+      },
+      "resumen": "{count, plural, one {{n} active category will be created.} other {{n} active categories will be created.}}",
+      "resumenErrores": "Rows with errors aren't imported; you can fix the file and upload it again.",
+      "nadaValido": "No row can be imported. Fix the file and upload it again.",
+      "importar": "Import",
+      "sinValidas": "There are no valid rows to import",
+      "errores": {
+        "formato": "Unsupported format: use .xlsx, .xls or .csv",
+        "tamano": "The file is larger than 10 MB",
+        "vacio": "The file has no rows below the header",
+        "leer": "We couldn't read or review the file",
+        "sinPermiso": "You don't have permission to import categories"
+      },
+      "toast": {
+        "importadas": "{count, plural, one {{n} category imported} other {{n} categories imported}}",
+        "error": "We couldn't import the categories"
       }
     }
   },

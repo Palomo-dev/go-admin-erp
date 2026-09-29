@@ -53,7 +53,8 @@ import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz } from '@/lib/utils/dateDisplay';
 import categoryService, { ErrorCategoria } from '@/lib/services/categoryService';
 import { useArbolCategorias, type NodoCategoria } from './useArbolCategorias';
-import { accionesDeCategoria, mensajeErrorCategoria } from './accionesCategoria';
+import { accionesDeCategoria, mensajeErrorCategoria, segunPermisos } from './accionesCategoria';
+import { usePermisosCatalogo } from './usePermisosCatalogo';
 import { MoverCategoriaDialog } from './MoverCategoriaDialog';
 import { EliminarCategoriaDialog } from './EliminarCategoriaDialog';
 import { ImportCategoriesDialog } from './ImportCategoriesDialog';
@@ -85,6 +86,7 @@ export function ArbolCategorias() {
   const { timezone } = useOrgTimezone();
   const escritorio = useEsEscritorio();
   const a = useArbolCategorias();
+  const permisos = usePermisosCatalogo();
   const { listado: l, organizationId, porId, nodos } = a;
 
   const [importarAbierto, setImportarAbierto] = useState(false);
@@ -256,7 +258,7 @@ export function ArbolCategorias() {
   ];
 
   const accionesFila = (cat: NodoCategoria): AccionFila[] =>
-    accionesDeCategoria(cat, {
+    segunPermisos(accionesDeCategoria(cat, {
       editar: () => router.push(RUTAS_CATEGORIAS.editar(cat.uuid)),
       agregarSubcategoria: () => router.push(RUTAS_CATEGORIAS.nueva(cat.id)),
       mover: () => setMoverIds([cat.id]),
@@ -265,7 +267,7 @@ export function ArbolCategorias() {
       verProductos: () => router.push(RUTAS_CATEGORIAS.productos(cat.id)),
       alternarActiva: () => void alternarActiva(cat),
       eliminar: () => setAEliminar(cat),
-    }, t);
+    }, t), permisos);
 
   // ── Arrastrar para cambiar de padre (atajo de escritorio de «Mover a…») ──
   const puedeSoltar = useCallback(
@@ -283,7 +285,7 @@ export function ArbolCategorias() {
   const arrastre = useArrastreArbol({
     puedeSoltar,
     onSoltar: (origen, destino) => void mover([origen], destino).catch(() => undefined),
-    deshabilitado: !escritorio || a.estado !== 'listo',
+    deshabilitado: !escritorio || a.estado !== 'listo' || !permisos.editar,
   });
 
   // ── Tabla ────────────────────────────────────────────────────────────────
@@ -392,6 +394,8 @@ export function ArbolCategorias() {
   );
 
   const soloLectura = a.estado === 'sinPermiso';
+  const puedeCrear = !soloLectura && permisos.crear;
+  const puedeSeleccionar = !soloLectura && permisos.editar;
   const activasSeleccionadas = a.seleccionadas.filter((c) => c.is_active).length;
 
   return (
@@ -405,15 +409,17 @@ export function ArbolCategorias() {
         acciones={
           soloLectura ? undefined : (
             <>
-              <button
-                type="button"
-                onClick={() => setImportarAbierto(true)}
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                <Upload aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                {t('listado.importar')}
-              </button>
-              {nuevaCategoria}
+              {puedeCrear && (
+                <button
+                  type="button"
+                  onClick={() => setImportarAbierto(true)}
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <Upload aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                  {t('listado.importar')}
+                </button>
+              )}
+              {puedeCrear && nuevaCategoria}
               <RowActionsMenu orientacion="horizontal" tamano="md" titulo={t('comun.categorias')} acciones={accionesCabecera} />
             </>
           )
@@ -426,17 +432,25 @@ export function ArbolCategorias() {
                 orientacion="horizontal"
                 titulo={t('comun.categorias')}
                 acciones={[
-                  { id: 'importar', etiqueta: t('listado.importarCategorias'), icono: Upload, onSelect: () => setImportarAbierto(true) },
+                  {
+                    id: 'importar',
+                    etiqueta: t('listado.importarCategorias'),
+                    icono: Upload,
+                    onSelect: () => setImportarAbierto(true),
+                    oculta: !puedeCrear,
+                  },
                   ...accionesCabecera,
                 ]}
               />
-              <Link
-                href={RUTAS_CATEGORIAS.nueva()}
-                aria-label={t('comun.nuevaCategoria')}
-                className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
-              </Link>
+              {puedeCrear && (
+                <Link
+                  href={RUTAS_CATEGORIAS.nueva()}
+                  aria-label={t('comun.nuevaCategoria')}
+                  className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
+                </Link>
+              )}
             </div>
           ),
           ocultarBarra: a.seleccion.size > 0,
@@ -589,7 +603,7 @@ export function ArbolCategorias() {
         orden={l.orden}
         onOrdenar={l.ordenarPor}
         seleccion={a.seleccion}
-        onSeleccionChange={soloLectura ? undefined : a.setSeleccion}
+        onSeleccionChange={puedeSeleccionar ? a.setSeleccion : undefined}
         onFilaClick={(f) => router.push(RUTAS_CATEGORIAS.detalle(f.dato.uuid))}
         etiquetaFila={(f) => f.dato.name}
         acciones={soloLectura ? undefined : (f) => accionesFila(f.dato)}
@@ -623,8 +637,10 @@ export function ArbolCategorias() {
           titulo: t('listado.vacio.titulo'),
           descripcion: t('listado.vacio.descripcion'),
           icono: Tags,
-          accion: { etiqueta: t('comun.nuevaCategoria'), href: RUTAS_CATEGORIAS.nueva(), icono: Plus },
-          accionSecundaria: { etiqueta: t('listado.vacio.importar'), onClick: () => setImportarAbierto(true), icono: Upload },
+          accion: puedeCrear ? { etiqueta: t('comun.nuevaCategoria'), href: RUTAS_CATEGORIAS.nueva(), icono: Plus } : undefined,
+          accionSecundaria: puedeCrear
+            ? { etiqueta: t('listado.vacio.importar'), onClick: () => setImportarAbierto(true), icono: Upload }
+            : undefined,
         }}
         sinResultados={{ descripcion: t('listado.sinResultados') }}
         error={{ titulo: t('listado.error.titulo'), descripcion: t('listado.error.descripcion') }}

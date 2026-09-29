@@ -5046,6 +5046,10 @@
         "etiqueta": "Categoria ativa",
         "activa": "Ativa · visível no PDV e na loja",
         "inactiva": "Inativa · oculta no PDV e na loja"
+      },
+      "sinPermiso": {
+        "titulo": "Você não pode criar nem editar categorias",
+        "descripcion": "Peça a um administrador da organização a permissão de estoque para editar o catálogo."
       }
     },
     "reglas": {
@@ -5174,7 +5178,7 @@
     },
     "importar": {
       "titulo": "Importar categorias",
-      "descripcion": "Carregue categorias de um arquivo CSV ou Excel. Use o modelo para garantir o formato correto.",
+      "descripcion": "De um arquivo .xlsx ou .csv com o modelo. As categorias-pai são criadas antes das filhas.",
       "descargarPlantilla": "Baixar modelo",
       "limpiar": "Limpar",
       "seleccionarArchivo": "Selecionar arquivo (.csv ou .xlsx)",
@@ -5192,7 +5196,7 @@
       "fila": "Linha {fila}: {error}",
       "cancelar": "Cancelar",
       "importando": "Importando...",
-      "importarN": "Importar ({n})",
+      "importarN": "{count, plural, one {Importar {n} categoria} other {Importar {n} categorias}}",
       "toasts": {
         "formatoNoSoportado": "Formato não suportado",
         "useCsvXlsx": "Use .csv ou .xlsx",
@@ -5205,6 +5209,40 @@
         "revisarErrores": "Revise os erros",
         "errorDesconocido": "Erro desconhecido",
         "errorImportacion": "Erro de importação"
+      },
+      "nombrePlantilla": "modelo_categorias.csv",
+      "arrastra": "Arraste um arquivo .xlsx ou .csv",
+      "elegir": "ou clique para escolher",
+      "cambiar": "Arraste outro arquivo ou clique para trocá-lo",
+      "elegirArchivo": "Escolher o arquivo de categorias",
+      "cambiarArchivo": "Trocar o arquivo de categorias",
+      "archivoFilas": "{archivo} · {count, plural, one {{n} linha} other {{n} linhas}}",
+      "conError": "{count, plural, one {{n} com erro} other {{n} com erro}}",
+      "subcategorias": "{count, plural, one {{n} subcategoria} other {{n} subcategorias}}",
+      "filaError": "Linha {fila} · «{nombre}»: {motivo}",
+      "yMas": "{count, plural, one {e mais {n} linha com erro} other {e mais {n} linhas com erro}}",
+      "motivos": {
+        "nombre_obligatorio": "falta o nome.",
+        "ya_existe": "já existe com esse nome (é ignorada; não se duplica).",
+        "repetida": "está repetida no arquivo (só a primeira é importada).",
+        "padre_si_misma": "não pode ser pai de si mesma.",
+        "padre_no_existe": "a categoria-pai «{padre}» não existe nem está no arquivo."
+      },
+      "resumen": "{count, plural, one {Será criada {n} categoria ativa.} other {Serão criadas {n} categorias ativas.}}",
+      "resumenErrores": "As linhas com erro não são importadas; você pode corrigir o arquivo e enviá-lo de novo.",
+      "nadaValido": "Nenhuma linha pode ser importada. Corrija o arquivo e envie de novo.",
+      "importar": "Importar",
+      "sinValidas": "Não há linhas válidas para importar",
+      "errores": {
+        "formato": "Formato não suportado: use .xlsx, .xls ou .csv",
+        "tamano": "O arquivo passa de 10 MB",
+        "vacio": "O arquivo não tem linhas abaixo do cabeçalho",
+        "leer": "Não foi possível ler nem revisar o arquivo",
+        "sinPermiso": "Você não tem permissão para importar categorias"
+      },
+      "toast": {
+        "importadas": "{count, plural, one {{n} categoria importada} other {{n} categorias importadas}}",
+        "error": "Não foi possível importar as categorias"
       }
     }
   },

@@ -43,7 +43,7 @@ import {
 } from '@/components/kit/acceso';
 import { CLAVE_MOTIVO, type MotivoRechazo } from '@/lib/auth/politicaContrasena';
 import { paisDesdeNavegador, alfa2DeAlfa3 } from '@/lib/utils/paisNavegador';
-import { guardarReferido } from '@/lib/auth/referido';
+import { guardarReferido, leerReferido } from '@/lib/auth/referido';
 
 const CORREO_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ESPERA_REENVIO_S = 60;
@@ -119,10 +119,12 @@ function SignupContent() {
 
     setEnviando(true);
     try {
+      // Incluir referido guardado (tarea 02: debe sobrevivir confirmación de correo)
+      const referido = leerReferido();
       const res = await fetch('/api/auth/registro', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, apellido, correo: correo.trim(), telefono, password, idioma: locale, terminos }),
+        body: JSON.stringify({ nombre, apellido, correo: correo.trim(), telefono, password, idioma: locale, terminos, referido }),
       });
       const cuerpo = (await res.json().catch(() => ({}))) as { codigo?: string };
       if (res.ok) {

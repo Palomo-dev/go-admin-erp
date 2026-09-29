@@ -39,6 +39,7 @@ function OrganizacionContent() {
   const t = useTranslations('acceso.alta');
   const tc = useTranslations('acceso.comun');
   const [persona, setPersona] = useState<Persona | null>(null);
+  const [referido, setReferido] = useState<string | null>(null);
   const [paso, setPaso] = useState<PasoAlta>(1);
   const [saliendo, setSaliendo] = useState(false);
 
@@ -65,11 +66,18 @@ function OrganizacionContent() {
       const { data: perfil } = await supabase.from('profiles').select('first_name, last_name').eq('id', s.user.id).maybeSingle();
       const meta = (s.user.user_metadata ?? {}) as Record<string, string | undefined>;
       if (!vivo) return;
+      
+      // Leer referido de localStorage primero, o de user_metadata como fallback (tarea 02)
+      const refLocal = leerReferido();
+      const refMeta = typeof meta.referido === 'string' ? meta.referido : null;
+      const refFinal = refLocal || refMeta;
+      
       setPersona({
         correo: s.user.email ?? '',
         nombre: perfil?.first_name || meta.first_name || meta.given_name || '',
         apellido: perfil?.last_name || meta.last_name || meta.family_name || '',
       });
+      setReferido(refFinal);
     })();
     return () => {
       vivo = false;
@@ -111,7 +119,7 @@ function OrganizacionContent() {
           correo={persona.correo}
           nombre={persona.nombre}
           apellido={persona.apellido}
-          referido={leerReferido()}
+          referido={referido}
           onPaso={setPaso}
           onCreada={async () => {
             setSaliendo(true);

@@ -25,6 +25,9 @@ export interface OrganizacionAlta {
   logoUrl: string | null;
   colorPrimario: string;
   colorSecundario: string;
+  // Atribución de marketing (tarea 02)
+  howHeard: string; // ¿Cómo nos conociste?
+  marketingConsent: boolean; // Consentimiento de marketing separado de Términos
 }
 
 export interface SucursalAlta {
@@ -63,6 +66,8 @@ export const ORGANIZACION_INICIAL = (correo = ''): OrganizacionAlta => ({
   logoUrl: null,
   colorPrimario: '#3B82F6',
   colorSecundario: '#F59E0B',
+  howHeard: '',
+  marketingConsent: false,
 });
 
 export const SUCURSAL_INICIAL: SucursalAlta = {
@@ -124,7 +129,12 @@ export function datosParaAlta(
   org: OrganizacionAlta,
   suc: SucursalAlta,
   plan: PlanAlta,
-  extra: { zonaHoraria?: string | null; referido?: string | null; nombreCliente?: string },
+  extra: { 
+    zonaHoraria?: string | null; 
+    referido?: string | null; 
+    nombreCliente?: string;
+    atribucion?: DatosAltaOrganizacion['atribucion'];
+  },
 ): DatosAltaOrganizacion {
   return {
     organizacion: {
@@ -156,6 +166,7 @@ export function datosParaAlta(
     zonaHoraria: extra.zonaHoraria ?? null,
     tarifaPorDefecto: org.tarifa,
     referido: extra.referido ?? null,
+    atribucion: extra.atribucion ?? null,
     stripe: {
       customerId: plan.stripeCustomerId,
       paymentMethodId: plan.stripePaymentMethodId,

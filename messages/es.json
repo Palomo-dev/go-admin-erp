@@ -21086,7 +21086,20 @@
       "pasoPlan": "Plan",
       "pagoTitulo": "Método de pago",
       "pagoDescripcion": "Guarda una tarjeta para cuando termine la prueba, o hazlo después.",
-      "pasoPago": "Método de pago"
+      "pasoPago": "Método de pago",
+      "howHeard": "¿Cómo nos conociste?",
+      "howHeardAyuda": "Ayúdanos a saber cómo llegaste a GO Admin.",
+      "howHeardOpciones": {
+        "facebook_instagram": "Publicidad en Facebook o Instagram",
+        "google": "Google",
+        "asesor_llamada": "Me llamó un asesor de GO Admin",
+        "recomendacion": "Recomendación de un conocido",
+        "contador": "Mi contador",
+        "redes_sociales": "Redes sociales de GO Admin",
+        "otro": "Otro"
+      },
+      "marketingConsent": "Acepto recibir comunicaciones de marketing de GO Admin",
+      "marketingConsentAyuda": "Podemos enviarte información sobre nuevas funciones, promociones y contenido relacionado. Puedes retirar el consentimiento en cualquier momento."
     },
     "ubicacion": {
       "pais": "País",

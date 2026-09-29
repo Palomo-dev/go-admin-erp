@@ -65,6 +65,31 @@ export interface DatosAltaOrganizacion {
     cupon?: string;
     nombreCliente?: string;
   };
+  /** Atribución de marketing (tarea 02). Se guarda con marketing_consent. */
+  atribucion?: {
+    utm_source_first?: string;
+    utm_medium_first?: string;
+    utm_campaign_first?: string;
+    utm_content_first?: string;
+    utm_term_first?: string;
+    utm_source_last?: string;
+    utm_medium_last?: string;
+    utm_campaign_last?: string;
+    utm_content_last?: string;
+    utm_term_last?: string;
+    gclid?: string;
+    fbclid?: string;
+    fbp?: string;
+    fbc?: string;
+    ga_client_id?: string;
+    landing_page?: string;
+    referrer?: string;
+    how_heard?: string;
+    city?: string;
+    seller_ref?: string;
+    marketing_consent?: boolean;
+    consent_ts?: string;
+  } | null;
 }
 
 export interface OrganizacionCreada {
@@ -159,6 +184,17 @@ export async function crearOrganizacionInicial(
       if (errRef) console.warn('[alta] No se pudo registrar el referido:', errRef.message);
     } catch (e) {
       console.warn('[alta] Error registrando el referido:', e);
+    }
+  }
+  if (datos.atribucion) {
+    try {
+      const { error: errAttr } = await supabase.rpc('fn_guardar_signup_attribution', {
+        p_organization_id: orgId,
+        p_attribution: datos.atribucion,
+      });
+      if (errAttr) console.warn('[alta] No se pudo guardar la atribución:', errAttr.message);
+    } catch (e) {
+      console.warn('[alta] Error guardando la atribución:', e);
     }
   }
   try {

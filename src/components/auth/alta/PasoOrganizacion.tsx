@@ -20,6 +20,7 @@ import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { CampoUbicacion } from '@/components/kit/CampoUbicacion';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { PhoneField } from '@/components/kit/acceso';
 import LogoUploader from '@/components/organization/LogoUploader';
 import { getOrgTypeLabel } from '@/lib/utils/organizationTypes';
@@ -92,6 +93,8 @@ export function PasoOrganizacion({ valor, onCambio, onSiguiente, onAnterior, per
     if (!valor.correo.trim()) e.correo = tc('obligatorio');
     else if (!CORREO_RE.test(valor.correo.trim())) e.correo = tc('correoInvalido');
     if (!valor.ubicacion.paisCodigo) e.pais = tc('obligatorio');
+    if (!valor.ubicacion.ciudad.trim()) e.ciudad = tc('obligatorio');
+    if (!valor.howHeard) e.howHeard = tc('obligatorio');
     const iso = alfa2DeAlfa3(valor.ubicacion.paisCodigo) ?? undefined;
     const errTel = mensajeErrorTelefono(valor.telefono, iso);
     if (errTel) e.telefono = errTel;
@@ -199,7 +202,47 @@ export function PasoOrganizacion({ valor, onCambio, onSiguiente, onAnterior, per
               defaultIso={alfa2DeAlfa3(valor.ubicacion.paisCodigo) ?? undefined}
             />
           </div>
-          <CampoUbicacion valor={valor.ubicacion} onCambio={(u) => cambiar({ ubicacion: u })} errorPais={errores.pais} />
+          <CampoUbicacion 
+            valor={valor.ubicacion} 
+            onCambio={(u) => cambiar({ ubicacion: u })} 
+            errorPais={errores.pais}
+            errorCiudad={errores.ciudad}
+            ciudadObligatoria
+          />
+          <FormField etiqueta={t('howHeard')} obligatorio error={errores.howHeard} ayuda={t('howHeardAyuda')}>
+            {(campo) => (
+              <select
+                id={campo.id}
+                aria-describedby={campo['aria-describedby']}
+                aria-invalid={campo['aria-invalid']}
+                value={valor.howHeard}
+                onChange={(e) => cambiar({ howHeard: e.target.value })}
+                className={CLASE_SELECT}
+              >
+                <option value="">Selecciona una opción</option>
+                <option value="facebook_instagram">{t('howHeardOpciones.facebook_instagram')}</option>
+                <option value="google">{t('howHeardOpciones.google')}</option>
+                <option value="asesor_llamada">{t('howHeardOpciones.asesor_llamada')}</option>
+                <option value="recomendacion">{t('howHeardOpciones.recomendacion')}</option>
+                <option value="contador">{t('howHeardOpciones.contador')}</option>
+                <option value="redes_sociales">{t('howHeardOpciones.redes_sociales')}</option>
+                <option value="otro">{t('howHeardOpciones.otro')}</option>
+              </select>
+            )}
+          </FormField>
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id="marketing-consent"
+              checked={valor.marketingConsent}
+              onCheckedChange={(checked) => cambiar({ marketingConsent: checked === true })}
+            />
+            <label htmlFor="marketing-consent" className="text-sm text-fg cursor-pointer">
+              {t('marketingConsent')}
+              {valor.marketingConsent && (
+                <span className="block text-xs text-fg-secondary mt-1">{t('marketingConsentAyuda')}</span>
+              )}
+            </label>
+          </div>
           <FormField
             etiqueta={t('subdominio')}
             error={errores.subdominio}

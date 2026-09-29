@@ -45,6 +45,7 @@ export async function POST(request: Request) {
   const nombre = texto(body.nombre, 80);
   const apellido = texto(body.apellido, 80);
   const telefono = texto(body.telefono, 30);
+  const referido = texto(body.referido, 40); // Código de vendedor (tarea 02)
   const idioma = IDIOMAS.includes(String(body.idioma)) ? String(body.idioma) : 'es';
   if (!correo) return NextResponse.json({ ok: false, codigo: 'correo' }, { status: 400 });
   if (!nombre || !apellido) return NextResponse.json({ ok: false, codigo: 'nombre' }, { status: 400 });
@@ -87,6 +88,7 @@ export async function POST(request: Request) {
         terms_accepted_at: new Date().toISOString(),
         terms_version: VERSION_TERMINOS,
         registro: 'v3',
+        referido: referido || null, // Tarea 02: sobrevive confirmación de correo
       },
     });
     if (errCrear || !creado.user) {

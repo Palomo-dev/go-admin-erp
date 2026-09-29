@@ -73,6 +73,10 @@ export interface SaleItemForReturn {
     sku: string;
     image?: string | null;
     track_serial?: boolean;
+    /** Cómo se vende (peso o medida: cantidad con decimales y «Reingresa»). */
+    sale_mode?: string | null;
+    unit_code?: string | null;
+    qty_decimals?: number | null;
   };
   quantity: number;
   unit_price: number;
@@ -106,6 +110,8 @@ export interface RefundData {
     refund_amount: number;
     reason: string;
     serial_number_ids?: number[];
+    /** Producto por peso: vuelve al inventario solo si se marca «Reingresa». */
+    restock?: boolean;
   }[];
   refund_method: 'cash' | 'credit_note' | 'original_method';
   total_refund: number;

@@ -1,13 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { Minus, Package, Plus, ReceiptText, StickyNote, Trash2 } from 'lucide-react';
+import { Minus, Package, Plus, ReceiptText, Scale, StickyNote, Trash2 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import {
   ATAJOS_LINEA,
   cantidadDesdeTexto,
   controlesDeshabilitados,
+  textoCantidadParcialValido,
   hayRenglonEtiquetas,
   mostrarAgregarDescuento,
   textoImpuestoLinea,
@@ -50,6 +51,13 @@ export interface LineaCarrito {
   cantidad: number;
   /** `unit_code` («und», «kg»). */
   unidad?: string | null;
+  /**
+   * Línea por peso o medida (PRODUCTOS-POR-PESO-BASCULA.md): la cantidad lleva
+   * `decimales` y, con `onCambiarPeso`, el chip «⚖ 0,735 kg» reemplaza a − n +.
+   */
+  medida?: boolean;
+  /** Decimales de la cantidad (0 por unidad; 3 en kg). */
+  decimales?: number | null;
   precioUnitario: number;
   total: number;
   impuesto: ImpuestoLinea;
@@ -67,6 +75,12 @@ export interface CartLineProps {
   incluidoDeshabilitado?: boolean;
   /** Pide cambiar la cantidad. Con «−» en 1 llega `0`: la pantalla decide si confirma y quita. */
   onCantidad: (cantidad: number) => void;
+  /**
+   * Línea por peso o medida: el chip «⚖ 0,735 kg» reabre «Pesar» en modo
+   * «cambiar peso» (P con la línea enfocada; F2 ya es «Cliente»). Sin él, la línea medida usa el
+   * campo de cantidad con decimales.
+   */
+  onCambiarPeso?: () => void;
   onNota?: () => void;
   /** Resalta el botón de nota (la línea tiene nota). */
   conNota?: boolean;
@@ -111,6 +125,7 @@ export const CartLine = React.forwardRef<HTMLDivElement, CartLineProps>(function
     onIncluidoChange,
     incluidoDeshabilitado,
     onCantidad,
+    onCambiarPeso,
     onNota,
     conNota,
     onExcluirImpuesto,
@@ -135,7 +150,11 @@ export const CartLine = React.forwardRef<HTMLDivElement, CartLineProps>(function
   const locale = useLocaleIntl();
   const nombresTecla = useNombresTecla();
   const formatear = React.useMemo(() => crearFormateadorMoneda(moneda), [moneda]);
-  const formatoCantidad = React.useMemo(() => new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }), [locale]);
+  const decimales = linea.medida ? Math.max(0, Math.min(3, Math.trunc(linea.decimales ?? 3))) : 0;
+  const formatoCantidad = React.useMemo(
+    () => new Intl.NumberFormat(locale, { minimumFractionDigits: decimales, maximumFractionDigits: Math.max(decimales, 3) }),
+    [locale, decimales],
+  );
   const idCasilla = React.useId();
   const atajos = { ...ATAJOS_LINEA, ...atajosProp };
   const movil = layout === 'movil';
@@ -166,7 +185,24 @@ export const CartLine = React.forwardRef<HTMLDivElement, CartLineProps>(function
     </span>
   );
 
-  const cantidad = (
+  const textoPeso = `${formatoCantidad.format(linea.cantidad)}${linea.unidad ? ` ${linea.unidad}` : ''}`;
+  const chipPeso =
+    linea.medida && onCambiarPeso ? (
+      <button
+        type="button"
+        onClick={onCambiarPeso}
+        disabled={off.cantidad}
+        aria-label={t('carrito.cambiarPesoDe', { nombre, cantidad: textoPeso })}
+        aria-keyshortcuts="P"
+        title={`${t('carrito.cambiarPeso')} (P)`}
+        className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border border-brand bg-brand-tint px-2 text-[13px] font-semibold tabular-nums text-brand transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <Scale aria-hidden="true" className="size-4" strokeWidth={1.5} />
+        {textoPeso}
+      </button>
+    ) : null;
+
+  const cantidad = chipPeso ?? (
     <div className="flex shrink-0 items-center" role="group" aria-label={t('carrito.cantidadDe', { nombre })}>
       <button
         type="button"
@@ -181,7 +217,7 @@ export const CartLine = React.forwardRef<HTMLDivElement, CartLineProps>(function
       </button>
       <input
         type="text"
-        inputMode="numeric"
+        inputMode={decimales > 0 ? 'decimal' : 'numeric'}
         autoComplete="off"
         value={textoCantidad}
         disabled={off.cantidad}
@@ -191,16 +227,19 @@ export const CartLine = React.forwardRef<HTMLDivElement, CartLineProps>(function
         }}
         onChange={(e) => {
           const texto = e.target.value;
-          if (texto !== '' && !/^\d+$/.test(texto)) return;
+          if (!textoCantidadParcialValido(texto, decimales)) return;
           setTextoCantidad(texto);
-          const n = cantidadDesdeTexto(texto);
+          const n = cantidadDesdeTexto(texto, decimales);
           if (n !== null && n !== linea.cantidad) onCantidad(n);
         }}
         onBlur={() => {
           escribiendo.current = false;
           setTextoCantidad(String(linea.cantidad));
         }}
-        className="h-7 w-8 bg-transparent text-center text-[13px] font-medium tabular-nums text-fg outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-60"
+        className={cn(
+          decimales > 0 ? 'w-14' : 'w-8',
+          'h-7 bg-transparent text-center text-[13px] font-medium tabular-nums text-fg outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-60',
+        )}
       />
       <button
         type="button"
@@ -220,7 +259,9 @@ export const CartLine = React.forwardRef<HTMLDivElement, CartLineProps>(function
     <div className={cn('flex shrink-0 flex-col items-end whitespace-nowrap text-right', movil ? 'min-w-0' : 'w-[104px]')}>
       <span className="text-sm font-semibold leading-5 tabular-nums text-fg">{formatear(linea.total)}</span>
       <span className="text-[11px] font-medium leading-[14px] tabular-nums text-fg-muted">
-        {linea.unidad
+        {chipPeso && linea.unidad
+          ? t('carrito.precioPorUnidadMedida', { precio: formatear(linea.precioUnitario), unidad: linea.unidad })
+          : linea.unidad
           ? t('carrito.precioUnidad', {
               cantidad: formatoCantidad.format(linea.cantidad),
               precio: formatear(linea.precioUnitario),

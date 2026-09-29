@@ -25,6 +25,9 @@ interface ProductoFila {
   name: string;
   sku: string;
   track_serial?: boolean | null;
+  sale_mode?: string | null;
+  unit_code?: string | null;
+  qty_decimals?: number | null;
 }
 
 interface VentaFila {
@@ -216,7 +219,7 @@ export class DevolucionesService {
         // Obtener datos básicos de productos
         const { data: products, error: productsError } = await supabase
           .from('products')
-          .select('id, name, sku, track_serial')
+          .select('id, name, sku, track_serial, sale_mode, unit_code, qty_decimals')
           .in('id', productIds);
         
         if (productsError) {
@@ -267,7 +270,8 @@ export class DevolucionesService {
             id: item.id,
             sale_id: item.sale_id,
             product_id: item.product_id,
-            quantity: parseInt(item.quantity),
+            // Decimal: una venta por peso de 0,375 kg ya no se lee como 0.
+            quantity: Number(item.quantity),
             unit_price: parseFloat(item.unit_price),
             total: parseFloat(item.total),
             tax_amount: parseFloat(item.tax_amount || '0'),
@@ -277,7 +281,10 @@ export class DevolucionesService {
               name: product.name,
               sku: product.sku,
               image: productImages[product.id] ? getStorageImageUrl(productImages[product.id]) : null,
-              track_serial: product.track_serial || false
+              track_serial: product.track_serial || false,
+              sale_mode: product.sale_mode ?? null,
+              unit_code: product.unit_code ?? null,
+              qty_decimals: product.qty_decimals ?? null,
             } : {
               id: 0,
               name: '', // la pantalla muestra «producto no encontrado» traducido
@@ -446,7 +453,7 @@ export class DevolucionesService {
         // Obtener productos
         const { data: products } = await supabase
           .from('products')
-          .select('id, name, sku, track_serial')
+          .select('id, name, sku, track_serial, sale_mode, unit_code, qty_decimals')
           .in('id', productIds);
         productsData = products || [];
 
@@ -510,7 +517,10 @@ export class DevolucionesService {
               name: product.name,
               sku: product.sku,
               image: productImages[product.id] ? getStorageImageUrl(productImages[product.id]) : null,
-              track_serial: product.track_serial || false
+              track_serial: product.track_serial || false,
+              sale_mode: product.sale_mode ?? null,
+              unit_code: product.unit_code ?? null,
+              qty_decimals: product.qty_decimals ?? null,
             } : {
               id: 0,
               name: '', // la pantalla muestra «producto no encontrado» traducido

@@ -60,6 +60,8 @@ import {
 import { enviarACocina } from '@/lib/pos/venta/enviarCocina';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DialogoClienteMembresia } from '@/components/pos/venta/DialogoClienteMembresia';
+import { usePesarPos } from '@/components/pos/venta/peso/usePesarPos';
+import { esMedido } from '@/lib/pos/peso/modoVenta';
 import { claveEnlacePos, debePedirCliente, leerEnlacePos, lineaParaQuitar, type EnlacePos } from '@/lib/pos/venta/membresias';
 
 /**
@@ -421,6 +423,12 @@ export default function POSPage() {
       return;
     }
 
+    // Por peso o medida: se pesa (o se escribe la cantidad) antes de agregar; la cantidad rápida «3*» no aplica.
+    if (esMedido(product)) {
+      await pesar.abrirAgregar(product, modifiers);
+      return;
+    }
+
     try {
       const updatedCart = await POSService.addItemToCart(activeCartId, product, cantidad, modifiers);
       updateCartInState(updatedCart);
@@ -543,6 +551,9 @@ export default function POSPage() {
   const handleCartUpdate = (updatedCart: Cart) => {
     updateCartInState(updatedCart);
   };
+
+  // Productos por peso o medida: «Pesar» (agregar una pesada o cambiar el peso de una línea).
+  const pesar = usePesarPos({ cartId: activeCartId, actualizar: updateCartInState });
 
   const handleCheckout = (cart: Cart) => {
     setCheckoutCart(cart);
@@ -704,6 +715,7 @@ export default function POSPage() {
                 cashSessionActive: !!cashSession,
                 requiereCaja,
                 onAbrirCaja: abrirDialogoCaja,
+                onCambiarPeso: pesar.abrirCambiar,
               }}
             />
           );
@@ -781,6 +793,9 @@ export default function POSPage() {
             }}
           />
         )}
+
+        {/* Productos por peso o medida: «Pesar». */}
+        {pesar.dialogo}
 
         {/* D1: la membresía recién agregada pide su cliente titular. */}
         <DialogoClienteMembresia

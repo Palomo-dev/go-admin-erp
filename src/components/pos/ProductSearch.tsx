@@ -259,8 +259,27 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
           branchFilter,
         }),
       ]);
+      // El código EXACTO manda (`getProductByBarcode`): el generador interno usa
+      // el prefijo 20 en 744 productos y los códigos de balanza también empiezan
+      // por 20–29 (PRODUCTOS-POR-PESO-BASCULA.md §2.7). Si la fila exacta existe
+      // pero su producto no vino en la primera página buscada con el código
+      // (coincidencias por SKU o nombre), se busca en una página más amplia
+      // antes de decir «no encontrado».
+      let grilla = page.data as PosGridProduct[];
+      const idExacto = row ? (row.parent_product_id ?? row.id) : null;
+      if (idExacto !== null && !grilla.some((p) => p.id === idExacto)) {
+        const amplia = await POSService.getProductsPaginated({
+          page: 1,
+          limit: 100,
+          search: code,
+          category_id: null,
+          status: 'active',
+          branchFilter,
+        });
+        grilla = amplia.data as PosGridProduct[];
+      }
       // L18: la decisión vive en src/lib/pos/venta/catalogo.ts (resolverCodigo).
-      const decision = resolverCodigo(row, page.data as PosGridProduct[]);
+      const decision = resolverCodigo(row, grilla);
       if (decision.tipo === 'no_encontrado') {
         toast.error(t('codigoNoEncontrado'), { description: t('codigoNoEncontradoDescripcion', { codigo: code }), duration: 3000 });
         return;

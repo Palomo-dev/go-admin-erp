@@ -15,6 +15,8 @@
 
 import type { CheckoutData, CobroVentaExistente, Sale } from '@/components/pos/types';
 import { leerMembresiasVendidas, type MembresiaVendida } from '@/lib/pos/venta/membresias';
+import { esMedido } from '@/lib/pos/peso/modoVenta';
+import { pagosConRedondeo } from '@/lib/pos/peso/cobroRedondeo';
 
 export const POS_CHECKOUT_RPC = 'pos_checkout_v1';
 
@@ -183,6 +185,14 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
     && checkout.commission_type !== 'none'
   );
   const mesa = input.mode === 'settle' && input.settle?.table_session_id ? input.settle : null;
+  // Con líneas por peso o medida el cobro se redondea a la moneda y la línea
+  // guarda el importe exacto: el faltante de redondeo (< media unidad) se suma
+  // al último pago para que la venta no quede pendiente (cobroRedondeo.ts).
+  const pagosBase = payments.filter((p) => p.amount > 0).map((p) => ({ method: p.method, amount: p.amount }));
+  const conMedidas = cart.items.some((i) => esMedido(i.product) || !!i.pesaje);
+  const pagosDelCobro = conMedidas && input.mode !== 'debt'
+    ? pagosConRedondeo({ pagos: pagosBase, totalPagado: checkout.total_paid, cambio: checkout.change || 0, totalExacto: input.total })
+    : { pagos: pagosBase, totalPagado: checkout.total_paid };
 
   const items: CheckoutEnvelopeItem[] = cart.items.map((item, idx) => {
     const calc = itemCalcs[idx];
@@ -193,6 +203,8 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
     if (item.notes && item.is_allergy) notes.is_allergy = true;
     if (item.customer_note) notes.customer_note = item.customer_note;
     if (item.modifiers && item.modifiers.length > 0) notes.modifiers = item.modifiers;
+    // Pesada de la línea por peso: origen, neto, unidad (fn_pos_validar_pesaje la revisa).
+    if (item.pesaje) notes.pesaje = item.pesaje;
     const fallbackNet = (item.unit_price || 0) * (item.quantity || 1) - (item.discount_amount || 0);
     const serialIds = checkout.serial_selections?.[item.product_id] ?? [];
     return {
@@ -251,13 +263,13 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
       tax_total: input.taxTotal,
       discount_total: input.discountTotal,
       total: input.total,
-      total_paid: checkout.total_paid,
+      total_paid: pagosDelCobro.totalPagado,
       change: checkout.change || 0,
       shipping_fee: shipping,
       tip_amount: tip,
     },
     items,
-    payments: payments.filter((p) => p.amount > 0).map((p) => ({ method: p.method, amount: p.amount })),
+    payments: pagosDelCobro.pagos,
     tip: tip > 0 ? { server_id: checkout.tip_server_id ?? null } : null,
     salesperson: hasSalesperson
       ? {

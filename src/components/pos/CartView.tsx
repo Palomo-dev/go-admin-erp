@@ -111,9 +111,11 @@ interface CartViewProps {
   onAbrirCaja?: () => void;
   /** F4 con una membresía sin cliente (`sin-cliente`, P1): abre el selector del titular. */
   onPedirCliente?: () => void;
+  /** Línea por peso o medida: el chip «⚖ 0,735 kg» (o P) reabre «Pesar» para cambiar el peso. */
+  onCambiarPeso?: (item: CartItem) => void;
 }
 
-export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true, atajosActivos = true, requiereCaja = true, onAbrirCaja, onPedirCliente }: CartViewProps) {
+export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true, atajosActivos = true, requiereCaja = true, onAbrirCaja, onPedirCliente, onCambiarPeso }: CartViewProps) {
   const { timezone } = useOrgTimezone();
   // «Descuento · D» (paso 10): diálogo con la pestaña «A un producto».
   const [showDiscountDialog, setShowDiscountDialog] = useState(false);
@@ -780,6 +782,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
             descuentosFrecuentes={frequentDiscountsMap}
             atajosActivos={atajosActivos}
             onCantidad={handleQuantityChange}
+            onCambiarPeso={onCambiarPeso}
             onQuitar={handleRemoveItem}
             onExcluirImpuesto={handleToggleTax}
             onIncluido={handleToggleItemTaxIncluded}

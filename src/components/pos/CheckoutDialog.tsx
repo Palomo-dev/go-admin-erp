@@ -44,7 +44,7 @@ import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
 import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
 // Lógica pura del cobro extraída LITERAL (POS-PLAN §2.6 L41–L52, paso 1):
 import { cuentasDelCobro } from '@/lib/pos/venta/cobro/cuentasCobro';
-import { camposCantidadImpresa } from '@/lib/pos/peso/modoVenta';
+import { camposCantidadImpresa, esMedido } from '@/lib/pos/peso/modoVenta';
 import { actualizarEntradaPago, entradaDePagoNueva, pagosDelSobre, pagosParaImpresion, puedeQuitarPagos, quitarEntradaPago } from '@/lib/pos/venta/cobro/pagosCobro';
 import { faltaParaEntrada, montosDeEntrada, muestraMontosRapidos } from '@/lib/pos/venta/cobro/montosRapidos';
 import { PORCENTAJES_PROPINA, baseDePropina, meserosDesdeMiembros, propinaTopada, topePropina } from '@/lib/pos/venta/cobro/propinaCobro';
@@ -262,7 +262,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // src/lib/pos/venta/cobro/cuentasCobro.ts). `totalPaid` y `remaining` siguen
   // escritos aquí porque las pruebas de __tests__/pos-display leen esas dos
   // líneas del fuente; son la misma cuenta que devuelve cuentasDelCobro.
-  const cuentasCobro = cuentasDelCobro({ calculatedTotals, cart, tipAmount, shippingFee, totalPaid });
+  // Con líneas por peso o medida el total a cobrar se redondea a la moneda (la línea guarda el importe exacto).
+  const redondeoPeso = currency && cart.items.some((i) => esMedido(i.product)) ? currency.decimals : null;
+  const cuentasCobro = cuentasDelCobro({ calculatedTotals, cart, tipAmount, shippingFee, totalPaid, decimalesRedondeo: redondeoPeso });
   const baseTotal = cuentasCobro.baseTotal;
   const cartTotal = cuentasCobro.cartTotal;
   const remaining = Math.max(0, cartTotal - totalPaid);

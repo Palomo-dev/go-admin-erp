@@ -15,6 +15,7 @@ import type { CategoriaBarra, ValorCategoria } from '@/components/kit/categoryBa
 import type { ProductoTarjeta } from '@/components/kit/productCardLogica';
 import type { PosCategoryDisplayMode, PosCategoryOrderBy } from '@/components/pos/configuracion/configuracionService';
 import { insigniasDe, type PosGridProduct } from './catalogo';
+import { decimalesCantidad, esMedido, unidadVisible } from '@/lib/pos/peso/modoVenta';
 import { colorDeCategoria, esCategoriaTop, ordenarCategorias, type CategoriaOrdenable } from './categorias';
 
 // ---------------------------------------------------------------------------
@@ -214,6 +215,9 @@ export function aProductoTarjeta(p: PosGridProduct): ProductoTarjeta {
     top: ins.top,
     favorito: !!p.is_favorite,
     receta: ins.receta,
+    // Por peso o medida: «Por kg», «/ kg» y el stock en kg (PRODUCTOS-POR-PESO-BASCULA.md).
+    unidadVenta: unidadVisible(p),
+    decimalesCantidad: esMedido(p) ? decimalesCantidad(p) : null,
   };
 }
 

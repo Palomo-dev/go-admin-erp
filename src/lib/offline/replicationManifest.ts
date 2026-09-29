@@ -102,6 +102,9 @@ const PRODUCT_COLUMNS = [
   'parent_product_id', 'tax_id', 'is_parent', 'variant_data', 'uuid', 'station', 'track_stock', 'is_composite', 'production_type', 'product_type', 'service_type',
   'brand', 'reference', 'track_serial', 'serial_pattern', 'auto_generate_serial', 'warranty_months', 'rating_avg', 'reviews_count', 'weight_kg',
   'length_cm', 'width_cm', 'height_cm',
+  // Cómo se vende (productos por peso o medida, PRODUCTOS-POR-PESO-BASCULA.md §2.10).
+  'sale_mode', 'qty_decimals', 'price_ref_qty', 'price_ref_unit_code', 'min_sale_qty', 'default_tare_qty', 'tare_required',
+  'require_scale', 'scale_plu',
 ];
 
 const CUSTOMER_COLUMNS = [

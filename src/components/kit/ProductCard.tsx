@@ -20,7 +20,7 @@ import {
   type TamanoTarjeta,
   type VarianteTarjeta,
 } from './productCardLogica';
-import { useKitT } from './useIdiomaKit';
+import { useKitT, useLocaleIntl } from './useIdiomaKit';
 
 /**
  * Tarjeta de producto del POS (Figma `ProductCard` variante `pos` Size md/sm y
@@ -147,6 +147,7 @@ export const ProductCard = React.forwardRef<HTMLButtonElement, ProductCardProps>
   ref,
 ) {
   const t = useKitT();
+  const locale = useLocaleIntl();
   const textos = useTextosMeta();
   const formatear = React.useMemo(() => crearFormateadorMoneda(moneda), [moneda]);
   const base = React.useId();
@@ -161,8 +162,15 @@ export const ProductCard = React.forwardRef<HTMLButtonElement, ProductCardProps>
   const insignias = insigniasTarjeta(producto, { variante, tamano, conFavorito: !!onFavorito });
   const tiene = (id: string) => insignias.some((i) => i.id === id);
   const pct = porcentajeDescuento(producto.precio, producto.precioComparacion);
-  const meta = partesMeta(producto).map(textos.meta);
+  const unidadVenta = producto.unidadVenta?.trim() || null;
+  const meta = [...(unidadVenta ? [t('producto.porUnidadVenta', { unidad: unidadVenta })] : []), ...partesMeta(producto).map(textos.meta)];
   const stock = parteStock(producto, variante);
+  // Por peso o medida el stock va en su unidad y con sus decimales («12,400 kg»), no en «uds».
+  const textoStock = (s: ParteStock): string => {
+    if (!unidadVenta || s.clave !== 'unidades') return textos.stock(s);
+    const d = Math.max(0, Math.min(3, Math.trunc(producto.decimalesCantidad ?? 3)));
+    return `${new Intl.NumberFormat(locale, { minimumFractionDigits: d, maximumFractionDigits: d }).format(s.n)} ${unidadVenta}`;
+  };
   const nivel = nivelStock(producto.stock, producto.agotado);
   const colorStock = nivel ? clasesStock(nivel) : null;
   const lista = variante === 'movil-lista';
@@ -189,6 +197,7 @@ export const ProductCard = React.forwardRef<HTMLButtonElement, ProductCardProps>
     ) : (
       <span id={idPrecio} className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
         <span className={cn('font-semibold tabular-nums text-fg', lista || sm ? 'text-sm' : 'text-base')}>{formatear(producto.precio)}</span>
+        {unidadVenta && <span className="text-xs text-fg-muted">{`/ ${unidadVenta}`}</span>}
         {pct !== null && (
           <span className="text-xs tabular-nums text-fg-muted line-through">{formatear(producto.precioComparacion)}</span>
         )}
@@ -253,7 +262,7 @@ export const ProductCard = React.forwardRef<HTMLButtonElement, ProductCardProps>
   const puntoStock = colorStock && <span aria-hidden="true" className={cn('size-1.5 shrink-0 rounded-full', colorStock.punto)} />;
 
   if (lista) {
-    const lineaMeta = [...meta, ...(stock ? [textos.stock(stock)] : [])].join(' · ');
+    const lineaMeta = [...meta, ...(stock ? [textoStock(stock)] : [])].join(' · ');
     return (
       <div
         onClick={elegir}
@@ -362,7 +371,7 @@ export const ProductCard = React.forwardRef<HTMLButtonElement, ProductCardProps>
             (meta.length > 0 || stock) && (
               <span className="flex min-w-0 items-center gap-1 text-fg-secondary">
                 {puntoStock}
-                <span className="truncate">{[...meta, ...(stock ? [textos.stock(stock)] : [])].join(' · ')}</span>
+                <span className="truncate">{[...meta, ...(stock ? [textoStock(stock)] : [])].join(' · ')}</span>
               </span>
             )
           ) : (
@@ -376,7 +385,7 @@ export const ProductCard = React.forwardRef<HTMLButtonElement, ProductCardProps>
               {stock && colorStock && (
                 <span className={cn('flex items-center gap-1 font-medium', colorStock.texto)}>
                   {puntoStock}
-                  {textos.stock(stock)}
+                  {textoStock(stock)}
                 </span>
               )}
             </>

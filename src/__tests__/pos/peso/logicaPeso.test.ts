@@ -25,12 +25,13 @@ import {
   totalACobrar,
   cambioRedondeado,
   pagosConRedondeo,
+  type ProductoModoVenta,
 } from '@/lib/pos/peso';
 import { calcularLineaVenta } from '@/lib/pos/lineaVenta';
 
-const QUESO = { sale_mode: 'weight', qty_decimals: 3, unit_code: 'KG  ' };
-const TELA = { sale_mode: 'measure', qty_decimals: 2, unit_code: 'MT' };
-const GASEOSA = { sale_mode: 'unit', qty_decimals: 0, unit_code: 'UN' };
+const QUESO: ProductoModoVenta = { sale_mode: 'weight', qty_decimals: 3, unit_code: 'KG  ' };
+const TELA: ProductoModoVenta = { sale_mode: 'measure', qty_decimals: 2, unit_code: 'MT' };
+const GASEOSA: ProductoModoVenta = { sale_mode: 'unit', qty_decimals: 0, unit_code: 'UN' };
 
 describe('modo de venta y decimales', () => {
   test('sin sale_mode es por unidad; decimales efectivos como fn_producto_decimales_cantidad', () => {

@@ -23,6 +23,7 @@ import { aProductoTarjeta, columnasDeGrilla, moverFocoGrilla, type VistaCatalogo
 import type { CatalogoGrilla } from './catalogo/useCatalogoGrilla';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { cn } from '@/utils/Utils';
+import { esMedido, esPorPeso } from '@/lib/pos/peso/modoVenta';
 
 /**
  * Buscador y grilla del POS (Figma `PosProductSearch` 155:7745 y grid v2
@@ -93,6 +94,7 @@ export function GrillaProductos({
   mensajeError,
 }: GrillaProductosProps) {
   const t = useTranslations('posVenta.catalogo');
+  const tPeso = useTranslations('posPeso.tarjeta');
   const escritorio = useMediaQuery('(min-width: 1024px)');
   const [foco, setFoco] = useState(0);
   const grillaRef = useRef<HTMLDivElement | null>(null);
@@ -190,6 +192,8 @@ export function GrillaProductos({
               moneda,
               imagen,
               elegibleSinPrecio: elegibleSinPrecio(p),
+              // Por peso: «Pesar» abre el diálogo de la pesada; por medida, «Cantidad».
+              ...(esMedido(p) ? { etiquetaElegir: tPeso(esPorPeso(p) ? 'pesar' : 'cantidad') } : {}),
               onElegir: () => onElegir(p),
               onNoDisponible: (m: 'agotado' | 'sinPrecio') => onNoDisponible(p, m),
               onFavorito: () => onFavorito(p),

@@ -11,6 +11,7 @@ import { hayRafagaDelLector } from '@/hooks/useHardwareBarcodeScanner';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { estadoCocinaLinea } from '@/lib/pos/cocina/lineasCarrito';
 import { teclaAtajo } from '@/lib/pos/venta/atajos';
+import { decimalesCantidad, esMedido, simboloUnidad } from '@/lib/pos/peso/modoVenta';
 import {
   accionCantidad,
   impuestoDeLinea,
@@ -68,6 +69,8 @@ export interface LineasCarritoProps {
   /** false apaga los atajos de la línea (p. ej. con el cobro abierto). */
   atajosActivos?: boolean;
   onCantidad: (itemId: string, cantidad: number) => void;
+  /** Línea por peso o medida: reabre «Pesar» en «cambiar peso» (chip o P). */
+  onCambiarPeso?: (item: CartItem) => void;
   onQuitar: (itemId: string) => void;
   onExcluirImpuesto: (itemId: string) => void;
   /** Alterna «Incluido» de la línea. */
@@ -108,6 +111,7 @@ export function LineasCarrito({
   descuentosFrecuentes,
   atajosActivos = true,
   onCantidad,
+  onCambiarPeso,
   onQuitar,
   onExcluirImpuesto,
   onIncluido,
@@ -187,8 +191,16 @@ export function LineasCarrito({
   const destinoNotaDe = (item: CartItem): DestinoNota => (!item.notes && item.customer_note ? 'cliente' : 'cocina');
   const grupo = tAtajos('grupos.linea');
   const atajos: Atajo[] = [
-    { tecla: teclaAtajo('lineaMas'), descripcion: tAtajos('lineaMas'), grupo, cuando: hayLinea, accion: conLinea((i) => pedirCantidad(i, i.quantity + 1)) },
-    { tecla: teclaAtajo('lineaMenos'), descripcion: tAtajos('lineaMenos'), grupo, cuando: hayLinea, accion: conLinea((i) => pedirCantidad(i, i.quantity - 1)) },
+    // ± 1 no aplica a una línea por peso o medida: su cantidad se cambia en «Pesar» (P).
+    { tecla: teclaAtajo('lineaMas'), descripcion: tAtajos('lineaMas'), grupo, cuando: hayLinea, accion: conLinea((i) => !esMedido(i.product) && pedirCantidad(i, i.quantity + 1)) },
+    { tecla: teclaAtajo('lineaMenos'), descripcion: tAtajos('lineaMenos'), grupo, cuando: hayLinea, accion: conLinea((i) => !esMedido(i.product) && pedirCantidad(i, i.quantity - 1)) },
+    {
+      tecla: teclaAtajo('lineaPeso'),
+      descripcion: tAtajos('lineaPeso'),
+      grupo,
+      cuando: () => hayLinea() && !!onCambiarPeso && !!lineaConFoco() && esMedido(lineaConFoco()?.product),
+      accion: conLinea((i) => onCambiarPeso?.(i)),
+    },
     { tecla: teclaAtajo('lineaDescuento'), descripcion: tAtajos('lineaDescuento'), grupo, cuando: hayLinea, accion: conLinea((i) => onDescuentoAbrir(i)) },
     { tecla: teclaAtajo('lineaNota'), descripcion: tAtajos('lineaNota'), grupo, cuando: hayLinea, accion: conLinea((i) => onNotaAbrir(i.id, destinoNotaDe(i))) },
     { tecla: teclaAtajo('lineaImpuesto'), descripcion: tAtajos('lineaImpuesto'), grupo, cuando: hayLinea, accion: conLinea((i) => onExcluirImpuesto(i.id)) },
@@ -341,7 +353,9 @@ export function LineasCarrito({
                     />
                   ),
                   cantidad: item.quantity,
-                  unidad: item.product.unit_code,
+                  unidad: esMedido(item.product) ? simboloUnidad(item.product.unit_code) || item.product.unit_code : item.product.unit_code,
+                  medida: esMedido(item.product),
+                  decimales: esMedido(item.product) ? decimalesCantidad(item.product) : 0,
                   precioUnitario: item.unit_price,
                   total: item.total,
                   impuesto: impuestoDeLinea(item, indicesSinImpuesto.has(itemIndex)),
@@ -351,6 +365,7 @@ export function LineasCarrito({
                 incluido={item.tax_included ?? false}
                 onIncluidoChange={() => onIncluido(item.id)}
                 onCantidad={(n) => pedirCantidad(item, n)}
+                onCambiarPeso={onCambiarPeso && esMedido(item.product) ? () => onCambiarPeso(item) : undefined}
                 onNota={() => onNotaAbrir(item.id, destinoNotaDe(item))}
                 conNota={!!(item.notes || item.customer_note)}
                 onExcluirImpuesto={() => onExcluirImpuesto(item.id)}

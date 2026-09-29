@@ -50,6 +50,8 @@ export const ATAJOS_POS = [
   { id: 'lineaNota', tecla: 'N', grupo: 'linea' },
   { id: 'lineaImpuesto', tecla: 'T', grupo: 'linea' },
   { id: 'lineaQuitar', tecla: 'Supr', grupo: 'linea' },
+  // Línea por peso o medida: reabre «Pesar» para cambiar el peso (PRODUCTOS-POR-PESO-BASCULA.md).
+  { id: 'lineaPeso', tecla: 'P', grupo: 'linea' },
   // Cobro
   { id: 'metodo1', tecla: 'Alt+1', grupo: 'cobro' },
   { id: 'metodo2', tecla: 'Alt+2', grupo: 'cobro' },

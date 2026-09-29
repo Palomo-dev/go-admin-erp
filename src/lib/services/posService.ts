@@ -45,6 +45,8 @@ import {
   type CambioNotaLinea,
   type RespuestaRonda,
 } from '@/lib/pos/cocina/lineasCarrito';
+import { decimalesCantidad, esMedido, redondearCantidadProducto } from '@/lib/pos/peso/modoVenta';
+import type { Pesaje } from '@/lib/pos/peso/pesada';
 
 export class POSService {
   /**
@@ -999,11 +1001,18 @@ export class POSService {
     return carts.findIndex((c) => c.id === cartId && (c.status === 'active' || c.status === 'hold'));
   }
 
+  /**
+   * Agrega el producto al carrito. Una línea por peso o medida
+   * (PRODUCTOS-POR-PESO-BASCULA.md) nunca se funde con otra del mismo
+   * producto: cada pesada es su propia línea, con su `pesaje`
+   * (`notes.pesaje` en el cobro) y la cantidad redondeada a sus decimales.
+   */
   static async addItemToCart(
     cartId: string,
     product: Product,
     quantity: number = 1,
-    modifiers?: CartItemModifier[]
+    modifiers?: CartItemModifier[],
+    opciones?: { pesaje?: Pesaje }
   ): Promise<Cart> {
     try {
       const carts = this.readAllCarts();
@@ -1016,7 +1025,9 @@ export class POSService {
         (mods || []).map((m) => m.modifierId).sort().join(',');
       // Una línea con nota (cocina, cliente o alergia) no absorbe unidades sin
       // nota: «2 hamburguesas, una sin cebolla» son dos líneas (N4).
-      const existingItemIndex = cart.items.findIndex(
+      const medido = esMedido(product);
+      const cantidad = medido ? redondearCantidadProducto(quantity, decimalesCantidad(product)) : quantity;
+      const existingItemIndex = medido ? -1 : cart.items.findIndex(
         item => item.product_id === product.id && modifiersKey(item.modifiers) === modifiersKey(modifiers)
           && !item.notes && !item.customer_note && !item.is_allergy
       );
@@ -1034,13 +1045,14 @@ export class POSService {
           cart_id: cartId,
           product_id: product.id,
           product,
-          quantity,
+          quantity: cantidad,
           unit_price: basePrice + extraTotal,
           total: 0,
           discount_amount: 0,
           tax_amount: 0,
           tax_rate: 0,
           modifiers: modifiers && modifiers.length > 0 ? modifiers : undefined,
+          ...(opciones?.pesaje ? { pesaje: opciones.pesaje } : {}),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -1121,6 +1133,32 @@ export class POSService {
       console.error('Error updating cart item quantity:', error);
       throw error;
     }
+  }
+
+  /**
+   * «Cambiar peso» de una línea por peso o medida: nueva cantidad (redondeada a
+   * los decimales del producto) y su pesada. Notas, modificadores y precio se
+   * conservan; el descuento se topa en cantidad × precio, como siempre.
+   */
+  static async updateCartItemPesaje(cartId: string, itemId: string, quantity: number, pesaje?: Pesaje): Promise<Cart> {
+    const carts = this.readAllCarts();
+    const cartIndex = this.indexOfLiveCart(carts, cartId);
+    if (cartIndex === -1) throw new Error('Carrito no encontrado');
+    const cart = carts[cartIndex];
+    const item = cart.items.find((i) => i.id === itemId);
+    if (!item) throw new Error('Item no encontrado');
+    const cantidad = redondearCantidadProducto(quantity, decimalesCantidad(item.product));
+    if (!(cantidad > 0)) return this.removeItemFromCart(cartId, itemId);
+    item.quantity = cantidad;
+    item.total = cantidad * item.unit_price;
+    if (pesaje) item.pesaje = pesaje;
+    if (item.discount_amount && item.discount_amount > item.total) item.discount_amount = item.total;
+    item.updated_at = new Date().toISOString();
+    await this.calculateCartTotals(cart);
+    cart.updated_at = new Date().toISOString();
+    carts[cartIndex] = cart;
+    this.saveCartsToStorage(carts);
+    return cart;
   }
 
   static async updateCartItemDiscount(cartId: string, itemId: string, discountAmount: number): Promise<Cart> {
@@ -2074,6 +2112,11 @@ export class POSService {
    * la vigencia real (`effective_from <= ahora < effective_to`); sin red en el
    * escritorio lee el catálogo local con la misma regla.
    */
+  /** Precio vigente por unidad de venta (por kg) para mostrarlo en «Pesar»; misma regla que el carrito. */
+  static async precioVigenteProducto(productId: number, productName?: string | null): Promise<number> {
+    return this.getProductPrice(productId, productName);
+  }
+
   private static async getProductPrice(productId: number, productName?: string | null): Promise<number> {
     let precio: number | null;
     try {

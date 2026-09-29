@@ -4330,6 +4330,10 @@
         "exportar": "Exporter",
         "activar": "Activer",
         "desactivar": "Désactiver"
+      },
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès aux fournisseurs",
+        "descripcion": "Demandez à un administrateur de l'organisation de vous donner accès à l'inventaire."
       }
     },
     "detalle": {
@@ -4427,7 +4431,8 @@
       "recientes": {
         "ordenes": "Affichage des {mostradas} plus récentes sur {total} commandes.",
         "facturas": "Affichage des {mostradas} plus récentes sur {total} factures.",
-        "verTodas": "Tout voir"
+        "verTodas": "Tout voir",
+        "verCuentas": "Tout voir dans Comptes fournisseurs"
       },
       "kpis": {
         "etiqueta": "Chiffres du fournisseur",
@@ -4626,19 +4631,24 @@
         "titulo": "Statut",
         "activo": "Actif · apparaît lors des achats",
         "inactivo": "Inactif · n'apparaît pas lors des achats"
+      },
+      "sinPermiso": {
+        "titulo": "Vous ne pouvez pas créer ni modifier de fournisseurs",
+        "descripcion": "Demandez à un administrateur de l'organisation l'autorisation d'inventaire pour modifier le catalogue."
       }
     },
     "importar": {
       "volver": "Retour",
       "titulo": "Importer des fournisseurs",
-      "subtitulo": "Importez des fournisseurs en masse depuis un fichier CSV ou Excel",
+      "subtitulo": "Depuis un fichier .xlsx ou .csv avec le modèle",
       "archivo": {
         "titulo": "Sélectionner un fichier",
         "descripcion": "Téléversez un fichier CSV ou Excel (.xlsx) contenant les fournisseurs à importer",
         "encontrados": "{count, plural, one {# enregistrement trouvé} other {# enregistrements trouvés}}",
         "otro": "Sélectionner un autre fichier",
-        "arrastra": "Glissez un fichier ou cliquez pour sélectionner",
-        "formatos": "Fichiers CSV ou Excel (.xlsx)"
+        "arrastra": "Glissez un fichier ou cliquez pour le choisir",
+        "formatos": ".xlsx, .xls ou .csv · jusqu'à 10 Mo · 2 000 lignes max.",
+        "elegir": "Choisir le fichier des fournisseurs"
       },
       "vistaPrevia": {
         "titulo": "Aperçu ({count, plural, one {# enregistrement} other {# enregistrements}})",
@@ -4653,7 +4663,14 @@
         "contacto": "Contact",
         "telefono": "Téléphone",
         "email": "E-mail",
-        "estado": "Statut"
+        "estado": "Statut",
+        "proveedor": "Fournisseur · numéro",
+        "tipo": "Type",
+        "resultado": "Résultat",
+        "plazo": "Délai",
+        "accion": "Action",
+        "documento": "Numéro",
+        "motivo": "Motif"
       },
       "validaciones": {
         "nombreRequerido": "Le nom est obligatoire",
@@ -4671,7 +4688,17 @@
         "titulo": "Actions",
         "plantilla": "Télécharger le modèle",
         "importar": "Importer {count, plural, one {# fournisseur} other {# fournisseurs}}",
-        "verProveedores": "Voir les fournisseurs"
+        "verProveedores": "Voir les fournisseurs",
+        "crear": "Créer",
+        "actualizar": "Mettre à jour",
+        "noSeImporta": "Non importée",
+        "excluida": "Exclue",
+        "incluir": "Inclure dans l'importation",
+        "excluir": "Exclure de l'importation",
+        "motivoError": "La ligne contient une erreur : corrigez-la dans le fichier",
+        "verExistente": "Voir le fournisseur existant",
+        "seCrea": "est créé",
+        "seActualiza": "met à jour l'existant"
       },
       "instrucciones": {
         "titulo": "Instructions",
@@ -4694,7 +4721,127 @@
         "completadaDescripcion": "{count, plural, one {# fournisseur importé avec succès} other {# fournisseurs importés avec succès}}",
         "conErrores": "Erreurs lors de l'importation",
         "conErroresDescripcion": "{count, plural, one {# fournisseur n'a pas pu être importé} other {# fournisseurs n'ont pas pu être importés}}",
-        "errorImportar": "Impossible de terminer l'importation"
+        "errorImportar": "Impossible de terminer l'importation",
+        "importados": "{creados, plural, one {# fournisseur créé} other {# fournisseurs créés}} et {actualizados, plural, one {# mis à jour} other {# mis à jour}}"
+      },
+      "miga": "Importer",
+      "subtituloArchivo": "{archivo} · {count, plural, one {{n} ligne lue} other {{n} lignes lues}}",
+      "pasoMovil": "Étape {n} sur 4 · {filas} lignes",
+      "descargarPlantilla": "Télécharger le modèle",
+      "nombrePlantilla": "modele_fournisseurs.csv",
+      "nombreErrores": "fournisseurs_en_erreur.csv",
+      "otroArchivo": "Importer un autre fichier",
+      "verProveedores": "Voir les fournisseurs",
+      "cancelar": "Annuler",
+      "atras": "Retour",
+      "revisarFilas": "Vérifier les lignes",
+      "nadaElegido": "Choisissez au moins une ligne valide",
+      "importarN": "{count, plural, =0 {Importer} one {Importer {n} fournisseur} other {Importer {n} fournisseurs}}",
+      "resumenMovil": "{crean} créés · {actualizan} mis à jour · {errores} en erreur",
+      "buscar": "Rechercher dans le fichier",
+      "verResultados": "Voir {n, plural, one {# ligne} other {# lignes}}",
+      "sinResultados": "Aucune ligne ne correspond à la recherche ou au filtre",
+      "filaN": "Ligne {n}",
+      "documento": "N° {doc}",
+      "contado": "Comptant",
+      "dias": "{n} jours",
+      "sustantivo": {
+        "singular": "ligne",
+        "plural": "lignes"
+      },
+      "sinPermiso": {
+        "titulo": "Vous ne pouvez pas importer de fournisseurs",
+        "descripcion": "Demandez à un administrateur de l'organisation l'autorisation d'inventaire pour modifier le catalogue."
+      },
+      "pasos": {
+        "etiqueta": "Étapes de l'importation",
+        "archivo": "Fichier",
+        "columnas": "Colonnes",
+        "revisar": "Vérifier",
+        "resultado": "Résultat",
+        "resumen": "Étape {n} sur {total} · {etiqueta}"
+      },
+      "columnasPaso": {
+        "titulo": "Que contient chaque colonne ?",
+        "descripcion": "Nous avons reconnu {reconocidas} colonnes sur {total}. Corrigez celles qui ne correspondent pas ; celles laissées sur « Ne pas importer » sont ignorées.",
+        "sinNombre": "Colonne {n}",
+        "noImportar": "Ne pas importer",
+        "faltan": "Reste à attribuer : {campos}"
+      },
+      "campos": {
+        "name": "Nom ou raison sociale",
+        "supplier_type": "Type (entreprise ou personne)",
+        "nit": "N° fiscal ou d'identité",
+        "doc_type": "Type de document",
+        "trade_name": "Nom commercial",
+        "contact": "Contact",
+        "phone": "Téléphone",
+        "email": "E-mail",
+        "address": "Adresse",
+        "city": "Ville",
+        "state": "Département",
+        "country": "Pays",
+        "postal_code": "Code postal",
+        "tax_regime": "Régime fiscal",
+        "fiscal_responsibilities": "Obligations fiscales",
+        "payment_terms": "Conditions de paiement",
+        "credit_days": "Jours de crédit",
+        "website": "Site web",
+        "bank_name": "Banque",
+        "bank_account": "Compte bancaire",
+        "account_type": "Type de compte",
+        "description": "Description",
+        "notes": "Notes",
+        "is_active": "Actif"
+      },
+      "kpis": {
+        "etiqueta": "Résumé du fichier",
+        "leidas": "Lignes lues",
+        "crean": "À créer",
+        "creanDetalle": "Nouveaux fournisseurs",
+        "actualizan": "À mettre à jour",
+        "actualizanDetalle": "Même numéro qu'un fournisseur existant",
+        "errores": "En erreur",
+        "erroresDetalle": "Non importées · corrigez-les dans le fichier"
+      },
+      "filtros": {
+        "mostrar": "Afficher",
+        "todas": "Toutes",
+        "crear": "À créer",
+        "actualizar": "Existent déjà",
+        "error": "En erreur"
+      },
+      "tipos": {
+        "empresa": "Entreprise",
+        "persona": "Personne"
+      },
+      "resultadoFila": {
+        "valida": "Valide",
+        "yaExiste": "Existe déjà",
+        "error": "Erreur"
+      },
+      "motivos": {
+        "nombre_obligatorio": "Le nom est manquant",
+        "documento_obligatorio": "Le numéro fiscal ou d'identité est manquant",
+        "tipo_invalido": "Type non valide : utilisez Entreprise ou Personne",
+        "correo_invalido": "E-mail non valide",
+        "plazo_invalido": "Jours de crédit non valides",
+        "cuenta_invalida": "Type de compte non valide : Épargne, Courant ou Autre",
+        "documento_repetido": "Numéro répété à la ligne {fila}"
+      },
+      "resultado": {
+        "titulo": "Importation terminée",
+        "detalle": "{creados, plural, one {# fournisseur créé} other {# fournisseurs créés}} · {actualizados, plural, one {# mis à jour} other {# mis à jour}} · {errores, plural, one {# ligne en erreur} other {# lignes en erreur}}",
+        "descargarErrores": "Télécharger les lignes en erreur"
+      },
+      "errores": {
+        "formato": "Format non pris en charge : utilisez .xlsx, .xls ou .csv",
+        "tamano": "Le fichier dépasse 10 Mo",
+        "vacio": "Le fichier n'a aucune ligne sous l'en-tête",
+        "leer": "Impossible de lire le fichier",
+        "revisar": "Impossible de vérifier le fichier. Réessayez.",
+        "importar": "Impossible d'importer les fournisseurs",
+        "sinPermiso": "Vous n'avez pas l'autorisation d'importer des fournisseurs"
       }
     },
     "dialogo": {

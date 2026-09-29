@@ -149,7 +149,8 @@ export default function CatalogoProveedores() {
   const [exportando, setExportando] = useState<Formato | null>(null);
 
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
-  const { accionesDe, cambiarEstado, aEliminar, setAEliminar } = useAccionesProveedor({ onCambio: recargar });
+  const { accionesDe, cambiarEstado, aEliminar, setAEliminar, permisos } = useAccionesProveedor({ onCambio: recargar });
+  const [sinPermiso, setSinPermiso] = useState(false);
 
   const filtros = filtrosServidor(l);
   const claveConsulta = JSON.stringify({ ...filtros, desde: l.rango.desde, limite: l.tamano });
@@ -171,6 +172,7 @@ export default function CatalogoProveedores() {
         if (cancelado) return;
         console.error('Error cargando proveedores:', e);
         setError(true);
+        setSinPermiso(!!e && typeof e === 'object' && 'code' in e && (e as { code?: string }).code === '42501');
       })
       .finally(() => {
         if (!cancelado) setCargando(false);
@@ -347,7 +349,9 @@ export default function CatalogoProveedores() {
   const estadoTabla = cargando
     ? 'cargando'
     : error
-      ? 'error'
+      ? sinPermiso
+        ? 'sinPermiso'
+        : 'error'
       : filas.length === 0 && l.hayCriterios
         ? 'sinResultados'
         : 'listo';
@@ -370,20 +374,24 @@ export default function CatalogoProveedores() {
         migas={[{ etiqueta: tc('inventario'), href: '/app/inventario' }, { etiqueta: tc('titulo') }]}
         acciones={
           <>
-            <Link
-              href={`${RUTA_PROVEEDORES}/importar`}
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
-              <Upload aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {t('importar')}
-            </Link>
-            <Link
-              href={`${RUTA_PROVEEDORES}/nuevo`}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-            >
-              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {tc('nuevoProveedor')}
-            </Link>
+            {permisos.crear && (
+              <Link
+                href={`${RUTA_PROVEEDORES}/importar`}
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                <Upload aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('importar')}
+              </Link>
+            )}
+            {permisos.crear && (
+              <Link
+                href={`${RUTA_PROVEEDORES}/nuevo`}
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              >
+                <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {tc('nuevoProveedor')}
+              </Link>
+            )}
             <RowActionsMenu orientacion="horizontal" tamano="md" titulo={tc('titulo')} acciones={accionesExportar()} />
           </>
         }
@@ -395,17 +403,25 @@ export default function CatalogoProveedores() {
                 orientacion="horizontal"
                 titulo={tc('titulo')}
                 acciones={[
-                  { id: 'importar', etiqueta: t('importarProveedores'), icono: Upload, onSelect: () => router.push(`${RUTA_PROVEEDORES}/importar`) },
+                  {
+                    id: 'importar',
+                    etiqueta: t('importarProveedores'),
+                    icono: Upload,
+                    onSelect: () => router.push(`${RUTA_PROVEEDORES}/importar`),
+                    oculta: !permisos.crear,
+                  },
                   ...accionesExportar(),
                 ]}
               />
-              <Link
-                href={`${RUTA_PROVEEDORES}/nuevo`}
-                aria-label={tc('nuevoProveedor')}
-                className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
-              </Link>
+              {permisos.crear && (
+                <Link
+                  href={`${RUTA_PROVEEDORES}/nuevo`}
+                  aria-label={tc('nuevoProveedor')}
+                  className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
+                </Link>
+              )}
             </div>
           ),
         }}
@@ -575,9 +591,10 @@ export default function CatalogoProveedores() {
           titulo: t('vacio.titulo'),
           descripcion: t('vacio.descripcion'),
           icono: Truck,
-          accion: { etiqueta: tc('nuevoProveedor'), href: `${RUTA_PROVEEDORES}/nuevo`, icono: Plus },
-          accionSecundaria: { etiqueta: t('importar'), href: `${RUTA_PROVEEDORES}/importar`, icono: Upload },
+          accion: permisos.crear ? { etiqueta: tc('nuevoProveedor'), href: `${RUTA_PROVEEDORES}/nuevo`, icono: Plus } : undefined,
+          accionSecundaria: permisos.crear ? { etiqueta: t('importar'), href: `${RUTA_PROVEEDORES}/importar`, icono: Upload } : undefined,
         }}
+        sinPermiso={{ titulo: t('sinPermiso.titulo'), descripcion: t('sinPermiso.descripcion') }}
         sinResultados={{ descripcion: t('sinResultados') }}
         error={{ titulo: t('errorCarga') }}
         onLimpiarFiltros={l.limpiarTodo}
@@ -609,8 +626,12 @@ export default function CatalogoProveedores() {
             onClick: () => exportar('xlsx', idsSeleccionados),
             cargando: exportando === 'xlsx',
           },
-          { id: 'activar', etiqueta: t('masivas.activar'), icono: Power, onClick: () => cambiarEstadoSeleccion(true) },
-          { id: 'desactivar', etiqueta: t('masivas.desactivar'), icono: PowerOff, onClick: () => cambiarEstadoSeleccion(false) },
+          ...(permisos.editar
+            ? [
+                { id: 'activar', etiqueta: t('masivas.activar'), icono: Power, onClick: () => cambiarEstadoSeleccion(true) },
+                { id: 'desactivar', etiqueta: t('masivas.desactivar'), icono: PowerOff, onClick: () => cambiarEstadoSeleccion(false) },
+              ]
+            : []),
         ]}
         accionesSecundarias={accionesExportar(idsSeleccionados).filter((a) => a.id !== 'xlsx')}
         onLimpiar={() => setSeleccion(new Set())}

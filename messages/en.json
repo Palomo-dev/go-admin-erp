@@ -4435,6 +4435,10 @@
         "exportar": "Export",
         "activar": "Activate",
         "desactivar": "Deactivate"
+      },
+      "sinPermiso": {
+        "titulo": "You don't have access to suppliers",
+        "descripcion": "Ask an administrator of the organization to give you inventory access."
       }
     },
     "detalle": {
@@ -4532,7 +4536,8 @@
       "recientes": {
         "ordenes": "Showing the {mostradas} most recent of {total} orders.",
         "facturas": "Showing the {mostradas} most recent of {total} invoices.",
-        "verTodas": "View all"
+        "verTodas": "View all",
+        "verCuentas": "See all in Accounts payable"
       },
       "kpis": {
         "etiqueta": "Supplier figures",
@@ -4731,19 +4736,24 @@
         "titulo": "Status",
         "activo": "Active · shows up when purchasing",
         "inactivo": "Inactive · doesn't show up when purchasing"
+      },
+      "sinPermiso": {
+        "titulo": "You can't create or edit suppliers",
+        "descripcion": "Ask an administrator of the organization for the inventory permission to edit the catalog."
       }
     },
     "importar": {
       "volver": "Back",
       "titulo": "Import suppliers",
-      "subtitulo": "Bulk import suppliers from a CSV or Excel file",
+      "subtitulo": "From an .xlsx or .csv file with the template",
       "archivo": {
         "titulo": "Select file",
         "descripcion": "Upload a CSV or Excel (.xlsx) file with the suppliers to import",
         "encontrados": "{count, plural, one {# record found} other {# records found}}",
         "otro": "Select another file",
-        "arrastra": "Drag a file here or click to select",
-        "formatos": "CSV or Excel (.xlsx) files"
+        "arrastra": "Drag a file or click to choose it",
+        "formatos": ".xlsx, .xls or .csv · up to 10 MB · max. 2,000 rows",
+        "elegir": "Choose the suppliers file"
       },
       "vistaPrevia": {
         "titulo": "Preview ({count, plural, one {# record} other {# records}})",
@@ -4758,7 +4768,14 @@
         "contacto": "Contact",
         "telefono": "Phone",
         "email": "Email",
-        "estado": "Status"
+        "estado": "Status",
+        "proveedor": "Supplier · ID",
+        "tipo": "Type",
+        "resultado": "Result",
+        "plazo": "Terms",
+        "accion": "Action",
+        "documento": "ID",
+        "motivo": "Reason"
       },
       "validaciones": {
         "nombreRequerido": "Name is required",
@@ -4776,7 +4793,17 @@
         "titulo": "Actions",
         "plantilla": "Download template",
         "importar": "Import {count, plural, one {# supplier} other {# suppliers}}",
-        "verProveedores": "View suppliers"
+        "verProveedores": "View suppliers",
+        "crear": "Create",
+        "actualizar": "Update",
+        "noSeImporta": "Not imported",
+        "excluida": "Excluded",
+        "incluir": "Include in the import",
+        "excluir": "Exclude from the import",
+        "motivoError": "The row has an error: fix it in the file",
+        "verExistente": "View the existing supplier",
+        "seCrea": "is created",
+        "seActualiza": "updates the existing one"
       },
       "instrucciones": {
         "titulo": "Instructions",
@@ -4799,7 +4826,127 @@
         "completadaDescripcion": "{count, plural, one {# supplier imported successfully} other {# suppliers imported successfully}}",
         "conErrores": "Import errors",
         "conErroresDescripcion": "{count, plural, one {# supplier could not be imported} other {# suppliers could not be imported}}",
-        "errorImportar": "Couldn't complete the import"
+        "errorImportar": "Couldn't complete the import",
+        "importados": "{creados, plural, one {# supplier created} other {# suppliers created}} and {actualizados, plural, one {# updated} other {# updated}}"
+      },
+      "miga": "Import",
+      "subtituloArchivo": "{archivo} · {count, plural, one {{n} row read} other {{n} rows read}}",
+      "pasoMovil": "Step {n} of 4 · {filas} rows",
+      "descargarPlantilla": "Download template",
+      "nombrePlantilla": "suppliers_template.csv",
+      "nombreErrores": "suppliers_with_errors.csv",
+      "otroArchivo": "Import another file",
+      "verProveedores": "View suppliers",
+      "cancelar": "Cancel",
+      "atras": "Back",
+      "revisarFilas": "Review rows",
+      "nadaElegido": "Choose at least one valid row",
+      "importarN": "{count, plural, =0 {Import} one {Import {n} supplier} other {Import {n} suppliers}}",
+      "resumenMovil": "{crean} created · {actualizan} updated · {errores} with errors",
+      "buscar": "Search in the file",
+      "verResultados": "Show {n, plural, one {# row} other {# rows}}",
+      "sinResultados": "No row matches the search or the filter",
+      "filaN": "Row {n}",
+      "documento": "ID {doc}",
+      "contado": "Cash",
+      "dias": "{n} days",
+      "sustantivo": {
+        "singular": "row",
+        "plural": "rows"
+      },
+      "sinPermiso": {
+        "titulo": "You can't import suppliers",
+        "descripcion": "Ask an administrator of the organization for the inventory permission to edit the catalog."
+      },
+      "pasos": {
+        "etiqueta": "Import steps",
+        "archivo": "File",
+        "columnas": "Columns",
+        "revisar": "Review",
+        "resultado": "Result",
+        "resumen": "Step {n} of {total} · {etiqueta}"
+      },
+      "columnasPaso": {
+        "titulo": "What does each column contain?",
+        "descripcion": "We recognized {reconocidas} of {total} columns. Fix the ones that don't match; those left on “Don't import” are ignored.",
+        "sinNombre": "Column {n}",
+        "noImportar": "Don't import",
+        "faltan": "Still to assign: {campos}"
+      },
+      "campos": {
+        "name": "Name or legal name",
+        "supplier_type": "Type (company or person)",
+        "nit": "Tax ID or ID number",
+        "doc_type": "ID type",
+        "trade_name": "Trade name",
+        "contact": "Contact",
+        "phone": "Phone",
+        "email": "Email",
+        "address": "Address",
+        "city": "City",
+        "state": "State",
+        "country": "Country",
+        "postal_code": "Postal code",
+        "tax_regime": "Tax regime",
+        "fiscal_responsibilities": "Tax responsibilities",
+        "payment_terms": "Payment terms",
+        "credit_days": "Credit days",
+        "website": "Website",
+        "bank_name": "Bank",
+        "bank_account": "Bank account",
+        "account_type": "Account type",
+        "description": "Description",
+        "notes": "Notes",
+        "is_active": "Active"
+      },
+      "kpis": {
+        "etiqueta": "File summary",
+        "leidas": "Rows read",
+        "crean": "To create",
+        "creanDetalle": "New suppliers",
+        "actualizan": "To update",
+        "actualizanDetalle": "Same ID as an existing one",
+        "errores": "With errors",
+        "erroresDetalle": "Not imported · fix them in the file"
+      },
+      "filtros": {
+        "mostrar": "Show",
+        "todas": "All",
+        "crear": "To create",
+        "actualizar": "Already exist",
+        "error": "With errors"
+      },
+      "tipos": {
+        "empresa": "Company",
+        "persona": "Person"
+      },
+      "resultadoFila": {
+        "valida": "Valid",
+        "yaExiste": "Already exists",
+        "error": "Error"
+      },
+      "motivos": {
+        "nombre_obligatorio": "The name is missing",
+        "documento_obligatorio": "The tax ID or ID number is missing",
+        "tipo_invalido": "Invalid type: use Company or Person",
+        "correo_invalido": "Invalid email",
+        "plazo_invalido": "Invalid credit days",
+        "cuenta_invalida": "Invalid account type: Savings, Checking or Other",
+        "documento_repetido": "ID repeated in row {fila}"
+      },
+      "resultado": {
+        "titulo": "Import finished",
+        "detalle": "{creados, plural, one {# supplier created} other {# suppliers created}} · {actualizados, plural, one {# updated} other {# updated}} · {errores, plural, one {# row with errors} other {# rows with errors}}",
+        "descargarErrores": "Download rows with errors"
+      },
+      "errores": {
+        "formato": "Unsupported format: use .xlsx, .xls or .csv",
+        "tamano": "The file is larger than 10 MB",
+        "vacio": "The file has no rows below the header",
+        "leer": "We couldn't read the file",
+        "revisar": "We couldn't review the file. Try again.",
+        "importar": "We couldn't import the suppliers",
+        "sinPermiso": "You don't have permission to import suppliers"
       }
     },
     "dialogo": {

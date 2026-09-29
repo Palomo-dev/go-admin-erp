@@ -1,6 +1,8 @@
 'use client';
 
 import { ProveedorForm } from '../ProveedorForm';
+import { SinPermisoFormulario } from '../sinPermisoFormulario';
+import { usePermisosCatalogo } from '@/components/inventario/categorias/usePermisosCatalogo';
 import type { Supplier } from '@/lib/services/supplierService';
 
 interface NuevoProveedorFormProps {
@@ -15,8 +17,12 @@ interface NuevoProveedorFormProps {
 /**
  * Alta de proveedor. Es el mismo formulario que la edición (`ProveedorForm`):
  * así el alta y la edición no vuelven a divergir (auditoría §A.7 y §G.1).
+ * Como página, sin el permiso de crear del catálogo muestra «sin permiso»;
+ * embebido (alta rápida desde una compra) lo decide quien lo abre.
  */
 export function NuevoProveedorForm({ onSuccess, onCancel, embedded = false }: NuevoProveedorFormProps = {}) {
+  const permisos = usePermisosCatalogo();
+  if (!embedded && permisos.resueltos && !permisos.crear) return <SinPermisoFormulario />;
   return <ProveedorForm modo="nuevo" onSuccess={onSuccess} onCancel={onCancel} embedded={embedded} />;
 }
 

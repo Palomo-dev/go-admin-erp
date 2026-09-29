@@ -4435,6 +4435,10 @@
         "exportar": "Exportar",
         "activar": "Activar",
         "desactivar": "Desactivar"
+      },
+      "sinPermiso": {
+        "titulo": "No tienes acceso a los proveedores",
+        "descripcion": "Pide a un administrador de la organización que te dé acceso al inventario."
       }
     },
     "detalle": {
@@ -4532,7 +4536,8 @@
       "recientes": {
         "ordenes": "Mostrando las {mostradas} más recientes de {total} órdenes.",
         "facturas": "Mostrando las {mostradas} más recientes de {total} facturas.",
-        "verTodas": "Ver todas"
+        "verTodas": "Ver todas",
+        "verCuentas": "Ver todas en Cuentas por pagar"
       },
       "kpis": {
         "etiqueta": "Cifras del proveedor",
@@ -4731,19 +4736,24 @@
         "titulo": "Estado",
         "activo": "Activo · aparece al comprar",
         "inactivo": "Inactivo · no aparece al comprar"
+      },
+      "sinPermiso": {
+        "titulo": "No puedes crear ni editar proveedores",
+        "descripcion": "Pide a un administrador de la organización el permiso de inventario para editar el catálogo."
       }
     },
     "importar": {
       "volver": "Volver",
-      "titulo": "Importar Proveedores",
-      "subtitulo": "Importa proveedores masivamente desde un archivo CSV o Excel",
+      "titulo": "Importar proveedores",
+      "subtitulo": "Desde un .xlsx o .csv con la plantilla",
       "archivo": {
         "titulo": "Seleccionar Archivo",
         "descripcion": "Sube un archivo CSV o Excel (.xlsx) con los proveedores a importar",
         "encontrados": "{count, plural, one {# registro encontrado} other {# registros encontrados}}",
         "otro": "Seleccionar otro archivo",
-        "arrastra": "Arrastra un archivo o haz clic para seleccionar",
-        "formatos": "Archivos CSV o Excel (.xlsx)"
+        "arrastra": "Arrastra un archivo o pulsa para elegirlo",
+        "formatos": ".xlsx, .xls o .csv · hasta 10 MB · máximo 2.000 filas",
+        "elegir": "Elegir el archivo de proveedores"
       },
       "vistaPrevia": {
         "titulo": "Vista Previa ({count, plural, one {# registro} other {# registros}})",
@@ -4758,7 +4768,14 @@
         "contacto": "Contacto",
         "telefono": "Teléfono",
         "email": "Email",
-        "estado": "Estado"
+        "estado": "Estado",
+        "proveedor": "Proveedor · documento",
+        "tipo": "Tipo",
+        "resultado": "Resultado",
+        "plazo": "Plazo",
+        "accion": "Acción",
+        "documento": "Documento",
+        "motivo": "Motivo"
       },
       "validaciones": {
         "nombreRequerido": "Nombre es requerido",
@@ -4776,7 +4793,17 @@
         "titulo": "Acciones",
         "plantilla": "Descargar Plantilla",
         "importar": "Importar {count, plural, one {# Proveedor} other {# Proveedores}}",
-        "verProveedores": "Ver Proveedores"
+        "verProveedores": "Ver Proveedores",
+        "crear": "Crear",
+        "actualizar": "Actualizar",
+        "noSeImporta": "No se importa",
+        "excluida": "Excluida",
+        "incluir": "Incluir en la importación",
+        "excluir": "Excluir de la importación",
+        "motivoError": "La fila tiene un error: corrígela en el archivo",
+        "verExistente": "Ver el proveedor existente",
+        "seCrea": "se crea",
+        "seActualiza": "actualiza el existente"
       },
       "instrucciones": {
         "titulo": "Instrucciones",
@@ -4799,7 +4826,127 @@
         "completadaDescripcion": "{count, plural, one {# proveedor importado correctamente} other {# proveedores importados correctamente}}",
         "conErrores": "Errores en la importación",
         "conErroresDescripcion": "{count, plural, one {# proveedor no pudo ser importado} other {# proveedores no pudieron ser importados}}",
-        "errorImportar": "No se pudo completar la importación"
+        "errorImportar": "No se pudo completar la importación",
+        "importados": "{creados, plural, one {# proveedor creado} other {# proveedores creados}} y {actualizados, plural, one {# actualizado} other {# actualizados}}"
+      },
+      "miga": "Importar",
+      "subtituloArchivo": "{archivo} · {count, plural, one {{n} fila leída} other {{n} filas leídas}}",
+      "pasoMovil": "Paso {n} de 4 · {filas} filas",
+      "descargarPlantilla": "Descargar plantilla",
+      "nombrePlantilla": "plantilla_proveedores.csv",
+      "nombreErrores": "proveedores_con_error.csv",
+      "otroArchivo": "Importar otro archivo",
+      "verProveedores": "Ver proveedores",
+      "cancelar": "Cancelar",
+      "atras": "Atrás",
+      "revisarFilas": "Revisar filas",
+      "nadaElegido": "Elige al menos una fila válida",
+      "importarN": "{count, plural, =0 {Importar} one {Importar {n} proveedor} other {Importar {n} proveedores}}",
+      "resumenMovil": "{crean} se crean · {actualizan} se actualizan · {errores} con error",
+      "buscar": "Buscar en el archivo",
+      "verResultados": "Ver {n, plural, one {# fila} other {# filas}}",
+      "sinResultados": "Ninguna fila coincide con la búsqueda o el filtro",
+      "filaN": "Fila {n}",
+      "documento": "Doc. {doc}",
+      "contado": "Contado",
+      "dias": "{n} días",
+      "sustantivo": {
+        "singular": "fila",
+        "plural": "filas"
+      },
+      "sinPermiso": {
+        "titulo": "No puedes importar proveedores",
+        "descripcion": "Pide a un administrador de la organización el permiso de inventario para editar el catálogo."
+      },
+      "pasos": {
+        "etiqueta": "Pasos de la importación",
+        "archivo": "Archivo",
+        "columnas": "Columnas",
+        "revisar": "Revisar",
+        "resultado": "Resultado",
+        "resumen": "Paso {n} de {total} · {etiqueta}"
+      },
+      "columnasPaso": {
+        "titulo": "¿Qué trae cada columna?",
+        "descripcion": "Reconocimos {reconocidas} de {total} columnas. Corrige las que no correspondan; las que queden en «No importar» se ignoran.",
+        "sinNombre": "Columna {n}",
+        "noImportar": "No importar",
+        "faltan": "Falta asignar: {campos}"
+      },
+      "campos": {
+        "name": "Nombre o razón social",
+        "supplier_type": "Tipo (empresa o persona)",
+        "nit": "Documento (NIT o cédula)",
+        "doc_type": "Tipo de documento",
+        "trade_name": "Nombre comercial",
+        "contact": "Contacto",
+        "phone": "Teléfono",
+        "email": "Correo",
+        "address": "Dirección",
+        "city": "Ciudad",
+        "state": "Departamento",
+        "country": "País",
+        "postal_code": "Código postal",
+        "tax_regime": "Régimen tributario",
+        "fiscal_responsibilities": "Responsabilidades fiscales",
+        "payment_terms": "Términos de pago",
+        "credit_days": "Días de crédito",
+        "website": "Sitio web",
+        "bank_name": "Banco",
+        "bank_account": "Cuenta bancaria",
+        "account_type": "Tipo de cuenta",
+        "description": "Descripción",
+        "notes": "Notas",
+        "is_active": "Activo"
+      },
+      "kpis": {
+        "etiqueta": "Resumen del archivo",
+        "leidas": "Filas leídas",
+        "crean": "Se crean",
+        "creanDetalle": "Proveedores nuevos",
+        "actualizan": "Se actualizan",
+        "actualizanDetalle": "Mismo documento que uno existente",
+        "errores": "Con errores",
+        "erroresDetalle": "No se importan · corrígelos en el archivo"
+      },
+      "filtros": {
+        "mostrar": "Mostrar",
+        "todas": "Todas",
+        "crear": "Se crean",
+        "actualizar": "Ya existen",
+        "error": "Con error"
+      },
+      "tipos": {
+        "empresa": "Empresa",
+        "persona": "Persona"
+      },
+      "resultadoFila": {
+        "valida": "Válida",
+        "yaExiste": "Ya existe",
+        "error": "Error"
+      },
+      "motivos": {
+        "nombre_obligatorio": "Falta el nombre",
+        "documento_obligatorio": "Falta el NIT o documento",
+        "tipo_invalido": "Tipo no válido: usa Empresa o Persona",
+        "correo_invalido": "Correo no válido",
+        "plazo_invalido": "Días de crédito no válidos",
+        "cuenta_invalida": "Tipo de cuenta no válido: Ahorros, Corriente u Otra",
+        "documento_repetido": "Documento repetido en la fila {fila}"
+      },
+      "resultado": {
+        "titulo": "Importación terminada",
+        "detalle": "{creados, plural, one {# proveedor creado} other {# proveedores creados}} · {actualizados, plural, one {# actualizado} other {# actualizados}} · {errores, plural, one {# fila con error} other {# filas con error}}",
+        "descargarErrores": "Descargar filas con error"
+      },
+      "errores": {
+        "formato": "Formato no admitido: usa .xlsx, .xls o .csv",
+        "tamano": "El archivo pesa más de 10 MB",
+        "vacio": "El archivo no tiene filas debajo de la cabecera",
+        "leer": "No pudimos leer el archivo",
+        "revisar": "No pudimos revisar el archivo. Intenta de nuevo.",
+        "importar": "No pudimos importar los proveedores",
+        "sinPermiso": "No tienes permiso para importar proveedores"
       }
     },
     "dialogo": {

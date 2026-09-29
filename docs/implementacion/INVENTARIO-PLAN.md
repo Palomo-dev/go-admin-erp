@@ -1620,3 +1620,110 @@ ningún aviso nuevo fuera de `authenticated_security_definer_function_executable
   fusionar valores, estados móviles de conversiones; se usaron los patrones del kit.
 - El código de una unidad propia es único en todo el sistema (clave primaria de `units`).
 - `npm run lint` del repo sigue con su deuda previa; los archivos de B6a pasan eslint.
+
+---
+
+## Anexo B8 — Compras ↔ inventario: recepción de OC y de factura de compra (2026-09-29)
+
+Commits: `33382c6a` recepción de OC (esquema, RPC, ruta, pantallas de la OC) · `e109b120` factura de
+compra con lote y vencimiento, seriales al recibir y ayudantes únicos · `341b54ff` devuelve lo de B7
+que `33382c6a` pisó (su índice privado se leyó de HEAD antes de que entrara `5eebf51d`: lotes desde
+el formulario del producto; se restauraron los mismos blobs, nada de B8 cambió). P6 aplicado: el permiso de
+recibir es `recibir` de `fn_inventario_permisos` (= `inventory.create` o `inventory_management`), sin
+permisos nuevos. Namespace `inventarioRecepcionOC` en es/en/fr/pt.
+
+**Migraciones** (MCP; `.sql` y rollback en el repo; probadas antes en `begin … rollback`):
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929170000_inv_b8_1_recepciones_esquema` | `purchase_receipts` (una por entrega, `REC-0001` por organización, clave de idempotencia única por organización, resultado guardado, factura generada) y `purchase_receipt_items` (por línea y lote: cantidad, costo del proveedor, lote, seriales, movimiento de kardex, pedido y recibido antes = diferencia con la orden). RLS de solo lectura para miembros activos; sin escritura para `authenticated` ni `anon` |
+| `20260929170100_inv_b8_2_recepcionar` | `fn_oc_recepcionar(p_org, p_po_uuid, p_lineas, p_clave_idempotencia, p_notas)` (DEFINER, `recibir`, OC de la organización con `FOR UPDATE`, acceso a la sucursal, `REVOKE anon`). `fn_kardex_entrada_compra_int` acepta `serial_ids` por línea y los pasa a la primitiva (parche con md5 y respaldo). `fn_factura_compra_desde_oc` → cuerpo en `fn_fc_int_desde_oc` (interna) y la pública solo exige su permiso: la recepción genera la factura sin copiar su lógica |
+| `20260929170200_inv_b8_3_factura_lotes_seriales` | Ayudantes internos únicos `fn_inv_int_lote_de_recepcion` y `fn_inv_int_seriales_de_recepcion` (OC y factura). `fn_fc_recepcionar_int(p_id, p_lotes)` con lote y vencimiento por línea y seriales creados AL RECIBIR; sobrecargas `fn_factura_compra_confirmar(…, p_lotes)` y `fn_factura_compra_recepcionar(p_id, p_lotes)` con los mismos permisos (las firmas de siempre siguen). `fn_fc_guardar_int` ya no crea seriales `in_stock` al guardar el borrador: solo avisa en `seriales_omitidos` si alguno ya existe |
+
+**Qué hace la recepción de una OC (una transacción: todo o nada)**
+- `qty` = lo que llega ahora; guarda de sobre-recepción (`sobre_recepcion`, 23514, con producto,
+  pendiente y solicitado). Estado de la OC por las cantidades: `partial` o `received`; solo desde
+  `sent`/`partial` (`orden_no_recibible`). Un padre con variantes no se recibe (P1).
+- Lotes: existentes (`lot_id` o código) o nuevos (`lot_code` + `expiry_date`; sin código propone
+  `L-AAAAMMDD` en el día de la organización); el reparto debe sumar la cantidad; obligatorios si
+  `products.track_lots`; el mismo lote con otro vencimiento → `lote_vencimiento_distinto`.
+- Seriales: sin repetir en la petición ni en la organización (P8 fase 1; el repetido global sale como
+  `serial_repetido` sin decir de quién es); obligatorios y en unidades enteras si el producto los
+  controla; se crean «en tránsito» y la primitiva los deja `in_stock` con su evento `received` y su
+  lote. Solo guardan `warranty_months`: la garantía arranca al vender (disparador de B4).
+- Kardex solo por `fn_kardex_entrada_compra_int` → `fn_inv_int_mover` (origen `purchase_order`,
+  costo del proveedor = el de la línea de la OC → promedio ponderado, vigencia en `product_costs`).
+- Al completar la OC: factura de compra confirmada sin kardex y su CxP (`fn_fc_int_desde_oc`), en la
+  misma transacción. Si cualquier paso falla no queda nada recibido.
+- Idempotente: la misma clave devuelve la misma respuesta (`ya_procesada`), sin mover stock; una
+  clave de otra OC → `clave_reutilizada`.
+
+**Ruta**: `POST /api/inventario/ordenes-compra/[id]/recepcionar` (`withOrg` → `getServerOrgContext`;
+`[id]` = uuid). Sin sesión 401; organización ajena en cuerpo o query 403 sin RPC; permiso `recibir`
+resuelto en el servidor con `fn_inventario_permisos` (un error de lectura = sin permiso) y exigido
+otra vez por la RPC; OC de otra organización 404; errores con `codigo` estable y `detalle`.
+Contrato, lógica y cliente: `src/lib/services/inventario/recepcionOrdenCompra.ts`.
+
+**Pantallas (sin rediseñar)**: detalle de la OC — el diálogo de siempre llama a la ruta (el
+acumulado «Recibido» se convierte en lo que llega ahora; solo seriales nuevos), captura lote y
+vencimiento de los productos con lotes (`components/inventario/recepcion/LotesRecepcion.tsx`:
+filas código · vence · cantidad y «Elegir lote existente» con `DialogoLotes` del kit), no se cierra si
+hay error y lo dice traducido; «Marcar recibida» del listado recibe todo lo pendiente por la misma
+RPC. `getPurchaseOrderByUuid` ya trae `track_serial`/`track_lots` (la captura de seriales dependía de
+un campo que no se leía). Factura de compra — «Confirmar factura» con «Recepcionar al confirmar» y
+«Recepcionar a inventario» piden lote y vencimiento de las líneas con lotes (por línea en el
+detalle; por producto en el formulario, que aún no tiene ids de línea).
+
+**Retirado**: `purchaseOrderService.receiveItems`/`receiveItemsWithSerials` y el generador de
+factura en el navegador (la copia en TS de la recepción); `stockMovementService.incrementOnPurchase`
+ya no admite `purchase_order`. Guardarraíl 33 nuevo («la recepción de una OC solo va por
+fn_oc_recepcionar»); 23 y 26b ajustados con su porqué. La lista de pendientes del 33 no tenía la OC
+(la escritura ya iba por la fachada de B0): lo que se retiró es el cálculo en el navegador.
+
+**Verificación en la base** (org 2, productos y OC de prueba, `begin … rollback`):
+- Parcial en dos veces: 1.ª (A 4 · B 3 en dos lotes con vencimiento · C 2 seriales) → `partial`,
+  `REC-0001`, A 10→14 con promedio 500→642,86, lotes con su existencia, seriales `in_stock` sin
+  garantía corriendo y 2 eventos `received`, `product_costs` de A abierto en 1.000, 4 filas de
+  documento, 4 movimientos. 2.ª (A 6 · B 2 al lote existente · C 2) → `received`, A 20 a 750,
+  factura confirmada con CxP y seriales enlazados (4/4).
+- Idempotencia: misma clave → `ya_procesada`, A sigue en 14.
+- Serial repetido (en la organización y dentro de la petición) → 23505; seriales que no cuadran,
+  lote requerido, lote de otro producto, otro vencimiento → 22023; sobre-recepción → 23514 con
+  detalle. Fallo de stock (lote de otro producto) con una línea buena antes: nada recibido (A 14,
+  `partial`, 1 recepción).
+- OC ya recibida → `orden_no_recibible`. Otra organización en `p_org` → P0002; usuario de otra
+  organización → 42501; cajero sin `inventory.create` → 42501 `sin_permiso`; administrador de otra
+  organización con el uuid ajeno → P0002; `anon` → sin EXECUTE; INSERT directo en
+  `purchase_receipts` → 42501; `fn_fc_int_desde_oc` desde `authenticated` → 42501.
+- Factura directa: guardar con seriales no crea ninguno; confirmar recibiendo sin lote → error y
+  la factura sigue en borrador; con serial repetido → rechazo; lotes de una línea inexistente →
+  `lotes_sin_linea`; con lotes por producto → lotes con existencia, seriales `in_stock` al recibir,
+  5 movimientos; recepcionar otra vez → `ya_recepcionado`; la firma de siempre sin lotes sigue igual.
+- `get_advisors` (security): nada nuevo en `anon_security_definer_function_executable`,
+  `function_search_path_mutable` ni `rls_*`; las públicas (`fn_oc_recepcionar` y las sobrecargas de
+  la factura) aparecen, como todas, en `authenticated_security_definer_function_executable`
+  (validan organización y permiso dentro); internas y ayudantes, no.
+- jest en una copia limpia de HEAD (`git archive`): `src/__tests__/inventario` (incluye
+  `recepcionOC`, 33 pruebas: ruta 401/403/404/400, contrato, lógica, traducciones, migraciones),
+  `guardrails.test.ts`, `finanzas/compras` y `kit/inventario`: 30 suites, 511 pruebas en verde
+  (copia de `2c9c0d89`). `test:tz` con `TZ=UTC` y `TZ=America/Bogota`: 21 suites, 692 pruebas en
+  verde cada una. ESLint limpio en los archivos tocados (incluidos los `any` previos del listado de
+  OC). `tsc` (8 GB) en el árbol de trabajo: 0 errores en los archivos de B8; en la copia limpia no
+  terminó antes de parar (máquina cargada): repetirlo al retomar.
+
+**Pendiente o distinto**:
+- La factura de una OC recibida sale con el costo de la línea de la OC y `tax_rate` 0 (regla
+  anterior de `fn_factura_compra_desde_oc`, sin cambios); el costo real del proveedor distinto al de
+  la orden se corrige editando la OC antes de recibir.
+- El formulario de factura identifica los lotes por producto: si el mismo producto con lotes está
+  en dos líneas, la base pide el lote (`lote_requerido`); recibir desde el detalle (por línea).
+- RLS de `purchase_order_items` sigue `FOR ALL` (el navegador aún podría escribir
+  `received_quantity`): B10 la cierra junto con las demás.
+- P8 fase 2 (retirar `serial_numbers_serial_key`): B10, ya validado por organización aquí.
+- Imprimir etiquetas de lote al recibir (Figma) y la pantalla completa de recepción
+  (`583:67712`, variantes y confirmar) quedan para quien rehaga la OC.
+- Revisión visual en el navegador pendiente (no se arrancó el servidor de desarrollo del dueño).
+
+**Estado al parar (2026-09-29)**: todo lo de B8 está en HEAD (`33382c6a`, `e109b120`, `341b54ff`);
+las 3 migraciones aplicadas tienen su `.sql` y su rollback; sin archivos de B8 por commitear.
+Falta: `tsc` en copia limpia de HEAD y la revisión visual en el navegador.

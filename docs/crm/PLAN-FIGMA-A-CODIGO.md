@@ -1,0 +1,1532 @@
+# CRM — del Figma al código con el flujo completo conectado
+
+Fecha: 2026-09-29. Análisis sin cambios de código, de base de datos ni de Figma.
+
+Fuentes:
+
+- Figma `EAvjINVRnlzFM70GVoWXgl`, solo lectura (`get_metadata`, `get_screenshot`).
+  - Inventario tomado a las **22:58 UTC** y verificado sin cambios a las **23:02 UTC**.
+  - Otros agentes están añadiendo secciones nuevas de CRM mientras se escribe esto. Lo que aparezca
+    después de esa hora no está aquí.
+- Repositorio local (`src/**`).
+- Base Supabase `jgmgphmzusbluqhuqihj`, solo `SELECT` y conteos por MCP.
+- Documentos previos, que este plan complementa y no repite:
+  - [`docs/design/CRM-OPORTUNIDADES-LEADS-PIPELINE.md`](../design/CRM-OPORTUNIDADES-LEADS-PIPELINE.md):
+    análisis del 23 y 24 de septiembre, decisiones del dueño y node ids del diseño.
+  - [`docs/design/AUDITORIA-CONTROLES-CLIENTES-CRM.md`](../design/AUDITORIA-CONTROLES-CLIENTES-CRM.md):
+    control por control, con archivo y línea.
+  - [`docs/crm-revenue-os/`](../crm-revenue-os/): plan V4 del CRM, fases 00–16 y `BRIEF-UX-CRM.md`.
+
+Sin datos de organizaciones clientes: solo conteos. Los ejemplos del Figma son ficticios.
+
+> **Regla del dueño (2026-09-29): qué se puede implementar.**
+>
+> - Al código solo pasa el diseño de CRM que **ya existía y está aprobado**.
+> - Las secciones nuevas que otros agentes crean hoy en Figma **no se implementan** hasta que el
+>   dueño las revise y apruebe:
+>   - «CRM · Telefonía y llamadas (Nuevo)»;
+>   - «CRM · IA y automatización (Nuevo)»;
+>   - «CRM · Red y gestión (Nuevo)».
+> - Todo frame o sección de CRM que diga **«propuesta»** tampoco es implementable hasta su
+>   aprobación.
+>
+> En este documento:
+>
+> - **Implementable:**
+>   - la sección «CRM — Leads, actividades y acciones rápidas» (`765:446568`, 36 frames);
+>   - los componentes de «02 Componentes › CRM (Nuevo)» (`759:20897`), que existen desde el 23-sep.
+> - **No implementable hasta aprobación:**
+>   - la sección «CRM — Pipeline y oportunidades **(propuesta)**» (`768:454425`, 97 frames);
+>   - las tres secciones nuevas.
+>
+> Todo lo no implementable está listado en §1.4. En las olas (§7) va aparte, como **ola 3B
+> bloqueada**.
+
+> **Árbol compartido.** Hay trabajo de otra sesión sin commit en el importador de leads:
+> - `src/app/app/crm/leads/importar/`, `src/app/api/crm/leads/importar/` y `src/components/crm/leads/importar/`;
+> - `src/lib/crm/importacionLeads/`, `src/lib/importacion/`;
+> - `leadCreateService.ts`, `leadCustomer.ts`, `leadsImportService.ts` y `leadsImportLookup.ts`;
+> - `messages/*.json`.
+>
+> Ninguna ola de este plan debe tocar esos archivos hasta que esa sesión los suba.
+
+---
+
+## 0. Resumen
+
+### 0.1 Conteos
+
+| Qué | Cuántos |
+|---|---|
+| Páginas de Figma con CRM | 1 página propia, **«11 CRM»** (`759:17`), con 2 secciones, más la sección de componentes «CRM (Nuevo)» en «02 Componentes» |
+| Frames de pantalla en «11 CRM» (existentes a las 23:02 UTC) | **133**: 75 de escritorio, 49 de móvil y 9 entre drawer de 768 px y láminas de anotación |
+| — implementables | **36**: sección «Leads, actividades y acciones rápidas» (`765:446568`) |
+| — no implementables hasta aprobación | **97**: sección «Pipeline y oportunidades **(propuesta)**» (`768:454425`) |
+| Secciones nuevas de hoy (pendientes de aprobación, fuera de las olas) | 3, detectadas entre las 23:11 y las 23:12 UTC: «CRM · IA y automatización (Nuevo)» `1295:767945` y «CRM · Red y gestión (Nuevo)» `1295:767955`, las dos en «11 CRM» y todavía sin frames; «CRM — Telefonía y llamadas (Nuevo)» `1295:36609`, en «02 Componentes», con 12 íconos y 6 sets en construcción |
+| Componentes CRM en Figma | **20 sets con 120 variantes**, más 3 íconos. Se reutilizan además 4 componentes de la sección «Clientes» y unos 18 del kit |
+| Componentes Figma de CRM que ya existen en código con ese nombre | 3 de 20: `QuickActionsBar`, `OpportunityForm` y `TimelineFilters`. Los tres son parciales |
+| Rutas de página del CRM | 34 `page.tsx` bajo `src/app/app/crm/**`, con 19 entradas de menú en `src/config/crmNav.ts` |
+| Rutas API del CRM | 175 `route.ts` bajo `src/app/api/crm/**` |
+| Código de componentes CRM | 402 archivos y **64.077 líneas** en 34 carpetas de `src/components/crm/**` |
+| Servicios CRM | 221 archivos en `src/lib/services/crm/**` |
+| Pruebas que tocan el CRM | 214 archivos `*.test.ts(x)`; 124 están en `src/lib/services/crm/__tests__` |
+| i18n | Namespace `crm` con **94 claves**. Solo 4 archivos del CRM usan `useTranslations`: el resto del texto está cableado en español |
+| Tablas de BD que usa el CRM | unas 95; §3 lista las que importan a las pantallas del Figma |
+| Pantallas del menú CRM **sin diseño** en Figma | **14 de 19** entradas de menú (§6) |
+
+### 0.2 Las 10 brechas más importantes
+
+1. **La página Leads del Figma y la del código muestran cosas distintas.**
+   - El Figma lista personas y empresas con `customers.lifecycle_stage='lead'` (35.159 hoy), con
+     paginación en servidor. Lo decidió el dueño el 2026-09-23.
+   - El código lista `opportunities.record_type='lead'` (42 filas, de 2 organizaciones), vía
+     `GET /api/crm/leads`.
+   - Hay que rehacer la ruta, la pantalla y la acción principal, que pasa de «Convertir a deal» a
+     «Calificar → crear oportunidad».
+2. **Faltan datos en `customers` para la fila de lead.** El Figma muestra en la tabla de leads
+   Origen, Responsable, Score, Último contacto y «Descartar lead». La tabla `customers` no tiene:
+   - dueño;
+   - origen: solo 6 filas lo guardan en `metadata.source`;
+   - score;
+   - último contacto;
+   - estado de descarte: el CHECK de `lifecycle_stage` solo admite
+     `lead|opportunity|customer|churned`.
+
+   Hace falta una migración aditiva (§7.3, M1).
+3. **El estado «sin embudo de ventas» es la norma, no la excepción.**
+   - 44 de las 49 organizaciones con el módulo CRM activo no tienen ningún pipeline
+     `pipeline_type='sales'`.
+   - El Figma lo dibuja en 6 frames y resuelve el caso con el asistente «Nuevo pipeline» de 3 pasos.
+   - En el código, el pipeline se crea y se borra desde el navegador (`PipelineHeader.tsx:233-313`).
+     `GET /api/crm/pipeline-templates` existe y ninguna pantalla lo usa.
+4. **No hay ruta de servidor para crear ni editar una oportunidad.**
+   - `opportunitiesService.ts` (1.092 líneas) escribe con `@/lib/supabase/config`, el cliente de
+     navegador: crear, editar, perder, borrar, duplicar, tareas y notas.
+   - Solo pasan por el servidor el cambio de etapa (`PATCH /api/crm/opportunities/[id]/stage`) y los
+     leads.
+   - El formulario único del Figma, con `Origen=general|cliente|factura|conversación|lead`, necesita
+     `POST` y `PATCH /api/crm/opportunities` antes que la interfaz.
+5. **Permisos resueltos en el cliente, o no resueltos.**
+   - Ninguna pantalla del CRM usa `usePermission(s)`. Hay 0 archivos.
+   - El Figma dibuja el estado «sin permiso» en 12 frames y pide `MoveStageDialog Resultado=sin permiso`.
+   - En el catálogo `permissions` solo existen `crm.customers.*`, `crm.contacts.*`, `crm.leads.*` y
+     `crm.jobs.*`. No hay permisos de oportunidades, etapas, pipelines ni actividades.
+   - `stagePermissions.ts` decide por id de rol `[1,2,5]`.
+6. **Perder no mueve de etapa y se escribe desde el navegador.**
+   - `markAsLost` hace un `update` directo (`opportunitiesService.ts:585-633`). Ya fusiona `metadata`,
+     pero no mueve a la etapa `is_lost` ni pasa por el servidor.
+   - Ganar ya va por `PATCH …/stage`.
+   - El Figma unifica los dos en `WinDialog` y `LoseDialog`. El código tiene todavía:
+     - para ganar: `ClosedWonDialog`, `WonCloseModal` y `MarkWonFlow`;
+     - para perder: `StructuredLossDialog` y `LossReasonDialog`.
+7. **La página Actividades del Figma no calza con el código.**
+   - El Figma pide una línea de tiempo agrupada por día, con 9 tipos y KPIs, y un `ActivityDialog`
+     por tipo.
+   - El código es una tabla (`ActividadesTable`) cuyo editar y borrar van **directo desde el
+     navegador** (`ActividadesService.ts:233,246`). La ruta `/api/crm/activities` solo tiene `POST`.
+   - La RLS deja a cualquier miembro editar o borrar la actividad de otro.
+   - Las fechas salen con `Intl` `es-ES`, sin zona horaria (`ActividadesTable.tsx:75`).
+8. **Cuatro líneas de tiempo y zona horaria cableada.**
+   - `timeline/utils.ts:44,99,107` fija `America/Bogota` por defecto.
+   - 6 llamadores no pasan la zona horaria de la organización: secuencias, automatizaciones, referidos
+     y trabajos.
+   - La ficha `/app/clientes/[id]` sigue con el `TimelineTab` viejo, sin notas, llamadas ni correos.
+   - Hay **dos fichas de cliente**: `/app/clientes/[id]` y `/app/crm/clientes/[id]`, de 487 líneas.
+     El Figma dibuja una sola.
+9. **Kit CRM por construir.** 17 de los 20 componentes del Figma no existen en código:
+   - `OpportunityCard`, `StageColumn`, `KpiMoneda` y `OpportunityRowMenu`;
+   - `LeadRow`, `QualifyLeadDialog`, `CaptureBanner`, `CargarMas` y `ActivityDialog`;
+   - `CustomerLinkPicker`, `WinDialog`, `LoseDialog` y `MoveStageDialog`;
+   - `StageEditorRow`, `PipelineTemplateCard`, `StageBar` y `OpportunityDrawerHeader`.
+
+   El kit general `src/components/kit` sí trae la base que el diseño reutiliza: `PageHeader`,
+   `StatCard`, `KpiCompacto`, `FilterChips`, `Pagination`, `BulkActionBar`, `EmptyState`,
+   `ListCard`, `RowActionsMenu`, `CustomerPicker` y `PanelAdaptable`.
+10. **Conexiones del flujo sin pantalla.**
+    - `getOpportunityFinance360` (`/api/crm/finance/[type]/[id]`) no la usa ninguna pantalla. El Figma
+      la pinta como tarjeta «Conexiones» del detalle.
+    - `calendar_events` no tiene `opportunity_id`: una reunión no aparece en la oportunidad.
+    - Ninguna ficha de cliente tiene «Nueva oportunidad».
+    - Finanzas y Chat no abren el formulario con `Origen=factura|conversación`.
+    - `opportunity_stage_history` tiene 1 fila para 70 oportunidades, así que «días en etapa» no tiene
+      historia.
+
+> **Aviso sobre las brechas 3–6 y 9–10.** Describen pantallas cuyo diseño está en la sección
+> «(propuesta)»: Pipeline, Oportunidades, detalle, drawer, formulario y diálogos. El análisis vale,
+> pero **su reemplazo visual espera la aprobación del dueño** (ola 3B). Los arreglos de backend y
+> seguridad que no dependen del diseño sí van en la ola 1: escrituras desde el navegador, permisos y
+> funciones SQL heredadas.
+
+### 0.3 Plan por olas
+
+| Ola | Qué | Tamaño | Depende de |
+|---|---|---|---|
+| 0 | Decisiones del dueño (**incluida la aprobación de la sección «propuesta», D7**) y pruebas de caracterización de los flujos vivos | S | — |
+| 1 | Backend: permisos, RPC transaccionales, rutas de servidor y migraciones. Los pasos solo al servicio de la ola 3B van marcados | L | 0 |
+| 2 | Kit CRM: los 20 componentes de «CRM (Nuevo)», con lógica pura probada e i18n | L | 0 (en paralelo con 1) |
+| **3A** | **Implementable ya:** Leads (incluido «Calificar» → `OpportunityForm Origen=lead`), Actividades, acciones rápidas y entradas de la ficha del cliente, todo de la sección `765:446568` | L | 1 y 2 |
+| **3B** | **Bloqueada hasta aprobación:** Pipeline kanban y tabla, «Nuevo pipeline» con plantillas, drawer, Oportunidades, detalle, formulario en página y diálogos de etapa, todo de la sección `768:454425` «(propuesta)» | XL | 1, 2 y **D7** |
+| 4 | Puntos de entrada cruzados: Finanzas y Chat, cuyos frames están en la sección «propuesta», así que siguen a la 3B; POS; GO Assistant | M–L | 3A (ficha) y 3B (resto) |
+| 5 | Limpieza de código muerto y duplicados; guardarraíles nuevos | M | 3A y 3B |
+| 6 | Módulos sin diseño aprobado, incluidas las 3 secciones nuevas de hoy: solo higiene (fechas, i18n, servidor) hasta que el dueño apruebe su Figma | M por módulo | aprobación |
+
+---
+
+## 1. Inventario de Figma
+
+### 1.1 Páginas y secciones
+
+La API de metadatos solo lista las páginas cargadas: `01 Sistema` y `02 Componentes`. La página de
+CRM se localizó por su id, que está documentado.
+
+| Página | Sección | Id | Tamaño | Contenido |
+|---|---|---|---|---|
+| 11 CRM | CRM — Leads, actividades y acciones rápidas | [`765:446568`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=765-446568) | 9.600 × 9.551 | 36 frames |
+| 11 CRM | CRM — Pipeline y oportunidades (propuesta) | [`768:454425`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=768-454425) | 15.280 × 23.330 | 97 frames. **No implementable hasta aprobación** (dice «propuesta») |
+| 11 CRM | CRM · IA y automatización (Nuevo) | [`1295:767945`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1295-767945) | — | **Nueva hoy (23:11 UTC), pendiente de aprobación.** Solo título y 7 filas: Agentes IA, Automatizaciones, Segmentos, Campañas, Plantillas, Secuencias y Objeciones |
+| 11 CRM | CRM · Red y gestión (Nuevo) | [`1295:767955`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1295-767955) | — | **Nueva hoy (23:11 UTC), pendiente de aprobación.** Solo título y subtítulo, sin frames |
+| 02 Componentes | CRM — Telefonía y llamadas (Nuevo) | [`1295:36609`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1295-36609) | — | **Nueva hoy (23:12 UTC), pendiente de aprobación.** 12 íconos de telefonía y los sets `Softphone/Tecla`, `Softphone/Control`, `Softphone/BotonLlamada`, `Llamada/ResultadoOpcion`, `Llamada/Reproductor` y `Llamada/SegmentoTranscripcion` |
+| 02 Componentes | CRM (Nuevo) | [`759:20897`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=759-20897) | 4.640 × 21.000 | 20 sets y 3 íconos |
+| 02 Componentes | Clientes | [`223:7911`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=223-7911) | — | `CustomerIdentityCard`, `TimelineEntry`, `QuickActionsBar`, `CustomerPicker` y otros, que el CRM reutiliza |
+| 02 Componentes | Teléfono — PhoneInput (Nuevo) | [`717:17024`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=717-17024) | — | `PhoneInput` (para formularios de lead y cliente) |
+| 06 Clientes | (ver `docs/design/PARIDAD-CLIENTES.md`) | — | — | Catálogo y ficha del cliente. Fuera del alcance de este plan salvo las entradas de CRM (§4.11) |
+
+**Aprobación.**
+
+- Ningún nodo lleva marca de aprobación. Se buscaron «aprobado», «revisado», «✓» y «listo para» en
+  nombres de nodo: nada.
+- La sección de Pipeline se llama «(propuesta)». La de Leads y actividades no lleva calificativo.
+- Las decisiones del dueño del 23 y el 24 de septiembre están aplicadas en el diseño, según
+  `CRM-OPORTUNIDADES-LEADS-PIPELINE.md` §Decisiones:
+  - CRM como ítem propio del menú;
+  - formulario único como panel de 480 px;
+  - Leads = personas y empresas;
+  - KPI en moneda base con desglose.
+- **Por la regla del dueño, la sección «(propuesta)» no se implementa hasta que la apruebe
+  expresamente.** Es el bloqueo principal del plan (D7). Los estados de sus frames están en §1.4.
+
+**Pendientes que el propio diseño declara** (doc de diseño §Pendiente):
+
+- no hay vista Pronóstico;
+- no hay pantalla de reasignación de los 23 leads que están en un embudo de onboarding;
+- no hay `TaskForm` único (es del agente de PM);
+- no hay ficha del cliente en móvil;
+- `Badge` no enlaza `Texto`;
+- `Icon/Trophy` no hereda el blanco dentro de un botón primario;
+- la sección de Leads sigue resaltando «Clientes» en el `Sidebar`.
+
+**Duplicado en el propio Figma.** Hay dos componentes `QuickActionsBar`:
+
+- `329:108300`, en la sección Clientes;
+- `759:21433`, en la sección CRM.
+
+Hay que pedir a diseño que uno sea instancia del otro.
+
+### 1.2 Componentes CRM (`02 Componentes › CRM (Nuevo)`)
+
+| Componente | Id | Variantes | Reemplaza en código | Existe hoy |
+|---|---|---|---|---|
+| Íconos `Icon/Trophy`, `Icon/ListPlus`, `Icon/Kanban` | [`759:20898`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=759-20898) | 3 | lucide `Trophy`, `ListPlus`, `Kanban` | sí (lucide) |
+| `QuickAction` | [`759:21219`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=759-21219) | 24: Acción (6) × Formato botón/ícono × Estado default/deshabilitado | botones de `QuickActionsBar.tsx` | parcial: los motivos ya están en `quickActionsConfig.ts`; Llamar nunca se deshabilita |
+| `QuickActionsBar (CRM)` | [`759:21433`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=759-21433) | 5: tarjeta, drawer, detalle, cliente, tarjeta móvil | `shared/QuickActionsBar.tsx` (258 líneas) | parcial: faltan `cliente` y `tarjeta móvil`, y en la tarjeta solo aparece con hover |
+| `OpportunityRowMenu` | [`759:21624`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=759-21624) | 2: abierta, cerrada | menús de `OpportunitiesTable`, `TableView` y `DetailHeader` | no; base en kit `RowActionsMenu` |
+| `OpportunityCard` | [`759:22188`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=759-22188) | 8: normal, acciones, arrastrando, vencida, ganada y perdida en kanban; normal y vencida en lista | `pipeline/OpportunityCardV2.tsx` | parcial: faltan responsable, prioridad, días en etapa y acciones siempre visibles |
+| `StageColumn` | [`759:22544`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=759-22544) | 4: normal, destino, vacía, cargando | `KanbanColumnV2` | parcial |
+| `KpiMoneda` | [`759:22664`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=759-22664) | 3: completo, falta tasa, desglose | `OpportunitiesStats` y totales del kanban | no |
+| `LeadRow` | [`759:444712`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=759-444712) | 4: encabezado, normal, seleccionada, cargando | tabla de `leads/page.tsx` | no |
+| `QualifyLeadDialog` | [`759:445219`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=759-445219) | 2: dialog, sheet | confirmación «Convertir a deal» | no |
+| `CaptureBanner` | [`759:444768`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=759-444768) | 2: escritorio, móvil | — | no |
+| `TimelineFilters` | [`759:444935`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=759-444935) | 2: escritorio, móvil | `timeline/TimelineFilters.tsx` | parcial |
+| `CargarMas` | [`759:444795`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=759-444795) | 3: listo, cargando, fin | «Cargar más» de `OpportunityTimeline` | no, como componente |
+| `ActivityDialog` | [`760:445129`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=760-445129) | 10: llamada, correo, whatsapp, reunión y nota, en dialog y sheet | `ActividadForm` (526 líneas), `ComposeEmailDialog`, `ComposeWhatsAppDialog`, `MeetingDialog` y `QuickNoteDialog` | no; hoy son 5 diálogos distintos |
+| `CustomerLinkPicker` | [`761:23596`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=761-23596) | 7: buscar (Todos, Personas, Empresas), crear, cargo, sin resultados, cargando | `CustomerSearchSelect`, `CompanyContactsManager` y otros 6 selectores de cliente | no; base en kit `CustomerPicker` + `GET /api/crm/customers/search` (RPC `fn_clientes_buscar`) |
+| `WinDialog` | [`761:23994`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=761-23994) | 4: ficha, acciones y resumen en dialog; ficha en sheet | `ClosedWonDialog` + `WonCloseModal` + `MarkWonFlow` | no |
+| `LoseDialog` | [`761:24268`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=761-24268) | 3: simple y competencia en dialog; simple en sheet | `StructuredLossDialog` + `LossReasonDialog` | no |
+| `MoveStageDialog` | [`761:24498`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=761-24498) | 3: confirmar, gate, sin permiso | `GateWarningDialog` | no |
+| `OpportunityForm` | [`766:448739`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=766-448739) | 9: page crear y editar; dialog general, cliente y lead; sheet cliente, factura, conversación y lead | `oportunidades/OpportunityForm.tsx` (1.201 líneas) + `CreateOpportunityDialog` | parcial: no tiene `Layout=sheet` ni `Origen`, y es un solo archivo de 1.201 líneas |
+| `StageEditorRow` | [`798:24970`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=798-24970) | 10: default, arrastrando, ganada, perdida y error, en escritorio y móvil | `StageDialog`, `ExitGatesEditor` | no |
+| `PipelineTemplateCard` | [`800:25326`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=800-25326) | 8: Ventas, Onboarding, Renovación y En blanco, cada una default o seleccionada | diálogo de `PipelineHeader` | no |
+| `StageBar` | [`801:25456`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=801-25456) | 4: abierta, ganada y perdida en escritorio; abierta en móvil | embudo de `DetailHeader` y `StageSelect` del drawer | no |
+| `OpportunityDrawerHeader` | [`801:25828`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=801-25828) | 3: escritorio, móvil, móvil compacta | `drawer/DrawerHeader.tsx` | no |
+
+Componentes reutilizados de otras secciones:
+
+- `CustomerIdentityCard`
+  ([`329:108665`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=329-108665)).
+- `TimelineEntry`
+  ([`329:109173`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=329-109173)), con
+  `Tipo=reunión` y `llamada IA` añadidos.
+- `CustomerPicker`
+  ([`192:11644`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=192-11644)).
+- `ContactoVinculadoRow`
+  ([`329:109310`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=329-109310)).
+- `PhoneInput`
+  ([`724:18240`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=724-18240)).
+- `TaskQuickView` `626:14723`, del agente de PM.
+- Del kit:
+  - estructura: `PageHeader`, `Sidebar`, `AppHeader`, `MobileHeader` y `MobileTabBar`;
+  - datos: `StatCard`, `KpiCompacto` y `ListCard`;
+  - búsqueda y filtros: `SearchBar`, `FilterButton` y `Chip`;
+  - listas: `Pagination` y `BulkActionBar`;
+  - estados y menús: `EmptyState`, `MenuItem`, `ConfirmDialog` y `Toast`.
+
+### 1.3 Pantallas (133 frames)
+
+El «estado» se deduce del nombre del frame. «Escritorio 1440» lleva `Sidebar` + `AppHeader`;
+«Móvil 390» lleva `MobileHeader` + `MobileTabBar`.
+
+#### Sección «CRM — Leads, actividades y acciones rápidas» (`765:446568`) — 36 frames
+
+| # | Frame | Plataforma | Estado que representa | Enlace |
+|---|---|---|---|---|
+| 1 | Escritorio / Leads — listo | Escritorio 1440 | listo | [`765:446571`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=765-446571) |
+| 2 | Escritorio / Leads — selección masiva | Escritorio 1440 | selección masiva | [`765:447453`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=765-447453) |
+| 3 | Escritorio / Leads — leads sin colocar (sin embudo de ventas) | Escritorio 1440 | sin embudo de ventas | [`765:448463`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=765-448463) |
+| 4 | Escritorio / Leads — detalle rápido (hoja) | Escritorio 1440 | hoja/diálogo | [`767:2873`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=767-2873) |
+| 5 | Escritorio / Leads — calificar (paso 1) | Escritorio 1440 | asistente (paso) | [`767:3240`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=767-3240) |
+| 6 | Escritorio / Leads — cargando | Escritorio 1440 | cargando | [`767:3470`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=767-3470) |
+| 7 | Escritorio / Leads — vacío (primer paso) | Escritorio 1440 | vacío | [`767:4403`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=767-4403) |
+| 8 | Escritorio / Leads — búsqueda sin resultados | Escritorio 1440 | sin resultados | [`767:5218`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=767-5218) |
+| 9 | Escritorio / Leads — error | Escritorio 1440 | error | [`767:6038`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=767-6038) |
+| 10 | Escritorio / Leads — sin permiso | Escritorio 1440 | sin permiso | [`767:6852`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=767-6852) |
+| 11 | Móvil / Leads — listo | Móvil 390 | listo | [`768:6419`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=768-6419) |
+| 12 | Móvil / Leads — cargando más | Móvil 390 | cargando | [`768:7017`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=768-7017) |
+| 13 | Móvil / Leads — selección masiva | Móvil 390 | selección masiva | [`768:7203`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=768-7203) |
+| 14 | Móvil / Leads — detalle rápido (hoja) | Móvil 390 | hoja/diálogo | [`768:7837`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=768-7837) |
+| 15 | Móvil / Leads — calificar (paso 1) | Móvil 390 | asistente (paso) | [`768:8063`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=768-8063) |
+| 16 | Móvil / Leads — leads sin colocar | Móvil 390 | sin embudo de ventas | [`768:8277`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=768-8277) |
+| 17 | Móvil / Leads — búsqueda sin resultados | Móvil 390 | sin resultados | [`768:8590`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=768-8590) |
+| 18 | Móvil / Leads — vacío (primer paso) | Móvil 390 | vacío | [`768:8738`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=768-8738) |
+| 19 | Escritorio / Actividades — listo | Escritorio 1440 | listo | [`769:12376`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=769-12376) |
+| 20 | Escritorio / Actividades — menús «Nueva actividad» y «⋯» | Escritorio 1440 | menú abierto | [`769:13036`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=769-13036) |
+| 21 | Escritorio / Actividades — registrar llamada | Escritorio 1440 | diálogo (ActivityDialog llamada) | [`769:13655`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=769-13655) |
+| 22 | Escritorio / Actividades — editar nota | Escritorio 1440 | diálogo (ActivityDialog nota) | [`769:13838`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=769-13838) |
+| 23 | Escritorio / Actividades — eliminar | Escritorio 1440 | confirmación | [`769:13935`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=769-13935) |
+| 24 | Escritorio / Actividades — cargando | Escritorio 1440 | cargando | [`770:15494`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=770-15494) |
+| 25 | Escritorio / Actividades — vacío (primer paso) | Escritorio 1440 | vacío | [`770:16039`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=770-16039) |
+| 26 | Escritorio / Actividades — sin resultados | Escritorio 1440 | sin resultados | [`770:16578`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=770-16578) |
+| 27 | Móvil / Actividades — listo | Móvil 390 | listo | [`770:17115`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=770-17115) |
+| 28 | Móvil / Actividades — nueva actividad (hoja de tipos) | Móvil 390 | hoja/diálogo | [`770:17351`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=770-17351) |
+| 29 | Móvil / Actividades — enviar WhatsApp (hoja) | Móvil 390 | hoja/diálogo | [`770:17452`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=770-17452) |
+| 30 | Escritorio / Ficha del cliente — Oportunidades con «Nueva oportunidad» | Escritorio 1440 | listo | [`772:19838`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=772-19838) |
+| 31 | Escritorio / Ficha del cliente — Nueva oportunidad (hoja, Origen=cliente) | Escritorio 1440 | hoja/diálogo | [`772:20628`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=772-20628) |
+| 32 | Escritorio / Ficha del cliente — vacío (cliente sin actividad) corregido | Escritorio 1440 | vacío | [`772:20971`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=772-20971) |
+| 33 | Escritorio / Ficha del cliente — crear la primera tarea (TaskForm Origen=cliente) | Escritorio 1440 | vista rápida (TaskQuickView) | [`772:21523`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=772-21523) |
+| 34 | Escritorio / Leads — calificar (paso 2: OpportunityForm) | Escritorio 1440 | asistente (paso) | [`772:21705`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=772-21705) |
+| 35 | Acciones rápidas — un solo componente en cuatro lugares | Escritorio 1440 | lámina de uso (anotación) | [`773:472568`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=773-472568) |
+| 36 | Acciones rápidas — qué hace cada botón | Anotación / lámina 3320×1518 | lámina de uso (anotación) | [`773:472975`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=773-472975) |
+
+#### Sección «CRM — Pipeline y oportunidades (propuesta)» (`768:454425`) — 97 frames
+
+> **No implementable hasta aprobación del dueño**: la sección dice «propuesta». Se inventaría para
+> analizar brechas y preparar el backend. Ningún frame de esta tabla entra en la ola 3A.
+
+| # | Frame | Plataforma | Estado que representa | Enlace |
+|---|---|---|---|---|
+| 1 | Escritorio / Pipeline kanban — listo | Escritorio 1440 | listo | [`768:454428`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=768-454428) |
+| 2 | Escritorio / Pipeline kanban — arrastrando | Escritorio 1440 | arrastrando | [`768:456094`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=768-456094) |
+| 3 | Escritorio / Pipeline kanban — acciones rápidas y menú «⋯» | Escritorio 1440 | menú abierto | [`768:457615`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=768-457615) |
+| 4 | Escritorio / Pipeline — vista Tabla con selección | Escritorio 1440 | selección masiva | [`768:459368`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=768-459368) |
+| 5 | Escritorio / Pipeline kanban — cargando | Escritorio 1440 | cargando | [`770:462337`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=770-462337) |
+| 6 | Escritorio / Pipeline kanban — vacío (primer paso) | Escritorio 1440 | vacío | [`770:463421`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=770-463421) |
+| 7 | Escritorio / Pipeline kanban — sin resultados | Escritorio 1440 | sin resultados | [`770:464381`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=770-464381) |
+| 8 | Escritorio / Pipeline kanban — error | Escritorio 1440 | error | [`770:464677`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=770-464677) |
+| 9 | Escritorio / Pipeline kanban — sin permiso | Escritorio 1440 | sin permiso | [`770:464982`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=770-464982) |
+| 10 | Escritorio / Pipeline kanban — sin embudo de ventas | Escritorio 1440 | sin embudo de ventas | [`770:465308`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=770-465308) |
+| 11 | Móvil / Pipeline — listo | Móvil 390 | listo | [`771:37311`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=771-37311) |
+| 12 | Móvil / Pipeline — cargando | Móvil 390 | cargando | [`771:37831`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=771-37831) |
+| 13 | Móvil / Pipeline — vacío | Móvil 390 | vacío | [`771:37994`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=771-37994) |
+| 14 | Móvil / Pipeline — sin resultados | Móvil 390 | sin resultados | [`771:38193`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=771-38193) |
+| 15 | Móvil / Pipeline — error | Móvil 390 | error | [`771:38433`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=771-38433) |
+| 16 | Móvil / Pipeline — sin permiso | Móvil 390 | sin permiso | [`771:38566`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=771-38566) |
+| 17 | Móvil / Pipeline — sin embudo de ventas | Móvil 390 | sin embudo de ventas | [`771:38704`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=771-38704) |
+| 18 | Escritorio / Oportunidades — listo | Escritorio 1440 | listo | [`773:23160`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=773-23160) |
+| 19 | Escritorio / Oportunidades — selección masiva | Escritorio 1440 | selección masiva | [`773:24723`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=773-24723) |
+| 20 | Escritorio / Oportunidades — menú «⋯» abierto | Escritorio 1440 | menú abierto | [`773:25279`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=773-25279) |
+| 21 | Escritorio / Oportunidades — cargando | Escritorio 1440 | cargando | [`773:25720`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=773-25720) |
+| 22 | Escritorio / Oportunidades — vacío (primer paso) | Escritorio 1440 | vacío | [`773:26314`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=773-26314) |
+| 23 | Escritorio / Oportunidades — sin resultados | Escritorio 1440 | sin resultados | [`773:26719`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=773-26719) |
+| 24 | Escritorio / Oportunidades — error | Escritorio 1440 | error | [`773:27128`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=773-27128) |
+| 25 | Escritorio / Oportunidades — sin permiso | Escritorio 1440 | sin permiso | [`773:27539`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=773-27539) |
+| 26 | Móvil / Oportunidades — listo | Móvil 390 | listo | [`775:471491`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=775-471491) |
+| 27 | Móvil / Oportunidades — menú «⋯» (hoja) | Móvil 390 | hoja/diálogo | [`775:471915`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=775-471915) |
+| 28 | Móvil / Oportunidades — cargando | Móvil 390 | cargando | [`775:472274`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=775-472274) |
+| 29 | Móvil / Oportunidades — vacío | Móvil 390 | vacío | [`775:472436`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=775-472436) |
+| 30 | Móvil / Oportunidades — sin resultados | Móvil 390 | sin resultados | [`775:472586`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=775-472586) |
+| 31 | Móvil / Oportunidades — error | Móvil 390 | error | [`775:472808`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=775-472808) |
+| 32 | Móvil / Oportunidades — sin permiso | Móvil 390 | sin permiso | [`775:472941`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=775-472941) |
+| 33 | Escritorio / Detalle de oportunidad — Actividad | Escritorio 1440 | listo | [`775:473076`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=775-473076) |
+| 34 | Escritorio / Detalle de oportunidad — Tareas | Escritorio 1440 | listo | [`775:473990`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=775-473990) |
+| 35 | Escritorio / Detalle de oportunidad — cargando | Escritorio 1440 | cargando | [`775:474532`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=775-474532) |
+| 36 | Escritorio / Detalle de oportunidad — no encontrada | Escritorio 1440 | no encontrada | [`775:474947`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=775-474947) |
+| 37 | Escritorio / Detalle de oportunidad — sin permiso | Escritorio 1440 | sin permiso | [`775:475356`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=775-475356) |
+| 38 | Escritorio / Pipeline — drawer de oportunidad | Escritorio 1440 | drawer | [`776:30540`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=776-30540) |
+| 39 | Móvil / Detalle de oportunidad — Actividad | Móvil 390 | listo | [`776:30808`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=776-30808) |
+| 40 | Móvil / Detalle de oportunidad — Resumen | Móvil 390 | listo | [`776:31106`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=776-31106) |
+| 41 | Móvil / Detalle de oportunidad — cargando | Móvil 390 | cargando | [`776:31417`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=776-31417) |
+| 42 | Móvil / Detalle de oportunidad — no encontrada | Móvil 390 | no encontrada | [`776:31523`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=776-31523) |
+| 43 | Móvil / Detalle de oportunidad — sin permiso | Móvil 390 | sin permiso | [`776:31652`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=776-31652) |
+| 44 | Escritorio / Nueva oportunidad — página | Escritorio 1440 | formulario (página) | [`778:32176`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=778-32176) |
+| 45 | Escritorio / Editar oportunidad — página | Escritorio 1440 | formulario (página, edición) | [`778:33132`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=778-33132) |
+| 46 | Escritorio / Pipeline — Nueva oportunidad (diálogo desde «+» de columna) | Escritorio 1440 | diálogo | [`778:33942`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=778-33942) |
+| 47 | Escritorio / Clientes › ficha › Oportunidades — Nueva oportunidad (panel) | Escritorio 1440 | panel lateral | [`778:34281`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=778-34281) |
+| 48 | Escritorio / Finanzas › factura de venta — Crear oportunidad (panel) | Escritorio 1440 | panel lateral | [`778:34520`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=778-34520) |
+| 49 | Móvil / Nueva oportunidad — desde ficha del cliente | Móvil 390 | hoja (OpportunityForm sheet) | [`778:34929`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=778-34929) |
+| 50 | Móvil / Nueva oportunidad — desde conversación | Móvil 390 | hoja (OpportunityForm sheet) | [`778:35164`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=778-35164) |
+| 51 | Escritorio / Pipeline — Soltar en Ganada → WinDialog (ficha de venta) | Escritorio 1440 | diálogo | [`779:36778`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=779-36778) |
+| 52 | Escritorio / Pipeline — WinDialog — qué hacer al ganar | Escritorio 1440 | diálogo | [`779:36974`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=779-36974) |
+| 53 | Escritorio / Pipeline — WinDialog — resumen | Escritorio 1440 | diálogo | [`779:37122`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=779-37122) |
+| 54 | Escritorio / Pipeline — Soltar en Perdida → LoseDialog (competencia) | Escritorio 1440 | diálogo | [`779:37255`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=779-37255) |
+| 55 | Escritorio / Pipeline — Mover de etapa con requisitos (gate) | Escritorio 1440 | diálogo (MoveStageDialog gate) | [`779:37437`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=779-37437) |
+| 56 | Escritorio / Pipeline — Mover a Ganada sin permiso | Escritorio 1440 | diálogo (MoveStageDialog sin permiso) | [`779:37578`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=779-37578) |
+| 57 | Escritorio / Pipeline — Vincular cliente (CustomerLinkPicker) | Escritorio 1440 | diálogo (CustomerLinkPicker) | [`779:37686`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=779-37686) |
+| 58 | Móvil / Pipeline — WinDialog en hoja | Móvil 390 | diálogo | [`779:37888`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=779-37888) |
+| 59 | Móvil / Pipeline — LoseDialog en hoja | Móvil 390 | diálogo | [`779:38310`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=779-38310) |
+| 60 | Móvil / Pipeline — Vincular empresa en hoja | Móvil 390 | hoja/diálogo | [`779:38675`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=779-38675) |
+| 61 | Puntos de entrada — formulario único de oportunidad | Anotación / lámina 2960×4199 | lámina de uso (anotación) | [`780:45596`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=780-45596) |
+| 62 | Escritorio / Pipeline kanban — acciones de la tarjeta: menú Llamar y motivo deshabilitado | Escritorio 1440 | menú abierto | [`812:53241`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=812-53241) |
+| 63 | Móvil / Pipeline — tarjeta con acciones y menú Llamar (hoja) | Móvil 390 | hoja/diálogo | [`812:54748`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=812-54748) |
+| 64 | Escritorio / Pipeline — selector de embudo abierto | Escritorio 1440 | menú abierto (selector de embudo) | [`812:54821`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=812-54821) |
+| 65 | Escritorio / Nuevo pipeline — paso 1: plantilla | Escritorio 1440 | asistente (paso) | [`816:56539`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=816-56539) |
+| 66 | Escritorio / Nuevo pipeline — paso 2: nombre, tipo, meta y por defecto | Escritorio 1440 | asistente (paso) | [`816:56990`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=816-56990) |
+| 67 | Escritorio / Nuevo pipeline — paso 3: etapas editables | Escritorio 1440 | asistente (paso) | [`816:57260`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=816-57260) |
+| 68 | Escritorio / Pipeline — sin embudo de ventas → Nuevo pipeline (Ventas elegida) | Escritorio 1440 | sin embudo de ventas | [`816:57906`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=816-57906) |
+| 69 | Escritorio / Nuevo pipeline — error al crear (no queda nada a medias) | Escritorio 1440 | error | [`816:58273`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=816-58273) |
+| 70 | Móvil / Nuevo pipeline — paso 2: nombre, tipo, meta y por defecto | Móvil 390 | asistente (paso) | [`817:64385`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=817-64385) |
+| 71 | Móvil / Nuevo pipeline — paso 3: etapas | Móvil 390 | asistente (paso) | [`817:64484`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=817-64484) |
+| 72 | Móvil / Pipeline — sin embudo de ventas → Crear embudo | Móvil 390 | sin embudo de ventas | [`817:64841`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=817-64841) |
+| 73 | Escritorio / Drawer — Resumen (arriba) | Escritorio 1440 | drawer | [`820:64894`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=820-64894) |
+| 74 | Escritorio / Drawer — Resumen (desplazado: cabecera compacta) | Escritorio 1440 | drawer | [`820:65664`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=820-65664) |
+| 75 | Escritorio / Drawer — Actividad | Escritorio 1440 | drawer | [`820:66213`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=820-66213) |
+| 76 | Escritorio / Drawer — Tareas | Escritorio 1440 | drawer | [`822:235333`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=822-235333) |
+| 77 | Escritorio / Drawer — Notas | Escritorio 1440 | drawer | [`822:235945`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=822-235945) |
+| 78 | Escritorio / Drawer — Documentos | Escritorio 1440 | drawer | [`822:236526`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=822-236526) |
+| 79 | Escritorio / Drawer — IA | Escritorio 1440 | drawer | [`822:237089`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=822-237089) |
+| 80 | Escritorio / Drawer — Onboarding (solo oportunidades de onboarding) | Escritorio 1440 | drawer | [`822:237627`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=822-237627) |
+| 81 | Escritorio / Drawer — menú «⋯» de la oportunidad | Escritorio 1440 | menú abierto | [`822:238154`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=822-238154) |
+| 82 | Drawer — cargando | Drawer 768 (escritorio) | cargando | [`823:245259`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=823-245259) |
+| 83 | Drawer — error: no encontrada o sin acceso | Drawer 768 (escritorio) | error | [`823:245319`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=823-245319) |
+| 84 | Drawer — Actividad vacía (primer paso) | Drawer 768 (escritorio) | vacío | [`823:245355`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=823-245355) |
+| 85 | Drawer — Tareas vacía (primer paso) | Drawer 768 (escritorio) | vacío | [`823:245617`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=823-245617) |
+| 86 | Drawer — Notas vacía (primer paso) | Drawer 768 (escritorio) | vacío | [`823:245869`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=823-245869) |
+| 87 | Drawer — Documentos: error al cargar | Drawer 768 (escritorio) | error | [`823:246103`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=823-246103) |
+| 88 | Móvil / Drawer — Resumen | Móvil 390 | drawer | [`824:170975`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=824-170975) |
+| 89 | Móvil / Drawer — Actividad | Móvil 390 | drawer | [`824:171262`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=824-171262) |
+| 90 | Móvil / Drawer — Tareas | Móvil 390 | drawer | [`824:171483`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=824-171483) |
+| 91 | Móvil / Drawer — Notas | Móvil 390 | drawer | [`824:171631`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=824-171631) |
+| 92 | Móvil / Drawer — Documentos | Móvil 390 | drawer | [`824:171769`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=824-171769) |
+| 93 | Móvil / Drawer — IA | Móvil 390 | drawer | [`824:171916`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=824-171916) |
+| 94 | Móvil / Drawer — menú «⋯» (hoja) | Móvil 390 | hoja/diálogo | [`824:172060`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=824-172060) |
+| 95 | Móvil / Drawer — cambiar etapa (hoja) | Móvil 390 | hoja/diálogo | [`824:172249`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=824-172249) |
+| 96 | Móvil / Nuevo pipeline — paso 1: plantilla | Móvil 390 | asistente (paso) | [`817:64137`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=817-64137) |
+| 97 | Móvil / Oportunidades — selección masiva | Móvil 390 | selección masiva | [`845:82719`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=845-82719) |
+
+**Cobertura de estados por pantalla del Figma**:
+
+| Pantalla | Estados |
+|---|---|
+| Leads | 10 de escritorio y 8 de móvil. **No hay «error» ni «sin permiso» en móvil** |
+| Pipeline | 10 de escritorio y 7 de móvil |
+| Oportunidades | 8 de escritorio y 8 de móvil |
+| Detalle | 5 de escritorio y 5 de móvil |
+| Actividades | 8 de escritorio y 3 de móvil. **No hay error, sin permiso, cargando ni vacío en móvil** |
+| Drawer | 9 de escritorio, 6 estados y 8 de móvil |
+
+### 1.4 Pendiente de aprobación: no implementable
+
+| Qué | Id | Hora vista | Por qué no se implementa | Qué desbloquea al aprobarse |
+|---|---|---|---|---|
+| Sección «CRM — Pipeline y oportunidades (propuesta)», 97 frames (§1.3) | [`768:454425`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=768-454425) | 22:58 | dice «propuesta» | ola 3B: Pipeline, «Nuevo pipeline», drawer, Oportunidades, detalle, formulario en página y diálogos; ola 4: Finanzas y Chat |
+| Sección «CRM · IA y automatización (Nuevo)» | [`1295:767945`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1295-767945) | 23:11 | nueva de hoy, sin revisar; aún sin frames | ola 6: Agentes IA, Automatizaciones, Segmentos, Campañas, Plantillas, Secuencias y Objeciones |
+| Sección «CRM · Red y gestión (Nuevo)» | [`1295:767955`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1295-767955) | 23:11 | nueva de hoy, sin revisar; solo título | ola 6; por el nombre, Referidos, Partners, Equipo, Salud, Pronóstico o Identidades (sin confirmar) |
+| Sección «CRM — Telefonía y llamadas (Nuevo)» | [`1295:36609`](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1295-36609) | 23:12 | nueva de hoy, sin revisar; en construcción | ola 6: softphone en navegador, Llamadas, reproductor y transcripción |
+
+Las demás coincidencias de «Propuesta» en «11 CRM» no marcan estado de diseño. Son el nombre de una
+etapa de ejemplo: las instancias `StageColumn · Propuesta` y los frames `Etapa — Propuesta`, todos
+dentro de la sección `768:454425`, y una tarea de ejemplo, «Enviar propuesta ajustada». En la sección
+`765:446568` ningún frame dice «propuesta».
+
+**Componentes de «CRM (Nuevo)» `759:20897`.** La sección existe desde el 23-sep y no dice
+«propuesta», así que se toma como diseño existente y se implementa en la ola 2. Hay un matiz:
+`OpportunityCard`, `StageColumn`, `KpiMoneda`, `WinDialog`, `LoseDialog`, `MoveStageDialog`,
+`PipelineTemplateCard`, `StageEditorRow`, `StageBar` y `OpportunityDrawerHeader` solo se usan en
+pantallas de la sección «(propuesta)». Conviene que el dueño confirme si su aprobación cubre también
+esos componentes. Si no la cubre, pasan con la ola 3B.
+
+---
+
+## 2. Inventario de código
+
+### 2.1 Rutas de página (`src/app/app/crm/**`)
+
+| Ruta | Líneas de `page.tsx` | Monta | Grupo del menú | ¿Tiene Figma? |
+|---|---|---|---|---|
+| `/app/crm` | 11 | `ModuleRootRedirect` (el panel vive en `/app/inicio#crm`) | — | n/a |
+| `/app/crm/clientes` | 12 | reutiliza `src/app/app/clientes/page.tsx` | Base de clientes | sí, en «06 Clientes» |
+| `/app/crm/clientes/[id]` | **487** | ficha CRM propia: `QuickActionsBar`, `OpportunityTimeline`, `ClientHealthCard`, `CustomerFoliosSection`, `DocumentUploader` | — | parcial (frames 772:*); **duplica** `/app/clientes/[id]` |
+| `/app/crm/identidades` | 11 | `crm/identidades` | Base de clientes | **no** |
+| `/app/crm/segmentos` (+ `nuevo`, `[id]`) | 11 | `crm/segmentos` | Base de clientes | **no** |
+| `/app/crm/salud` | 23 | `health/SaludView` | Base de clientes | **no** |
+| `/app/crm/leads` | **466** | todo en la página + `NewLeadDialog` | Comercial | sí, pero es **distinto** |
+| `/app/crm/leads/importar` | 14 | `leads/importar/ImportarLeadsAsistente` (**sin commit, de otra sesión**) | — | no; el Figma solo pone el botón «Importar» |
+| `/app/crm/pipeline` | 27 | `pipeline/PipelineView` (Kanban, Tabla, Pronóstico, Clientes, Automatización) | Comercial | sí para Kanban y Tabla; Pronóstico, Clientes y Automatización **no** |
+| `/app/crm/pipeline/edit-opportunity` | 43 | redirección heredada | — | borrable |
+| `/app/crm/oportunidades` | 274 | `OpportunitiesStats`, `OpportunitiesFilters`, `OpportunitiesTable` | Comercial | sí |
+| `/app/crm/oportunidades/nuevo` y `[id]/editar` | 26 y 53 | `OpportunityForm` | — | sí |
+| `/app/crm/oportunidades/[id]` | 18 | `OpportunityDetail` + `detail/*` | — | sí |
+| `/app/crm/pronostico` | 13 | `revenueos/RevenueOsPage` | Comercial | **no** |
+| `/app/crm/equipo` | 21 | `equipo/EquipoPage` | Comercial | **no** |
+| `/app/crm/objeciones` | 16 | `objeciones/ObjecionesPage` | Comercial | **no**; solo el bloque «Objeciones» del detalle |
+| `/app/crm/actividades` (+ `[id]`) | 11 y 21 | `actividades/ActividadesPage`, `ActividadDetalle` | Actividad | sí la lista, pero es **distinta**; el detalle `[id]` **no** |
+| `/app/crm/llamadas` | 153 | página propia | Actividad | **no** |
+| `/app/crm/campanas` (+ `nuevo`, `[id]`) | 11–16 | `crm/campanas` | Marketing | **no** |
+| `/app/crm/plantillas` (+ `nueva`, `[id]`) | 10–16 | `plantillas/PlantillasPage`, `TemplateEditorPage` | Marketing | **no** |
+| `/app/crm/secuencias` | 16 | `secuencias/SecuenciasPage` | Marketing | **no** |
+| `/app/crm/referidos` | 16 | `referidos/ReferidosPage` | Marketing | **no** |
+| `/app/crm/partners` | 16 | `partners/PartnersPage` | Marketing | **no** |
+| `/app/crm/agentes-ia` | 16 | `agentes/AgentesIaPage` | Automatización | **no** |
+| `/app/crm/automatizaciones` | 16 | `automatizaciones/AutomatizacionesPage` | Automatización | **no** |
+| `/app/crm/propuestas/[id]/imprimir` | 18 | `propuestas/ProposalPrintView` | — | **no** |
+
+El menú sale de `src/config/crmNav.ts`, la única fuente: 19 entradas, todas `enabled: true`.
+
+### 2.2 Componentes (`src/components/crm/**`) — métricas por carpeta
+
+Qué mide cada columna:
+
+- «Nav.»: archivos que importan el cliente de navegador `@/lib/supabase/config`.
+- «i18n»: archivos con `useTranslations`.
+- «Fechas OK»: archivos que usan `useFormatDate`, `formatDateInTz` o `formatPlainDate`.
+- «Moneda org.»: archivos que usan `useOrgCurrency` o `useMonedaOrganizacion`.
+- «Kit»: archivos que importan `@/components/kit`.
+
+Ninguna carpeta usa `usePermission(s)`.
+
+| Carpeta | Archivos | Líneas | Nav. | i18n | Fechas OK | Moneda org. | Kit | Figma |
+|---|---|---|---|---|---|---|---|---|
+| pipeline | 68 | 13.862 | **23** | 0 | 9 | 18 | 2 | sí |
+| oportunidades | 25 | 6.738 | 7 | 0 | 4 | 8 | 1 | sí |
+| agentes | 35 | 5.301 | 0 | 2 | 1 | 0 | 2 | no |
+| actividades | 11 | 2.903 | 1 | 0 | 0 | 0 | 1 | sí |
+| automatizaciones | 20 | 2.478 | 1 | 0 | 2 | 0 | 1 | no |
+| secuencias | 14 | 2.329 | 0 | 0 | 1 | 0 | 1 | no |
+| shared | 16 | 2.261 | 4 | 0 | 0 | 0 | 0 | sí (acciones rápidas) |
+| dashboard | 10 | 2.225 | 1 | 0 | 0 | 3 | 0 | no |
+| email | 19 | 2.167 | 0 | 0 | 0 | 0 | 0 | parcial (`ActivityDialog Tipo=correo`) |
+| equipo | 15 | 1.730 | 6 | 0 | 0 | 6 | 0 | no |
+| reportes | 10 | 1.698 | 1 | 0 | 0 | 1 | 0 | no |
+| identidades | 9 | 1.636 | 1 | 0 | 0 | 0 | 1 | no |
+| timeline | 16 | 1.552 | 2 | 0 | 0 (zona fija, ver §5) | 0 | 0 | sí |
+| leads | 10 | 1.529 | 0 | 1 | 0 | 1 | 6 | sí (solo el importador usa el kit) |
+| segmentos | 8 | 1.489 | 1 | 0 | 2 | 0 | 0 | no |
+| objeciones | 12 | 1.447 | 0 | 0 | 0 | 0 | 1 | no |
+| whatsapp | 15 | 1.427 | 3 | 0 | 0 | 0 | 0 | parcial (`ActivityDialog Tipo=whatsapp`) |
+| referidos | 12 | 1.372 | 0 | 0 | 2 | 0 | 1 | no |
+| revenueos | 10 | 1.116 | 0 | 0 | 2 | 0 | 0 | no |
+| partners | 10 | 1.108 | 0 | 0 | 1 | 0 | 1 | no |
+| calls | 6 | 1.044 | 0 | 0 | 0 | 0 | 0 | no |
+| health | 9 | 909 | 0 | 0 | 0 | 1 | 0 | no |
+| pronostico | 7 | 808 | 0 | 0 | 0 | 0 | 0 | no |
+| plantillas | 7 | 759 | 0 | 0 | 0 | 0 | 1 | no |
+| metricas | 2 | 721 | 1 | 0 | 0 | 2 | 0 | no |
+| campanas | 11 | 709 | 3 | 0 | 2 | 0 | 1 | no |
+| propuestas | 5 | 639 | 0 | 0 | 2 | 1 | 0 | no |
+| hoy, clientes, config, documents, contratos, postventa, demo | 1–2 c/u | 151–427 | 2 | 0 | 4 | 1 | 0 | no |
+
+Código muerto confirmado, con 0 importadores fuera de su archivo:
+
+- `pipeline/StageManager.tsx` (652 líneas);
+- `pipeline/modals/BulkCreateOpportunitiesDialog.tsx` (408);
+- `oportunidades/ImportLeadsCsv.tsx` (564);
+- `pipeline/KanbanSummary.tsx`;
+- `pipeline/PipelineInitializer.tsx`.
+
+`CustomerList`, `StageConfigDialog` y `LossReasonDialog` tienen un solo uso: candidatos a retirar
+cuando entre el kit.
+
+### 2.3 Servicios, rutas API y hooks
+
+**Servicios.** Son 221 archivos en `src/lib/services/crm/**`. Los que alimentan las pantallas del
+Figma:
+
+| Servicio | Uso | Cliente |
+|---|---|---|
+| `components/crm/oportunidades/opportunitiesService.ts` | CRUD de oportunidades, líneas, tareas, notas y estadísticas (**vive en `components/`, no en `lib/services`**) | navegador |
+| `opportunityStageService.ts` + `opportunityStageData.ts` + `opportunityStageReconcile.ts` | cambio de etapa con gate, `needs_won`, `needs_lost` y bloqueo optimista | servidor |
+| `leadCreateService.ts`, `leadCustomer.ts`, `leadAutoAssign.ts` y `leadAssignmentConfig.ts` | crear lead y autoasignar (los dos primeros los modifica ahora otra sesión) | servidor |
+| `timelineService.ts` + `timeline/` | línea de tiempo con 8 fuentes y cursor | servidor |
+| `activityService.ts`, `callActivityService.ts` y `callActivitySync.ts` | escribir actividades | servidor |
+| `meetingsService.ts` | reunión: `calendar_events` + actividad, con reversa | servidor |
+| `taskService.ts` → `pmService` | tareas en la tabla `tasks` compartida con PM | **navegador** |
+| `crmFinanceService.ts` | `getOpportunityFinance360` (cotizaciones, facturas, venta, reservas) | servidor, **sin pantalla** |
+| `wonCloseSteps.ts` | 7 pasos al ganar: factura, venta, reservas, onboarding, renovación, referido y comisión | mixto |
+| `pipelineTemplates.ts`, `pipelineSeedService.ts` | plantillas de pipeline y etapas por defecto (**dos juegos distintos**) | navegador / servidor |
+| `stageGateService.ts`, `stagePermissions.ts` | criterios de salida y quién puede saltarlos | servidor |
+| `lossReasonsService.ts` | catálogo de motivos de pérdida | — |
+
+**Rutas API.** Son 175 bajo `src/app/api/crm/**`. Las de las pantallas del Figma:
+
+| Ruta | Métodos | Nota |
+|---|---|---|
+| `leads` | GET, POST | GET lista `opportunities.record_type='lead'` |
+| `leads/[id]/convert` | POST | — |
+| `opportunities/[id]/stage` | **PATCH** | es la **única** ruta de oportunidades |
+| `activities` | POST | faltan PATCH y DELETE |
+| `notes` | POST | — |
+| `tasks` | POST | — |
+| `meetings` | POST | — |
+| `timeline/[type]/[id]` | GET | — |
+| `customers/search` | GET | RPC `fn_clientes_buscar` |
+| `finance/[type]/[id]` | — | sin pantalla |
+| `pipeline-templates` | GET | sin pantalla |
+| `pipeline-templates/[id]/import` | POST | sin pantalla |
+| `stages`, `stages/[id]`, `stages/[id]/gate` | — | — |
+| `objections/opportunity/[id]` | — | — |
+| `onboarding/by-opportunity/[id]` | — | — |
+| `ia/next-action` y `ia/discovery-summary` | — | — |
+| `whatsapp/send` y `email` (fuera de `crm/`) | — | — |
+
+Todas las rutas revisadas empiezan por `getServerOrgContext`, `withOrg` o un envoltorio equivalente
+(`withWhatsAppRoute`). El guardarraíl de `src/__tests__/guardrails.test.ts` lo exige para `crm/**` en
+modo estricto.
+
+**Hooks CRM**, 32 en total:
+
+- pipeline: `useKanbanBoard` y `useOpportunityData` (leen con el cliente de navegador) y `usePipeline`;
+- detalle y línea de tiempo: `useStageFlow` y `useTimeline`;
+- compartidos: `useCustomerSearch` (ya va al servidor), `useCrmLookups` y `useOrgDefaultCountry`;
+- uno por módulo en secuencias, automatizaciones, referidos, partners, objeciones, agentes y el resto.
+
+**Tiempo real.** No hay. `opportunities` y `stages` no están en la publicación `supabase_realtime`, y
+el tablero sondea (`KanbanBoardV2.tsx:194`).
+
+### 2.4 i18n
+
+`messages/{es,en,fr,pt}.json`:
+
+- `crm`: 94 claves, repartidas en `title`, `metricas`, `referrals`, `followup` e `ia`;
+- `clientes`: 698 claves.
+
+Solo 4 archivos del CRM traducen: `leads/page.tsx`, el importador de leads y dos paneles de
+campañas de voz. **Todo el texto de Pipeline, Oportunidades, Detalle, Drawer, Actividades y acciones
+rápidas está cableado en español.** El reemplazo por el Figma es el momento de crear
+`crm.pipeline.*`, `crm.oportunidades.*`, `crm.leads.*`, `crm.actividades.*` y `crm.acciones.*` en
+los 4 idiomas.
+
+### 2.5 Pruebas existentes
+
+- 214 archivos de prueba del CRM. La mayoría son de servicio y de contrato de ruta con la
+  organización doblada: `objections.contract`, `referrals.contract`, `partners.contract`,
+  `leads`, `payments` y `contracts`.
+- De componente: `shared/__tests__` (`quickActionsConfig`, `callModeDefault`, `useOrgDefaultCountry`,
+  `callTargetCountry`, `f12MiscCustomerSearch`) y `timeline/__tests__/utils.test.ts`, que **fija
+  `America/Bogota`**.
+- Guardarraíles de `src/__tests__/guardrails.test.ts` que tocan el CRM:
+  - 2: sin tablas de plataforma;
+  - 3: sin `display_order`;
+  - el caso de rutas estrictas `crm/**`: organización de sesión, 403 ante una organización ajena en
+    el body y sin reexportar;
+  - 9: `src/lib/crm/enums.ts` ↔ `db-checks.json`;
+  - 18: crons de `/api/crm/jobs/run`.
+- **No hay** pruebas de pantalla para Pipeline, Oportunidades, Leads ni Actividades, ni una prueba de
+  caracterización del flujo lead → oportunidad → ganar → factura.
+
+---
+
+## 3. Base de datos
+
+### 3.1 Tablas que tocan las pantallas del Figma
+
+Conteos exactos del 2026-09-29. Todas tienen RLS activa.
+
+| Tabla | Filas | Organizaciones | Uso en pantallas | Notas |
+|---|---|---|---|---|
+| `opportunities` | 70 | 6 | Pipeline, Oportunidades, Detalle, Drawer y formulario | 42 `record_type='lead'` (2 organizaciones); **68 sin `salesperson_id`**; moneda: 63 COP y 7 USD; `temperature` nula en las 70; 1 ganada sin `win_data` |
+| `pipelines` | 14 | 9 | selector y asistente | 10 `sales`, 3 `onboarding`, 1 `renewal`; **44 de 49 organizaciones con CRM activo no tienen `sales`** |
+| `stages` | 90 | — (vía `pipeline_id`) | columnas, `StageBar` y editor | `exit_criteria` nulo en las 90; `is_won` e `is_lost` mandan |
+| `opportunity_stage_history` | **1** | — | «días en etapa» e historial | el trigger existe; sin historia previa |
+| `opportunity_products` / `_spaces` / `_custom_lines` | — | — | pestaña Líneas y formulario | `total_price` GENERATED |
+| `loss_reasons` | 8 globales | — | `LoseDialog` | sin catálogo por organización |
+| `customers` | 36.235 | 21 | Leads, ficha y `CustomerLinkPicker` | **35.159 con `lifecycle_stage='lead'`** (17 organizaciones), 1.062 `customer`, 14 `opportunity` |
+| `customer_company_links` | 11 | — | `CustomerLinkPicker Paso=cargo` | UNIQUE(persona, empresa), sin CHECK persona≠empresa |
+| `activities` | 103 | 6 | Actividades y líneas de tiempo | por tipo: 49 system, 25 call, 25 note, 2 email, 1 visit y 1 whatsapp; `channel` nulo en 102 |
+| `notes` | 2 | 2 | pestaña Notas y `ActivityDialog Tipo=nota` | **las notas viven en dos tablas** (25 en `activities`) |
+| `tasks` | 851 | 89 | pestaña Tareas y KPI «Tareas abiertas» | tabla del PM. `related_to_type` mezcla `cliente` (13) y `customer` (2); `opportunity` (4) |
+| `calls` | 9 | 1 | línea de tiempo y `ActivityDialog Tipo=llamada` | — |
+| `voice_agent_calls` | 0 | 0 | entrada «Llamada IA» | — |
+| `email_messages` | 0 | 0 | entrada de correo | — |
+| `calendar_events` | 8 | 2 | «Reunión» | **no tiene `opportunity_id`** |
+| `quotations` / `invoice_sales` | 1 / 2 con oportunidad | — | «Conexiones» y `WinDialog` | — |
+| `commissions` | 229 | — | «Comisión estimada» en el detalle | — |
+| `crm_events` | 47 | — | cola de eventos | — |
+| `exchange_rates`, `organization_currencies` | — | — | `KpiMoneda` (tasa del día y moneda base) | — |
+| `permissions` (códigos `crm.*`) | 12 | — | «sin permiso» | solo `customers`, `contacts`, `leads` y `jobs` |
+
+### 3.2 Restricciones y disparadores que el código debe respetar
+
+**CHECK.**
+
+| Columna | Valores admitidos |
+|---|---|
+| `opportunities.status` | `open`, `won`, `lost` |
+| `opportunities.record_type` | `lead`, `deal` |
+| `opportunities.deal_type` | `new`, `renewal`, `expansion`, `referral`, `partner` |
+| `opportunities.commission_type` | `salesperson`, `intermediation_sale`, `none` |
+| `customers.lifecycle_stage` | `lead`, `opportunity`, `customer`, `churned` |
+| `customers.status` | `active`, `inactive`, `merged` |
+| `activities.activity_type` | `call`, `email`, `whatsapp`, `sms`, `meeting`, `visit`, `note`, `system`, `ai_call`, `task` |
+| `tasks.status` | `open`, `in_progress`, `done`, `canceled` |
+| `tasks.priority` | `low`, `med`, `high`, `critical` |
+| `pipelines.goal_period` | `monthly`, `quarterly`, `yearly` |
+| `stages.probability` | de 0 a 100 |
+
+**Columnas generadas.** `customers.full_name`, `doc_type`, `doc_number` y `search_text` son
+`GENERATED`, igual que `total_price` en las tres tablas de líneas.
+
+**Disparadores en `opportunities`.**
+
+| Trigger | Qué hace |
+|---|---|
+| `trg_00_moneda_base_por_defecto` | pone la moneda base de la organización; `currency` ya no tiene DEFAULT `'USD'`. Lo mismo en `pipelines` |
+| `trg_sync_status_from_stage` | una etapa ganadora solo cierra con `win_data`; una perdedora, solo con motivo |
+| `trg_opp_stage_history` | escribe el historial de etapas |
+| `trg_opp_created_enqueue` y `trg_opp_stage_change_enqueue` | encolan en `crm_events` |
+| `trg_sync_customer_lifecycle` | sube el ciclo de vida del cliente |
+| `trg_create_commission_on_opportunity_won` | crea la comisión al ganar |
+| `trg_opportunities_closed_at` | pone `closed_at` |
+| `trg_set_branch_from_org` | pone la sucursal por defecto |
+| `trg_notify_opportunity_changed` y `opportunities_notify_forecast_trigger` | notifican cambios |
+| `set_opportunities_timestamp` y `set_opportunities_updated_at` | **duplicados**: los dos mantienen `updated_at` |
+
+En `stages`, `trg_stages_guard_outcome_flags` bloquea cambiar `is_won` o `is_lost` a quien no tenga
+rol `1`, `2` o `5`.
+
+### 3.3 RLS
+
+En `opportunities`, `activities`, `notes`, `pipelines` y `stages`, la RLS es de **pertenencia a la
+organización** en SELECT, UPDATE y DELETE. La de INSERT es `WITH CHECK`.
+
+Consecuencias:
+
+- cualquier miembro puede editar o borrar cualquier oportunidad, actividad, nota, pipeline o etapa
+  de su organización;
+- no hay distinción de autor ni de permiso;
+- en `customers`, la política es `ALL` con `user_belongs_to_organization`.
+
+### 3.4 RPC
+
+Usadas o relevantes:
+
+- `fn_clientes_buscar` y `fn_clientes_buscar_ids`: búsqueda de clientes.
+- `web_capture_lead`: SECURITY DEFINER, sin EXECUTE para `anon` ni para `authenticated`. Devuelve
+  `crm_warning='no_sales_pipeline'`.
+- `fn_crm_seed_pipeline_ventas` (sin EXECUTE para `authenticated`) y `fn_crm_seed_defaults` (con
+  EXECUTE).
+- `fn_pipeline_funnel`, `fn_reporte_crm_funnel` y `fn_reporte_crm_ranking_vendedores`.
+- `fn_enroll_in_sequence` y `fn_pause_sequences_on_reply`.
+- `fn_register_crm_payment`.
+- `refresh_crm_forecast` y `mv_crm_forecast`.
+
+**Riesgo abierto: seis funciones heredadas de cambio de etapa**, todas SECURITY DEFINER y ejecutables
+por `authenticated`, que se saltan el gate y el servicio:
+
+- `direct_update_opportunity_bypass`;
+- `direct_update_opportunity_stage`;
+- `update_opportunity_stage` (dos firmas);
+- `update_opportunity_stage_safe`;
+- `update_opportunity_stage_without_refresh`.
+
+A esas se suma `update_stage_without_triggers`, sobre `stages`. Ninguna la usa el código vivo. Hay
+que revocarlas en la ola 1 (M9).
+
+### 3.5 Lo que el Figma muestra y la BD no tiene
+
+| Dato en el Figma | Frame | BD hoy | Propuesta |
+|---|---|---|---|
+| Lead: **Responsable** y KPI «Sin responsable» | `765:446571` | `customers` no tiene dueño | M1: `customers.owner_id uuid NULL` |
+| Lead: **Origen** (Formulario web, Referido, WhatsApp, Importación CSV, Llamada entrante, Instagram) | `765:446571` | solo `metadata.source` en 6 filas; `opportunities.source` tiene vocabulario mezclado (`website`/`web`, `referral`/`referido`) | M1: `customers.lead_source text NULL` con CHECK de catálogo; normalizar `opportunities.source` |
+| Lead: **Score** «82 · Alto» | `765:446571` | `customers.health_score` es de salud, no de calificación; `opportunities.score_total` es por oportunidad | M1: `customers.lead_score int NULL` o derivarlo del ICP (decisión D3) |
+| Lead: **Último contacto** y KPI «Contactados (7 días)» | `765:446571` | no hay columna; se puede derivar de `activities` | M1: `customers.last_contact_at timestamptz NULL`, mantenido por el servidor al registrar la actividad |
+| Lead: **Descartar lead** (con motivo) | `759:444936` | CHECK de `lifecycle_stage` sin `discarded` | M1: `customers.lead_discarded_at timestamptz NULL` + `lead_discard_reason text NULL`, sin tocar el CHECK |
+| Lead: «Calificados este mes · 46 oportunidades nuevas» | `765:446571` | derivable: `opportunities` creadas con `metadata.origen='lead'` o `source` | RPC de KPI (M10) |
+| Leads sin colocar (sin embudo de ventas) | `765:448463` | `web_capture_lead` devuelve el aviso, pero **no queda registro consultable** de cuántos | M1b: vista o RPC de conteo sobre `customers` capturados por web sin oportunidad, o `crm_events` con tipo `lead.unplaced` |
+| Tarjeta: **Prioridad** «Alta / Media» | `768:454428` | `opportunities` no tiene prioridad (`temperature` existe y está nula en las 70) | M2: `opportunities.priority text NULL` con CHECK `low\|medium\|high`, o usar `temperature` (decisión D4) |
+| Tarjeta: **días en etapa** | `759:21627` | `opportunity_stage_history` con 1 fila | cálculo: último `changed_at` o, si no hay, `created_at`; sin migración |
+| Detalle: **Reunión** en «Conexiones» | `775:473076` | `calendar_events` sin `opportunity_id` | M3: `calendar_events.opportunity_id uuid NULL` con FK |
+| KPI: **tasa del 23 sep** y «no incluye € 2.400: falta la tasa EUR» | `759:22569` | `exchange_rates(organization_id, base_currency, target_currency, rate, effective_date)` existe | RPC `crm_kpis_moneda_base` (M10); no inventa tasas |
+| Calificar: «¿Quién decide la compra?» | `759:444936` | sin columna; `opportunities.discovery_data` (jsonb) sirve | se guarda en `discovery_data.decisor` (sin migración) |
+| Pipeline: meta y moneda de meta en el asistente | `816:56990` | `pipelines.goal_amount`, `goal_currency` (trigger de moneda base) y `goal_period` | sin migración |
+| Etapa: requisitos de salida y SLA en `StageEditorRow` | `816:57260` | `stages.exit_criteria` jsonb y `sla_days` | sin migración; hoy nadie los edita desde el pipeline |
+| Actividades: filtro «Cliente u oportunidad» y «Llamada IA» | `769:12376` | `activities.related_type/id`; `activity_type='ai_call'`; `voice_agent_calls` | sin migración |
+
+### 3.6 Lo que la BD tiene y el Figma no muestra
+
+- En `opportunities`:
+  - `deal_type` (new, renewal, expansion, referral, partner);
+  - `parent_opportunity_id`;
+  - `billing_cycle_months`;
+  - `vertical_id`;
+  - `icp_band` e `icp_fit_score` (el Figma solo pinta «Score»);
+  - `commission_type` (el formulario lo tiene; el detalle solo muestra «comisión 5 %»);
+  - `contact_channel`, `contact_result` y `next_action`;
+  - `recontact_at`;
+  - `sales_team_id` y `territory_id` (solo aparecen en «Equipo y responsable» del drawer);
+  - `branch_id`.
+- En `customers`:
+  - `company_size`, `branches_count` y `current_software` (campos de venta B2B);
+  - `do_not_call` (debería bloquear «Llamar» con motivo: el `QuickAction` deshabilitado del Figma lo
+    permite, pero el motivo no está dibujado);
+  - `timezone` por cliente;
+  - `roles`.
+- `stages.description`.
+- `pipelines.pipeline_type='renewal'`: el Figma trae la plantilla, pero no una vista propia de
+  renovaciones.
+- `loss_reasons` por organización: no hay pantalla de configuración.
+- `sales_targets` (0 filas) frente a `pipelines.goal_amount`.
+
+---
+
+## 4. Mapa pantalla por pantalla
+
+Leyenda del estado: **igual** / **parcial** (misma estructura, faltan piezas) / **distinto** (hay que
+rehacerla) / **sin pantalla**.
+
+### 4.1 Leads — IMPLEMENTABLE (ola 3A)
+
+- **Figma:** `765:446571` y los 17 frames 765–768 de §1.3, con `LeadRow`, `QualifyLeadDialog` y
+  `CaptureBanner`.
+- **Ruta:** `/app/crm/leads` (`page.tsx`, 466 líneas).
+- **Componentes hoy:** tabla propia y `NewLeadDialog` (503 líneas).
+- **API y servicio:** `GET /api/crm/leads` (`opportunities` con `record_type='lead'`), lectura de
+  nombres de `customers` con el **cliente de navegador** filtrando `branch_id` (`page.tsx:157`),
+  `POST /api/crm/leads/[id]/convert`.
+- **Tablas:** `opportunities` y `customers`.
+- **Estado: distinto.**
+
+Brechas de UI:
+
+- KPI (4);
+- búsqueda por nombre, documento, correo o teléfono;
+- chips de filtro (Origen, Fecha de captura, Responsable, Etiquetas);
+- `LeadRow` con avatar, origen, responsable, score, etiquetas y último contacto;
+- «Calificar» por fila y menú «⋯»;
+- paginación en servidor (25 por página);
+- selección masiva con «Asignar responsable»;
+- hoja de detalle rápido con `QuickActionsBar`;
+- banner de leads sin colocar;
+- «Importar», que lleva a `/leads/importar` (de otra sesión);
+- estados: vacío con primer paso, sin resultados, error y sin permiso.
+
+Brechas de datos y backend:
+
+- ruta nueva `GET /api/crm/leads` sobre `customers` con `lifecycle_stage='lead'`, con filtros,
+  paginación y conteo exacto. Reutiliza `fn_clientes_buscar` con un parámetro de ciclo de vida;
+- KPI por RPC;
+- columnas de M1;
+- «Descartar» (`PATCH /api/crm/leads/[customerId]/discard`);
+- «Asignar responsable» en lote.
+
+Flujo:
+
+1. Lead (cliente) → «Calificar» paso 1 (`QualifyLeadDialog`).
+2. Paso 2: `OpportunityForm Origen=lead`.
+3. `POST /api/crm/opportunities`.
+4. `trg_sync_customer_lifecycle` sube el cliente a `opportunity`.
+   - **Hoy solo corre en UPDATE**: hay que confirmarlo o ampliarlo (M5).
+
+Riesgos:
+
+- lectura desde el navegador;
+- «Hoy/Ayer» calculado con 24 h del navegador;
+- 35.159 filas: nunca cargar todo;
+- la página convive con el importador de otra sesión.
+
+### 4.2 Pipeline — kanban y tabla — BLOQUEADA: sección «(propuesta)», no implementable hasta aprobación (ola 3B)
+
+- **Figma:**
+  - kanban: `768:454428`, `768:456094`, `768:457615`, `812:53241` y los estados `770:*`;
+  - móvil: `771:*` y `812:54748`;
+  - tabla: `768:459368`.
+- **Ruta:** `/app/crm/pipeline` → `PipelineView`.
+- **Componentes hoy:**
+  - `KanbanBoardV2` (280 líneas), `KanbanColumnV2` y `OpportunityCardV2` (138);
+  - `TableView` (583);
+  - `PipelineHeader` (612);
+  - `GoalCompletionWidget`.
+- **API y servicio:** `useKanbanBoard` lee `stages` y `opportunities` **desde el navegador**; mover es
+  `PATCH /api/crm/opportunities/[id]/stage`; sondeo cada 30 s.
+- **Tablas:** `pipelines`, `stages`, `opportunities`, `customers` y `exchange_rates`.
+- **Estado: parcial.**
+
+Brechas de UI:
+
+- 4 `KpiMoneda`: valor abierto, ponderado solo de abiertas, abiertas y tasa de cierre a 90 días;
+- `FilterChips` (Responsable, Cierre, Prioridad);
+- botón «Etapas»;
+- total por columna en moneda base con el aviso «incl. USD»;
+- tarjeta con responsable, prioridad, días en etapa, próximo y último contacto, y 6 acciones
+  **siempre visibles**;
+- columna destino al arrastrar;
+- menú «⋯» de la tarjeta;
+- móvil de una columna con selector de etapa;
+- estados: sin embudo, sin permiso y error.
+
+Brechas de datos y backend:
+
+- lectura por servidor (`GET /api/crm/pipeline/[id]/board`) o, como mínimo, RLS más estrecha;
+- KPI en moneda base por RPC;
+- prioridad (M2);
+- días en etapa;
+- realtime (M12) o mantener el sondeo.
+
+Flujo: tarjeta → drawer (§4.5) → mover → `MoveStageDialog`, `WinDialog` o `LoseDialog` (§4.8).
+
+Riesgos:
+
+- `GoalCompletionWidget` y `SalesTeamTerritorySelectors` escriben desde el navegador;
+- 23 archivos del pipeline usan el cliente de navegador.
+
+### 4.3 Pipeline — selector y «Nuevo pipeline» desde plantilla — BLOQUEADA: sección «(propuesta)», no implementable hasta aprobación (ola 3B)
+
+- **Figma:** `812:54821`, `816:56539`, `816:56990`, `816:57260`, `816:57906`, `816:58273` y el móvil
+  `817:*`, con `PipelineTemplateCard` y `StageEditorRow`.
+- **Código:** diálogo dentro de `PipelineHeader.tsx:465-575`. Crea y borra pipeline y etapas **desde
+  el navegador** (`:233-313`).
+- **API sin usar:** `GET /api/crm/pipeline-templates` y `POST …/[id]/import`.
+- **Tablas:** `pipelines` y `stages`.
+- **Estado: distinto.**
+
+Brechas:
+
+- asistente de 3 pasos: plantilla, luego nombre, tipo, meta y por defecto, luego etapas con SLA,
+  requisitos y resultado;
+- aviso «ya existe uno de ese tipo»;
+- «Eliminar» deshabilitado con motivo;
+- error sin estado a medias;
+- validación: una etapa ganada, una perdida y probabilidades en orden.
+
+Backend:
+
+- RPC transaccional `crm_create_pipeline_with_stages` (M6);
+- RPC atómica para el pipeline por defecto;
+- índice único parcial de un solo `is_default` por organización y tipo;
+- `DELETE /api/crm/pipelines/[id]` con guarda de oportunidades;
+- unificar los dos juegos de etapas (`pipelineTemplates.ts` frente a `pipelineSeedService.ts`).
+
+Flujo: es la puerta de entrada del 90 % de las organizaciones (§0.2 punto 3). El estado «sin embudo»
+de Pipeline, Leads y la captura web depende de esto.
+
+### 4.4 Oportunidades — lista — BLOQUEADA: sección «(propuesta)», no implementable hasta aprobación (ola 3B)
+
+- **Figma:** `773:23160` y los estados `773:*`, más el móvil `775:*` y `845:82719`.
+- **Ruta:** `/app/crm/oportunidades` (`page.tsx`, 274 líneas).
+- **Componentes:** `OpportunitiesStats` (124), `OpportunitiesFilters` (333) y `OpportunitiesTable` (340).
+- **Servicio:** `opportunitiesService`, **navegador**.
+- **Tablas:** `opportunities`, `stages`, `pipelines` y `customers`.
+- **Estado: parcial.**
+
+Brechas de UI:
+
+- pestañas Abiertas, Ganadas, Perdidas y Todas con conteo;
+- 4 `KpiMoneda`;
+- `SearchInput` del kit con atajo «/»;
+- Filtros con contador, orden y chips;
+- columnas Prob., Responsable y Próximo contacto (en rojo si está vencido);
+- `OpportunityRowMenu`;
+- selección masiva (`BulkActionBar`);
+- Importar y Exportar reales (hoy son toasts «TODO»);
+- paginación.
+
+Backend:
+
+- `GET /api/crm/opportunities` paginado y filtrado en servidor;
+- separar leads de deals (`record_type`);
+- KPI por RPC;
+- borrado por ruta, que también limpie tareas y notas huérfanas.
+
+Riesgos:
+
+- borrar desde el navegador con `confirm()` nativo;
+- la búsqueda sin escapar `%` y `_`.
+
+### 4.5 Drawer de oportunidad (desde el kanban) — BLOQUEADA: sección «(propuesta)», no implementable hasta aprobación (ola 3B)
+
+- **Figma:** `776:30540`, `820:*`, `822:*`, `823:*` y `824:*`, con `OpportunityDrawerHeader`,
+  `StageBar` y `OpportunityRowMenu`.
+- **Código:** `pipeline/OpportunityDrawer.tsx` (204), `drawer/DrawerHeader` (107),
+  `drawer/tabs/*` y `drawer/*Section`.
+- **Datos:** `useOpportunityData` lee desde el navegador.
+- **Estado: parcial.**
+
+Brechas:
+
+- cabecera con probabilidad, responsable y `StageBar` clicable que avisa si reabre;
+- «⋯»;
+- cabecera compacta al desplazar;
+- pestañas que no se desmontan;
+- estados vacío y error por pestaña;
+- arrastrar y soltar real en Documentos;
+- confirmaciones;
+- autor visible en notas.
+
+Backend:
+
+- `PATCH` por sección, con la organización de la sesión: seguimiento, equipo, score, discovery,
+  tareas y notas. **Hoy son updates desde el navegador sin filtro de organización.**
+
+Detalle completo, pestaña por pestaña, en el doc de diseño §C.
+
+### 4.6 Detalle de oportunidad — BLOQUEADA: sección «(propuesta)», no implementable hasta aprobación (ola 3B)
+
+- **Figma:** `775:473076`, `775:473990` y los estados `775:*`, más el móvil `776:*`.
+- **Ruta:** `/app/crm/oportunidades/[id]` → `OpportunityDetail` (194) con:
+  - `detail/DetailHeader` (111) y `DetailSidebar` (133);
+  - pestañas `LineItemsTab`, `AnalyticsTab` y `ClosingTab`;
+  - `useStageFlow`.
+- **Estado: parcial.**
+
+Brechas de UI:
+
+- cabecera con Editar, Marcar perdida, Marcar ganada y «⋯»;
+- franja de 6 métricas: monto, probabilidad, ponderado, cierre, responsable con comisión y próximo
+  contacto;
+- `StageBar`;
+- `QuickActionsBar Variant=detalle`;
+- compositor «Escribe una nota o registra una llamada…»;
+- filtros de la línea de tiempo;
+- `CustomerIdentityCard` lateral con contacto principal;
+- tarjeta **«Conexiones»**: cotización, factura, tareas, reunión, renovación y comisión.
+
+Backend:
+
+- «Conexiones» = `GET /api/crm/finance/opportunity/[id]` (existe) + tareas + `calendar_events` con
+  M3 + `commissions`;
+- `AnalyticsTab` consulta `activities` sin filtro de organización.
+
+Flujo: oportunidad → cotización (`quotations.opportunity_id`) → factura (`invoice_sales.opportunity_id`)
+→ comisión (`commissions`).
+
+### 4.7 Formulario único de oportunidad y puntos de entrada — mixto (ver nota)
+
+> **Nota de alcance.** Es implementable el componente `OpportunityForm` (en «CRM (Nuevo)») en las
+> variantes que usan frames de la sección aprobada:
+>
+> - `Origen=lead`: «Calificar» paso 2, `772:21705`;
+> - `Origen=cliente` como hoja: ficha del cliente, `772:20628`.
+>
+> Quedan en la ola 3B, porque sus frames están en la sección «(propuesta)»:
+>
+> - la página Nueva y Editar (`778:32176`, `778:33132`);
+> - el diálogo desde el «+» de columna (`778:33942`);
+> - los paneles desde Finanzas y Chat (`778:34520`, `778:35164`);
+> - la lámina de puntos de entrada (`780:45596`).
+>
+> Mientras tanto, `/nuevo` y `/editar` siguen con el formulario actual y solo reciben arreglos de
+> backend.
+
+- **Figma:** `778:32176`, `778:33132`, `778:33942`, `778:34281`, `778:34520`, `778:34929`,
+  `778:35164`, `772:21705` y `772:20628`, más la lámina `780:45596`.
+- **Código:**
+  - `OpportunityForm.tsx` (1.201 líneas);
+  - `CreateOpportunityDialog` (portal propio);
+  - formularios paralelos en `BulkActionsDialog` (970), `NewLeadDialog`, `CallLinkPanel` y
+    `renewal`/`onboarding`.
+- **Estado: distinto** en arquitectura.
+
+Brechas de UI:
+
+- `Layout=page|dialog|sheet`;
+- `Origen` con ficha de contexto bloqueada;
+- «Responsable» separado de «Comisionista»: hoy hay un solo selector que escribe `salesperson_id`;
+- `CustomerLinkPicker` en vez de `CustomerSearchSelect`;
+- móvil a pantalla completa.
+
+Backend:
+
+- `POST /api/crm/opportunities` → `opportunityCreateService`:
+  - generaliza `leadCreateService`;
+  - pipeline `sales` por defecto;
+  - primera etapa no terminal;
+  - moneda base;
+  - autoasigna;
+  - líneas en la misma transacción (RPC `crm_create_opportunity`, M4);
+  - actividad «creada».
+- `PATCH /api/crm/opportunities/[id]`, con líneas por diferencia y `metadata` fusionado.
+
+Puntos de entrada:
+
+| Origen | Dónde se abre | Estado hoy |
+|---|---|---|
+| Pipeline | «+ Nueva» y «+» de columna | existe |
+| Oportunidades | «Nueva» | existe |
+| Clientes | ficha, pestaña Oportunidades | **no hay botón** |
+| Finanzas | cotización o factura | **no hay**; solo vinculan una oportunidad que ya existe |
+| Chat / Bandeja | conversación | **no hay** |
+| Leads | «Calificar» | **no hay** |
+| POS | — | **no hay** |
+| GO Assistant | — | sin acción de oportunidad |
+
+Riesgos:
+
+- lógica duplicada en 5 formularios (regla 7 de CLAUDE.md);
+- el pipeline por defecto se resuelve con tres reglas distintas.
+
+### 4.8 Diálogos: ganar, perder, mover de etapa y vincular cliente — BLOQUEADA: sección «(propuesta)», no implementable hasta aprobación (ola 3B)
+
+- **Figma:** `779:36778`, `779:36974`, `779:37122`, `779:37255`, `779:37437`, `779:37578`,
+  `779:37686`, más el móvil `779:37888`, `779:38310` y `779:38675`.
+- **Código:**
+  - ganar: `ClosedWonDialog` + `WonCloseModal` + `MarkWonFlow`;
+  - perder: `StructuredLossDialog` + `LossReasonDialog`;
+  - mover: `GateWarningDialog`;
+  - vincular: `CustomerSearchSelect` y `CompanyContactsManager`;
+  - tres flujos de etapa: `useStageFlow`, `OpportunityDrawer` y `KanbanBoardV2`.
+- **Estado: parcial.**
+
+Brechas:
+
+- `WinDialog` de 3 pasos: ficha, qué hacer al ganar (los 7 pasos de `wonCloseSteps`) y resumen;
+- `LoseDialog`, que **siempre mueve a la etapa `is_lost`** por `PATCH …/stage`;
+- `MoveStageDialog` con «sin permiso» resuelto en servidor;
+- un solo `useStageFlow` para tablero, drawer, detalle y lista;
+- `CustomerLinkPicker` con los pasos buscar, crear y cargo.
+
+Backend:
+
+- `needs_lost` en `PATCH …/stage` con los datos estructurados de pérdida;
+- permisos `crm.opportunities.close` y `crm.stages.override_gate` (M7);
+- `POST` y `DELETE /api/customers/links` para vincular persona ↔ empresa, con CHECK
+  persona≠empresa (M8b).
+
+### 4.9 Actividades — IMPLEMENTABLE (ola 3A)
+
+- **Figma:** `769:12376`, `769:13036`, `769:13655`, `769:13838`, `769:13935`, `770:15494`,
+  `770:16039`, `770:16578` y el móvil `770:17115`, `770:17351` y `770:17452`, con `ActivityDialog`,
+  `TimelineFilters`, `CargarMas` y `TimelineEntry`.
+- **Ruta:** `/app/crm/actividades` → `ActividadesPage` (401), `ActividadesTable` (359),
+  `ActividadForm` (526) y `ActividadesService` (360).
+- **Estado: distinto.**
+
+Brechas de UI:
+
+- línea de tiempo agrupada por día («Hoy · miércoles 23 sep»);
+- chips de tipo: Todos, Llamadas, Correos, WhatsApp, Reuniones, Notas, Tareas, Sistema y Llamada IA;
+- filtros de responsable, cliente u oportunidad y rango;
+- 7 KPI en una franja;
+- «Cargar 20 más» con total;
+- menú «⋯» por entrada, que edita o elimina solo `activities` y `notes`;
+- Exportar;
+- «Nueva actividad» abre `ActivityDialog` por tipo.
+
+Backend:
+
+- `GET /api/crm/timeline/org`: los adaptadores de `timeline/sources.ts` sin filtro de entidad, más
+  búsqueda e índices;
+- KPI por RPC (M10);
+- `PATCH` y `DELETE /api/crm/activities` y `/api/crm/notes`, con guardas;
+- RLS de autor o permiso (M8);
+- decidir notas en `notes` y `channel` como medio (D6).
+
+Riesgos:
+
+- editar y borrar desde el navegador;
+- `Intl es-ES` sin zona;
+- filtros con `T23:59:59.999` sin desfase;
+- unas 14 consultas por cambio de filtro.
+
+### 4.10 Acciones rápidas (en 4 lugares) — IMPLEMENTABLE (ola 3A)
+
+- **Figma:** `773:472568` y `773:472975`, con `QuickAction` y `QuickActionsBar` en las variantes
+  tarjeta, drawer, detalle, cliente y tarjeta móvil.
+- **Código:** `shared/QuickActionsBar.tsx` (258), `quickActionsConfig.ts` (123), `MobileCallDialog`
+  (269), `ComposeEmailDialog` (157), `MeetingDialog` (136), `TaskDialog` (291) y `QuickNoteDialog` (71).
+- **Estado: parcial.**
+
+Brechas:
+
+- `Variant=cliente` y `tarjeta móvil`;
+- visibles sin hover;
+- Llamar deshabilitado con motivo (sin teléfono, número inválido y, añadido aquí, `do_not_call`);
+- panel de estado de llamada que no se cierra al iniciar;
+- un solo evento `crm:entity-changed` para refrescar;
+- la tarea sale asignada al usuario actual y por API.
+
+Backend:
+
+- Tarea: `POST /api/crm/tasks` existe; hoy `TaskDialog` escribe con `pmService` desde el navegador.
+
+### 4.11 Ficha del cliente: entradas del CRM — IMPLEMENTABLE (ola 3A)
+
+- **Figma:** `772:19838`, `772:20628`, `772:20971` y `772:21523`, además de «06 Clientes».
+- **Código:** dos fichas.
+  - `/app/clientes/[id]`: `TimelineTab` viejo y `OportunidadesTab` de solo lectura, sin botón y sin
+    `QuickActionsBar`.
+  - `/app/crm/clientes/[id]`: 487 líneas, con `QuickActionsBar` y `OpportunityTimeline`.
+- **Estado: parcial.**
+
+Brechas:
+
+- «Nueva oportunidad» en la pestaña y en su vacío → `OpportunityForm Layout=sheet Origen=cliente`;
+- vacío corregido con Registrar venta, Registrar llamada y Nota;
+- «Nueva tarea» con `Plus`;
+- línea de tiempo unificada.
+
+**Decisión D1:** qué ficha sobrevive. La recomendación es una sola, `/app/clientes/[id]`, con el
+bloque CRM, y `/app/crm/clientes/[id]` redirige.
+
+---
+
+## 5. Riesgos transversales
+
+| Riesgo | Dónde | Regla de CLAUDE.md |
+|---|---|---|
+| Escrituras de negocio desde el navegador | `opportunitiesService`, `PipelineHeader`, `ActividadesService`, `SalesTeamTerritorySelectors`, `GoalCompletionWidget`, `TasksSection`, `NotasTab` y `NotasArchivosTab` (clientes) | «Servicios que tocan varias tablas → RPC»; «clientes Supabase» |
+| Permisos: ninguno en la interfaz; en el servidor, por id de rol | 0 usos de `usePermission` en CRM; `stagePermissions.ts`, `fn_stages_guard_outcome_flags` | 6 |
+| Lógica duplicada | 5 formularios de oportunidad, 3 flujos de etapa, 2 diálogos de pérdida, 2 de ganar, 8 selectores de cliente, 2 juegos de etapas por defecto, 4 líneas de tiempo, 2 fichas de cliente, 2 `QuickActionsBar` en Figma | 7 |
+| Zona horaria | `timeline/utils.ts:44,99,107` (Bogotá por defecto, 6 llamadores sin zona), `ActividadesTable.tsx:75`, `MeetingDialog`, `MessageForm.tsx:53`, `FollowupSection` | Fechas 1–7 |
+| Moneda | Mejoró: 18 archivos del pipeline usan la moneda de la organización y el trigger pone la base. Pendientes: totales de columna con monedas mezcladas y KPI sin tasa | «moneda cableada» |
+| Textos sin traducir | todo el núcleo del CRM | i18n |
+| Funciones SQL de etapa ejecutables por `authenticated` | 6 funciones SECURITY DEFINER (§3.4) | seguridad |
+| RLS de pertenencia sin autor | `activities`, `notes`, `opportunities`, `pipelines` y `stages` | 6 |
+| Consultas sin tope | `getCustomers` sin paginar (sigue existiendo aunque `searchCustomers` ya va por RPC); 35.159 leads | rendimiento |
+| Trabajo ajeno sin commit | importador de leads y `messages/*.json` | «no commitear archivos compartidos» |
+
+---
+
+## 6. Módulos CRM sin diseño en Figma (para el equipo de diseño)
+
+Comparación con la lista del dueño. «¿Diseño aprobado?» = hay frames de pantalla en una sección que
+no es nueva de hoy ni dice «propuesta». La columna «En curso hoy» dice si una de las tres secciones
+nuevas (§1.4) ya lo menciona. **Eso no lo vuelve implementable.** Las menciones sueltas se anotan.
+
+| # | Módulo (lista del dueño) | ¿Diseño aprobado? | En curso hoy (pendiente de aprobación) | Lo que sí hay | Código actual |
+|---|---|---|---|---|---|
+| 1 | **Teléfono para llamar desde el navegador** (softphone) | **No** | «Telefonía y llamadas» `1295:36609` (componentes de softphone) | Menú «Llamar» con 3 modos en la tarjeta (`812:53241`, `812:54748`); la nota «Softphone dock, IncomingCallToast — Sin cambio» (`51:2915`, sección Header) | `SoftphoneProvider`, `MobileCallDialog`, `CallPanels`; FASE-03 y FASE-05 |
+| 2 | **Electron y app móvil** | **No** para lo propio de cada plataforma: llamada nativa, notificaciones, sin conexión | — | Pantallas móviles web de 390 px del núcleo del CRM | `electron/`, `mobile/`; FASE-15 |
+| 3 | **Agentes IA** | **No** | «IA y automatización» `1295:767945`, fila 1 | «Agente IA» deshabilitado en el menú Llamar; entrada «Llamada IA» en la línea de tiempo; pestaña IA del drawer | `/app/crm/agentes-ia`, `components/crm/agentes` (35 archivos) |
+| 4 | **Automatizaciones** | **No** | «IA y automatización», fila 2 | Solo la etiqueta de la pestaña «Automatización» del pipeline | `/app/crm/automatizaciones`, `AutomationsView` |
+| 5 | **Segmentos** | **No** | «IA y automatización», fila 3 | — | `/app/crm/segmentos` (+ nuevo, `[id]`) |
+| 6 | **Campañas** | **No** | «IA y automatización», fila 4 | — | `/app/crm/campanas` (+ nuevo, `[id]`), campañas de voz |
+| 7 | **Llamadas** | **No** como página | «Telefonía y llamadas» (reproductor, transcripción, resultado) | `ActivityDialog Tipo=llamada`, entradas de llamada en la línea de tiempo | `/app/crm/llamadas` (153 líneas), `components/crm/calls` |
+| 8 | **Plantillas** (correo y WhatsApp) | **No** | «IA y automatización», fila 5 | `PipelineTemplateCard` es de **pipelines**, no de mensajes | `/app/crm/plantillas` (+ editor) |
+| 9 | **Secuencias** | **No** | «IA y automatización», fila 6 | — | `/app/crm/secuencias` |
+| 10 | **Referidos** | **No** | ¿«Red y gestión» `1295:767955`? (vacía) | — | `/app/crm/referidos` |
+| 11 | **Partners** | **No** | ¿«Red y gestión»? (vacía) | — | `/app/crm/partners` |
+| 12 | **Objeciones** | **No** como biblioteca | «IA y automatización», fila 7 | Bloque «Objeciones» y «Registrar objeción» en el detalle y el drawer | `/app/crm/objeciones` |
+| 13 | **Equipo** | **No** | ¿«Red y gestión»? (vacía) | Sección «Equipo y responsable» del drawer | `/app/crm/equipo` |
+| 14 | **Salud** | **No** | ¿«Red y gestión»? (vacía) | Texto «Salud del cliente» en la ficha | `/app/crm/salud` |
+| 15 | **Pronósticos** | **No**: el propio diseño lo declara pendiente | ¿«Red y gestión»? (vacía) | Etiqueta de la pestaña «Pronóstico» | `/app/crm/pronostico` (Revenue OS), `ForecastView` |
+| 16 | **Identidades** | **No** | ¿«Red y gestión»? (vacía) | — | `/app/crm/identidades` |
+
+**Faltan también en la lista del dueño**, sin diseño:
+
+- detalle de actividad (`/app/crm/actividades/[id]`);
+- pestaña «Clientes» del pipeline;
+- impresión de propuesta (`/app/crm/propuestas/[id]/imprimir`);
+- configuración del CRM: requisitos de etapa, scoring, telefonía, proveedores, WhatsApp, motivos de
+  pérdida por organización y trabajos;
+- comisiones del vendedor y metas (`sales_targets`);
+- contratos y firma, demos, ROI, ICP y plantillas de discovery;
+- panel «Hoy» del vendedor (`components/crm/hoy`);
+- reasignación de los 23 leads que están en onboarding;
+- `TaskForm` único (del agente de PM);
+- ficha del cliente en móvil;
+- estados «error» y «sin permiso» de Leads y Actividades en móvil.
+
+**Nota.** Según los títulos de fila, las secciones nuevas de hoy ya cubren 9 de los 16 módulos de la
+lista: 7 con fila propia en «IA y automatización» y 2 con los componentes de «Telefonía y
+llamadas». Por ahora es solo título, sin frames, a las 23:11 UTC. Hasta que el dueño las apruebe, esos
+módulos siguen fuera de las olas de implementación. En la ola 6 solo reciben higiene sin cambio
+visual.
+
+**Recomendación para el equipo de diseño.** El orden sugerido sale del uso real y de lo que bloquea el
+flujo:
+
+1. Llamadas + softphone.
+2. Pronóstico.
+3. Plantillas y campañas de WhatsApp: hay 4 campañas y 6 plantillas en BD.
+4. Configuración del CRM (etapas y motivos).
+5. Lo demás.
+
+Referidos, partners y secuencias tienen 0 filas en BD.
+
+---
+
+## 7. Plan de implementación por olas
+
+Cada ola sigue el patrón que ya usan los planes de `docs/implementacion/*-PLAN.md`:
+
+1. caracterización;
+2. RPC;
+3. rutas de servidor;
+4. interfaz;
+5. commit por paso.
+
+El documento de fases sería `docs/implementacion/CRM-FIGMA-PLAN.md` cuando se apruebe.
+
+Tamaños: **S** ≤ 1 día · **M** 2–3 días · **L** 4–6 días · **XL** > 6 días (una persona o un agente).
+
+### 7.1 Olas
+
+**Ola 0 — Preparación (S).**
+
+- Decisiones D1–D8 (§8). **D7, aprobar la sección «(propuesta)», decide si la ola 3B existe.**
+- Congelar la sección `765:446568`, ya aprobada, mientras dure la ola 3A.
+- Pruebas de caracterización, en jest y contra servicios: cambio de etapa, ganar y perder, convertir
+  lead, crear oportunidad, crear actividad y línea de tiempo. Así el reemplazo no cambia
+  comportamiento sin querer.
+- Esqueleto i18n `crm.*` en 4 idiomas.
+
+**Ola 1 — Backend (L). Depende de la 0.** Todo aditivo, con `.sql` y rollback según
+`POLITICA-MIGRACIONES.md`.
+
+Los pasos marcados **(3B)** solo sirven a pantallas de la sección «(propuesta)». Se pueden hacer
+antes porque corrigen escrituras desde el navegador y permisos, pero no tienen interfaz nueva hasta
+la aprobación. Si el dueño prefiere no adelantarlos, se mueven a la 3B.
+
+| Paso | Qué | Tamaño |
+|---|---|---|
+| 1.1 | Permisos `crm.opportunities.{view,create,edit,delete,close}`, `crm.stages.{manage,override_gate}`, `crm.pipelines.manage` y `crm.activities.edit_any` + `role_permissions`; `stagePermissions` pasa a permiso (M7) | M |
+| 1.2 | `POST` y `PATCH /api/crm/opportunities`, con la RPC `crm_create_opportunity` y la actualización de líneas por diferencia (M4); `DELETE` con limpieza | L |
+| 1.3 | Perder por `PATCH …/stage` con `needs_lost` estructurado; retirar `markAsLost` del navegador | S |
+| 1.4 | **(3B)** `GET /api/crm/opportunities` paginado y `GET /api/crm/pipeline/[id]/board` | M |
+| 1.5 | Leads sobre `customers`: M1, `GET /api/crm/leads` nuevo (conservar el viejo con otro nombre mientras haya llamadores), descartar y asignar en lote | M |
+| 1.6 | **(3B)** Pipelines: RPC `crm_create_pipeline_with_stages`, pipeline por defecto atómico, índice único parcial, `DELETE` con guarda (M6) | M |
+| 1.7 | Actividades y notas: `PATCH` y `DELETE`, RLS de autor o permiso (M8), `GET /api/crm/timeline/org` + índices (M11) | M |
+| 1.8 | KPI por RPC en moneda base: leads y actividades para la 3A; oportunidades **(3B)** (M10) | M |
+| 1.9 | `REVOKE EXECUTE` de las 6 funciones heredadas de etapa (M9); `calendar_events.opportunity_id` (M3); `opportunities.priority` si D4 lo pide (M2) | S |
+
+**Ola 2 — Kit CRM (L). En paralelo con la 1.**
+
+- Los 20 componentes de §1.2, en `src/components/crm/kit/`, con la lógica pura en archivos
+  `*Logica.ts`, como hace `src/components/kit`.
+- Máximo 300 líneas por componente y sin lógica de negocio (`BRIEF-UX-CRM.md`).
+- Orden, por dependencias:
+
+| Paso | Componentes | Tamaño |
+|---|---|---|
+| 2.1 | `QuickAction`, `QuickActionsBar` (5 variantes) y `OpportunityRowMenu` (sobre `RowActionsMenu`) | M |
+| 2.2 | **(3B, salvo confirmación del dueño; ver §1.4)** `KpiMoneda`, `StageBar`, `OpportunityCard` y `StageColumn` | M |
+| 2.3 | `CustomerLinkPicker` (sobre el `CustomerPicker` del kit + `/api/crm/customers/search`) | M |
+| 2.4 | **(3B, salvo confirmación)** `WinDialog`, `LoseDialog`, `MoveStageDialog` y `useStageFlow` único | M |
+| 2.5 | `OpportunityForm` partido en secciones, con `Layout` y `Origen`: primero `dialog` y `sheet` con `Origen=lead` y `cliente` (3A); el resto de variantes con la 3B | L |
+| 2.6 | `LeadRow`, `QualifyLeadDialog`, `CaptureBanner`, `CargarMas`, `ActivityDialog` (5 tipos) y `TimelineFilters` | M |
+| 2.7 | **(3B, salvo confirmación)** `OpportunityDrawerHeader`, `StageEditorRow` y `PipelineTemplateCard` | M |
+
+**Ola 3A — Pantallas con diseño aprobado (L). Depende de la 1 y la 2.** Solo frames de la sección
+`765:446568`. Se rediseña en la ruta existente, sin páginas duplicadas.
+
+| Paso | Pantalla | Tamaño |
+|---|---|---|
+| 3A.1 | Acciones rápidas en sus lugares actuales: tarjeta, drawer, detalle y ficha, con `Variant=cliente` (§4.10) | M |
+| 3A.2 | Leads (§4.1), incluidos «Calificar» y `OpportunityForm Origen=lead` en diálogo u hoja. Empieza cuando la sesión del importador haya subido su trabajo | L |
+| 3A.3 | Actividades (§4.9) | L |
+| 3A.4 | Ficha del cliente: «Nueva oportunidad» con `OpportunityForm Layout=sheet Origen=cliente`, vacío corregido y primera tarea (§4.11). Implica decidir D1 | M |
+
+**Ola 3B — BLOQUEADA hasta que el dueño apruebe la sección «(propuesta)» `768:454425` (XL).** Mientras
+tanto, estas pantallas conservan su interfaz actual y solo reciben los arreglos de backend de la
+ola 1.
+
+| Paso | Pantalla | Tamaño |
+|---|---|---|
+| 3B.1 | Pipeline: kanban, tabla y móvil, con 10 estados (§4.2) | L |
+| 3B.2 | Nuevo pipeline desde plantilla y «sin embudo» (§4.3) | M |
+| 3B.3 | Drawer (§4.5) | L |
+| 3B.4 | Oportunidades: lista y móvil (§4.4) | M |
+| 3B.5 | Detalle con «Conexiones» (§4.6) | L |
+| 3B.6 | Formulario: página, diálogo desde columna y paneles de Finanzas y Chat (§4.7) | M |
+| 3B.7 | Diálogos de ganar, perder, mover y vincular (§4.8) | M |
+
+**Ola 4 — Conexiones cruzadas (M–L). Depende de la 3A; lo marcado (3B) espera la aprobación.**
+
+- Ficha del cliente: línea de tiempo única en `/app/clientes/[id]`.
+- **(3B)** Finanzas: «Crear oportunidad» desde cotización o factura (`Origen=factura`); su frame
+  `778:34520` está en la sección «propuesta».
+- **(3B)** Chat / Bandeja: `Origen=conversación`; frame `778:35164`.
+- POS: botón, si D8 lo confirma.
+- GO Assistant: acción de crear oportunidad que llama al mismo servicio, sin formulario propio.
+- Tarea desde el CRM con el `TaskForm` del PM cuando exista.
+
+**Ola 5 — Limpieza (M).**
+
+- Borrar el código muerto: `StageManager`, `BulkCreateOpportunitiesDialog`, `ImportLeadsCsv`,
+  `KanbanSummary`, `PipelineInitializer` y la ruta `edit-opportunity`.
+- Borrar los diálogos viejos y los 7 selectores de cliente sustituidos.
+- Borrar el trigger `updated_at` duplicado.
+- Guardarraíles nuevos (§7.4).
+
+**Ola 6 — Módulos sin diseño aprobado (M por módulo, bloqueada por aprobación).**
+
+- Incluye todo lo que cubrirán las tres secciones nuevas de hoy (§1.4): Telefonía y llamadas, IA y
+  automatización, Red y gestión. **No se implementa su diseño hasta que el dueño lo apruebe.**
+- Mientras tanto, solo higiene: fechas con la zona de la organización, i18n, escrituras por servidor
+  y `usePermission`.
+- Nada de rediseño visual inventado ni adelantado desde frames sin aprobar.
+
+### 7.2 Dependencias
+
+```
+Ola 0 ──┬──> Ola 1 (backend) ──┐
+        └──> Ola 2 (kit) ──────┴──> Ola 3A (Leads, Actividades, acciones, ficha) ──> Ola 4 (ficha) ──┐
+Aprobación D7 de «(propuesta)» ──> Ola 3B (Pipeline, Oportunidades, detalle, drawer, formulario,     │
+                                   diálogos) ──> Ola 4 (Finanzas, Chat) ─────────────────────────────┴─> Ola 5
+Aprobación de las 3 secciones nuevas de hoy ─────────────────────────────────────────> Ola 6
+Importador de leads (otra sesión, sin commit) ──> paso 3A.2
+TaskForm del PM ──> ola 4 (tareas)
+```
+
+### 7.3 Migraciones propuestas (no aplicadas)
+
+Todas aditivas, con columnas `NULL`-ables o con `DEFAULT`, sin `DROP` ni cambio de tipo. Van por MCP
+con su `.sql` en `supabase/migrations/` y su reversión en `supabase/rollbacks/`. Los comentarios de
+esquema no llevan nombres de organizaciones.
+
+| Id | Cambio | Para | Rollback |
+|---|---|---|---|
+| M1 | `customers`: `owner_id uuid NULL` (FK a usuario), `lead_source text NULL` (CHECK de catálogo), `lead_score int NULL`, `last_contact_at timestamptz NULL`, `lead_discarded_at timestamptz NULL` y `lead_discard_reason text NULL`; índice `(organization_id, lifecycle_stage, created_at desc)`; copiar `metadata.source` a `lead_source` | Leads | quitar columnas e índice |
+| M1b | Vista o RPC `crm_leads_sin_colocar(org)` para el `CaptureBanner` | Leads | `drop` |
+| M2 | `opportunities.priority text NULL` con CHECK `low\|medium\|high` (solo si D4 = columna nueva) | Tarjeta | quitar columna |
+| M3 | `calendar_events.opportunity_id uuid NULL` con FK e índice | Conexiones y línea de tiempo | quitar columna |
+| M4 | RPC `crm_create_opportunity(...)` y `crm_update_opportunity(...)`: oportunidad, líneas por diferencia, `metadata` fusionado y actividad «creada»; SECURITY INVOKER o guarda de pertenencia; sin EXECUTE para `anon` | Formulario | `drop function` |
+| M5 | `trg_sync_customer_lifecycle` también en INSERT | Lead → oportunidad | volver al trigger actual |
+| M6 | RPC `crm_create_pipeline_with_stages` y `crm_set_default_pipeline`; índice único parcial `(organization_id, pipeline_type) WHERE is_default` (antes, verificar duplicados) | Nuevo pipeline | `drop` |
+| M7 | Permisos `crm.opportunities.*`, `crm.stages.*`, `crm.pipelines.manage` y `crm.activities.edit_any` en `permissions` + `role_permissions` por rol; `fn_stages_guard_outcome_flags` por permiso | «Sin permiso» | borrar filas y restaurar la función |
+| M8 | RLS de UPDATE y DELETE en `activities` y `notes`: autor o permiso `crm.activities.edit_any` | Actividades | políticas anteriores |
+| M8b | `customer_company_links`: `CHECK (person_id <> company_id)` (`NOT VALID` + `VALIDATE`) e índice parcial de un principal por empresa | `CustomerLinkPicker` | `drop constraint` e índice |
+| M9 | `REVOKE EXECUTE ... FROM authenticated` en las 6 funciones heredadas de etapa | Seguridad | `GRANT` |
+| M10 | RPC de KPI: `crm_kpis_oportunidades(org, filtros)` en moneda base con `exchange_rates` e informe de monedas sin tasa, `crm_kpis_leads(org)` y `crm_kpis_actividades(org, rango, tz)` | KPI | `drop` |
+| M11 | Índices `(organization_id, <fecha> desc, id)` en las 8 fuentes de la línea de tiempo | Actividades | `drop index` |
+| M12 | `opportunities` y `stages` en `supabase_realtime` (opcional) | Pipeline | quitar de la publicación |
+| M13 | Datos (decisión D6): notas de `activities` a `notes`; `tasks.related_to_type` de `cliente` a `customer` | Unificar | script inverso |
+
+### 7.4 Pruebas que hay que añadir
+
+1. **Caracterización (ola 0).** Servicio de etapa, ganar, perder, convertir y crear, con los
+   resultados actuales fijados.
+2. **Contrato de ruta** para cada ruta nueva:
+   - la organización sale de la sesión;
+   - una organización ajena en el body da 403 y queda registrada;
+   - un usuario sin permiso recibe 403.
+
+   Mismo patrón que `objections.contract.test.ts`.
+3. **RPC.**
+   - `crm_create_opportunity`: todo o nada, primera etapa no terminal, moneda base y pipeline `sales`.
+   - `crm_create_pipeline_with_stages`: rechaza sin etapa ganadora.
+4. **Kit.** Lógica pura de cada componente:
+   - motivos de `QuickAction` deshabilitado, incluido `do_not_call`;
+   - conversión y «falta tasa» de `KpiMoneda`;
+   - validación de `StageEditorRow`;
+   - pasos de `CustomerLinkPicker`;
+   - `Origen` de `OpportunityForm`, que prellena y bloquea campos.
+5. **Pantalla (Testing Library).** Estados listo, cargando, vacío, sin resultados, error y sin permiso
+   de Pipeline, Oportunidades, Leads y Actividades.
+6. **Zona horaria.** `npm run test:tz-all` sobre la línea de tiempo, Actividades y el formulario. El
+   test de `timeline/utils` deja de fijar Bogotá y recibe la zona.
+7. **Guardarraíles nuevos** en `src/__tests__/guardrails.test.ts`:
+   - ningún archivo de `src/components/crm/{pipeline,oportunidades,actividades,leads,kit}` escribe
+     con `@/lib/supabase/config`: nada de `insert`, `update`, `delete` ni `upsert`;
+   - `America/Bogota` prohibido en `src/components/crm/**`, salvo como fallback documentado;
+   - prohibido comparar `roleName` o nombres de rol en CRM;
+   - paridad de claves `crm.*` en los 4 idiomas.
+
+### 7.5 Checklist de punta a punta: «el flujo queda conectado»
+
+Se verifica en el navegador con una organización de prueba **y** con consultas por MCP.
+
+Los puntos marcados **(3B)** solo se pueden cerrar cuando la sección «(propuesta)» esté aprobada e
+implementada. Hasta entonces se verifican contra la interfaz actual, con el backend nuevo.
+
+1. [ ] **(3B)** Organización sin embudo de ventas:
+   - Pipeline muestra «sin embudo»;
+   - «Crear embudo» lleva a la plantilla Ventas;
+   - se crean el pipeline y sus etapas en una transacción;
+   - queda por defecto.
+2. [ ] Captura web (`web_capture_lead`):
+   - el cliente aparece en Leads con origen «Formulario web»;
+   - sin embudo, aparece en el `CaptureBanner`.
+3. [ ] Leads:
+   - buscar por documento y teléfono en servidor;
+   - asignar responsable en lote;
+   - descartar con motivo, que desaparece de la vista por defecto.
+4. [ ] Calificar → `OpportunityForm Origen=lead`:
+   - la oportunidad nace en la primera etapa no terminal del pipeline `sales`;
+   - moneda base;
+   - responsable asignado;
+   - actividad «Oportunidad creada desde lead»;
+   - el cliente pasa a `lifecycle_stage='opportunity'`.
+5. [ ] Tarjeta del kanban: las 6 acciones.
+   - Llamar crea una fila en `calls` y una actividad.
+   - Email escribe en `email_messages` y crea una actividad.
+   - WhatsApp escribe en `messages`, crea una actividad y cobra créditos.
+   - Reunión escribe en `calendar_events` **con `opportunity_id`** y crea una actividad.
+   - Tarea escribe en `tasks`, asignada al usuario.
+   - Nota escribe en `notes`.
+   - Cada acción aparece en la línea de tiempo de la oportunidad, en la ficha del cliente y en
+     Actividades, con la hora en la zona de la organización.
+6. [ ] **(3B)** Mover de etapa:
+   - con criterios sin cumplir sale `MoveStageDialog Resultado=gate`;
+   - sin permiso, «sin permiso» resuelto en servidor;
+   - queda fila en `opportunity_stage_history` y `crm_events` recibe `stage_changed`;
+   - «días en etapa» vuelve a 0.
+7. [ ] **(3B)** Ganar con `WinDialog`:
+   - `win_data` completo y etapa `is_won`;
+   - los pasos elegidos se ejecutan: cotización a factura con `invoice_sales.opportunity_id`,
+     comisión en `commissions` y onboarding o renovación si aplica;
+   - «Conexiones» del detalle muestra cada uno;
+   - el cliente pasa a `customer`.
+8. [ ] **(3B)** Perder con `LoseDialog`:
+   - la etapa pasa a `is_lost`, con motivo de catálogo, competidor y `closed_at`;
+   - `metadata` conserva `gate_overrides`.
+9. [ ] Formulario desde cada origen (la ficha del cliente y «Calificar» en la 3A; el resto en la **(3B)**): Pipeline «+», Oportunidades, ficha del cliente, factura de venta
+   y conversación.
+   - Es la misma instancia, con los campos del origen prellenados y bloqueados.
+   - La factura queda vinculada.
+10. [ ] **(3B)** KPI:
+    - valor abierto y ponderado en moneda base con la tasa del día;
+    - una oportunidad sin tasa se excluye con aviso.
+11. [ ] Actividades: editar y borrar solo las propias sin permiso; «Cargar más»; filtros por
+    responsable, entidad y rango en la zona de la organización.
+12. [ ] Un usuario de otra organización no ve ni modifica nada (RLS + rutas); una organización ajena
+    en el body da 403 y queda registrada.
+13. [ ] Idiomas: la interfaz del núcleo cambia completa en `en`, `fr` y `pt`.
+14. [ ] Compuertas: `npx jest`, `npx tsc --noEmit -p tsconfig.json` y `npx next build`, sin
+    regresiones sobre el estado conocido de CLAUDE.md.
+
+---
+
+## 8. Decisiones que necesita el dueño antes de la ola 1
+
+| Id | Pregunta | Recomendación |
+|---|---|---|
+| D1 | ¿Qué ficha de cliente queda: `/app/clientes/[id]` o `/app/crm/clientes/[id]`? | Una sola, `/app/clientes/[id]`, con el bloque CRM; la otra redirige |
+| D2 | Leads = `customers.lifecycle_stage='lead'`. ¿Qué pasa con las 42 oportunidades `record_type='lead'` actuales? | Se muestran en Oportunidades con la etiqueta «Lead» y dejan de crearse nuevas con ese tipo |
+| D3 | Score del lead: ¿columna propia o ICP del cliente? | Columna `lead_score`, calculada por el servidor desde el ICP |
+| D4 | Prioridad de la tarjeta: ¿columna nueva o `temperature` (frío, tibio, caliente)? | Usar `temperature`, que ya existe y el Figma pide en «Calificar», y mostrarla como prioridad; evita M2 |
+| D5 | Permisos nuevos (M7): ¿qué roles reciben `close`, `override_gate` y `pipelines.manage`? | Admin y Manager; Empleado solo `view`, `create` y `edit` de lo propio |
+| D6 | Notas: ¿`notes` o `activities`? ¿`channel` es el medio? | `notes` para notas y `channel` = medio; migrar las 25 |
+| D7 | **Bloqueante.** ¿Se aprueba la sección «CRM — Pipeline y oportunidades (propuesta)» `768:454425` (97 frames) y los componentes de «CRM (Nuevo)» que solo ella usa? Mientras no, la ola 3B no existe | Revisarla frame por frame con el §4.2–§4.8 de este plan y, si se aprueba, quitar «(propuesta)» del nombre de la sección y poner un marcador de aprobación. Aprobar por separado las 3 secciones nuevas de hoy |
+| D8 | ¿El POS abre el formulario de oportunidad? | Solo si hay caso de uso; no está dibujado |
+
+---
+
+## Anexo — cómo se obtuvo
+
+- **Figma.**
+  - `get_metadata` de la página `759:17` y de la sección `759:20897` a las 22:58 y 23:02 UTC, con el
+    mismo tamaño de respuesta en las dos lecturas: sin cambios.
+  - Tercera lectura, a las 23:11–23:12 UTC, de `759:17` y de la página `3:2`, comparando ids.
+    - Aparecieron 13 nodos nuevos en «11 CRM»: las secciones `1295:767945` y `1295:767955`, cada una
+      con su título y sus filas.
+    - Aparecieron 47 nodos nuevos en «02 Componentes»: la sección `1295:36609`.
+    - Ninguno se quitó. Las secciones existentes no cambiaron.
+  - `get_screenshot` de `765:446571`, `767:2873`, `759:444936`, `768:454428`, `769:12376`,
+    `773:23160` y `775:473076` para contrastar los datos pintados con la BD.
+  - No se llamó a ninguna herramienta de escritura.
+- **Código.** `find`, `grep` y `wc` sobre `src/**`. Las métricas de §2.2 salen de búsquedas de
+  imports, así que son aproximadas por archivo, no por uso.
+- **BD.** Solo `SELECT`:
+  - `information_schema.columns`, `pg_constraint`, `pg_policies`, `pg_proc` e
+    `information_schema.triggers`;
+  - conteos agregados por tabla.
+
+  Ningún dato de cliente se copió aquí.

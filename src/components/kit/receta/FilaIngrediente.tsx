@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import type { LineaCostoReceta } from '@/lib/services/recipeService';
+import { simboloUnidad } from '@/lib/pos/peso/modoVenta';
 import { cn } from '@/utils/Utils';
 import { CampoNumero } from '../CampoNumero';
 import { unidadesCompatibles, unidadLimpia, type ErrorLineaReceta, type IngredienteBorrador, type UnidadReceta } from './recetaLogica';
@@ -200,7 +201,8 @@ export function FilaIngrediente({
           </span>
           {linea.costo_unitario !== null && (
             <span className="text-[11px] tabular-nums text-fg-muted">
-              {t('porUnidad', { costo: formatearMoneda(linea.costo_unitario), unidad: i.unidadIngrediente })}
+              {/* Costo por la unidad del insumo: «$ 24.000 / kg» (un insumo por peso se usa en gramos y cuesta por kg). */}
+              {t('porUnidad', { costo: formatearMoneda(linea.costo_unitario), unidad: simboloUnidad(i.unidadIngrediente) || i.unidadIngrediente })}
             </span>
           )}
         </>

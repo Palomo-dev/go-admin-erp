@@ -22,7 +22,11 @@
 import { closeIdb, keyToString, openIdb, requestToPromise, txDone, KEY_SEP, type IdbStoreDef } from './offlineDb';
 
 export const CATALOG_DB_NAME = 'goadmin-catalog';
-export const CATALOG_DB_VERSION = 1;
+/**
+ * 2 (2026-09-29): índice `by_org_scale_plu` de productos para las etiquetas de
+ * peso variable sin conexión. `openIdb` agrega el índice sin borrar datos.
+ */
+export const CATALOG_DB_VERSION = 2;
 
 export const CATALOG_STORES = [
   'products',
@@ -51,6 +55,8 @@ const STORE_DEFS: Record<CatalogStoreName, IdbStoreDef> = {
       { name: 'by_org_parent', keyPath: ['organization_id', 'parent_product_id'] },
       { name: 'by_org_barcode', keyPath: ['organization_id', 'barcode'] },
       { name: 'by_org_category', keyPath: ['organization_id', 'category_id'] },
+      // PLU de balanza (etiquetas de peso variable); las filas sin PLU no entran en el índice.
+      { name: 'by_org_scale_plu', keyPath: ['organization_id', 'scale_plu'] },
     ],
   },
   product_prices: { keyPath: 'id', indexes: [{ name: 'by_product', keyPath: 'product_id' }] },
@@ -101,6 +107,8 @@ export interface CatalogProduct {
   warranty_months: number | null;
   created_at: string | null;
   updated_at: string | null;
+  /** PLU de balanza (1–99.999, único por organización); solo productos por peso o medida. */
+  scale_plu?: number | null;
   /** Derivado de `product_favorites` al replicar. */
   is_favorite: boolean;
 }

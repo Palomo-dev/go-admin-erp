@@ -61,6 +61,7 @@ import { enviarACocina } from '@/lib/pos/venta/enviarCocina';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DialogoClienteMembresia } from '@/components/pos/venta/DialogoClienteMembresia';
 import { usePesarPos } from '@/components/pos/venta/peso/usePesarPos';
+import type { PesajeEtiqueta } from '@/lib/pos/etiquetaPeso';
 import { esMedido } from '@/lib/pos/peso/modoVenta';
 import { claveEnlacePos, debePedirCliente, leerEnlacePos, lineaParaQuitar, type EnlacePos } from '@/lib/pos/venta/membresias';
 
@@ -555,6 +556,22 @@ export default function POSPage() {
   // Productos por peso o medida: «Pesar» (agregar una pesada o cambiar el peso de una línea).
   const pesar = usePesarPos({ cartId: activeCartId, actualizar: updateCartInState });
 
+  // Etiqueta de peso variable (PRODUCTOS-POR-PESO-BASCULA.md §2.7): la línea entra con su peso, sin «Pesar».
+  const agregarEtiquetaPeso = async (product: Product, cantidad: number, pesaje: PesajeEtiqueta) => {
+    if (!activeCartId) {
+      toast.error(tPagina('sinCarritoActivo'));
+      return;
+    }
+    try {
+      updateCartInState(await POSService.addItemToCart(activeCartId, product, cantidad, undefined, { pesaje }));
+    } catch (error) {
+      console.error('Error agregando la etiqueta de peso:', error);
+      toast.error(error instanceof ProductoSinPrecioError
+        ? tCobro(error.causa === 'sin_precio' ? 'productoSinPrecio' : 'precioNoConsultado', { producto: product.name ?? String(product.id) })
+        : tPagina('errorAgregar'));
+    }
+  };
+
   const handleCheckout = (cart: Cart) => {
     setCheckoutCart(cart);
     setShowCheckout(true);
@@ -690,6 +707,7 @@ export default function POSPage() {
                 handleProductSelect(product, modifiers, cantidad);
               }}
               bloqueado={showCheckout}
+              onEtiquetaPeso={agregarEtiquetaPeso}
             />
           );
 

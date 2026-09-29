@@ -3,6 +3,7 @@ import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganizati
 import { POSService } from '@/lib/services/posService';
 import { promotionEngine } from '@/lib/services/promotionEngine';
 import { calcularLineaVenta, totalesDeLineasGuardadas } from '@/lib/pos/lineaVenta';
+import { esMedido, redondearCantidadProducto } from '@/lib/pos/peso/modoVenta';
 import {
   itemsParaImprimir,
   normalizarNota,
@@ -17,7 +18,24 @@ import type {
   ProductToAdd,
   PreCuenta,
   KitchenTicket,
+  ProductImage,
+  SaleItem,
 } from './types';
+
+/** Mensaje y traza de un error cualquiera, para el log. */
+function detalleError(error: unknown): { error: unknown; stack?: string } {
+  return error instanceof Error ? { error: error.message || error, stack: error.stack } : { error };
+}
+
+/** Impuesto de la organización como lo devuelve `POSService.getOrganizationTaxes`. */
+interface ImpuestoOrganizacion {
+  id: number | string;
+  name: string;
+  rate?: number | string | null;
+  is_default?: boolean | null;
+  is_active?: boolean | null;
+  tax_included?: boolean | null;
+}
 
 export class PedidosService {
   /**
@@ -59,7 +77,7 @@ export class PedidosService {
         .map(s => s.sale_id)
         .filter(id => id != null);
 
-      let allItems: any[] = [];
+      let allItems: SaleItem[] = [];
       
       if (saleIds.length > 0) {
         const { data: items, error: itemsError } = await supabase
@@ -73,6 +91,9 @@ export class PedidosService {
               sku,
               parent_product_id,
               variant_data,
+              sale_mode,
+              qty_decimals,
+              unit_code,
               product_images(
                 id,
                 storage_path,
@@ -90,15 +111,15 @@ export class PedidosService {
           throw new Error(`Error en consulta de items: ${itemsError.message || JSON.stringify(itemsError)}`);
         }
         
-        allItems = items || [];
+        allItems = (items || []) as unknown as SaleItem[];
 
         // Fallback de imagen: para items cuyo producto (variante) no tiene
         // imagen propia, resolver las imágenes del producto padre en una
         // consulta aparte (un embed auto-referenciado anidado no es soportado por PostgREST).
         const parentIdsSinImagen = Array.from(new Set(
           allItems
-            .filter((item: any) => item.product?.parent_product_id && !item.product?.product_images?.length)
-            .map((item: any) => item.product.parent_product_id)
+            .filter((item) => item.product?.parent_product_id && !item.product?.product_images?.length)
+            .map((item) => item.product?.parent_product_id as number)
         ));
 
         if (parentIdsSinImagen.length > 0) {
@@ -107,14 +128,14 @@ export class PedidosService {
             .select('id, product_id, storage_path, is_primary, display_order')
             .in('product_id', parentIdsSinImagen);
 
-          const parentImagesByProductId = new Map<number, any[]>();
-          (parentImages || []).forEach((img: any) => {
+          const parentImagesByProductId = new Map<number, ProductImage[]>();
+          ((parentImages || []) as Array<ProductImage & { product_id: number }>).forEach((img) => {
             const list = parentImagesByProductId.get(img.product_id) || [];
             list.push(img);
             parentImagesByProductId.set(img.product_id, list);
           });
 
-          allItems = allItems.map((item: any) => {
+          allItems = allItems.map((item) => {
             if (item.product?.parent_product_id && !item.product?.product_images?.length) {
               return {
                 ...item,
@@ -140,12 +161,11 @@ export class PedidosService {
         customers: customers, // Comensales de la sesión principal
         sale_items: allItems,
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error obteniendo detalle de mesa:', {
         tableId,
         organizationId,
-        error: error.message || error,
-        stack: error.stack
+        ...detalleError(error),
       });
       throw error;
     }
@@ -189,7 +209,7 @@ export class PedidosService {
       }
 
       // Crear nueva sesión
-      const { data: newSession, error: sessionError } = await supabase
+      const { error: sessionError } = await supabase
         .from('table_sessions')
         .insert({
           organization_id: organizationId,
@@ -223,12 +243,11 @@ export class PedidosService {
       }
       
       return details;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error iniciando sesión:', {
         tableId,
         serverId,
-        error: error.message || error,
-        stack: error.stack
+        ...detalleError(error),
       });
       throw error;
     }
@@ -292,7 +311,7 @@ export class PedidosService {
 
       // 2. Calcular impuestos reales por item y preparar sale_items
       const orgTaxes = await POSService.getOrganizationTaxes();
-      const formattedOrgTaxes: TaxUtilOrganizationTax[] = (orgTaxes || []).map((t: any) => ({
+      const formattedOrgTaxes: TaxUtilOrganizationTax[] = ((orgTaxes || []) as ImpuestoOrganizacion[]).map((t) => ({
         id: String(t.id),
         name: t.name,
         rate: parseFloat(t.rate?.toString() || '0'),
@@ -309,6 +328,8 @@ export class PedidosService {
       // producto padre, para que las promociones por categoría o sobre el
       // padre de una variante alcancen también a la mesa.
       let promoDiscounts: Record<number, number> = {};
+      // Por línea (mismo orden que `productos`): cada pesada es su propia línea del mismo producto.
+      let promoLineas: number[] = [];
       try {
         const promoResult = await promotionEngine.evaluate({
           channel: 'pos',
@@ -318,18 +339,24 @@ export class PedidosService {
             category_id: p.category_id ?? undefined,
             quantity: p.quantity,
             unit_price: p.unit_price,
+            // «Lleve X pague Y» no aplica a productos por peso o medida.
+            sale_mode: p.sale_mode,
           })),
           organization_id: organizationId,
           branch_id: branchId,
         });
         promoDiscounts = promoResult.itemDiscounts;
+        promoLineas = promoResult.lineDiscounts ?? [];
       } catch (promoErr) {
         console.warn('[pedidosService] No se pudieron evaluar promociones:', promoErr);
       }
 
-      for (const p of productos) {
+      for (let idx = 0; idx < productos.length; idx += 1) {
+        const p = productos[idx];
         // El descuento de la promoción nunca pasa de la línea (el cobro lo valida).
-        const itemDiscount = Math.min(promoDiscounts[p.product_id] || 0, p.quantity * p.unit_price);
+        // Una línea por peso o medida lleva SOLO el suyo, no el de todas las pesadas del producto.
+        const promoLinea = esMedido({ sale_mode: p.sale_mode ?? null }) ? promoLineas[idx] || 0 : promoDiscounts[p.product_id] || 0;
+        const itemDiscount = Math.min(promoLinea, p.quantity * p.unit_price);
         // Tasa y modo de impuesto de la línea: los de siempre (impuestos del
         // producto; si no tiene, los de la organización por defecto). Sin
         // impuestos resueltos, la línea va sin impuesto como antes.
@@ -346,7 +373,7 @@ export class PedidosService {
           if (productTaxes && productTaxes.length > 0) {
             const productApplied: { [key: string]: boolean } = {};
             const productOrgTaxes: TaxUtilOrganizationTax[] = [];
-            productTaxes.forEach((relation: any) => {
+            (productTaxes as Array<{ organization_taxes?: ImpuestoOrganizacion | null }>).forEach((relation) => {
               if (relation.organization_taxes && relation.organization_taxes.is_active) {
                 const taxId = String(relation.organization_taxes.id);
                 productApplied[taxId] = true;
@@ -403,6 +430,8 @@ export class PedidosService {
             ...(normalizarNota(p.notes) && p.is_allergy ? { is_allergy: true } : {}),
             ...(p.guest_number ? { guest_number: p.guest_number } : {}),
             ...(p.modifiers && p.modifiers.length > 0 ? { modifiers: p.modifiers } : {}),
+            // Origen del peso (manual en fase 2): el cobro lo valida y lo audita «Pesos manuales».
+            ...(p.pesaje ? { pesaje: p.pesaje } : {}),
           },
         });
       }
@@ -483,12 +512,11 @@ export class PedidosService {
 
       // 5. Actualizar total de la venta
       await this.recalcularTotalVenta(saleId!);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error agregando productos:', {
         sessionId,
         productCount: productos.length,
-        error: error.message || error,
-        stack: error.stack
+        ...detalleError(error),
       });
       throw error;
     }
@@ -637,7 +665,7 @@ export class PedidosService {
   static async enviarComandaCocina(sessionId: string, textos?: TextosAjusteImpreso): Promise<Array<{
     ticketId: number;
     createdAt: string;
-    items: Array<{ productName: string; quantity: number; notes: string | null; station: string | null; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null }>;
+    items: Array<{ productName: string; quantity: number; unit?: string; qtyDecimals?: number; notes: string | null; station: string | null; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null }>;
   }>> {
     try {
       const { data: pendientes, error: fetchError } = await supabase
@@ -647,7 +675,7 @@ export class PedidosService {
           kitchen_ticket_items(
             id, station, notes, status, product_name, quantity, quantity_delta, adjustment_kind,
             adjustment_reason, is_allergy, variant_data, modifiers,
-            sale_items(quantity, notes, products(name, variant_data))
+            sale_items(quantity, notes, products(name, variant_data, sale_mode, qty_decimals, unit_code))
           )
         `)
         .eq('table_session_id', sessionId)
@@ -672,6 +700,7 @@ export class PedidosService {
           : ticket.items.map((it) => ({
               productName: it.product_name || 'Producto',
               quantity: it.quantity,
+              ...(it.unit ? { unit: it.unit, qtyDecimals: it.qtyDecimals ?? undefined } : {}),
               notes: it.notes,
               station: it.station,
               variantData: it.variant_data,
@@ -780,9 +809,10 @@ export class PedidosService {
         });
         if (insertError) throw insertError;
 
+        // Con 3 decimales (numeric(12,3)): 0,735 − 0,5 es 0,235, no 0,23499….
         await this.actualizarCantidadItem(
           saleItemId,
-          originalItem.quantity - quantity
+          redondearCantidadProducto(Number(originalItem.quantity) - quantity, 3)
         );
       }
 

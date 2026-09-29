@@ -21,6 +21,7 @@ import { AgregarProductosDocumento } from '@/components/finanzas/documento/produ
 import { SerialCaptureSection } from '@/components/shared/SerialCaptureSection';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import type { ProductoParaDocumento } from '@/lib/services/documentos/edicionDocumento';
+import { cantidadInicialLinea } from '@/lib/services/documentos/cantidadLinea';
 import type { ContextoMoneda } from '@/lib/utils/moneda';
 
 export interface LineaOrden {
@@ -35,6 +36,9 @@ export interface LineaOrden {
   requires_serial?: boolean;
   serial_numbers?: string[];
   notes?: string;
+  /** Producto por peso o medida: símbolo de la unidad («kg») y decimales de la cantidad (`cantidadLinea.ts`). */
+  unidad?: string | null;
+  decimalesCantidad?: number | null;
 }
 
 export interface LineasOrdenCompraProps {
@@ -62,11 +66,14 @@ export function LineasOrdenCompra({ items, onItemsChange, proveedor, sucursal, n
         productName: p.nombre,
         sku: p.sku ?? '',
         image: p.imagen,
-        quantity: p.minimoPedido && p.minimoPedido > 0 ? p.minimoPedido : 1,
+        // El mínimo del proveedor, o 1; por peso o medida sin mínimo, vacía para escribir los kg.
+        quantity: cantidadInicialLinea(p, p.minimoPedido),
         unit_cost: Number(p.precio) || 0,
         track_serial: p.serial,
         requires_serial: p.serial,
         serial_numbers: [],
+        unidad: p.unidadVenta,
+        decimalesCantidad: p.decimalesCantidad,
       },
     ]);
   };
@@ -76,6 +83,8 @@ export function LineasOrdenCompra({ items, onItemsChange, proveedor, sucursal, n
     descripcion: i.productName,
     sku: i.sku || null,
     cantidad: i.quantity,
+    unidad: i.unidad ?? null,
+    decimalesCantidad: i.decimalesCantidad ?? null,
     precioUnitario: i.unit_cost,
     total: Math.round(i.quantity * i.unit_cost * 100) / 100,
     insignias: i.track_serial

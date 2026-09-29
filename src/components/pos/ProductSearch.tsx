@@ -13,7 +13,6 @@ import {
   conFavorito,
   decidirAccionProducto,
   enriquecerVariante,
-  resolverCodigo,
   type PosGridProduct,
   type SelectedVariant,
 } from '@/lib/pos/venta/catalogo';
@@ -38,6 +37,10 @@ import { teclaAtajo } from '@/lib/pos/venta/atajos';
 import { GrillaProductos } from './venta/GrillaProductos';
 import { RecetaDialogo } from './venta/catalogo/RecetaDialogo';
 import { useCatalogoGrilla, type ErrorCatalogo } from './venta/catalogo/useCatalogoGrilla';
+import type { PesajeEtiqueta } from '@/lib/pos/etiquetaPeso';
+import { resolverEscaneo, type ResultadoEscaneo } from '@/lib/pos/venta/escaneo';
+import { useFormatoEtiquetaPeso } from '@/lib/pos/useFormatoEtiquetaPeso';
+import { formatoCantidad } from '@/lib/pos/peso/modoVenta';
 
 interface ProductSearchProps {
   /**
@@ -53,6 +56,12 @@ interface ProductSearchProps {
    * `PanelAdaptable` el lector ya lo descarta solo (`onDescartado`).
    */
   bloqueado?: boolean;
+  /**
+   * Etiqueta de peso variable leída con el lector (PRODUCTOS-POR-PESO-BASCULA.md
+   * §2.7): la línea va directo al carrito con su cantidad y `notes.pesaje`, sin
+   * abrir «Pesar». Sin esta prop el lector se comporta como antes.
+   */
+  onEtiquetaPeso?: (product: Product, cantidad: number, pesaje: PesajeEtiqueta) => void | Promise<void>;
 }
 
 // `PosGridProduct`, `SelectedVariant` y las decisiones del catálogo (tarjeta,
@@ -69,8 +78,10 @@ function almacenLocal(): Storage | null {
   }
 }
 
-export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSearchProps) {
+export function ProductSearch({ onProductSelect, bloqueado = false, onEtiquetaPeso }: ProductSearchProps) {
   const t = useTranslations('posVenta.catalogo');
+  const tEtiqueta = useTranslations('posPeso.etiqueta');
+  const formatoEtiqueta = useFormatoEtiquetaPeso();
   const { branchFilter, branches } = useBranch();
   const moneda = useMonedaOrganizacion();
 
@@ -187,10 +198,11 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
   };
 
   // Función para manejar el escaneo de código de barras (cámara)
+  // Cámara: el código leído va directo al carrito, igual que con el lector
+  // USB (antes solo quedaba escrito en el buscador).
   const handleBarcodeScan = (barcode: string) => {
-    setSearchTerm(barcode);
     setShowScanner(false);
-    toast.info(t('codigoEscaneado'), { description: t('buscandoCodigo', { codigo: barcode }), duration: 2000 });
+    void handleHardwareScan(barcode);
   };
 
   // Función para cerrar el scanner
@@ -241,6 +253,48 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
   // modificadores ya calculados (la RPC empareja `barcode` exacto, también
   // el de las variantes). Así la decisión —agregar, pedir variante o avisar
   // de agotado— es la misma que al tocar la tarjeta.
+  // Etiqueta de peso variable (§2.7): solo cuando el código EXACTO no existe.
+  // Devuelve true si el código era una etiqueta (agregada o con su aviso de
+  // error: nada se agrega); false si no encaja en el formato de la organización.
+  // La lectura (código exacto primero, formato de la organización, PLU y
+  // precio vigente) vive en src/lib/pos/venta/escaneo.ts (`resolverEscaneo`),
+  // compartida con «Agregar productos» de la mesa; aquí solo los avisos.
+  const aplicarEtiquetaPeso = async (code: string, r: Extract<ResultadoEscaneo, { tipo: 'etiqueta' | 'etiqueta_invalida' }>) => {
+    if (r.tipo === 'etiqueta_invalida') {
+      toast.error(tEtiqueta('invalida'), { description: tEtiqueta(r.motivo === 'digito_valor' ? 'invalidaValor' : 'invalidaDescripcion', { codigo: code }), duration: 3500 });
+      return;
+    }
+    const { etiqueta, producto, linea } = r;
+    if (!linea.ok) {
+      const nombre = producto?.name ?? '';
+      const claves = {
+        digito_control: 'invalida',
+        digito_valor: 'invalida',
+        plu_inexistente: 'pluInexistente',
+        producto_por_unidad: 'productoPorUnidad',
+        sin_precio: 'sinPrecio',
+        peso_invalido: 'pesoInvalido',
+        bajo_minimo: 'bajoMinimo',
+      } as const;
+      const minimo = linea.minimo !== undefined && producto ? formatoCantidad(linea.minimo, producto) : '';
+      toast.error(tEtiqueta(claves[linea.error], { plu: etiqueta.plu, producto: nombre, minimo }), {
+        description: tEtiqueta('codigoLeido', { codigo: code }),
+        duration: 3500,
+      });
+      return;
+    }
+    await onEtiquetaPeso?.(producto as Product, linea.cantidad, linea.pesaje);
+    if (linea.aviso) {
+      toast.warning(tEtiqueta('importeDifiere'), {
+        description: tEtiqueta('importeDifiereDescripcion', {
+          etiqueta: moneda.formatear(linea.aviso.importeEtiqueta),
+          calculado: moneda.formatear(linea.aviso.importeCalculado),
+        }),
+        duration: 5000,
+      });
+    }
+  };
+
   const handleHardwareScan = useCallback(async (code: string) => {
     // Con el cobro abierto el escaneo no va al carrito de fondo (D10).
     if (bloqueado) {
@@ -248,38 +302,24 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
       return;
     }
     try {
-      const [row, page] = await Promise.all([
-        POSService.getProductByBarcode(code).catch(() => null),
-        POSService.getProductsPaginated({
-          page: 1,
-          limit: 5,
-          search: code,
-          category_id: null,
-          status: 'active',
-          branchFilter,
-        }),
-      ]);
-      // El código EXACTO manda (`getProductByBarcode`): el generador interno usa
-      // el prefijo 20 en 744 productos y los códigos de balanza también empiezan
-      // por 20–29 (PRODUCTOS-POR-PESO-BASCULA.md §2.7). Si la fila exacta existe
-      // pero su producto no vino en la primera página buscada con el código
-      // (coincidencias por SKU o nombre), se busca en una página más amplia
-      // antes de decir «no encontrado».
-      let grilla = page.data as PosGridProduct[];
-      const idExacto = row ? (row.parent_product_id ?? row.id) : null;
-      if (idExacto !== null && !grilla.some((p) => p.id === idExacto)) {
-        const amplia = await POSService.getProductsPaginated({
-          page: 1,
-          limit: 100,
-          search: code,
-          category_id: null,
-          status: 'active',
-          branchFilter,
-        });
-        grilla = amplia.data as PosGridProduct[];
+      // Código exacto primero, luego etiqueta de peso variable y la decisión
+      // de la tarjeta: src/lib/pos/venta/escaneo.ts (igual en la mesa).
+      const r = await resolverEscaneo(code, {
+        porCodigo: (c) => POSService.getProductByBarcode(c),
+        grilla: async (termino, limite) =>
+          (await POSService.getProductsPaginated({ page: 1, limit: limite, search: termino, category_id: null, status: 'active', branchFilter }))
+            .data as PosGridProduct[],
+        porPlu: onEtiquetaPeso ? (plu) => POSService.getProductByScalePlu(plu) : undefined,
+        precioVigente: (p) => POSService.precioVigenteProducto(p.id, p.name),
+        formatoEtiqueta,
+        decimalesMoneda: moneda.decimals,
+      });
+      if (r.tipo !== 'producto') {
+        await aplicarEtiquetaPeso(code, r);
+        return;
       }
       // L18: la decisión vive en src/lib/pos/venta/catalogo.ts (resolverCodigo).
-      const decision = resolverCodigo(row, grilla);
+      const decision = r.decision;
       if (decision.tipo === 'no_encontrado') {
         toast.error(t('codigoNoEncontrado'), { description: t('codigoNoEncontradoDescripcion', { codigo: code }), duration: 3000 });
         return;
@@ -307,7 +347,7 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
       toast.error(t('errorEscaneo'));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branchFilter, onProductSelect, bloqueado, t]);
+  }, [branchFilter, onProductSelect, bloqueado, t, formatoEtiqueta, onEtiquetaPeso, moneda]);
 
   useHardwareBarcodeScanner({
     onScan: handleHardwareScan,
@@ -418,6 +458,11 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
         favoritosEnCurso={togglingFavorites}
         onReceta={(p) => void handleViewRecipe(p)}
         onEscanerCamara={() => setShowScanner(true)}
+        onCodigo={(codigo) => {
+          // Código escrito a mano + Enter: como un escaneo (directo al carrito).
+          setSearchTerm('');
+          void handleHardwareScan(codigo);
+        }}
         onLimpiarFiltros={clearFilters}
         mensajeError={mensajeError}
       />

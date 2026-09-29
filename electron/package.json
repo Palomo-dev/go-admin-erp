@@ -22,6 +22,7 @@
     "electron-updater": "^6.3.9",
     "escpos": "^3.0.0-alpha.6",
     "escpos-network": "^3.0.0-alpha.5",
+    "serialport": "^13.0.0",
     "ws": "^8.18.0"
   },
   "optionalDependencies": {

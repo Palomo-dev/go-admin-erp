@@ -9,11 +9,14 @@ import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { DialogoMotivo } from '@/components/kit';
 import { Trash2, Edit2, Check, X, Package, ChefHat, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import { MOTIVO_MAX } from '@/lib/pos/cocina/rutasCocina';
 import type { SaleItem } from './types';
+import { textoCantidadParcialValido } from '@/components/kit/cartLineLogica';
+import { esMedido, simboloUnidad } from '@/lib/pos/peso';
+import { decimalesLinea, formatoCantidadLinea, leerCantidadLinea, modoVentaLinea } from './cantidadMesa';
 
 /** Mínimo de caracteres del motivo al restar o anular un plato ya enviado. */
 const MOTIVO_MIN = 3;
@@ -35,8 +38,18 @@ export function OrderItemCard({
 }: OrderItemCardProps) {
   const { formatear } = useMonedaOrganizacion();
   const tAjuste = useTranslations('posMesaAjuste');
+  const tPeso = useTranslations('posPeso.mesa');
+  const locale = useLocale();
+  // Producto por peso o medida: la cantidad lleva sus decimales («0,500 kg»).
+  const decimales = decimalesLinea(item);
+  const medido = esMedido(modoVentaLinea(item));
+  const unidad = simboloUnidad(modoVentaLinea(item).unit_code);
+  const cantidadTexto = (n: number) => formatoCantidadLinea(n, item, locale);
   const [isEditing, setIsEditing] = useState(false);
-  const [editQuantity, setEditQuantity] = useState(item.quantity);
+  // Texto del campo (coma o punto); la cantidad sale con los decimales de la línea.
+  const [editTexto, setEditTexto] = useState(String(item.quantity).replace('.', ','));
+  const editQuantity = leerCantidadLinea(editTexto, decimales);
+  const reiniciarEdicion = () => setEditTexto(String(item.quantity).replace('.', ','));
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   // Restar unidades de un plato ya enviado: se pide el motivo antes de guardar.
@@ -96,19 +109,20 @@ export function OrderItemCard({
       setCantidadPorConfirmar(null);
     } catch (error) {
       console.error('Error actualizando cantidad:', error);
-      setEditQuantity(item.quantity);
+      reiniciarEdicion();
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleSaveQuantity = async () => {
-    if (editQuantity === item.quantity || editQuantity < 1) {
+    if (editQuantity === null || editQuantity === Number(item.quantity)) {
       setIsEditing(false);
+      reiniciarEdicion();
       return;
     }
     // Restar a algo que la cocina ya tiene: primero el motivo (sale en la comanda de ajuste).
-    if (enviadoACocina && editQuantity < item.quantity) {
+    if (enviadoACocina && editQuantity < Number(item.quantity)) {
       setCantidadPorConfirmar(editQuantity);
       return;
     }
@@ -224,7 +238,9 @@ export function OrderItemCard({
           
           {/* Precio unitario */}
           <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-            {formatear(Number(item.unit_price))} c/u
+            {medido && unidad
+              ? tPeso('precioPor', { precio: formatear(Number(item.unit_price)), unidad })
+              : `${formatear(Number(item.unit_price))} c/u`}
           </p>
         </div>
 
@@ -240,11 +256,15 @@ export function OrderItemCard({
             {isEditing ? (
               <>
                 <Input
-                  type="number"
-                  min="1"
-                  value={editQuantity}
-                  onChange={(e) => setEditQuantity(parseInt(e.target.value) || 1)}
-                  className="w-16 text-center"
+                  type="text"
+                  inputMode={decimales > 0 ? 'decimal' : 'numeric'}
+                  autoComplete="off"
+                  aria-label={tPeso('cantidad', { unidad: unidad || '—' })}
+                  value={editTexto}
+                  onChange={(e) => {
+                    if (textoCantidadParcialValido(e.target.value, decimales)) setEditTexto(e.target.value);
+                  }}
+                  className={decimales > 0 ? 'w-24 text-right tabular-nums' : 'w-16 text-center'}
                   disabled={isProcessing}
                 />
                 <Button
@@ -260,7 +280,7 @@ export function OrderItemCard({
                   variant="ghost"
                   onClick={() => {
                     setIsEditing(false);
-                    setEditQuantity(item.quantity);
+                    reiniciarEdicion();
                   }}
                   disabled={isProcessing}
                 >
@@ -270,12 +290,15 @@ export function OrderItemCard({
             ) : (
               <>
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Cant: {item.quantity}
+                  Cant: {cantidadTexto(Number(item.quantity))}
                 </span>
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => setIsEditing(true)}
+                  onClick={() => {
+                    reiniciarEdicion();
+                    setIsEditing(true);
+                  }}
                   disabled={isProcessing}
                 >
                   <Edit2 className="h-3 w-3" />
@@ -346,14 +369,14 @@ export function OrderItemCard({
         onAbiertoChange={(open) => {
           if (!open) {
             setCantidadPorConfirmar(null);
-            setEditQuantity(item.quantity);
+            reiniciarEdicion();
           }
         }}
         titulo={tAjuste('restarTitulo')}
         descripcion={tAjuste('restarDescripcion', {
           producto: item.product?.name || '',
-          antes: item.quantity,
-          despues: cantidadPorConfirmar ?? item.quantity,
+          antes: cantidadTexto(Number(item.quantity)),
+          despues: cantidadTexto(cantidadPorConfirmar ?? Number(item.quantity)),
         })}
         textoConfirmar={tAjuste('confirmarCambio')}
         destructiva={false}

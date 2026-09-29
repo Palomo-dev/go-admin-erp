@@ -45,6 +45,11 @@ export const CODIGOS_ERROR_COBRO = [
   'origen_peso_no_disponible',
   'peso_exige_bascula',
   'sin_permiso_peso_manual',
+  // Báscula y etiqueta de balanza (fn_pos_validar_pesaje, 20260929220200).
+  'bascula_invalida',
+  'peso_inestable',
+  'pesaje_no_coincide',
+  'etiqueta_invalida',
 ] as const;
 
 export type CodigoErrorCobro = (typeof CODIGOS_ERROR_COBRO)[number];

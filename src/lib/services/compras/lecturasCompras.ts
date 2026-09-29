@@ -6,6 +6,8 @@
  * handlers (`clienteCompras`) y el pago único (`clientePagos`).
  */
 import { supabase } from '@/lib/supabase/config';
+import type { ProductoModoVenta } from '@/lib/pos/peso/modoVenta';
+import { COLUMNAS_CANTIDAD_PRODUCTO, cantidadLineaDeProducto } from '@/lib/services/documentos/cantidadLinea';
 
 // ─── Listado de facturas de compra ──────────────────────────────────────────
 
@@ -180,6 +182,9 @@ export interface LineaCompra {
   serial_numbers: string[];
   note: string | null;
   sku: string | null;
+  /** Producto por peso o medida: símbolo de la unidad («kg») y decimales de la cantidad; `null` por unidad. */
+  unidad: string | null;
+  decimalesCantidad: number | null;
 }
 
 export interface RetencionCompraLeida {
@@ -302,7 +307,7 @@ export async function leerDetalleFacturaCompra(org: number, id: string): Promise
       sucursal:branches(id, name),
       orden:purchase_orders(id, uuid),
       lineas:invoice_items!invoice_items_invoice_purchase_id_fkey(id, product_id, description, qty, unit_price, discount_amount, tax_rate,
-        tax_code, total_line, serial_numbers, note, created_at, producto:products(sku)),
+        tax_code, total_line, serial_numbers, note, created_at, producto:products(sku, ${COLUMNAS_CANTIDAD_PRODUCTO})),
       retenciones:invoice_purchase_withholdings(id, concept, base, rate, amount, tax_code),
       cuenta:accounts_payable!accounts_payable_invoice_id_fkey(id, amount, balance, status, due_date)`)
     .eq('id', id)
@@ -351,6 +356,7 @@ export async function leerDetalleFacturaCompra(org: number, id: string): Promise
       serial_numbers: Array.isArray(l.serial_numbers) ? (l.serial_numbers as string[]) : [],
       note: (l.note as string | null) ?? null,
       sku: (uno(l.producto as { sku: string | null } | null) ?? { sku: null }).sku,
+      ...cantidadLineaDeProducto(uno(l.producto as ProductoModoVenta | ProductoModoVenta[] | null)),
     }));
 
   const dsFila = ((ds as { data: Array<Record<string, unknown>> | null }).data ?? [])[0];

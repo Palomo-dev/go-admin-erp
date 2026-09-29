@@ -43,6 +43,8 @@ import { cn } from '@/utils/Utils';
 import { rutaKardexLote } from '../productos/detalle/inventario/stock/logicaInventario';
 import { nombreArchivo } from '../stock/logica';
 import { useAlcanceSucursales, useCantidadStock, useMensajeErrorInventario } from '../stock/useInventarioB1';
+import { idsProductos } from '../stock/cantidadProducto';
+import { useModosVenta } from '../stock/useModosVenta';
 import { DialogoAjustarLote, DialogoEliminarLote, DialogoLote } from './DialogosLote';
 import { listarLotes } from './LotesService';
 import { ESTADOS_LOTE, type EstadoLote, type FiltrosLotes, type KpisLotes, type LoteFila } from './types';
@@ -93,6 +95,10 @@ export function LotesPage() {
   }, [busquedaExterna]);
 
   const [filas, setFilas] = useState<LoteFila[]>([]);
+  // Productos por peso o medida: «12,400 kg» en vez de «12,4 uds» (PRODUCTOS-POR-PESO-BASCULA.md §2.4).
+  const idsFilas = useMemo(() => idsProductos(filas), [filas]);
+  const { cantidadDe } = useModosVenta(idsFilas);
+  const udsLote = (f: LoteFila) => cantidadDe(f.product_id, f.qty_on_hand, (numero) => t('uds', { n: numero }));
   const [total, setTotal] = useState(0);
   const [kpis, setKpis] = useState<KpisLotes | null>(null);
   const [hoy, setHoy] = useState('');
@@ -325,7 +331,7 @@ export function LotesPage() {
       alinear: 'derecha',
       ordenable: true,
       campoOrden: 'cantidad',
-      celda: (f) => <span className="font-semibold tabular-nums text-fg">{t('uds', { n: cantidad(f.qty_on_hand) })}</span>,
+      celda: (f) => <span className="font-semibold tabular-nums text-fg">{udsLote(f)}</span>,
     },
     {
       id: 'proveedor',
@@ -558,7 +564,7 @@ export function LotesPage() {
                   {f.expiry_date ? t('movil.vence', { fecha: formatPlain(f.expiry_date), texto: venceTexto(f) }) : t('sinCaducidad')}
                 </span>
                 <span className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-fg">{t('uds', { n: cantidad(f.qty_on_hand) })}</span>
+                  <span className="text-sm font-semibold text-fg">{udsLote(f)}</span>
                   <span className="text-xs text-fg-muted">{f.sucursal}</span>
                 </span>
               </span>

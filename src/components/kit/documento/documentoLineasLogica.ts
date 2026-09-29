@@ -23,7 +23,17 @@ export interface LineaDocumento {
   nota?: string | null;
   seriales?: readonly string[];
   cantidad: number;
+  /**
+   * Símbolo de la unidad de venta («kg», «m», «L») de un producto por peso o
+   * medida: va junto a la cantidad («0,735 kg») y al precio («/ kg»).
+   */
   unidad?: string | null;
+  /**
+   * Decimales de la cantidad de ESTA línea (los del producto: 3 en kg, 2 en
+   * metros). Sin valor, la línea usa los del documento (`decimalesCant` o los
+   * que traigan las demás líneas sin regla propia).
+   */
+  decimalesCantidad?: number | null;
   precioUnitario: number;
   /** Descuento de la línea en dinero, ya calculado. */
   descuento?: number | null;
@@ -83,7 +93,12 @@ export function simboloMoneda(moneda: ContextoMoneda | string): string {
   }
 }
 
-/** Decimales para una cantidad: enteros salvo que alguna línea traiga fracción (kilos, metros). */
+/**
+ * Decimales que traen los VALORES de unas líneas: enteros salvo que alguna
+ * traiga fracción. Es el respaldo de las líneas sin regla propia (ítems
+ * manuales, productos por unidad); las de peso o medida llevan la suya en
+ * `decimalesCantidad` (ver `decimalesLinea`).
+ */
 export function decimalesCantidad(lineas: readonly Pick<LineaDocumento, 'cantidad'>[], maximo = 3): number {
   let d = 0;
   for (const l of lineas) {
@@ -92,6 +107,61 @@ export function decimalesCantidad(lineas: readonly Pick<LineaDocumento, 'cantida
     if (i >= 0) d = Math.max(d, texto.length - i - 1);
   }
   return Math.min(d, maximo);
+}
+
+/** ¿La línea trae sus propios decimales (producto por peso o medida)? */
+export function tieneReglaCantidad(l: Pick<LineaDocumento, 'decimalesCantidad'>): boolean {
+  return typeof l.decimalesCantidad === 'number' && Number.isFinite(l.decimalesCantidad);
+}
+
+/**
+ * Decimales por defecto del documento para las líneas SIN regla propia: los
+ * que diga la pantalla o, si no, los que traigan esas líneas. Una línea de
+ * 0,735 kg ya no obliga a mostrar «2,000» en las líneas por unidad.
+ */
+export function decimalesDocumento(lineas: readonly Pick<LineaDocumento, 'cantidad' | 'decimalesCantidad'>[], fijados?: number | null): number {
+  if (typeof fijados === 'number' && Number.isFinite(fijados)) return Math.max(0, Math.min(3, Math.trunc(fijados)));
+  return decimalesCantidad(lineas.filter((l) => !tieneReglaCantidad(l)));
+}
+
+/**
+ * Decimales de una línea: los suyos (del producto) o los del documento. Nunca
+ * menos de los que ya trae su valor: el campo no redondea en silencio una
+ * cantidad guardada (un 1,5 de antes sigue siendo 1,5).
+ */
+export function decimalesLinea(l: Pick<LineaDocumento, 'cantidad' | 'decimalesCantidad'>, porDefecto: number): number {
+  if (!tieneReglaCantidad(l)) return porDefecto;
+  return Math.min(3, Math.max(0, Math.trunc(l.decimalesCantidad as number), decimalesCantidad([l])));
+}
+
+/**
+ * Cantidad de la línea como texto en el idioma: con regla propia, decimales
+ * fijos y la unidad («0,735 kg», «2,50 m»), igual que el tiquete; sin regla,
+ * los decimales justos («3», «1,5»).
+ */
+export function textoCantidadLinea(
+  l: Pick<LineaDocumento, 'decimalesCantidad' | 'unidad'> & { cantidad: number | null | undefined },
+  locale: string,
+  porDefecto: number,
+  valor?: number | null,
+): string {
+  const texto = numeroCantidadLinea(l, locale, porDefecto, valor);
+  return l.unidad ? `${texto} ${l.unidad}` : texto;
+}
+
+/** Solo el número de `textoCantidadLinea` (la tabla pinta la unidad aparte, en gris). */
+export function numeroCantidadLinea(
+  l: Pick<LineaDocumento, 'decimalesCantidad'> & { cantidad: number | null | undefined },
+  locale: string,
+  porDefecto: number,
+  valor?: number | null,
+): string {
+  const n = Number(valor ?? l.cantidad ?? 0) || 0;
+  if (tieneReglaCantidad(l)) {
+    const d = decimalesLinea({ cantidad: n, decimalesCantidad: l.decimalesCantidad }, porDefecto);
+    return new Intl.NumberFormat(locale, { minimumFractionDigits: d, maximumFractionDigits: d }).format(n);
+  }
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: Math.max(porDefecto, 3) }).format(n);
 }
 
 /**

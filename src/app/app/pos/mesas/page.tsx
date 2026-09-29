@@ -196,12 +196,12 @@ export default function MesasPage() {
         description: `Mesa ${mesaEliminar.name} eliminada exitosamente`,
       });
       setMesaEliminar(null);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error eliminando mesa:', error);
       toast({
         title: 'Error',
         description:
-          error.message || 'No se pudo eliminar la mesa',
+          (error as { message?: string } | null)?.message || 'No se pudo eliminar la mesa',
         variant: 'destructive',
       });
     }
@@ -256,11 +256,11 @@ export default function MesasPage() {
         title: 'Mesas combinadas',
         description: 'Las mesas han sido combinadas exitosamente',
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error combinando mesas:', error);
       toast({
         title: 'Error',
-        description: error.message || 'No se pudieron combinar las mesas',
+        description: (error as { message?: string } | null)?.message || 'No se pudieron combinar las mesas',
         variant: 'destructive',
       });
       throw error;
@@ -295,11 +295,11 @@ export default function MesasPage() {
         title: 'Cuenta solicitada',
         description: `Se marcó ${mesa.name} para cierre de cuenta`,
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error solicitando cuenta:', error);
       toast({
         title: 'Error',
-        description: error?.message || 'No se pudo solicitar la cuenta',
+        description: (error as { message?: string } | null)?.message || 'No se pudo solicitar la cuenta',
         variant: 'destructive',
       });
     }
@@ -358,11 +358,11 @@ export default function MesasPage() {
       router.push(`/app/pos/mesas/${mesaId}`);
       // Recargar datos en background para que al volver todo esté actualizado
       cargarDatos();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error abriendo sesión:', error);
       toast({
         title: 'Error',
-        description: error?.message || 'No se pudo abrir la sesión',
+        description: (error as { message?: string } | null)?.message || 'No se pudo abrir la sesión',
         variant: 'destructive',
       });
     }
@@ -585,7 +585,6 @@ export default function MesasPage() {
             onChange={setBusqueda}
             onValueChange={setBusqueda}
             placeholder={t('filtros.buscar')}
-            atajo={false}
           />
         }
         filtros={

@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { purchaseOrderService, type PurchaseOrderItemInput } from '@/lib/services/purchaseOrderService';
+import { useTranslations } from 'next-intl';
+import { cantidadLineaDeProducto, redondearCantidadLinea, sumaCantidades } from '@/lib/services/documentos/cantidadLinea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,10 +35,13 @@ interface OrderItem extends PurchaseOrderItemInput {
   productName: string;
   sku: string;
   image?: string | null;
+  unidad?: string | null;
+  decimalesCantidad?: number | null;
 }
 
 export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps) {
   const router = useRouter();
+  const tLineas = useTranslations('kit.documentoEdicion.lineas');
   const moneda = useMonedaOrganizacion();
   const { formatear } = moneda;
 
@@ -95,7 +100,8 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
         image: (item.products as unknown as { image?: string | null } | undefined)?.image || null,
         quantity: item.quantity,
         unit_cost: item.unit_cost,
-        notes: item.notes
+        notes: item.notes,
+        ...cantidadLineaDeProducto(item.products),
       }));
       setItems(orderItems);
 
@@ -130,6 +136,12 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
       toastError('Error', 'Agrega al menos un producto');
       return;
     }
+    // Una línea por peso nace vacía (0 kg): no se guarda sin cantidad.
+    const sinCantidad = items.find((item) => !(Number(item.quantity) > 0));
+    if (sinCantidad) {
+      toastError(tLineas('cantidadRequeridaTitulo'), tLineas('cantidadRequerida', { producto: sinCantidad.productName }));
+      return;
+    }
 
     try {
       setIsSaving(true);
@@ -146,7 +158,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
         },
         items.map(item => ({
           product_id: item.product_id,
-          quantity: item.quantity,
+          quantity: redondearCantidadLinea(item.quantity, { decimalesCantidad: item.decimalesCantidad ?? null }),
           unit_cost: item.unit_cost
         }))
       );
@@ -287,7 +299,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
               <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
                 <span className="text-gray-600 dark:text-gray-400">Unidades Total</span>
                 <span className="font-medium text-gray-900 dark:text-white">
-                  {items.reduce((sum, i) => sum + i.quantity, 0)}
+                  {sumaCantidades(items.map((i) => i.quantity))}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2">

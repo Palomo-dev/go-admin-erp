@@ -2632,6 +2632,11 @@
         "revoked": "This display was unpaired from the register. Generate a new code.",
         "storage": "The browser cannot store the pairing (private mode or blocked storage). The code has already been used: allow storage and generate a new one at the register."
       }
+    },
+    "weighing": {
+      "line": "Weighing: {qty} × {price} = {total}",
+      "price": "{price} / {unit}",
+      "waiting": "Weighing… {price}"
     }
   },
   "session": {
@@ -2818,19 +2823,17 @@
     "feedbackOther": "Other",
     "globalSearch": {
       "title": "Global search",
-      "description": "Search pages, customers, products and more",
+      "description": "Search pages, customers, products and more. Use the arrow keys to move and Enter to open.",
       "placeholder": "Search pages, customers, products…",
-      "triggerPlaceholder": "Search pages, customers, branches…",
       "search": "Search",
-      "noResults": "No results for “{query}”",
-      "noResultsHint": "Try a different search term",
-      "searching": "Searching…",
-      "typeToSearch": "Start typing to search",
+      "close": "Close search",
       "groups": {
+        "recent": "Recent",
+        "actions": "Actions",
         "pages": "Pages",
-        "branches": "Branches",
         "customers": "Customers",
         "products": "Products",
+        "branches": "Branches",
         "suppliers": "Suppliers",
         "categories": "Categories",
         "invoices": "Invoices",
@@ -2840,17 +2843,47 @@
         "memberships": "Memberships",
         "parking": "Parking"
       },
-      "organization": "Organization",
-      "branch": "Branch",
-      "unnamedCustomer": "Unnamed customer",
-      "noExtraInfo": "No additional information",
-      "invoice": "Invoice {number}",
-      "noNumber": "no number",
-      "order": "Order {number}",
-      "reservation": "Reservation {space}",
+      "actions": {
+        "reportProblem": "Report a problem",
+        "reportProblemHint": "Bug, suggestion or question",
+        "nuevaVenta": "New sale",
+        "nuevaVentaHint": "Open the point of sale",
+        "nuevaFactura": "New invoice",
+        "nuevaFacturaHint": "Sales invoice",
+        "nuevoCliente": "New customer",
+        "nuevoClienteHint": "Person or company",
+        "nuevoProducto": "New product",
+        "nuevoProductoHint": "Catalog product or service",
+        "nuevaReserva": "New reservation",
+        "nuevaReservaHint": "Lodging reservation"
+      },
+      "create": {
+        "nuevoProducto": "Create product",
+        "nuevoCliente": "Create customer"
+      },
+      "noResults": "No results for “{query}”",
+      "noResultsHint": "Search by name, SKU, barcode, tax ID or invoice number.",
+      "typeMore": "Type at least {n} characters to search your data.",
+      "searching": "Searching…",
+      "resultsCount": "{n, plural, =0 {No results} one {# result} other {# results}}",
+      "error": {
+        "title": "We couldn't search your data",
+        "hint": "Check your connection and try again.",
+        "partial": "Some groups didn't respond.",
+        "retry": "Try again"
+      },
+      "footer": {
+        "navigate": "navigate",
+        "open": "open",
+        "close": "close"
+      },
       "unnamed": "Unnamed",
-      "membership": "Membership",
-      "noPlate": "No plate"
+      "invoice": "Invoice {number}",
+      "order": "Order {number}",
+      "noNumber": "no number",
+      "stock": "{n} in stock",
+      "sku": "SKU {sku}",
+      "nit": "Tax ID {nit}"
     },
     "trialBanner": {
       "trialActive": "You're on a free trial of {plan}",
@@ -3407,7 +3440,11 @@
         "incluido": "Included",
         "adicional": "Added",
         "vacio": "No lines",
-        "vacioDescripcion": "Add a product or a manual item."
+        "vacioDescripcion": "Add a product or a manual item.",
+        "precioPor": "{precio} / {unidad}",
+        "porUnidad": "/ {unidad}",
+        "cantidadEnDe": "Quantity of {producto} in {unidad}",
+        "precioPorDe": "Price of {producto} per {unidad}"
       },
       "totales": {
         "titulo": "Summary",
@@ -3783,7 +3820,9 @@
         "descripcionDe": "Item description",
         "itemSinNombre": "Item without description",
         "itemManual": "Manual item",
-        "seriales": "Serials {n}/{total}"
+        "seriales": "Serials {n}/{total}",
+        "cantidadRequeridaTitulo": "Quantity missing",
+        "cantidadRequerida": "Enter the quantity for “{producto}”."
       },
       "impuestos": {
         "sinAsignar": "No tax assigned",
@@ -4036,7 +4075,8 @@
         "prefijo": "The prefix is not valid for that format.",
         "demasiados": "Too many products at once (max. 5,000).",
         "acceso": "You don't have access to this organization.",
-        "generico": "We couldn't generate the codes. Nothing was left half-done: try again."
+        "generico": "We couldn't generate the codes. Nothing was left half-done: try again.",
+        "prefijoDePeso": "The generator prefix matches the variable-weight label prefix. Change it in Settings › POS."
       },
       "campo": {
         "etiqueta": "Barcode",
@@ -9436,7 +9476,9 @@
       "referencia_precio_invalida": "The price is entered per kg or per 500, 250, 100 or 50 g.",
       "decimales_invalidos": "The quantity allows 1 to 3 decimals.",
       "minimo_invalido": "The minimum sale must be greater than 0 and use the unit's decimals.",
-      "tara_invalida": "The tare cannot be negative."
+      "tara_invalida": "The tare cannot be negative.",
+      "plu_invalido": "The PLU is a whole number from 1 to 99,999.",
+      "plu_duplicado": "Duplicate PLU: another product in the organization already uses it."
     },
     "imagenes": {
       "insignias": {
@@ -9772,7 +9814,7 @@
         "renovacionManual": "Manual renewal",
         "renovacionManualAyuda": "The customer pays for the same product again (POS, invoice or store) and the term is extended from the expiry date.",
         "renovacionAutomatica": "Automatic renewal",
-        "renovacionAutomaticaAyuda": "Recurring charge to the customer’s card. Arrives when a payment gateway stores cards.",
+        "renovacionAutomaticaAyuda": "7 days before expiry the renewal becomes due for payment, ready to charge in one click. It is never charged or invoiced on its own.",
         "fasePosterior": "Coming later",
         "formaCobro": "Billing",
         "cobroAdelantado": "Upfront",
@@ -9965,7 +10007,9 @@
       "sku": "SKU {sku}",
       "escaner": "The POS scanner looks up the exact code.",
       "variantes": "Each variant has its own code: it doesn't inherit the product's. Missing ones are numbered on save.",
-      "duplicar": "The original's barcode isn't copied."
+      "duplicar": "The original's barcode isn't copied.",
+      "plu": "Scale PLU",
+      "pluAyuda": "The number the label scale prints on the weight label (1 to 99,999). Unique in the organization."
     },
     "avanzado": {
       "envio": "Shipping",
@@ -11242,7 +11286,11 @@
       "origen_peso_invalido": "The weight source of a line is not valid. Weigh it again. {detalle}",
       "origen_peso_no_disponible": "Scale readings and weight labels are not available yet. {detalle}",
       "peso_exige_bascula": "A product requires a scale and can't be sold with a typed weight. {detalle}",
-      "sin_permiso_peso_manual": "Manual weighing requires the “Weigh manually in the POS” permission. {detalle}"
+      "sin_permiso_peso_manual": "Manual weighing requires the “Weigh manually in the POS” permission. {detalle}",
+      "bascula_invalida": "The weighing's scale is not an active scale of the organization. {detalle}",
+      "peso_inestable": "The scale reading was not stable. {detalle}",
+      "pesaje_no_coincide": "The quantity doesn't match the weight read from the scale. {detalle}",
+      "etiqueta_invalida": "The weight label doesn't include the scanned code. {detalle}"
     },
     "ventaAnulada": "Sale voided: payments, stock and invoice were reversed.",
     "anulacionFallida": "The sale could not be voided",
@@ -15410,6 +15458,12 @@
       "cliente_no_encontrado": "We couldn't find that customer.",
       "sucursal_invalida": "The location doesn't belong to the organization.",
       "membresia_sin_cliente": "A membership needs its holder: choose the customer before charging.",
+      "reserva_no_encontrada": "We couldn’t find that booking.",
+      "reserva_de_otro_miembro": "The booking belongs to another member.",
+      "reserva_cancelada": "The booking is cancelled: the check-in can’t be recorded.",
+      "clase_cancelada": "The class is cancelled: the check-in can’t be recorded.",
+      "importacion_sin_filas": "The file has no rows to import.",
+      "importacion_demasiadas_filas": "The file exceeds the 500-row limit.",
       "datos_invalidos": "Check the form data.",
       "error_interno": "Something went wrong. Please try again."
     },
@@ -15527,7 +15581,8 @@
           "congelada": "Frozen",
           "pendiente": "Pending",
           "vencida": "Expired",
-          "cancelada": "Cancelled"
+          "cancelada": "Cancelled",
+          "renovacion_pendiente": "Renewal due"
         }
       },
       "chips": {
@@ -15544,6 +15599,8 @@
         "plan": "Plan",
         "vigencia": "Validity",
         "estado": "Status",
+        "sede": "Branch",
+        "ultimaEntrada": "Last check-in",
         "origen": "Source"
       },
       "vacio": {
@@ -15899,7 +15956,63 @@
         "payment_failed": "Payment failed",
         "plan_changed": "Plan changed",
         "notes_updated": "Notes updated",
+        "renewal_due": "Renewal due for payment",
         "otro": "Other activity"
+      },
+      "renovacionPendiente": {
+        "titulo": "Renewal due for payment",
+        "descripcion": "This plan renews automatically: the renewal was ready on {fecha}. Nothing is charged or invoiced without you.",
+        "precio": "Current price: {precio}",
+        "accion": "Charge renewal"
+      }
+    },
+    "exportar": {
+      "accion": "Export CSV",
+      "exportando": "Exporting…",
+      "descripcionFiltros": "With the current search and filters",
+      "listo": "File downloaded",
+      "truncado": "The first {max, number} rows were exported. Narrow the filters to export the rest.",
+      "archivo": {
+        "membresias": "Memberships",
+        "miembros": "Members",
+        "pagos": "Membership payments"
+      },
+      "columnas": {
+        "membresias": {
+          "miembro": "Member",
+          "documento": "ID number",
+          "plan": "Plan",
+          "codigo": "Access code",
+          "desde": "From",
+          "hasta": "Until",
+          "estado": "Status",
+          "sede": "Branch",
+          "ultimaEntrada": "Last check-in",
+          "origen": "Source"
+        },
+        "miembros": {
+          "miembro": "Member",
+          "documento": "ID number",
+          "correo": "Email",
+          "telefono": "Phone",
+          "planVigente": "Current membership",
+          "estado": "Status",
+          "vence": "Expires",
+          "ultimaEntrada": "Last check-in",
+          "membresias": "Memberships"
+        },
+        "pagos": {
+          "fecha": "Date",
+          "cliente": "Customer",
+          "documento": "ID number",
+          "producto": "Product",
+          "cantidad": "Quantity",
+          "total": "Total",
+          "estadoVenta": "Sale status",
+          "factura": "Invoice",
+          "saldo": "Balance",
+          "membresia": "Membership"
+        }
       }
     },
     "congelar": {
@@ -15971,6 +16084,29 @@
         "enlace": {
           "titulo": "Send payment link",
           "descripcion": "Payment in the online store."
+        }
+      },
+      "enlace": {
+        "comprobando": "Checking the organization’s payment gateways…",
+        "motivos": {
+          "sin_pasarela": "The organization has no online payment gateway connected. Connect one in Integrations to charge by link.",
+          "pago_no_activa_membresia": "Your gateway ({pasarelas}) doesn’t yet record the invoice payment through the path that activates the membership. Meanwhile, charge in the POS or with an invoice.",
+          "membresia_cancelada": "The membership is cancelled.",
+          "error": "We couldn’t check the payment gateways. Charge in the POS or with an invoice."
+        },
+        "insignias": {
+          "comprobando": "Checking…",
+          "sin_pasarela": "No gateway",
+          "pago_no_activa_membresia": "Not available yet",
+          "membresia_cancelada": "Not available"
+        },
+        "pasarelas": {
+          "wompi_co": "Wompi",
+          "stripe_payments": "Stripe",
+          "bold_link": "Bold",
+          "mp_checkout": "Mercado Pago",
+          "payu_co": "PayU",
+          "paypal_checkout": "PayPal"
         }
       },
       "fasePosterior": "Later phase",
@@ -16069,6 +16205,7 @@
       "migaPlan": "Plan",
       "errorTitulo": "We could not load the plan",
       "subtituloRenovacion": "manual renewal",
+      "subtituloRenovacionAutomatica": "automatic renewal",
       "editarEnProducto": "Edit in the product",
       "vender": "Sell at the POS",
       "noEncontrado": {
@@ -16111,6 +16248,7 @@
         "duracion": "Duration",
         "renovacion": "Renewal",
         "renovacionValor": "Manual · extends from the expiry date",
+        "renovacionValorAutomatica": "Automatic · due for payment 7 days before expiry",
         "cobro": "Billing",
         "cobroValor": {
           "prepaid": "Upfront · activates on payment",
@@ -16349,6 +16487,88 @@
         }
       }
     },
+    "importar": {
+      "boton": "Import CSV",
+      "tituloClases": "Import classes",
+      "tituloReservas": "Import bookings",
+      "descripcionClases": "Upload a CSV with the classes. Date and time are read in the {zona} time zone. Up to {max} rows.",
+      "descripcionReservas": "Upload a CSV with the bookings. Members are matched by ID number or email and classes by name, date and time ({zona}). Up to {max} rows.",
+      "plantilla": "Download template",
+      "reglaTodoONada": "The import is all or nothing: if any row has errors, nothing is saved. Fix the file and upload it again.",
+      "archivo": {
+        "etiqueta": "Choose or drop a CSV file",
+        "ayuda": "Comma- or semicolon-separated CSV, up to 2 MB",
+        "otro": "Click or drop another file to replace it"
+      },
+      "validando": "Checking against your organization’s data…",
+      "resumen": "{total, plural, one {# row} other {# rows}} · {validas} ready · {conError} with errors",
+      "ignoradas": "Unused columns: {columnas}.",
+      "tabla": {
+        "etiqueta": "Import preview",
+        "etiquetaFila": "Row {n}",
+        "fila": "Row",
+        "clase": "Class",
+        "reserva": "Member and class",
+        "cuando": "Date and time",
+        "estado": "Status",
+        "errores": "Errors"
+      },
+      "estados": {
+        "lista": "Ready",
+        "conErrores": "Has errors"
+      },
+      "importarN": "{n, plural, =0 {Import} one {Import # row} other {Import # rows}}",
+      "importando": "Importing…",
+      "motivoDeshabilitado": "Fix the rows with errors to import.",
+      "cancelar": "Cancel",
+      "toasts": {
+        "importadas": "{n, plural, one {# row imported} other {# rows imported}}",
+        "cambios": "The data changed since the preview: review the errors and try again."
+      },
+      "erroresArchivo": {
+        "formato": "The file must be a .csv.",
+        "tamano": "The file is larger than 2 MB.",
+        "lectura": "We couldn’t read the file. Save it as CSV and try again.",
+        "sin_cabecera": "The file is empty.",
+        "faltan_columnas": "Required columns are missing: {columnas}. Download the template to see the format.",
+        "sin_filas": "The file has no data rows.",
+        "demasiadas_filas": "The file has {n} rows and the limit is {max}. Split it into several files.",
+        "validar": "We couldn’t check the file. Try again."
+      },
+      "errores": {
+        "titulo_requerido": "The title is missing.",
+        "titulo_muy_largo": "The title is longer than 200 characters.",
+        "instructor_requerido": "The instructor’s email is missing.",
+        "correo_invalido": "The email isn’t valid.",
+        "fecha_requerida": "The date is missing.",
+        "fecha_invalida": "Invalid date: use YYYY-MM-DD or DD/MM/YYYY.",
+        "hora_requerida": "The time is missing.",
+        "hora_invalida": "Invalid time: use HH:MM (for example 07:00 or 6:30 pm).",
+        "duracion_invalida": "Duration must be between 5 and 480 minutes.",
+        "capacidad_invalida": "Capacity must be between 1 and 1000.",
+        "nivel_invalido": "Invalid level: beginner, intermediate, advanced or all levels.",
+        "estado_invalido": "Invalid status.",
+        "origen_invalido": "Invalid source: front desk, app, web or kiosk.",
+        "miembro_requerido": "The member’s ID number or email is missing.",
+        "clase_requerida": "The class name is missing.",
+        "duplicada_en_archivo": "Duplicate row in the file.",
+        "sede_requerida": "The branch is missing: the organization has several.",
+        "sede_no_encontrada": "We couldn’t find that branch.",
+        "sede_ambigua": "Several branches have that name: use the code or the ID.",
+        "sede_sin_acceso": "You don’t have access to that class’s branch.",
+        "instructor_no_encontrado": "No active organization member has that email.",
+        "clase_ya_existe": "A class with that title already exists at that branch, date and time.",
+        "miembro_no_encontrado": "We couldn’t find the member.",
+        "miembro_ambiguo": "Several customers share that ID number or email.",
+        "miembro_no_coincide": "The ID number and the email belong to different people.",
+        "clase_no_encontrada": "No class with that name at that date and time.",
+        "clase_ambigua": "Several classes have that name at that time: add the branch.",
+        "clase_cancelada": "The class is cancelled.",
+        "clase_no_programada": "The class is no longer scheduled: use attended or no-show.",
+        "clase_sin_cupo": "The class has no room for this booking.",
+        "reserva_ya_existe": "That member already has a booking in that class."
+      }
+    },
     "reservas": {
       "cabecera": {
         "titulo": "Bookings",
@@ -16437,7 +16657,8 @@
         "cancelada": "Booking cancelled",
         "duplicada": "Booking created in the other class",
         "entrada": "Check-in recorded",
-        "entradaRechazada": "Check-in denied: {motivo}"
+        "entradaRechazada": "Check-in denied: {motivo}",
+        "entradaRepetida": "The check-in was already recorded for this booking"
       },
       "cancelar": {
         "titulo": "Cancel booking",
@@ -18294,6 +18515,27 @@
       "sinPrecio": "“{producto}” has no current price. Set it in Inventory.",
       "precioNoConsultado": "The price of “{producto}” could not be checked. Check your connection and try again.",
       "errorAgregar": "“{producto}” could not be added to the cart."
+    },
+    "etiqueta": {
+      "invalida": "Unreadable weight label",
+      "invalidaDescripcion": "The check digit of {codigo} does not match. Scan again or weigh the product.",
+      "invalidaValor": "The weight or price check digit of {codigo} does not match. Scan again or weigh the product.",
+      "pluInexistente": "No product has PLU {plu}",
+      "productoPorUnidad": "PLU {plu} belongs to a product sold by unit",
+      "sinPrecio": "{producto} has no current price",
+      "pesoInvalido": "The label weight is not valid",
+      "bajoMinimo": "The label is below the minimum sale ({minimo})",
+      "codigoLeido": "Scanned code: {codigo}. Nothing was added.",
+      "importeDifiere": "The label amount does not match",
+      "importeDifiereDescripcion": "Label: {etiqueta}. At the current price: {calculado}. The current price is charged."
+    },
+    "mesa": {
+      "porUnidad": "Per {unidad}",
+      "cambiarPeso": "Change the weight of {producto}",
+      "precioPor": "{precio} / {unidad}",
+      "cantidad": "Quantity ({unidad})",
+      "cantidadInvalida": "Enter a quantity greater than 0 with up to {decimales} decimals.",
+      "transferenciaParcial": "{cantidad} of {total} will be transferred"
     }
   },
   "inventarioStock": {
@@ -21436,5 +21678,308 @@
     "errorIgualActual": "The new password must be different from the current one.",
     "errorDemasiadas": "Too many attempts in a row. Wait a few minutes and try again.",
     "errorInesperado": "We could not change your password. Try again in a moment."
+  },
+  "posEtiquetasPeso": {
+    "titulo": "Variable-weight labels",
+    "descripcion": "EAN-13 codes printed by label scales (GS1 in-store prefixes 21–29).",
+    "cargando": "Loading the label format",
+    "errorCargar": "The label format could not be loaded.",
+    "reintentar": "Retry",
+    "sinPermiso": "Only people with the “Configure scales” permission can change this format.",
+    "activo": "Read scale labels at the POS",
+    "activoAyuda": "The scanner recognizes the code and adds the line with the label weight.",
+    "prefijo": "Prefix",
+    "prefijoAyuda": "Not {prefijo}: the barcode generator uses it",
+    "contenido": "The label carries",
+    "contenidoPeso": "Weight (grams)",
+    "contenidoPrecio": "Price",
+    "contenidoAyuda": "Or price: the POS calculates the weight",
+    "digitosPlu": "PLU digits",
+    "digitosValor": "Value digits",
+    "digitosValorAyuda": "Weight: grams · price: currency units",
+    "digitoControl": "Value check digit",
+    "digitoControlAyuda": "Some scales add a check digit to the weight or price.",
+    "probar": "Test a code",
+    "prueba": {
+      "noEsEtiqueta": "Not a label of this format (EAN-13 with the configured prefix).",
+      "digitoControl": "The code check digit does not match.",
+      "digitoValor": "The value check digit does not match.",
+      "plu": "PLU {plu}",
+      "gramos": "{valor} g",
+      "pluInexistente": "{detalle} → no product has PLU {plu}",
+      "productoPorUnidad": "{detalle} → {producto} is sold by unit"
+    },
+    "avisoPrefijo": "{n, plural, one {# product has} other {# products have}} its own barcode starting with {prefijo}: the POS looks up the exact code first, so they still scan correctly.",
+    "avisoPluFuera": "{n, plural, one {# product has} other {# products have}} a PLU that does not fit in {digitos} digits.",
+    "guardado": "Label format saved",
+    "guardar": "Save format",
+    "cancelar": "Cancel",
+    "exportar": "Export PLU",
+    "exportarVacio": "No product has a scale PLU.",
+    "exportado": "{n, plural, one {# PLU exported} other {# PLUs exported}}",
+    "csv": {
+      "plu": "PLU",
+      "nombre": "Name",
+      "precio": "Price per kg",
+      "tara": "Tare",
+      "diasVida": "Shelf life (days)"
+    },
+    "errores": {
+      "prefijo_del_generador": "The barcode generator uses prefix {prefijo}: choose another one.",
+      "prefijo_peso_invalido": "Weight prefixes go from 21 to 29.",
+      "prefijos_requeridos": "Enter at least one prefix.",
+      "formato_invalido": "Prefix + PLU + value must add up to 12 digits.",
+      "sin_permiso": "You do not have permission to configure scales and weight labels.",
+      "generico": "The operation could not be completed. Try again."
+    }
+  },
+  "posPesosManuales": {
+    "enlace": "Manual weights",
+    "titulo": "Manual weights",
+    "subtitulo": "Sales by weight with the weight typed by hand, by day and cashier",
+    "volver": "Back to reports",
+    "actualizar": "Refresh",
+    "cargando": "Loading…",
+    "reintentar": "Retry",
+    "filtros": {
+      "desde": "From",
+      "hasta": "To"
+    },
+    "kpis": {
+      "lineas": "Lines weighed by hand",
+      "cantidad": "Total weight",
+      "importe": "Amount",
+      "cajeros": "{count, plural, =0 {No cashiers} one {# cashier} other {# cashiers}}"
+    },
+    "tabla": {
+      "titulo": "Manual weights by day and cashier",
+      "dia": "Day",
+      "cajero": "Cashier",
+      "lineas": "Lines",
+      "cantidad": "Weight",
+      "importe": "Amount",
+      "autorizadas": "With supervisor",
+      "sinCajero": "No cashier"
+    },
+    "vacio": {
+      "titulo": "No manual weights",
+      "descripcion": "Nobody typed a weight by hand in this period."
+    },
+    "sinPermiso": {
+      "titulo": "No permission",
+      "descripcion": "You need “Sales reports” or “Configure scales” to see this report."
+    },
+    "error": {
+      "titulo": "The report could not be loaded",
+      "descripcion": "Check the connection and try again.",
+      "rango": "Choose a period of up to one year, with “From” before “To”."
+    }
+  },
+  "posBascula": {
+    "lectura": {
+      "grupo": "Scale reading",
+      "estado": {
+        "conectando": "Connecting",
+        "estable": "Stable",
+        "inestable": "Unstable",
+        "fueraDeRango": "Out of range",
+        "error": "No reading",
+        "manual": "Manual weight"
+      },
+      "conectando": "Connecting to {bascula}…",
+      "basculaDe": "scale {nombre}",
+      "bruto": "Gross {valor}",
+      "tara": "Tare {valor}",
+      "bajoCero": "Negative weight. Zero the scale with nothing on it.",
+      "sobrecarga": "Overload (max. {capacidad}).",
+      "sobrecargaSinCapacidad": "Overload: remove weight from the scale.",
+      "motivoAgregar": "It can be added with a stable, in-range reading.",
+      "motivos": {
+        "inestable": "Waiting for a stable reading…",
+        "bajo_minimo": "The minimum sale is {minimo}.",
+        "sin_tara": "This product requires tare: place the tray and tap Tare.",
+        "sin_peso": "Place the product on the scale."
+      },
+      "errores": {
+        "sin_lectura": "The scale has not sent readings for 3 s. Check that it is on and connected.",
+        "sin_puerto": "The scale port was not found on this device.",
+        "puerto_ocupado": "Another program is using the scale port.",
+        "permiso": "This device did not allow opening the port.",
+        "io": "The connection with the scale was lost.",
+        "no_soportado": "This device cannot read this scale (it needs Go Admin Desktop or Chrome/Edge).",
+        "no_disponible": "The serial port module is not available in this Go Admin Desktop. Reinstall it.",
+        "protocolo_pendiente": "This scale's protocol is not available yet.",
+        "unidad": "The scale weighs in a unit that can't be converted to the product's unit."
+      },
+      "acciones": {
+        "cero": "Zero",
+        "tara": "Tare",
+        "quitarTara": "Clear tare",
+        "taraProducto": "Product tare {valor}",
+        "conectar": "Connect scale",
+        "reintentar": "Retry",
+        "pesarAMano": "Manual weight",
+        "usarBascula": "Use scale"
+      },
+      "atajos": {
+        "agregar": "Add the stable weighing"
+      },
+      "auto": {
+        "esperando": "Waiting for a stable weight… it adds itself · Esc cancels",
+        "pesoNuevo": "The scale still has the previous weighing: remove it or place the product."
+      }
+    },
+    "config": {
+      "titulo": "Scales",
+      "descripcion": "POS scales per branch: port, protocol and reading test.",
+      "nueva": "New scale",
+      "cargando": "Loading scales…",
+      "error": {
+        "titulo": "Scales couldn't be loaded",
+        "descripcion": "Check the connection and try again."
+      },
+      "sinPermiso": {
+        "titulo": "You can't configure scales",
+        "descripcion": "You need the “Configure scales and weight labels” permission. Ask an administrator."
+      },
+      "vacio": {
+        "titulo": "No scales yet",
+        "descripcion": "Connect a scale by USB or serial port to weigh in the POS without typing the weight."
+      },
+      "protocolos": {
+        "continuous_st_gs": "Continuous ST,GS (A&D, CAS, generic)",
+        "toledo_8217": "Mettler Toledo 8217",
+        "mettler_sics": "Mettler SICS",
+        "cas_pd2": "CAS PD-II",
+        "dibal": "Dibal (pending)",
+        "custom_regex": "Custom (regular expression)"
+      },
+      "transportes": {
+        "desktop_serial": "Go Admin Desktop",
+        "web_serial": "Browser (Web Serial)"
+      },
+      "caja": "Register {caja}",
+      "estados": {
+        "archivada": "Archived",
+        "probada": "Tested",
+        "fallo": "Test failed",
+        "sinProbar": "Not tested"
+      },
+      "enEsteEquipo": "On this device",
+      "ultimaPrueba": "Last test {fecha}",
+      "usarEnEsteEquipo": "Use on this device",
+      "editar": "Edit",
+      "editarNombre": "Edit {nombre}",
+      "archivar": "Archive",
+      "archivarNombre": "Archive {nombre}",
+      "reactivar": "Reactivate",
+      "paridad": {
+        "none": "None",
+        "even": "Even",
+        "odd": "Odd"
+      },
+      "errores": {
+        "sin_permiso": "You don't have permission to configure scales.",
+        "bascula_no_encontrada": "The scale no longer exists.",
+        "sucursal_invalida": "Choose one of the organization's branches.",
+        "transporte_no_disponible": "That connection is not available yet.",
+        "equipo_invalido": "The device doesn't belong to the organization.",
+        "caja_invalida": "The register doesn't belong to that branch.",
+        "unidad_invalida": "The unit must be a weight unit (kg or lb).",
+        "nombre_duplicado": "There is already an active scale with that name in the branch.",
+        "datos_invalidos": "Some data is invalid: check the parameters.",
+        "generico": "Couldn't save. Try again."
+      },
+      "toasts": {
+        "creada": "Scale “{nombre}” created.",
+        "actualizada": "Scale “{nombre}” updated.",
+        "archivada": "Scale “{nombre}” archived.",
+        "reactivada": "Scale “{nombre}” reactivated.",
+        "enEsteEquipo": "The POS on this device will use “{nombre}”."
+      },
+      "confirmarArchivar": {
+        "titulo": "Archive “{nombre}”?",
+        "texto": "The POS stops using it. Past sales keep their record, and it can be reactivated.",
+        "accion": "Archive"
+      },
+      "form": {
+        "tituloNueva": "New scale",
+        "tituloEditar": "Edit “{nombre}”",
+        "descripcion": "How the scale connects and talks. Test the reading before saving.",
+        "cancelar": "Cancel",
+        "guardar": "Save",
+        "crear": "Create scale",
+        "nombre": "Name",
+        "nombreAyuda": "How the cashier recognizes it: “Meat counter”.",
+        "sucursal": "Branch",
+        "elegirSucursal": "Choose a branch",
+        "caja": "Register",
+        "cajaAyuda": "If the branch has several registers, the scale is used only on this one.",
+        "cajaCualquiera": "Any register in the branch",
+        "transporte": "Connection",
+        "webSerialEnDesktop": "Inside Go Admin Desktop use the “Go Admin Desktop” connection. Web Serial is for Chrome or Edge without Desktop.",
+        "webSerialNoSoportado": "This browser doesn't have Web Serial. It works in desktop Chrome or Edge; not in Safari, Firefox, iPad or phones.",
+        "desktopNoDisponible": "This device doesn't have Go Admin Desktop with scales. Type the port (COM3) and test the reading from the scale's computer.",
+        "puerto": "Port",
+        "puertoAyudaDesktop": "The serial or USB port where the scale is connected on this device.",
+        "actualizarPuertos": "Refresh",
+        "elegirPuerto": "Choose a port",
+        "puertoAyudaWeb": "The browser asks once and remembers it on this computer.",
+        "elegirPuertoWeb": "Choose port",
+        "puertoElegido": "Chosen port: {pista}",
+        "sinPuertoElegido": "No port chosen",
+        "errorListarPuertos": "This device's ports couldn't be listed.",
+        "errorElegirPuerto": "The browser didn't allow choosing the port.",
+        "protocolo": "Protocol",
+        "protocoloPendiente": "Dibal is not interpreted yet: the test shows the raw bytes. Meanwhile use “Custom”.",
+        "patron": "Regular expression",
+        "patronAyuda": "JavaScript expression with named groups “peso” (required), “signo”, “estado” and “unidad”.",
+        "parametros": "Port parameters",
+        "baudios": "Baud rate",
+        "bitsDatos": "Data bits",
+        "paridad": "Parity",
+        "bitsParada": "Stop bits",
+        "lectura": "Reading",
+        "unidad": "Unit",
+        "decimales": "Decimals",
+        "capacidad": "Capacity",
+        "division": "Division",
+        "divisionAyuda": "The scale's minimum; it is the stability tolerance.",
+        "estabilidad": "Stable after",
+        "estabilidadAyuda": "Time with the same reading before it can be added.",
+        "errores": {
+          "nombreVacio": "Type a name.",
+          "nombreLargo": "80 characters max.",
+          "sucursal": "Choose the branch.",
+          "puertoDesktop": "Choose or type the port.",
+          "patron_vacio": "Type the expression.",
+          "patron_invalido": "The expression is not valid.",
+          "patron_sin_grupo_peso": "The named group “peso” is missing.",
+          "positivo": "Must be greater than 0.",
+          "estableMs": "Between 0 and 5000 ms.",
+          "decimales": "Between 0 and 4."
+        }
+      },
+      "prueba": {
+        "titulo": "Test reading",
+        "iniciar": "Test reading",
+        "detener": "Stop",
+        "ayuda": "Put something on the scale and tap “Test reading”.",
+        "esperando": "Waiting for data from the scale…",
+        "ok": "Reading recognized: {peso} · {estado}",
+        "estable": "stable",
+        "inestable": "unstable",
+        "noReconocida": "Data is arriving but isn't recognized with {protocolo}.",
+        "sugerencia": "Understood by: {protocolos}.",
+        "usarSugerido": "Use {protocolo}",
+        "crudos": "Bytes received ({cantidad})",
+        "sinBytes": "No bytes are arriving. Check the cable, the port and the baud rate."
+      }
+    },
+    "venta": {
+      "agregado": "Added: {cantidad} · {producto} · {importe}",
+      "deshacer": "Undo",
+      "pesadaCancelada": "The weighing of “{producto}” was cancelled: it was not confirmed."
+    }
   }
 }

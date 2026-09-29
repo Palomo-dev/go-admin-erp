@@ -24,6 +24,7 @@ import { offersPairingFromBootstrap, resolveRemoteLocale } from '@/lib/pos/displ
 import { BrandHeader } from './BrandHeader';
 import { FullscreenButton } from './FullscreenButton';
 import { OrderView } from './OrderView';
+import { WeighingBanner } from './WeighingBanner';
 import { PairingView } from './PairingView';
 import { TipView } from './TipView';
 import { sanitizeIdleSettings } from './idle';
@@ -331,13 +332,16 @@ export function CustomerDisplay() {
       content = <UpdateRequiredView brand={brand} />;
     } else if (view === 'order' && state?.cart) {
       content = (
-        <OrderView
-          cart={state.cart}
-          highlightUntil={link.highlightUntil}
-          brand={brand}
-          locale={localeTag}
-          showTaxBreakdown={settings?.showTaxBreakdown === true}
-        />
+        <>
+          {state.weighing ? <WeighingBanner weighing={state.weighing} currency={currency} locale={localeTag} /> : null}
+          <OrderView
+            cart={state.cart}
+            highlightUntil={link.highlightUntil}
+            brand={brand}
+            locale={localeTag}
+            showTaxBreakdown={settings?.showTaxBreakdown === true}
+          />
+        </>
       );
     } else if ((view === 'payment_cash' || view === 'payment_card' || view === 'payment_qr') && state?.payment) {
       content = (
@@ -373,6 +377,9 @@ export function CustomerDisplay() {
           onRate={askRating ? onRate : undefined}
         />
       );
+    } else if (view === 'idle' && state?.weighing) {
+      // Pesada con el carrito vacío (primer producto por peso): la pesada en vez del reposo.
+      content = <WeighingBanner weighing={state.weighing} currency={currency} locale={localeTag} completa />;
     } else {
       content = <IdleView brand={brand} idle={idle} promotions={idlePromotions} settled={idleSettled} locale={localeTag} />;
     }

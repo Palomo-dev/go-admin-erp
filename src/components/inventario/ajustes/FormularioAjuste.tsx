@@ -43,6 +43,7 @@ import {
   agregarLinea,
   calcularLinea,
   cambiarLote,
+  cantidadDeProductoAjuste,
   enteroPositivo,
   lineasDesdeDetalle,
   modoDesdeUrl,
@@ -206,17 +207,23 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
       if (!sucursal) return [];
       const productos = await adjustmentService.productos(org, sucursal, { texto, limite: 30 }, senal);
       productos.forEach((p) => porId.current.set(p.id, p));
-      return productos.map((p) => ({
-        id: p.id,
-        nombre: p.nombre,
-        sku: p.sku,
-        codigoBarras: p.codigo_barras,
-        precio: p.existencias.find((e) => e.lot_id === null)?.costo_promedio ?? p.costo_vigente ?? 0,
-        stock: p.existencias.reduce((s, e) => s + e.cantidad, 0),
-        controlaStock: true,
-        serial: p.controla_serial,
-        lotes: p.existencias.filter((e) => e.lot_id !== null && e.cantidad > 0).length || null,
-      }));
+      return productos.map((p) => {
+        const cant = cantidadDeProductoAjuste(p);
+        return {
+          id: p.id,
+          nombre: p.nombre,
+          sku: p.sku,
+          codigoBarras: p.codigo_barras,
+          precio: p.existencias.find((e) => e.lot_id === null)?.costo_promedio ?? p.costo_vigente ?? 0,
+          stock: p.existencias.reduce((s, e) => s + e.cantidad, 0),
+          controlaStock: true,
+          serial: p.controla_serial,
+          lotes: p.existencias.filter((e) => e.lot_id !== null && e.cantidad > 0).length || null,
+          // «12,400 kg» y «/ kg» en el diálogo para productos por peso o medida.
+          unidadVenta: cant.unidad,
+          decimalesCantidad: cant.unidad ? cant.decimales : null,
+        };
+      });
     },
     [org, sucursal],
   );
@@ -593,7 +600,7 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-fg">{l.producto.nombre}</p>
                         <p className="text-[13px] text-fg-secondary">
-                          {t('movil.sistema', { n: cantidad(c.sistema) })}
+                          {t('movil.sistema', { n: cantidad(c.sistema, { unidad: cantidadDeProductoAjuste(l.producto).unidad }) })}
                           {l.lot_id ? ` · ${l.producto.lotes.find((x) => x.lot_id === l.lot_id)?.lote ?? ''}` : ''}
                         </p>
                         <p className="text-[13px]">
@@ -602,7 +609,10 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
                           ) : c.diferencia === 0 ? (
                             <span className="text-success-text">{t('movil.sinDiferencia')}</span>
                           ) : (
-                            <CifraDiferencia valor={c.diferencia} texto={t('movil.diferencia', { n: cantidad(c.diferencia, { signo: true }) })} />
+                            <CifraDiferencia
+                              valor={c.diferencia}
+                              texto={t('movil.diferencia', { n: cantidad(c.diferencia, { signo: true, unidad: cantidadDeProductoAjuste(l.producto).unidad }) })}
+                            />
                           )}
                         </p>
                       </div>
@@ -610,7 +620,8 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
                         <CampoNumero
                           valor={l.cantidad}
                           onValorChange={(v) => actualizar(l.clave, { cantidad: v })}
-                          decimales={3}
+                          decimales={cantidadDeProductoAjuste(l.producto, l.cantidad).decimales}
+                          sufijo={cantidadDeProductoAjuste(l.producto).unidad ?? undefined}
                           minimo={0}
                           alinear="derecha"
                           aria-label={t('cantidadDe', { etiqueta: etiquetaCantidad, nombre: l.producto.nombre })}
@@ -750,6 +761,8 @@ function FilaLinea({
   const cantidad = useFormatoCantidad();
   const c = calcularLinea(modo, linea);
   const p = linea.producto;
+  // Peso o medida: decimales y unidad del producto (12,400 kg); por unidad, enteros.
+  const { decimales, unidad } = cantidadDeProductoAjuste(p, linea.cantidad);
   const pideCosto = (c.diferencia ?? 0) > 0 && (c.costo === null || linea.costo !== null);
   const mostrarDetalle = p.controla_serial && (c.diferencia ?? 0) !== 0;
 
@@ -767,9 +780,9 @@ function FilaLinea({
         </td>
         <td className="px-3 py-2.5 text-right tabular-nums text-fg">
           <span className="flex flex-col items-end">
-            <span>{cantidad(c.sistema)}</span>
+            <span>{cantidad(c.sistema, { unidad })}</span>
             {linea.sistemaGuardado !== undefined && linea.sistemaGuardado !== null && linea.sistemaGuardado !== c.sistema && (
-              <span className="text-xs text-warning-text">{t('alContar', { n: cantidad(linea.sistemaGuardado) })}</span>
+              <span className="text-xs text-warning-text">{t('alContar', { n: cantidad(linea.sistemaGuardado, { unidad }) })}</span>
             )}
           </span>
         </td>
@@ -778,7 +791,8 @@ function FilaLinea({
             data-cantidad-ajuste=""
             valor={linea.cantidad}
             onValorChange={(v) => onCambio({ cantidad: v })}
-            decimales={3}
+            decimales={decimales}
+            sufijo={unidad ?? undefined}
             minimo={0}
             alinear="derecha"
             tamano="sm"
@@ -791,10 +805,10 @@ function FilaLinea({
             c.diferencia === null ? (
               <span className="text-fg-muted">—</span>
             ) : (
-              <CifraDiferencia valor={c.diferencia} texto={cantidad(c.diferencia, { signo: true })} />
+              <CifraDiferencia valor={c.diferencia} texto={cantidad(c.diferencia, { signo: true, unidad })} />
             )
           ) : (
-            <span className={cn('tabular-nums', (c.queda ?? 0) < 0 ? 'text-danger-text' : 'text-fg')}>{cantidad(c.queda)}</span>
+            <span className={cn('tabular-nums', (c.queda ?? 0) < 0 ? 'text-danger-text' : 'text-fg')}>{cantidad(c.queda, { unidad })}</span>
           )}
         </td>
         <td className="px-3 py-2.5 text-right">

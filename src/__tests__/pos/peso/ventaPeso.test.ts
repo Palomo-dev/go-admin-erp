@@ -254,7 +254,7 @@ describe('formulario del producto: «Cómo se vende»', () => {
   it('por peso en kg con precio «cada 100 g»: se envía la referencia; el precio sigue por kg', () => {
     const e = { ...base, sale_mode: 'weight' as const, unit_code: 'KG', precio_referencia: '100GR', min_sale_qty: 0.05, require_scale: true, price: 18900 };
     expect(validarModoVenta(e)).toBeNull();
-    expect(camposModoVenta(e)).toEqual({ sale_mode: 'weight', price_ref_qty: 100, price_ref_unit_code: 'GR', min_sale_qty: 0.05, require_scale: true });
+    expect(camposModoVenta(e)).toEqual({ sale_mode: 'weight', price_ref_qty: 100, price_ref_unit_code: 'GR', min_sale_qty: 0.05, require_scale: true, scale_plu: null });
   });
 
   it('errores: unidad que no es de peso, «cada 300 g», variantes, servicio, mínimo con decimales de más', () => {
@@ -268,7 +268,7 @@ describe('formulario del producto: «Cómo se vende»', () => {
   });
 
   it('por unidad deja todo por defecto y la unidad sigue la elección', () => {
-    expect(camposModoVenta(base)).toEqual({ sale_mode: 'unit', price_ref_qty: null, price_ref_unit_code: null, min_sale_qty: null, require_scale: false });
+    expect(camposModoVenta(base)).toEqual({ sale_mode: 'unit', price_ref_qty: null, price_ref_unit_code: null, min_sale_qty: null, require_scale: false, scale_plu: null });
     expect(unidadParaModo('weight', 'UN')).toBe('KG');
     expect(unidadParaModo('weight', 'LB')).toBe('LB');
     expect(unidadParaModo('measure', 'KG')).toBe('MT');

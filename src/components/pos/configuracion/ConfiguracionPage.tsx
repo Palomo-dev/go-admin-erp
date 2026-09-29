@@ -51,6 +51,8 @@ import {
 } from './configuracionService';
 import { CajasService } from '@/components/pos/cajas/CajasService';
 import { PrintersSection } from './printers/PrintersSection';
+import { BasculasSection } from './basculas/BasculasSection';
+import { EtiquetasPesoSection } from './etiquetas-peso/EtiquetasPesoSection';
 import { NotasRapidasSection } from './NotasRapidasSection';
 import { PrintAgentStatusCard } from './printers/PrintAgentStatusCard';
 import { RecentPrintJobsTable } from './printers/RecentPrintJobsTable';
@@ -967,6 +969,12 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
 
       {/* Impresoras */}
       <PrintersSection branches={branches} />
+
+      {/* Básculas del POS por sucursal (PRODUCTOS-POR-PESO-BASCULA.md §2.8, fase 3) */}
+      <BasculasSection branches={branches} />
+
+      {/* Etiquetas de peso variable de balanzas etiquetadoras (PRODUCTOS-POR-PESO-BASCULA.md §2.7) */}
+      <EtiquetasPesoSection />
 
       {/* Estado del Print Agent y trabajos de impresión recientes (sucursal activa) */}
       <PrintAgentStatusCard branchId={branchFilter} />

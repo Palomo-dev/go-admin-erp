@@ -45,6 +45,8 @@ import { MenuNuevoMovimiento } from '../stock/MenuNuevoMovimiento';
 import { nombreArchivo } from '../stock/logica';
 import { useAlcanceSucursales, useCantidadStock, useMensajeErrorInventario } from '../stock/useInventarioB1';
 import { CeldaCantidad, CeldaDocumento, CeldaFecha, useAccionesMovimiento } from './piezas';
+import { idsProductos } from '../stock/cantidadProducto';
+import { useModosVenta } from '../stock/useModosVenta';
 
 const LIMITE_EXPORTAR = 10000;
 /** Desde el 2026-09-23 el CHECK admite todos los orígenes (migración 20260923100000). */
@@ -82,7 +84,9 @@ export function MovimientosPage() {
   });
 
   const [filas, setFilas] = useState<MovimientoFila[]>([]);
-  const [total, setTotal] = useState(0);
+  // Productos por peso o medida: «12,400 kg» en vez de «12,4 uds» (PRODUCTOS-POR-PESO-BASCULA.md §2.4).
+  const idsFilas = useMemo(() => idsProductos(filas), [filas]);
+  const { cantidadDe } = useModosVenta(idsFilas);  const [total, setTotal] = useState(0);
   const [kpis, setKpis] = useState<KpisMovimientos | null>(null);
   const [verCostos, setVerCostos] = useState(false);
   const [cargando, setCargando] = useState(true);
@@ -246,8 +250,8 @@ export function MovimientosPage() {
         </div>
       ),
     },
-    { id: 'entrada', encabezado: t('columnas.entrada'), alinear: 'derecha', celda: (f) => <CeldaCantidad fila={f} direccion="in" /> },
-    { id: 'salida', encabezado: t('columnas.salida'), alinear: 'derecha', celda: (f) => <CeldaCantidad fila={f} direccion="out" /> },
+    { id: 'entrada', encabezado: t('columnas.entrada'), alinear: 'derecha', celda: (f) => <CeldaCantidad fila={f} direccion="in" formato={(n) => cantidadDe(f.product_id, n)} /> },
+    { id: 'salida', encabezado: t('columnas.salida'), alinear: 'derecha', celda: (f) => <CeldaCantidad fila={f} direccion="out" formato={(n) => cantidadDe(f.product_id, n)} /> },
     ...(verCostos
       ? [
           {
@@ -462,7 +466,7 @@ export function MovimientosPage() {
                   <span className="flex items-center justify-between gap-2">
                     <span className={f.direccion === 'in' ? 'text-sm font-semibold text-success-text' : 'text-sm font-semibold text-danger-text'}>
                       {f.direccion === 'in' ? '+' : '−'}
-                      {t('uds', { n: cantidad(f.cantidad) })}
+                      {cantidadDe(f.product_id, f.cantidad, (numero) => t('uds', { n: numero }))}
                     </span>
                     {verCostos && f.costo_unitario ? <span className="text-xs text-fg-secondary">{t('porUnidad', { costo: moneda.formatear(f.costo_unitario) })}</span> : null}
                   </span>

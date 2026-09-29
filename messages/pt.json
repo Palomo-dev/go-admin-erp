@@ -2527,6 +2527,11 @@
         "revoked": "Esta tela foi despareada no caixa. Gere um novo código.",
         "storage": "O navegador não permite guardar o pareamento (modo privado ou armazenamento bloqueado). O código já foi usado: permita o armazenamento e gere um novo no caixa."
       }
+    },
+    "weighing": {
+      "line": "Pesando: {qty} × {price} = {total}",
+      "price": "{price} / {unit}",
+      "waiting": "Pesando… {price}"
     }
   },
   "session": {
@@ -2713,19 +2718,17 @@
     "feedbackOther": "Outro",
     "globalSearch": {
       "title": "Busca global",
-      "description": "Busque páginas, clientes, produtos e mais",
+      "description": "Busque páginas, clientes, produtos e mais. Use as setas para navegar e Enter para abrir.",
       "placeholder": "Buscar páginas, clientes, produtos…",
-      "triggerPlaceholder": "Buscar páginas, clientes, filiais…",
       "search": "Buscar",
-      "noResults": "Nenhum resultado para “{query}”",
-      "noResultsHint": "Tente outro termo de busca",
-      "searching": "Buscando…",
-      "typeToSearch": "Digite para buscar",
+      "close": "Fechar busca",
       "groups": {
+        "recent": "Recentes",
+        "actions": "Ações",
         "pages": "Páginas",
-        "branches": "Filiais",
         "customers": "Clientes",
         "products": "Produtos",
+        "branches": "Filiais",
         "suppliers": "Fornecedores",
         "categories": "Categorias",
         "invoices": "Faturas",
@@ -2735,17 +2738,47 @@
         "memberships": "Matrículas",
         "parking": "Estacionamento"
       },
-      "organization": "Organização",
-      "branch": "Filial",
-      "unnamedCustomer": "Cliente sem nome",
-      "noExtraInfo": "Sem informações adicionais",
-      "invoice": "Fatura {number}",
-      "noNumber": "s/n",
-      "order": "Pedido {number}",
-      "reservation": "Reserva {space}",
+      "actions": {
+        "reportProblem": "Relatar um problema",
+        "reportProblemHint": "Erro, sugestão ou pergunta",
+        "nuevaVenta": "Nova venda",
+        "nuevaVentaHint": "Abrir o ponto de venda",
+        "nuevaFactura": "Nova fatura",
+        "nuevaFacturaHint": "Fatura de venda",
+        "nuevoCliente": "Novo cliente",
+        "nuevoClienteHint": "Pessoa ou empresa",
+        "nuevoProducto": "Novo produto",
+        "nuevoProductoHint": "Produto ou serviço do catálogo",
+        "nuevaReserva": "Nova reserva",
+        "nuevaReservaHint": "Reserva de hospedagem"
+      },
+      "create": {
+        "nuevoProducto": "Criar produto",
+        "nuevoCliente": "Criar cliente"
+      },
+      "noResults": "Nenhum resultado para “{query}”",
+      "noResultsHint": "Busque por nome, SKU, código de barras, CNPJ/NIT ou número da fatura.",
+      "typeMore": "Digite pelo menos {n} caracteres para buscar nos seus dados.",
+      "searching": "Buscando…",
+      "resultsCount": "{n, plural, =0 {Nenhum resultado} one {# resultado} other {# resultados}}",
+      "error": {
+        "title": "Não foi possível buscar nos seus dados",
+        "hint": "Verifique sua conexão e tente novamente.",
+        "partial": "Alguns grupos não responderam.",
+        "retry": "Tentar novamente"
+      },
+      "footer": {
+        "navigate": "navegar",
+        "open": "abrir",
+        "close": "fechar"
+      },
       "unnamed": "Sem nome",
-      "membership": "Matrícula",
-      "noPlate": "Sem placa"
+      "invoice": "Fatura {number}",
+      "order": "Pedido {number}",
+      "noNumber": "s/n",
+      "stock": "{n} em estoque",
+      "sku": "SKU {sku}",
+      "nit": "Doc. fiscal {nit}"
     },
     "trialBanner": {
       "trialActive": "Você está no teste grátis de {plan}",
@@ -3302,7 +3335,11 @@
         "incluido": "Incluído",
         "adicional": "Adicional",
         "vacio": "Sem linhas",
-        "vacioDescripcion": "Adicione um produto ou um item manual."
+        "vacioDescripcion": "Adicione um produto ou um item manual.",
+        "precioPor": "{precio} / {unidad}",
+        "porUnidad": "/ {unidad}",
+        "cantidadEnDe": "Quantidade de {producto} em {unidad}",
+        "precioPorDe": "Preço de {producto} por {unidad}"
       },
       "totales": {
         "titulo": "Resumo",
@@ -3678,7 +3715,9 @@
         "descripcionDe": "Descrição do item",
         "itemSinNombre": "Item sem descrição",
         "itemManual": "Item manual",
-        "seriales": "Séries {n}/{total}"
+        "seriales": "Séries {n}/{total}",
+        "cantidadRequeridaTitulo": "Falta a quantidade",
+        "cantidadRequerida": "Informe a quantidade de “{producto}”."
       },
       "impuestos": {
         "sinAsignar": "Sem imposto atribuído",
@@ -3931,7 +3970,8 @@
         "prefijo": "O prefixo não é válido para esse formato.",
         "demasiados": "Produtos demais de uma vez (máx. 5.000).",
         "acceso": "Você não tem acesso a esta organização.",
-        "generico": "Não foi possível gerar os códigos. Nada ficou pela metade: tente novamente."
+        "generico": "Não foi possível gerar os códigos. Nada ficou pela metade: tente novamente.",
+        "prefijoDePeso": "O prefixo do gerador coincide com o das etiquetas de peso variável. Altere-o em Configurações › PDV."
       },
       "campo": {
         "etiqueta": "Código de barras",
@@ -9331,7 +9371,9 @@
       "referencia_precio_invalida": "O preço é digitado por kg ou a cada 500, 250, 100 ou 50 g.",
       "decimales_invalidos": "A quantidade admite de 1 a 3 casas decimais.",
       "minimo_invalido": "A venda mínima deve ser maior que 0 e usar as casas decimais da unidade.",
-      "tara_invalida": "A tara não pode ser negativa."
+      "tara_invalida": "A tara não pode ser negativa.",
+      "plu_invalido": "O PLU é um número inteiro de 1 a 99.999.",
+      "plu_duplicado": "PLU duplicado: outro produto da organização já o usa."
     },
     "imagenes": {
       "insignias": {
@@ -9667,7 +9709,7 @@
         "renovacionManual": "Renovação manual",
         "renovacionManualAyuda": "O cliente paga de novo o mesmo produto (PDV, fatura ou loja) e a vigência é estendida a partir do vencimento.",
         "renovacionAutomatica": "Renovação automática",
-        "renovacionAutomaticaAyuda": "Cobrança recorrente no cartão do cliente. Chega quando um gateway guardar cartões.",
+        "renovacionAutomaticaAyuda": "7 dias antes do vencimento a renovação fica a cobrar, pronta para cobrar com um clique. Nunca é cobrada nem faturada sozinha.",
         "fasePosterior": "Mais adiante",
         "formaCobro": "Forma de cobrança",
         "cobroAdelantado": "Antecipado",
@@ -9860,7 +9902,9 @@
       "sku": "SKU {sku}",
       "escaner": "O leitor do PDV busca pelo código exato.",
       "variantes": "Cada variante tem seu próprio código: não herda o do produto. Os que faltarem são numerados ao salvar.",
-      "duplicar": "O código de barras do original não é copiado."
+      "duplicar": "O código de barras do original não é copiado.",
+      "plu": "PLU de balança",
+      "pluAyuda": "O número que a balança etiquetadora imprime na etiqueta de peso (1 a 99.999). Único na organização."
     },
     "avanzado": {
       "envio": "Envio",
@@ -11137,7 +11181,11 @@
       "origen_peso_invalido": "A origem do peso de uma linha não é válida. Pese novamente. {detalle}",
       "origen_peso_no_disponible": "A leitura de balança e as etiquetas de peso ainda não estão disponíveis. {detalle}",
       "peso_exige_bascula": "Um produto exige balança e não pode ser vendido com o peso digitado. {detalle}",
-      "sin_permiso_peso_manual": "Pesar manualmente exige a permissão “Pesar manualmente no PDV”. {detalle}"
+      "sin_permiso_peso_manual": "Pesar manualmente exige a permissão “Pesar manualmente no PDV”. {detalle}",
+      "bascula_invalida": "A balança da pesagem não é uma balança ativa da organização. {detalle}",
+      "peso_inestable": "A leitura da balança não estava estável. {detalle}",
+      "pesaje_no_coincide": "A quantidade não coincide com o peso lido da balança. {detalle}",
+      "etiqueta_invalida": "A etiqueta de peso não traz o código lido. {detalle}"
     },
     "ventaAnulada": "Venda cancelada: pagamentos, estoque e fatura foram revertidos.",
     "anulacionFallida": "Não foi possível cancelar a venda",
@@ -15305,6 +15353,12 @@
       "cliente_no_encontrado": "Não encontramos esse cliente.",
       "sucursal_invalida": "A unidade não pertence à organização.",
       "membresia_sin_cliente": "Uma assinatura precisa do titular: escolha o cliente antes de cobrar.",
+      "reserva_no_encontrada": "Não encontramos essa reserva.",
+      "reserva_de_otro_miembro": "A reserva é de outro membro.",
+      "reserva_cancelada": "A reserva está cancelada: não é possível registrar a entrada.",
+      "clase_cancelada": "A aula está cancelada: não é possível registrar a entrada.",
+      "importacion_sin_filas": "O arquivo não tem linhas para importar.",
+      "importacion_demasiadas_filas": "O arquivo ultrapassa o limite de 500 linhas.",
       "datos_invalidos": "Verifique os dados do formulário.",
       "error_interno": "Algo deu errado. Tente novamente."
     },
@@ -15422,7 +15476,8 @@
           "congelada": "Congeladas",
           "pendiente": "Pendentes",
           "vencida": "Vencidas",
-          "cancelada": "Canceladas"
+          "cancelada": "Canceladas",
+          "renovacion_pendiente": "Renovação a cobrar"
         }
       },
       "chips": {
@@ -15439,6 +15494,8 @@
         "plan": "Plano",
         "vigencia": "Vigência",
         "estado": "Status",
+        "sede": "Unidade",
+        "ultimaEntrada": "Última entrada",
         "origen": "Origem"
       },
       "vacio": {
@@ -15794,7 +15851,63 @@
         "payment_failed": "Pagamento falhou",
         "plan_changed": "Mudança de plano",
         "notes_updated": "Notas atualizadas",
+        "renewal_due": "Renovação a cobrar",
         "otro": "Outro movimento"
+      },
+      "renovacionPendiente": {
+        "titulo": "Renovação a cobrar",
+        "descripcion": "O plano renova automaticamente: a renovação ficou pronta em {fecha}. Nada é cobrado nem faturado sem a sua intervenção.",
+        "precio": "Preço vigente: {precio}",
+        "accion": "Cobrar renovação"
+      }
+    },
+    "exportar": {
+      "accion": "Exportar CSV",
+      "exportando": "Exportando…",
+      "descripcionFiltros": "Com a busca e os filtros atuais",
+      "listo": "Arquivo baixado",
+      "truncado": "Foram exportadas as primeiras {max, number} linhas. Ajuste os filtros para exportar o restante.",
+      "archivo": {
+        "membresias": "Assinaturas",
+        "miembros": "Membros",
+        "pagos": "Pagamentos de assinaturas"
+      },
+      "columnas": {
+        "membresias": {
+          "miembro": "Membro",
+          "documento": "Documento",
+          "plan": "Plano",
+          "codigo": "Código de acesso",
+          "desde": "De",
+          "hasta": "Até",
+          "estado": "Status",
+          "sede": "Unidade",
+          "ultimaEntrada": "Última entrada",
+          "origen": "Origem"
+        },
+        "miembros": {
+          "miembro": "Membro",
+          "documento": "Documento",
+          "correo": "E-mail",
+          "telefono": "Telefone",
+          "planVigente": "Assinatura vigente",
+          "estado": "Status",
+          "vence": "Vence",
+          "ultimaEntrada": "Última entrada",
+          "membresias": "Assinaturas"
+        },
+        "pagos": {
+          "fecha": "Data",
+          "cliente": "Cliente",
+          "documento": "Documento",
+          "producto": "Produto",
+          "cantidad": "Quantidade",
+          "total": "Total",
+          "estadoVenta": "Status da venda",
+          "factura": "Fatura",
+          "saldo": "Saldo",
+          "membresia": "Assinatura"
+        }
       }
     },
     "congelar": {
@@ -15866,6 +15979,29 @@
         "enlace": {
           "titulo": "Enviar link de pagamento",
           "descripcion": "Pagamento na loja virtual."
+        }
+      },
+      "enlace": {
+        "comprobando": "Verificando os gateways de pagamento da organização…",
+        "motivos": {
+          "sin_pasarela": "A organização não tem um gateway de pagamento on-line conectado. Conecte um em Integrações para cobrar por link.",
+          "pago_no_activa_membresia": "Seu gateway ({pasarelas}) ainda não registra o pagamento da fatura pelo caminho que ativa a assinatura. Enquanto isso, cobre no PDV ou com fatura.",
+          "membresia_cancelada": "A assinatura está cancelada.",
+          "error": "Não foi possível verificar os gateways de pagamento. Cobre no PDV ou com fatura."
+        },
+        "insignias": {
+          "comprobando": "Verificando…",
+          "sin_pasarela": "Sem gateway",
+          "pago_no_activa_membresia": "Ainda indisponível",
+          "membresia_cancelada": "Indisponível"
+        },
+        "pasarelas": {
+          "wompi_co": "Wompi",
+          "stripe_payments": "Stripe",
+          "bold_link": "Bold",
+          "mp_checkout": "Mercado Pago",
+          "payu_co": "PayU",
+          "paypal_checkout": "PayPal"
         }
       },
       "fasePosterior": "Fase posterior",
@@ -15964,6 +16100,7 @@
       "migaPlan": "Plano",
       "errorTitulo": "Não conseguimos carregar o plano",
       "subtituloRenovacion": "renovação manual",
+      "subtituloRenovacionAutomatica": "renovação automática",
       "editarEnProducto": "Editar no produto",
       "vender": "Vender no PDV",
       "noEncontrado": {
@@ -16006,6 +16143,7 @@
         "duracion": "Duração",
         "renovacion": "Renovação",
         "renovacionValor": "Manual · estende a partir do vencimento",
+        "renovacionValorAutomatica": "Automática · fica a cobrar 7 dias antes do vencimento",
         "cobro": "Forma de cobrança",
         "cobroValor": {
           "prepaid": "Antecipado · ativa ao pagar",
@@ -16244,6 +16382,88 @@
         }
       }
     },
+    "importar": {
+      "boton": "Importar CSV",
+      "tituloClases": "Importar aulas",
+      "tituloReservas": "Importar reservas",
+      "descripcionClases": "Envie um CSV com as aulas. A data e a hora são lidas no fuso {zona}. Máximo de {max} linhas.",
+      "descripcionReservas": "Envie um CSV com as reservas. O membro é buscado por documento ou e-mail e a aula por nome, data e hora ({zona}). Máximo de {max} linhas.",
+      "plantilla": "Baixar modelo",
+      "reglaTodoONada": "A importação é tudo ou nada: se uma linha tiver erros, nada é salvo. Corrija o arquivo e envie de novo.",
+      "archivo": {
+        "etiqueta": "Escolha ou arraste um arquivo CSV",
+        "ayuda": "CSV separado por vírgula ou ponto e vírgula, até 2 MB",
+        "otro": "Clique ou arraste outro arquivo para substituí-lo"
+      },
+      "validando": "Validando com os dados da organização…",
+      "resumen": "{total, plural, one {# linha} other {# linhas}} · {validas} prontas · {conError} com erros",
+      "ignoradas": "Colunas não usadas: {columnas}.",
+      "tabla": {
+        "etiqueta": "Prévia da importação",
+        "etiquetaFila": "Linha {n}",
+        "fila": "Linha",
+        "clase": "Aula",
+        "reserva": "Membro e aula",
+        "cuando": "Data e hora",
+        "estado": "Status",
+        "errores": "Erros"
+      },
+      "estados": {
+        "lista": "Pronta",
+        "conErrores": "Com erros"
+      },
+      "importarN": "{n, plural, =0 {Importar} one {Importar # linha} other {Importar # linhas}}",
+      "importando": "Importando…",
+      "motivoDeshabilitado": "Corrija as linhas com erros para importar.",
+      "cancelar": "Cancelar",
+      "toasts": {
+        "importadas": "{n, plural, one {# linha importada} other {# linhas importadas}}",
+        "cambios": "Os dados mudaram desde a prévia: revise os erros e tente de novo."
+      },
+      "erroresArchivo": {
+        "formato": "O arquivo deve ser .csv.",
+        "tamano": "O arquivo ultrapassa 2 MB.",
+        "lectura": "Não conseguimos ler o arquivo. Salve como CSV e tente de novo.",
+        "sin_cabecera": "O arquivo está vazio.",
+        "faltan_columnas": "Faltam colunas obrigatórias: {columnas}. Baixe o modelo para ver o formato.",
+        "sin_filas": "O arquivo não tem linhas de dados.",
+        "demasiadas_filas": "O arquivo tem {n} linhas e o máximo é {max}. Divida-o em vários arquivos.",
+        "validar": "Não conseguimos validar o arquivo. Tente de novo."
+      },
+      "errores": {
+        "titulo_requerido": "Falta o título.",
+        "titulo_muy_largo": "O título ultrapassa 200 caracteres.",
+        "instructor_requerido": "Falta o e-mail do instrutor.",
+        "correo_invalido": "O e-mail não é válido.",
+        "fecha_requerida": "Falta a data.",
+        "fecha_invalida": "Data inválida: use AAAA-MM-DD ou DD/MM/AAAA.",
+        "hora_requerida": "Falta a hora.",
+        "hora_invalida": "Hora inválida: use HH:MM (por exemplo 07:00 ou 6:30 pm).",
+        "duracion_invalida": "A duração deve ficar entre 5 e 480 minutos.",
+        "capacidad_invalida": "A capacidade deve ficar entre 1 e 1000.",
+        "nivel_invalido": "Nível inválido: iniciante, intermediário, avançado ou todos.",
+        "estado_invalido": "Status inválido.",
+        "origen_invalido": "Origem inválida: recepção, app, web ou quiosque.",
+        "miembro_requerido": "Falta o documento ou o e-mail do membro.",
+        "clase_requerida": "Falta o nome da aula.",
+        "duplicada_en_archivo": "Linha repetida no arquivo.",
+        "sede_requerida": "Falta a unidade: a organização tem várias.",
+        "sede_no_encontrada": "Não encontramos essa unidade.",
+        "sede_ambigua": "Há várias unidades com esse nome: use o código ou o id.",
+        "sede_sin_acceso": "Você não tem acesso à unidade dessa aula.",
+        "instructor_no_encontrado": "Nenhum membro ativo da organização tem esse e-mail.",
+        "clase_ya_existe": "Já existe uma aula com esse título nessa unidade, data e hora.",
+        "miembro_no_encontrado": "Não encontramos o membro.",
+        "miembro_ambiguo": "Há vários clientes com esse documento ou e-mail.",
+        "miembro_no_coincide": "O documento e o e-mail são de pessoas diferentes.",
+        "clase_no_encontrada": "Não há aula com esse nome nessa data e hora.",
+        "clase_ambigua": "Há várias aulas com esse nome nesse horário: informe a unidade.",
+        "clase_cancelada": "A aula está cancelada.",
+        "clase_no_programada": "A aula não está mais programada: use compareceu ou não compareceu.",
+        "clase_sin_cupo": "A aula não tem vaga para esta reserva.",
+        "reserva_ya_existe": "Esse membro já tem reserva nessa aula."
+      }
+    },
     "reservas": {
       "cabecera": {
         "titulo": "Reservas",
@@ -16332,7 +16552,8 @@
         "cancelada": "Reserva cancelada",
         "duplicada": "Reserva criada na outra aula",
         "entrada": "Entrada registrada",
-        "entradaRechazada": "Entrada recusada: {motivo}"
+        "entradaRechazada": "Entrada recusada: {motivo}",
+        "entradaRepetida": "A entrada já estava registrada com esta reserva"
       },
       "cancelar": {
         "titulo": "Cancelar reserva",
@@ -18189,6 +18410,27 @@
       "sinPrecio": "“{producto}” não tem preço vigente. Configure-o em Estoque.",
       "precioNoConsultado": "Não foi possível consultar o preço de “{producto}”. Verifique a conexão e tente de novo.",
       "errorAgregar": "Não foi possível adicionar “{producto}” ao carrinho."
+    },
+    "etiqueta": {
+      "invalida": "Etiqueta de peso ilegível",
+      "invalidaDescripcion": "O dígito verificador de {codigo} não confere. Leia de novo ou pese o produto.",
+      "invalidaValor": "O dígito verificador do peso ou do preço de {codigo} não confere. Leia de novo ou pese o produto.",
+      "pluInexistente": "Não há produto com o PLU {plu}",
+      "productoPorUnidad": "O PLU {plu} é de um produto vendido por unidade",
+      "sinPrecio": "{producto} não tem preço vigente",
+      "pesoInvalido": "O peso da etiqueta não é válido",
+      "bajoMinimo": "A etiqueta está abaixo da venda mínima ({minimo})",
+      "codigoLeido": "Código lido: {codigo}. Nada foi adicionado.",
+      "importeDifiere": "O valor da etiqueta não confere",
+      "importeDifiereDescripcion": "Etiqueta: {etiqueta}. Com o preço vigente: {calculado}. É cobrado o preço vigente."
+    },
+    "mesa": {
+      "porUnidad": "Por {unidad}",
+      "cambiarPeso": "Alterar o peso de {producto}",
+      "precioPor": "{precio} / {unidad}",
+      "cantidad": "Quantidade ({unidad})",
+      "cantidadInvalida": "Digite uma quantidade maior que 0 com até {decimales} casas decimais.",
+      "transferenciaParcial": "Serão transferidos {cantidad} de {total}"
     }
   },
   "inventarioStock": {
@@ -21331,5 +21573,308 @@
     "errorIgualActual": "A nova senha deve ser diferente da atual.",
     "errorDemasiadas": "Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.",
     "errorInesperado": "Não conseguimos trocar a senha. Tente de novo em um instante."
+  },
+  "posEtiquetasPeso": {
+    "titulo": "Etiquetas de peso variável",
+    "descripcion": "Códigos EAN-13 impressos pelas balanças etiquetadoras (prefixos GS1 de uso interno 21–29).",
+    "cargando": "Carregando o formato de etiquetas",
+    "errorCargar": "Não foi possível carregar o formato de etiquetas.",
+    "reintentar": "Tentar novamente",
+    "sinPermiso": "Só quem tem a permissão «Configurar balanças» pode mudar este formato.",
+    "activo": "Ler etiquetas de balança no PDV",
+    "activoAyuda": "O leitor reconhece o código e adiciona a linha com o peso da etiqueta.",
+    "prefijo": "Prefixo",
+    "prefijoAyuda": "{prefijo} não: o gerador de códigos o usa",
+    "contenido": "A etiqueta traz",
+    "contenidoPeso": "Peso (gramas)",
+    "contenidoPrecio": "Preço",
+    "contenidoAyuda": "Ou preço: o PDV calcula o peso",
+    "digitosPlu": "Dígitos do PLU",
+    "digitosValor": "Dígitos do valor",
+    "digitosValorAyuda": "Peso: gramas · preço: unidades da moeda",
+    "digitoControl": "Dígito verificador do valor",
+    "digitoControlAyuda": "Algumas balanças adicionam um dígito verificador ao peso ou ao preço.",
+    "probar": "Testar um código",
+    "prueba": {
+      "noEsEtiqueta": "Não é uma etiqueta deste formato (EAN-13 com o prefixo configurado).",
+      "digitoControl": "O dígito verificador do código não confere.",
+      "digitoValor": "O dígito verificador do valor não confere.",
+      "plu": "PLU {plu}",
+      "gramos": "{valor} g",
+      "pluInexistente": "{detalle} → não há produto com o PLU {plu}",
+      "productoPorUnidad": "{detalle} → {producto} é vendido por unidade"
+    },
+    "avisoPrefijo": "{n, plural, one {# produto tem} other {# produtos têm}} um código de barras próprio que começa por {prefijo}: o PDV busca primeiro o código exato, então continuam sendo lidos corretamente.",
+    "avisoPluFuera": "{n, plural, one {# produto tem} other {# produtos têm}} um PLU que não cabe em {digitos} dígitos.",
+    "guardado": "Formato de etiquetas salvo",
+    "guardar": "Salvar formato",
+    "cancelar": "Cancelar",
+    "exportar": "Exportar PLU",
+    "exportarVacio": "Nenhum produto tem PLU de balança.",
+    "exportado": "{n, plural, one {# PLU exportado} other {# PLU exportados}}",
+    "csv": {
+      "plu": "PLU",
+      "nombre": "Nome",
+      "precio": "Preço por kg",
+      "tara": "Tara",
+      "diasVida": "Dias de validade"
+    },
+    "errores": {
+      "prefijo_del_generador": "O gerador de códigos usa o prefixo {prefijo}: escolha outro.",
+      "prefijo_peso_invalido": "Os prefixos de peso vão de 21 a 29.",
+      "prefijos_requeridos": "Digite pelo menos um prefixo.",
+      "formato_invalido": "Prefixo + PLU + valor devem somar 12 dígitos.",
+      "sin_permiso": "Você não tem permissão para configurar balanças e etiquetas de peso.",
+      "generico": "Não foi possível concluir a operação. Tente novamente."
+    }
+  },
+  "posPesosManuales": {
+    "enlace": "Pesos manuais",
+    "titulo": "Pesos manuais",
+    "subtitulo": "Vendas por peso com o peso digitado à mão, por dia e caixa",
+    "volver": "Voltar aos relatórios",
+    "actualizar": "Atualizar",
+    "cargando": "Carregando…",
+    "reintentar": "Tentar de novo",
+    "filtros": {
+      "desde": "De",
+      "hasta": "Até"
+    },
+    "kpis": {
+      "lineas": "Linhas pesadas à mão",
+      "cantidad": "Peso total",
+      "importe": "Valor",
+      "cajeros": "{count, plural, =0 {Nenhum caixa} one {# caixa} other {# caixas}}"
+    },
+    "tabla": {
+      "titulo": "Pesos manuais por dia e caixa",
+      "dia": "Dia",
+      "cajero": "Caixa",
+      "lineas": "Linhas",
+      "cantidad": "Peso",
+      "importe": "Valor",
+      "autorizadas": "Com supervisor",
+      "sinCajero": "Sem caixa"
+    },
+    "vacio": {
+      "titulo": "Sem pesos manuais",
+      "descripcion": "Ninguém digitou um peso à mão neste período."
+    },
+    "sinPermiso": {
+      "titulo": "Sem permissão",
+      "descripcion": "Você precisa de “Relatórios de vendas” ou “Configurar balanças” para ver este relatório."
+    },
+    "error": {
+      "titulo": "Não foi possível carregar o relatório",
+      "descripcion": "Verifique a conexão e tente de novo.",
+      "rango": "Escolha um período de até um ano, com “De” antes de “Até”."
+    }
+  },
+  "posBascula": {
+    "lectura": {
+      "grupo": "Leitura da balança",
+      "estado": {
+        "conectando": "Conectando",
+        "estable": "Estável",
+        "inestable": "Instável",
+        "fueraDeRango": "Fora da faixa",
+        "error": "Sem leitura",
+        "manual": "Peso digitado"
+      },
+      "conectando": "Conectando a {bascula}…",
+      "basculaDe": "balança {nombre}",
+      "bruto": "Bruto {valor}",
+      "tara": "Tara {valor}",
+      "bajoCero": "Peso negativo. Zere a balança sem nada em cima.",
+      "sobrecarga": "Sobrecarga (máx. {capacidad}).",
+      "sobrecargaSinCapacidad": "Sobrecarga: retire peso da balança.",
+      "motivoAgregar": "Adiciona com uma leitura estável e dentro da faixa.",
+      "motivos": {
+        "inestable": "Aguardando uma leitura estável…",
+        "bajo_minimo": "A venda mínima é {minimo}.",
+        "sin_tara": "Este produto exige tara: coloque a bandeja e toque em Tara.",
+        "sin_peso": "Coloque o produto na balança."
+      },
+      "errores": {
+        "sin_lectura": "A balança não envia leituras há 3 s. Verifique se está ligada e conectada.",
+        "sin_puerto": "A porta da balança não foi encontrada neste equipamento.",
+        "puerto_ocupado": "Outro programa está usando a porta da balança.",
+        "permiso": "Este equipamento não permitiu abrir a porta.",
+        "io": "A conexão com a balança foi perdida.",
+        "no_soportado": "Este equipamento não consegue ler esta balança (precisa do Go Admin Desktop ou Chrome/Edge).",
+        "no_disponible": "O módulo de portas seriais não está disponível neste Go Admin Desktop. Reinstale-o.",
+        "protocolo_pendiente": "O protocolo desta balança ainda não está disponível.",
+        "unidad": "A balança pesa em uma unidade que não pode ser convertida para a do produto."
+      },
+      "acciones": {
+        "cero": "Zero",
+        "tara": "Tara",
+        "quitarTara": "Tirar tara",
+        "taraProducto": "Tara do produto {valor}",
+        "conectar": "Conectar balança",
+        "reintentar": "Tentar de novo",
+        "pesarAMano": "Peso manual",
+        "usarBascula": "Usar balança"
+      },
+      "atajos": {
+        "agregar": "Adicionar a pesagem estável"
+      },
+      "auto": {
+        "esperando": "Aguardando peso estável… adiciona sozinho · Esc cancela",
+        "pesoNuevo": "A balança ainda tem a pesagem anterior: retire-a ou coloque o produto."
+      }
+    },
+    "config": {
+      "titulo": "Balanças",
+      "descripcion": "Balanças do PDV por filial: porta, protocolo e teste de leitura.",
+      "nueva": "Nova balança",
+      "cargando": "Carregando balanças…",
+      "error": {
+        "titulo": "Não foi possível carregar as balanças",
+        "descripcion": "Verifique a conexão e tente de novo."
+      },
+      "sinPermiso": {
+        "titulo": "Você não pode configurar balanças",
+        "descripcion": "É preciso a permissão “Configurar balanças e etiquetas de peso”. Peça a um administrador."
+      },
+      "vacio": {
+        "titulo": "Ainda não há balanças",
+        "descripcion": "Conecte uma balança por USB ou porta serial para pesar no PDV sem digitar o peso."
+      },
+      "protocolos": {
+        "continuous_st_gs": "Contínuo ST,GS (A&D, CAS, genéricos)",
+        "toledo_8217": "Mettler Toledo 8217",
+        "mettler_sics": "Mettler SICS",
+        "cas_pd2": "CAS PD-II",
+        "dibal": "Dibal (pendente)",
+        "custom_regex": "Próprio (expressão regular)"
+      },
+      "transportes": {
+        "desktop_serial": "Go Admin Desktop",
+        "web_serial": "Navegador (Web Serial)"
+      },
+      "caja": "Caixa {caja}",
+      "estados": {
+        "archivada": "Arquivada",
+        "probada": "Testada",
+        "fallo": "Teste falhou",
+        "sinProbar": "Não testada"
+      },
+      "enEsteEquipo": "Neste equipamento",
+      "ultimaPrueba": "Último teste {fecha}",
+      "usarEnEsteEquipo": "Usar neste equipamento",
+      "editar": "Editar",
+      "editarNombre": "Editar {nombre}",
+      "archivar": "Arquivar",
+      "archivarNombre": "Arquivar {nombre}",
+      "reactivar": "Reativar",
+      "paridad": {
+        "none": "Nenhuma",
+        "even": "Par",
+        "odd": "Ímpar"
+      },
+      "errores": {
+        "sin_permiso": "Você não tem permissão para configurar balanças.",
+        "bascula_no_encontrada": "A balança não existe mais.",
+        "sucursal_invalida": "Escolha uma filial da organização.",
+        "transporte_no_disponible": "Essa conexão ainda não está disponível.",
+        "equipo_invalido": "O equipamento não é da organização.",
+        "caja_invalida": "O caixa não é dessa filial.",
+        "unidad_invalida": "A unidade deve ser de peso (kg ou lb).",
+        "nombre_duplicado": "Já existe uma balança ativa com esse nome na filial.",
+        "datos_invalidos": "Há dados inválidos: revise os parâmetros.",
+        "generico": "Não foi possível salvar. Tente de novo."
+      },
+      "toasts": {
+        "creada": "Balança “{nombre}” criada.",
+        "actualizada": "Balança “{nombre}” atualizada.",
+        "archivada": "Balança “{nombre}” arquivada.",
+        "reactivada": "Balança “{nombre}” reativada.",
+        "enEsteEquipo": "O PDV deste equipamento usará “{nombre}”."
+      },
+      "confirmarArchivar": {
+        "titulo": "Arquivar “{nombre}”?",
+        "texto": "O PDV deixa de usá-la. As vendas já feitas mantêm o registro e ela pode ser reativada.",
+        "accion": "Arquivar"
+      },
+      "form": {
+        "tituloNueva": "Nova balança",
+        "tituloEditar": "Editar “{nombre}”",
+        "descripcion": "Como a balança se conecta e se comunica. Teste a leitura antes de salvar.",
+        "cancelar": "Cancelar",
+        "guardar": "Salvar",
+        "crear": "Criar balança",
+        "nombre": "Nome",
+        "nombreAyuda": "Como o operador de caixa a reconhece: “Balcão de carnes”.",
+        "sucursal": "Filial",
+        "elegirSucursal": "Escolha uma filial",
+        "caja": "Caixa",
+        "cajaAyuda": "Se a filial tiver vários caixas, a balança é usada só neste.",
+        "cajaCualquiera": "Qualquer caixa da filial",
+        "transporte": "Conexão",
+        "webSerialEnDesktop": "Dentro do Go Admin Desktop use a conexão “Go Admin Desktop”. Web Serial é para Chrome ou Edge sem Desktop.",
+        "webSerialNoSoportado": "Este navegador não tem Web Serial. Funciona no Chrome ou Edge de computador; não no Safari, Firefox, iPad nem celulares.",
+        "desktopNoDisponible": "Este equipamento não tem o Go Admin Desktop com balanças. Digite a porta (COM3) e teste a leitura no computador da balança.",
+        "puerto": "Porta",
+        "puertoAyudaDesktop": "A porta serial ou USB onde a balança está conectada neste equipamento.",
+        "actualizarPuertos": "Atualizar",
+        "elegirPuerto": "Escolha uma porta",
+        "puertoAyudaWeb": "O navegador pergunta uma vez e lembra neste computador.",
+        "elegirPuertoWeb": "Escolher porta",
+        "puertoElegido": "Porta escolhida: {pista}",
+        "sinPuertoElegido": "Nenhuma porta escolhida",
+        "errorListarPuertos": "Não foi possível listar as portas deste equipamento.",
+        "errorElegirPuerto": "O navegador não permitiu escolher a porta.",
+        "protocolo": "Protocolo",
+        "protocoloPendiente": "Dibal ainda não é interpretado: o teste mostra os bytes brutos. Enquanto isso, use “Próprio”.",
+        "patron": "Expressão regular",
+        "patronAyuda": "Expressão JavaScript com os grupos nomeados “peso” (obrigatório), “signo”, “estado” e “unidad”.",
+        "parametros": "Parâmetros da porta",
+        "baudios": "Baud rate",
+        "bitsDatos": "Bits de dados",
+        "paridad": "Paridade",
+        "bitsParada": "Bits de parada",
+        "lectura": "Leitura",
+        "unidad": "Unidade",
+        "decimales": "Decimais",
+        "capacidad": "Capacidade",
+        "division": "Divisão",
+        "divisionAyuda": "A mínima da balança; é a tolerância de estabilidade.",
+        "estabilidad": "Estável após",
+        "estabilidadAyuda": "Tempo com a mesma leitura antes de poder adicionar.",
+        "errores": {
+          "nombreVacio": "Digite um nome.",
+          "nombreLargo": "Máximo de 80 caracteres.",
+          "sucursal": "Escolha a filial.",
+          "puertoDesktop": "Escolha ou digite a porta.",
+          "patron_vacio": "Digite a expressão.",
+          "patron_invalido": "A expressão não é válida.",
+          "patron_sin_grupo_peso": "Falta o grupo nomeado “peso”.",
+          "positivo": "Deve ser maior que 0.",
+          "estableMs": "Entre 0 e 5000 ms.",
+          "decimales": "Entre 0 e 4."
+        }
+      },
+      "prueba": {
+        "titulo": "Testar leitura",
+        "iniciar": "Testar leitura",
+        "detener": "Parar",
+        "ayuda": "Coloque algo na balança e toque em “Testar leitura”.",
+        "esperando": "Aguardando dados da balança…",
+        "ok": "Leitura reconhecida: {peso} · {estado}",
+        "estable": "estável",
+        "inestable": "instável",
+        "noReconocida": "Chegam dados, mas não são reconhecidos com {protocolo}.",
+        "sugerencia": "Entendidos por: {protocolos}.",
+        "usarSugerido": "Usar {protocolo}",
+        "crudos": "Bytes recebidos ({cantidad})",
+        "sinBytes": "Não chegam bytes. Verifique o cabo, a porta e o baud rate."
+      }
+    },
+    "venta": {
+      "agregado": "Adicionado: {cantidad} · {producto} · {importe}",
+      "deshacer": "Desfazer",
+      "pesadaCancelada": "A pesagem de “{producto}” foi cancelada: não estava confirmada."
+    }
   }
 }

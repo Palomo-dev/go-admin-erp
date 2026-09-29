@@ -27,6 +27,12 @@ import {
   PromotionRule,
 } from '@/components/pos/promociones/types';
 import { appliesOnWeekDay, isWithinEndDate, weekDayOfLocalDate } from '@/lib/promotions/vigencia';
+import { esMedido } from '@/lib/pos/peso/modoVenta';
+
+/** ¿El ítem se vende por peso o medida? (sin dato: por unidad, como hoy). */
+function esItemMedido(item: PromotionItem): boolean {
+  return esMedido({ sale_mode: item.sale_mode ?? null });
+}
 
 // --- Tipos públicos ---
 
@@ -44,6 +50,12 @@ export interface PromotionItem {
   brand?: string;
   quantity: number;
   unit_price: number;
+  /**
+   * «Cómo se vende» el producto (`products.sale_mode`). «Lleve X pague Y» no
+   * aplica a `weight` ni `measure`. Si el llamador no lo trae y hay una
+   * promoción de ese tipo, el motor lo consulta (una lectura por evaluación).
+   */
+  sale_mode?: string | null;
 }
 
 export interface PromotionContext {
@@ -67,6 +79,12 @@ export interface AppliedPromotion {
 export interface PromotionEvaluationResult {
   discountTotal: number;
   itemDiscounts: Record<number, number>; // product_id → monto descontado
+  /**
+   * Descuento por LÍNEA, en el mismo orden que `ctx.items`. Con productos por
+   * peso hay varias líneas del mismo producto (una por pesada) y
+   * `itemDiscounts` suma las de todas: cada línea debe llevar solo la suya.
+   */
+  lineDiscounts: number[];
   applied: AppliedPromotion[];
   items: PromotionItem[]; // items con discount_amount aplicado
 }
@@ -204,27 +222,38 @@ class PromotionEngineService {
 
   /**
    * Calcula el descuento para una promoción sobre los items aplicables.
+   *
+   * `applicable` lleva la posición de cada ítem en `ctx.items`: además del
+   * reparto por producto (`perItem`, el de siempre) se devuelve el reparto
+   * por línea (`perLine`). Con productos por peso cada pesada es su propia
+   * línea del mismo producto, y repartir por producto le daba a cada línea el
+   * descuento de todas.
    */
   private calculatePromotionDiscount(
     promotion: Promotion,
-    applicableItems: PromotionItem[],
-  ): { discountAmount: number; perItem: Record<number, number> } {
+    applicable: ReadonlyArray<{ item: PromotionItem; idx: number }>,
+  ): { discountAmount: number; perItem: Record<number, number>; perLine: Record<number, number> } {
     const perItem: Record<number, number> = {};
+    const perLine: Record<number, number> = {};
     let totalDiscount = 0;
+    const sumar = (entrada: { item: PromotionItem; idx: number }, d: number) => {
+      perItem[entrada.item.product_id] = (perItem[entrada.item.product_id] || 0) + d;
+      perLine[entrada.idx] = (perLine[entrada.idx] || 0) + d;
+    };
 
-    const subtotal = applicableItems.reduce(
-      (sum, i) => sum + i.unit_price * i.quantity,
+    const subtotal = applicable.reduce(
+      (sum, { item: i }) => sum + i.unit_price * i.quantity,
       0,
     );
 
     switch (promotion.promotion_type) {
       case 'percentage': {
         const pct = Number(promotion.discount_value || 0) / 100;
-        for (const item of applicableItems) {
-          const lineTotal = item.unit_price * item.quantity;
+        for (const entrada of applicable) {
+          const lineTotal = entrada.item.unit_price * entrada.item.quantity;
           const d = Math.round(lineTotal * pct * 100) / 100;
           if (d > 0) {
-            perItem[item.product_id] = (perItem[item.product_id] || 0) + d;
+            sumar(entrada, d);
             totalDiscount += d;
           }
         }
@@ -237,11 +266,11 @@ class PromotionEngineService {
         // permite guardar: el motor jamás llegaba a aplicar un monto fijo.
         const fixed = Number(promotion.discount_value || 0);
         if (subtotal > 0 && fixed > 0) {
-          for (const item of applicableItems) {
-            const ratio = (item.unit_price * item.quantity) / subtotal;
+          for (const entrada of applicable) {
+            const ratio = (entrada.item.unit_price * entrada.item.quantity) / subtotal;
             const d = Math.round(fixed * ratio * 100) / 100;
             if (d > 0) {
-              perItem[item.product_id] = (perItem[item.product_id] || 0) + d;
+              sumar(entrada, d);
               totalDiscount += d;
             }
           }
@@ -253,30 +282,35 @@ class PromotionEngineService {
         // Por cada (buy_quantity + get_quantity) items, el más barato de los
         // get_quantity es gratis. Simplificación: por cada X comprados, Y gratis
         // (descuento = Y * unit_price del item más barato del grupo).
+        //
+        // «Lleve X pague Y» cuenta UNIDADES: no aplica a productos por peso ni
+        // por medida (docs/design/PRODUCTOS-POR-PESO-BASCULA.md §2.5). Antes
+        // `Math.floor` de 2,5 kg contaba «2» y regalaba kilos.
         const buyQty = promotion.buy_quantity || 0;
         const getQty = promotion.get_quantity || 0;
         if (buyQty > 0 && getQty > 0) {
           // Agrupar items por product_id para aplicar X+Y dentro del mismo producto
-          const byProduct = new Map<number, PromotionItem[]>();
-          for (const item of applicableItems) {
-            const arr = byProduct.get(item.product_id) || [];
-            arr.push(item);
-            byProduct.set(item.product_id, arr);
+          const byProduct = new Map<number, Array<{ item: PromotionItem; idx: number }>>();
+          for (const entrada of applicable) {
+            if (esItemMedido(entrada.item)) continue;
+            const arr = byProduct.get(entrada.item.product_id) || [];
+            arr.push(entrada);
+            byProduct.set(entrada.item.product_id, arr);
           }
 
-          for (const [, items] of byProduct) {
-            const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+          for (const [, entradas] of Array.from(byProduct.entries())) {
+            const totalQty = entradas.reduce((s, e) => s + e.item.quantity, 0);
             const sets = Math.floor(totalQty / (buyQty + getQty));
             if (sets <= 0) continue;
             // El más barato del grupo es el que se regala
-            const sorted = [...items].sort((a, b) => a.unit_price - b.unit_price);
+            const sorted = [...entradas].sort((a, b) => a.item.unit_price - b.item.unit_price);
             let remainingFree = sets * getQty;
-            for (const item of sorted) {
+            for (const entrada of sorted) {
               if (remainingFree <= 0) break;
-              const free = Math.min(remainingFree, item.quantity);
-              const d = Math.round(free * item.unit_price * 100) / 100;
+              const free = Math.min(remainingFree, entrada.item.quantity);
+              const d = Math.round(free * entrada.item.unit_price * 100) / 100;
               if (d > 0) {
-                perItem[item.product_id] = (perItem[item.product_id] || 0) + d;
+                sumar(entrada, d);
                 totalDiscount += d;
               }
               remainingFree -= free;
@@ -292,10 +326,10 @@ class PromotionEngineService {
         const pct = Number(promotion.discount_value || 0) / 100;
         const d = Math.round(subtotal * pct * 100) / 100;
         if (d > 0) {
-          for (const item of applicableItems) {
-            const ratio = (item.unit_price * item.quantity) / subtotal;
+          for (const entrada of applicable) {
+            const ratio = (entrada.item.unit_price * entrada.item.quantity) / subtotal;
             const itemD = Math.round(d * ratio * 100) / 100;
-            perItem[item.product_id] = (perItem[item.product_id] || 0) + itemD;
+            sumar(entrada, itemD);
           }
           totalDiscount = d;
         }
@@ -310,10 +344,13 @@ class PromotionEngineService {
       for (const pid of Object.keys(perItem)) {
         perItem[Number(pid)] = Math.round(perItem[Number(pid)] * ratio * 100) / 100;
       }
+      for (const idx of Object.keys(perLine)) {
+        perLine[Number(idx)] = Math.round(perLine[Number(idx)] * ratio * 100) / 100;
+      }
       totalDiscount = cap;
     }
 
-    return { discountAmount: totalDiscount, perItem };
+    return { discountAmount: totalDiscount, perItem, perLine };
   }
 
   /**
@@ -333,6 +370,7 @@ class PromotionEngineService {
       return {
         discountTotal: 0,
         itemDiscounts: {},
+        lineDiscounts: ctx.items.map(() => 0),
         applied: [],
         items: ctx.items,
       };
@@ -358,6 +396,9 @@ class PromotionEngineService {
       return true;
     });
 
+    // 3 bis. «Lleve X pague Y» necesita saber qué ítems se venden por peso.
+    const items = await this.conModoVenta(ctx.items, eligible);
+
     // 4. Separar combinables de no combinables
     const nonCombinable = eligible.filter((p) => !p.is_combinable);
     const combinable = eligible.filter((p) => p.is_combinable);
@@ -369,9 +410,9 @@ class PromotionEngineService {
     if (nonCombinable.length > 0) {
       // Tomar la de mayor prioridad (ya ordenadas desc por priority)
       const best = nonCombinable[0];
-      const bestDiscount = this.calculateForPromotion(best, ctx.items);
+      const bestDiscount = this.calculateForPromotion(best, items);
       const combinableDiscount = combinable.reduce(
-        (sum, p) => sum + this.calculateForPromotion(p, ctx.items),
+        (sum, p) => sum + this.calculateForPromotion(p, items),
         0,
       );
       // Si la no-combinable da más descuento, usarla sola; si no, usar combinables
@@ -386,25 +427,28 @@ class PromotionEngineService {
 
     // 6. Aplicar promociones seleccionadas
     const itemDiscounts: Record<number, number> = {};
+    const lineDiscounts: number[] = items.map(() => 0);
     const applied: AppliedPromotion[] = [];
     let discountTotal = 0;
 
     for (const promo of toApply) {
-      const applicableItems = ctx.items.filter((item) =>
-        this.itemMatchesRules(item, promo.rules || [], promo.applies_to),
-      );
+      const applicable = this.aplicables(promo, items);
+      const applicableItems = applicable.map((e) => e.item);
 
       if (applicableItems.length === 0) continue;
 
-      const { discountAmount, perItem } = this.calculatePromotionDiscount(
+      const { discountAmount, perItem, perLine } = this.calculatePromotionDiscount(
         promo,
-        applicableItems,
+        applicable,
       );
 
       if (discountAmount <= 0) continue;
 
       for (const [pid, amt] of Object.entries(perItem)) {
         itemDiscounts[Number(pid)] = (itemDiscounts[Number(pid)] || 0) + amt;
+      }
+      for (const [idx, amt] of Object.entries(perLine)) {
+        lineDiscounts[Number(idx)] = Math.round(((lineDiscounts[Number(idx)] || 0) + amt) * 100) / 100;
       }
       discountTotal += discountAmount;
 
@@ -426,9 +470,41 @@ class PromotionEngineService {
     return {
       discountTotal: Math.round(discountTotal * 100) / 100,
       itemDiscounts,
+      lineDiscounts,
       applied,
       items: itemsWithDiscount,
     };
+  }
+
+  /** Ítems que cumplen las reglas de la promoción, con su posición en la lista. */
+  private aplicables(promo: Promotion, items: PromotionItem[]): Array<{ item: PromotionItem; idx: number }> {
+    const out: Array<{ item: PromotionItem; idx: number }> = [];
+    items.forEach((item, idx) => {
+      if (this.itemMatchesRules(item, promo.rules || [], promo.applies_to)) out.push({ item, idx });
+    });
+    return out;
+  }
+
+  /**
+   * Completa `sale_mode` de los ítems que no lo traen, solo si alguna
+   * promoción elegible es «Lleve X pague Y» (las demás no lo necesitan). Una
+   * lectura de `products` por evaluación; si falla, los ítems quedan como
+   * están (por unidad), que es el comportamiento anterior.
+   */
+  private async conModoVenta(items: PromotionItem[], promos: Promotion[]): Promise<PromotionItem[]> {
+    if (!promos.some((p) => p.promotion_type === 'buy_x_get_y')) return items;
+    const faltan = Array.from(new Set(items.filter((i) => i.sale_mode === undefined).map((i) => i.product_id)));
+    if (faltan.length === 0) return items;
+    try {
+      const { data, error } = await supabase.from('products').select('id, sale_mode').in('id', faltan);
+      if (error || !Array.isArray(data)) return items;
+      const modos = new Map<number, string | null>(
+        (data as Array<{ id: number; sale_mode: string | null }>).map((r) => [Number(r.id), r.sale_mode ?? null]),
+      );
+      return items.map((i) => (i.sale_mode === undefined && modos.has(i.product_id) ? { ...i, sale_mode: modos.get(i.product_id) } : i));
+    } catch {
+      return items;
+    }
   }
 
   /**
@@ -439,9 +515,7 @@ class PromotionEngineService {
     promo: Promotion,
     items: PromotionItem[],
   ): number {
-    const applicable = items.filter((item) =>
-      this.itemMatchesRules(item, promo.rules || [], promo.applies_to),
-    );
+    const applicable = this.aplicables(promo, items);
     if (applicable.length === 0) return 0;
     const { discountAmount } = this.calculatePromotionDiscount(promo, applicable);
     return discountAmount;

@@ -73,6 +73,8 @@ import { DialogoStockMinimo } from './DialogoStockMinimo';
 import { MenuNuevoMovimiento } from './MenuNuevoMovimiento';
 import { TONO_ESTADO_STOCK, filasCsvStock, nombreArchivo, sucursalesDeFila, tonoFilaStock } from './logica';
 import { useAlcanceSucursales, useCantidadStock, useMensajeErrorInventario } from './useInventarioB1';
+import { idsProductos } from './cantidadProducto';
+import { useModosVenta } from './useModosVenta';
 
 const CAMPOS_ORDEN = ['producto', 'disponible', 'existencia'] as const;
 const LIMITE_EXPORTAR = 5000;
@@ -338,6 +340,12 @@ export function StockPage() {
 
   const alternarEstado = (e: EstadoStock) => l.setFiltro('estado', estados.includes(e) ? estados.filter((x) => x !== e) : [...estados, e]);
 
+  // Productos por peso o medida: «12,400 kg» en vez de «12,4 uds» (PRODUCTOS-POR-PESO-BASCULA.md §2.4).
+  const idsFilas = useMemo(() => idsProductos(filas), [filas]);
+  const { cantidadDe } = useModosVenta(idsFilas);
+  const cantFila = (f: StockFila, n: number) => cantidadDe(f.product_id, n);
+  const udsFila = (f: StockFila, n: number) => cantidadDe(f.product_id, n, (numero) => t('columnas.uds', { n: numero }));
+
   // ── Columnas (Figma 582:277572) ──────────────────────────────────────────
   const lineaProducto = (f: StockFila) =>
     [
@@ -356,15 +364,15 @@ export function StockPage() {
     return (
       <div className="flex min-w-0 flex-col">
         <span className="text-fg tabular-nums">
-          {t('columnas.uds', { n: cantidad(f.existencia) })}
-          {f.reservado > 0 && ` · ${t('columnas.reservadas', { count: f.reservado, n: cantidad(f.reservado) })}`}
+          {udsFila(f, f.existencia)}
+          {f.reservado > 0 && ` · ${t('columnas.reservadas', { count: f.reservado, n: cantFila(f, f.reservado) })}`}
         </span>
         {visibles.length > 0 && (
           <span className="truncate text-xs text-fg-secondary">
             {visibles.map((s, i) => (
               <span key={s.branch_id} className={cn(s.negativo || s.existencia < 0 ? 'font-medium text-danger-text' : undefined)}>
                 {i > 0 && ' · '}
-                {s.sucursal} {cantidad(s.existencia)}
+                {s.sucursal} {cantFila(f, s.existencia)}
               </span>
             ))}
             {resto > 0 && ` · +${resto}`}
@@ -400,9 +408,9 @@ export function StockPage() {
       alinear: 'derecha',
       ordenable: true,
       campoOrden: 'disponible',
-      celda: (f) => <span className={cn('font-semibold tabular-nums', f.disponible <= 0 ? 'text-danger-text' : 'text-fg')}>{cantidad(f.disponible)}</span>,
+      celda: (f) => <span className={cn('font-semibold tabular-nums', f.disponible <= 0 ? 'text-danger-text' : 'text-fg')}>{cantFila(f, f.disponible)}</span>,
     },
-    { id: 'minimo', encabezado: t('columnas.minimo'), alinear: 'derecha', ocultarDebajo: 'lg', celda: (f) => <span className="tabular-nums text-fg">{cantidad(f.minimo)}</span> },
+    { id: 'minimo', encabezado: t('columnas.minimo'), alinear: 'derecha', ocultarDebajo: 'lg', celda: (f) => <span className="tabular-nums text-fg">{cantFila(f, f.minimo)}</span> },
     ...(verCostos
       ? [
           {
@@ -652,12 +660,12 @@ export function StockPage() {
             meta={
               <span className="flex flex-col gap-0.5">
                 <span className={cn('text-xs', f.estado === 'negativo' ? 'text-danger-text' : 'text-fg-secondary')}>
-                  {f.por_sucursal.map((s) => `${s.sucursal} ${cantidad(s.existencia)}`).join(' · ')}
-                  {f.reservado > 0 && ` · ${t('columnas.reservadas', { count: f.reservado, n: cantidad(f.reservado) })}`}
+                  {f.por_sucursal.map((s) => `${s.sucursal} ${cantFila(f, s.existencia)}`).join(' · ')}
+                  {f.reservado > 0 && ` · ${t('columnas.reservadas', { count: f.reservado, n: cantFila(f, f.reservado) })}`}
                 </span>
                 <span className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-semibold text-fg">{t('movil.disponibles', { n: cantidad(f.disponible) })}</span>
-                  <span className="text-xs text-fg-secondary">{t('movil.minimo', { n: cantidad(f.minimo) })}</span>
+                  <span className="text-sm font-semibold text-fg">{t('movil.disponibles', { n: cantFila(f, f.disponible) })}</span>
+                  <span className="text-xs text-fg-secondary">{t('movil.minimo', { n: cantFila(f, f.minimo) })}</span>
                 </span>
               </span>
             }

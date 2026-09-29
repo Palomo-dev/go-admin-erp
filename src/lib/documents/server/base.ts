@@ -29,7 +29,7 @@ import type {
 import { colorHexSeguro } from '../escape';
 import { logoComoDataUri } from './logo';
 import { nombreVisibleMetodo } from '@/lib/finanzas/metodosPagoOrganizacion';
-import { decimalesCantidad, esMedido, unidadVisible } from '@/lib/pos/peso/modoVenta';
+import { COLUMNAS_CANTIDAD_PRODUCTO, cantidadLineaDeProducto } from '@/lib/services/documentos/cantidadLinea';
 
 /** Lo que el motor necesita de la sesión (subconjunto de `ServerOrgContext`). */
 export interface SesionDocumento {
@@ -331,7 +331,7 @@ interface ProductoItem {
 }
 
 export const SELECT_ITEM =
-  'code_reference, description, qty, unit_price, discount_amount, tax_code, tax_rate, tax_included, total_line, note, serial_numbers, created_at, impuesto:tax_templates(name), producto:products(sku, unit_code, sale_mode, qty_decimals)';
+  `code_reference, description, qty, unit_price, discount_amount, tax_code, tax_rate, tax_included, total_line, note, serial_numbers, created_at, impuesto:tax_templates(name), producto:products(sku, ${COLUMNAS_CANTIDAD_PRODUCTO})`;
 
 /** Nombre del impuesto desde el dato: `tax_templates.name`, o el prefijo del código (`IVA_19` → `IVA`). */
 export function nombreImpuesto(taxCode: string | null | undefined, nombrePlantilla: string | null | undefined): string | null {
@@ -352,9 +352,8 @@ export function lineaDeItem(item: FilaItem): LineaDocumento {
     nota: texto(item.note),
     seriales: (item.serial_numbers ?? []).map(texto).filter((x): x is string => !!x),
     cantidad: num(item.qty),
-    // Productos por peso o medida: «0,735 kg» (PRODUCTOS-POR-PESO-BASCULA.md fase 1).
-    unidad: unidadVisible(producto),
-    decimalesCantidad: esMedido(producto) ? decimalesCantidad(producto) : null,
+    // Productos por peso o medida: «0,735 kg» (PRODUCTOS-POR-PESO-BASCULA.md fase 1 y §9).
+    ...cantidadLineaDeProducto(producto),
     precioUnitario: num(item.unit_price),
     descuento: num(item.discount_amount),
     impuesto: tasa !== null && tasa > 0

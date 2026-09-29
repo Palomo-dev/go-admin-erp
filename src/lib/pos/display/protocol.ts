@@ -107,6 +107,31 @@ export interface DisplayCart {
   customerName?: string | null;
 }
 
+/**
+ * Pesada en curso (docs/design/PRODUCTOS-POR-PESO-BASCULA.md §2.6): mientras
+ * el cajero tiene abierto «Pesar», el cliente ve «Pesando: 0,735 kg ×
+ * $ 18.900 / kg = $ 13.892». Regla de la organización
+ * `pos_pesaje.peso_en_pantalla_cliente` (activa por defecto); la decide la
+ * caja antes de emitir. `qty` es null mientras no hay un peso válido.
+ */
+export interface DisplayWeighing {
+  name: string;
+  qty: number | null;
+  /** Símbolo de la unidad («kg», «lb», «m», «L»). */
+  unit: string;
+  /** Decimales de la cantidad del producto (3 en kg). */
+  decimals: number;
+  /** Precio por unidad de venta (por kg). */
+  unitPrice: number;
+  /** Importe exacto qty × unitPrice (0 sin peso); la pantalla lo redondea al formatear. */
+  total: number;
+  /**
+   * Decimales de la moneda de la organización (COP 0): «$ 13.892» y no
+   * «$ 13.891,50», igual que el carrito y el cobro. Sin dato, 2.
+   */
+  moneyDecimals?: number;
+}
+
 // ---------------------------------------------------------------------------
 // Estado de cobro
 // ---------------------------------------------------------------------------
@@ -294,6 +319,12 @@ export interface DisplayState {
    * lo mandan.
    */
   thanks: { total: number; askRating: boolean; id?: string } | null;
+  /**
+   * Pesada en curso («Pesar» abierto en la caja). Opcional y aditivo: el
+   * emisor solo pone la clave mientras hay una pesada, así la forma de los
+   * estados de las fases anteriores no cambia; la pantalla la sanea.
+   */
+  weighing?: DisplayWeighing | null;
 }
 
 // ---------------------------------------------------------------------------

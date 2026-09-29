@@ -90,6 +90,7 @@ export type CampoFormulario =
   | 'receta'
   | 'service_type'
   | 'modo_venta'
+  | 'scale_plu'
   | CampoMembresia;
 
 /** Sección donde vive cada campo (índice lateral y paso del stepper móvil). */
@@ -114,6 +115,7 @@ export const SECCION_DE_CAMPO: Record<CampoFormulario, SeccionFormulario> = {
   receta: 'avanzado',
   service_type: 'informacion',
   modo_venta: 'precios',
+  scale_plu: 'codigos',
   membresia_duracion: 'membresia',
   membresia_cobro: 'membresia',
   membresia_gracia: 'membresia',
@@ -162,6 +164,8 @@ export type CodigoValidacion =
   | 'unidad_medida_invalida'
   | 'referencia_precio_invalida'
   | 'minimo_invalido'
+  | 'plu_invalido'
+  | 'plu_duplicado'
   | CodigoValidacionMembresia;
 
 export type ErroresFormulario = Partial<Record<CampoFormulario, CodigoValidacion>>;
@@ -304,6 +308,11 @@ export interface EstadoFormularioProducto {
   min_sale_qty: number | null;
   /** «Exigir báscula»: nunca se vende con el peso escrito a mano. */
   require_scale: boolean;
+  /**
+   * PLU de balanza (1–99.999, único por organización): el número que la
+   * balanza etiquetadora imprime en la etiqueta de peso variable (sección Códigos).
+   */
+  scale_plu: number | null;
   station: string | null;
   proveedor: ProveedorForm;
   /** Otros proveedores del producto (editar/duplicar): se conservan tal cual. */
@@ -432,6 +441,7 @@ export function estadoInicial(sucursales: readonly SucursalBasica[] = []): Estad
     precio_referencia: '',
     min_sale_qty: null,
     require_scale: false,
+    scale_plu: null,
     station: null,
     proveedor: { ...PROVEEDOR_VACIO },
     otros_proveedores: [],
@@ -567,6 +577,8 @@ export function estadoDesdeDatos(
     precio_referencia: referenciaComoTexto(p as { price_ref_qty?: unknown; price_ref_unit_code?: unknown }),
     min_sale_qty: n((p as { min_sale_qty?: unknown }).min_sale_qty),
     require_scale: (p as { require_scale?: unknown }).require_scale === true,
+    // Único por organización: una copia no lo hereda.
+    scale_plu: dup ? null : n((p as { scale_plu?: unknown }).scale_plu),
     station: p.station ? s(p.station) : null,
     proveedor:
       preferido && (!dup || copiar.proveedores)
@@ -714,6 +726,8 @@ export function validarFormulario(
   if (errReceta) err.receta = errReceta;
   const errModo = validarModoVenta(e);
   if (errModo) err.modo_venta = errModo;
+  const errPlu = validarPlu(e);
+  if (errPlu) err.scale_plu = errPlu;
   if (esMembresia(e)) {
     // Cada plan es un producto: una membresía no lleva variantes (la base también lo rechaza).
     if (e.tiene_variantes) err.service_type = 'membresia_con_variantes';
@@ -762,13 +776,21 @@ export function validarModoVenta(e: EstadoFormularioProducto): CodigoValidacion 
   return null;
 }
 
+/** PLU de balanza: entero de 1 a 99.999, solo en productos por peso o medida (fn_producto_int_plu). */
+export const PLU_MAXIMO = 99999;
+
+export function validarPlu(e: Pick<EstadoFormularioProducto, 'sale_mode' | 'scale_plu'>): CodigoValidacion | null {
+  if (e.sale_mode === 'unit' || e.scale_plu === null) return null;
+  return Number.isInteger(e.scale_plu) && e.scale_plu >= 1 && e.scale_plu <= PLU_MAXIMO ? null : 'plu_invalido';
+}
+
 /** Campos de «Cómo se vende» para `payload.producto` (siempre viajan: 'unit' deja todo por defecto). */
 export function camposModoVenta(e: EstadoFormularioProducto): Pick<
   ProductoCampos,
-  'sale_mode' | 'price_ref_qty' | 'price_ref_unit_code' | 'min_sale_qty' | 'require_scale'
+  'sale_mode' | 'price_ref_qty' | 'price_ref_unit_code' | 'min_sale_qty' | 'require_scale' | 'scale_plu'
 > {
   if (e.sale_mode === 'unit' || e.product_type === 'service') {
-    return { sale_mode: 'unit', price_ref_qty: null, price_ref_unit_code: null, min_sale_qty: null, require_scale: false };
+    return { sale_mode: 'unit', price_ref_qty: null, price_ref_unit_code: null, min_sale_qty: null, require_scale: false, scale_plu: null };
   }
   const ref = e.sale_mode === 'weight' ? referenciaDesdeTexto(e.precio_referencia) : null;
   return {
@@ -777,6 +799,7 @@ export function camposModoVenta(e: EstadoFormularioProducto): Pick<
     price_ref_unit_code: ref ? ref.unidad : null,
     min_sale_qty: e.min_sale_qty,
     require_scale: e.sale_mode === 'weight' && e.require_scale,
+    scale_plu: e.scale_plu,
   };
 }
 
@@ -878,6 +901,9 @@ export function campoDeErrorRpc(codigo: CodigoErrorProducto): CampoFormulario | 
     case 'minimo_invalido':
     case 'tara_invalida':
       return 'modo_venta';
+    case 'plu_invalido':
+    case 'plu_duplicado':
+      return 'scale_plu';
     case 'membresia_cobro_invalido':
       return 'membresia_cobro';
     case 'membresia_gracia_invalida':

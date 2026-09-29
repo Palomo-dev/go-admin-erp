@@ -7,6 +7,7 @@
  * fila) y congela la real. Aquí nunca se decide cuánto se mueve.
  */
 import { claveErrorInventario, detalleStockInsuficiente, type ErrorRpc } from '@/lib/inventario/nucleo/errores';
+import { cantidadLineaDeProducto } from '@/lib/services/documentos/cantidadLinea';
 import type {
   AjusteFila,
   BorradorAjuste,
@@ -95,6 +96,27 @@ export function costoDe(linea: Pick<LineaAjuste, 'producto' | 'lot_id' | 'costo'
   if (fila && fila.costo_promedio !== null && fila.costo_promedio > 0) return fila.costo_promedio;
   if (linea.producto.costo_vigente !== null && linea.producto.costo_vigente > 0) return linea.producto.costo_vigente;
   return null;
+}
+
+/**
+ * Cantidad de un renglón según «cómo se vende» el producto
+ * (PRODUCTOS-POR-PESO-BASCULA.md §9): decimales (0 por unidad, 3 por peso,
+ * 2 por medida, `fn_ajuste_productos.decimales_cantidad`) y símbolo de la
+ * unidad («kg») de los productos por peso o medida. Si la base aún no manda
+ * los decimales, 3 como antes. Nunca menos de los que ya trae el valor (un
+ * borrador guardado no se redondea en silencio).
+ */
+export function cantidadDeProductoAjuste(
+  p: Pick<ProductoParaAjuste, 'modo_venta' | 'decimales_cantidad' | 'unidad'>,
+  valor?: number | null,
+): { decimales: number; unidad: string | null } {
+  const d = p.decimales_cantidad;
+  const propios = typeof d === 'number' && Number.isFinite(d) ? Math.max(0, Math.min(3, Math.trunc(d))) : 3;
+  const texto = String(valor ?? 0);
+  const i = texto.indexOf('.');
+  const delValor = i >= 0 ? Math.min(3, texto.length - i - 1) : 0;
+  const { unidad } = cantidadLineaDeProducto({ sale_mode: p.modo_venta, qty_decimals: d, unit_code: p.unidad });
+  return { decimales: Math.max(propios, delValor), unidad };
 }
 
 /** Redondeo a 3 decimales, la escala de stock_levels (evita 0,30000000000000004). */

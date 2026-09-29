@@ -197,6 +197,10 @@ export interface ProductoParaAjuste {
   sku: string | null;
   codigo_barras: string | null;
   unidad: string | null;
+  /** Cómo se vende (`products.sale_mode`): 'unit' · 'weight' · 'measure'. */
+  modo_venta?: string | null;
+  /** Decimales de la cantidad del producto (0 por unidad, 3 por peso, 2 por medida; `fn_producto_decimales_cantidad`). */
+  decimales_cantidad?: number | null;
   controla_lotes: boolean;
   controla_serial: boolean;
   existencias: ExistenciaLote[];
@@ -383,6 +387,8 @@ function aProducto(r: Record<string, unknown>): ProductoParaAjuste {
     sku: texto(r.sku),
     codigo_barras: texto(r.codigo_barras),
     unidad: texto(r.unidad),
+    modo_venta: texto(r.modo_venta),
+    decimales_cantidad: numONull(r.decimales_cantidad),
     controla_lotes: r.controla_lotes === true,
     controla_serial: r.controla_serial === true,
     existencias: Array.isArray(r.existencias)

@@ -7,7 +7,7 @@ import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda'
 import { PanelAdaptable } from '../PanelAdaptable';
 import { SearchInput } from '../SearchInput';
 import { ViewToggle } from '../ViewToggle';
-import { useFormatoEntero, useKitT } from '../useIdiomaKit';
+import { useFormatoEntero, useKitT, useLocaleIntl } from '../useIdiomaKit';
 import { ChipAlternable } from './ChipAlternable';
 import {
   coincidenciaExacta,
@@ -80,6 +80,7 @@ export function AgregarProductosDialog({
 }: AgregarProductosDialogProps) {
   const t = useKitT();
   const entero = useFormatoEntero();
+  const locale = useLocaleIntl();
   const formatear = useMemo(() => crearFormateadorMoneda(moneda), [moneda]);
   const [texto, setTexto] = useState('');
   const [consulta, setConsulta] = useState('');
@@ -181,13 +182,27 @@ export function AgregarProductosDialog({
   const n = agregados.length;
   const tituloFinal = titulo ?? (destino === 'orden' ? t('documentoEdicion.productos.tituloOrden') : t('documentoEdicion.productos.titulo'));
 
+  /** Stock en la unidad del producto («12,400 kg»); por unidad, entero como siempre. */
+  const cantidadStock = (p: ProductoDocumento) => {
+    const n = Number(p.stock) || 0;
+    const u = p.unidadVenta?.trim();
+    if (!u) return entero(n);
+    const d = Math.max(0, Math.min(3, Math.trunc(Number(p.decimalesCantidad ?? 3))));
+    return `${new Intl.NumberFormat(locale, { minimumFractionDigits: d, maximumFractionDigits: d }).format(n)} ${u}`;
+  };
+  /** «$ 18.900 / kg» en productos por peso o medida. */
+  const precioTexto = (p: ProductoDocumento) => {
+    const u = p.unidadVenta?.trim();
+    return u ? t('documento.lineas.precioPor', { precio: formatear(p.precio), unidad: u }) : formatear(p.precio);
+  };
+
   const stockTexto = (p: ProductoDocumento) => {
     const e = estadoStock(p);
     if (e === 'noControla' || e === 'desconocido') return null;
     return (
       <span className={cn('inline-flex items-center gap-1 text-xs font-medium tabular-nums', e === 'disponible' ? 'text-success-text' : 'text-danger-text')}>
         <span aria-hidden="true" className={cn('size-1.5 rounded-full', e === 'disponible' ? 'bg-success' : 'bg-danger')} />
-        {t('documentoEdicion.productos.stock', { n: entero(Number(p.stock) || 0) })}
+        {t('documentoEdicion.productos.stock', { n: cantidadStock(p) })}
       </span>
     );
   };
@@ -195,6 +210,7 @@ export function AgregarProductosDialog({
   const meta = (p: ProductoDocumento) =>
     [
       p.sku,
+      p.unidadVenta?.trim() ? t('producto.porUnidadVenta', { unidad: p.unidadVenta.trim() }) : null,
       variante === 'venta' && p.lotes ? t('documentoEdicion.productos.lotes', { n: p.lotes }) : null,
       p.serial ? t('documentoEdicion.productos.serial') : null,
       variante === 'compra' && p.referenciaProveedor ? t('documentoEdicion.productos.referencia', { ref: p.referenciaProveedor }) : null,
@@ -236,7 +252,7 @@ export function AgregarProductosDialog({
         </span>
         <span className={cn('flex shrink-0 items-center gap-3', vista === 'tarjetas' ? 'justify-between' : 'w-full justify-end sm:w-auto')}>
           {stockTexto(p)}
-          <span className={cn('text-sm font-semibold tabular-nums', sinStock ? 'text-fg-secondary' : 'text-fg')}>{formatear(p.precio)}</span>
+          <span className={cn('text-sm font-semibold tabular-nums', sinStock ? 'text-fg-secondary' : 'text-fg')}>{precioTexto(p)}</span>
           <span
             aria-hidden="true"
             className={cn(

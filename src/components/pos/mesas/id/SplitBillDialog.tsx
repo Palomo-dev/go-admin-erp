@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { SegmentedControl } from '@/components/kit';
 import { 
   Users, 
@@ -26,6 +26,7 @@ import {
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { SaleItem } from './types';
 import { repartirPartesIguales } from '@/lib/pos/mesas/cuentaDividida';
+import { asignacionParte, decimalesLinea, formatoCantidadLinea, leerCantidadLinea, sumarCantidades } from './cantidadMesa';
 
 interface SplitBillDialogProps {
   open: boolean;
@@ -55,6 +56,7 @@ export function SplitBillDialog({
   onConfirmSplit
 }: SplitBillDialogProps) {
   const { formatear, decimals } = useMonedaOrganizacion();
+  const locale = useLocale();
   // Solo se reparte lo que sigue sin pagar (E6): una línea ya pagada no se
   // vuelve a asignar. Memorizada: el efecto de totales depende de la lista.
   const items = useMemo(() => lineasDeLaCuenta.filter((l) => !l.paid_at), [lineasDeLaCuenta]);
@@ -121,12 +123,14 @@ export function SplitBillDialog({
     if (!item) return;
 
     const currentSplitId = splits[currentSplit].id;
-    const totalAssigned = Object.values(selectedItems[itemId] || {}).reduce((sum, qty) => sum + qty, 0);
-    const available = Number(item.quantity) - totalAssigned;
-
-    if (quantity > available) {
-      quantity = available;
-    }
+    // Con los decimales de la línea: una pesada de 0,735 kg se reparte en gramos, sin 0,23499….
+    const dec = decimalesLinea(item);
+    // Lo asignado a las OTRAS partes: la de esta parte se reemplaza, no se suma.
+    const totalAssigned = sumarCantidades(
+      Object.entries(selectedItems[itemId] || {}).filter(([parte]) => parte !== currentSplitId).map(([, qty]) => qty),
+      dec,
+    );
+    quantity = asignacionParte(quantity, Number(item.quantity) - totalAssigned, dec);
 
     setSelectedItems(prev => ({
       ...prev,
@@ -152,7 +156,8 @@ export function SplitBillDialog({
   };
 
   const getItemAssigned = (itemId: string) => {
-    return Object.values(selectedItems[itemId] || {}).reduce((sum, qty) => sum + qty, 0);
+    const item = items.find((i) => i.id === itemId);
+    return sumarCantidades(Object.values(selectedItems[itemId] || {}), decimalesLinea(item));
   };
 
   const canConfirm = () => {
@@ -231,7 +236,9 @@ export function SplitBillDialog({
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {items.map((item) => {
                     const assigned = getItemAssigned(item.id);
-                    const remaining = Number(item.quantity) - assigned;
+                    const dec = decimalesLinea(item);
+                    const remaining = sumarCantidades([Number(item.quantity), -assigned], dec);
+                    const cant = (n: number) => formatoCantidadLinea(n, item, locale);
 
                     return (
                       <Card key={item.id} className="p-4">
@@ -239,7 +246,7 @@ export function SplitBillDialog({
                           <div className="flex-1">
                             <h4 className="font-medium">{item.product?.name || 'Producto'}</h4>
                             <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
-                              <span>Cantidad: {item.quantity}</span>
+                              <span>Cantidad: {cant(Number(item.quantity))}</span>
                               <span>•</span>
                               <span>{formatear(Number(item.total))}</span>
                             </div>
@@ -249,7 +256,7 @@ export function SplitBillDialog({
                                   variant={remaining === 0 ? "default" : "secondary"}
                                   className="text-xs"
                                 >
-                                  Asignado: {assigned}/{item.quantity}
+                                  Asignado: {cant(assigned)}/{cant(Number(item.quantity))}
                                 </Badge>
                                 {remaining === 0 && (
                                   <CheckCircle className="h-4 w-4 text-green-600" />
@@ -260,14 +267,14 @@ export function SplitBillDialog({
 
                           <div className="flex items-center gap-2">
                             <Input
-                              type="number"
-                              min="0"
-                              max={remaining}
+                              type="text"
+                              inputMode={dec > 0 ? 'decimal' : 'numeric'}
+                              autoComplete="off"
                               className="w-20"
                               placeholder="0"
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
-                                  const value = parseInt((e.target as HTMLInputElement).value) || 0;
+                                  const value = leerCantidadLinea((e.target as HTMLInputElement).value, dec) ?? 0;
                                   handleAssignItem(item.id, value);
                                   (e.target as HTMLInputElement).value = '';
                                 }
@@ -280,7 +287,7 @@ export function SplitBillDialog({
                               onClick={(e) => {
                                 const input = e.currentTarget.parentElement?.querySelector('input');
                                 if (input) {
-                                  const value = parseInt(input.value) || 0;
+                                  const value = leerCantidadLinea(input.value, dec) ?? 0;
                                   handleAssignItem(item.id, value);
                                   input.value = '';
                                 }

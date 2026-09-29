@@ -171,6 +171,8 @@ export function DetalleFacturaVenta({ id }: { id: string }) {
     nota: l.nota,
     seriales: l.seriales,
     cantidad: l.cantidad,
+    unidad: l.unidad ?? null,
+    decimalesCantidad: l.decimalesCantidad ?? null,
     precioUnitario: l.precioUnitario,
     descuento: l.descuento || null,
     impuestos: l.tarifa > 0 ? [{ nombre: l.nombreImpuesto ?? t('detalle.impuesto'), tarifa: l.tarifa, incluido: factura?.impuestosIncluidos ?? l.incluido }] : [],

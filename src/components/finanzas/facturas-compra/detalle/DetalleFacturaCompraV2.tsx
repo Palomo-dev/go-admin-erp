@@ -212,6 +212,8 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
     nota: l.note,
     seriales: l.serial_numbers,
     cantidad: l.qty,
+    unidad: l.unidad,
+    decimalesCantidad: l.decimalesCantidad,
     precioUnitario: l.unit_price,
     descuento: l.discount_amount || null,
     impuestos: l.tax_rate > 0 ? [{ nombre: td('iva'), tarifa: l.tax_rate, incluido: f.tax_included }] : [],

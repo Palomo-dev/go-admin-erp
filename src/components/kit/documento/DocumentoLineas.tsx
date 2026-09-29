@@ -13,7 +13,10 @@ import { useKitT, useLocaleIntl } from '../useIdiomaKit';
 import type { OpcionImpuesto } from './edicionDocumentoLogica';
 import { ImpuestosLinea } from './ImpuestosLinea';
 import {
-  decimalesCantidad,
+  decimalesDocumento,
+  decimalesLinea,
+  numeroCantidadLinea,
+  textoCantidadLinea,
   tonoLinea,
   limitesRecepcion,
   simboloMoneda,
@@ -68,7 +71,11 @@ export interface DocumentoLineasProps {
   vacio?: Partial<EmptyStateProps>;
   /** Fila bajo la tabla: «Buscar producto» · «Agregar ítem manual». */
   pie?: ReactNode;
-  /** Decimales de la cantidad; por defecto, los que traigan las líneas. */
+  /**
+   * Decimales de la cantidad de las líneas SIN regla propia; por defecto, los
+   * que traigan esas líneas. Una línea con `decimalesCantidad` (producto por
+   * peso o medida) usa siempre los suyos.
+   */
   decimalesCant?: number;
   /** Edición: impuestos de la organización para elegir por línea (`ImpuestosLinea`). */
   impuestosDisponibles?: readonly OpcionImpuesto[];
@@ -105,9 +112,17 @@ export function DocumentoLineas({
   const formatear = useMemo(() => crearFormateadorMoneda(moneda), [moneda]);
   const simbolo = useMemo(() => simboloMoneda(moneda), [moneda]);
   const decimalesMoneda = typeof moneda === 'string' ? undefined : moneda.decimals;
-  const decCant = decimalesCant ?? decimalesCantidad(lineas);
-  const cantidadTexto = (n: number | null | undefined) =>
-    new Intl.NumberFormat(locale, { maximumFractionDigits: Math.max(decCant, 3) }).format(n ?? 0);
+  const decCant = decimalesDocumento(lineas, decimalesCant);
+  /** Número de la cantidad con los decimales de la línea (sin la unidad). */
+  const cantidadTexto = (l: LineaDocumento, n?: number | null) => numeroCantidadLinea(l, locale, decCant, n);
+  /** Con la unidad («0,735 kg»), para textos y etiquetas accesibles. */
+  const cantidadConUnidad = (l: LineaDocumento, n?: number | null) => textoCantidadLinea(l, locale, decCant, n);
+  const unidadDe = (l: LineaDocumento) => l.unidad?.trim() || null;
+  /** «$ 18.900 / kg» en lectura; en edición el «/ kg» va de sufijo del campo. */
+  const precioTexto = (l: LineaDocumento) => {
+    const u = unidadDe(l);
+    return u ? t('documento.lineas.precioPor', { precio: formatear(l.precioUnitario), unidad: u }) : formatear(l.precioUnitario);
+  };
   const tarifa = (x: number | null | undefined) => formatearTarifa(x, locale);
   const oculta = (c: 'sku' | 'descuento' | 'impuestos') => ocultar.includes(c);
   const editable = modo === 'edicion' && !!onCambiar;
@@ -197,39 +212,56 @@ export function DocumentoLineas({
     );
   };
 
-  const campoCantidad = (l: LineaDocumento) =>
-    editable ? (
+  const campoCantidad = (l: LineaDocumento) => {
+    const u = unidadDe(l);
+    const d = decimalesLinea(l, decCant);
+    return editable ? (
       <CampoNumero
         tamano="sm"
-        valor={l.cantidad}
-        decimales={Math.max(decCant, 0)}
+        // Peso o medida recién agregado: vacío (no «0») para escribir 0,735.
+        valor={u && !l.cantidad ? null : l.cantidad}
+        decimales={d}
         minimo={0}
-        aria-label={t('documento.lineas.cantidadDe', { producto: l.descripcion })}
+        sufijo={u ?? undefined}
+        placeholder={u ? numeroCantidadLinea(l, locale, decCant, 0) : undefined}
+        aria-label={
+          u
+            ? t('documento.lineas.cantidadEnDe', { producto: l.descripcion, unidad: u })
+            : t('documento.lineas.cantidadDe', { producto: l.descripcion })
+        }
         onValorChange={(v) => onCambiar?.(l.id, { cantidad: v ?? 0 })}
-        className="w-24"
+        className={u ? 'w-28' : 'w-24'}
       />
     ) : (
       <span>
-        {cantidadTexto(l.cantidad)}
-        {l.unidad ? <span className="ml-1 text-xs text-fg-muted">{l.unidad}</span> : null}
+        {cantidadTexto(l)}
+        {u ? <span className="ml-1 text-xs text-fg-muted">{u}</span> : null}
       </span>
     );
+  };
 
-  const campoPrecio = (l: LineaDocumento) =>
-    editable ? (
+  const campoPrecio = (l: LineaDocumento) => {
+    const u = unidadDe(l);
+    return editable ? (
       <CampoNumero
         tamano="sm"
         prefijo={simbolo}
+        sufijo={u ? t('documento.lineas.porUnidad', { unidad: u }) : undefined}
         valor={l.precioUnitario}
         decimales={decimalesMoneda ?? 2}
         minimo={0}
-        aria-label={t('documento.lineas.precioDe', { producto: l.descripcion })}
+        aria-label={
+          u
+            ? t('documento.lineas.precioPorDe', { producto: l.descripcion, unidad: u })
+            : t('documento.lineas.precioDe', { producto: l.descripcion })
+        }
         onValorChange={(v) => onCambiar?.(l.id, { precioUnitario: v ?? 0 })}
-        className="w-32"
+        className={u ? 'w-40' : 'w-32'}
       />
     ) : (
-      formatear(l.precioUnitario)
+      precioTexto(l)
     );
+  };
 
   const campoDescuento = (l: LineaDocumento) =>
     editable ? (
@@ -255,30 +287,32 @@ export function DocumentoLineas({
       <CampoNumero
         tamano="sm"
         valor={l.cantidadRecibida ?? null}
-        decimales={Math.max(decCant, 0)}
+        decimales={decimalesLinea({ cantidad: l.cantidadRecibida ?? 0, decimalesCantidad: l.decimalesCantidad }, decCant)}
         minimo={minimo}
         maximo={maximo}
+        sufijo={unidadDe(l) ?? undefined}
         disabled={!onCambiar || maximo === 0}
-        aria-label={t('documento.lineas.recibidaDe', { producto: l.descripcion, maximo: cantidadTexto(maximo) })}
+        aria-label={t('documento.lineas.recibidaDe', { producto: l.descripcion, maximo: cantidadConUnidad(l, maximo) })}
         onValorChange={(v) => onCambiar?.(l.id, { cantidadRecibida: v })}
-        className="w-24"
+        className={unidadDe(l) ? 'w-28' : 'w-24'}
       />
     );
   };
 
+  const conUnidad = lineas.some((l) => !!unidadDe(l));
   const columnas: ColumnaTabla<LineaDocumento>[] = [
     { id: 'producto', encabezado: t('documento.lineas.producto'), celda: producto },
   ];
   if (modo === 'recepcion') {
     columnas.push(
-      { id: 'pedida', encabezado: t('documento.lineas.pedida'), alinear: 'derecha', celda: (l) => cantidadTexto(l.cantidad), ancho: 96 },
-      { id: 'pendiente', encabezado: t('documento.lineas.pendiente'), alinear: 'derecha', celda: (l) => cantidadTexto(limitesRecepcion(l).maximo), ancho: 96 },
-      { id: 'recibida', encabezado: t('documento.lineas.recibida'), alinear: 'derecha', celda: campoRecibida, ancho: 120 },
+      { id: 'pedida', encabezado: t('documento.lineas.pedida'), alinear: 'derecha', celda: (l) => cantidadConUnidad(l), ancho: 96 },
+      { id: 'pendiente', encabezado: t('documento.lineas.pendiente'), alinear: 'derecha', celda: (l) => cantidadConUnidad(l, limitesRecepcion(l).maximo), ancho: 96 },
+      { id: 'recibida', encabezado: t('documento.lineas.recibida'), alinear: 'derecha', celda: campoRecibida, ancho: 128 },
     );
   } else {
     columnas.push(
-      { id: 'cantidad', encabezado: t('documento.lineas.cantidad'), alinear: 'derecha', celda: campoCantidad, ancho: editable ? 112 : 96 },
-      { id: 'precio', encabezado: t('documento.lineas.precio'), variante: 'importe', celda: campoPrecio, ancho: editable ? 148 : 128 },
+      { id: 'cantidad', encabezado: t('documento.lineas.cantidad'), alinear: 'derecha', celda: campoCantidad, ancho: editable ? (conUnidad ? 128 : 112) : 96 },
+      { id: 'precio', encabezado: t('documento.lineas.precio'), variante: 'importe', celda: campoPrecio, ancho: editable ? (conUnidad ? 176 : 148) : 128 },
     );
     if (!oculta('descuento')) {
       columnas.push({ id: 'descuento', encabezado: t('documento.lineas.descuento'), variante: 'importe', celda: campoDescuento, ocultarDebajo: 'xl', ancho: editable ? 132 : 112 });
@@ -332,7 +366,7 @@ export function DocumentoLineas({
       {modo === 'recepcion' ? (
         <div className="flex items-center justify-between gap-3 text-[13px] text-fg-secondary">
           <span>
-            {t('documento.lineas.pedida')} {cantidadTexto(l.cantidad)} · {t('documento.lineas.pendiente')} {cantidadTexto(limitesRecepcion(l).maximo)}
+            {t('documento.lineas.pedida')} {cantidadConUnidad(l)} · {t('documento.lineas.pendiente')} {cantidadConUnidad(l, limitesRecepcion(l).maximo)}
           </span>
           {campoRecibida(l)}
         </div>
@@ -372,8 +406,7 @@ export function DocumentoLineas({
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-2 text-[13px] tabular-nums text-fg-secondary">
           <span>
-            {cantidadTexto(l.cantidad)}
-            {l.unidad ? ` ${l.unidad}` : ''} × {formatear(l.precioUnitario)}
+            {cantidadConUnidad(l)} × {precioTexto(l)}
             {l.descuento ? <span className="text-success-text"> · −{formatear(l.descuento)}</span> : null}
           </span>
           {!oculta('impuestos') && <span className="text-xs">{impuestos(l)}</span>}

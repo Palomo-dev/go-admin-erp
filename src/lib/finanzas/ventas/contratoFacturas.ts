@@ -158,6 +158,9 @@ export interface LineaFacturaDetalle {
   descripcion: string;
   sku: string | null;
   cantidad: number;
+  /** Producto por peso o medida: símbolo de la unidad («kg») y decimales de la cantidad; `null` por unidad. */
+  unidad?: string | null;
+  decimalesCantidad?: number | null;
   precioUnitario: number;
   descuento: number;
   tarifa: number;

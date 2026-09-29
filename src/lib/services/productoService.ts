@@ -89,6 +89,9 @@ export const CODIGOS_ERROR_PRODUCTO = [
   'decimales_invalidos',
   'minimo_invalido',
   'tara_invalida',
+  // PLU de balanza (fn_producto_int_plu · 20260929230300)
+  'plu_invalido',
+  'plu_duplicado',
 ] as const;
 
 export type CodigoErrorProducto = (typeof CODIGOS_ERROR_PRODUCTO)[number] | 'desconocido';
@@ -633,6 +636,8 @@ export interface ProductoCampos {
   price_ref_unit_code?: string | null;
   min_sale_qty?: number | null;
   require_scale?: boolean;
+  /** PLU de balanza (1–99.999, único por organización); solo por peso o medida. */
+  scale_plu?: number | null;
 }
 
 export interface ProveedorEntrada {
@@ -706,8 +711,11 @@ export interface MembresiaEntrada {
   duration_unit: 'day' | 'week' | 'month' | 'year';
   duration_value: number;
   billing_mode: 'prepaid' | 'on_credit';
-  /** «automatic» llega en una fase posterior (pasarela que guarde tarjetas). */
-  renewal_mode: 'manual';
+  /**
+   * `automatic`: la tarea horaria deja la renovación pendiente 7 días antes del vencimiento; nunca
+   * cobra ni factura sola (docs/design/MEMBRESIAS-FASE-1-2.md §12).
+   */
+  renewal_mode: 'manual' | 'automatic';
   grace_days: number;
   requires_activation: boolean;
   activation_window_days: number | null;

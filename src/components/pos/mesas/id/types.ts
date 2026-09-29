@@ -1,5 +1,7 @@
 // Tipos para el detalle de mesa y pedidos
 
+import type { Pesaje } from '@/lib/pos/peso/pesada';
+
 export interface SaleItem {
   id: string;
   sale_id: string;
@@ -26,6 +28,8 @@ export interface SaleItem {
     is_allergy?: boolean;
     guest_number?: number;
     modifiers?: SelectedProductModifier[];
+    /** Origen del peso de una línea por peso (lo copia el cobro; auditoría «Pesos manuales»). */
+    pesaje?: Pesaje;
   } | null;
   created_at: string;
   updated_at: string;
@@ -74,6 +78,12 @@ export interface Product {
   recipe_id?: number | null;
   recipe_name?: string | null;
   image?: string | null;
+  /** «Cómo se vende» (PRODUCTOS-POR-PESO-BASCULA.md §2.1): unit, weight o measure. */
+  sale_mode?: string | null;
+  qty_decimals?: number | null;
+  unit_code?: string | null;
+  min_sale_qty?: number | string | null;
+  require_scale?: boolean | null;
 }
 
 export interface Sale {
@@ -173,6 +183,12 @@ export interface ProductToAdd {
   category_id?: number | null;
   /** Variante: su producto padre, para que una promoción sobre el padre la alcance. */
   parent_product_id?: number | null;
+  /** Producto por peso o medida: cada pesada es su propia línea (no se funde). */
+  sale_mode?: string | null;
+  qty_decimals?: number | null;
+  unit_code?: string | null;
+  /** Origen del peso (`notes.pesaje`), solo en productos por peso. */
+  pesaje?: Pesaje;
 }
 
 export interface TransferItemData {

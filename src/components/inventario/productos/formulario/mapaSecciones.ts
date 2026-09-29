@@ -71,6 +71,8 @@ export const PASO_DE_CAMPO: Record<CampoFormulario, PasoMovil> = {
   variantes: 'detalles',
   modificadores: 'detalles',
   barcode: 'detalles',
+  // PLU de balanza: en «Códigos», junto al código de barras.
+  scale_plu: 'detalles',
   proveedor: 'detalles',
   dimensiones: 'detalles',
   receta: 'detalles',

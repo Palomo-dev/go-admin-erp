@@ -45,9 +45,21 @@ export function CeldaDocumento({ fila, documento, cargando }: { fila: Movimiento
   );
 }
 
-/** «+500» en verde o «−2» en rojo; guion en la otra columna. */
-export function CeldaCantidad({ fila, direccion }: { fila: MovimientoFila; direccion: 'in' | 'out' }) {
-  const cantidad = useCantidadStock();
+/**
+ * «+500» en verde o «−2» en rojo; guion en la otra columna. `formato` (opcional)
+ * pone la unidad de un producto por peso o medida: «+12,400 kg».
+ */
+export function CeldaCantidad({
+  fila,
+  direccion,
+  formato,
+}: {
+  fila: MovimientoFila;
+  direccion: 'in' | 'out';
+  formato?: (n: number) => string;
+}) {
+  const cantidadBase = useCantidadStock();
+  const cantidad = formato ?? cantidadBase;
   if (fila.direccion !== direccion) return <span className="text-fg-muted">—</span>;
   return (
     <span className={cn('font-semibold tabular-nums', direccion === 'in' ? 'text-success-text' : 'text-danger-text')}>

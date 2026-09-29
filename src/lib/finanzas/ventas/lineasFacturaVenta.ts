@@ -15,6 +15,8 @@
  * - Total del documento = suma de `total_line`; impuestos = total − subtotal.
  */
 import { computeLineTotal } from '@/lib/services/taxResolverCore';
+import { redondearCantidad } from '@/lib/inventario/nucleo/costo';
+import { redondearCantidadLinea } from '@/lib/services/documentos/cantidadLinea';
 import { addPlainDays } from '@/lib/utils/dateDisplay';
 import type { DatosFactura, FaltanteStock } from './contratoFacturas';
 
@@ -44,10 +46,15 @@ export interface LineaVenta {
   stock: number | null;
   /** El usuario dejó la línea sin impuesto a propósito («Sin impuesto»). */
   sinImpuestoElegido?: boolean;
+  /** Producto por peso o medida: símbolo de la unidad («kg») y decimales de la cantidad (`cantidadLinea.ts`). */
+  unidad?: string | null;
+  decimalesCantidad?: number | null;
 }
 
 const c = (n: number) => Math.round((Number(n) || 0) * 100);
 const r2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
+/** Cantidades a 3 decimales, la escala de `stock_levels` e `invoice_items.qty` (0,735 kg no se vuelve 0,74). */
+const r3 = (n: number) => redondearCantidad(Number(n) || 0);
 
 export function tarifaLinea(l: Pick<LineaVenta, 'impuestos'>): number {
   return Math.round(l.impuestos.reduce((s, i) => s + (Number(i.tarifa) || 0), 0) * 10000) / 10000;
@@ -150,13 +157,13 @@ export function errorComision(metodo: 'percentage' | 'fixed_amount', tasa: numbe
 export function faltanteLinea(l: Pick<LineaVenta, 'controlaStock' | 'stock' | 'cantidad' | 'product_id'>, pedidoTotalDelProducto?: number): number {
   if (!l.product_id || !l.controlaStock || l.stock === null || l.stock === undefined) return 0;
   const pedido = pedidoTotalDelProducto ?? l.cantidad;
-  return Math.max(0, r2(pedido - Math.max(0, Number(l.stock) || 0)));
+  return Math.max(0, r3(pedido - Math.max(0, Number(l.stock) || 0)));
 }
 
 /** Cantidad total pedida por producto (una factura puede repetir el producto en varias líneas). */
 export function pedidoPorProducto(lineas: readonly Pick<LineaVenta, 'product_id' | 'cantidad'>[]): Map<number, number> {
   const m = new Map<number, number>();
-  for (const l of lineas) if (l.product_id) m.set(l.product_id, r2((m.get(l.product_id) ?? 0) + (Number(l.cantidad) || 0)));
+  for (const l of lineas) if (l.product_id) m.set(l.product_id, r3((m.get(l.product_id) ?? 0) + (Number(l.cantidad) || 0)));
   return m;
 }
 
@@ -180,7 +187,7 @@ export function ajustarAFaltantes<L extends Pick<LineaVenta, 'clave' | 'product_
   const disponible = new Map(faltantes.map((f) => [f.product_id, Math.max(0, Number(f.disponible) || 0)]));
   const pedido = pedidoPorProducto(lineas);
   const exceso = new Map<number, number>();
-  for (const [pid, disp] of disponible) exceso.set(pid, Math.max(0, r2((pedido.get(pid) ?? 0) - disp)));
+  for (const [pid, disp] of disponible) exceso.set(pid, Math.max(0, r3((pedido.get(pid) ?? 0) - disp)));
   const cambios: AjusteFaltante[] = [];
   const resultado = [...lineas];
   for (let i = resultado.length - 1; i >= 0; i--) {
@@ -189,8 +196,8 @@ export function ajustarAFaltantes<L extends Pick<LineaVenta, 'clave' | 'product_
     const sobra = exceso.get(l.product_id) ?? 0;
     if (sobra <= 0) continue;
     const quitar = Math.min(sobra, l.cantidad);
-    const despues = r2(l.cantidad - quitar);
-    exceso.set(l.product_id, r2(sobra - quitar));
+    const despues = r3(l.cantidad - quitar);
+    exceso.set(l.product_id, r3(sobra - quitar));
     cambios.unshift({ clave: l.clave, descripcion: l.descripcion, antes: l.cantidad, despues });
     if (despues <= 0) resultado.splice(i, 1);
     else resultado[i] = { ...l, cantidad: despues };
@@ -204,13 +211,15 @@ export function lineaAItem(
   incluido: boolean,
   serialIds?: readonly number[],
 ): DatosFactura['items'][number] {
-  const k = calcularLineaVenta(l, incluido);
+  // Peso o medida: a los decimales del producto (el servidor guarda `qty` numeric(12,3)); el total sale de esa cantidad.
+  const qty = redondearCantidadLinea(Number(l.cantidad) || 0, { decimalesCantidad: l.decimalesCantidad ?? null });
+  const k = calcularLineaVenta({ ...l, cantidad: qty }, incluido);
   const conTarifa = l.impuestos.filter((i) => Number(i.tarifa) > 0);
   const primero = conTarifa[0] ?? l.impuestos[0] ?? null;
   return {
     product_id: l.product_id,
     description: l.descripcion.trim(),
-    qty: Number(l.cantidad) || 0,
+    qty,
     unit_price: Number(l.precio) || 0,
     tax_code: primero?.codigo ?? null,
     tax_rate: tarifaLinea(l),

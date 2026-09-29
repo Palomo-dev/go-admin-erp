@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CachedProductImage } from '@/components/pos/CachedProductImage';
 import { LocalCatalogNotice } from '@/components/pos/LocalCatalogNotice';
 import type { PosGridProduct } from '@/lib/pos/venta/catalogo';
+import { pareceCodigoDeBarras } from '@/lib/pos/venta/escaneo';
 import { aProductoTarjeta, columnasDeGrilla, moverFocoGrilla, type VistaCatalogo } from '@/lib/pos/venta/catalogoGrilla';
 import type { CatalogoGrilla } from './catalogo/useCatalogoGrilla';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -61,6 +62,12 @@ export interface GrillaProductosProps {
   favoritosEnCurso: ReadonlySet<number>;
   onReceta: (producto: PosGridProduct) => void;
   onEscanerCamara: () => void;
+  /**
+   * Código de barras escrito en el buscador + Enter (solo dígitos, 6 a 14):
+   * se resuelve como un escaneo y va directo al carrito. Sin la prop, Enter
+   * busca como siempre.
+   */
+  onCodigo?: (codigo: string) => void;
   onLimpiarFiltros: () => void;
   /** Mensaje del error de carga (el de Desktop sin catálogo, o el genérico). */
   mensajeError?: string | null;
@@ -90,6 +97,7 @@ export function GrillaProductos({
   favoritosEnCurso,
   onReceta,
   onEscanerCamara,
+  onCodigo,
   onLimpiarFiltros,
   mensajeError,
 }: GrillaProductosProps) {
@@ -242,6 +250,11 @@ export function GrillaProductos({
           onChange={onBusqueda}
           onValueChange={onBusqueda}
           debounceMs={0}
+          onEnter={(texto) => {
+            if (!onCodigo || !pareceCodigoDeBarras(texto)) return false;
+            onCodigo(texto.trim());
+            return true;
+          }}
           placeholder={t('buscarPlaceholder')}
           etiqueta={t('buscarEtiqueta')}
           cargando={recargando}

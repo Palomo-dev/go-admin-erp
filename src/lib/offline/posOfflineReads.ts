@@ -307,6 +307,13 @@ export async function getProductByBarcode(organizationId: number, barcode: strin
   return rows.find((p) => p.status === 'active') ?? null;
 }
 
+/** Equivalente offline de `POSService.getProductByScalePlu` (etiqueta de peso variable). */
+export async function getProductByScalePlu(organizationId: number, plu: number): Promise<CatalogProduct | null> {
+  await requireCatalog(organizationId);
+  const rows = await getCatalogRowsByIndex('products', 'by_org_scale_plu', [organizationId, plu]);
+  return rows.find((p) => p.status === 'active') ?? null;
+}
+
 /** Equivalente offline de `POSService.getProductById` (forma reducida del servicio). */
 export async function getProductById(organizationId: number, productId: number) {
   await requireCatalog(organizationId);
@@ -433,6 +440,7 @@ export const posOfflineReads = {
   getProductsPaginated,
   getProductVariants,
   getProductByBarcode,
+  getProductByScalePlu,
   getProductById,
   getProductPriceRows,
   getCategories,

@@ -5,14 +5,16 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toastSuccess, toastError, toastWarning } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { purchaseOrderService, type PurchaseOrderWithItems } from '@/lib/services/purchaseOrderService';
+import { purchaseOrderService, type PurchaseOrderItem, type PurchaseOrderWithItems } from '@/lib/services/purchaseOrderService';
 import {
   construirLineasRecepcion,
   nuevaClaveRecepcion,
   recepcionarOrdenCompra,
   type LoteCapturado,
 } from '@/lib/services/inventario/recepcionOrdenCompra';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { decimalesCantidad, esMedido, formatoCantidad, pasoCantidad, redondearCantidadProducto } from '@/lib/pos/peso/modoVenta';
+import { localeIntl } from '@/components/kit/idioma';
 import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -102,6 +104,9 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
   const tRec = useTranslations('inventarioRecepcionOC');
   const mensajeErrorRecepcion = useMensajeErrorRecepcionOC();
   const { formatear, paraDocumento } = useMonedaOrganizacion();
+  const locale = localeIntl(useLocale());
+  /** «1,250 kg» en productos por peso o medida; «12» por unidad. */
+  const cantidadItem = (n: number | null | undefined, p: PurchaseOrderItem['products']) => formatoCantidad(Number(n) || 0, p, locale);
 
   // Estados
   const [order, setOrder] = useState<PurchaseOrderWithItems | null>(null);
@@ -427,7 +432,7 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
                           </div>
                         </TableCell>
                         <TableCell className="text-right text-gray-900 dark:text-white">
-                          {item.quantity}
+                          {cantidadItem(item.quantity, item.products)}
                         </TableCell>
                         <TableCell className="text-right">
                           <span className={
@@ -437,7 +442,7 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
                                 ? 'text-orange-600 dark:text-orange-400'
                                 : 'text-gray-500 dark:text-gray-400'
                           }>
-                            {item.received_quantity || 0}
+                            {cantidadItem(item.received_quantity, item.products)}
                           </span>
                         </TableCell>
                         <TableCell className="text-right text-gray-900 dark:text-white">
@@ -659,7 +664,14 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
                         {item.products?.name}
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        SKU: {item.products?.sku} · Pedido: <span className="font-semibold">{item.quantity}</span> unidades
+                        SKU: {item.products?.sku} · Pedido:{' '}
+                        {esMedido(item.products) ? (
+                          <span className="font-semibold">{cantidadItem(item.quantity, item.products)}</span>
+                        ) : (
+                          <>
+                            <span className="font-semibold">{item.quantity}</span> unidades
+                          </>
+                        )}
                       </p>
                     </div>
 
@@ -669,12 +681,17 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Recibido</p>
                         <Input
                           type="number"
+                          inputMode={esMedido(item.products) ? 'decimal' : 'numeric'}
+                          // Peso o medida: recepción parcial con los decimales del producto (0,500 de 1,250 kg).
+                          step={pasoCantidad(decimalesCantidad(item.products))}
                           min={item.received_quantity || 0}
                           max={item.quantity}
                           value={received}
                           onChange={(e) => setReceivedQuantities({
                             ...receivedQuantities,
-                            [item.id]: parseFloat(e.target.value) || 0
+                            [item.id]: esMedido(item.products)
+                              ? redondearCantidadProducto(parseFloat(e.target.value) || 0, decimalesCantidad(item.products))
+                              : parseFloat(e.target.value) || 0
                           })}
                           className={`w-20 h-10 text-center font-semibold ${
                             isComplete 
@@ -686,7 +703,7 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
                         />
                       </div>
                       <div className="text-gray-400 dark:text-gray-500">
-                        / {item.quantity}
+                        / {cantidadItem(item.quantity, item.products)}
                       </div>
                     </div>
                   </div>

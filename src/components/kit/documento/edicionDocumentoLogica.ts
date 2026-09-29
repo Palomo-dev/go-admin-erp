@@ -113,6 +113,13 @@ export interface ProductoDocumento {
   minimoPedido?: number | null;
   impuestos?: readonly OpcionImpuesto[];
   imagen?: string | null;
+  /**
+   * Producto por peso o medida: símbolo de su unidad («kg», «m») y decimales
+   * de la cantidad (3, 2). El precio se muestra «/ kg», el stock «12,400 kg»
+   * y la línea nace con esos decimales. `null` en productos por unidad.
+   */
+  unidadVenta?: string | null;
+  decimalesCantidad?: number | null;
 }
 
 export type EstadoStock = 'disponible' | 'sinStock' | 'noControla' | 'desconocido';

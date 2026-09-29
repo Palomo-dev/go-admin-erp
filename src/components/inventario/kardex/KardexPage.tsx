@@ -47,6 +47,8 @@ import { listarStock, type MovimientoFila, type StockFila } from '@/lib/services
 import { cn } from '@/utils/Utils';
 import { lotesDeProducto } from '../lotes/LotesService';
 import { CeldaCantidad, CeldaDocumento, CeldaFecha, useAccionesMovimiento } from '../movimientos/piezas';
+import { idsProductos } from '../stock/cantidadProducto';
+import { useModosVenta } from '../stock/useModosVenta';
 import { SelectorProductoStock } from '../stock/SelectorProductoStock';
 import { nombreArchivo } from '../stock/logica';
 import { useAlcanceSucursales, useCantidadStock, useMensajeErrorInventario } from '../stock/useInventarioB1';
@@ -175,6 +177,13 @@ export function KardexPage() {
   }, [producto, organizacionId, listo, permisos.ver, alcance.sucursales]);
 
   const filas = useMemo(() => datos?.filas ?? [], [datos]);
+  // Productos por peso o medida: «12,400 kg» en vez de «12,4 uds» (PRODUCTOS-POR-PESO-BASCULA.md §2.4).
+  // Con el kardex de UN producto, también sus KPIs y el cuadre van en su unidad.
+  const idsFilas = useMemo(() => idsProductos(producto ? [...filas, { product_id: producto }] : filas), [filas, producto]);
+  const { cantidadDe } = useModosVenta(idsFilas);
+  /** KPI del kardex: con un producto filtrado, en su unidad; sin filtro, «N uds» como siempre. */
+  const udsKpi = (n: number) => cantidadDe(producto ?? null, n, (numero) => tm('uds', { n: numero }));
+  const cantKpi = (n: number) => cantidadDe(producto ?? null, n);
   const total = datos?.total ?? 0;
   const kpis = datos?.kpis ?? null;
   const cuadre = datos?.cuadre ?? null;
@@ -284,15 +293,15 @@ export function KardexPage() {
       : []),
     { id: 'sucursal', encabezado: t('columnas.sucursal'), ocultarDebajo: 'md', celda: (f) => <span className="truncate text-fg">{f.sucursal}</span> },
     { id: 'lote', encabezado: t('columnas.lote'), ocultarDebajo: 'lg', celda: (f) => <span className="font-medium text-fg">{f.lote ?? '—'}</span> },
-    { id: 'entrada', encabezado: t('columnas.entrada'), alinear: 'derecha', celda: (f) => <CeldaCantidad fila={f} direccion="in" /> },
-    { id: 'salida', encabezado: t('columnas.salida'), alinear: 'derecha', celda: (f) => <CeldaCantidad fila={f} direccion="out" /> },
+    { id: 'entrada', encabezado: t('columnas.entrada'), alinear: 'derecha', celda: (f) => <CeldaCantidad fila={f} direccion="in" formato={(n) => cantidadDe(f.product_id, n)} /> },
+    { id: 'salida', encabezado: t('columnas.salida'), alinear: 'derecha', celda: (f) => <CeldaCantidad fila={f} direccion="out" formato={(n) => cantidadDe(f.product_id, n)} /> },
     {
       id: 'saldo',
       encabezado: t('columnas.saldo'),
       alinear: 'derecha',
       celda: (f) => (
         <span className={cn('font-semibold tabular-nums', (f.saldo ?? 0) < 0 ? 'text-danger-text' : 'text-fg')} title={(f.saldo ?? 0) < 0 ? t('saldoNegativo') : undefined}>
-          {cantidad(f.saldo ?? 0)}
+          {cantidadDe(f.product_id, f.saldo ?? 0)}
         </span>
       ),
     },
@@ -395,7 +404,7 @@ export function KardexPage() {
         <StatCard
           etiqueta={t('kpis.entradas')}
           cargando={!kpis}
-          valor={kpis ? tm('uds', { n: cantidad(kpis.entradas) }) : '—'}
+          valor={kpis ? udsKpi(kpis.entradas) : '—'}
           tono="exito"
           tendencia="sube"
           detalle={t('kpis.entradasDetalle')}
@@ -403,7 +412,7 @@ export function KardexPage() {
         <StatCard
           etiqueta={t('kpis.salidas')}
           cargando={!kpis}
-          valor={kpis ? tm('uds', { n: cantidad(kpis.salidas) }) : '—'}
+          valor={kpis ? udsKpi(kpis.salidas) : '—'}
           tono="peligro"
           tendencia="baja"
           detalle={t('kpis.salidasDetalle')}
@@ -411,10 +420,10 @@ export function KardexPage() {
         <StatCard
           etiqueta={t('kpis.saldoCierre')}
           cargando={!kpis}
-          valor={kpis ? tm('uds', { n: cantidad(kpis.saldo_cierre) }) : '—'}
+          valor={kpis ? udsKpi(kpis.saldo_cierre) : '—'}
           tono={cuadra === false ? 'peligro' : 'neutro'}
           tendencia={cuadra === false ? 'baja' : undefined}
-          detalle={kpis ? t('kpis.contraExistencias', { n: cantidad(kpis.existencias) }) : undefined}
+          detalle={kpis ? t('kpis.contraExistencias', { n: cantKpi(kpis.existencias) }) : undefined}
         />
         <StatCard
           etiqueta={t('kpis.valor')}
@@ -540,7 +549,7 @@ export function KardexPage() {
             <ListCard
               titulo={d.numero ?? (f.source_id ? tipo : tm('sinDocumento'))}
               insignia={<BadgeOrigenMovimiento origen={f.source} />}
-              valor={<span className="text-sm font-semibold text-fg">{t('saldoCorto', { n: cantidad(f.saldo ?? 0) })}</span>}
+              valor={<span className="text-sm font-semibold text-fg">{t('saldoCorto', { n: cantidadDe(f.product_id, f.saldo ?? 0) })}</span>}
               subtitulo={f.nombre}
               meta={
                 <span className="flex flex-col gap-0.5">
@@ -550,7 +559,7 @@ export function KardexPage() {
                   <span className="flex items-center justify-between gap-2">
                     <span className={f.direccion === 'in' ? 'text-sm font-semibold text-success-text' : 'text-sm font-semibold text-danger-text'}>
                       {f.direccion === 'in' ? '+' : '−'}
-                      {tm('uds', { n: cantidad(f.cantidad) })}
+                      {cantidadDe(f.product_id, f.cantidad, (numero) => tm('uds', { n: numero }))}
                     </span>
                     {verCostos && f.costo_unitario ? <span className="text-xs text-fg-secondary">{tm('porUnidad', { costo: moneda.formatear(f.costo_unitario) })}</span> : null}
                   </span>

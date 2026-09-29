@@ -86,6 +86,7 @@ import {
   type ImpuestoDocumento,
   type ProductoParaDocumento,
 } from '@/lib/services/documentos/edicionDocumento';
+import { cantidadInicialLinea } from '@/lib/services/documentos/cantidadLinea';
 import { ErrorPeticionFactura, emitirFacturaVenta, guardarFacturaVenta } from '@/lib/finanzas/ventas/clienteFacturas';
 import type { DatosFactura, FaltanteStock } from '@/lib/finanzas/ventas/contratoFacturas';
 import {
@@ -129,7 +130,8 @@ function deProducto(p: ProductoParaDocumento, impuestos: readonly ImpuestoDocume
     product_id: p.id,
     descripcion: p.nombre,
     sku: p.sku,
-    cantidad: 1,
+    // Por peso o medida nace vacía (0) para escribir el peso: ver `cantidadInicialLinea`.
+    cantidad: cantidadInicialLinea(p),
     precio: p.precio,
     descuento: 0,
     impuestos: propios.map((i) => ({ id: i.id, codigo: i.codigo, nombre: i.nombre, tarifa: i.tarifa })),
@@ -138,6 +140,8 @@ function deProducto(p: ProductoParaDocumento, impuestos: readonly ImpuestoDocume
     serial: p.serial,
     controlaStock: p.controlaStock,
     stock: p.stock,
+    unidad: p.unidadVenta,
+    decimalesCantidad: p.decimalesCantidad,
   };
 }
 
@@ -340,6 +344,8 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
         serial: p?.serial ?? false,
         controlaStock: p?.controlaStock ?? false,
         stock: p?.stock ?? null,
+        unidad: p?.unidadVenta ?? null,
+        decimalesCantidad: p?.decimalesCantidad ?? null,
       };
     });
   }
@@ -703,6 +709,8 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
       sku: l.sku,
       nota: l.nota,
       cantidad: l.cantidad,
+      unidad: l.unidad ?? null,
+      decimalesCantidad: l.decimalesCantidad ?? null,
       precioUnitario: l.precio,
       descuento: l.descuento || null,
       total: k.total_line,
@@ -1454,6 +1462,8 @@ function VistaNoEditable({
               sku: l.sku,
               nota: l.nota,
               cantidad: l.cantidad,
+              unidad: l.unidad ?? null,
+              decimalesCantidad: l.decimalesCantidad ?? null,
               precioUnitario: l.precio,
               descuento: l.descuento || null,
               impuestos: l.impuestos.map((i) => ({ nombre: i.nombre, tarifa: /\d/.test(i.nombre) ? null : i.tarifa, incluido })),

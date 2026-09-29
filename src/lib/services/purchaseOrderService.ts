@@ -57,6 +57,9 @@ export interface PurchaseOrderItem {
     sku: string;
     name: string;
     unit_code?: string;
+    /** Cómo se vende (peso o medida: la cantidad lleva decimales y unidad). */
+    sale_mode?: string | null;
+    qty_decimals?: number | null;
     track_serial?: boolean | null;
     track_lots?: boolean | null;
   };
@@ -218,7 +221,7 @@ class PurchaseOrderService {
         .from('purchase_order_items')
         .select(`
           *,
-          products:product_id (id, uuid, sku, name, unit_code, track_serial, track_lots)
+          products:product_id (id, uuid, sku, name, unit_code, sale_mode, qty_decimals, track_serial, track_lots)
         `)
         .eq('purchase_order_id', order.id)
         .order('id', { ascending: true });

@@ -2527,6 +2527,11 @@
         "revoked": "Cet écran a été dissocié depuis la caisse. Générez un nouveau code.",
         "storage": "Le navigateur ne permet pas d’enregistrer l’association (mode privé ou stockage bloqué). Le code a déjà été utilisé : autorisez le stockage et générez-en un nouveau sur la caisse."
       }
+    },
+    "weighing": {
+      "line": "Pesée : {qty} × {price} = {total}",
+      "price": "{price} / {unit}",
+      "waiting": "Pesée… {price}"
     }
   },
   "session": {
@@ -2713,19 +2718,17 @@
     "feedbackOther": "Autre",
     "globalSearch": {
       "title": "Recherche globale",
-      "description": "Recherchez des pages, des clients, des produits et plus",
+      "description": "Recherchez des pages, des clients, des produits et plus. Utilisez les flèches pour vous déplacer et Entrée pour ouvrir.",
       "placeholder": "Rechercher des pages, des clients, des produits…",
-      "triggerPlaceholder": "Rechercher des pages, des clients, des succursales…",
       "search": "Rechercher",
-      "noResults": "Aucun résultat pour « {query} »",
-      "noResultsHint": "Essayez un autre terme",
-      "searching": "Recherche…",
-      "typeToSearch": "Saisissez un terme pour rechercher",
+      "close": "Fermer la recherche",
       "groups": {
+        "recent": "Récents",
+        "actions": "Actions",
         "pages": "Pages",
-        "branches": "Succursales",
         "customers": "Clients",
         "products": "Produits",
+        "branches": "Succursales",
         "suppliers": "Fournisseurs",
         "categories": "Catégories",
         "invoices": "Factures",
@@ -2735,17 +2738,47 @@
         "memberships": "Abonnements",
         "parking": "Parking"
       },
-      "organization": "Organisation",
-      "branch": "Succursale",
-      "unnamedCustomer": "Client sans nom",
-      "noExtraInfo": "Aucune information supplémentaire",
-      "invoice": "Facture {number}",
-      "noNumber": "sans numéro",
-      "order": "Commande {number}",
-      "reservation": "Réservation {space}",
+      "actions": {
+        "reportProblem": "Signaler un problème",
+        "reportProblemHint": "Erreur, suggestion ou question",
+        "nuevaVenta": "Nouvelle vente",
+        "nuevaVentaHint": "Ouvrir le point de vente",
+        "nuevaFactura": "Nouvelle facture",
+        "nuevaFacturaHint": "Facture de vente",
+        "nuevoCliente": "Nouveau client",
+        "nuevoClienteHint": "Personne ou entreprise",
+        "nuevoProducto": "Nouveau produit",
+        "nuevoProductoHint": "Produit ou service du catalogue",
+        "nuevaReserva": "Nouvelle réservation",
+        "nuevaReservaHint": "Réservation d'hébergement"
+      },
+      "create": {
+        "nuevoProducto": "Créer un produit",
+        "nuevoCliente": "Créer un client"
+      },
+      "noResults": "Aucun résultat pour « {query} »",
+      "noResultsHint": "Recherchez par nom, SKU, code-barres, numéro fiscal ou numéro de facture.",
+      "typeMore": "Saisissez au moins {n} caractères pour rechercher dans vos données.",
+      "searching": "Recherche…",
+      "resultsCount": "{n, plural, =0 {Aucun résultat} one {# résultat} other {# résultats}}",
+      "error": {
+        "title": "Impossible de rechercher dans vos données",
+        "hint": "Vérifiez votre connexion et réessayez.",
+        "partial": "Certains groupes n'ont pas répondu.",
+        "retry": "Réessayer"
+      },
+      "footer": {
+        "navigate": "naviguer",
+        "open": "ouvrir",
+        "close": "fermer"
+      },
       "unnamed": "Sans nom",
-      "membership": "Abonnement",
-      "noPlate": "Sans plaque"
+      "invoice": "Facture {number}",
+      "order": "Commande {number}",
+      "noNumber": "sans numéro",
+      "stock": "{n} en stock",
+      "sku": "SKU {sku}",
+      "nit": "N° fiscal {nit}"
     },
     "trialBanner": {
       "trialActive": "Vous profitez de l'essai gratuit de {plan}",
@@ -3302,7 +3335,11 @@
         "incluido": "Incluse",
         "adicional": "En sus",
         "vacio": "Aucune ligne",
-        "vacioDescripcion": "Ajoutez un produit ou un article manuel."
+        "vacioDescripcion": "Ajoutez un produit ou un article manuel.",
+        "precioPor": "{precio} / {unidad}",
+        "porUnidad": "/ {unidad}",
+        "cantidadEnDe": "Quantité de {producto} en {unidad}",
+        "precioPorDe": "Prix de {producto} par {unidad}"
       },
       "totales": {
         "titulo": "Récapitulatif",
@@ -3678,7 +3715,9 @@
         "descripcionDe": "Description de l’article",
         "itemSinNombre": "Article sans description",
         "itemManual": "Article manuel",
-        "seriales": "Séries {n}/{total}"
+        "seriales": "Séries {n}/{total}",
+        "cantidadRequeridaTitulo": "Quantité manquante",
+        "cantidadRequerida": "Saisissez la quantité de « {producto} »."
       },
       "impuestos": {
         "sinAsignar": "Aucune taxe attribuée",
@@ -3931,7 +3970,8 @@
         "prefijo": "Le préfixe n’est pas valide pour ce format.",
         "demasiados": "Trop de produits à la fois (5 000 max.).",
         "acceso": "Vous n’avez pas accès à cette organisation.",
-        "generico": "Impossible de générer les codes. Rien n’est resté à moitié : réessayez."
+        "generico": "Impossible de générer les codes. Rien n’est resté à moitié : réessayez.",
+        "prefijoDePeso": "Le préfixe du générateur coïncide avec celui des étiquettes à poids variable. Modifiez-le dans Paramètres › POS."
       },
       "campo": {
         "etiqueta": "Code-barres",
@@ -9331,7 +9371,9 @@
       "referencia_precio_invalida": "Le prix se saisit au kg ou pour 500, 250, 100 ou 50 g.",
       "decimales_invalidos": "La quantité admet de 1 à 3 décimales.",
       "minimo_invalido": "La vente minimale doit être supérieure à 0 et respecter les décimales de l’unité.",
-      "tara_invalida": "La tare ne peut pas être négative."
+      "tara_invalida": "La tare ne peut pas être négative.",
+      "plu_invalido": "Le PLU est un entier de 1 à 99 999.",
+      "plu_duplicado": "PLU en double : un autre produit de l’organisation l’utilise déjà."
     },
     "imagenes": {
       "insignias": {
@@ -9667,7 +9709,7 @@
         "renovacionManual": "Renouvellement manuel",
         "renovacionManualAyuda": "Le client paie de nouveau le même produit (caisse, facture ou boutique) et la validité est prolongée à partir de l’échéance.",
         "renovacionAutomatica": "Renouvellement automatique",
-        "renovacionAutomaticaAyuda": "Prélèvement récurrent sur la carte du client. Disponible quand une passerelle enregistrera les cartes.",
+        "renovacionAutomaticaAyuda": "7 jours avant l’échéance, le renouvellement passe « à encaisser », prêt à être encaissé en un clic. Il n’est jamais encaissé ni facturé tout seul.",
         "fasePosterior": "Plus tard",
         "formaCobro": "Encaissement",
         "cobroAdelantado": "D’avance",
@@ -9860,7 +9902,9 @@
       "sku": "SKU {sku}",
       "escaner": "Le scanner du PDV recherche le code exact.",
       "variantes": "Chaque variante a son propre code : elle n’hérite pas de celui du produit. Les codes manquants sont numérotés à l’enregistrement.",
-      "duplicar": "Le code-barres de l’original n’est pas copié."
+      "duplicar": "Le code-barres de l’original n’est pas copié.",
+      "plu": "PLU de balance",
+      "pluAyuda": "Le numéro que la balance étiqueteuse imprime sur l’étiquette de poids (1 à 99 999). Unique dans l’organisation."
     },
     "avanzado": {
       "envio": "Expédition",
@@ -11137,7 +11181,11 @@
       "origen_peso_invalido": "L’origine du poids d’une ligne n’est pas valide. Pesez-la de nouveau. {detalle}",
       "origen_peso_no_disponible": "La lecture de balance et les étiquettes de poids ne sont pas encore disponibles. {detalle}",
       "peso_exige_bascula": "Un produit exige une balance et ne peut pas être vendu avec un poids saisi à la main. {detalle}",
-      "sin_permiso_peso_manual": "La saisie manuelle du poids exige l’autorisation « Peser à la main au POS ». {detalle}"
+      "sin_permiso_peso_manual": "La saisie manuelle du poids exige l’autorisation « Peser à la main au POS ». {detalle}",
+      "bascula_invalida": "La balance de la pesée n’est pas une balance active de l’organisation. {detalle}",
+      "peso_inestable": "La lecture de la balance n’était pas stable. {detalle}",
+      "pesaje_no_coincide": "La quantité ne correspond pas au poids lu sur la balance. {detalle}",
+      "etiqueta_invalida": "L’étiquette de poids ne contient pas le code lu. {detalle}"
     },
     "ventaAnulada": "Vente annulée : paiements, stock et facture ont été annulés.",
     "anulacionFallida": "La vente n’a pas pu être annulée",
@@ -15305,6 +15353,12 @@
       "cliente_no_encontrado": "Client introuvable.",
       "sucursal_invalida": "Le site n’appartient pas à l’organisation.",
       "membresia_sin_cliente": "Une adhésion a besoin de son titulaire : choisissez le client avant d’encaisser.",
+      "reserva_no_encontrada": "Réservation introuvable.",
+      "reserva_de_otro_miembro": "La réservation appartient à un autre adhérent.",
+      "reserva_cancelada": "La réservation est annulée : impossible d’enregistrer l’entrée.",
+      "clase_cancelada": "Le cours est annulé : impossible d’enregistrer l’entrée.",
+      "importacion_sin_filas": "Le fichier ne contient aucune ligne à importer.",
+      "importacion_demasiadas_filas": "Le fichier dépasse la limite de 500 lignes.",
       "datos_invalidos": "Vérifiez les données du formulaire.",
       "error_interno": "Une erreur est survenue. Réessayez."
     },
@@ -15422,7 +15476,8 @@
           "congelada": "Suspendues",
           "pendiente": "En attente",
           "vencida": "Expirées",
-          "cancelada": "Annulées"
+          "cancelada": "Annulées",
+          "renovacion_pendiente": "Renouvellement à encaisser"
         }
       },
       "chips": {
@@ -15439,6 +15494,8 @@
         "plan": "Formule",
         "vigencia": "Validité",
         "estado": "Statut",
+        "sede": "Site",
+        "ultimaEntrada": "Dernière entrée",
         "origen": "Origine"
       },
       "vacio": {
@@ -15794,7 +15851,63 @@
         "payment_failed": "Paiement échoué",
         "plan_changed": "Changement de formule",
         "notes_updated": "Notes mises à jour",
+        "renewal_due": "Renouvellement à encaisser",
         "otro": "Autre mouvement"
+      },
+      "renovacionPendiente": {
+        "titulo": "Renouvellement à encaisser",
+        "descripcion": "La formule se renouvelle automatiquement : le renouvellement est prêt depuis le {fecha}. Rien n’est encaissé ni facturé sans votre intervention.",
+        "precio": "Prix en vigueur : {precio}",
+        "accion": "Encaisser le renouvellement"
+      }
+    },
+    "exportar": {
+      "accion": "Exporter en CSV",
+      "exportando": "Export en cours…",
+      "descripcionFiltros": "Avec la recherche et les filtres actuels",
+      "listo": "Fichier téléchargé",
+      "truncado": "Les {max, number} premières lignes ont été exportées. Affinez les filtres pour exporter le reste.",
+      "archivo": {
+        "membresias": "Adhésions",
+        "miembros": "Membres",
+        "pagos": "Paiements des adhésions"
+      },
+      "columnas": {
+        "membresias": {
+          "miembro": "Membre",
+          "documento": "Pièce d’identité",
+          "plan": "Formule",
+          "codigo": "Code d’accès",
+          "desde": "Du",
+          "hasta": "Au",
+          "estado": "Statut",
+          "sede": "Site",
+          "ultimaEntrada": "Dernière entrée",
+          "origen": "Origine"
+        },
+        "miembros": {
+          "miembro": "Membre",
+          "documento": "Pièce d’identité",
+          "correo": "E-mail",
+          "telefono": "Téléphone",
+          "planVigente": "Adhésion en cours",
+          "estado": "Statut",
+          "vence": "Échéance",
+          "ultimaEntrada": "Dernière entrée",
+          "membresias": "Adhésions"
+        },
+        "pagos": {
+          "fecha": "Date",
+          "cliente": "Client",
+          "documento": "Pièce d’identité",
+          "producto": "Produit",
+          "cantidad": "Quantité",
+          "total": "Total",
+          "estadoVenta": "Statut de la vente",
+          "factura": "Facture",
+          "saldo": "Solde",
+          "membresia": "Adhésion"
+        }
       }
     },
     "congelar": {
@@ -15866,6 +15979,29 @@
         "enlace": {
           "titulo": "Envoyer un lien de paiement",
           "descripcion": "Paiement dans la boutique en ligne."
+        }
+      },
+      "enlace": {
+        "comprobando": "Vérification des passerelles de paiement de l’organisation…",
+        "motivos": {
+          "sin_pasarela": "L’organisation n’a aucune passerelle de paiement en ligne connectée. Connectez-en une dans Intégrations pour encaisser par lien.",
+          "pago_no_activa_membresia": "Votre passerelle ({pasarelas}) n’enregistre pas encore le paiement de la facture par le circuit qui active l’adhésion. En attendant, encaissez au point de vente ou par facture.",
+          "membresia_cancelada": "L’adhésion est annulée.",
+          "error": "Impossible de vérifier les passerelles de paiement. Encaissez au point de vente ou par facture."
+        },
+        "insignias": {
+          "comprobando": "Vérification…",
+          "sin_pasarela": "Sans passerelle",
+          "pago_no_activa_membresia": "Pas encore disponible",
+          "membresia_cancelada": "Indisponible"
+        },
+        "pasarelas": {
+          "wompi_co": "Wompi",
+          "stripe_payments": "Stripe",
+          "bold_link": "Bold",
+          "mp_checkout": "Mercado Pago",
+          "payu_co": "PayU",
+          "paypal_checkout": "PayPal"
         }
       },
       "fasePosterior": "Phase ultérieure",
@@ -15964,6 +16100,7 @@
       "migaPlan": "Formule",
       "errorTitulo": "Impossible de charger la formule",
       "subtituloRenovacion": "renouvellement manuel",
+      "subtituloRenovacionAutomatica": "renouvellement automatique",
       "editarEnProducto": "Modifier dans le produit",
       "vender": "Vendre en caisse",
       "noEncontrado": {
@@ -16006,6 +16143,7 @@
         "duracion": "Durée",
         "renovacion": "Renouvellement",
         "renovacionValor": "Manuel · prolonge à partir de l’échéance",
+        "renovacionValorAutomatica": "Automatique · à encaisser 7 jours avant l’échéance",
         "cobro": "Encaissement",
         "cobroValor": {
           "prepaid": "D’avance · activée au paiement",
@@ -16244,6 +16382,88 @@
         }
       }
     },
+    "importar": {
+      "boton": "Importer un CSV",
+      "tituloClases": "Importer des cours",
+      "tituloReservas": "Importer des réservations",
+      "descripcionClases": "Téléversez un CSV avec les cours. La date et l’heure sont lues dans le fuseau {zona}. {max} lignes maximum.",
+      "descripcionReservas": "Téléversez un CSV avec les réservations. L’adhérent est retrouvé par pièce d’identité ou e-mail et le cours par nom, date et heure ({zona}). {max} lignes maximum.",
+      "plantilla": "Télécharger le modèle",
+      "reglaTodoONada": "L’import est tout ou rien : si une ligne contient des erreurs, rien n’est enregistré. Corrigez le fichier et téléversez-le à nouveau.",
+      "archivo": {
+        "etiqueta": "Choisissez ou déposez un fichier CSV",
+        "ayuda": "CSV séparé par des virgules ou des points-virgules, 2 Mo maximum",
+        "otro": "Cliquez ou déposez un autre fichier pour le remplacer"
+      },
+      "validando": "Vérification avec les données de l’organisation…",
+      "resumen": "{total, plural, one {# ligne} other {# lignes}} · {validas} prêtes · {conError} avec erreurs",
+      "ignoradas": "Colonnes non utilisées : {columnas}.",
+      "tabla": {
+        "etiqueta": "Aperçu de l’import",
+        "etiquetaFila": "Ligne {n}",
+        "fila": "Ligne",
+        "clase": "Cours",
+        "reserva": "Adhérent et cours",
+        "cuando": "Date et heure",
+        "estado": "Statut",
+        "errores": "Erreurs"
+      },
+      "estados": {
+        "lista": "Prête",
+        "conErrores": "Avec erreurs"
+      },
+      "importarN": "{n, plural, =0 {Importer} one {Importer # ligne} other {Importer # lignes}}",
+      "importando": "Import en cours…",
+      "motivoDeshabilitado": "Corrigez les lignes en erreur pour importer.",
+      "cancelar": "Annuler",
+      "toasts": {
+        "importadas": "{n, plural, one {# ligne importée} other {# lignes importées}}",
+        "cambios": "Les données ont changé depuis l’aperçu : vérifiez les erreurs et réessayez."
+      },
+      "erroresArchivo": {
+        "formato": "Le fichier doit être un .csv.",
+        "tamano": "Le fichier dépasse 2 Mo.",
+        "lectura": "Impossible de lire le fichier. Enregistrez-le en CSV et réessayez.",
+        "sin_cabecera": "Le fichier est vide.",
+        "faltan_columnas": "Colonnes obligatoires manquantes : {columnas}. Téléchargez le modèle pour voir le format.",
+        "sin_filas": "Le fichier ne contient aucune ligne de données.",
+        "demasiadas_filas": "Le fichier contient {n} lignes et la limite est {max}. Divisez-le en plusieurs fichiers.",
+        "validar": "Impossible de vérifier le fichier. Réessayez."
+      },
+      "errores": {
+        "titulo_requerido": "Le titre est manquant.",
+        "titulo_muy_largo": "Le titre dépasse 200 caractères.",
+        "instructor_requerido": "L’e-mail du moniteur est manquant.",
+        "correo_invalido": "L’e-mail n’est pas valide.",
+        "fecha_requerida": "La date est manquante.",
+        "fecha_invalida": "Date non valide : utilisez AAAA-MM-JJ ou JJ/MM/AAAA.",
+        "hora_requerida": "L’heure est manquante.",
+        "hora_invalida": "Heure non valide : utilisez HH:MM (par exemple 07:00 ou 6:30 pm).",
+        "duracion_invalida": "La durée doit être comprise entre 5 et 480 minutes.",
+        "capacidad_invalida": "La capacité doit être comprise entre 1 et 1000.",
+        "nivel_invalido": "Niveau non valide : débutant, intermédiaire, avancé ou tous niveaux.",
+        "estado_invalido": "Statut non valide.",
+        "origen_invalido": "Origine non valide : accueil, app, web ou borne.",
+        "miembro_requerido": "La pièce d’identité ou l’e-mail de l’adhérent est manquant.",
+        "clase_requerida": "Le nom du cours est manquant.",
+        "duplicada_en_archivo": "Ligne en double dans le fichier.",
+        "sede_requerida": "Le site est manquant : l’organisation en a plusieurs.",
+        "sede_no_encontrada": "Site introuvable.",
+        "sede_ambigua": "Plusieurs sites portent ce nom : utilisez le code ou l’identifiant.",
+        "sede_sin_acceso": "Vous n’avez pas accès au site de ce cours.",
+        "instructor_no_encontrado": "Aucun membre actif de l’organisation n’a cet e-mail.",
+        "clase_ya_existe": "Un cours avec ce titre existe déjà sur ce site à cette date et heure.",
+        "miembro_no_encontrado": "Adhérent introuvable.",
+        "miembro_ambiguo": "Plusieurs clients partagent cette pièce d’identité ou cet e-mail.",
+        "miembro_no_coincide": "La pièce d’identité et l’e-mail correspondent à des personnes différentes.",
+        "clase_no_encontrada": "Aucun cours de ce nom à cette date et heure.",
+        "clase_ambigua": "Plusieurs cours portent ce nom à cette heure : indiquez le site.",
+        "clase_cancelada": "Le cours est annulé.",
+        "clase_no_programada": "Le cours n’est plus programmé : utilisez présent ou absent.",
+        "clase_sin_cupo": "Le cours n’a plus de place pour cette réservation.",
+        "reserva_ya_existe": "Cet adhérent a déjà une réservation pour ce cours."
+      }
+    },
     "reservas": {
       "cabecera": {
         "titulo": "Réservations",
@@ -16332,7 +16552,8 @@
         "cancelada": "Réservation annulée",
         "duplicada": "Réservation créée pour l’autre cours",
         "entrada": "Entrée enregistrée",
-        "entradaRechazada": "Entrée refusée : {motivo}"
+        "entradaRechazada": "Entrée refusée : {motivo}",
+        "entradaRepetida": "L’entrée était déjà enregistrée pour cette réservation"
       },
       "cancelar": {
         "titulo": "Annuler la réservation",
@@ -18189,6 +18410,27 @@
       "sinPrecio": "« {producto} » n’a pas de prix en vigueur. Configurez-le dans Inventaire.",
       "precioNoConsultado": "Impossible de vérifier le prix de « {producto} ». Vérifiez la connexion et réessayez.",
       "errorAgregar": "Impossible d’ajouter « {producto} » au panier."
+    },
+    "etiqueta": {
+      "invalida": "Étiquette de poids illisible",
+      "invalidaDescripcion": "La clé de contrôle de {codigo} ne correspond pas. Scannez à nouveau ou pesez le produit.",
+      "invalidaValor": "La clé de contrôle du poids ou du prix de {codigo} ne correspond pas. Scannez à nouveau ou pesez le produit.",
+      "pluInexistente": "Aucun produit avec le PLU {plu}",
+      "productoPorUnidad": "Le PLU {plu} appartient à un produit vendu à l’unité",
+      "sinPrecio": "{producto} n’a pas de prix en vigueur",
+      "pesoInvalido": "Le poids de l’étiquette n’est pas valide",
+      "bajoMinimo": "L’étiquette est sous la vente minimale ({minimo})",
+      "codigoLeido": "Code lu : {codigo}. Rien n’a été ajouté.",
+      "importeDifiere": "Le montant de l’étiquette ne correspond pas",
+      "importeDifiereDescripcion": "Étiquette : {etiqueta}. Au prix en vigueur : {calculado}. Le prix en vigueur est facturé."
+    },
+    "mesa": {
+      "porUnidad": "Au {unidad}",
+      "cambiarPeso": "Modifier le poids de {producto}",
+      "precioPor": "{precio} / {unidad}",
+      "cantidad": "Quantité ({unidad})",
+      "cantidadInvalida": "Saisissez une quantité supérieure à 0 avec {decimales} décimales au plus.",
+      "transferenciaParcial": "{cantidad} sur {total} seront transférés"
     }
   },
   "inventarioStock": {
@@ -21331,5 +21573,308 @@
     "errorIgualActual": "Le nouveau mot de passe doit être différent de l’actuel.",
     "errorDemasiadas": "Trop de tentatives d’affilée. Patientez quelques minutes et réessayez.",
     "errorInesperado": "Nous n’avons pas pu changer le mot de passe. Réessayez dans un instant."
+  },
+  "posEtiquetasPeso": {
+    "titulo": "Étiquettes à poids variable",
+    "descripcion": "Codes EAN-13 imprimés par les balances étiqueteuses (préfixes GS1 à usage interne 21–29).",
+    "cargando": "Chargement du format d’étiquettes",
+    "errorCargar": "Impossible de charger le format d’étiquettes.",
+    "reintentar": "Réessayer",
+    "sinPermiso": "Seules les personnes ayant l’autorisation « Configurer les balances » peuvent modifier ce format.",
+    "activo": "Lire les étiquettes de balance au POS",
+    "activoAyuda": "Le scanner reconnaît le code et ajoute la ligne avec le poids de l’étiquette.",
+    "prefijo": "Préfixe",
+    "prefijoAyuda": "Pas {prefijo} : le générateur de codes l’utilise",
+    "contenido": "L’étiquette contient",
+    "contenidoPeso": "Poids (grammes)",
+    "contenidoPrecio": "Prix",
+    "contenidoAyuda": "Ou le prix : le POS calcule le poids",
+    "digitosPlu": "Chiffres du PLU",
+    "digitosValor": "Chiffres de la valeur",
+    "digitosValorAyuda": "Poids : grammes · prix : unités monétaires",
+    "digitoControl": "Clé de contrôle de la valeur",
+    "digitoControlAyuda": "Certaines balances ajoutent une clé de contrôle au poids ou au prix.",
+    "probar": "Tester un code",
+    "prueba": {
+      "noEsEtiqueta": "Ce n’est pas une étiquette de ce format (EAN-13 avec le préfixe configuré).",
+      "digitoControl": "La clé de contrôle du code ne correspond pas.",
+      "digitoValor": "La clé de contrôle de la valeur ne correspond pas.",
+      "plu": "PLU {plu}",
+      "gramos": "{valor} g",
+      "pluInexistente": "{detalle} → aucun produit avec le PLU {plu}",
+      "productoPorUnidad": "{detalle} → {producto} se vend à l’unité"
+    },
+    "avisoPrefijo": "{n, plural, one {# produit a} other {# produits ont}} un code-barres propre commençant par {prefijo} : le POS cherche d’abord le code exact, ils restent donc lisibles.",
+    "avisoPluFuera": "{n, plural, one {# produit a} other {# produits ont}} un PLU qui ne tient pas en {digitos} chiffres.",
+    "guardado": "Format d’étiquettes enregistré",
+    "guardar": "Enregistrer le format",
+    "cancelar": "Annuler",
+    "exportar": "Exporter les PLU",
+    "exportarVacio": "Aucun produit n’a de PLU de balance.",
+    "exportado": "{n, plural, one {# PLU exporté} other {# PLU exportés}}",
+    "csv": {
+      "plu": "PLU",
+      "nombre": "Nom",
+      "precio": "Prix au kg",
+      "tara": "Tare",
+      "diasVida": "Durée de vie (jours)"
+    },
+    "errores": {
+      "prefijo_del_generador": "Le générateur de codes utilise le préfixe {prefijo} : choisissez-en un autre.",
+      "prefijo_peso_invalido": "Les préfixes de poids vont de 21 à 29.",
+      "prefijos_requeridos": "Saisissez au moins un préfixe.",
+      "formato_invalido": "Préfixe + PLU + valeur doivent totaliser 12 chiffres.",
+      "sin_permiso": "Vous n’avez pas l’autorisation de configurer les balances et les étiquettes de poids.",
+      "generico": "L’opération n’a pas pu aboutir. Réessayez."
+    }
+  },
+  "posPesosManuales": {
+    "enlace": "Poids manuels",
+    "titulo": "Poids manuels",
+    "subtitulo": "Ventes au poids avec le poids saisi à la main, par jour et par caissier",
+    "volver": "Retour aux rapports",
+    "actualizar": "Actualiser",
+    "cargando": "Chargement…",
+    "reintentar": "Réessayer",
+    "filtros": {
+      "desde": "Du",
+      "hasta": "Au"
+    },
+    "kpis": {
+      "lineas": "Lignes pesées à la main",
+      "cantidad": "Poids total",
+      "importe": "Montant",
+      "cajeros": "{count, plural, =0 {Aucun caissier} one {# caissier} other {# caissiers}}"
+    },
+    "tabla": {
+      "titulo": "Poids manuels par jour et par caissier",
+      "dia": "Jour",
+      "cajero": "Caissier",
+      "lineas": "Lignes",
+      "cantidad": "Poids",
+      "importe": "Montant",
+      "autorizadas": "Avec superviseur",
+      "sinCajero": "Sans caissier"
+    },
+    "vacio": {
+      "titulo": "Aucun poids manuel",
+      "descripcion": "Personne n’a saisi de poids à la main sur cette période."
+    },
+    "sinPermiso": {
+      "titulo": "Pas d’autorisation",
+      "descripcion": "Il faut « Rapports de ventes » ou « Configurer les balances » pour voir ce rapport."
+    },
+    "error": {
+      "titulo": "Impossible de charger le rapport",
+      "descripcion": "Vérifiez la connexion et réessayez.",
+      "rango": "Choisissez une période d’un an au plus, avec « Du » avant « Au »."
+    }
+  },
+  "posBascula": {
+    "lectura": {
+      "grupo": "Lecture de la balance",
+      "estado": {
+        "conectando": "Connexion",
+        "estable": "Stable",
+        "inestable": "Instable",
+        "fueraDeRango": "Hors plage",
+        "error": "Pas de lecture",
+        "manual": "Poids saisi"
+      },
+      "conectando": "Connexion à {bascula}…",
+      "basculaDe": "balance {nombre}",
+      "bruto": "Brut {valor}",
+      "tara": "Tare {valor}",
+      "bajoCero": "Poids négatif. Faites le zéro sans rien sur la balance.",
+      "sobrecarga": "Surcharge (max. {capacidad}).",
+      "sobrecargaSinCapacidad": "Surcharge : retirez du poids de la balance.",
+      "motivoAgregar": "Ajout possible avec une lecture stable et dans la plage.",
+      "motivos": {
+        "inestable": "En attente d’une lecture stable…",
+        "bajo_minimo": "La vente minimale est de {minimo}.",
+        "sin_tara": "Ce produit exige une tare : posez le plateau et touchez Tare.",
+        "sin_peso": "Posez le produit sur la balance."
+      },
+      "errores": {
+        "sin_lectura": "La balance n’envoie plus de lectures depuis 3 s. Vérifiez qu’elle est allumée et branchée.",
+        "sin_puerto": "Le port de la balance est introuvable sur cet appareil.",
+        "puerto_ocupado": "Un autre programme utilise le port de la balance.",
+        "permiso": "Cet appareil n’a pas autorisé l’ouverture du port.",
+        "io": "La connexion avec la balance a été perdue.",
+        "no_soportado": "Cet appareil ne peut pas lire cette balance (Go Admin Desktop ou Chrome/Edge requis).",
+        "no_disponible": "Le module des ports série n’est pas disponible dans ce Go Admin Desktop. Réinstallez-le.",
+        "protocolo_pendiente": "Le protocole de cette balance n’est pas encore disponible.",
+        "unidad": "La balance pèse dans une unité non convertible vers celle du produit."
+      },
+      "acciones": {
+        "cero": "Zéro",
+        "tara": "Tare",
+        "quitarTara": "Retirer la tare",
+        "taraProducto": "Tare du produit {valor}",
+        "conectar": "Connecter la balance",
+        "reintentar": "Réessayer",
+        "pesarAMano": "Poids à la main",
+        "usarBascula": "Utiliser la balance"
+      },
+      "atajos": {
+        "agregar": "Ajouter la pesée stable"
+      },
+      "auto": {
+        "esperando": "En attente d’un poids stable… ajout automatique · Échap annule",
+        "pesoNuevo": "La balance a encore la pesée précédente : retirez-la ou posez le produit."
+      }
+    },
+    "config": {
+      "titulo": "Balances",
+      "descripcion": "Balances du PDV par succursale : port, protocole et test de lecture.",
+      "nueva": "Nouvelle balance",
+      "cargando": "Chargement des balances…",
+      "error": {
+        "titulo": "Impossible de charger les balances",
+        "descripcion": "Vérifiez la connexion et réessayez."
+      },
+      "sinPermiso": {
+        "titulo": "Vous ne pouvez pas configurer les balances",
+        "descripcion": "Il faut l’autorisation « Configurer les balances et les étiquettes de poids ». Demandez-la à un administrateur."
+      },
+      "vacio": {
+        "titulo": "Aucune balance pour l’instant",
+        "descripcion": "Branchez une balance en USB ou port série pour peser au PDV sans saisir le poids."
+      },
+      "protocolos": {
+        "continuous_st_gs": "Continu ST,GS (A&D, CAS, génériques)",
+        "toledo_8217": "Mettler Toledo 8217",
+        "mettler_sics": "Mettler SICS",
+        "cas_pd2": "CAS PD-II",
+        "dibal": "Dibal (en attente)",
+        "custom_regex": "Personnalisé (expression régulière)"
+      },
+      "transportes": {
+        "desktop_serial": "Go Admin Desktop",
+        "web_serial": "Navigateur (Web Serial)"
+      },
+      "caja": "Caisse {caja}",
+      "estados": {
+        "archivada": "Archivée",
+        "probada": "Testée",
+        "fallo": "Test échoué",
+        "sinProbar": "Non testée"
+      },
+      "enEsteEquipo": "Sur cet appareil",
+      "ultimaPrueba": "Dernier test {fecha}",
+      "usarEnEsteEquipo": "Utiliser sur cet appareil",
+      "editar": "Modifier",
+      "editarNombre": "Modifier {nombre}",
+      "archivar": "Archiver",
+      "archivarNombre": "Archiver {nombre}",
+      "reactivar": "Réactiver",
+      "paridad": {
+        "none": "Aucune",
+        "even": "Paire",
+        "odd": "Impaire"
+      },
+      "errores": {
+        "sin_permiso": "Vous n’avez pas l’autorisation de configurer les balances.",
+        "bascula_no_encontrada": "La balance n’existe plus.",
+        "sucursal_invalida": "Choisissez une succursale de l’organisation.",
+        "transporte_no_disponible": "Cette connexion n’est pas encore disponible.",
+        "equipo_invalido": "L’appareil n’appartient pas à l’organisation.",
+        "caja_invalida": "La caisse n’appartient pas à cette succursale.",
+        "unidad_invalida": "L’unité doit être une unité de poids (kg ou lb).",
+        "nombre_duplicado": "Une balance active porte déjà ce nom dans la succursale.",
+        "datos_invalidos": "Certaines données sont invalides : vérifiez les paramètres.",
+        "generico": "Enregistrement impossible. Réessayez."
+      },
+      "toasts": {
+        "creada": "Balance « {nombre} » créée.",
+        "actualizada": "Balance « {nombre} » mise à jour.",
+        "archivada": "Balance « {nombre} » archivée.",
+        "reactivada": "Balance « {nombre} » réactivée.",
+        "enEsteEquipo": "Le PDV de cet appareil utilisera « {nombre} »."
+      },
+      "confirmarArchivar": {
+        "titulo": "Archiver « {nombre} » ?",
+        "texto": "Le PDV cesse de l’utiliser. Les ventes passées conservent leur trace et elle peut être réactivée.",
+        "accion": "Archiver"
+      },
+      "form": {
+        "tituloNueva": "Nouvelle balance",
+        "tituloEditar": "Modifier « {nombre} »",
+        "descripcion": "Comment la balance se connecte et communique. Testez la lecture avant d’enregistrer.",
+        "cancelar": "Annuler",
+        "guardar": "Enregistrer",
+        "crear": "Créer la balance",
+        "nombre": "Nom",
+        "nombreAyuda": "Comme le caissier la reconnaît : « Comptoir boucherie ».",
+        "sucursal": "Succursale",
+        "elegirSucursal": "Choisissez une succursale",
+        "caja": "Caisse",
+        "cajaAyuda": "Si la succursale a plusieurs caisses, la balance ne sert qu’à celle-ci.",
+        "cajaCualquiera": "N’importe quelle caisse de la succursale",
+        "transporte": "Connexion",
+        "webSerialEnDesktop": "Dans Go Admin Desktop, utilisez la connexion « Go Admin Desktop ». Web Serial sert pour Chrome ou Edge sans Desktop.",
+        "webSerialNoSoportado": "Ce navigateur n’a pas Web Serial. Il fonctionne dans Chrome ou Edge sur ordinateur ; pas dans Safari, Firefox, iPad ni les téléphones.",
+        "desktopNoDisponible": "Cet appareil n’a pas Go Admin Desktop avec balances. Saisissez le port (COM3) et testez la lecture depuis l’ordinateur de la balance.",
+        "puerto": "Port",
+        "puertoAyudaDesktop": "Le port série ou USB où la balance est branchée sur cet appareil.",
+        "actualizarPuertos": "Actualiser",
+        "elegirPuerto": "Choisissez un port",
+        "puertoAyudaWeb": "Le navigateur le demande une fois et s’en souvient sur cet ordinateur.",
+        "elegirPuertoWeb": "Choisir le port",
+        "puertoElegido": "Port choisi : {pista}",
+        "sinPuertoElegido": "Aucun port choisi",
+        "errorListarPuertos": "Impossible de lister les ports de cet appareil.",
+        "errorElegirPuerto": "Le navigateur n’a pas permis de choisir le port.",
+        "protocolo": "Protocole",
+        "protocoloPendiente": "Dibal n’est pas encore interprété : le test affiche les octets bruts. En attendant, utilisez « Personnalisé ».",
+        "patron": "Expression régulière",
+        "patronAyuda": "Expression JavaScript avec les groupes nommés « peso » (obligatoire), « signo », « estado » et « unidad ».",
+        "parametros": "Paramètres du port",
+        "baudios": "Bauds",
+        "bitsDatos": "Bits de données",
+        "paridad": "Parité",
+        "bitsParada": "Bits d’arrêt",
+        "lectura": "Lecture",
+        "unidad": "Unité",
+        "decimales": "Décimales",
+        "capacidad": "Capacité",
+        "division": "Échelon",
+        "divisionAyuda": "Le plus petit de la balance ; c’est la tolérance de stabilité.",
+        "estabilidad": "Stable après",
+        "estabilidadAyuda": "Durée avec la même lecture avant de pouvoir ajouter.",
+        "errores": {
+          "nombreVacio": "Saisissez un nom.",
+          "nombreLargo": "80 caractères maximum.",
+          "sucursal": "Choisissez la succursale.",
+          "puertoDesktop": "Choisissez ou saisissez le port.",
+          "patron_vacio": "Saisissez l’expression.",
+          "patron_invalido": "L’expression n’est pas valide.",
+          "patron_sin_grupo_peso": "Il manque le groupe nommé « peso ».",
+          "positivo": "Doit être supérieur à 0.",
+          "estableMs": "Entre 0 et 5000 ms.",
+          "decimales": "Entre 0 et 4."
+        }
+      },
+      "prueba": {
+        "titulo": "Tester la lecture",
+        "iniciar": "Tester la lecture",
+        "detener": "Arrêter",
+        "ayuda": "Posez quelque chose sur la balance et touchez « Tester la lecture ».",
+        "esperando": "En attente des données de la balance…",
+        "ok": "Lecture reconnue : {peso} · {estado}",
+        "estable": "stable",
+        "inestable": "instable",
+        "noReconocida": "Des données arrivent, mais elles ne sont pas reconnues avec {protocolo}.",
+        "sugerencia": "Compris par : {protocolos}.",
+        "usarSugerido": "Utiliser {protocolo}",
+        "crudos": "Octets reçus ({cantidad})",
+        "sinBytes": "Aucun octet n’arrive. Vérifiez le câble, le port et les bauds."
+      }
+    },
+    "venta": {
+      "agregado": "Ajouté : {cantidad} · {producto} · {importe}",
+      "deshacer": "Annuler",
+      "pesadaCancelada": "La pesée de « {producto} » a été annulée : elle n’était pas confirmée."
+    }
   }
 }

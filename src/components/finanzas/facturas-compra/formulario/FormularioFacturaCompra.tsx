@@ -70,6 +70,13 @@ import { clienteCompras, ErrorPeticionCompra } from '@/lib/services/compras/clie
 import { leerDetalleFacturaCompra, type DetalleFacturaCompra } from '@/lib/services/compras/lecturasCompras';
 import type { GuardarFacturaCompra } from '@/lib/services/compras/contrato';
 import { impuestosOrganizacion, type ImpuestoDocumento, type ProductoParaDocumento } from '@/lib/services/documentos/edicionDocumento';
+import {
+  COLUMNAS_CANTIDAD_PRODUCTO,
+  cantidadInicialLinea,
+  cantidadLineaDeProducto,
+  redondearCantidadLinea,
+} from '@/lib/services/documentos/cantidadLinea';
+import type { ProductoModoVenta } from '@/lib/pos/peso/modoVenta';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { useBaseCompras } from '../rutasCompras';
 import { DialogoConfirmarCompra, type RecepcionConLotes } from '../detalle/DialogosCompra';
@@ -92,6 +99,9 @@ interface LineaForm {
   manual?: boolean;
   /** Desde una orden: lo pedido, para avisar la diferencia con lo recibido. */
   pedido?: number | null;
+  /** Producto por peso o medida: símbolo de la unidad («kg») y decimales de la cantidad (`cantidadLinea.ts`). */
+  unidad?: string | null;
+  decimalesCantidad?: number | null;
 }
 
 interface RetencionForm {
@@ -246,6 +256,8 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
             note: l.note,
             track_serial: l.serial_numbers.length > 0,
             manual: !l.product_id,
+            unidad: l.unidad,
+            decimalesCantidad: l.decimalesCantidad,
           })),
         );
         setRetenciones(f.retenciones.map((r) => ({ key: r.id, concept: r.concept, base: r.base, rate: r.rate, tax_code: r.tax_code })));
@@ -272,7 +284,7 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     (async () => {
       const { data: oc } = await supabase
         .from('purchase_orders')
-        .select('id, branch_id, supplier:suppliers(id, name, nit, phone, credit_days), items:purchase_order_items(product_id, quantity, received_quantity, unit_cost, product:products(name, sku, track_serial), serials_received)')
+        .select(`id, branch_id, supplier:suppliers(id, name, nit, phone, credit_days), items:purchase_order_items(product_id, quantity, received_quantity, unit_cost, product:products(name, sku, track_serial, ${COLUMNAS_CANTIDAD_PRODUCTO}), serials_received)`)
         .eq('uuid', ordenUuid)
         .eq('organization_id', getOrganizationId())
         .maybeSingle();
@@ -281,7 +293,14 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
         id: number;
         branch_id: number;
         supplier: { id: number; name: string; nit: string | null; phone: string | null; credit_days: number | null } | null;
-        items: Array<{ product_id: number; quantity: number | null; received_quantity: number; unit_cost: number; serials_received: string[] | null; product: { name: string; sku: string | null; track_serial: boolean | null } | null }>;
+        items: Array<{
+          product_id: number;
+          quantity: number | null;
+          received_quantity: number;
+          unit_cost: number;
+          serials_received: string[] | null;
+          product: ({ name: string; sku: string | null; track_serial: boolean | null } & ProductoModoVenta) | null;
+        }>;
       };
       setPoId(o.id);
       setSucursal(o.branch_id);
@@ -307,6 +326,7 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
             note: null,
             track_serial: false,
             pedido: i.quantity === null || i.quantity === undefined ? null : Number(i.quantity),
+            ...cantidadLineaDeProducto(i.product),
           })),
       );
     })()
@@ -344,7 +364,8 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
         product_id: p.id,
         description: p.nombre,
         sku: p.sku ?? null,
-        qty: 1,
+        // Por peso o medida nace vacía (0) para escribir el peso: ver `cantidadInicialLinea`.
+        qty: cantidadInicialLinea(p),
         unit_price: Number(p.precio) || 0,
         discount_amount: 0,
         tax_rate: imp ? Number(imp.tarifa) || 0 : 0,
@@ -352,6 +373,8 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
         serial_numbers: [],
         note: null,
         track_serial: p.serial === true,
+        unidad: p.unidadVenta,
+        decimalesCantidad: p.decimalesCantidad,
       },
     ]);
     setErrores((e) => ({ ...e, lineas: '' }));
@@ -376,6 +399,8 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
       nota: l.note,
       seriales: l.serial_numbers,
       cantidad: l.qty,
+      unidad: l.unidad ?? null,
+      decimalesCantidad: l.decimalesCantidad ?? null,
       precioUnitario: l.unit_price,
       descuento: l.discount_amount || null,
       total: k.total_line,
@@ -435,7 +460,8 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     lines: lineas.map((l) => ({
       product_id: l.product_id,
       description: l.description.trim(),
-      qty: l.qty,
+      // Peso o medida: a los decimales del producto (`invoice_items.qty` es numeric(12,3)).
+      qty: redondearCantidadLinea(l.qty, { decimalesCantidad: l.decimalesCantidad ?? null }),
       unit_price: l.unit_price,
       discount_amount: l.discount_amount,
       tax_rate: l.tax_rate,
@@ -1142,6 +1168,8 @@ function VistaCompraNoEditable({ factura, base }: { factura: DetalleFacturaCompr
             nota: l.note,
             seriales: l.serial_numbers,
             cantidad: l.qty,
+            unidad: l.unidad,
+            decimalesCantidad: l.decimalesCantidad,
             precioUnitario: l.unit_price,
             descuento: l.discount_amount || null,
             impuestos: l.tax_rate > 0 ? [{ nombre: tf('iva'), tarifa: l.tax_rate, incluido: factura.tax_included }] : [],

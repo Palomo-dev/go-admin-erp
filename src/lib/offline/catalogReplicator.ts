@@ -152,7 +152,9 @@ class StoreWriter<S extends CatalogStoreName> {
 const PRODUCT_COLUMNS =
   'id, organization_id, uuid, sku, name, description, barcode, status, category_id, unit_code, parent_product_id, is_parent, variant_data, track_stock, track_serial, tag_id, station, product_type, service_type, production_type, is_composite, brand, reference, warranty_months, created_at, updated_at, '
   // Cómo se vende (productos por peso o medida): el POS sin conexión pesa y valida igual.
-  + 'sale_mode, qty_decimals, price_ref_qty, price_ref_unit_code, min_sale_qty, default_tare_qty, tare_required, require_scale';
+  + 'sale_mode, qty_decimals, price_ref_qty, price_ref_unit_code, min_sale_qty, default_tare_qty, tare_required, require_scale, '
+  // PLU de balanza: la etiqueta de peso variable se resuelve también sin conexión (índice by_org_scale_plu).
+  + 'scale_plu';
 
 const CUSTOMER_COLUMNS =
   'id, organization_id, branch_id, first_name, last_name, full_name, email, phone, doc_type, doc_number, identification_type, identification_number, company_name, trade_name, address, city, customer_type, avatar_url, roles, tags, preferences, fiscal_municipality_id, created_at, updated_at';

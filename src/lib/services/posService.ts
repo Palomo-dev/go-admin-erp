@@ -743,6 +743,28 @@ export class POSService {
     }
   }
 
+  /**
+   * Producto activo por su PLU de balanza (`products.scale_plu`, único por
+   * organización): lo usa la etiqueta de peso variable cuando el código exacto
+   * no existe (PRODUCTOS-POR-PESO-BASCULA.md §2.7). Sin red en el escritorio,
+   * el índice local `by_org_scale_plu` de la réplica.
+   */
+  static async getProductByScalePlu(plu: number): Promise<Product | null> {
+    if (!Number.isInteger(plu) || plu < 1) return null;
+    if (this.usesLocalCatalog()) {
+      return (await posOfflineReads.getProductByScalePlu(this.organizationId, plu)) as unknown as Product | null;
+    }
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('organization_id', this.organizationId)
+      .eq('scale_plu', plu)
+      .eq('status', 'active')
+      .maybeSingle();
+    if (error) throw error;
+    return (data as Product | null) ?? null;
+  }
+
   // getProductById is implemented later with proper price and tax integration
 
   // ===============================
@@ -1642,6 +1664,8 @@ export class POSService {
             category_id: i.product?.category_id,
             quantity: i.quantity,
             unit_price: i.unit_price,
+            // «Lleve X pague Y» no aplica a productos por peso o medida.
+            sale_mode: i.product?.sale_mode,
           })),
           organization_id: cart.organization_id,
           branch_id: cart.branch_id,
@@ -1649,9 +1673,15 @@ export class POSService {
         });
 
         if (promoResult.discountTotal > 0) {
-          for (const item of cart.items) {
+          for (let idx = 0; idx < cart.items.length; idx += 1) {
+            const item = cart.items[idx];
             if (!item.discount_amount || item.discount_amount === 0) {
-              const promoDiscount = promoResult.itemDiscounts[item.product_id] || 0;
+              // Líneas por peso o medida: el descuento de ESA línea (cada pesada
+              // es una línea del mismo producto; el reparto por producto le
+              // daba a cada una el de todas). Las demás, como siempre.
+              const promoDiscount = (esMedido(item.product)
+                ? promoResult.lineDiscounts?.[idx]
+                : promoResult.itemDiscounts[item.product_id]) || 0;
               if (promoDiscount > 0) {
                 item.discount_amount = promoDiscount;
               }
@@ -2188,6 +2218,8 @@ export class POSService {
           category_id: i.product?.category_id,
           quantity: i.quantity,
           unit_price: i.unit_price,
+          // «Lleve X pague Y» no aplica a productos por peso o medida.
+          sale_mode: i.product?.sale_mode,
         })),
         organization_id: cart.organization_id,
         branch_id: cart.branch_id,
@@ -2195,9 +2227,13 @@ export class POSService {
       });
 
       if (promoResult.discountTotal > 0) {
-        for (const item of cart.items) {
+        for (let idx = 0; idx < cart.items.length; idx += 1) {
+          const item = cart.items[idx];
           if (!item.discount_amount || item.discount_amount === 0) {
-            const promoDiscount = promoResult.itemDiscounts[item.product_id] || 0;
+            // Líneas por peso o medida: el descuento de ESA línea (ver checkout).
+            const promoDiscount = (esMedido(item.product)
+              ? promoResult.lineDiscounts?.[idx]
+              : promoResult.itemDiscounts[item.product_id]) || 0;
             if (promoDiscount > 0) {
               item.discount_amount = promoDiscount;
             }

@@ -137,6 +137,22 @@ try {
     onStatus: (handler: (status: unknown) => void) => subscribe('pos-display:status', handler),
   },
 
+  // Báscula del POS (main/scale): el proceso principal abre el puerto serie y
+  // entrega bytes crudos; el protocolo lo interpreta la web. Solo atiende a
+  // la web interna (verificación de origen en main/scale/scaleIpc.ts).
+  scale: {
+    listPorts: () => ipcRenderer.invoke('scale:list-ports'),
+    open: (config: unknown) => ipcRenderer.invoke('scale:open', config),
+    close: () => ipcRenderer.invoke('scale:close'),
+    status: () => ipcRenderer.invoke('scale:status'),
+    /** Comandos de protocolos por petición (Toledo «W», SICS «SI», CAS ENQ); máximo 64 bytes. */
+    write: (bytes: Uint8Array) => ipcRenderer.invoke('scale:write', bytes),
+    /** Bytes crudos (Uint8Array). Devuelve la baja. */
+    onData: (handler: (chunk: unknown) => void) => subscribe('scale:data', handler),
+    /** `{ scaleId, status, error?, bytesPerSecond? }` en cada cambio. Devuelve la baja. */
+    onState: (handler: (state: unknown) => void) => subscribe('scale:state', handler),
+  },
+
   // Versión y actualizaciones
   version: () => ipcRenderer.invoke('app:version'),
   updateState: () => ipcRenderer.invoke('update:state'),

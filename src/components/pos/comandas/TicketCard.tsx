@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Clock, CheckCircle, ChefHat, AlertCircle, User, Check, Hash, Printer, Loader2, AlertTriangle, RefreshCcw, Flame, StickyNote } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import type { KitchenTicket, KitchenTicketItem, StationFilter } from '@/lib/services/kitchenService';
+import { esMedido, formatoCantidad, type ProductoModoVenta } from '@/lib/pos/peso/modoVenta';
 
 interface TicketCardProps {
   ticket: KitchenTicket;
@@ -34,6 +35,22 @@ export function alergiaPendiente(ticket: Pick<KitchenTicket, 'has_allergy' | 'al
 export function cantidadComanda(item: Pick<KitchenTicketItem, 'product_name' | 'quantity' | 'sale_items'>): number {
   if (item.product_name) return Number(item.quantity ?? 1);
   return Number(item.sale_items?.quantity ?? item.quantity ?? 1);
+}
+
+/**
+ * Texto de la cantidad en la comanda: «0,500 kg» en un producto por peso o
+ * medida (docs/design/PRODUCTOS-POR-PESO-BASCULA.md §2.6: «Las comandas
+ * muestran 0,500 kg») y «2x» en los demás, como siempre. La unidad sale del
+ * producto de la línea de la venta (mesas); una comanda del mostrador no la
+ * trae y se muestra con los decimales que tenga, en el idioma de la cocina.
+ */
+export function textoCantidadComanda(
+  cantidad: number,
+  producto: ProductoModoVenta | null | undefined,
+  locale = 'es-CO',
+): string {
+  if (esMedido(producto)) return formatoCantidad(cantidad, producto, locale);
+  return `${formatoCantidad(cantidad, null, locale)}x`;
 }
 
 // `label` es la clave en `posComandas.estados`, `estaciones` o `estadosItem`.
@@ -102,6 +119,7 @@ const getItemStatusInfo = (status: string | undefined) => {
 
 export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onReprint, onConfirmAllergy, stationFilter = 'all' }: TicketCardProps) {
   const t = useTranslations('posComandas');
+  const locale = useLocale();
   const { timezone } = useOrgTimezone();
   const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
   const [isReprinting, setIsReprinting] = useState(false);
@@ -367,7 +385,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                       </Badge>
                     )}
                     <span className={`font-semibold ${isCancelled ? 'text-red-700 dark:text-red-400 line-through' : isItemReady ? 'text-green-700 dark:text-green-400 line-through' : 'text-gray-900 dark:text-gray-100'}`}>
-                      {itemQuantity}x
+                      {textoCantidadComanda(itemQuantity, product as ProductoModoVenta | undefined, locale)}
                     </span>
                     <span className={`${isCancelled ? 'text-red-700 dark:text-red-400 line-through' : isItemReady ? 'text-green-700 dark:text-green-400 line-through' : 'text-gray-900 dark:text-gray-100'} break-words`}>
                       {productName}

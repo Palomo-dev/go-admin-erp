@@ -20,11 +20,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { MoveRight, AlertTriangle } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Tarjeta } from '@/components/kit';
 import { MesasService } from '../mesasService';
 import type { TableWithSession } from '../types';
 import type { SaleItem } from './types';
+import { textoCantidadParcialValido } from '@/components/kit/cartLineLogica';
+import { decimalesLinea, formatoCantidadLinea, leerCantidadLinea, validarTraslado } from './cantidadMesa';
+
+/** Cantidad inicial del campo: toda la línea, con coma decimal si la tiene. */
+function textoInicial(item: SaleItem | null): string {
+  return item ? String(Number(item.quantity)).replace('.', ',') : '1';
+}
 
 interface TransferItemDialogProps {
   open: boolean;
@@ -42,16 +49,24 @@ export function TransferItemDialog({
   onTransfer,
 }: TransferItemDialogProps) {
   const tAvisos = useTranslations('posMesas.avisos');
+  const tPeso = useTranslations('posPeso.mesa');
+  const locale = useLocale();
   const [mesas, setMesas] = useState<TableWithSession[]>([]);
   const [mesaDestino, setMesaDestino] = useState<string | null>(null);
-  const [cantidad, setCantidad] = useState(1);
+  // Texto del campo: una línea por peso admite decimales («0,250» de 0,735 kg).
+  const [texto, setTexto] = useState('1');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const decimales = decimalesLinea(item);
+  const cantidad = leerCantidadLinea(texto, decimales);
+  const disponible = Number(item?.quantity) || 0;
+  const errorCantidad = validarTraslado(cantidad, disponible, decimales);
+  const fmt = (n: number) => formatoCantidadLinea(n, item, locale);
 
   useEffect(() => {
     if (open) {
       cargarMesas();
       if (item) {
-        setCantidad(item.quantity);
+        setTexto(textoInicial(item));
       }
     }
   }, [open, item]);
@@ -70,14 +85,14 @@ export function TransferItemDialog({
   };
 
   const handleSubmit = async () => {
-    if (!item || !mesaDestino) return;
+    if (!item || !mesaDestino || cantidad === null || errorCantidad) return;
 
     setIsSubmitting(true);
     try {
       await onTransfer(item.id, mesaDestino, cantidad);
       onOpenChange(false);
       setMesaDestino(null);
-      setCantidad(1);
+      setTexto('1');
     } catch (error) {
       console.error('Error transfiriendo item:', error);
     } finally {
@@ -94,7 +109,7 @@ export function TransferItemDialog({
         onOpenChange(isOpen);
         if (!isOpen) {
           setMesaDestino(null);
-          setCantidad(1);
+          setTexto('1');
         }
       }}
     >
@@ -114,7 +129,7 @@ export function TransferItemDialog({
               {item.product?.name || 'Producto'}
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Cantidad disponible: {item.quantity}
+              Cantidad disponible: {fmt(disponible)}
             </p>
           </div>
 
@@ -123,16 +138,22 @@ export function TransferItemDialog({
             <Label htmlFor="cantidad">Cantidad a Transferir</Label>
             <Input
               id="cantidad"
-              type="number"
-              min="1"
-              max={item.quantity}
-              value={cantidad}
-              onChange={(e) => setCantidad(parseInt(e.target.value) || 1)}
+              type="text"
+              inputMode={decimales > 0 ? 'decimal' : 'numeric'}
+              autoComplete="off"
+              value={texto}
+              aria-invalid={texto !== '' && errorCantidad ? true : undefined}
+              onChange={(e) => {
+                if (textoCantidadParcialValido(e.target.value, decimales)) setTexto(e.target.value);
+              }}
             />
-            {cantidad > item.quantity && (
+            {errorCantidad === 'excede' && (
               <p className="text-sm text-red-600">
-                La cantidad no puede ser mayor a {item.quantity}
+                La cantidad no puede ser mayor a {fmt(disponible)}
               </p>
+            )}
+            {errorCantidad === 'invalida' && texto !== '' && (
+              <p className="text-sm text-red-600">{tPeso('cantidadInvalida', { decimales })}</p>
             )}
           </div>
 
@@ -164,11 +185,13 @@ export function TransferItemDialog({
           </div>
 
           {/* Advertencia si es transferencia parcial */}
-          {cantidad < item.quantity && (
+          {cantidad !== null && !errorCantidad && cantidad < disponible && (
             <Tarjeta
               tono="advertencia"
               icono={AlertTriangle}
-              titulo={tAvisos('transferenciaParcial', { cantidad, total: item.quantity })}
+              titulo={decimales > 0
+                ? tPeso('transferenciaParcial', { cantidad: fmt(cantidad), total: fmt(disponible) })
+                : tAvisos('transferenciaParcial', { cantidad, total: disponible })}
               descripcion={tAvisos('transferenciaParcialDescripcion')}
             />
           )}
@@ -186,8 +209,7 @@ export function TransferItemDialog({
             onClick={handleSubmit}
             disabled={
               !mesaDestino ||
-              cantidad < 1 ||
-              cantidad > item.quantity ||
+              !!errorCantidad ||
               isSubmitting
             }
           >

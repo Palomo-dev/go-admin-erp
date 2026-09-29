@@ -31,6 +31,7 @@ import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
 import { getStorageImageUrl } from '@/lib/utils/storageImageUrl';
 import { textoSinHtml } from '@/lib/utils/textoPlano';
 import { vigente } from './vigencia';
+import { COLUMNAS_CANTIDAD_PRODUCTO, cantidadLineaDeProducto } from './cantidadLinea';
 
 export { vigente };
 
@@ -62,6 +63,9 @@ export interface ProductoParaDocumento {
   minimoPedido: number | null;
   impuestos: ImpuestoDocumento[];
   imagen: string | null;
+  /** Producto por peso o medida: símbolo de la unidad («kg») y decimales de la cantidad; `null` por unidad. */
+  unidadVenta: string | null;
+  decimalesCantidad: number | null;
 }
 
 export interface CriteriosProductosDocumento {
@@ -120,6 +124,9 @@ type FilaProducto = {
   track_stock: boolean | null;
   track_serial: boolean | null;
   product_type?: string | null;
+  sale_mode?: string | null;
+  qty_decimals?: number | null;
+  unit_code?: string | null;
   product_prices: { price: number | string; effective_from: string | null; effective_to: string | null }[] | null;
   product_costs: { cost: number | string; effective_from: string | null; effective_to: string | null }[] | null;
   product_tax_relations: { organization_taxes: FilaImpuesto | FilaImpuesto[] | null }[] | null;
@@ -169,7 +176,7 @@ export async function buscarProductosDocumento(org: number, c: CriteriosProducto
 }
 
 const SELECT_PRODUCTO_DOCUMENTO =
-  'id, name, sku, barcode, description, product_type, track_stock, track_serial, product_prices(price, effective_from, effective_to), product_costs(cost, effective_from, effective_to), product_tax_relations(organization_taxes(id, name, rate, is_default, is_active, kind, tax_templates(code))), product_images(storage_path, is_primary, display_order)';
+  `id, name, sku, barcode, description, product_type, track_stock, track_serial, ${COLUMNAS_CANTIDAD_PRODUCTO}, product_prices(price, effective_from, effective_to), product_costs(cost, effective_from, effective_to), product_tax_relations(organization_taxes(id, name, rate, is_default, is_active, kind, tax_templates(code))), product_images(storage_path, is_primary, display_order)`;
 
 async function consultarProductos(org: number, f: { texto?: string; ids: number[] | null; limite: number; conPadres?: boolean }, senal?: AbortSignal): Promise<FilaProducto[]> {
   let q = supabase.from('products').select(SELECT_PRODUCTO_DOCUMENTO).eq('organization_id', org);
@@ -215,6 +222,7 @@ async function mapearProductos(
       .map((r) => (Array.isArray(r.organization_taxes) ? r.organization_taxes[0] : r.organization_taxes))
       .filter((f): f is FilaImpuesto => !!f && f.is_active !== false && !esRetencion(f))
       .map(aImpuesto);
+    const cantidad = cantidadLineaDeProducto(p);
     const imagen = [...(p.product_images ?? [])].sort((a, b) => Number(!!b.is_primary) - Number(!!a.is_primary) || (a.display_order ?? 0) - (b.display_order ?? 0))[0];
     return {
       id: p.id,
@@ -234,6 +242,8 @@ async function mapearProductos(
       minimoPedido: prov?.min ?? null,
       impuestos,
       imagen: imagen?.storage_path ? getStorageImageUrl(imagen.storage_path) || null : null,
+      unidadVenta: cantidad.unidad,
+      decimalesCantidad: cantidad.decimalesCantidad,
     };
   });
 }
@@ -454,6 +464,9 @@ export async function crearProductoRapido(
     minimoPedido: null,
     impuestos: impuestos.filter((i) => d.impuestos.includes(i.id)),
     imagen: null,
+    // El alta rápida crea productos por unidad (el modo por peso se elige en el formulario completo).
+    unidadVenta: null,
+    decimalesCantidad: null,
   };
 }
 

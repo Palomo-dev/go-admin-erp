@@ -1,29 +1,23 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
-import { useTranslations } from 'next-intl';
-import { toast } from 'sonner';
+import type { ReactNode } from 'react';
 import type { Cart, CartItem, CartItemModifier, Product } from '@/components/pos/types';
-import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { usePesajeContexto } from '@/lib/pos/peso/usePesajeContexto';
-import { ProductoSinPrecioError } from '@/lib/pos/precioVigente';
 import { POSService } from '@/lib/services/posService';
-import { DialogoPesar } from './DialogoPesar';
-
-interface EstadoPesar {
-  producto: Product;
-  precio: number;
-  modo: 'agregar' | 'cambiar';
-  itemId?: string;
-  cantidadInicial?: number;
-  modifiers?: CartItemModifier[];
-}
+import { usePesarConBascula } from './usePesarConBascula';
 
 /**
  * «Pesar» en la venta del POS: abrir para agregar un producto por peso o
  * medida (tarjeta, buscador o lector: todos pasan por la página) o para
  * cambiar el peso de una línea (chip «⚖ 0,735 kg», P). Cada pesada es una
  * línea nueva (`POSService.addItemToCart` no funde líneas medidas).
+ *
+ * Con báscula en el equipo (fase 3 y venta en un paso, §11): el lector queda
+ * abierto mientras la caja está en pantalla; escanear o tocar un producto por
+ * peso con una lectura estable, válida y nueva lo agrega de una; si no, abre
+ * «Pesar» y lo agrega solo al estabilizarse (regla `agregar_al_estabilizar`,
+ * activa por defecto). Tras agregar: toast «Agregado: 0,735 kg · Queso ·
+ * $ 13.892» con «Deshacer». La lógica es la de `usePesarConBascula` (la
+ * comparte la mesa); aquí solo el destino: el carrito del POS.
  */
 export function usePesarPos({
   cartId,
@@ -36,74 +30,30 @@ export function usePesarPos({
   abrirCambiar: (item: CartItem) => void;
   dialogo: ReactNode;
 } {
-  const t = useTranslations('posPeso.dialogo');
-  const moneda = useMonedaOrganizacion();
-  const contexto = usePesajeContexto();
-  const [estado, setEstado] = useState<EstadoPesar | null>(null);
-
-  const avisarError = (error: unknown, producto: Product) => {
-    console.error('Error agregando la pesada:', error);
-    toast.error(
-      error instanceof ProductoSinPrecioError
-        ? t(error.causa === 'sin_precio' ? 'sinPrecio' : 'precioNoConsultado', { producto: producto.name })
-        : t('errorAgregar', { producto: producto.name }),
-    );
-  };
-
-  const abrirAgregar = async (producto: Product, modifiers?: CartItemModifier[]) => {
-    const extras = (modifiers ?? []).reduce((s, m) => s + (m.extraPrice || 0), 0);
-    let precio = Number(producto.price);
-    if (!Number.isFinite(precio)) {
-      try {
-        precio = await POSService.precioVigenteProducto(producto.id, producto.name);
-      } catch (error) {
-        avisarError(error, producto);
-        return;
-      }
-    }
-    setEstado({ producto, precio: precio + extras, modo: 'agregar', modifiers });
-  };
-
-  const abrirCambiar = (item: CartItem) => {
-    setEstado({
-      producto: item.product,
-      precio: item.unit_price,
-      modo: 'cambiar',
-      itemId: item.id,
-      cantidadInicial: item.quantity,
-    });
-  };
-
-  const confirmar = async (cantidad: number, pesaje: CartItem['pesaje']) => {
-    if (!estado || !cartId) return;
-    const actual = estado;
-    try {
-      const cart =
-        actual.modo === 'cambiar' && actual.itemId
-          ? await POSService.updateCartItemPesaje(cartId, actual.itemId, cantidad, pesaje)
-          : await POSService.addItemToCart(cartId, actual.producto, cantidad, actual.modifiers, { pesaje });
-      actualizar(cart);
-      setEstado(null);
-    } catch (error) {
-      avisarError(error, actual.producto);
-    }
-  };
-
-  const dialogo = (
-    <DialogoPesar
-      abierto={estado !== null}
-      onAbiertoChange={(abierto) => {
-        if (!abierto) setEstado(null);
-      }}
-      producto={estado?.producto ?? null}
-      precioPorUnidad={estado?.precio ?? 0}
-      moneda={moneda}
-      puedePesarAMano={contexto.puedePesarAMano}
-      modo={estado?.modo ?? 'agregar'}
-      cantidadInicial={estado?.cantidadInicial ?? null}
-      onConfirmar={confirmar}
-    />
+  const pesar = usePesarConBascula<CartItemModifier>(
+    {
+      agregar: async ({ producto, cantidad, pesaje, modifiers }) => {
+        if (!cartId) return null;
+        const cart = await POSService.addItemToCart(cartId, producto, cantidad, modifiers, { pesaje });
+        actualizar(cart);
+        // La línea nueva va al final (una pesada nunca se funde con otra).
+        return cart.items[cart.items.length - 1]?.id ?? null;
+      },
+      deshacer: async (id) => {
+        actualizar(await POSService.removeItemFromCart(cartId, id));
+      },
+      cambiar: async (id, cantidad, pesaje) => {
+        actualizar(await POSService.updateCartItemPesaje(cartId, id, cantidad, pesaje));
+      },
+    },
+    { pantallaCliente: true },
   );
 
-  return { abrirAgregar, abrirCambiar, dialogo };
+  const abrirAgregar = (producto: Product, modifiers?: CartItemModifier[]) =>
+    pesar.abrirAgregar(producto, { modifiers, extras: (modifiers ?? []).reduce((s, m) => s + (m.extraPrice || 0), 0) });
+
+  const abrirCambiar = (item: CartItem) =>
+    pesar.abrirCambiar({ id: item.id, producto: item.product, precio: item.unit_price, cantidad: item.quantity });
+
+  return { abrirAgregar, abrirCambiar, dialogo: pesar.dialogo };
 }

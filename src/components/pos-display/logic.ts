@@ -30,6 +30,7 @@ import type {
 } from '@/lib/pos/display/protocol';
 import { QR_TEXT_MAX_CHARS, isAmountWithinTotal, qrImageNeedsNetwork, qrTextFits } from '@/lib/pos/display/payment';
 import { sanitizeDisplayTip } from '@/lib/pos/display/tip';
+import { sanitizeDisplayWeighing } from '@/lib/pos/display/weighing';
 
 /** Duración del resaltado de la línea que acaba de cambiar (PLAN §4.1). */
 export const HIGHLIGHT_MS = 600;
@@ -666,7 +667,10 @@ export function sanitizeDisplayPayment(value: unknown): DisplayPayment | null {
 export function sanitizeDisplayState(value: DisplayState): DisplayState {
   const rawThanks: unknown = value.thanks;
   const thanksTotal = isRecord(rawThanks) ? finiteOrNull(rawThanks.total) : null;
+  // Pesada en curso (peso por báscula): la clave solo existe si viene una válida.
+  const weighing = sanitizeDisplayWeighing((value as { weighing?: unknown }).weighing);
   return {
+    ...(weighing ? { weighing } : {}),
     mode: value.mode,
     cart: sanitizeDisplayCart(value.cart),
     payment: sanitizeDisplayPayment(value.payment),

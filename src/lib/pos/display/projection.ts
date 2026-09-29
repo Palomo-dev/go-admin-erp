@@ -82,8 +82,21 @@ const FALLBACK_CURRENCY = 'COP';
 /** Solo se avisa una vez por carga: la caja llama a esta función tras cada tecla. */
 let warnedAboutCurrency = false;
 
-/** Convierte cualquier valor numérico del carrito a un número finito (0 si no lo es). */
-function toAmount(value: unknown): number {
+/**
+ * Convierte cualquier valor numérico del carrito a un número finito (0 si no lo es).
+ *
+ * Un texto con coma decimal («1,5», «0,735»: la cantidad de una línea por peso
+ * escrita en el idioma del cajero y guardada tal cual) se lee como decimal.
+ * Antes `Number('1,5')` daba NaN y la pantalla mostraba 0 mientras el carrito
+ * mostraba 1,5 (PROGRESS.md, pantalla del cliente). Solo se acepta UNA coma
+ * sin puntos: «1.500,25» o «1,500,25» siguen siendo ambiguos y dan 0.
+ */
+export function toAmount(value: unknown): number {
+  if (typeof value === 'string') {
+    const t = value.trim();
+    const n = /^-?\d*,\d+$/.test(t) ? Number(t.replace(',', '.')) : t === '' ? NaN : Number(t);
+    return Number.isFinite(n) ? n : 0;
+  }
   const n = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(n) ? n : 0;
 }

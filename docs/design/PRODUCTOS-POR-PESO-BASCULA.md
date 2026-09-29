@@ -849,3 +849,459 @@ membresías y de la cuenta dividida siguen en las definiciones vivas.
 - **Fase 4**: formato de etiqueta (prefijo 27), `decodificarEtiquetaPeso`, PLU en el formulario, exportar PLU
   y la etiqueta «peso-variable»; `fn_pos_validar_pesaje` debe aceptar el origen `etiqueta`. El lector ya
   busca primero el código exacto (y, si no viene en la primera página, en una más amplia).
+
+## 9. Finanzas e inventario con peso (2026-09-29)
+
+Los productos por peso o medida (`sale_mode` `weight`/`measure`, `qty_decimals`, `unit_code`) funcionan de
+punta a punta fuera del POS: factura de venta, factura de compra, orden de compra y su recepción, PDF,
+recetas y ajustes de inventario. Los módulos del POS, básculas, etiquetas y `electron/` no se tocaron.
+
+### 9.1 Regla única: cada línea lleva sus decimales y su unidad
+
+- `src/lib/services/documentos/cantidadLinea.ts` adapta `modoVenta.ts` (espejo de
+  `fn_producto_decimales_cantidad`) a la línea de un documento, sin reglas nuevas:
+  `cantidadLineaDeProducto` (kg y 3 decimales, m/L y 2; por unidad **sin regla**, la línea se comporta como
+  antes), `cantidadInicialLinea`, `redondearCantidadLinea`, `sumaCantidades` y `COLUMNAS_CANTIDAD_PRODUCTO`
+  para los `select`. Lo usan los formularios, los lectores de detalle, el PDF (`lineaDeItem`, que antes lo
+  hacía en línea) y la cotización.
+- Kit `DocumentoLineas`: `LineaDocumento.decimalesCantidad` (nuevo) y `unidad`. La cantidad de una línea
+  por kg admite 0,735 aunque las demás sean enteras (antes `decimalesCantidad(lineas)` deducía los
+  decimales de los VALORES: una línea nueva valía 1 y no se podía escribir 0,735), el campo muestra «kg»
+  y el precio «/ kg» (sufijo en edición, «$ 18.900 / kg» en lectura y en tarjetas). Las líneas sin regla
+  (ítems manuales, productos por unidad) siguen deduciendo sus decimales de sus propios valores, así que
+  una línea por kg ya no obliga a mostrar «2,000» en las demás; nunca se muestran menos decimales que los
+  del valor guardado. Recepción: pedida, pendiente y «Recibida» con la unidad y sus decimales.
+- «Agregar productos» (`buscarProductosDocumento`, `productosPorId`): trae `sale_mode`, `qty_decimals` y
+  `unit_code`; el diálogo dice «Por kg», el precio o costo «/ kg» y el stock «12,400 kg».
+
+**Cantidad inicial (decisión).** Un producto por unidad nace con 1 (o el mínimo del proveedor en la orden
+de compra), como siempre. Uno por peso o medida nace **vacío (0)** con el ejemplo «0,000» y la unidad en el
+campo, o con el mínimo del proveedor redondeado a sus decimales si lo hay: «1 kg» por defecto no es una
+cantidad real y se colaría en facturas y órdenes sin que nadie lo pesara. Guardar exige cantidad mayor que
+0: la factura de venta y la de compra ya lo validaban; la orden de compra (nueva y edición) ahora avisa
+«Falta la cantidad · Escribe la cantidad de «…»».
+
+### 9.2 Pantallas
+
+- **Factura de venta** (`FormularioFacturaVenta`, detalle y vista no editable): la línea toma unidad y
+  decimales del producto al agregarla y al cargar un borrador, un duplicado o una oportunidad; `lineaAItem`
+  redondea la cantidad a los decimales del producto y calcula `total_line` con esa cantidad (0,735 ×
+  18.900 = 13.891,50 exacto, decisión B de §2.5). Faltantes y «Ajustar y emitir» pasan de 2 a 3 decimales
+  (antes 1 kg pedido con 0,735 disponible quedaba en 0,73).
+- **Factura de compra** (formulario, desde una orden, edición y detalle): igual; `qty` redondeada al guardar.
+- **Orden de compra**: nueva y edición con la cantidad por línea, validación de cantidad y total de
+  unidades sin ruido binario; el detalle muestra «1,250 kg» y la recepción acepta 0,500 de 1,250 kg con el
+  paso del producto (`fn_oc_recepcionar` ya redondeaba a 3 y solo exige enteros con seriales).
+- **PDF/impresión**: ya pintaba «0,735 kg», la columna Unidad y «/ kg» (fase 1); ahora con el helper único
+  y también en la cotización (su `select` no traía el modo de venta). La orden de compra no tiene PDF.
+- **Recetas**: nada que corregir en la base (ver 9.4); el costo por unidad del insumo dice «$ 24.000 / kg»
+  en vez de «/ KG». La cantidad ya admitía 4 decimales y las unidades compatibles (GR con KG).
+- **Ajustes de inventario**: decimales por producto (0 por unidad, 3 por peso, 2 por medida) con la unidad
+  en el campo, en «Sistema», «Diferencia» y «Queda», y en el diálogo de productos. Se comprobó antes que
+  ningún producto por unidad tiene existencias fraccionarias (0 de 55.556 filas de `stock_levels`, 0
+  movimientos fraccionarios en 90 días), así que exigir enteros por unidad no rompe datos. Si la base no
+  manda los decimales, 3 como antes.
+- **Traslados**: no usan este editor y ya admitían 3 decimales (0 con seriales); no se tocaron.
+- **Producción**: `fn_produccion_guardar` y `complete_production_order` ya validan con
+  `fn_producto_decimales_cantidad`; sin cambios.
+
+### 9.3 Migración aplicada (MCP, con su reversión)
+
+| Migración | Qué hace |
+|---|---|
+| `20260929224000_peso_f5_ajuste_productos_decimales` | `fn_ajuste_productos` devuelve además `modo_venta` y `decimales_cantidad` (`fn_producto_decimales_cantidad`). Parche sobre la definición viva, un solo fragmento comprobado, marcador para no aplicarse dos veces. Probada antes en transacción deshecha (org 142: producto por kg → `{modo_venta: weight, decimales_cantidad: 3}`, por unidad → 0) y verificado que la reversión deja la definición idéntica |
+
+No hizo falta tocar ninguna RPC de documentos: ninguna redondea ni castea la cantidad a entero.
+
+### 9.4 Verificación en la base (transacciones deshechas, org 142)
+
+- `fn_factura_venta_guardar` con 0,735 kg → `invoice_items.qty` 0,735, unidad DIAN 71 (trigger
+  `trg_invoice_items_unidad_dian`), `total_line` 13.891,50; `fn_factura_venta_emitir` → emitida y stock
+  5 → 4,265.
+- `fn_factura_compra_guardar` con 2,5 kg → `qty` 2,500, unidad 71; `fn_factura_compra_confirmar` con
+  recepción → stock 2,500.
+- Orden de 1,25 kg: `fn_oc_recepcionar` 0,5 → `partial`, pendiente 0,75; 0,75 → `received`, factura de
+  compra automática con `qty` 1,250 y unidad 71; stock final 3,750.
+- Recetas: `fn_receta_costo` con 150 GR de un insumo en KG → cantidad 0,150 kg, costo $ 3.600 con
+  promedio $ 24.000 / kg; un producto POR PESO con receta (1 kg de molida = 1 kg de trozo con 5 % de merma)
+  se guarda con `fn_receta_guardar`, y `decrement_stock_with_recipe` de 0,735 kg descuenta 0,774 kg del
+  insumo (10 → 9,226); un plato por unidad con 150 GR descuenta 0,300 kg por 2 platos.
+- Columnas: `invoice_items.qty` y `quotation_items.qty` numeric(12,3); `purchase_order_items.quantity` y
+  `received_quantity` numeric(12,4); `stock_levels.qty_on_hand` numeric(12,3).
+
+Jest: `src/__tests__/finanzas/documentosPesoLineas.test.ts` (regla por línea, cantidad inicial, redondeo,
+payload de venta, faltantes a 3 decimales, `lineaDeItem`, ajustes) y
+`src/components/kit/__tests__/documentoLineasPeso.test.tsx` (lectura, edición y recepción en es, en, fr y
+pt). Pasan también las suites existentes del kit, finanzas, documentos, inventario y
+`src/__tests__/pos/peso/documentosPeso.test.ts`.
+
+### 9.5 Pendientes
+
+- **Validación en el servidor** de los decimales por producto en `fn_factura_venta_guardar` y
+  `fn_fc_guardar_int` (hoy la pantalla redondea; una llamada directa con 0,7354 guardaría `qty` 0,735 con
+  `total_line` calculado sobre 0,7354). Parche aditivo como el de `procesar_devolucion`, solo para `weight`
+  y `measure`.
+- **Detalle del ajuste** (`AjusteDetalle`) y listados de órdenes y facturas: la cantidad sin unidad.
+- **Orden de compra**: el detalle y la recepción siguen con textos cableados en español (deuda anterior);
+  «Unidades total» suma kg y unidades.
+- **Cotizaciones**: el formulario no se revisó (solo su PDF).
+
+---
+
+## 12. Fase 4 — etiquetas de balanza (2026-09-29)
+
+Con las decisiones del dueño (§7, pregunta 5): peso embebido, prefijo 27 recomendado, PLU de 5 dígitos y
+peso de 5 dígitos en gramos; el 20 nunca, porque lo usa el generador interno. La etiqueta impresa desde Go
+Admin (variante «peso-variable» de `Doc/Etiqueta de producto`) y la lectura con la cámara del POS móvil
+**no** entran en esta entrega (ver 12.6).
+
+### 12.1 Migraciones aplicadas (MCP, con su reversión en `supabase/rollbacks/`)
+
+| Migración | Qué hace |
+|---|---|
+| `20260929230000_peso_f4_formato_etiqueta` | M3: 6 columnas `weight_label_*` en `organization_barcode_settings` (apagado, sin prefijos, peso, PLU 5, valor 5, sin dígito del valor) y `obs_weight_label_check`: contenido `weight`/`price`, dígitos 4–6, 2 + PLU + valor (+1) = 12, prefijos ⊂ 21–29 y activo ⇒ al menos un prefijo |
+| `20260929230100_peso_f4_configurar_peso` | `fn_codigo_barras_choca_con_peso` (pura: ¿la numeración interna puede producir un código con ese prefijo? prefijo de 2+ dígitos, de 1 dígito o vacío) y la RPC `codigos_barras_configurar_peso(org, activo, prefijos, contenido, dígitos PLU, dígitos valor, dígito del valor)`: upsert, `pos.basculas.configurar` con `fn_tiene_permiso`, rechaza el prefijo del generador (`prefijo_del_generador`) y devuelve cuántos productos tienen un EAN-13 propio con ese prefijo y cuántos PLU no caben en los dígitos |
+| `20260929230200_peso_f4_generador_sin_prefijo_peso` | `fn_codigos_barras_assert_sin_prefijo_peso` y parche de `codigos_barras_reservar` y `codigos_barras_generar_faltantes` sobre su definición viva (ancla `fn_assert_acceso_org`, exactamente una aparición): con etiquetas activas, el generador falla con `prefijo_de_peso` en vez de producir un código de peso |
+| `20260929230300_peso_f4_plu_producto` | `fn_producto_int_plu` y dos reemplazos en `fn_producto_int_modo_venta` (definición viva): por peso o medida guarda `producto.scale_plu` si viene en el payload (1–99.999 → `plu_invalido`; otro producto con ese PLU → `plu_duplicado`); por unidad lo borra. `fn_producto_guardar` no se tocó: ya delega en esa función |
+| `20260929230400_peso_f4_exportar_plu` | `fn_productos_exportar_plu(org)`: PLU, nombre, precio vigente por kg (`fn_pos_precio_base_vigente`), unidad, tara y días de vida, con `pos.basculas.configurar` |
+
+`fn_pos_validar_pesaje` no se tocó aquí: la sesión de básculas lo parcheó para aceptar `origen = 'etiqueta'`
+con `codigo_etiqueta` (verificado en la definición viva).
+
+### 12.2 Código
+
+- `src/lib/pos/etiquetaPeso.ts` (puro): `decodificarEtiquetaPeso(codigo, formato)` (EAN-13 con
+  `esEan13Valido`/`digitoControlGs1` de `codigoBarras.ts`; dígito de control del valor GS1 de 4 y 5 dígitos),
+  `lineaDesdeEtiqueta` (peso: valor ÷ 1000; precio: importe ÷ precio vigente redondeado a `qty_decimals`,
+  aviso si el importe recalculado difiere; reutiliza `validarPesada` para decimales y mínimo),
+  `formatoDesdeFila` y `csvExportarPlu`.
+- **POS**: `ProductSearch` busca primero el código **exacto** (como antes); si no existe y encaja en el
+  formato, busca el producto por PLU (`POSService.getProductByScalePlu`; sin conexión, índice local
+  `by_org_scale_plu`, `catalogStore` versión 2, `scale_plu` replicado) y la página agrega la línea con
+  `notes.pesaje { origen: 'etiqueta', neto, unidad, estable, codigo_etiqueta, leido_en[, importe_etiqueta] }`
+  sin abrir «Pesar». Dígito malo, PLU inexistente, producto por unidad, sin precio o bajo el mínimo: toast y
+  nada se agrega. El formato se lee de `organization_barcode_settings` (RLS de miembros) y se guarda en el
+  navegador para leer etiquetas sin conexión (`useFormatoEtiquetaPeso`); no pasa por `pos_pesaje_contexto`.
+- **Formulario del producto › Códigos**: «PLU de balanza» en productos por peso o medida; «PLU duplicado» del
+  servidor cae en ese campo. Duplicar no copia el PLU.
+- **Configuración › POS**: tarjeta «Etiquetas de peso variable» (K5): activar, prefijo, peso o precio,
+  dígitos, dígito de control del valor, «Probar un código» (decodifica y busca el PLU), aviso en vivo de
+  productos con código propio en ese prefijo, «Guardar formato» y «Exportar PLU» (CSV `;` con coma
+  decimal y BOM: PLU; nombre; precio por kg; tara; días de vida). Sin el permiso, solo lectura.
+- El generador de códigos traduce `prefijo_de_peso` (`inventarioEtiquetas.codigos.errores.prefijoDePeso`).
+- i18n: `posPeso.etiqueta`, `posEtiquetasPeso`, `productoForm.codigos.plu*`, `productoForm.errores.plu_*`
+  en es/en/fr/pt.
+
+### 12.3 Verificación
+
+- SQL en una transacción deshecha (organización 132, dueño con permiso y empleado sin él): guardar 27 →
+  `productos_con_prefijo` 0; 20 → `prefijo_peso_invalido`; 5 + 6 → `formato_invalido`; activo sin prefijos
+  → `prefijos_requeridos`; reservar con generador 20 y peso 27 → código 20…; generador 27 → reservar y
+  generar faltantes fallan con `prefijo_de_peso` y configurar con `prefijo_del_generador`; generador «2» y
+  peso 28 → `prefijo_del_generador`; empleado → `sin_permiso` (configurar y exportar); PLU 104 guardado,
+  repetido en otro producto → `plu_duplicado`, 100000 → `plu_invalido`, sin la clave se conserva, por
+  unidad se borra; exportar devuelve 1 fila con el precio vigente. Después de aplicar, lo mismo por
+  `fn_producto_guardar` completo (guarda 104; el segundo producto → `plu_duplicado`). Las reversiones de
+  los parches devuelven las definiciones con el mismo md5 que antes.
+- Jest: `src/__tests__/pos/peso/etiquetaPeso.test.ts` (los 2 formatos, dígito EAN malo, dígito del valor
+  malo, prefijo 20, PLU inexistente, producto por unidad, precio distinto con aviso, mínimo, libras, CSV),
+  `etiquetaPesoOffline.test.ts` (índice local por PLU) y `pluFormulario.test.ts`; `ventaPeso.test.ts`
+  actualizado (`camposModoVenta` incluye `scale_plu`). ESLint limpio en los archivos tocados.
+- `get_advisors`: solo el aviso habitual de RPC `SECURITY DEFINER` ejecutable por `authenticated`
+  (`codigos_barras_configurar_peso`, `fn_productos_exportar_plu`, con `fn_assert_acceso_org` y permiso);
+  ninguna para `anon`.
+
+### 12.4 Datos afectados
+
+- Las 7 filas de `organization_barcode_settings` quedan con etiquetas **apagadas**: ninguna organización
+  cambia hasta que active el formato. Ningún producto tiene PLU todavía.
+
+### 12.5 Decisiones
+
+- El PLU vive en el paso de «Cómo se vende» (`fn_producto_int_modo_venta`) y no en un bloque nuevo de
+  `fn_producto_guardar`: un producto por unidad nunca debe tener PLU y así se garantiza en el mismo lugar.
+- El precio impreso no manda (§2.3): con precio embebido la línea usa el precio vigente y se avisa.
+- Una etiqueta sí vende un producto que «exige báscula» (el peso viene de una balanza, no a mano).
+- La existencia no bloquea la etiqueta (igual que una pesada: el POS avisa, el checkout no bloquea).
+
+### 12.6 Pendientes
+
+- `products` no tiene vida útil: la columna «días de vida» del CSV sale vacía hasta que exista.
+- `codigos_barras_configurar` (numeración interna) no rechaza todavía un prefijo de peso: el choque se
+  detiene al generar (`prefijo_de_peso`) y al guardar el formato de etiquetas, no al cambiar la numeración.
+- Etiqueta «peso-variable» impresa desde Go Admin, lectura con la cámara del POS móvil (hoy la cámara llena
+  el buscador), etiquetas en mesas (`AddProductDialog`) y reporte de etiquetas desactualizadas (F5).
+
+
+---
+
+## 10. POS: mesas, pantalla del cliente, promociones y existencias (2026-09-29)
+
+Cierra los pendientes del POS de §8.5 y §2.6 (mesas, pantalla del cliente, «Lleve X pague Y», unidades en
+Stock/Movimientos/Kardex/Lotes y el reporte de pesos manuales de §2.9), más el pedido del dueño del mismo día:
+«al marcar con código de barras, que el producto aparezca de una en el carrito», en mesas y en el POS.
+
+### 10.1 Qué puede hacer ya el dueño
+
+- **Mesas › Agregar productos**: tocar (o escanear) un producto por peso abre el mismo «Pesar» del POS
+  (`DialogoPesar`, con la báscula de este equipo si la hay: lectura en vivo y Enter). Cada pesada es su
+  propia línea (el carrito de la mesa ya no se indexa por producto: clave por línea en `cantidadMesa.ts`); la
+  línea muestra el chip «⚖ 0,735 kg», que reabre «Pesar» para cambiar el peso, y no tiene ±1. La tarjeta dice
+  «/ kg» y «Por kg», y su insignia suma las pesadas («1,235 kg»). La línea guarda `notes.pesaje` (origen
+  manual, báscula o etiqueta), así que entra al reporte de pesos manuales.
+- **Mesas › plato ya pedido** (`OrderItemCard`): «Cant: 0,735 kg» y «$ 18.900 / kg»; editar la cantidad
+  acepta coma y los decimales del producto (antes `parseInt`).
+- **Traslado de ítems**: «0,25» de 0,735 kg, con «Se transferirán 0,250 kg de 0,735 kg»; lo que queda en la
+  mesa origen se redondea a 3 decimales (0,235 y no 0,23499…).
+- **Cuenta dividida por ítems**: asignar 0,5 kg a un comensal y 0,235 al otro; las sumas usan los decimales
+  de la línea (0,1 + 0,2 = 0,3). De paso: reasignar a la MISMA parte ya no descontaba su propia asignación
+  anterior del disponible.
+- **Comandas y cocina**: la comanda impresa (física o de navegador, y su reimpresión desde el KDS) dice
+  «0,500 kg Carne» y el KDS muestra «0,500 kg». La unidad sale del producto de la línea de la venta
+  (`sale_items → products`); las comandas del mostrador no tienen `sale_items` y siguen con el número
+  («0,5x», ya con coma).
+- **Lector de códigos en mesas** (nuevo; antes la mesa no escuchaba el lector) y **código escrito + Enter**
+  en el buscador de la mesa y del POS (solo dígitos, 6 a 14): producto por unidad o variante exacta →
+  directo a la mesa/carrito; etiqueta de balanza → directo con su peso (origen «etiqueta»); producto por peso
+  con código normal → «Pesar» (en el POS, además, el flujo de un paso de la báscula, §11). Con «Pesar»
+  abierto, otro código cancela la pesada pendiente (nunca la confirma) y el mismo se ignora
+  (`decidirEscaneoConPesarAbierto`, la misma regla del POS). La cámara del POS también va directo al carrito
+  (antes solo llenaba el buscador).
+- **Pantalla del cliente**: mientras «Pesar» está abierto en la caja, «Pesando: 0,735 kg × $ 18.900 / kg =
+  $ 13.892» (franja sobre el pedido o vista propia si el carrito está vacío), con los decimales de la moneda
+  de la organización. Regla `organization_settings.pos_pesaje.peso_en_pantalla_cliente` (activa si no existe;
+  solo `false` la apaga); nunca sale encima de un cobro, una propina o «Gracias». Una cantidad «1,5» ya no se
+  proyecta como 0 (NaN).
+- **Promociones**: «Lleve X pague Y» no aplica a productos por peso ni por medida (antes 2,5 kg contaban como
+  «2» y regalaban kilos); porcentaje y monto fijo sí. El motor devuelve además el descuento por línea
+  (`lineDiscounts`): con dos pesadas del mismo producto, cada línea lleva el suyo (antes cada una llevaba el
+  de las dos). Si el llamador no manda `sale_mode` y hay un «Lleve X pague Y», el motor lo consulta.
+- **Existencias › Stock, Movimientos, Kardex y Lotes**: un producto por peso o medida se lee «12,400 kg» (y
+  «+0,735 kg» en entradas y salidas) en vez de «12,4 uds». En el kardex de un producto, también sus KPIs y el
+  cuadre. Una lectura de `products` (con RLS) por página de resultados.
+- **Reportes › POS › Pesos manuales** (`/app/pos/reportes/pesos-manuales`, enlace en Reportes POS): líneas
+  con el peso escrito a mano por día (zona horaria de la organización) y cajero: líneas, peso por unidad,
+  importe y cuántas tuvieron supervisor. Por defecto los últimos 7 días; sucursal del selector del encabezado.
+
+### 10.2 Migraciones aplicadas (MCP, con su reversión en `supabase/rollbacks/`)
+
+| Migración | Qué hace |
+|---|---|
+| `20260929225000_peso_pos_reporte_pesos_manuales` | RPC `pos_reporte_pesos_manuales(org, desde, hasta, sucursal)` `SECURITY DEFINER` con `fn_assert_acceso_org` y permiso resuelto en el servidor (dueño, `reports.sales` o `pos.basculas.configurar`); días de la organización con `fn_timezone_for`; excluye ventas anuladas; rango ≤ 367 días. `revoke` de `public` y `anon`. Índice parcial `idx_sale_items_pesaje_manual (sale_id) where notes->'pesaje'->>'origen' = 'manual'` |
+| `20260929225100_peso_pos_pesaje_contexto_pantalla` | `pos_pesaje_contexto` devuelve `peso_en_pantalla_cliente` (parche sobre la definición viva, idempotente; falla si el ancla cambió) |
+
+Probadas antes de aplicar en transacciones deshechas (organización 142): venta pagada con 2 líneas manuales
+a las 23:30 hora de la organización (cuenta en su día, no en el UTC siguiente), una anulada (no cuenta) y una
+sin `pesaje` (no cuenta) → 2 líneas, 1,235 kg, $ 23.341,50, 1 con supervisor; otro día → vacío; otra
+sucursal → vacío; rango al revés → `rango_invalido`; empleado sin permiso → `sin_permiso_reporte_pesos`
+(42501); dueño de otra organización → «Acceso denegado» (42501); `anon` sin `execute`. `pos_pesaje_contexto`:
+sin fila → `true`; `false` → `false`; regla sin la clave → `true`; la reversión quita la clave. Nada quedó
+escrito (verificado después).
+
+### 10.3 Archivos compartidos que se tocaron (para los otros frentes)
+
+- `src/components/pos/venta/peso/DialogoPesar.tsx`: solo la prop opcional `onCantidadEnVivo` y su efecto
+  (la cantidad que se agregaría, para la pantalla del cliente); el frente de básculas ya la alimenta también
+  con la lectura estable. La mesa usa el diálogo tal cual (con `bascula` del equipo).
+- `src/components/pos/ProductSearch.tsx`: `handleHardwareScan` usa `resolverEscaneo`
+  (`src/lib/pos/venta/escaneo.ts`, compartido con la mesa; misma secuencia de antes: código exacto, página
+  amplia, etiqueta, `resolverCodigo`); la cámara y el código escrito + Enter pasan por ahí.
+- `src/components/kit/SearchInput.tsx`: prop opcional `onEnter` (si devuelve `true`, no busca).
+  `GrillaProductos`: prop opcional `onCodigo`.
+- `src/lib/services/posService.ts`: manda `sale_mode` al motor de promociones y usa `lineDiscounts` solo en
+  líneas por peso o medida (las demás, igual que antes).
+- Impresión de comandas (`printJobsService`, `printService`): pasan `unit`/`qtyDecimals` que el agente ya
+  sabía imprimir.
+
+### 10.4 Verificación
+
+- Jest (`TZ=UTC` y `TZ=America/Bogota`): `src/__tests__/pos/peso/mesasPantallaPeso.test.ts` (carrito de la
+  mesa, decimales, traslado, cuenta dividida, comanda impresa, proyección «1,5», emisor con pesada, saneado,
+  regla de pantalla, promociones, existencias, reporte, `resolverEscaneo` y `pareceCodigoDeBarras`) y
+  `mesasPantallaPesoRender.test.tsx` (render con los textos reales: «Pesar» en la mesa con dos pesadas,
+  código + Enter y etiqueta directo a la mesa, lector con «Pesar» abierto, traslado, tarjeta del plato,
+  franja «Pesando…» en 4 idiomas, comanda del KDS y reporte en 4 idiomas); `productSearch.test.tsx` (código +
+  Enter en el POS). Suites vecinas: `pos-display`, `pos`, `inventario`, guardarraíles (4.408 pruebas).
+- `projection.test.ts` fijaba el comportamiento viejo («1,5» → 0): se actualizó a «1,5» → 1,5 con un texto
+  ambiguo («1.500,5») que sigue dando 0.
+- Revisión de tipos acotada a los archivos tocados (con sus dependencias): 0 errores. ESLint de los
+  archivos tocados sin errores; quedan los avisos `exhaustive-deps` previos de `AddProductDialog`,
+  `TransferItemDialog` y la exportación anónima de `kitchenService`. `posService.ts`, `printJobsService.ts` y
+  `printService.ts` conservan sus errores `no-explicit-any` previos (las líneas nuevas no agregan ninguno).
+
+### 10.5 No verificado / pendiente
+
+- Nada se probó en un navegador real ni con una báscula o un lector físicos (el lector se simuló con la
+  ráfaga de teclas). La pantalla del cliente con «Pesando…» no se vio en un segundo monitor.
+- La mesa aún no tiene el flujo de UN paso con báscula estable (agregar al estabilizar, «Deshacer»): vive en
+  `usePesarPos`, atado al carrito del POS. Para reutilizarlo sin duplicar, conviene que ese hook reciba un
+  «agregar(producto, cantidad, pesaje)» en vez del `cartId`; mientras tanto la mesa usa la báscula dentro de
+  «Pesar» con Enter.
+- Comandas del mostrador en el KDS sin unidad (no hay `sale_items`): haría falta copiar la unidad en
+  `kitchen_ticket_items` desde `pos_cocina_enviar_ronda`.
+- Web y finanzas llaman al motor de promociones sin `sale_mode`: el motor lo consulta solo si hay un «Lleve X
+  pague Y» elegible; no usan `lineDiscounts`.
+- Líneas de mesa con origen «báscula» o «etiqueta»: la definición viva de `fn_pos_validar_pesaje` ya acepta
+  esos orígenes (frentes de las fases 3 y 4; comprobado por MCP), pero no se cobró una mesa de punta a punta.
+
+---
+
+## 11. Fase 3 — básculas (2026-09-29)
+
+Implementa §2.8, §2.9, §3 M4 y §4, más el pedido del dueño del mismo día: «mejorar por completo la
+experiencia de venta por peso en el POS; al marcar con código de barras, que el producto aparezca de una en el
+carrito» (11.4). Las etiquetas de balanza son de la fase 4 (§12); aquí solo se habilitó su origen en el
+servidor.
+
+### 11.1 Migraciones aplicadas (MCP, con su reversión en `supabase/rollbacks/`)
+
+| Migración | Qué hace |
+|---|---|
+| `20260929220000_peso_f3_pos_scales` | M4: tabla `pos_scales` por sucursal (transporte `desktop_serial`/`web_serial`, TCP y BLE reservados; protocolo; parámetros del puerto y de la lectura; caja `pos_terminal_id` o equipo `print_agent_id`; última prueba). RLS de lectura para miembros activos; **sin políticas de escritura** (revocado `insert/update/delete` a `authenticated`, todo a `anon`). Nombre único por sucursal entre las activas |
+| `20260929220100_peso_f3_pos_basculas_rpc` | RPC `SECURITY DEFINER` con `fn_assert_acceso_org` y revoke de `anon/public`: `pos_basculas_listar` (dice si la persona puede configurar; sin permiso devuelve la lista vacía), `pos_basculas_guardar`, `pos_basculas_archivar` (archivar/reactivar, nunca borra), `pos_basculas_registrar_prueba` y la lectura del POS `pos_basculas_para_pos(org, sucursal, caja, equipo)` (activas de la sucursal, primero las de esta caja o equipo). El permiso `pos.basculas.configurar` se resuelve en el servidor (`check_user_permission` o dueño). Errores estables: `sin_permiso`, `bascula_no_encontrada`, `sucursal_invalida`, `transporte_no_disponible`, `equipo_invalido`, `caja_invalida`, `unidad_invalida`, `nombre_duplicado`, `datos_invalidos` |
+| `20260929220200_peso_f3_validar_pesaje_bascula_etiqueta` | `fn_pos_validar_pesaje` (definición viva, fragmento único): origen `bascula` exige `bascula_id` de una báscula **activa** de la organización, `estable = true` y, si viene, `neto` = cantidad (±0,0005); origen `etiqueta` exige `codigo_etiqueta` no vacío (≤ 64). Errores `bascula_invalida`, `peso_inestable`, `pesaje_no_coincide`, `etiqueta_invalida` (agregados a `erroresCobro.ts` y a los 4 idiomas). Ni báscula ni etiqueta pasan por la regla de peso manual. La reversión deja la definición **idéntica** (md5 comprobado) |
+| `20260929220300_peso_f3_contexto_agregar_al_estabilizar` | `pos_pesaje_contexto` (definición viva, después del parche de pantalla del cliente) devuelve `agregar_al_estabilizar` (ver 11.4) |
+
+Probadas antes de aplicar en transacciones deshechas (`DO … RAISE EXCEPTION`, organizaciones 142 y 144):
+dueño crea/edita/prueba/archiva/reactiva; nombre duplicado, sucursal ajena, unidad UN, baudios 1234,
+transporte BLE y texto en un número → su error; empleado sin permiso: `listar` sin filas y `guardar`/`archivar`
+→ `sin_permiso`, pero `para_pos` sí lee; dueño de otra organización: `bascula_no_encontrada` y 0 filas por RLS;
+`update` directo → `permission denied`. Validador: báscula activa OK (también en un producto que «exige
+báscula»), archivada / de otra organización / id basura → `bascula_invalida`, `estable` falso o ausente →
+`peso_inestable`, neto distinto → `pesaje_no_coincide`, 0,7354 → `cantidad_decimales`, etiqueta vacía →
+`etiqueta_invalida`; manual y por unidad sin cambios. `get_advisors`: solo el aviso esperado de RPC
+`SECURITY DEFINER` ejecutable por `authenticated`; ninguna para `anon`.
+
+### 11.2 Código
+
+- **Intérprete único** `src/lib/pos/bascula/` (puro): `interpretarTrama(protocolo, trama)` →
+  `{ neto, bruto, tara, unidad, estable, estado, netoDeBascula }`; `DivisorTramas` (fin de línea, STX…CR,
+  SOH…EOT, ACK suelto, desborde de 256 bytes); continuo ST,GS (ST/US/OL, GS/NT/TR), Mettler Toledo 8217
+  (petición `W` cada 200 ms, byte de estado), Mettler SICS (petición `SI`, `S S`/`S D`/`S +`/`S -`/`S I`/`E*`),
+  CAS PD-II (ENQ → ACK → DC1; el BCC no se verifica) y propio por expresión regular con grupos `peso`, `signo`,
+  `estado`, `unidad`. **Dibal queda pendiente**: sin trama documentada y validada con un equipo; se puede
+  guardar y la prueba muestra los bytes crudos, pero no se interpreta. `DetectorEstabilidad` (stable_ms con
+  tolerancia de una división), `LectorBascula` (peticiones, DC1, «sin lectura 3 s», cero por comando —Toledo
+  `Z`, SICS `Z`— o en el POS), `vistaLectura` (conversión kg/lb/g, tara del POS salvo `NT`, bajo cero,
+  sobrecarga por bandera o capacidad, mínimo, tara obligatoria) y `pesajeBascula` para `notes.pesaje`.
+- **Transportes** (`transportes.ts`, adaptador común de §4): `transporteDesktop` (`bridge.scale`),
+  `transporteWebSerial` (`requestPort` con gesto, `getPorts()` y pista `usb:vid:pid`), `transporteManual`.
+  Dentro del Desktop nunca se usa Web Serial (`setDevicePermissionHandler` no cambió).
+- **Desktop** `electron/src/main/scale/`: `serialport@13` (N-API con prebuilds, `win32-x64` incluido) detrás de
+  un `require` dinámico (`serialLoader.ts`): si el binario no carga, el Desktop arranca igual y la báscula
+  responde `unavailable` con un mensaje claro. `scaleManager.ts`: un puerto por equipo, bytes **solo** al
+  webContents que abrió, cierre al destruirse o recargar esa ventana, `write` ≤ 64 bytes y solo del dueño,
+  bytes/s, la última báscula en `DesktopConfig.scale`. `scaleIpc.ts`: `scale:list-ports|open|close|status|write`
+  con verificación de origen `isInternalUrl` en cada llamada; eventos `scale:data`/`scale:state`. Preload
+  expone `scale`; `electron-builder.yml` desempaqueta `node_modules/@serialport/bindings-cpp/**`. En la web,
+  `desktop.ts` tipa `DesktopScaleBridge`, `desktopScaleBridge()` y `desktopSupports('scale')`.
+- **Configuración › POS › «Básculas»** (`src/components/pos/configuracion/basculas/`, kit: `Tarjeta`,
+  `EmptyState`, `StatusBadge`, `Dialogo`, `FormField`, `SegmentedControl`, `CampoNumero`): K1 lista con
+  «Probada / Falló la prueba / Sin probar / Archivada» y «En este equipo», K1b vacío, K1c cargando, K1d error,
+  K7 sin permiso, K2 Desktop (lista de puertos del equipo), K3 Web Serial (elegir puerto; aviso en
+  Safari/Firefox/móvil y dentro del Desktop), K4 «Probar lectura» con bytes crudos (texto y hexadecimal) y
+  «Usar ‹protocolo›» sugerido. «Usar en este equipo» guarda la elección en el navegador. El resultado de la
+  prueba se registra al guardar. Montada junto a Impresoras.
+- **«Pesar»** (`DialogoPesar` + `LecturaBascula` + `usePesadaBascula`): estados conectando / estable /
+  inestable / fuera de rango / error / manual; Cero (Z), Tara (T) / Quitar tara, tara del producto, «Peso a mano»
+  (M) solo con permiso y si el producto no exige báscula, «Conectar báscula» (Web Serial) y «Reintentar».
+  Agregar solo con lectura estable; la línea lleva `notes.pesaje` `{origen:'bascula', bruto, tara, neto,
+  unidad, estable:true, bascula_id, leido_en}`. **Sin báscula el diálogo es el de la fase 2** (probado).
+
+### 11.3 Cómo probar con una báscula real
+
+1. Configuración › POS › Básculas › «Nueva báscula»: en Go Admin Desktop elegir «Go Admin Desktop» y el
+   puerto (COM3…); en Chrome/Edge sin Desktop, «Navegador (Web Serial)» y «Elegir puerto». Baudios, bits,
+   paridad y parada del manual del indicador (típico 9600 8N1). Unidad kg, decimales 3, capacidad y división
+   de la placa.
+2. «Probar lectura» con algo encima. Si dice «Llegan datos, pero no se reconocen», mirar los bytes crudos:
+   la sugerencia ofrece el protocolo que sí los entiende. Si no llegan bytes: cable (serie cruzado / USB-serie),
+   puerto y baudios; con protocolos por petición (Toledo, SICS, CAS) la báscula debe estar en modo petición.
+3. Guardar, «Usar en este equipo» y en el POS tocar o escanear un producto por peso.
+4. **Grabar fixtures**: copiar el texto hexadecimal de la prueba a
+   `src/lib/pos/bascula/__tests__/fixtures/tramas.ts` con el modelo en el nombre (hoy las tramas son de la
+   documentación de cada fabricante, no grabadas) y correr `npx jest src/lib/pos/bascula`.
+5. Desktop: `cd electron && npm ci && npm run package` e instalar el NSIS en un Windows limpio con un
+   adaptador USB-serie (Prolific/CH340/FTDI); abrir el POS y ver «Estable». Aquí (Linux, sin Electron) solo se
+   comprobó que el binario N-API carga en Node; no se armó el instalador.
+
+### 11.4 Venta por peso en un paso (pedido del dueño)
+
+Decisiones puras en `src/lib/pos/bascula/flujoPesada.ts` (probadas) y ejecutadas por `usePesarPos`:
+
+- **El lector del equipo queda abierto mientras la caja está en pantalla** (no solo con «Pesar» abierto): así
+  se conoce la lectura en el instante del escaneo. Sin báscula configurada no se abre nada.
+- `decidirPesada`: con báscula y la regla `agregar_al_estabilizar` (**activa por defecto**; solo un `false`
+  explícito en `organization_settings` `pos_pesaje` la apaga, migración 220300): lectura estable, válida (neto >
+  0, ≥ mínimo, ≤ capacidad, con tara si la exige) y **nueva** → directo al carrito sin diálogo; si no, «Pesar»
+  abre con «Esperando peso estable… se agrega solo · Esc cancela» y agrega en cuanto se estabiliza (una vez).
+  Regla apagada → «Pesar» con Enter. Sin báscula o por medida → el flujo de siempre. La §7 pregunta 7
+  recomendaba «no» por defecto; el pedido del dueño lo cambia, y sin báscula la regla no aplica.
+- **Lectura nueva** (`ArmadoBascula`): tras agregar, la siguiente pesada automática exige que la báscula cambie
+  más de una división (se retiró el producto o se puso otro). Sin esto, escanear el jamón con el queso aún
+  encima lo agregaba con el peso del queso. En ese caso «Pesar» dice «La báscula aún tiene la pesada
+  anterior». Enter a mano (confirmación explícita) no lo exige.
+- **Escaneo con «Pesar» abierto**: antes se descartaba («cierra el diálogo»). Ahora «Pesar» lleva la clase
+  `pos-acepta-escaneo` y `dialogOpen` la excluye. Decisión (`decidirEscaneoConPesarAbierto`): **nunca se
+  confirma la pesada pendiente de forma implícita** —el peso de la báscula puede ser ya del producto nuevo—;
+  se cancela con aviso «Se canceló la pesada de ‹X›: no estaba confirmada» y se sigue con el nuevo. El mismo
+  producto dos veces (doble lectura del código) se ignora. Un producto por unidad escaneado con «Pesar» abierto
+  va al carrito como siempre y el diálogo sigue.
+- Tras agregar con báscula: toast «Agregado: 0,735 kg · Queso campesino · $ 13.892» con «Deshacer» (quita esa
+  línea). El POS no tiene sonido de escaneo hoy (solo pedidos en línea); no se agregó uno.
+- **Tara recordada por producto en la sesión** (`taraSesion.ts`, `sessionStorage`): la siguiente pesada del
+  mismo producto abre con la tara usada; si no hay, la predefinida del producto. Atajos visibles: Z, T, M en
+  los botones; «Agregar … · Enter» y «Cancelar · Esc». Con báscula el foco va a la lectura al abrir (antes lo
+  tomaba la «×» del diálogo y Enter cerraba).
+
+### 11.5 Pruebas
+
+`src/lib/pos/bascula/__tests__/` (tramas de los 5 protocolos como fixtures, divisor, sugerencia, estabilidad,
+lector con reloj manual, transportes Web Serial y Desktop con dobles, vista y pesada, flujo en un paso, tara
+de sesión), `src/components/pos/venta/peso/__tests__/lecturaBasculaRender.test.tsx` y
+`pesarUnPaso.test.tsx` (4 idiomas; auto-agregar; peso anterior; escaneo con el diálogo abierto; sin báscula),
+`src/components/pos/configuracion/basculas/__tests__/basculasRender.test.tsx` (4 idiomas; K1–K7; formulario;
+«Probar lectura» con bytes crudos) y `src/__tests__/electron/scale.test.ts` (validación IPC, errores de
+serialport, dueño único, origen). Pasan con `TZ=UTC` y `TZ=America/Bogota`, junto con `src/__tests__/pos`,
+guardarraíles, i18n y electron. `tsc` acotado a los archivos tocados sin errores; `electron` compila.
+
+### 11.6 Pendientes
+
+- **Grabar tramas reales** de cada protocolo (A&D/CAS ST,GS, Toledo 8217, SICS, CAS PD-II) y validar Dibal con
+  un equipo (hoy pendiente). Confirmar si el 8217 del modelo usado pide `W` o `W\r`.
+- **Instalador NSIS en Windows limpio** con adaptador USB-serie y firma (`HARDENING-2026-09-21.md` §5).
+- Una venta con `origen = 'bascula'` archivada la báscula antes de sincronizar (venta offline) sería rechazada
+  (`bascula_invalida`): se pidió «báscula activa». Si pasa en la práctica, aceptar también las archivadas
+  después de `leido_en`.
+- `print_agent_id` no se asigna desde la UI (la web no conoce el id del agente del equipo); la elección «de este
+  equipo» vive en el navegador y la caja por `pos_terminal_id`.
+- BLE en tableta (`bluetooth_le`) y TCP (`desktop_tcp`) siguen reservados.
+- Si otra sesión recrea `pos_pesaje_contexto` desde su archivo sin el parche 220300, la clave
+  `agregar_al_estabilizar` desaparece; el cliente la toma como `true`, así que la regla por defecto se mantiene
+  pero un `false` explícito dejaría de respetarse.
+- Mesas (`AddProductDialog`) usa «Pesar» sin báscula; conectarla es pasarle `bascula` y `lector`.
+
+### 11.7 Venta en un paso también en la mesa (2026-09-29)
+
+Pedido de seguimiento: la mesa («Agregar productos», `src/components/pos/mesas/id/AddProductDialog.tsx`)
+abría «Pesar» y leía la báscula, pero no agregaba sola ni ofrecía «Deshacer», porque `usePesarPos` estaba atado
+al `cartId` del carrito del POS.
+
+- **Una sola lógica, dos destinos**: `src/components/pos/venta/peso/usePesarConBascula.tsx` recibe
+  `{ agregar(linea) → id, deshacer(id), cambiar(id, cantidad, pesaje) }` y hace todo lo de 11.4 (lector del
+  equipo abierto, lectura nueva, directo o esperar a estabilizar con la regla `agregar_al_estabilizar`, escaneo
+  con «Pesar» abierto, toast «Agregado … · Deshacer», tara recordada, pantalla del cliente opcional).
+  `usePesarPos` quedó como envoltura con el carrito del POS (`addItemToCart` → id de la última línea,
+  `removeItemFromCart`, `updateCartItemPesaje`) y la misma API: el POS no cambió (sus pruebas pasan sin tocarlas).
+- **La mesa** usa el mismo hook con sus líneas: `agregar` crea la línea con clave por secuencia
+  (`clavePesada`) y la devuelve para «Deshacer»; `deshacer` la quita; `cambiar` ajusta cantidad y pesaje. Tocar o
+  escanear un producto por peso con la báscula estable lo agrega de una con origen «bascula»; si no, «Pesar»
+  espera y agrega al estabilizar; con la regla apagada, Enter. La pantalla del cliente sigue solo en el POS.
+- El escaneo sigue por la secuencia compartida `src/lib/pos/venta/escaneo.ts` (`resolverEscaneo`); la mesa
+  conserva su `seguirTrasPesarAbierto` (cancela la pesada pendiente también ante un producto por unidad) usando
+  `pendiente`/`cancelar` del hook, que lee el estado sin esperar al render para no avisar dos veces.
+- Pruebas: `src/__tests__/pos/peso/mesaBasculaUnPaso.test.tsx` (estable → directo con origen báscula,
+  «Deshacer» quita la línea y `onAddProducts` recibe `pesaje.origen = 'bascula'`; inestable → agrega al
+  estabilizar; regla apagada → Enter). Las de la mesa del frente del POS
+  (`mesasPantallaPesoRender.test.tsx`) y `pesarUnPaso.test.tsx` pasan sin cambios.
+- Con esto queda resuelto el último punto de 11.6 («Mesas usa “Pesar” sin báscula»).

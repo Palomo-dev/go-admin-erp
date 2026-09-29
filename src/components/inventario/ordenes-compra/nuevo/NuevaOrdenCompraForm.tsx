@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { purchaseOrderService } from '@/lib/services/purchaseOrderService';
+import { useTranslations } from 'next-intl';
+import { redondearCantidadLinea, sumaCantidades } from '@/lib/services/documentos/cantidadLinea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,6 +29,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
  */
 export function NuevaOrdenCompraForm() {
   const router = useRouter();
+  const tLineas = useTranslations('kit.documentoEdicion.lineas');
   const { selectedBranchId, branches } = useBranch();
   const moneda = useMonedaOrganizacion();
   const { formatear } = moneda;
@@ -58,6 +61,13 @@ export function NuevaOrdenCompraForm() {
       return;
     }
 
+    // Una línea por peso nace vacía (0 kg): no se guarda sin cantidad.
+    const sinCantidad = items.find((item) => !(Number(item.quantity) > 0));
+    if (sinCantidad) {
+      toastError(tLineas('cantidadRequeridaTitulo'), tLineas('cantidadRequerida', { producto: sinCantidad.productName }));
+      return;
+    }
+
     // Validar que los productos con track_serial tengan todos los seriales capturados
     const incompleteSerialItems = items.filter((item) => item.track_serial && (item.serial_numbers || []).length < Math.floor(item.quantity));
     if (incompleteSerialItems.length > 0) {
@@ -80,7 +90,7 @@ export function NuevaOrdenCompraForm() {
         },
         items.map((item) => ({
           product_id: item.product_id,
-          quantity: item.quantity,
+          quantity: redondearCantidadLinea(item.quantity, { decimalesCantidad: item.decimalesCantidad ?? null }),
           unit_cost: item.unit_cost,
           serial_numbers: item.serial_numbers && item.serial_numbers.length > 0 ? item.serial_numbers : undefined,
           requires_serial: item.requires_serial || false,
@@ -191,7 +201,7 @@ export function NuevaOrdenCompraForm() {
               </div>
               <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
                 <span className="text-gray-600 dark:text-gray-400">Unidades Total</span>
-                <span className="font-medium text-gray-900 dark:text-white">{items.reduce((sum, i) => sum + i.quantity, 0)}</span>
+                <span className="font-medium text-gray-900 dark:text-white">{sumaCantidades(items.map((i) => i.quantity))}</span>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className="text-gray-600 dark:text-gray-400 font-medium">Total</span>

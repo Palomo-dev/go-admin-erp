@@ -10,8 +10,9 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import { getOrgDateRange, toPlainDate } from '@/lib/utils/timezone';
+import { toPlainDate } from '@/lib/utils/timezone';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 /** Filas que devuelven las consultas de los informes (los embebidos llegan como objeto). */
 interface FilaSerialInforme {
@@ -102,10 +103,7 @@ export const serialTrackingReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end, timezone } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db
         .from('serial_numbers')
         .select(`
@@ -182,10 +180,7 @@ export const serialTrackingReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end, timezone } = await rangoDelPeriodo(orgId, periodo);
       // `serial_numbers.sold_by_user_id` NO tiene clave foránea a `profiles`
       // (la restricción `serial_numbers_sold_by_user_id_fkey` ni siquiera
       // existe), así que el embebido devolvía PGRST200 y el informe entero
@@ -284,10 +279,7 @@ export const serialTrackingReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end, timezone } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db
         .from('warranty_claims')
         .select(`
@@ -378,10 +370,7 @@ export const serialTrackingReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db
         .from('serial_numbers')
         .select(`

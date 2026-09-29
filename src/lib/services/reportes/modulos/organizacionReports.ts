@@ -11,6 +11,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string, titulo: string, modulo: string, periodo: PeriodoCierre,
@@ -69,6 +70,7 @@ export const organizacionReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data: branches } = await db
         .from('branches')
         .select('id, name, is_active')
@@ -78,8 +80,8 @@ export const organizacionReports: ReportDefinition[] = [
         .from('sales')
         .select('branch_id, total')
         .eq('organization_id', orgId)
-        .gte('sale_date', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('sale_date', `${periodo.fechaFin}T23:59:59Z`)
+        .gte('sale_date', start)
+        .lte('sale_date', end)
         .not('status', 'in', '("cancelled","void")');
 
       const sucursales = branches ?? [];
@@ -124,6 +126,7 @@ export const organizacionReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data: modules } = await db
         .from('organization_modules')
         .select('module_code, is_active')
@@ -133,8 +136,8 @@ export const organizacionReports: ReportDefinition[] = [
         .from('ops_audit_log')
         .select('id, created_at')
         .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('created_at', start)
+        .lte('created_at', end);
 
       const modulosActivos = (modules ?? []).filter((m: Record<string, unknown>) => m.is_active).length;
       const totalEventos = eventos?.length ?? 0;

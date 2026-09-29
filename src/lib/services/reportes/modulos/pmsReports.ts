@@ -12,6 +12,7 @@ import type { ReportesClient } from '../types';
 // corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string, titulo: string, modulo: string, periodo: PeriodoCierre,
@@ -40,8 +41,8 @@ export const pmsReports: ReportDefinition[] = [
         .from('reservations')
         .select('id, checkin, checkout, status, total_estimated')
         .eq('organization_id', orgId)
-        .gte('checkin', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('checkin', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('checkin', periodo.fechaInicio)
+        .lte('checkin', periodo.fechaFin);
       reservationsQuery = applyBranchFilter(reservationsQuery, branchId);
       const { data: reservations } = await reservationsQuery;
 
@@ -82,12 +83,13 @@ export const pmsReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       let foliosQuery = db
         .from('folios')
         .select('id, balance, status, created_at, reservations!inner(organization_id)')
         .eq('reservations.organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('created_at', start)
+        .lte('created_at', end);
       // Filtrar folios por branch_id cuando branchId != null
       foliosQuery = applyBranchFilter(foliosQuery, branchId);
       const { data, error } = await foliosQuery;

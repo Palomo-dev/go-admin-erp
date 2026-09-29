@@ -11,6 +11,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string, titulo: string, modulo: string, periodo: PeriodoCierre,
@@ -63,12 +64,13 @@ export const integracionesReports: ReportDefinition[] = [
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db
         .from('integration_events')
         .select('id, event_type, status, created_at')
         .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('created_at', start)
+        .lte('created_at', end);
 
       if (error) throw error;
 

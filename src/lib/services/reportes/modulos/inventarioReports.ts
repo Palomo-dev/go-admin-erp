@@ -10,9 +10,9 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import { getOrgDateRange } from '@/lib/utils/timezone';
 import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string,
@@ -251,10 +251,7 @@ export const inventarioReports: ReportDefinition[] = [
     periodosSugeridos: ['diario', 'semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_movimientos_inventario', {
         p_organization_id: orgId,
         p_from: start,
@@ -348,10 +345,7 @@ export const inventarioReports: ReportDefinition[] = [
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_rotacion_inventario', {
         p_organization_id: orgId,
         p_from: start,
@@ -387,10 +381,7 @@ export const inventarioReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       let ventasQuery = db
         .from('sales')
         .select('id')

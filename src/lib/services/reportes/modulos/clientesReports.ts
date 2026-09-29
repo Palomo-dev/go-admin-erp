@@ -11,8 +11,9 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
-import { getDateRange, getOrgDateRange } from '@/lib/utils/timezone';
+import { getDateRange } from '@/lib/utils/timezone';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string, titulo: string, modulo: string, periodo: PeriodoCierre,
@@ -32,10 +33,7 @@ export const clientesReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end, timezone: tz } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end, timezone: tz } = await rangoDelPeriodo(orgId, periodo);
 
       // Conteo total exacto (sin límite de 1000)
       const baseEq: Record<string, unknown> = { organization_id: orgId };
@@ -203,10 +201,7 @@ export const clientesReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       let ventasQuery = db
         .from('sales')
         .select('customer_id, total, customers!inner(first_name, last_name, customer_type, company_name)')

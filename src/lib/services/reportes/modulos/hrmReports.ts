@@ -11,6 +11,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string, titulo: string, modulo: string, periodo: PeriodoCierre,
@@ -164,6 +165,7 @@ export const hrmReports: ReportDefinition[] = [
     periodosSugeridos: ['quincenal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       // La fuente es la tabla commissions (lo que de verdad se devengó, con su
       // método: monto fijo o porcentaje sobre la base SIN impuestos). Antes se
       // recalculaba desde sales comparando commission_type === 'fixed' (nunca
@@ -173,8 +175,8 @@ export const hrmReports: ReportDefinition[] = [
         .select('payee_id, payee_name, base_amount, commission_amount, status, currency, accrued_at')
         .eq('organization_id', orgId)
         .in('status', ['accrued', 'paid'])
-        .gte('accrued_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('accrued_at', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('accrued_at', start)
+        .lte('accrued_at', end);
       if (branchId) query = query.eq('branch_id', branchId);
       const { data, error } = await query;
 

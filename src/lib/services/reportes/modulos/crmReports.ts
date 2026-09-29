@@ -11,6 +11,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string, titulo: string, modulo: string, periodo: PeriodoCierre,
@@ -30,10 +31,11 @@ export const crmReports: ReportDefinition[] = [
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_crm_funnel', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
@@ -64,10 +66,11 @@ export const crmReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_crm_funnel', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
@@ -107,10 +110,11 @@ export const crmReports: ReportDefinition[] = [
     periodosSugeridos: ['quincenal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_crm_ranking_vendedores', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
@@ -141,12 +145,13 @@ export const crmReports: ReportDefinition[] = [
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db
         .from('activities')
         .select('activity_type, created_at')
         .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('created_at', start)
+        .lte('created_at', end);
 
       if (error) throw error;
 
@@ -182,12 +187,13 @@ export const crmReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db
         .from('campaigns')
         .select('id, name, status, channel, created_at')
         .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('created_at', start)
+        .lte('created_at', end);
 
       if (error) throw error;
 
@@ -216,10 +222,11 @@ export const crmReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_clientes_crecimiento', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 

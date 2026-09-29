@@ -12,6 +12,7 @@ import type { ReportesClient } from '../types';
 // corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string, titulo: string, modulo: string, periodo: PeriodoCierre,
@@ -31,13 +32,14 @@ export const parkingReports: ReportDefinition[] = [
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await applyBranchFilter(
         db
           .from('parking_sessions')
           .select('id, parking_space_id, entry_at, exit_at, status')
           .eq('organization_id', orgId)
-          .gte('entry_at', `${periodo.fechaInicio}T00:00:00Z`)
-          .lte('entry_at', `${periodo.fechaFin}T23:59:59Z`),
+          .gte('entry_at', start)
+          .lte('entry_at', end),
         branchId,
       );
 
@@ -75,13 +77,14 @@ export const parkingReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await applyBranchFilter(
         db
           .from('parking_sessions')
           .select('id, amount, status, entry_at')
           .eq('organization_id', orgId)
-          .gte('entry_at', `${periodo.fechaInicio}T00:00:00Z`)
-          .lte('entry_at', `${periodo.fechaFin}T23:59:59Z`),
+          .gte('entry_at', start)
+          .lte('entry_at', end),
         branchId,
       );
 
@@ -115,13 +118,14 @@ export const parkingReports: ReportDefinition[] = [
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await applyBranchFilter(
         db
           .from('parking_sessions')
           .select('parking_space_id, entry_at, exit_at')
           .eq('organization_id', orgId)
-          .gte('entry_at', `${periodo.fechaInicio}T00:00:00Z`)
-          .lte('entry_at', `${periodo.fechaFin}T23:59:59Z`)
+          .gte('entry_at', start)
+          .lte('entry_at', end)
           .not('exit_at', 'is', null),
         branchId,
       );

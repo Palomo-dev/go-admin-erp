@@ -11,6 +11,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { franjaDelPeriodo } from '../rangoPeriodo';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { getOrgDateRange, toPlainDate } from '@/lib/utils/timezone';
 import {
@@ -137,7 +138,7 @@ export const gymReports: ReportDefinition[] = [
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       // Límites del periodo en la zona de la organización (no en UTC).
-      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin);
+      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, franjaDelPeriodo(periodo));
       const { data, error } = await db
         .from('membership_events')
         .select('id, membership_id, event_type, created_at')

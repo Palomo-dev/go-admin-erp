@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ContabilidadService, JournalEntry, EstadoReversion } from '../ContabilidadService';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { useFormatDateFor } from '@/lib/context/OrganizationTimezoneContext';
 
@@ -24,6 +24,8 @@ interface AsientoDetailPageProps {
 
 export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
   const router = useRouter();
+  // Los importes contables se llevan en la moneda base de la organizacion.
+  const { formatear } = useMonedaOrganizacion();
   const [asiento, setAsiento] = useState<JournalEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -325,10 +327,10 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
                     {line.description || '-'}
                   </TableCell>
                   <TableCell className="text-right font-mono text-gray-900 dark:text-white">
-                    {line.debit > 0 ? formatCurrency(line.debit) : '-'}
+                    {line.debit > 0 ? formatear(line.debit) : '-'}
                   </TableCell>
                   <TableCell className="text-right font-mono text-gray-900 dark:text-white">
-                    {line.credit > 0 ? formatCurrency(line.credit) : '-'}
+                    {line.credit > 0 ? formatear(line.credit) : '-'}
                   </TableCell>
                 </TableRow>
               ))}
@@ -342,19 +344,19 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
             <div className="text-right">
               <p className="text-sm text-gray-500 dark:text-gray-400">Total Débitos</p>
               <p className="text-xl font-bold text-gray-900 dark:text-white">
-                {formatCurrency(getTotalDebits())}
+                {formatear(getTotalDebits())}
               </p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500 dark:text-gray-400">Total Créditos</p>
               <p className="text-xl font-bold text-gray-900 dark:text-white">
-                {formatCurrency(getTotalCredits())}
+                {formatear(getTotalCredits())}
               </p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500 dark:text-gray-400">Balance</p>
               <p className={`text-xl font-bold ${Math.abs(getTotalDebits() - getTotalCredits()) < 0.01 ? 'text-green-600' : 'text-red-600'}`}>
-                {Math.abs(getTotalDebits() - getTotalCredits()) < 0.01 ? '✓ Balanceado' : formatCurrency(Math.abs(getTotalDebits() - getTotalCredits()))}
+                {Math.abs(getTotalDebits() - getTotalCredits()) < 0.01 ? '✓ Balanceado' : formatear(Math.abs(getTotalDebits() - getTotalCredits()))}
               </p>
             </div>
           </div>

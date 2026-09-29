@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ContabilidadService, JournalEntry, ChartAccount, mapaDeReversiones, mensajeErrorAsiento } from '../ContabilidadService';
 import { Switch } from '@/components/ui/switch';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { CopyableId } from '@/components/common/CopyableId';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -31,6 +31,8 @@ interface JournalLineInput {
 
 export function AsientosPage() {
   const router = useRouter();
+  // Los importes contables se llevan en la moneda base de la organizacion.
+  const { formatear } = useMonedaOrganizacion();
   const searchParams = useSearchParams();
   const { branchFilter, selectedBranchId } = useBranch();
   // `journal_entries.entry_date` es **timestamptz** (verificado en
@@ -546,19 +548,19 @@ export function AsientosPage() {
                 <div>
                   <span className="text-sm text-gray-600 dark:text-gray-400">Total Débitos:</span>
                   <span className="ml-2 font-bold text-gray-900 dark:text-white">
-                    {formatCurrency(getTotalDebits())}
+                    {formatear(getTotalDebits())}
                   </span>
                 </div>
                 <div>
                   <span className="text-sm text-gray-600 dark:text-gray-400">Total Créditos:</span>
                   <span className="ml-2 font-bold text-gray-900 dark:text-white">
-                    {formatCurrency(getTotalCredits())}
+                    {formatear(getTotalCredits())}
                   </span>
                 </div>
                 <div>
                   <span className="text-sm text-gray-600 dark:text-gray-400">Diferencia:</span>
                   <span className={`ml-2 font-bold ${isBalanced() ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatCurrency(Math.abs(getTotalDebits() - getTotalCredits()))}
+                    {formatear(Math.abs(getTotalDebits() - getTotalCredits()))}
                   </span>
                 </div>
               </div>

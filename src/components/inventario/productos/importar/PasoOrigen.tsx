@@ -20,7 +20,7 @@ interface Props {
   onInfo: (mensaje: string) => void;
 }
 
-function ZonaArchivo({ etiqueta, ayuda, icono: Icono, nombre, onArchivo, compacta }: { etiqueta: string; ayuda: string; icono: typeof FileSpreadsheet; nombre?: string; onArchivo: (f: File) => void; compacta?: boolean }) {
+export function ZonaArchivo({ etiqueta, ayuda, icono: Icono, nombre, onArchivo, compacta }: { etiqueta: string; ayuda: string; icono: typeof FileSpreadsheet; nombre?: string; onArchivo: (f: File) => void; compacta?: boolean }) {
   const ref = useRef<HTMLInputElement>(null);
   const [encima, setEncima] = useState(false);
   return (

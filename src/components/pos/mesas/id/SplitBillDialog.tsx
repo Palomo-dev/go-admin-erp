@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { SaleItem } from './types';
+import { repartirPartesIguales } from '@/lib/pos/mesas/cuentaDividida';
 
 interface SplitBillDialogProps {
   open: boolean;
@@ -47,16 +48,29 @@ export interface BillSplit {
 export function SplitBillDialog({
   open,
   onOpenChange,
-  items,
+  items: lineasDeLaCuenta,
   total,
   comensales,
   onConfirmSplit
 }: SplitBillDialogProps) {
-  const { formatear } = useMonedaOrganizacion();
+  const { formatear, decimals } = useMonedaOrganizacion();
+  // Solo se reparte lo que sigue sin pagar (E6): una línea ya pagada no se
+  // vuelve a asignar. Memorizada: el efecto de totales depende de la lista.
+  const items = useMemo(() => lineasDeLaCuenta.filter((l) => !l.paid_at), [lineasDeLaCuenta]);
   const [splitMode, setSplitMode] = useState<'items' | 'equal' | 'custom'>('items');
   const [splits, setSplits] = useState<BillSplit[]>([]);
   const [currentSplit, setCurrentSplit] = useState(0);
   const [selectedItems, setSelectedItems] = useState<{[key: string]: {[splitId: string]: number}}>({});
+  // «Partes iguales» y «montos» se cobran por MONTO, sin platos: el servidor
+  // abona cada pago a las líneas pendientes (pos_checkout_v1, 20260929060000).
+  // Antes se repartían los platos por turnos y el servidor daba por pagada la
+  // línea entera de cada plato de la parte: la mesa quedaba con saldo 0 (E1).
+  const partesIguales = useMemo(
+    () => repartirPartesIguales(total, Math.max(1, splits.length), decimals),
+    [total, splits.length, decimals],
+  );
+  // Tolerancia de redondeo: la unidad mínima de la moneda (COP 1, USD 0,01).
+  const unidadMoneda = 10 ** -Math.max(0, decimals);
 
   // Inicializar splits basado en comensales
   useEffect(() => {
@@ -73,9 +87,11 @@ export function SplitBillDialog({
     }
   }, [open, comensales]);
 
-  // Calcular totales de cada split
+  // Calcular totales de cada split (solo «por ítems»: en los modos por monto
+  // el importe de cada parte lo pone el cajero o el reparto en partes iguales).
   useEffect(() => {
-    const updatedSplits = splits.map(split => ({
+    if (splitMode !== 'items') return;
+    setSplits((actuales) => actuales.map(split => ({
       ...split,
       items: Object.entries(selectedItems)
         .filter(([, splitQty]) => splitQty[split.id] > 0)
@@ -95,9 +111,8 @@ export function SplitBillDialog({
           const pricePerUnit = Number(item.total) / Number(item.quantity);
           return sum + (pricePerUnit * splitQty[split.id]);
         }, 0)
-    }));
-    setSplits(updatedSplits);
-  }, [selectedItems, items]);
+    })));
+  }, [selectedItems, items, splitMode]);
 
   const handleAssignItem = (itemId: string, quantity: number) => {
     const item = items.find(i => i.id === itemId);
@@ -120,39 +135,13 @@ export function SplitBillDialog({
     }));
   };
 
-  const autoAssignItemsRoundRobin = (currentSplits: BillSplit[], allItems: SaleItem[]): BillSplit[] => {
-    const result = currentSplits.map(s => ({
-      ...s,
-      items: [] as Array<{ item: SaleItem; quantity: number }>,
-    }));
-    let splitIdx = 0;
-
-    for (const item of allItems) {
-      const qty = Number(item.quantity);
-      for (let i = 0; i < qty; i++) {
-        const target = result[splitIdx % result.length];
-        const existing = target.items.find(si => si.item.id === item.id);
-        if (existing) {
-          existing.quantity += 1;
-        } else {
-          target.items.push({ item, quantity: 1 });
-        }
-        splitIdx++;
-      }
-    }
-
-    return result;
-  };
+  // Partes por monto: sin platos. La última parte absorbe el residuo del
+  // redondeo, así la suma es exactamente el total.
+  const partesPorMonto = (importes: number[]): BillSplit[] =>
+    splits.map((split, i) => ({ ...split, items: [], total: importes[i] ?? 0 }));
 
   const handleSplitEqually = () => {
-    const perPerson = total / splits.length;
-    const equalSplits: BillSplit[] = splits.map((split) => ({
-      ...split,
-      items: [],
-      total: perPerson
-    }));
-    const withItems = autoAssignItemsRoundRobin(equalSplits, items);
-    setSplits(withItems);
+    setSplits(partesPorMonto(partesIguales));
     setSplitMode('equal');
   };
 
@@ -171,9 +160,9 @@ export function SplitBillDialog({
       return items.every(item => getItemAssigned(item.id) === Number(item.quantity));
     }
     if (splitMode === 'custom') {
-      // La suma de montos debe igualar el total (tolerancia $1)
+      // La suma de montos debe igualar el total (tolerancia: la unidad de la moneda)
       const sumCustom = splits.reduce((s, sp) => s + sp.total, 0);
-      return Math.abs(sumCustom - total) < 1 && splits.every(s => s.total > 0);
+      return Math.abs(sumCustom - total) <= unidadMoneda + 1e-9 && splits.every(s => s.total > 0);
     }
     return true;
   };
@@ -181,8 +170,10 @@ export function SplitBillDialog({
   const handleConfirm = () => {
     let finalSplits = splits;
 
-    if (splitMode === 'equal' || splitMode === 'custom') {
-      finalSplits = autoAssignItemsRoundRobin(splits, items);
+    if (splitMode === 'equal') {
+      finalSplits = partesPorMonto(partesIguales);
+    } else if (splitMode === 'custom') {
+      finalSplits = splits.map((s) => ({ ...s, items: [] }));
     }
 
     onConfirmSplit(finalSplits);
@@ -378,7 +369,7 @@ export function SplitBillDialog({
               </p>
 
               <div className="max-w-md mx-auto space-y-3">
-                {splits.map((split) => (
+                {splits.map((split, index) => (
                   <Card key={split.id} className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -388,7 +379,7 @@ export function SplitBillDialog({
                         <span className="font-medium">{split.name}</span>
                       </div>
                       <span className="text-xl font-bold text-blue-600">
-                        {formatear(total / splits.length)}
+                        {formatear(partesIguales[index] ?? 0)}
                       </span>
                     </div>
                   </Card>
@@ -476,18 +467,7 @@ export function SplitBillDialog({
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => {
-                  const remaining = splits.length;
-                  const perPerson = Math.floor(total / remaining);
-                  const lastPerson = total - perPerson * (remaining - 1);
-                  const baseSplits = splits.map((s, i) => ({
-                    ...s,
-                    total: i === remaining - 1 ? lastPerson : perPerson,
-                    items: [] as Array<{ item: SaleItem; quantity: number }>,
-                  }));
-                  const withItems = autoAssignItemsRoundRobin(baseSplits, items);
-                  setSplits(withItems);
-                }}
+                onClick={() => setSplits(partesPorMonto(partesIguales))}
               >
                 <Calculator className="h-4 w-4 mr-2" />
                 Distribuir equitativamente como base

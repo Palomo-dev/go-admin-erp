@@ -13,6 +13,10 @@ export interface SaleItem {
   /** Modo de impuesto de la línea; null en líneas anteriores al 2026-09-24. */
   tax_included?: boolean | null;
   discount_amount: number;
+  /** Cuenta dividida: la línea quedó pagada (su abono cubre su total). */
+  paid_at?: string | null;
+  /** Cuenta dividida: importe ya abonado a la línea por los cobros (20260929060000). */
+  paid_amount?: number | string | null;
   notes: string | {
     product_name?: string;
     /** Nota de cocina: nunca se muestra al cliente (pre-cuenta, recibo, factura). */

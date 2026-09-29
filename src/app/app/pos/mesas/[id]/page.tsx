@@ -62,6 +62,7 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { useTranslations } from 'next-intl';
 import { LiberarMesaDialog, useAvisoLiberacion } from '@/components/pos/mesas/LiberarMesaDialog';
 import { LiberacionMesaError, type ResultadoLiberacion } from '@/components/pos/mesas/liberacionMesaCliente';
+import { abonadoPendiente, esDivisionPorMonto, saldoDeLineas } from '@/lib/pos/mesas/cuentaDividida';
 
 export default function MesaDetallePage() {
   const tLiberar = useTranslations('posMesaLiberar');
@@ -962,6 +963,18 @@ export default function MesaDetallePage() {
       throw new Error('Se requiere una sucursal para procesar');
     }
 
+    // Tras un abono de cuenta dividida (partes por monto, o una parte que llevó
+    // una fracción de un plato) se cobra el SALDO, no las líneas enteras: el
+    // servidor rechaza un cobro mayor que lo que falta (pago_excede_saldo).
+    if (abonadoPendiente(session.sale_items || []) > 0) {
+      return convertSplitToCart({
+        id: 'saldo',
+        name: tLiberar('campos.saldo'),
+        items: [],
+        total: saldoDeLineas(session.sale_items || []),
+      });
+    }
+
     // La tasa y el modo de impuesto de lo que se cobra los decide el diálogo
     // de cobro, como siempre y como en el mostrador (unificar los motores de
     // impuestos es decisión pendiente): aquí no se cambia su cálculo.
@@ -1062,6 +1075,9 @@ export default function MesaDetallePage() {
     }
 
     const splitActual = billSplits && billSplits.length > 0 ? billSplits[currentSplitIndex] : null;
+    // Cobro por MONTO (partes iguales, montos o el saldo tras un abono): la
+    // línea del carrito es virtual y el servidor abona el pago a las líneas.
+    const porMonto = splitActual ? splitActual.items.length === 0 : abonadoPendiente(session.sale_items || []) > 0;
     const idsDelCobro = new Set(checkoutData.cart.items.map((i) => String(i.id)));
     const settle: CobroVentaExistente = {
       sale_id: session.sale_id,
@@ -1070,6 +1086,10 @@ export default function MesaDetallePage() {
         ? {
             split_id: splitActual.id,
             paid_sale_item_ids: splitActual.items.map((si) => String(si.item.id)),
+          }
+        : {}),
+      ...(splitActual || porMonto
+        ? {
             lineas_sin_cobrar: lineasSinPagarComoCarrito().filter(
               (i) => !idsDelCobro.has(String(i.id))
                 && (session.sale_items || []).some((si) => si.id === i.id && si.sale_id === session.sale_id),
@@ -1094,9 +1114,10 @@ export default function MesaDetallePage() {
     // Si hay splits configurados, verificar items sin asignar
     if (billSplits && billSplits.length > 0) {
       // Detectar items sin asignar
-      const allCurrentItems = session.sale_items.filter(item => !(item as any).paid_at);
+      const allCurrentItems = session.sale_items.filter(item => !item.paid_at);
       const itemsInSplits = billSplits.flatMap(split => split.items.map(si => si.item.id));
-      const unassignedItems = allCurrentItems.filter(item => !itemsInSplits.includes(item.id));
+      // Partes por monto: no llevan platos, no hay «sin asignar» (el saldo lo da el servidor).
+      const unassignedItems = esDivisionPorMonto(billSplits) ? [] : allCurrentItems.filter(item => !itemsInSplits.includes(item.id));
 
       if (unassignedItems.length > 0) {
         const unassignedTotal = unassignedItems.reduce((sum, item) => sum + Number(item.total), 0);
@@ -1164,7 +1185,9 @@ export default function MesaDetallePage() {
           updated_at: splitItem.item.updated_at,
         }))
       : [{
-          // Item virtual para división equitativa
+          // Item virtual para división por monto (partes iguales, montos o el
+          // saldo tras un abono). Impuesto incluido y tasa 0: el cobro es
+          // exactamente el importe de la parte; el impuesto ya está en las líneas.
           id: `split-${split.id}`,
           cart_id: session.sale_id!,
           product_id: 0,
@@ -1172,6 +1195,9 @@ export default function MesaDetallePage() {
           unit_price: split.total,
           discount: 0,
           tax: 0,
+          tax_rate: 0,
+          tax_amount: 0,
+          tax_included: true,
           total: split.total,
           note: `División equitativa - ${split.name}`,
           name: `División equitativa - ${split.name}`,
@@ -1192,6 +1218,7 @@ export default function MesaDetallePage() {
       customer_id: selectedCustomer?.id,
       customer: selectedCustomer,
       items,
+      ...(split.items.length === 0 ? { tax_included: true } : {}),
       subtotal: split.total,
       tax_amount: 0,
       tax_total: 0,
@@ -1279,9 +1306,9 @@ export default function MesaDetallePage() {
       }
 
       // Detectar items sin asignar (agregados después de dividir)
-      const allCurrentItems = session?.sale_items?.filter(item => !(item as any).paid_at) || [];
+      const allCurrentItems = session?.sale_items?.filter(item => !item.paid_at) || [];
       const itemsInSplits = billSplits.flatMap(split => split.items.map(si => si.item.id));
-      const unassignedItems = allCurrentItems.filter(item => !itemsInSplits.includes(item.id));
+      const unassignedItems = esDivisionPorMonto(billSplits) ? [] : allCurrentItems.filter(item => !itemsInSplits.includes(item.id));
 
       if (unassignedItems.length > 0) {
         const unassignedTotal = unassignedItems.reduce((sum, item) => sum + Number(item.total), 0);
@@ -1339,9 +1366,9 @@ export default function MesaDetallePage() {
         // Verificar si todos están pagados
         if (newPaidIds.length === billSplits.length) {
           // Verificar si hay items sin asignar antes de liberar
-          const allCurrentItems = session?.sale_items?.filter(item => !(item as any).paid_at) || [];
+          const allCurrentItems = session?.sale_items?.filter(item => !item.paid_at) || [];
           const itemsInSplits = billSplits.flatMap(split => split.items.map(si => si.item.id));
-          const unassignedItems = allCurrentItems.filter(item => !itemsInSplits.includes(item.id));
+          const unassignedItems = esDivisionPorMonto(billSplits) ? [] : allCurrentItems.filter(item => !itemsInSplits.includes(item.id));
 
           if (unassignedItems.length > 0) {
             const unassignedTotal = unassignedItems.reduce((sum, item) => sum + Number(item.total), 0);
@@ -1577,7 +1604,7 @@ export default function MesaDetallePage() {
   
   // Detectar items sin asignar a ningún split (agregados después de dividir)
   const itemsInSplits = billSplits?.flatMap(split => split.items.map(si => si.item.id)) || [];
-  const unassignedItems = items.filter(item => !itemsInSplits.includes(item.id));
+  const unassignedItems = esDivisionPorMonto(billSplits) ? [] : items.filter(item => !itemsInSplits.includes(item.id));
   
   // Totales base desde items (fallback si el hook no ha calculado aún)
   const fallbackTotal = items.reduce((sum, item) => sum + Number(item.total), 0);
@@ -1587,7 +1614,9 @@ export default function MesaDetallePage() {
   // Usar totales del hook si están disponibles, sino fallback
   const subtotal = calculatedTaxTotals?.subtotal ?? fallbackSubtotal;
   const taxes = calculatedTaxTotals?.taxTotal ?? fallbackTaxes;
-  const total = calculatedTaxTotals?.total ?? fallbackTotal;
+  // Cuenta dividida: lo ya abonado a líneas que siguen sin pagar se descuenta
+  // (el servidor abona cada cobro a las líneas; paid_amount, 20260929060000).
+  const total = Math.max(0, (calculatedTaxTotals?.total ?? fallbackTotal) - abonadoPendiente(items));
   
   const totalPaid = paidItems.reduce((sum, item) => sum + Number(item.total), 0);
 

@@ -146,11 +146,13 @@ describe('cabecera, KPIs y barra como el Figma', () => {
     expect(screen.getByRole('button', { name: /Vencido/ }).className).toContain('border-line-danger');
   });
 
-  it('buscador único sin el rango de fechas ni la pista «/» en la barra', async () => {
+  // La pista «/» vuelve (decisión del dueño, 2026-09-29): el Figma la dibuja en todo buscador de página.
+  it('buscador único con la pista «/» y sin el rango de fechas en la barra', async () => {
     await montar();
     const buscador = screen.getByPlaceholderText('Buscar por número, cliente o referencia');
     const barra = buscador.closest('div.flex.items-center.gap-2') as HTMLElement;
-    expect(within(barra).queryByText('/')).toBeNull();
+    expect(within(barra).queryByText('/')).toBeTruthy();
+    expect(buscador.getAttribute('aria-keyshortcuts')).toBe('/');
     expect(within(barra).queryByRole('button', { name: /Periodo de emisión/ })).toBeNull();
     expect(screen.getByRole('button', { name: /Filtros/ })).toBeTruthy();
   });

@@ -18952,5 +18952,651 @@
       "listo": "Lote {codigo} eliminado",
       "error": "No se pudo eliminar el lote"
     }
+  },
+  "inventarioTraslados": {
+    "comun": {
+      "titulo": "Traslados entre sucursales",
+      "tituloCorto": "Traslados",
+      "inventario": "Inventario",
+      "existencias": "Existencias",
+      "sustantivo": {
+        "singular": "traslado",
+        "plural": "traslados"
+      },
+      "nTraslados": "{count, plural, one {{n} traslado} other {{n} traslados}}",
+      "tituloTraslado": "Traslado {codigo}",
+      "ruta": "{origen} → {destino}",
+      "rutaDe": "De {origen} a {destino}",
+      "codigoADestino": "{codigo} → {destino}",
+      "etiquetaFila": "Traslado {codigo} de {origen} a {destino}",
+      "productos": "{count, plural, one {{n} producto} other {{n} productos}}",
+      "unidades": "{count, plural, one {{n} unidad} other {{n} unidades}}",
+      "sinLote": "Sin lote",
+      "sku": "SKU {sku}",
+      "volver": "Volver a traslados"
+    },
+    "estados": {
+      "pending": "Pendiente",
+      "in_transit": "En tránsito",
+      "received": "Recibido",
+      "con_diferencia": "Recibido con diferencia",
+      "cancelled": "Cancelado"
+    },
+    "listado": {
+      "lema": "lo que sale de una sucursal y entra en otra",
+      "actualizar": "Actualizar",
+      "nuevo": "Nuevo traslado",
+      "subtituloMovil": "{transito} en tránsito · {pendientes} por despachar",
+      "exportar": {
+        "boton": "Exportar",
+        "listo": "{count, plural, one {Se exportó 1 traslado} other {Se exportaron # traslados}}",
+        "error": "No se pudo exportar",
+        "sinDatos": "No hay traslados para exportar"
+      },
+      "kpis": {
+        "etiqueta": "Resumen de traslados",
+        "porDespachar": "Por despachar",
+        "porDespacharDetalle": "creado, sin salir del origen",
+        "nadaPorDespachar": "nada pendiente de salir",
+        "enTransito": "En tránsito",
+        "enTransitoDetalle": "{n} uds fuera de toda sucursal",
+        "recibidosMes": "Recibidos este mes",
+        "recibidosMesDetalle": "con su entrada en el kardex",
+        "conDiferencia": "Con diferencia",
+        "conDiferenciaDetalle": "llegó menos de lo enviado",
+        "sinDiferencia": "todo llegó completo"
+      },
+      "aviso": {
+        "titulo": "{count, plural, one {Un traslado sigue en tránsito desde el {fecha}} other {{n} traslados siguen en tránsito desde el {fecha}}}",
+        "descripcion": "{codigo} sacó {n} unidades de {origen} y nunca se recibió. Recíbelo o devuélvelo al origen para que el inventario vuelva a cuadrar.",
+        "revisar": "Revisar {codigo}"
+      },
+      "buscar": {
+        "placeholder": "Buscar por número, producto o nota",
+        "etiqueta": "Buscar traslados"
+      },
+      "filtros": {
+        "estado": "Estado",
+        "origen": "Sale de",
+        "destino": "Llega a",
+        "todas": "Todas",
+        "desde": "Creado desde",
+        "hasta": "Creado hasta",
+        "verN": "{count, plural, one {Ver 1 traslado} other {Ver {n} traslados}}"
+      },
+      "chips": {
+        "estado": "Estado: {estados}",
+        "origen": "Sale de: {sucursal}",
+        "destino": "Llega a: {sucursal}",
+        "desde": "Desde {fecha}",
+        "hasta": "Hasta {fecha}"
+      },
+      "columnas": {
+        "traslado": "Traslado",
+        "ruta": "Origen → destino",
+        "productos": "Productos",
+        "unidades": "Unidades",
+        "estado": "Estado"
+      },
+      "linea": {
+        "porDespachar": "por despachar",
+        "enTransito": "en tránsito",
+        "despachado": "despachado el {fecha}",
+        "sinRecibirDesde": "sin recibir desde el {fecha}",
+        "recibido": "recibido el {fecha}",
+        "recibidoSinFecha": "recibido",
+        "faltan": "faltan {n} · dadas de baja como merma",
+        "devueltas": "{n} devueltas al origen",
+        "devueltoAlOrigen": "devuelto al origen",
+        "cancelado": "cancelado",
+        "canceladoAntes": "cancelado antes de despachar"
+      },
+      "unidades": {
+        "porEnviar": "{n} por enviar",
+        "enviadas": "{n} enviadas",
+        "recibidas": "{n} recibidas",
+        "porEnviarMovil": "{n} por enviar · {productos, plural, one {1 producto} other {# productos}}",
+        "enviadasRecibidasMovil": "{enviadas} enviadas · {recibidas} recibidas · {productos, plural, one {1 producto} other {# productos}}"
+      },
+      "sinAutor": "sin autor",
+      "etiquetaFila": "Traslado {codigo} de {origen} a {destino}",
+      "vacio": {
+        "titulo": "Aún no hay traslados",
+        "descripcion": "Mueve mercancía entre tus sucursales: sale del origen al despachar y entra al destino al recibir."
+      },
+      "sinResultados": "Ningún traslado coincide con la búsqueda o los filtros.",
+      "errorCarga": "No se pudieron cargar los traslados",
+      "sinPermiso": {
+        "titulo": "No tienes acceso a los traslados",
+        "descripcion": "Pide a un administrador el permiso de inventario para ver o trasladar existencias."
+      },
+      "errorSeleccionarTodo": "No se pudieron seleccionar todos los traslados",
+      "csv": {
+        "codigo": "Traslado",
+        "estado": "Estado",
+        "origen": "Sale de",
+        "destino": "Llega a",
+        "creado": "Creado",
+        "autor": "Creado por",
+        "despachado": "Despachado",
+        "recibido": "Recibido",
+        "productos": "Productos",
+        "enviadas": "Unidades enviadas",
+        "recibidas": "Unidades recibidas",
+        "faltantes": "Faltantes",
+        "devueltas": "Devueltas al origen",
+        "valor": "Valor al costo",
+        "orden": "Orden de producción",
+        "notas": "Nota"
+      }
+    },
+    "masivas": {
+      "despachar": "Despachar",
+      "imprimir": "Imprimir guías",
+      "exportar": "Exportar",
+      "cancelar": "{count, plural, one {Cancelar 1 traslado} other {Cancelar # traslados}}",
+      "sinPermiso": "No tienes permiso para trasladar existencias",
+      "soloPendientes": "Solo se despachan traslados pendientes",
+      "soloPendientesNota": "{count, plural, one {1 traslado seleccionado no está pendiente y se omite.} other {# traslados seleccionados no están pendientes y se omiten.}}",
+      "despacharTitulo": "{count, plural, one {¿Despachar 1 traslado?} other {¿Despachar # traslados?}}",
+      "despacharDescripcion": "Cada uno sale de su origen ahora y queda en tránsito. Los que tengan seriales se despachan desde su detalle, donde se escanea cada serial.",
+      "despacharConfirmar": "Despachar",
+      "cancelarTitulo": "{count, plural, one {¿Cancelar 1 traslado?} other {¿Cancelar # traslados?}}",
+      "cancelarDescripcion": "Aún no se despacharon: no se toca ninguna existencia. Quedan en la lista como «Cancelado».",
+      "cancelarConfirmar": "Cancelar traslados",
+      "volver": "Volver",
+      "resultadoDespachar": "{ok} despachados · {fallidos} con error",
+      "resultadoCancelar": "{ok} cancelados · {fallidos} con error"
+    },
+    "acciones": {
+      "verDetalle": "Ver detalle",
+      "despachar": "Despachar",
+      "editar": "Editar",
+      "imprimir": "Imprimir guía de traslado",
+      "cancelar": "Cancelar traslado",
+      "recibirEn": "Recibir en {sucursal}",
+      "devolver": "Devolver al origen",
+      "verKardex": "Ver en el kardex",
+      "verLote": "Ver trazabilidad del lote",
+      "verOrden": "Ver orden de producción"
+    },
+    "despachar": {
+      "titulo": "¿Despachar el traslado {codigo}?",
+      "descripcion": "Salen {n} unidades de {origen} y quedan en tránsito hasta que {destino} las reciba. El kardex registra la salida ahora.",
+      "confirmar": "Despachar",
+      "despachando": "Despachando…",
+      "cancelar": "Cancelar",
+      "cargando": "Cargando el traslado",
+      "error": "No se pudo cargar el traslado",
+      "listo": "{codigo} despachado: salieron {n} unidades de {origen}",
+      "yaDespachado": "{codigo} ya estaba despachado",
+      "seriales": {
+        "titulo": "Seriales que salen en {codigo}",
+        "descripcion": "Escanea o marca cada serial que sale; deben coincidir con la cantidad de cada renglón.",
+        "escanear": "Escanear o escribir un serial",
+        "marcado": "{serial} marcado en {producto}",
+        "noEncontrado": "El serial {serial} no está disponible en {origen} para estos productos",
+        "marcados": "{n} de {total} marcados",
+        "faltan": "Faltan seriales en: {producto}",
+        "sinDisponibles": "No hay seriales de {producto} disponibles en {origen}"
+      }
+    },
+    "cancelar": {
+      "titulo": "¿Cancelar el traslado {codigo}?",
+      "descripcion": "Aún no se despachó: no se toca ninguna existencia. El traslado queda en la lista como «Cancelado».",
+      "confirmar": "Cancelar traslado",
+      "mantener": "Mantener",
+      "listo": "{codigo} cancelado"
+    },
+    "devolver": {
+      "titulo": "¿Devolver al origen el traslado {codigo}?",
+      "descripcion": "Las {n} unidades en tránsito vuelven a {origen} con un movimiento de entrada. Úsalo solo si la mercancía no salió o regresó.",
+      "confirmar": "Devolver al origen",
+      "motivo": "Motivo",
+      "motivos": {
+        "noSalio": "La mercancía no salió",
+        "regreso": "La mercancía regresó al origen",
+        "error": "El traslado se creó por error"
+      },
+      "listo": "{codigo}: volvieron {n} unidades a {origen}"
+    },
+    "recibir": {
+      "titulo": "Recibir traslado {codigo} en {destino}",
+      "tituloCorto": "Recibir traslado",
+      "descripcion": "Cuenta lo que llegó. Lo recibido entra a {destino} con su costo; lo que falte decides qué pasa con ello.",
+      "cargando": "Cargando el traslado",
+      "error": "No se pudo cargar el traslado",
+      "nadaPendiente": "Este traslado ya no tiene nada por recibir",
+      "columnas": {
+        "producto": "Producto",
+        "lote": "Lote",
+        "enviado": "Enviado",
+        "recibido": "Recibido",
+        "diferencia": "Diferencia",
+        "decision": "Qué pasa con la diferencia"
+      },
+      "enviadoN": "Enviado: {n}",
+      "completo": "Completo",
+      "recibidoDe": "Recibido de {producto}",
+      "decisionDe": "Qué pasa con la diferencia de {producto}",
+      "motivoDe": "Motivo del faltante de {producto}",
+      "elegirDecision": "Elige qué pasa",
+      "decisiones": {
+        "faltante": "Faltante en el transporte",
+        "en_camino": "Siguen en camino"
+      },
+      "motivoPlaceholder": "Motivo: caja rota, no llegó…",
+      "seriales": "{count, plural, one {1 serial} other {{n} seriales}}",
+      "serialesLlegaron": "Seriales que llegaron: {n} de {total}",
+      "sku": "SKU {sku}",
+      "errores": {
+        "recibido_requerido": "Indica cuánto llegó",
+        "recibido_de_mas": "No puede llegar más de lo enviado ({n})",
+        "decision_requerida": "Elige qué pasa con la diferencia",
+        "motivo_requerido": "Escribe el motivo del faltante",
+        "seriales_no_cuadran": "Marca los {n} seriales que llegaron",
+        "unidades_enteras": "Con seriales se reciben unidades enteras"
+      },
+      "resumen": {
+        "completo": "Llegó todo: el traslado queda «Recibido».",
+        "diferencia": "Faltan {n} de {producto}.",
+        "faltante": "Con «Faltante en el transporte» se registra una merma en {destino} por {valor} y el traslado queda «Recibido con diferencia».",
+        "faltanteSinValor": "Con «Faltante en el transporte» se registra una merma en {destino} y el traslado queda «Recibido con diferencia».",
+        "enCamino": "Con «Siguen en camino», queda en tránsito por esas {n}.",
+        "elegir": "Elige qué pasa con cada diferencia."
+      },
+      "cancelar": "Cancelar",
+      "confirmar": "Confirmar recepción",
+      "confirmando": "Registrando…",
+      "listo": "{codigo}: entraron {n} unidades a {destino}",
+      "listoParcial": "{codigo}: entraron {n} unidades a {destino}; siguen en camino {pendiente}",
+      "repetido": "Esta recepción ya estaba registrada"
+    },
+    "nuevo": {
+      "titulo": "Nuevo traslado",
+      "tituloEditar": "Editar {codigo}",
+      "subtitulo": "Sale de una sucursal al despachar y entra en la otra al recibir",
+      "cancelar": "Cancelar",
+      "crearSinDespachar": "Crear sin despachar",
+      "crearYDespachar": "Crear y despachar",
+      "guardar": "Guardar cambios",
+      "guardarYDespachar": "Guardar y despachar",
+      "guardarBorrador": "Guardar borrador",
+      "despachando": "Guardando…",
+      "cargando": "Cargando el traslado",
+      "errorCarga": "No se pudo cargar el traslado",
+      "sinPermiso": {
+        "titulo": "No puedes crear traslados",
+        "descripcion": "Pide a un administrador el permiso de trasladar inventario."
+      },
+      "noEditable": {
+        "titulo": "Este traslado ya no se puede editar",
+        "descripcion": "Solo se editan los traslados pendientes: uno despachado ya movió existencias.",
+        "ver": "Ver el traslado"
+      },
+      "ruta": {
+        "titulo": "Origen y destino",
+        "saleDe": "Sale de",
+        "llegaA": "Llega a",
+        "nota": "Nota",
+        "notaPlaceholder": "Reposición de fin de semana",
+        "ayudaOrigen": "Solo sucursales a las que perteneces",
+        "ayudaDestino": "Una sucursal distinta del origen",
+        "elegir": "Elige una sucursal",
+        "requerido": "Elige la sucursal"
+      },
+      "productos": {
+        "titulo": "Productos · {productos} · {unidades}",
+        "nProductos": "{count, plural, one {1 producto} other {{n} productos}}",
+        "nUnidades": "{count, plural, one {1 unidad} other {{n} unidades}}",
+        "ayuda": "Se muestra lo disponible en {origen} por lote. No se puede enviar más de lo disponible.",
+        "ayudaSinOrigen": "Elige primero la sucursal de origen.",
+        "buscar": "Buscar producto para agregar…",
+        "vacio": "Agrega los productos que salen; también puedes escanear el código de barras.",
+        "tabla": "Productos del traslado",
+        "dialogoTitulo": "Agregar productos al traslado",
+        "dialogoDescripcion": "Costo promedio · disponible en {origen}"
+      },
+      "columnas": {
+        "producto": "Producto",
+        "lote": "Lote",
+        "disponible": "Disponible en origen",
+        "cantidad": "Cantidad",
+        "costo": "Costo prom.",
+        "quitar": "Quitar"
+      },
+      "lote": {
+        "automatico": "Automático (vence primero)",
+        "vence": "{codigo} · vence {fecha}",
+        "vencido": "vencido"
+      },
+      "loteDe": "Lote de {producto}",
+      "cantidadDe": "Cantidad de {producto}",
+      "quitar": "Quitar {producto}",
+      "quitarCorto": "Quitar",
+      "conSeriales": "con seriales",
+      "disponibleEnOrigen": "Disponible en origen: {n}",
+      "soloHay": "Solo hay {n} disponibles",
+      "nAvisos": "{count, plural, one {1 con aviso} other {{n} con aviso}}",
+      "yaEsta": "{nombre} ya está en el traslado",
+      "errores": {
+        "cantidad_requerida": "Indica la cantidad",
+        "supera_disponible": "Solo hay {n} disponibles",
+        "lote_requerido": "Elige el lote",
+        "unidades_enteras": "Con seriales se trasladan unidades enteras",
+        "repetido": "Este producto con este lote ya está en la lista"
+      },
+      "pie": "«Crear sin despachar» deja el traslado pendiente: no mueve existencias. «Crear y despachar» descuenta el origen ahora y lo deja en tránsito. Los productos con seriales piden escanear cada serial al despachar.",
+      "creado": "{codigo} creado: pendiente de despachar",
+      "creadoDespachado": "{codigo} creado y despachado",
+      "creadoSinDespachar": "{codigo} se creó pero no se despachó: {motivo}",
+      "guardado": "{codigo} actualizado"
+    },
+    "detalle": {
+      "tituloCargando": "Traslado",
+      "cargando": "Cargando el traslado",
+      "error": "No se pudo cargar el traslado",
+      "sinPermiso": {
+        "titulo": "No tienes acceso a este traslado",
+        "descripcion": "Pide a un administrador el permiso de inventario."
+      },
+      "noEncontrado": {
+        "titulo": "Traslado no encontrado",
+        "descripcion": "No existe o es de otra organización."
+      },
+      "sinAutor": "sin autor",
+      "subtitulo": {
+        "pendiente": "{ruta} · creado el {fecha} por {autor}",
+        "enTransito": "{ruta} · despachado el {fecha} por {autor}",
+        "enTransitoLegado": "{ruta} · en tránsito",
+        "recibido": "{ruta} · recibido el {fecha} por {autor}",
+        "cancelado": "{ruta} · cancelado el {fecha}"
+      },
+      "imprimirGuia": "Imprimir guía",
+      "editar": "Editar",
+      "recibir": "Recibir",
+      "recibirEn": "Recibir en {destino}",
+      "despachar": "Despachar",
+      "atascado": "Sigue en tránsito desde el {fecha}. Recíbelo o devuélvelo al origen para que el inventario vuelva a cuadrar.",
+      "renglones": {
+        "titulo": "Renglones · {productos} · {unidades}",
+        "tabla": "Renglones del traslado",
+        "pendiente": "Salen de {origen} al despachar; mientras tanto no mueven existencias.",
+        "enTransito": "Salieron de {origen} al despachar; todavía no cuentan en {destino}.",
+        "recibido": "Salieron de {origen} y entraron a {destino}.",
+        "cancelado": "No se movió ninguna existencia."
+      },
+      "columnas": {
+        "producto": "Producto",
+        "lote": "Lote",
+        "cantidad": "Cantidad",
+        "enviado": "Enviado",
+        "disponible": "Disponible en origen",
+        "recibido": "Recibido",
+        "costo": "Costo prom."
+      },
+      "seriales": "{count, plural, one {1 serial} other {{n} seriales}} · {lista}",
+      "vence": "vence {fecha}",
+      "faltan": "faltan {n}",
+      "devueltas": "{n} devueltas",
+      "motivoFaltante": "Faltante: {motivo}",
+      "disponibleN": "Disponible: {n}",
+      "porRecibir": "por recibir",
+      "recibidasN": "{n} recibidas",
+      "datos": {
+        "titulo": "Datos del traslado",
+        "nota": "Nota",
+        "orden": "Orden de producción",
+        "motivo": "Motivo de cancelación"
+      },
+      "seguimiento": {
+        "titulo": "Seguimiento",
+        "creado": "Creado",
+        "editado": "Editado",
+        "despachado": "Despachado desde {origen}",
+        "recibido": "Recibido en {destino}",
+        "recibidoLegado": "Recibido (antes del seguimiento)",
+        "cancelado": "Cancelado",
+        "devuelto": "Devuelto al origen",
+        "renglones": "{count, plural, one {1 producto} other {{n} productos}}",
+        "unidades": "{count, plural, one {1 ud} other {{n} uds}}",
+        "por": "por {autor}",
+        "salieron": "Salieron {n} uds · «Traslado salida»",
+        "entraron": "Entraron {n} uds · «Traslado entrada»",
+        "faltante": "{n} dadas de baja como merma: {motivo}",
+        "enCamino": "{n} siguen en camino",
+        "volvieron": "Volvieron {n} uds a {origen}",
+        "motivo": "Motivo: {motivo}",
+        "limpieza": "Limpieza de traslados de prueba de 2025, sin mover existencias",
+        "pendienteDespachar": "Pendiente de despachar",
+        "pendienteDespacharDetalle": "Al despachar sale de {origen} como «Traslado salida»",
+        "pendienteRecibir": "Pendiente de recibir en {destino}",
+        "pendienteRecibirDetalle": "Al recibir entra como «Traslado entrada»",
+        "verKardex": "Ver en el kardex",
+        "ayuda": "Si no llega todo, la diferencia se decide al recibir: seguir esperando o darla de baja como merma en tránsito.",
+        "legado": "Traslado anterior al 29 de septiembre de 2026: puede no tener todos sus movimientos en el kardex."
+      }
+    },
+    "guia": {
+      "titulo": "Guía de traslado {codigo}",
+      "origen": "Sale de",
+      "destino": "Llega a",
+      "creado": "Creado",
+      "despachado": "Despachado",
+      "nota": "Nota: {nota}",
+      "producto": "Producto",
+      "lote": "Lote",
+      "cantidad": "Cantidad",
+      "recibido": "Recibido",
+      "seriales": "Seriales: {lista}",
+      "entrega": "Entrega ({sucursal})",
+      "recibe": "Recibe ({sucursal})",
+      "nada": "No hay guías para imprimir: los traslados cancelados no llevan guía",
+      "error": "No se pudo preparar la guía"
+    },
+    "errores": {
+      "datos_invalidos": "Revisa los datos del traslado.",
+      "sin_permiso": "No tienes permiso para esta acción de traslados.",
+      "sucursal_sin_acceso": "No tienes acceso a esa sucursal.",
+      "sucursal_ajena": "La sucursal no pertenece a la organización.",
+      "producto_ajeno": "El producto no pertenece a la organización.",
+      "traslado_no_encontrado": "El traslado no existe o es de otra organización.",
+      "estado_invalido": "El traslado cambió de estado: recarga la página.",
+      "stock_insuficiente": "No hay existencias suficientes en el origen.",
+      "stock_insuficiente_detalle": "No hay existencias suficientes en el origen: disponible {disponible}, solicitado {solicitado}.",
+      "seriales_requeridos": "Faltan los seriales de un producto con seriales.",
+      "seriales_requeridos_producto": "Faltan los seriales de {producto}.",
+      "seriales_no_cuadran": "La cantidad de seriales no coincide con la cantidad.",
+      "serial_no_disponible": "Algún serial no está disponible en el origen.",
+      "serial_repetido": "Hay seriales repetidos.",
+      "decision_requerida": "Elige qué pasa con la diferencia de cada renglón.",
+      "motivo_requerido": "Escribe el motivo del faltante.",
+      "recibido_invalido": "Lo recibido no puede ser negativo ni mayor que lo pendiente.",
+      "nada_que_recibir": "Indica al menos una unidad recibida o un faltante.",
+      "nada_que_devolver": "Ya no queda nada en tránsito para devolver.",
+      "misma_sucursal": "El origen y el destino deben ser sucursales distintas.",
+      "sucursales_requeridas": "Elige el origen y el destino.",
+      "sucursal_inactiva": "Una de las sucursales está inactiva.",
+      "producto_no_trasladable": "Ese producto no controla existencias y no se puede trasladar.",
+      "lote_invalido": "El lote no pertenece a este producto.",
+      "renglon_repetido": "El mismo producto con el mismo lote está dos veces.",
+      "renglon_invalido": "Un renglón no pertenece a este traslado.",
+      "cantidad_invalida": "La cantidad debe ser mayor que cero.",
+      "items_requeridos": "Agrega al menos un producto.",
+      "demasiados_renglones": "Demasiados renglones en un solo traslado.",
+      "orden_produccion_invalida": "La orden de producción no está completada en esta sucursal.",
+      "excede_orden_produccion": "Se reparte más de lo que falta distribuir de la orden.",
+      "excede_orden_produccion_detalle": "Se reparte más de lo que falta distribuir de la orden: producido {producido}, ya distribuido {ya}.",
+      "organizacion_no_permitida": "La organización no coincide con la de tu sesión.",
+      "sin_sesion": "Tu sesión terminó: vuelve a iniciar sesión.",
+      "error_desconocido": "No se pudo completar la operación. Intenta de nuevo."
+    }
+  },
+  "inventarioDistribucion": {
+    "titulo": "Distribución",
+    "subtitulo": "{sucursal} (origen) · {count, plural, one {1 envío} other {{n} envíos}}",
+    "subtituloTodas": "{count, plural, one {1 envío} other {{n} envíos}} de todas las sucursales",
+    "subtituloMovil": "{count, plural, one {1 envío} other {{n} envíos}}",
+    "notaOrigen": "Origen de los envíos: la sucursal del encabezado. Las recepciones se ven desde la sucursal destino.",
+    "elegirOrigen": "Elige una sucursal en el encabezado: es el origen de los envíos.",
+    "sinPermisoCrear": "No tienes permiso para trasladar inventario",
+    "traslados": "Traslados",
+    "nueva": "Nueva distribución",
+    "actualizar": "Actualizar",
+    "sustantivo": {
+      "singular": "envío",
+      "plural": "envíos"
+    },
+    "exportar": {
+      "boton": "Exportar",
+      "error": "No se pudo exportar",
+      "sinDatos": "No hay envíos para exportar"
+    },
+    "kpis": {
+      "etiqueta": "Resumen de la distribución",
+      "pendientes": "Pendientes de enviar",
+      "pendientesDetalle": "{n} uds sin salir del origen",
+      "enTransito": "En tránsito",
+      "enTransitoDetalle": "Salió el {fecha}",
+      "nadaEnTransito": "nada en camino",
+      "recibidos": "Recibidos este mes",
+      "recibidosDetalle": "{n} uds entregadas",
+      "conDiferencia": "Con diferencia",
+      "conDiferenciaDetalle": "Llegaron {recibidas} de {enviadas} uds",
+      "sinDiferencia": "todo llegó completo"
+    },
+    "buscar": {
+      "placeholder": "Buscar por traslado, sucursal o producto",
+      "etiqueta": "Buscar envíos"
+    },
+    "filtros": {
+      "destino": "Sucursal destino",
+      "estado": "Estado",
+      "periodo": "Periodo",
+      "periodos": {
+        "hoy": "Hoy",
+        "7d": "7 días",
+        "mes": "Este mes",
+        "todo": "Todo"
+      },
+      "diferencias": "Diferencias",
+      "conDiferencia": "Con diferencia",
+      "orden": "Orden de producción",
+      "soloProduccion": "Solo envíos de producción",
+      "incluirCancelados": "Incluir cancelados",
+      "todas": "Todas",
+      "todos": "Todos",
+      "nota": "El origen es la sucursal del encabezado.",
+      "verN": "{count, plural, one {Ver 1 envío} other {Ver {n} envíos}}"
+    },
+    "chips": {
+      "destino": "Destino: {sucursal}",
+      "estado": "Estado: {estado}",
+      "periodo": "Periodo: {periodo}",
+      "diferencia": "Con diferencia",
+      "orden": "Orden: {numero}",
+      "produccion": "Solo producción",
+      "cancelados": "Con cancelados"
+    },
+    "columnas": {
+      "traslado": "Traslado",
+      "ruta": "Origen → destino",
+      "orden": "Orden de producción",
+      "fecha": "Fecha",
+      "estado": "Estado"
+    },
+    "linea": {
+      "productos": "{productos} · {unidades}",
+      "salio": "salió el {fecha}",
+      "llegaron": "Llegaron {recibidas} de {enviadas}"
+    },
+    "acciones": {
+      "ver": "Ver traslado",
+      "marcarTransito": "Marcar en tránsito",
+      "marcarTransitoDe": "Marcar en tránsito {codigo}",
+      "recibir": "Recibir",
+      "recibirDe": "Recibir {codigo}",
+      "cancelar": "Cancelar envío"
+    },
+    "masivas": {
+      "imprimir": "Imprimir guías"
+    },
+    "vacio": {
+      "titulo": "Aún no hay envíos",
+      "descripcion": "Reparte lo producido o lo que tengas en esta sucursal entre las demás: cada sucursal recibe su propio traslado."
+    },
+    "sinResultados": "Ningún envío coincide con la búsqueda o los filtros.",
+    "errorCarga": "No se pudo cargar la distribución",
+    "sinPermiso": {
+      "titulo": "No tienes acceso a la distribución",
+      "descripcion": "Pide a un administrador el permiso de inventario."
+    },
+    "csv": {
+      "codigo": "Traslado",
+      "estado": "Estado",
+      "origen": "Sale de",
+      "destino": "Llega a",
+      "creado": "Creado",
+      "autor": "Creado por",
+      "despachado": "Despachado",
+      "recibido": "Recibido",
+      "productos": "Productos",
+      "enviadas": "Unidades enviadas",
+      "recibidas": "Unidades recibidas",
+      "faltantes": "Faltantes",
+      "devueltas": "Devueltas al origen",
+      "valor": "Valor al costo",
+      "orden": "Orden de producción",
+      "notas": "Nota"
+    },
+    "asistente": {
+      "titulo": "Nueva distribución",
+      "descripcionQue": "Desde {origen}. Cada sucursal destino recibe su propio traslado.",
+      "descripcionReparto": "Reparte lo disponible entre tus sucursales.",
+      "descripcionRevisar": "Revisa antes de crear.",
+      "pasos": {
+        "que": "Qué distribuir",
+        "reparto": "Reparto por sucursal",
+        "revisar": "Revisar y crear"
+      },
+      "resumenPaso": "Paso {n} de {total} · {etiqueta}",
+      "cargando": "Cargando órdenes de producción",
+      "queDistribuir": "Qué distribuir",
+      "ordenOpcion": "{numero} · {producto} · {n} {unidad} producidas el {fecha}",
+      "sueltos": "Productos sin orden de producción",
+      "sinOrdenes": "No hay órdenes de producción completadas en {origen}: agrega los productos que vas a repartir.",
+      "agregarProducto": "Agregar producto para repartir…",
+      "agregarTitulo": "Productos para distribuir",
+      "agregarDescripcion": "Costo promedio · disponible en {origen}",
+      "disponibleN": "Disponible en origen: {n}",
+      "quitar": "Quitar {producto}",
+      "columnas": {
+        "producto": "Producto",
+        "producido": "Producido",
+        "disponible": "Disponible en origen",
+        "ya": "Ya distribuido",
+        "por": "Por distribuir",
+        "queda": "Queda en origen",
+        "traslado": "Traslado",
+        "destino": "Destino",
+        "productos": "Productos",
+        "unidades": "Unidades"
+      },
+      "notaMaximo": "El máximo sale de las existencias actuales en origen y de lo que falta distribuir de la orden, no solo de lo producido.",
+      "cantidadPara": "Cantidad de {producto} para {sucursal}",
+      "excedido": "{producto}: repartes {repartido} y solo hay {maximo} por distribuir.",
+      "sinDestinos": "No hay otras sucursales a las que enviar.",
+      "nuevoN": "Traslado nuevo {n}",
+      "nProductos": "{count, plural, one {1 producto} other {{n} productos}}",
+      "notaCrear": "Al crear, cada sucursal recibe su traslado. Con «Marcar en tránsito» salen de {origen} hoy (kardex: salida por traslado) y al recibir se suman en destino (kardex: entrada), con costo. Todo ocurre en una sola transacción y no se duplica si se repite.",
+      "marcarTransito": "Marcar en tránsito al crear (sale hoy)",
+      "conSeriales": "Hay productos con seriales: los traslados quedan pendientes y se despachan desde su detalle, donde se escanea cada serial.",
+      "atras": "Atrás",
+      "cancelar": "Cancelar",
+      "siguiente": "Siguiente",
+      "crear": "{count, plural, one {Crear 1 traslado} other {Crear {n} traslados}}",
+      "creando": "Creando…",
+      "listo": "{count, plural, one {Se creó 1 traslado} other {Se crearon {n} traslados}}"
+    }
   }
 }

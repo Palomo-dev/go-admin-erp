@@ -18847,5 +18847,651 @@
       "listo": "Lot {codigo} supprimé",
       "error": "Impossible de supprimer le lot"
     }
+  },
+  "inventarioTraslados": {
+    "comun": {
+      "titulo": "Transferts entre succursales",
+      "tituloCorto": "Transferts",
+      "inventario": "Inventaire",
+      "existencias": "Stocks",
+      "sustantivo": {
+        "singular": "transfert",
+        "plural": "transferts"
+      },
+      "nTraslados": "{count, plural, one {{n} transfert} other {{n} transferts}}",
+      "tituloTraslado": "Transfert {codigo}",
+      "ruta": "{origen} → {destino}",
+      "rutaDe": "De {origen} à {destino}",
+      "codigoADestino": "{codigo} → {destino}",
+      "etiquetaFila": "Transfert {codigo} de {origen} à {destino}",
+      "productos": "{count, plural, one {{n} produit} other {{n} produits}}",
+      "unidades": "{count, plural, one {{n} unité} other {{n} unités}}",
+      "sinLote": "Sans lot",
+      "sku": "SKU {sku}",
+      "volver": "Retour aux transferts"
+    },
+    "estados": {
+      "pending": "En attente",
+      "in_transit": "En transit",
+      "received": "Reçu",
+      "con_diferencia": "Reçu avec écart",
+      "cancelled": "Annulé"
+    },
+    "listado": {
+      "lema": "ce qui sort d'une succursale et entre dans une autre",
+      "actualizar": "Actualiser",
+      "nuevo": "Nouveau transfert",
+      "subtituloMovil": "{transito} en transit · {pendientes} à expédier",
+      "exportar": {
+        "boton": "Exporter",
+        "listo": "{count, plural, one {1 transfert exporté} other {# transferts exportés}}",
+        "error": "Impossible d'exporter",
+        "sinDatos": "Aucun transfert à exporter"
+      },
+      "kpis": {
+        "etiqueta": "Résumé des transferts",
+        "porDespachar": "À expédier",
+        "porDespacharDetalle": "créé, pas encore sorti de l'origine",
+        "nadaPorDespachar": "rien en attente de sortie",
+        "enTransito": "En transit",
+        "enTransitoDetalle": "{n} unités hors de toute succursale",
+        "recibidosMes": "Reçus ce mois-ci",
+        "recibidosMesDetalle": "avec leur entrée dans la fiche de stock",
+        "conDiferencia": "Avec écart",
+        "conDiferenciaDetalle": "moins est arrivé que ce qui a été envoyé",
+        "sinDiferencia": "tout est arrivé au complet"
+      },
+      "aviso": {
+        "titulo": "{count, plural, one {Un transfert est en transit depuis le {fecha}} other {{n} transferts sont en transit depuis le {fecha}}}",
+        "descripcion": "{codigo} a sorti {n} unités de {origen} et n'a jamais été reçu. Recevez-le ou renvoyez-le à l'origine pour que l'inventaire concorde de nouveau.",
+        "revisar": "Examiner {codigo}"
+      },
+      "buscar": {
+        "placeholder": "Rechercher par numéro, produit ou note",
+        "etiqueta": "Rechercher des transferts"
+      },
+      "filtros": {
+        "estado": "Statut",
+        "origen": "Part de",
+        "destino": "Arrive à",
+        "todas": "Toutes",
+        "desde": "Créé depuis",
+        "hasta": "Créé jusqu'au",
+        "verN": "{count, plural, one {Voir 1 transfert} other {Voir {n} transferts}}"
+      },
+      "chips": {
+        "estado": "Statut : {estados}",
+        "origen": "Part de : {sucursal}",
+        "destino": "Arrive à : {sucursal}",
+        "desde": "Depuis le {fecha}",
+        "hasta": "Jusqu'au {fecha}"
+      },
+      "columnas": {
+        "traslado": "Transfert",
+        "ruta": "Origine → destination",
+        "productos": "Produits",
+        "unidades": "Unités",
+        "estado": "Statut"
+      },
+      "linea": {
+        "porDespachar": "à expédier",
+        "enTransito": "en transit",
+        "despachado": "expédié le {fecha}",
+        "sinRecibirDesde": "non reçu depuis le {fecha}",
+        "recibido": "reçu le {fecha}",
+        "recibidoSinFecha": "reçu",
+        "faltan": "{n} manquantes · passées en perte",
+        "devueltas": "{n} renvoyées à l'origine",
+        "devueltoAlOrigen": "renvoyé à l'origine",
+        "cancelado": "annulé",
+        "canceladoAntes": "annulé avant l'expédition"
+      },
+      "unidades": {
+        "porEnviar": "{n} à envoyer",
+        "enviadas": "{n} envoyées",
+        "recibidas": "{n} reçues",
+        "porEnviarMovil": "{n} à envoyer · {productos, plural, one {1 produit} other {# produits}}",
+        "enviadasRecibidasMovil": "{enviadas} envoyées · {recibidas} reçues · {productos, plural, one {1 produit} other {# produits}}"
+      },
+      "sinAutor": "sans auteur",
+      "etiquetaFila": "Transfert {codigo} de {origen} à {destino}",
+      "vacio": {
+        "titulo": "Aucun transfert pour l'instant",
+        "descripcion": "Déplacez de la marchandise entre vos succursales : elle sort de l'origine à l'expédition et entre à destination à la réception."
+      },
+      "sinResultados": "Aucun transfert ne correspond à la recherche ou aux filtres.",
+      "errorCarga": "Impossible de charger les transferts",
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès aux transferts",
+        "descripcion": "Demandez à un administrateur l'autorisation d'inventaire pour voir ou transférer du stock."
+      },
+      "errorSeleccionarTodo": "Impossible de sélectionner tous les transferts",
+      "csv": {
+        "codigo": "Transfert",
+        "estado": "Statut",
+        "origen": "Part de",
+        "destino": "Arrive à",
+        "creado": "Créé",
+        "autor": "Créé par",
+        "despachado": "Expédié",
+        "recibido": "Reçu",
+        "productos": "Produits",
+        "enviadas": "Unités envoyées",
+        "recibidas": "Unités reçues",
+        "faltantes": "Manquantes",
+        "devueltas": "Renvoyées à l'origine",
+        "valor": "Valeur au coût",
+        "orden": "Ordre de production",
+        "notas": "Note"
+      }
+    },
+    "masivas": {
+      "despachar": "Expédier",
+      "imprimir": "Imprimer les bons",
+      "exportar": "Exporter",
+      "cancelar": "{count, plural, one {Annuler 1 transfert} other {Annuler # transferts}}",
+      "sinPermiso": "Vous n'avez pas l'autorisation de transférer du stock",
+      "soloPendientes": "Seuls les transferts en attente peuvent être expédiés",
+      "soloPendientesNota": "{count, plural, one {1 transfert sélectionné n'est pas en attente et est ignoré.} other {# transferts sélectionnés ne sont pas en attente et sont ignorés.}}",
+      "despacharTitulo": "{count, plural, one {Expédier 1 transfert ?} other {Expédier # transferts ?}}",
+      "despacharDescripcion": "Chacun sort de son origine maintenant et reste en transit. Ceux avec numéros de série s'expédient depuis leur détail, où chaque numéro est scanné.",
+      "despacharConfirmar": "Expédier",
+      "cancelarTitulo": "{count, plural, one {Annuler 1 transfert ?} other {Annuler # transferts ?}}",
+      "cancelarDescripcion": "Ils n'ont pas été expédiés : aucun stock n'est touché. Ils restent dans la liste comme « Annulé ».",
+      "cancelarConfirmar": "Annuler les transferts",
+      "volver": "Retour",
+      "resultadoDespachar": "{ok} expédiés · {fallidos} en erreur",
+      "resultadoCancelar": "{ok} annulés · {fallidos} en erreur"
+    },
+    "acciones": {
+      "verDetalle": "Voir le détail",
+      "despachar": "Expédier",
+      "editar": "Modifier",
+      "imprimir": "Imprimer le bon de transfert",
+      "cancelar": "Annuler le transfert",
+      "recibirEn": "Recevoir à {sucursal}",
+      "devolver": "Renvoyer à l'origine",
+      "verKardex": "Voir dans la fiche de stock",
+      "verLote": "Voir la traçabilité du lot",
+      "verOrden": "Voir l'ordre de production"
+    },
+    "despachar": {
+      "titulo": "Expédier le transfert {codigo} ?",
+      "descripcion": "{n} unités sortent de {origen} et restent en transit jusqu'à ce que {destino} les reçoive. La fiche de stock enregistre la sortie maintenant.",
+      "confirmar": "Expédier",
+      "despachando": "Expédition…",
+      "cancelar": "Annuler",
+      "cargando": "Chargement du transfert",
+      "error": "Impossible de charger le transfert",
+      "listo": "{codigo} expédié : {n} unités sont sorties de {origen}",
+      "yaDespachado": "{codigo} était déjà expédié",
+      "seriales": {
+        "titulo": "Numéros de série qui partent dans {codigo}",
+        "descripcion": "Scannez ou cochez chaque numéro de série qui part ; ils doivent correspondre à la quantité de chaque ligne.",
+        "escanear": "Scanner ou saisir un numéro de série",
+        "marcado": "{serial} coché pour {producto}",
+        "noEncontrado": "Le numéro {serial} n'est pas disponible à {origen} pour ces produits",
+        "marcados": "{n} sur {total} cochés",
+        "faltan": "Numéros de série manquants dans : {producto}",
+        "sinDisponibles": "Aucun numéro de série de {producto} disponible à {origen}"
+      }
+    },
+    "cancelar": {
+      "titulo": "Annuler le transfert {codigo} ?",
+      "descripcion": "Il n'a pas été expédié : aucun stock n'est touché. Le transfert reste dans la liste comme « Annulé ».",
+      "confirmar": "Annuler le transfert",
+      "mantener": "Conserver",
+      "listo": "{codigo} annulé"
+    },
+    "devolver": {
+      "titulo": "Renvoyer le transfert {codigo} à l'origine ?",
+      "descripcion": "Les {n} unités en transit retournent à {origen} avec un mouvement d'entrée. À utiliser seulement si la marchandise n'est pas partie ou est revenue.",
+      "confirmar": "Renvoyer à l'origine",
+      "motivo": "Motif",
+      "motivos": {
+        "noSalio": "La marchandise n'est pas partie",
+        "regreso": "La marchandise est revenue à l'origine",
+        "error": "Le transfert a été créé par erreur"
+      },
+      "listo": "{codigo} : {n} unités sont revenues à {origen}"
+    },
+    "recibir": {
+      "titulo": "Recevoir le transfert {codigo} à {destino}",
+      "tituloCorto": "Recevoir le transfert",
+      "descripcion": "Comptez ce qui est arrivé. Ce qui est reçu entre à {destino} à son coût ; vous décidez du sort de ce qui manque.",
+      "cargando": "Chargement du transfert",
+      "error": "Impossible de charger le transfert",
+      "nadaPendiente": "Ce transfert n'a plus rien à recevoir",
+      "columnas": {
+        "producto": "Produit",
+        "lote": "Lot",
+        "enviado": "Envoyé",
+        "recibido": "Reçu",
+        "diferencia": "Écart",
+        "decision": "Que faire de l'écart"
+      },
+      "enviadoN": "Envoyé : {n}",
+      "completo": "Complet",
+      "recibidoDe": "Reçu de {producto}",
+      "decisionDe": "Que faire de l'écart de {producto}",
+      "motivoDe": "Motif du manquant de {producto}",
+      "elegirDecision": "Choisissez",
+      "decisiones": {
+        "faltante": "Perdu pendant le transport",
+        "en_camino": "Toujours en route"
+      },
+      "motivoPlaceholder": "Motif : carton cassé, non arrivé…",
+      "seriales": "{count, plural, one {1 numéro de série} other {{n} numéros de série}}",
+      "serialesLlegaron": "Numéros de série arrivés : {n} sur {total}",
+      "sku": "SKU {sku}",
+      "errores": {
+        "recibido_requerido": "Indiquez combien est arrivé",
+        "recibido_de_mas": "Il ne peut pas arriver plus que ce qui a été envoyé ({n})",
+        "decision_requerida": "Choisissez que faire de l'écart",
+        "motivo_requerido": "Indiquez le motif du manquant",
+        "seriales_no_cuadran": "Cochez les {n} numéros de série arrivés",
+        "unidades_enteras": "Les articles avec numéro de série se reçoivent en unités entières"
+      },
+      "resumen": {
+        "completo": "Tout est arrivé : le transfert passe à « Reçu ».",
+        "diferencia": "Il manque {n} de {producto}.",
+        "faltante": "Avec « Perdu pendant le transport », une perte de {valor} est enregistrée à {destino} et le transfert passe à « Reçu avec écart ».",
+        "faltanteSinValor": "Avec « Perdu pendant le transport », une perte est enregistrée à {destino} et le transfert passe à « Reçu avec écart ».",
+        "enCamino": "Avec « Toujours en route », il reste en transit pour ces {n}.",
+        "elegir": "Choisissez que faire de chaque écart."
+      },
+      "cancelar": "Annuler",
+      "confirmar": "Confirmer la réception",
+      "confirmando": "Enregistrement…",
+      "listo": "{codigo} : {n} unités sont entrées à {destino}",
+      "listoParcial": "{codigo} : {n} unités sont entrées à {destino} ; {pendiente} toujours en route",
+      "repetido": "Cette réception était déjà enregistrée"
+    },
+    "nuevo": {
+      "titulo": "Nouveau transfert",
+      "tituloEditar": "Modifier {codigo}",
+      "subtitulo": "Sort d'une succursale à l'expédition et entre dans l'autre à la réception",
+      "cancelar": "Annuler",
+      "crearSinDespachar": "Créer sans expédier",
+      "crearYDespachar": "Créer et expédier",
+      "guardar": "Enregistrer les modifications",
+      "guardarYDespachar": "Enregistrer et expédier",
+      "guardarBorrador": "Enregistrer le brouillon",
+      "despachando": "Enregistrement…",
+      "cargando": "Chargement du transfert",
+      "errorCarga": "Impossible de charger le transfert",
+      "sinPermiso": {
+        "titulo": "Vous ne pouvez pas créer de transferts",
+        "descripcion": "Demandez à un administrateur l'autorisation de transférer l'inventaire."
+      },
+      "noEditable": {
+        "titulo": "Ce transfert ne peut plus être modifié",
+        "descripcion": "Seuls les transferts en attente se modifient : un transfert expédié a déjà déplacé du stock.",
+        "ver": "Voir le transfert"
+      },
+      "ruta": {
+        "titulo": "Origine et destination",
+        "saleDe": "Part de",
+        "llegaA": "Arrive à",
+        "nota": "Note",
+        "notaPlaceholder": "Réassort du week-end",
+        "ayudaOrigen": "Seulement les succursales auxquelles vous appartenez",
+        "ayudaDestino": "Une succursale différente de l'origine",
+        "elegir": "Choisissez une succursale",
+        "requerido": "Choisissez la succursale"
+      },
+      "productos": {
+        "titulo": "Produits · {productos} · {unidades}",
+        "nProductos": "{count, plural, one {1 produit} other {{n} produits}}",
+        "nUnidades": "{count, plural, one {1 unité} other {{n} unités}}",
+        "ayuda": "Le disponible à {origen} est affiché par lot. On ne peut pas envoyer plus que le disponible.",
+        "ayudaSinOrigen": "Choisissez d'abord la succursale d'origine.",
+        "buscar": "Rechercher un produit à ajouter…",
+        "vacio": "Ajoutez les produits qui partent ; vous pouvez aussi scanner le code-barres.",
+        "tabla": "Produits du transfert",
+        "dialogoTitulo": "Ajouter des produits au transfert",
+        "dialogoDescripcion": "Coût moyen · disponible à {origen}"
+      },
+      "columnas": {
+        "producto": "Produit",
+        "lote": "Lot",
+        "disponible": "Disponible à l'origine",
+        "cantidad": "Quantité",
+        "costo": "Coût moy.",
+        "quitar": "Retirer"
+      },
+      "lote": {
+        "automatico": "Automatique (expire en premier)",
+        "vence": "{codigo} · expire le {fecha}",
+        "vencido": "expiré"
+      },
+      "loteDe": "Lot de {producto}",
+      "cantidadDe": "Quantité de {producto}",
+      "quitar": "Retirer {producto}",
+      "quitarCorto": "Retirer",
+      "conSeriales": "avec numéros de série",
+      "disponibleEnOrigen": "Disponible à l'origine : {n}",
+      "soloHay": "Seulement {n} disponibles",
+      "nAvisos": "{count, plural, one {1 avec avertissement} other {{n} avec avertissement}}",
+      "yaEsta": "{nombre} est déjà dans le transfert",
+      "errores": {
+        "cantidad_requerida": "Indiquez la quantité",
+        "supera_disponible": "Seulement {n} disponibles",
+        "lote_requerido": "Choisissez le lot",
+        "unidades_enteras": "Les articles avec numéro de série se transfèrent en unités entières",
+        "repetido": "Ce produit avec ce lot est déjà dans la liste"
+      },
+      "pie": "« Créer sans expédier » laisse le transfert en attente : il ne déplace pas de stock. « Créer et expédier » déduit l'origine maintenant et le laisse en transit. Les produits avec numéros de série demandent de scanner chaque numéro à l'expédition.",
+      "creado": "{codigo} créé : en attente d'expédition",
+      "creadoDespachado": "{codigo} créé et expédié",
+      "creadoSinDespachar": "{codigo} a été créé mais pas expédié : {motivo}",
+      "guardado": "{codigo} mis à jour"
+    },
+    "detalle": {
+      "tituloCargando": "Transfert",
+      "cargando": "Chargement du transfert",
+      "error": "Impossible de charger le transfert",
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès à ce transfert",
+        "descripcion": "Demandez à un administrateur l'autorisation d'inventaire."
+      },
+      "noEncontrado": {
+        "titulo": "Transfert introuvable",
+        "descripcion": "Il n'existe pas ou appartient à une autre organisation."
+      },
+      "sinAutor": "sans auteur",
+      "subtitulo": {
+        "pendiente": "{ruta} · créé le {fecha} par {autor}",
+        "enTransito": "{ruta} · expédié le {fecha} par {autor}",
+        "enTransitoLegado": "{ruta} · en transit",
+        "recibido": "{ruta} · reçu le {fecha} par {autor}",
+        "cancelado": "{ruta} · annulé le {fecha}"
+      },
+      "imprimirGuia": "Imprimer le bon",
+      "editar": "Modifier",
+      "recibir": "Recevoir",
+      "recibirEn": "Recevoir à {destino}",
+      "despachar": "Expédier",
+      "atascado": "En transit depuis le {fecha}. Recevez-le ou renvoyez-le à l'origine pour que l'inventaire concorde de nouveau.",
+      "renglones": {
+        "titulo": "Lignes · {productos} · {unidades}",
+        "tabla": "Lignes du transfert",
+        "pendiente": "Elles sortent de {origen} à l'expédition ; d'ici là elles ne déplacent pas de stock.",
+        "enTransito": "Elles sont sorties de {origen} à l'expédition ; elles ne comptent pas encore à {destino}.",
+        "recibido": "Elles sont sorties de {origen} et entrées à {destino}.",
+        "cancelado": "Aucun stock n'a été déplacé."
+      },
+      "columnas": {
+        "producto": "Produit",
+        "lote": "Lot",
+        "cantidad": "Quantité",
+        "enviado": "Envoyé",
+        "disponible": "Disponible à l'origine",
+        "recibido": "Reçu",
+        "costo": "Coût moy."
+      },
+      "seriales": "{count, plural, one {1 numéro de série} other {{n} numéros de série}} · {lista}",
+      "vence": "expire le {fecha}",
+      "faltan": "{n} manquantes",
+      "devueltas": "{n} renvoyées",
+      "motivoFaltante": "Manquant : {motivo}",
+      "disponibleN": "Disponible : {n}",
+      "porRecibir": "à recevoir",
+      "recibidasN": "{n} reçues",
+      "datos": {
+        "titulo": "Données du transfert",
+        "nota": "Note",
+        "orden": "Ordre de production",
+        "motivo": "Motif d'annulation"
+      },
+      "seguimiento": {
+        "titulo": "Suivi",
+        "creado": "Créé",
+        "editado": "Modifié",
+        "despachado": "Expédié depuis {origen}",
+        "recibido": "Reçu à {destino}",
+        "recibidoLegado": "Reçu (avant le suivi)",
+        "cancelado": "Annulé",
+        "devuelto": "Renvoyé à l'origine",
+        "renglones": "{count, plural, one {1 produit} other {{n} produits}}",
+        "unidades": "{count, plural, one {1 unité} other {{n} unités}}",
+        "por": "par {autor}",
+        "salieron": "{n} unités sorties · « Transfert sortie »",
+        "entraron": "{n} unités entrées · « Transfert entrée »",
+        "faltante": "{n} passées en perte : {motivo}",
+        "enCamino": "{n} toujours en route",
+        "volvieron": "{n} unités revenues à {origen}",
+        "motivo": "Motif : {motivo}",
+        "limpieza": "Nettoyage des transferts de test de 2025, sans déplacer de stock",
+        "pendienteDespachar": "En attente d'expédition",
+        "pendienteDespacharDetalle": "À l'expédition il sort de {origen} comme « Transfert sortie »",
+        "pendienteRecibir": "En attente de réception à {destino}",
+        "pendienteRecibirDetalle": "À la réception il entre comme « Transfert entrée »",
+        "verKardex": "Voir dans la fiche de stock",
+        "ayuda": "Si tout n'arrive pas, l'écart se décide à la réception : continuer à attendre ou le passer en perte en transit.",
+        "legado": "Transfert antérieur au 29 septembre 2026 : il peut ne pas avoir tous ses mouvements dans la fiche de stock."
+      }
+    },
+    "guia": {
+      "titulo": "Bon de transfert {codigo}",
+      "origen": "Part de",
+      "destino": "Arrive à",
+      "creado": "Créé",
+      "despachado": "Expédié",
+      "nota": "Note : {nota}",
+      "producto": "Produit",
+      "lote": "Lot",
+      "cantidad": "Quantité",
+      "recibido": "Reçu",
+      "seriales": "Numéros de série : {lista}",
+      "entrega": "Remis par ({sucursal})",
+      "recibe": "Reçu par ({sucursal})",
+      "nada": "Aucun bon à imprimer : les transferts annulés n'en ont pas",
+      "error": "Impossible de préparer le bon"
+    },
+    "errores": {
+      "datos_invalidos": "Vérifiez les données du transfert.",
+      "sin_permiso": "Vous n'avez pas l'autorisation pour cette action de transfert.",
+      "sucursal_sin_acceso": "Vous n'avez pas accès à cette succursale.",
+      "sucursal_ajena": "La succursale n'appartient pas à l'organisation.",
+      "producto_ajeno": "Le produit n'appartient pas à l'organisation.",
+      "traslado_no_encontrado": "Le transfert n'existe pas ou appartient à une autre organisation.",
+      "estado_invalido": "Le transfert a changé de statut : rechargez la page.",
+      "stock_insuficiente": "Il n'y a pas assez de stock à l'origine.",
+      "stock_insuficiente_detalle": "Il n'y a pas assez de stock à l'origine : disponible {disponible}, demandé {solicitado}.",
+      "seriales_requeridos": "Les numéros de série d'un produit suivi par numéro de série manquent.",
+      "seriales_requeridos_producto": "Les numéros de série de {producto} manquent.",
+      "seriales_no_cuadran": "Le nombre de numéros de série ne correspond pas à la quantité.",
+      "serial_no_disponible": "Un numéro de série n'est pas disponible à l'origine.",
+      "serial_repetido": "Il y a des numéros de série répétés.",
+      "decision_requerida": "Choisissez que faire de l'écart de chaque ligne.",
+      "motivo_requerido": "Indiquez le motif du manquant.",
+      "recibido_invalido": "Le reçu ne peut pas être négatif ni supérieur à ce qui est en attente.",
+      "nada_que_recibir": "Indiquez au moins une unité reçue ou un manquant.",
+      "nada_que_devolver": "Il ne reste rien en transit à renvoyer.",
+      "misma_sucursal": "L'origine et la destination doivent être des succursales différentes.",
+      "sucursales_requeridas": "Choisissez l'origine et la destination.",
+      "sucursal_inactiva": "L'une des succursales est inactive.",
+      "producto_no_trasladable": "Ce produit ne suit pas le stock et ne peut pas être transféré.",
+      "lote_invalido": "Le lot n'appartient pas à ce produit.",
+      "renglon_repetido": "Le même produit avec le même lot apparaît deux fois.",
+      "renglon_invalido": "Une ligne n'appartient pas à ce transfert.",
+      "cantidad_invalida": "La quantité doit être supérieure à zéro.",
+      "items_requeridos": "Ajoutez au moins un produit.",
+      "demasiados_renglones": "Trop de lignes dans un seul transfert.",
+      "orden_produccion_invalida": "L'ordre de production n'est pas terminé dans cette succursale.",
+      "excede_orden_produccion": "On distribue plus que ce qui reste de l'ordre.",
+      "excede_orden_produccion_detalle": "On distribue plus que ce qui reste de l'ordre : produit {producido}, déjà distribué {ya}.",
+      "organizacion_no_permitida": "L'organisation ne correspond pas à votre session.",
+      "sin_sesion": "Votre session a expiré : reconnectez-vous.",
+      "error_desconocido": "L'opération n'a pas pu aboutir. Réessayez."
+    }
+  },
+  "inventarioDistribucion": {
+    "titulo": "Distribution",
+    "subtitulo": "{sucursal} (origine) · {count, plural, one {1 envoi} other {{n} envois}}",
+    "subtituloTodas": "{count, plural, one {1 envoi} other {{n} envois}} de toutes les succursales",
+    "subtituloMovil": "{count, plural, one {1 envoi} other {{n} envois}}",
+    "notaOrigen": "Origine des envois : la succursale de l'en-tête. Les réceptions se font depuis la succursale de destination.",
+    "elegirOrigen": "Choisissez une succursale dans l'en-tête : c'est l'origine des envois.",
+    "sinPermisoCrear": "Vous n'avez pas l'autorisation de transférer l'inventaire",
+    "traslados": "Transferts",
+    "nueva": "Nouvelle distribution",
+    "actualizar": "Actualiser",
+    "sustantivo": {
+      "singular": "envoi",
+      "plural": "envois"
+    },
+    "exportar": {
+      "boton": "Exporter",
+      "error": "Impossible d'exporter",
+      "sinDatos": "Aucun envoi à exporter"
+    },
+    "kpis": {
+      "etiqueta": "Résumé de la distribution",
+      "pendientes": "En attente d'envoi",
+      "pendientesDetalle": "{n} unités pas encore sorties de l'origine",
+      "enTransito": "En transit",
+      "enTransitoDetalle": "Parti le {fecha}",
+      "nadaEnTransito": "rien en route",
+      "recibidos": "Reçus ce mois-ci",
+      "recibidosDetalle": "{n} unités livrées",
+      "conDiferencia": "Avec écart",
+      "conDiferenciaDetalle": "{recibidas} sur {enviadas} unités arrivées",
+      "sinDiferencia": "tout est arrivé au complet"
+    },
+    "buscar": {
+      "placeholder": "Rechercher par transfert, succursale ou produit",
+      "etiqueta": "Rechercher des envois"
+    },
+    "filtros": {
+      "destino": "Succursale de destination",
+      "estado": "Statut",
+      "periodo": "Période",
+      "periodos": {
+        "hoy": "Aujourd'hui",
+        "7d": "7 jours",
+        "mes": "Ce mois-ci",
+        "todo": "Tout"
+      },
+      "diferencias": "Écarts",
+      "conDiferencia": "Avec écart",
+      "orden": "Ordre de production",
+      "soloProduccion": "Seulement les envois de production",
+      "incluirCancelados": "Inclure les annulés",
+      "todas": "Toutes",
+      "todos": "Tous",
+      "nota": "L'origine est la succursale de l'en-tête.",
+      "verN": "{count, plural, one {Voir 1 envoi} other {Voir {n} envois}}"
+    },
+    "chips": {
+      "destino": "Destination : {sucursal}",
+      "estado": "Statut : {estado}",
+      "periodo": "Période : {periodo}",
+      "diferencia": "Avec écart",
+      "orden": "Ordre : {numero}",
+      "produccion": "Production seulement",
+      "cancelados": "Avec annulés"
+    },
+    "columnas": {
+      "traslado": "Transfert",
+      "ruta": "Origine → destination",
+      "orden": "Ordre de production",
+      "fecha": "Date",
+      "estado": "Statut"
+    },
+    "linea": {
+      "productos": "{productos} · {unidades}",
+      "salio": "parti le {fecha}",
+      "llegaron": "{recibidas} sur {enviadas} arrivées"
+    },
+    "acciones": {
+      "ver": "Voir le transfert",
+      "marcarTransito": "Marquer en transit",
+      "marcarTransitoDe": "Marquer {codigo} en transit",
+      "recibir": "Recevoir",
+      "recibirDe": "Recevoir {codigo}",
+      "cancelar": "Annuler l'envoi"
+    },
+    "masivas": {
+      "imprimir": "Imprimer les bons"
+    },
+    "vacio": {
+      "titulo": "Aucun envoi pour l'instant",
+      "descripcion": "Répartissez ce qui a été produit ou ce que vous avez dans cette succursale entre les autres : chaque succursale reçoit son propre transfert."
+    },
+    "sinResultados": "Aucun envoi ne correspond à la recherche ou aux filtres.",
+    "errorCarga": "Impossible de charger la distribution",
+    "sinPermiso": {
+      "titulo": "Vous n'avez pas accès à la distribution",
+      "descripcion": "Demandez à un administrateur l'autorisation d'inventaire."
+    },
+    "csv": {
+      "codigo": "Transfert",
+      "estado": "Statut",
+      "origen": "Part de",
+      "destino": "Arrive à",
+      "creado": "Créé",
+      "autor": "Créé par",
+      "despachado": "Expédié",
+      "recibido": "Reçu",
+      "productos": "Produits",
+      "enviadas": "Unités envoyées",
+      "recibidas": "Unités reçues",
+      "faltantes": "Manquantes",
+      "devueltas": "Renvoyées à l'origine",
+      "valor": "Valeur au coût",
+      "orden": "Ordre de production",
+      "notas": "Note"
+    },
+    "asistente": {
+      "titulo": "Nouvelle distribution",
+      "descripcionQue": "Depuis {origen}. Chaque succursale de destination reçoit son propre transfert.",
+      "descripcionReparto": "Répartissez le disponible entre vos succursales.",
+      "descripcionRevisar": "Vérifiez avant de créer.",
+      "pasos": {
+        "que": "Quoi distribuer",
+        "reparto": "Répartition par succursale",
+        "revisar": "Vérifier et créer"
+      },
+      "resumenPaso": "Étape {n} sur {total} · {etiqueta}",
+      "cargando": "Chargement des ordres de production",
+      "queDistribuir": "Quoi distribuer",
+      "ordenOpcion": "{numero} · {producto} · {n} {unidad} produites le {fecha}",
+      "sueltos": "Produits sans ordre de production",
+      "sinOrdenes": "Aucun ordre de production terminé à {origen} : ajoutez les produits à répartir.",
+      "agregarProducto": "Ajouter un produit à répartir…",
+      "agregarTitulo": "Produits à distribuer",
+      "agregarDescripcion": "Coût moyen · disponible à {origen}",
+      "disponibleN": "Disponible à l'origine : {n}",
+      "quitar": "Retirer {producto}",
+      "columnas": {
+        "producto": "Produit",
+        "producido": "Produit",
+        "disponible": "Disponible à l'origine",
+        "ya": "Déjà distribué",
+        "por": "À distribuer",
+        "queda": "Reste à l'origine",
+        "traslado": "Transfert",
+        "destino": "Destination",
+        "productos": "Produits",
+        "unidades": "Unités"
+      },
+      "notaMaximo": "Le maximum vient du stock actuel à l'origine et de ce qui reste à distribuer de l'ordre, pas seulement de ce qui a été produit.",
+      "cantidadPara": "Quantité de {producto} pour {sucursal}",
+      "excedido": "{producto} : vous répartissez {repartido} et il ne reste que {maximo} à distribuer.",
+      "sinDestinos": "Il n'y a pas d'autres succursales où envoyer.",
+      "nuevoN": "Nouveau transfert {n}",
+      "nProductos": "{count, plural, one {1 produit} other {{n} produits}}",
+      "notaCrear": "À la création, chaque succursale reçoit son transfert. Avec « Marquer en transit », ils sortent de {origen} aujourd'hui (fiche de stock : sortie par transfert) et à la réception ils s'ajoutent à destination (fiche de stock : entrée), avec coût. Tout se fait en une seule transaction et ne se duplique pas en cas de répétition.",
+      "marcarTransito": "Marquer en transit à la création (part aujourd'hui)",
+      "conSeriales": "Il y a des produits avec numéros de série : les transferts restent en attente et s'expédient depuis leur détail, où chaque numéro est scanné.",
+      "atras": "Retour",
+      "cancelar": "Annuler",
+      "siguiente": "Suivant",
+      "crear": "{count, plural, one {Créer 1 transfert} other {Créer {n} transferts}}",
+      "creando": "Création…",
+      "listo": "{count, plural, one {1 transfert créé} other {{n} transferts créés}}"
+    }
   }
 }

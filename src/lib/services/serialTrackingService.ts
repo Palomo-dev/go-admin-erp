@@ -186,11 +186,10 @@ class SerialTrackingService {
   async createSerial(data: SerialInput): Promise<{ data: SerialNumber | null; error: Error | null }> {
     try {
       const now = new Date().toISOString();
+      // La garantía empieza el día de la VENTA, no al recibir (P9 del plan de
+      // inventario): aquí solo se guarda el plazo. warranty_start/end los fija
+      // el disparador trg_serial_garantia_desde_venta al pasar a `sold`.
       const warrantyMonths = data.warranty_months ?? null;
-      const warrantyStart = warrantyMonths ? now.split('T')[0] : null;
-      const warrantyEnd = warrantyMonths
-        ? new Date(Date.now() + warrantyMonths * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-        : null;
 
       const { data: serial, error } = await supabase
         .from('serial_numbers')
@@ -209,8 +208,6 @@ class SerialTrackingService {
           price_at_sale: data.price_at_sale ?? null,
           received_date: now,
           warranty_months: warrantyMonths,
-          warranty_start: warrantyStart,
-          warranty_end: warrantyEnd,
           notes: data.notes ?? null,
         })
         .select()
@@ -232,8 +229,8 @@ class SerialTrackingService {
       });
 
       return { data: serial as SerialNumber, error: null };
-    } catch (error: any) {
-      console.error('Error creando serial:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error creando serial:', (error as Error)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -329,8 +326,8 @@ class SerialTrackingService {
         count: count || 0,
         error: null,
       };
-    } catch (error: any) {
-      console.error('Error obteniendo seriales:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo seriales:', (error as Error)?.message || error);
       return { data: [], count: 0, error: error as Error };
     }
   }
@@ -376,8 +373,8 @@ class SerialTrackingService {
         data: { ...data, events: events || [] } as SerialWithDetails,
         error: null,
       };
-    } catch (error: any) {
-      console.error('Error obteniendo serial por numero:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo serial por numero:', (error as Error)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -418,8 +415,8 @@ class SerialTrackingService {
         data: { ...data, events: events || [] } as SerialWithDetails,
         error: null,
       };
-    } catch (error: any) {
-      console.error('Error obteniendo serial por ID:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo serial por ID:', (error as Error)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -451,8 +448,8 @@ class SerialTrackingService {
       if (error) throw error;
 
       return { data: (data || []) as SerialNumber[], error: null };
-    } catch (error: any) {
-      console.error('Error obteniendo seriales por producto:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo seriales por producto:', (error as Error)?.message || error);
       return { data: [], error: error as Error };
     }
   }
@@ -477,8 +474,8 @@ class SerialTrackingService {
       if (error) throw error;
 
       return { data: (data || []) as SerialWithDetails[], error: null };
-    } catch (error: any) {
-      console.error('Error obteniendo seriales por OC:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo seriales por OC:', (error as Error)?.message || error);
       return { data: [], error: error as Error };
     }
   }
@@ -503,8 +500,8 @@ class SerialTrackingService {
       if (error) throw error;
 
       return { data: (data || []) as SerialWithDetails[], error: null };
-    } catch (error: any) {
-      console.error('Error obteniendo seriales por factura compra:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo seriales por factura compra:', (error as Error)?.message || error);
       return { data: [], error: error as Error };
     }
   }
@@ -529,8 +526,8 @@ class SerialTrackingService {
       if (error) throw error;
 
       return { data: (data || []) as SerialWithDetails[], error: null };
-    } catch (error: any) {
-      console.error('Error obteniendo seriales por cliente:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo seriales por cliente:', (error as Error)?.message || error);
       return { data: [], error: error as Error };
     }
   }
@@ -549,8 +546,8 @@ class SerialTrackingService {
       if (error) throw error;
 
       return { data: (data || []) as SerialTrackingEvent[], error: null };
-    } catch (error: any) {
-      console.error('Error obteniendo historial de serial:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo historial de serial:', (error as Error)?.message || error);
       return { data: [], error: error as Error };
     }
   }
@@ -619,8 +616,8 @@ class SerialTrackingService {
       });
 
       return { error: null };
-    } catch (error: any) {
-      console.error('Error actualizando estado de serial:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error actualizando estado de serial:', (error as Error)?.message || error);
       return { error: error as Error };
     }
   }
@@ -668,8 +665,8 @@ class SerialTrackingService {
       });
 
       return { error: null };
-    } catch (error: any) {
-      console.error('Error transfiriendo serial:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error transfiriendo serial:', (error as Error)?.message || error);
       return { error: error as Error };
     }
   }
@@ -771,8 +768,8 @@ class SerialTrackingService {
           customer_id: saleData.customer_id,
           performed_by: userId,
         });
-      } catch (err: any) {
-        errors.push(`Serial ${serialId}: ${err.message}`);
+      } catch (err: unknown) {
+        errors.push(`Serial ${serialId}: ${(err as Error).message}`);
       }
     }
 
@@ -832,8 +829,8 @@ class SerialTrackingService {
           web_order_id: webOrderId,
           performed_by: userId,
         });
-      } catch (err: any) {
-        errors.push(`Serial ${serialId}: ${err.message}`);
+      } catch (err: unknown) {
+        errors.push(`Serial ${serialId}: ${(err as Error).message}`);
       }
     }
 
@@ -886,8 +883,8 @@ class SerialTrackingService {
           notes: 'Reserva liberada por cancelacion de pedido',
         });
       }
-    } catch (err: any) {
-      errors.push(err.message);
+    } catch (err: unknown) {
+      errors.push((err as Error).message);
     }
 
     return { success: errors.length === 0, errors };
@@ -928,8 +925,8 @@ class SerialTrackingService {
         },
         error: null,
       };
-    } catch (error: any) {
-      console.error('Error obteniendo info de garantia:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo info de garantia:', (error as Error)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -1010,7 +1007,7 @@ class SerialTrackingService {
 
       for (const item of data || []) {
         if (item.status in stats) {
-          (stats as any)[item.status]++;
+          (stats as unknown as Record<string, number>)[item.status]++;
         }
         if (item.warranty_end) {
           const endDate = new Date(item.warranty_end);
@@ -1021,8 +1018,8 @@ class SerialTrackingService {
       }
 
       return { data: stats, error: null };
-    } catch (error: any) {
-      console.error('Error obteniendo estadisticas de seriales:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo estadisticas de seriales:', (error as Error)?.message || error);
       return { data: null, error: error as Error };
     }
   }
@@ -1060,7 +1057,7 @@ class SerialTrackingService {
         .from('products')
         .select(`
           sku,
-          product_prices(price)
+          product_prices(price, effective_from, effective_to)
         `)
         .eq('id', productId)
         .maybeSingle();
@@ -1071,14 +1068,15 @@ class SerialTrackingService {
       let currentPrice = priceAtSale ?? 0;
       if (!currentPrice && product?.product_prices && product.product_prices.length > 0) {
         const now = new Date();
+        // El precio vigente: ya empezó y no ha terminado (antes se pedía solo
+        // `price` y el filtro por vigencia nunca veía las fechas).
         const vigente = product.product_prices
-          .filter((p: any) => {
-            const from = p.effective_from ? new Date(p.effective_from) : null;
-            return !from || from <= now;
+          .filter((p) => {
+            const desde = p.effective_from ? new Date(p.effective_from) : null;
+            const hasta = p.effective_to ? new Date(p.effective_to) : null;
+            return (!desde || desde <= now) && (!hasta || hasta > now);
           })
-          .sort((a: any, b: any) =>
-            new Date(b.effective_from || 0).getTime() - new Date(a.effective_from || 0).getTime()
-          )[0];
+          .sort((a, b) => new Date(b.effective_from || 0).getTime() - new Date(a.effective_from || 0).getTime())[0];
         if (vigente) currentPrice = vigente.price;
       }
 
@@ -1109,9 +1107,9 @@ class SerialTrackingService {
       }
 
       return await this.createSerials(serials);
-    } catch (error: any) {
-      console.error('Error generando seriales desde patrón:', error?.message || error);
-      return { data: [], errors: [error?.message || 'Error inesperado'] };
+    } catch (error: unknown) {
+      console.error('Error generando seriales desde patrón:', (error as Error)?.message || error);
+      return { data: [], errors: [(error as Error)?.message || 'Error inesperado'] };
     }
   }
 
@@ -1143,8 +1141,8 @@ class SerialTrackingService {
 
       if (error) throw error;
       return data as SerialNumber[];
-    } catch (err: any) {
-      console.error('Error obteniendo seriales disponibles:', err.message);
+    } catch (err: unknown) {
+      console.error('Error obteniendo seriales disponibles:', (err as Error).message);
       return [];
     }
   }

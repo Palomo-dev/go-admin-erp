@@ -866,3 +866,73 @@ Efecto en pantallas: `MembersTab` y `RoleAssignment` cambian el rol de otros mie
 navegador; eso ya no funcionaba antes (no hay política de UPDATE para filas ajenas) y ahora, si alguien
 intenta cambiarse su propio rol, recibe un error en vez de lograrlo. Pasar esa gestión a una ruta de
 servidor con permiso de admin queda pendiente dentro de la fase 5.
+
+### 13.5 Fase 5 (seguridad) — hecha el 2026-09-29
+
+- **Bloqueo por intentos en el servidor.** `POST /api/auth/acceso` hace el login (el navegador ya no
+  llama a `signInWithPassword`; `signInWithEmail` de `lib/supabase/config.ts` pasa por la ruta y
+  conserva la cookie, el selector de cuentas y el throttle de 3 s). Cuenta fallos en
+  `auth_intentos_acceso` (migración `20260929210000_auth_intentos_acceso`, solo service_role, claves
+  SHA-256 de cuenta+IP y de IP): 5 fallos por cuenta+IP o 20 por IP en 15 min bloquean 15 min;
+  durante el bloqueo ni la contraseña buena entra y Auth no se consulta. Un acceso correcto limpia
+  cuenta+IP. Si el contador no responde, falla cerrado (503). La pantalla ya pintaba
+  `bloqueado` con la hora. Pruebas: `src/__tests__/auth/accesoV3Bloqueo.test.ts` (11) y la función
+  probada en transacción deshecha.
+- **Sin consultas que revelen si un correo tiene cuenta.** Borrados `/api/auth/check-email` y
+  `lib/auth/checkProvider.ts`; `check_email_exists` y `get_auth_provider_by_email` revocadas a anon y
+  authenticated (migración `20260929211000_revocar_enumeracion_correos`). En master el código viejo
+  recibe error y devuelve `null`: solo desaparece la pista «esta cuenta es de Google».
+- **Perfil › Seguridad.** El cambio de contraseña va por `POST /api/auth/contrasena`: sesión
+  verificada, la actual se comprueba en el servidor (5 intentos cada 15 min por usuario), política
+  única (10, distinta del correo, no filtrada, distinta de la actual) y por defecto cierra las demás
+  sesiones. La pantalla usa `CampoContrasena` y `MedidorFortaleza` del kit y el namespace
+  `perfilSeguridad` (es/en/fr/pt). **El interruptor de 2FA quedó oculto** (decisión v2-12): el login
+  nunca pedía el segundo factor. Pruebas: `accesoV3Contrasena.test.ts` (6).
+- **Huérfanos borrados:** `InvitationForm`, `OrganizationSelector`, `PasswordField`,
+  `PasswordStrengthIndicator`, `EmailResendComponent`, `PermissionGuard`, `EnterpriseConfigSelector`,
+  `EnterpriseConfigModal` (sin ningún import).
+
+- **Gestión de otros miembros por RPC.** Cambiar el rol, activar/desactivar o retirar a otro
+  miembro (Organización › Miembros y Roles) escribía `organization_members` desde el navegador y RLS
+  lo filtraba a 0 filas sin error: la pantalla decía «actualizado» y no cambiaba nada. Ahora van por
+  `fn_miembro_cambiar_rol`, `fn_miembro_cambiar_estado` y `fn_miembro_retirar` (migración
+  `20260929212000_miembros_gestion_por_rpc`) desde `lib/services/miembrosService.ts`: admin o permiso
+  de la acción (`roles.assign`, `users.edit`, `users.delete`), nunca sobre uno mismo ni sobre el
+  dueño, y el rol Super Admin solo lo toca otro super admin. Probado en transacción deshecha (9
+  casos). Guardarraíl 35. Se borró `assignJobPositionToMember` (sin llamadas; el cargo no tiene RPC
+  todavía).
+
+Pendiente del dueño en el panel de Supabase: «Leaked password protection» y mínimo 10 caracteres.
+
+### 13.6 Fase 6 (rutas) — hecha el 2026-09-29
+
+- **R3 · `/auth/logout` existe.** Pantalla del navegador (la limpieza del almacenamiento local solo
+  se puede hacer ahí) que reutiliza `signOut()` de `lib/supabase/config.ts` y va al login;
+  `?reason=expired` se conserva para el aviso. Texto «Cerrando sesión…» en `acceso.salida` (4 idiomas).
+- **R7 · «Olvidé mi contraseña» con sesión:** excepción en el middleware (antes mandaba a /app/inicio).
+- **R12 · sin organización:** si no hay organización identificable (ni cookie `org_id` ni
+  subdominio) y la persona no tiene ninguna membresía activa, /app lleva a
+  `/auth/select-organization?dest=…` (estado vacío). Solo consulta en ese caso; fail open; Perfil
+  queda abierto.
+- **R15 · `redirectTo`:** la ruta completa con su query, para cualquier ruta protegida (antes solo el
+  `pathname` y solo bajo /app/). El login la sigue validando con `destinoTrasLogin`.
+- **R2:** se quitó la regla vieja del middleware para `/auth/session-expired` (ya es un 308 al login).
+- Microsoft en la web ya estaba oculto desde la fase 2.
+
+Pruebas: `src/__tests__/auth/accesoV3Rutas.test.ts` (10) y todas las que ejercitan el middleware
+(3.191) en verde. No se revisó en el navegador.
+
+### 13.7 Fase 8 (datos) — hecha el 2026-09-29
+
+Migración `20260929213000_pais_sucursales_y_organizaciones` (con reversión por ids exactos):
+70 sucursales y 12 organizaciones sin `country_code` → 0. Sucursales con nombre de país → su código
+(67 COL, 2 MEX); la sucursal sin país toma el de su organización. Las dos sucursales de la org 2 dicen
+«México» aunque la organización está en Colombia: se respetó lo que dice cada sucursal (a confirmar
+con el dueño).
+
+**Trampa encontrada:** `after_organization_update_country` llama a `setup_organization_defaults`
+cuando cambia `organizations.country_code`, y esa función BORRA y rehace `organization_taxes` y
+`organization_payment_methods` (incluidos los de pasarela). La migración desactivó ese disparador solo
+durante su actualización; se comprobó en transacción deshecha que impuestos, métodos de pago y monedas
+de las 12 organizaciones quedaron iguales. El disparador sigue activo para las pantallas: un admin que
+cambie el país de su organización pierde su configuración de impuestos y pagos.

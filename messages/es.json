@@ -21165,6 +21165,9 @@
       "error": "No pudimos completar la invitación. Inténtalo de nuevo.",
       "demasiados": "Demasiados intentos. Espera unos minutos.",
       "vencida": "La invitación ya no es válida. Pide un enlace nuevo."
+    },
+    "salida": {
+      "cerrando": "Cerrando sesión…"
     }
   },
   "inventarioUnidades": {
@@ -21402,5 +21405,25 @@
         "conversion_del_sistema": "Las conversiones del sistema son de solo lectura."
       }
     }
+  },
+  "perfilSeguridad": {
+    "titulo": "Seguridad",
+    "descripcion": "Administra la contraseña con la que entras a GO Admin.",
+    "contrasenaTitulo": "Contraseña",
+    "contrasenaDescripcion": "Cámbiala si crees que alguien más la conoce.",
+    "cambiar": "Cambiar",
+    "dialogoTitulo": "Cambiar contraseña",
+    "dialogoDescripcion": "Escribe tu contraseña actual y la nueva.",
+    "actual": "Contraseña actual",
+    "nueva": "Contraseña nueva",
+    "confirmar": "Confirmar contraseña nueva",
+    "cerrarOtras": "Cerrar la sesión en mis otros dispositivos",
+    "guardar": "Cambiar contraseña",
+    "actualizada": "Tu contraseña se actualizó.",
+    "confirmaCorreo": "Debes confirmar tu correo electrónico para cambiar la contraseña.",
+    "errorActual": "La contraseña actual no es correcta.",
+    "errorIgualActual": "La contraseña nueva debe ser distinta de la actual.",
+    "errorDemasiadas": "Demasiados intentos seguidos. Espera unos minutos y vuelve a intentarlo.",
+    "errorInesperado": "No pudimos cambiar la contraseña. Inténtalo de nuevo en un momento."
   }
 }

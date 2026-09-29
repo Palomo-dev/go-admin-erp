@@ -21060,6 +21060,9 @@
       "error": "Nous n’avons pas pu finaliser l’invitation. Réessayez.",
       "demasiados": "Trop de tentatives. Patientez quelques minutes.",
       "vencida": "L’invitation n’est plus valide. Demandez un nouveau lien."
+    },
+    "salida": {
+      "cerrando": "Déconnexion…"
     }
   },
   "inventarioUnidades": {
@@ -21297,5 +21300,25 @@
         "conversion_del_sistema": "Les conversions du système sont en lecture seule."
       }
     }
+  },
+  "perfilSeguridad": {
+    "titulo": "Sécurité",
+    "descripcion": "Gérez le mot de passe que vous utilisez pour vous connecter à GO Admin.",
+    "contrasenaTitulo": "Mot de passe",
+    "contrasenaDescripcion": "Changez-le si vous pensez que quelqu’un d’autre le connaît.",
+    "cambiar": "Changer",
+    "dialogoTitulo": "Changer le mot de passe",
+    "dialogoDescripcion": "Saisissez votre mot de passe actuel et le nouveau.",
+    "actual": "Mot de passe actuel",
+    "nueva": "Nouveau mot de passe",
+    "confirmar": "Confirmer le nouveau mot de passe",
+    "cerrarOtras": "Me déconnecter de mes autres appareils",
+    "guardar": "Changer le mot de passe",
+    "actualizada": "Votre mot de passe a été mis à jour.",
+    "confirmaCorreo": "Vous devez confirmer votre adresse e-mail pour changer le mot de passe.",
+    "errorActual": "Le mot de passe actuel est incorrect.",
+    "errorIgualActual": "Le nouveau mot de passe doit être différent de l’actuel.",
+    "errorDemasiadas": "Trop de tentatives d’affilée. Patientez quelques minutes et réessayez.",
+    "errorInesperado": "Nous n’avons pas pu changer le mot de passe. Réessayez dans un instant."
   }
 }

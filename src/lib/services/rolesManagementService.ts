@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { cambiarRolMiembro } from '@/lib/services/miembrosService';
 
 // ============= INTERFACES =============
 
@@ -43,7 +44,7 @@ export interface JobPosition {
   level?: string;
   min_salary?: number;
   max_salary?: number;
-  requirements?: any;
+  requirements?: unknown; // jsonb libre
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
@@ -69,6 +70,18 @@ export interface OrganizationMember {
   created_at?: string;
 }
 
+export interface OrganizationMemberWithRelations extends OrganizationMember {
+  roles: { id: number; name: string } | null;
+  job_positions: { id: string; name: string } | null;
+  users: { id: string; email: string; raw_user_meta_data: Record<string, unknown> | null } | null;
+}
+
+export interface RolesMatrix {
+  roles: Array<Pick<Role, 'id' | 'name' | 'description' | 'is_system'>>;
+  permissions: Array<Pick<Permission, 'id' | 'code' | 'name' | 'module' | 'category'>>;
+  role_permissions: Array<{ role_id: number; permission_id: number }>;
+}
+
 export interface RoleAnalytics {
   total_roles: number;
   system_roles: number;
@@ -90,6 +103,9 @@ export interface RoleAnalytics {
 export const rolesManagementService = {
   // ============= ROLES =============
 
+  // Los roles son globales (no se filtran por organización); el parámetro se
+  // conserva porque forma parte de la firma pública que usan los llamadores.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async getRoles(organizationId: number): Promise<RoleWithPermissions[]> {
     const { data, error } = await supabase
       .from('roles')
@@ -132,7 +148,7 @@ export const rolesManagementService = {
     if (data) {
       return {
         ...data,
-        permissions: data.role_permissions?.map((rp: any) => rp.permissions).filter(Boolean) || []
+        permissions: data.role_permissions?.map((rp: { permissions: unknown }) => rp.permissions as Permission).filter(Boolean) || []
       };
     }
     
@@ -271,7 +287,7 @@ export const rolesManagementService = {
     
     if (error) throw error;
     
-    return (data || []).map((rp: any) => rp.permissions).filter(Boolean);
+    return (data || []).map((rp: { permissions: unknown }) => rp.permissions as Permission).filter(Boolean);
   },
 
   async setRolePermissions(roleId: number, permissionIds: number[]): Promise<void> {
@@ -343,7 +359,7 @@ export const rolesManagementService = {
       return {
         ...data,
         department: data.departments,
-        permissions: data.job_position_permissions?.map((jp: any) => jp.permissions).filter(Boolean) || []
+        permissions: data.job_position_permissions?.map((jp: { permissions: unknown }) => jp.permissions as Permission).filter(Boolean) || []
       };
     }
     
@@ -404,7 +420,7 @@ export const rolesManagementService = {
     
     if (error) throw error;
     
-    return (data || []).map((jp: any) => jp.permissions).filter(Boolean);
+    return (data || []).map((jp: { permissions: unknown }) => jp.permissions as Permission).filter(Boolean);
   },
 
   async setJobPositionPermissions(positionId: string, permissionIds: number[]): Promise<void> {
@@ -432,7 +448,7 @@ export const rolesManagementService = {
 
   // ============= ASIGNACIÓN =============
 
-  async getOrganizationMembers(organizationId: number): Promise<any[]> {
+  async getOrganizationMembers(organizationId: number): Promise<OrganizationMemberWithRelations[]> {
     const { data, error } = await supabase
       .from('organization_members')
       .select(`
@@ -449,21 +465,7 @@ export const rolesManagementService = {
   },
 
   async assignRoleToMember(memberId: string, roleId: number): Promise<void> {
-    const { error } = await supabase
-      .from('organization_members')
-      .update({ role_id: roleId })
-      .eq('id', memberId);
-    
-    if (error) throw error;
-  },
-
-  async assignJobPositionToMember(memberId: string, jobPositionId: string | null): Promise<void> {
-    const { error } = await supabase
-      .from('organization_members')
-      .update({ job_position_id: jobPositionId })
-      .eq('id', memberId);
-    
-    if (error) throw error;
+    await cambiarRolMiembro(memberId, roleId);
   },
 
   // ============= ANALÍTICAS =============
@@ -518,11 +520,11 @@ export const rolesManagementService = {
 
   // ============= IMPORTAR/EXPORTAR =============
 
-  async exportRolesMatrix(): Promise<any> {
+  async exportRolesMatrix(): Promise<RolesMatrix> {
     const roles = await this.getRoles(0);
     const permissions = await this.getAllPermissions();
     
-    const matrix: any = {
+    const matrix: RolesMatrix = {
       roles: roles.map(r => ({
         id: r.id,
         name: r.name,
@@ -552,7 +554,7 @@ export const rolesManagementService = {
     return matrix;
   },
 
-  async importRolesMatrix(matrix: any): Promise<void> {
+  async importRolesMatrix(matrix: RolesMatrix): Promise<void> {
     // Validar estructura
     if (!matrix.roles || !matrix.permissions || !matrix.role_permissions) {
       throw new Error('Formato de matriz inválido');

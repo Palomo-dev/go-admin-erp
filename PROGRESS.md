@@ -3522,6 +3522,42 @@ COMO RETOMAR: relanzar docs/pos-doble-pantalla/workflow-f4.js (plan y fecha como
 - Para el 10 / hardware real: pantalla táctil de verdad (que `maxTouchPoints` dé true en el segundo monitor y que el selector se pulse cómodo a 1,5 m); la carrera de los 8 s de «Gracias»; una jornada entera en reposo (memoria, imágenes externas, vuelta desde segundo plano); escalas 1024×768 / 1366×768 / 1920×1080 con el escalado de Windows; dos ventas a crédito seguidas en menos de 2 minutos (la segunda calificación anónima se descarta).
 - Cierre: F4 entregada y corregida. Con esto quedan cerradas las cinco fases del plan (F0 9,5 · F1 8,8 · F2 8,8 · F3 A 9,0 + cierre del orquestador · F4 entregada con los defectos del QA aplicados). Lo único que falta del plan es la prueba en hardware real.
 
+### GO Assistant — revisión de escritorio (diseño Figma §5), parte de mi zona — 2026-09-23
+
+La sesión de shell/Figma diseñó una revisión del panel y dejó 13 cambios en
+`docs/design/GO-ASISTENTE-ESCRITORIO.md` §5, aprobados por el dueño. Implementado lo que vive solo
+en la zona del asistente (los de ancho, atajo Ctrl/Cmd+J, rail del sidebar y header compacto
+dependen de `AppLayout`/`SidebarShell`/`AppHeader`, que son suyos: les pedí que expongan
+`asistenteAbierto` en vez de editarlo yo).
+
+- **§7 Sugerencias con contexto.** `suggestionsForPath()` en `aiAssistantService`: la pantalla manda
+  (`/app/finanzas/facturas-venta` → "Crea una factura de venta"; `/app/inventario/productos` → "Sube
+  este listado"). El panel envía `currentPath` y la ruta lo valida (`startsWith('/')`, 200 chars) y
+  solo lo usa para elegir frases de una lista fija: no decide permisos ni toca la base.
+- **§8 Créditos visibles.** `GET /api/ai-assistant/credits` (sesión, sin caché, rate limit, solo
+  lectura) devuelve saldo y nivel `ok|low|empty` (umbral 50). El panel lo lee al abrir y tras cada
+  turno; el composer lo pinta al pie: discreto en `ok`, ámbar en `low`, rojo en `empty` con enlace a
+  `/app/plan`. Antes el saldo solo se descubría cuando un turno ya había fallado.
+- **§9 Tarjeta con estados.** El desenlace se queda EN la tarjeta (`ActionOutcome`): completada con
+  "Ver" (si el servidor da `entity.url`) y "Deshacer", o error con "Corregir y reintentar". Fuera los
+  mensajes `✅ **Acción completada:**` / `❌ **Error:**` sueltos en el hilo.
+- **§6 Mensajes.** Fuera avatares y degradado morado (fuera de marca): el usuario en burbuja azul a
+  la derecha, el asistente a todo el ancho —queda sitio para tablas y tarjetas—. Botón "Copiar" junto
+  a "Escuchar".
+- **§5 Cabecera (parcial).** La papelera pasa a `SquarePen` "Nueva conversación", que es lo que
+  hacía de verdad (abría hilo nuevo, no borraba). El título en 4 idiomas queda pendiente:
+  `messages/*.json` es compartido y hay que avisar antes.
+- **§11 Pasos.** Al llegar el primer token, los pasos se pliegan a "N pasos" desplegable: manda la
+  respuesta.
+
+**Tests.** `goAssistantPanelUX.test.ts` (11): rutas de sugerencias, contrato del endpoint de
+créditos y, por lectura del código, que no quedan avatares ni mensajes ✅/❌ y que la tarjeta tiene
+desenlace. Zona completa en verde en UTC y Bogotá.
+
+**Git.** Congelado por acuerdo entre sesiones hasta el aviso "main listo" (el árbol estuvo en
+`gosec/bloque-a` y lo está devolviendo la sesión de shell). Regla del dueño difundida hoy: se
+trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de esto.
+
 ### Fase: FASE 2 — Facturas de compra y cuentas por pagar (plan docs/implementacion/FACTURAS-COMPRA-CXP-PLAN.md) — 2026-09-24
 - Commits en main (sin push): f1ac674c (F0 caracterización, 15 pruebas), 9f1babc4 (F1 base de datos y RPC), 29479229 (F2 rutas del servidor), 951b8086 (F4–F7 y F11: listado, detalle y formulario de facturas de compra, OC por la RPC única, Open Finance sin saldo a mano), 698f9cde (F8–F10 y F13: listado y detalle de CxP, plan de cuotas, estado de cuenta, aprobaciones, guardarraíl 26b).
 - Registrar una compra ya no está implementado tres veces: formulario, GO Assistant y generador desde OC llaman a la misma RPC (fn_factura_compra_guardar/confirmar/desde_oc). La CxP nace al confirmar y por el neto; la recepción entra por kardex con costo en product_costs con vigencia; los pagos programados viven en ap_payment_schedules y los aprueba otra persona.
@@ -3545,6 +3581,7 @@ COMO RETOMAR: relanzar docs/pos-doble-pantalla/workflow-f4.js (plan y fecha como
 - Ninguna pantalla de ventas o cartera escribe ya saldos, pagos, notas ni cartera desde el navegador (guardarraíles L1, L13–L15 en src/__tests__/finanzas/ventas).
 - Compuerta: jest completo 672/675 suites (las 3 que fallan son de otras zonas: sectionContract conocida, f6Adversarial y testerR4.f0sec), guardrails y zona horaria en verde; tsc (8 GB) sin errores en archivos de la fase; eslint de los archivos nuevos o reescritos 0.
 - Pendiente (detalle en §8 del plan): el POS aún monta el detalle viejo id/DetalleFactura (sus diálogos ya delegan en el servidor; «Marcar pagada» no); D10; política UPDATE de payments; unificar el bloque de nota crédito con procesar_devolucion; formulario de factura con el kit; WhatsApp; recorrido en navegador (no había preview activo).
+
 <!-- POS rediseño pantalla principal (inicio) -->
 ### Fase: FASE 2 — Pantalla principal del POS (plan docs/implementacion/POS-PLAN.md, pasos 0–16) — 2026-09-28
 - Commits en main (sin push), uno por paso: 42b1b851 (0: Testing Library + jsdom, línea base), e156c86c (1: caracterización, lógica extraída tal cual, 31 archivos de prueba), ac74f1d3 (2: CartTag, CartLine, ProductCard, CategoryBar en el kit), 68068850 (3: cabecera, F9, «⋯ Caja y dispositivo», mapa F1), 54bd0d9b (4: grilla Tarjetas | Lista con scroll infinito), 34a23327 (5: CategoryBar), b8ee28fa (6: CartLine), 086ff79a (7: resumen y botonera, D4, anular con motivo, DetalleFacturaVenta), 3ffe9be5 (8: pestañas y CustomerPicker), 378e72d0 (9: columna del carrito, divisor 560 px), fe004290 (10: «Descuento · D»), b6f9f7fb (11: cobro sobre PanelAdaptable, métodos de la organización, D8), 47aeb97b (12: secciones plegables, propina 5/10 % antes de impuestos), 3f24b6d5 (13: post-venta), a5287019 (14: Ctrl+B y atajos), b06978dd (15: barra fija y hoja en el celular), b4c424ee y el cierre (16: idiomas, 11 archivos muertos fuera).

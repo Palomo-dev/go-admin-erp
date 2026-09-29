@@ -83,6 +83,7 @@ dibuja: publica título, subtítulo y acción en el `MobileHeader Mode=page` del
 | `variante` | `'list' \| 'detail' \| 'form'` | `form` pinta «← Volver» con `volverA` |
 | `badge`, `miniatura` | `ReactNode` | solo `detail` |
 | `cargando` | `boolean` | la cabecera **no** se esqueletiza |
+| `progreso` | `{ actual, total, etiqueta? } \| null` | barra fina de avance bajo el subtítulo (carga por lotes del catálogo); se oculta al llegar al total |
 | `debajo` | `ReactNode` | fila bajo la cabecera (BranchBadge, pestañas); se ve también en móvil |
 | `movil` | `{ accion?, titulo?, subtitulo?, ocultarBarra? } \| false` | `false` fuera del shell |
 
@@ -226,14 +227,17 @@ const l = useListadoServidor({ filtros: ['estado', 'tipo'], camposOrden: ['nombr
 
 ### `RowActionsMenu` · `ActionSheet` · Figma `MenuItem 10:239`
 
-`AccionFila = { id, etiqueta, icono: LucideIcon, onSelect, destructiva?, separadorAntes?,
-deshabilitada?, motivo?, oculta? }`. El kit ordena: primero las normales, luego divisor y
+`AccionFila = { id, etiqueta, icono: LucideIcon, onSelect, descripcion?, destructiva?, separadorAntes?,
+deshabilitada?, motivo?, oculta? }`. `descripcion` es una segunda línea atenuada, solo para menús de
+cabecera («Importar ▾ › Desde un archivo · CSV o Excel»). El kit ordena: primero las normales, luego divisor y
 las destructivas en rojo (`prepararMenu`). Tope de 8 entradas. Una acción deshabilitada
 **muestra su motivo**; si no hay motivo, se oculta.
 
 - `RowActionsMenu`: `acciones`, `titulo` (registro), `orientacion` (`vertical` ⋮ en filas ·
   `horizontal` ⋯ en cabeceras), `tamano` (`sm` 32 · `md` 40), `lado` (`top` desde la barra
   masiva). Escritorio: menú alineado al borde derecho, 4 px. Móvil: abre `ActionSheet`.
+  Con `etiquetaBoton` (+ `iconoBoton`) el disparador es un botón secundario de 40 px con texto
+  y chevron («Importar ▾» del catálogo de productos) en lugar de «⋯».
 - `ActionSheet`: `abierto`, `onAbiertoChange`, `titulo`, `descripcion?`, `acciones`.
   Filas de 52 px con icono de 20.
 
@@ -271,7 +275,9 @@ subtítulo 13/18 (hasta 2 líneas), meta 12/16 atenuada, valor y badge a la dere
 Toda la tarjeta abre el detalle; en modo selección gana casilla y borde de marca de 2 px.
 
 Props: `icono`, `titulo`, `subtitulo?`, `meta?`, `valor?`, `estado?`, `onClick?`,
-`acciones?`, `seleccionable?`, `seleccionado?`, `onSeleccionChange?`.
+`acciones?`, `seleccionable?`, `seleccionado?`, `onSeleccionChange?`. `miniatura?` sustituye al
+icono por la foto o el avatar del registro (productos; `icono` pasa a ser opcional) e `insignias?` añade una
+fila de badges que envuelve bajo el texto (stock por sucursal, «3 var.»).
 
 Clientes móvil pasa su avatar de iniciales por `miniatura` (`<AvatarIniciales tamano="md" />`) y
 conserva su información (nombre, Persona/Empresa, documento, contacto, correo, teléfono), un dato
@@ -308,6 +314,8 @@ tarjeta.
 `StatusBadge estado="paid"` → «Pagada», éxito · suave. El tono sale de
 `kit/estadoTono.ts` (la tabla de SISTEMA-BADGES §4): acepta español o el valor en inglés de
 la BD, sin tildes ni mayúsculas, y los días de mora dentro de la etiqueta («Vencida 12 d»).
+`deleted` / «Eliminado» (baja lógica, p. ej. `products.status`) se pinta como «Anulada»:
+peligro · contorno.
 Props: `estado`, `etiqueta?`, `tamano` (`sm` 20 · `md` 24), `icono?`; `tono`/`apariencia`
 solo para excepciones documentadas en SISTEMA-BADGES.
 
@@ -485,6 +493,20 @@ numeración espejo de `fn_codigo_barras_construir`) y `src/lib/utils/etiquetasIm
 (plantillas, reparto en hojas, casilla de inicio, cantidad según stock). Tests en
 `src/lib/utils/__tests__/codigoBarras.test.ts` y `etiquetasImpresion.test.ts`.
 
+## Adenda 2026-09-24 — detalle y formulario de producto
+
+Pedidos por el detalle de producto (sub-pestañas) y el formulario único (impuestos,
+categorías adicionales, etiquetas y cifras con moneda). Aditivo: ningún contrato cambió.
+
+| Figma | Código | Qué hace |
+|---|---|---|
+| `MultiSelect` / `TaxMultiSelect` (`02 Componentes › Impuestos`) | `kit/MultiSelect.tsx` + `kit/multiSelectLogica.ts` | Chips con «×» en el disparador, panel con buscador sin tildes, casillas, «Crear “…”» opcional (`onCrear`), punto de color por opción. Teclado: ↑/↓, Enter, Escape, Retroceso quita el último chip. Textos por props (`placeholder`, `placeholderBusqueda`, `textoVacio`, `textoCrear`, `etiquetaQuitar`). Import directo: `@/components/kit/MultiSelect` |
+| `NumberInput` (prefijo `$` / sufijo `%`) | `kit/CampoNumero.tsx` + `kit/campoNumeroLogica.ts` | `valor` / `onValorChange(number \| null)` (vacío ≠ 0), coma o punto decimal, `decimales`, `minimo`, `maximo`, `prefijo` (símbolo de la moneda de la organización), `sufijo` («%», «días»), `tamano` sm 32 · md 40. Con `FormField` recibe `id` y `aria-*` |
+| `TabItem` en sub-pestañas | `kit/TabBar.tsx` | + `tamano="sm"` (32 px, texto 13) para las sub-pestañas dentro de una pestaña (Inventario › Stock · Lotes · Kardex · Seriales) |
+
+Pruebas: `src/components/inventario/productos/__tests__/productoLogica.test.ts` (filtro y
+alternancia del `MultiSelect`, conversión del `CampoNumero`).
+
 ## Adenda 2026-09-24 — asistente por pasos y diálogo adaptable (Importar productos · Meta)
 
 Pedidos por el rediseño de «Importar productos» (Figma `09-importar`) y «Meta y canales»
@@ -502,20 +524,6 @@ Pedidos por el rediseño de «Importar productos» (Figma `09-importar`) y «Met
 <PanelAdaptable abierto={abierto} onAbiertoChange={setAbierto} titulo="Meta y canales" icono={Share2}
   debajoCabecera={<TabBar id="meta" … />} pie={<Button variant="outline">Cerrar</Button>}>…</PanelAdaptable>
 ```
-
-## Adenda 2026-09-24 — detalle y formulario de producto
-
-Pedidos por el detalle de producto (sub-pestañas) y el formulario único (impuestos,
-categorías adicionales, etiquetas y cifras con moneda). Aditivo: ningún contrato cambió.
-
-| Figma | Código | Qué hace |
-|---|---|---|
-| `MultiSelect` / `TaxMultiSelect` (`02 Componentes › Impuestos`) | `kit/MultiSelect.tsx` + `kit/multiSelectLogica.ts` | Chips con «×» en el disparador, panel con buscador sin tildes, casillas, «Crear “…”» opcional (`onCrear`), punto de color por opción. Teclado: ↑/↓, Enter, Escape, Retroceso quita el último chip. Textos por props (`placeholder`, `placeholderBusqueda`, `textoVacio`, `textoCrear`, `etiquetaQuitar`). Import directo: `@/components/kit/MultiSelect` |
-| `NumberInput` (prefijo `$` / sufijo `%`) | `kit/CampoNumero.tsx` + `kit/campoNumeroLogica.ts` | `valor` / `onValorChange(number \| null)` (vacío ≠ 0), coma o punto decimal, `decimales`, `minimo`, `maximo`, `prefijo` (símbolo de la moneda de la organización), `sufijo` («%», «días»), `tamano` sm 32 · md 40. Con `FormField` recibe `id` y `aria-*` |
-| `TabItem` en sub-pestañas | `kit/TabBar.tsx` | + `tamano="sm"` (32 px, texto 13) para las sub-pestañas dentro de una pestaña (Inventario › Stock · Lotes · Kardex · Seriales) |
-
-Pruebas: `src/components/inventario/productos/__tests__/productoLogica.test.ts` (filtro y
-alternancia del `MultiSelect`, conversión del `CampoNumero`).
 
 ## Adenda 2026-09-24 — kit compartido de POS, cajas, ventas, facturas, CxC y CxP
 
@@ -610,6 +618,7 @@ El repo corre jest en `node` y no tiene `@testing-library/react` ni `jest-enviro
 pruebas cubren la lógica de presentación (archivos `*Logica.ts` y afines, sin React). La
 recomendación D9 de POS-PLAN (añadirlas solo para los archivos que lo pidan con docblock) sigue
 pendiente de la decisión del dueño; no se instaló nada.
+
 ## Adenda POS: CartTag, CartLine, ProductCard, CategoryBar (2026-09-24)
 
 Las cuatro piezas de venta del POS que `KIT-COMPARTIDO.md` dejaba pendientes (contrato de POS-PLAN

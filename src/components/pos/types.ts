@@ -1,4 +1,6 @@
 // Tipos para el sistema POS
+import type { MembresiaVendida } from '@/lib/pos/venta/membresias';
+
 export interface Category {
   id: number;
   organization_id: number;
@@ -51,6 +53,11 @@ export interface Product {
   has_recipe?: boolean;
   recipe_id?: number | null;
   recipe_name?: string | null;
+  /**
+   * `products.service_type` (solo con `product_type = 'service'`): 'membership'
+   * marca una membresía, que exige cliente titular en el cobro (P1).
+   */
+  service_type?: string | null;
 }
 
 export interface Customer {
@@ -202,6 +209,12 @@ export interface Sale {
   commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
   commission_method?: 'percentage' | 'fixed_amount';
   commission_amount?: number;
+  /**
+   * Membresías que creó, activó o renovó el cobro (`pos_checkout_v1` →
+   * `membresias`, ya leídas con `leerMembresiasVendidas`). Las pinta el
+   * post-venta (frame D2). Ausente fuera de la RPC (sin red, pedidos web).
+   */
+  membresias?: MembresiaVendida[];
 }
 
 export interface SaleItem {

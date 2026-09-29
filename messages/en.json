@@ -9373,7 +9373,20 @@
       "receta_ingrediente_repetido": "An ingredient is repeated in the recipe with the same unit: merge it.",
       "receta_variante_desconocida": "The recipe points to a variant that is no longer in the form.",
       "receta_destino_repetido": "There are two recipes for the same product or variant.",
-      "guardado_en_curso": "This save is already being processed. Wait a moment and try again."
+      "guardado_en_curso": "This save is already being processed. Wait a moment and try again.",
+      "tipo_servicio_invalido": "The service type is not valid.",
+      "membresia_con_variantes": "A membership cannot have variants: remove them or choose another service type.",
+      "membresia_con_contratos": "This product has live memberships: it cannot stop being a membership.",
+      "membresia_unidad_invalida": "The duration unit is not valid.",
+      "membresia_duracion_invalida": "The duration must be a whole number of 1 or more.",
+      "membresia_cobro_invalido": "The billing option is not valid.",
+      "membresia_gracia_invalida": "Grace days must be 0 or more.",
+      "membresia_sede_invalida": "One of the branches does not belong to the organization.",
+      "plan_producto_invalido": "The plan must be linked to a membership product of the same organization.",
+      "membresia_ventana_invalida": "Days to activate must be 1 or more.",
+      "membresia_tope_invalido": "Caps must be whole numbers of 0 or more.",
+      "membresia_horario_dias": "Choose at least one day of the week.",
+      "membresia_horario_invalido": "Check the time window: «From» must be before «To» (without crossing midnight)."
     },
     "imagenes": {
       "insignias": {
@@ -9671,6 +9684,77 @@
       "avanzado": {
         "titulo": "Advanced",
         "descripcion": "Shipping, internal note and recipe: ingredients, yield, waste, cost and how inventory is deducted."
+      },
+      "membresia": {
+        "titulo": "Membership settings",
+        "descripcion": "Duration, renewal, billing, freezes and access.",
+        "nota": "Saving creates or updates the plan linked to this product. The price is the product price.",
+        "sinPermiso": "You need the Memberships «Manage plans» permission to change these settings. Saving keeps the current ones (or the default plan: 1 month, paid upfront).",
+        "sinVariantes": "A membership has no variants: each plan is one product. For another duration or price, create another membership product.",
+        "duracion": "Duration",
+        "duracionAyuda": "How long each paid period lasts. A renewal adds another period after the current one ends.",
+        "duracionPresets": "Common durations",
+        "personalizada": "Custom",
+        "cantidad": "Amount",
+        "unidad": "Unit",
+        "unidades": {
+          "day": "Days",
+          "week": "Weeks",
+          "month": "Months",
+          "year": "Years"
+        },
+        "ejemplo": "Example: paid on {desde}, expires on {hasta}.",
+        "renovacionCobro": "Renewal and billing",
+        "renovacionManual": "Manual renewal",
+        "renovacionManualAyuda": "The customer pays for the same product again (POS, invoice or store) and the term is extended from the expiry date.",
+        "renovacionAutomatica": "Automatic renewal",
+        "renovacionAutomaticaAyuda": "Recurring charge to the customer’s card. Arrives when a payment gateway stores cards.",
+        "fasePosterior": "Coming later",
+        "formaCobro": "Billing",
+        "cobroAdelantado": "Upfront",
+        "cobroCredito": "On credit",
+        "gracia": "Grace period",
+        "graciaAyuda": "Days after expiry during which the member can still enter.",
+        "dias": "days",
+        "veces": "times",
+        "alDia": "per day",
+        "inicioCongelamientos": "Start and freezes",
+        "requiereActivacion": "Requires activation",
+        "requiereActivacionAyuda": "The term starts at the first entry (check-in), not on the payment date.",
+        "ventanaActivacion": "Activates by itself after",
+        "ventanaActivacionAyuda": "If the member does not come in within these days, the term starts anyway. Empty = wait with no limit.",
+        "sinLimite": "No limit",
+        "permiteCongelar": "Allows freezing",
+        "permiteCongelarAyuda": "The customer can pause the membership; frozen days are added to the expiry date.",
+        "maxVeces": "Maximum times per period",
+        "maxDias": "Maximum days in total",
+        "vacioSinTope": "Empty = no cap.",
+        "vacioSinLimite": "Empty = no limit.",
+        "acceso": "Access",
+        "accesoAyuda": "Checked at check-in. No rules = any branch, any time.",
+        "sedes": "Allowed branches",
+        "sedesAyuda": "Empty = every branch of the organization.",
+        "sedesPlaceholder": "Add branch…",
+        "sedesBuscar": "Search branch…",
+        "sedesVacio": "No matching branches",
+        "quitarSede": "Remove {nombre}",
+        "horario": "Schedule",
+        "horarioTodo": "All day",
+        "horarioFranja": "Time window",
+        "desde": "From",
+        "hasta": "To",
+        "diasSemana": "Days of the week",
+        "limiteDiario": "Daily entry limit",
+        "resumen": "This is what the cashier will see: «{texto}». Paying creates the customer’s membership.",
+        "resumenSinNombre": "Unnamed",
+        "resumenSinPrecio": "no price",
+        "resumenTodasSedes": "all branches",
+        "resumenTodosLosDias": "every day",
+        "resumenCualquierHora": "any time",
+        "resumenCongelarVeces": "up to {n, plural, one {# freeze} other {# freezes}}",
+        "resumenCongelarLibre": "unlimited freezes",
+        "resumenCongelarDias": "{n, plural, one {# day} other {# days}}",
+        "errorSinPermiso": "Nothing was saved: setting up a membership requires the Memberships «Manage plans» permission (besides editing products)."
       }
     },
     "informacion": {
@@ -9708,7 +9792,38 @@
       "mejorarIA": "Improve with AI",
       "mejorando": "Improving…",
       "mejorarSinNombre": "Enter the product name first",
-      "errorIA": "Couldn't improve the description. Please try again."
+      "errorIA": "Couldn't improve the description. Please try again.",
+      "tipoServicioPregunta": "What kind of service is it?",
+      "tipoServicioAyuda": "Defines what happens when it is sold.",
+      "tipoServicioNota": "Only «Membership» has its own settings for now; the other types are saved and will be used later.",
+      "tipoServicioConVariantes": "Remove the variants to turn it into a membership: each plan is one product.",
+      "tipoServicioConVivas": "This product has {n, plural, one {# live membership} other {# live memberships}}: it cannot stop being a membership while they exist.",
+      "tipoServicioOpciones": {
+        "standard": {
+          "titulo": "Standard",
+          "descripcion": "Charge and done: consulting, delivery, installation."
+        },
+        "membership": {
+          "titulo": "Membership",
+          "descripcion": "Gives access for a period: monthly, yearly, day pass."
+        },
+        "session_pack": {
+          "titulo": "Session pack",
+          "descripcion": "A number of uses: 10 classes, 5 massages."
+        },
+        "class": {
+          "titulo": "Class",
+          "descripcion": "A spot in a time slot with capacity."
+        },
+        "course": {
+          "titulo": "Course",
+          "descripcion": "Enrollment with a start and end date."
+        },
+        "appointment": {
+          "titulo": "Appointment",
+          "descripcion": "Booked with a professional at a set time."
+        }
+      }
     },
     "precios": {
       "precioVenta": "Sale price",
@@ -14989,6 +15104,1395 @@
       "membresia_sin_cliente": "A membership needs its holder: choose the customer before charging.",
       "datos_invalidos": "Check the form data.",
       "error_interno": "Something went wrong. Please try again."
+    },
+    "pos": {
+      "motivoSinCliente": "Memberships need the holder customer",
+      "dialogo": {
+        "titulo": "Who is the membership for?",
+        "descripcion": "“{producto}” is a membership: once paid, it is activated for this customer. Choose or create the customer.",
+        "etiquetaCliente": "Membership holder",
+        "avisoRenovacion": "If the customer already has this membership active, the sale renews it: the new period starts when the current one ends.",
+        "pie": "A membership can’t be charged without a customer.",
+        "despues": "Choose later",
+        "quitar": "Remove the membership",
+        "asignar": "Assign and add",
+        "motivoAsignar": "Choose the holder customer first.",
+        "errorQuitar": "The membership couldn’t be removed from the cart. Please try again."
+      },
+      "postVenta": {
+        "region": "{n, plural, one {Membership in this sale} other {Memberships in this sale}}",
+        "titulo": {
+          "activa": "Membership activated",
+          "por_activar": "Membership ready: it activates on the first check-in",
+          "pendiente_pago": "Membership pending payment",
+          "otra": "Membership recorded"
+        },
+        "vigencia": "{desde} – {hasta}",
+        "codigo": "Access code:",
+        "verMembresia": "View membership",
+        "pestanaNueva": "(opens in a new tab)"
+      },
+      "enlace": {
+        "clienteNoEncontrado": "The customer in the link doesn’t exist in this organization.",
+        "productoNoEncontrado": "The product in the link doesn’t exist or isn’t active."
+      }
+    },
+    "comun": {
+      "modulo": "Memberships",
+      "membresias": "Memberships",
+      "membresia": "Membership",
+      "venderMembresia": "Sell membership",
+      "nMembresias": "{count, plural, one {# membership} other {# memberships}}",
+      "sustantivo": {
+        "singular": "membership",
+        "plural": "memberships"
+      },
+      "accesos": {
+        "titulo": "Quick links",
+        "vender": "Sell membership",
+        "checkin": "Check-in",
+        "planes": "Plans",
+        "miembros": "Members",
+        "pagos": "Payments"
+      },
+      "vigencia": {
+        "quedan": "{dias, plural, =0 {Expires today} one {# day left} other {# days left}}",
+        "graciaHasta": "Grace until {fecha}",
+        "congelada": "Frozen: the days are added to the expiry",
+        "empiezaAlPagar": "Starts when paid",
+        "porActivar": "Activates on first check-in",
+        "vencio": "Expired on {fecha}",
+        "cancelada": "Cancelled"
+      }
+    },
+    "pantalla": {
+      "cargando": "Loading…",
+      "sinPermiso": {
+        "titulo": "You don’t have access to Memberships",
+        "descripcion": "Ask your organization administrator for the “View memberships” permission.",
+        "volver": "Back to home"
+      },
+      "noEncontrada": {
+        "titulo": "We couldn’t find that membership",
+        "descripcion": "It may not exist or it may belong to another organization.",
+        "volver": "View memberships"
+      },
+      "error": {
+        "titulo": "We couldn’t load the information",
+        "descripcion": "Check your connection and try again. If it keeps failing, let us know with code {codigo}."
+      }
+    },
+    "listado": {
+      "subtituloActivas": "{count, plural, one {# active} other {# active}}",
+      "subtituloMovil": "{total, number} · {activas, plural, one {# active} other {# active}}",
+      "cargando": "Loading memberships…",
+      "diasCorto": "{dias} d",
+      "error": "We couldn’t load the memberships",
+      "sinResultados": "Try another name, ID number or code, or clear the filters.",
+      "kpis": {
+        "etiqueta": "Memberships by status",
+        "activas": "Active",
+        "activasDetalle": "{count, plural, one {of # membership} other {of # memberships}}",
+        "porVencer": "Expiring in 7 days",
+        "porVencerDetalle": "Send renewal reminder",
+        "nadaPorVencer": "Nothing expiring",
+        "enGracia": "In grace period",
+        "vencidasDetalle": "{count, plural, =0 {None expired} one {# expired} other {# expired}}",
+        "congeladas": "Frozen",
+        "pendientesDetalle": "{count, plural, =0 {None awaiting payment} one {# awaiting payment} other {# awaiting payment}}"
+      },
+      "buscar": {
+        "placeholder": "Search member, ID number or access code",
+        "etiqueta": "Search memberships"
+      },
+      "filtros": {
+        "titulo": "Filters",
+        "estado": "Status",
+        "plan": "Plan",
+        "todosLosPlanes": "All plans",
+        "verN": "{count, plural, one {Show # membership} other {Show # memberships}}",
+        "estados": {
+          "todas": "All",
+          "activa": "Active",
+          "por_vencer": "Expiring (7 days)",
+          "en_gracia": "In grace period",
+          "congelada": "Frozen",
+          "pendiente": "Pending",
+          "vencida": "Expired",
+          "cancelada": "Cancelled"
+        }
+      },
+      "chips": {
+        "estado": "Status: {estado}",
+        "plan": "Plan: {plan}",
+        "cliente": "Customer: {cliente}"
+      },
+      "acciones": {
+        "ver": "View details",
+        "delCliente": "This customer’s memberships"
+      },
+      "columnas": {
+        "miembro": "Member",
+        "plan": "Plan",
+        "vigencia": "Validity",
+        "estado": "Status",
+        "origen": "Source"
+      },
+      "vacio": {
+        "titulo": "No memberships yet",
+        "descripcion": "They are created automatically when a “Membership” product is charged in the POS, on an invoice or in the online store. Start by creating the product.",
+        "irAlPos": "Go to POS",
+        "crearProducto": "Create membership product"
+      }
+    },
+    "resumen": {
+      "titulo": "Overview",
+      "subtitulo": "Today’s overview, {fecha}",
+      "subtituloMovil": "Overview · today",
+      "cargando": "Loading the overview…",
+      "error": "We couldn’t load the overview",
+      "verTodos": "View all",
+      "vencio": "Expired {fecha}",
+      "kpis": {
+        "etiqueta": "Membership figures",
+        "activas": "Active memberships",
+        "totalDetalle": "{count, plural, one {of # membership} other {of # memberships}}",
+        "enGracia": "In grace period",
+        "enGraciaDetalle": "Expired but still allowed in",
+        "porVencer": "Expiring in 7 days",
+        "porVencerDetalle": "Remind or charge the renewal",
+        "nuevasMes": "New this month",
+        "nuevasMesDetalle": "Sold this month",
+        "ingresosMes": "Revenue this month",
+        "ingresosMesDetalle": "Sales of membership products",
+        "entradasHoy": "Check-ins today",
+        "entradasHoyCorto": "Today",
+        "entradasHoyDetalle": "Allowed check-ins"
+      },
+      "vacio": {
+        "titulo": "No memberships yet",
+        "descripcion": "They are created automatically when a “Membership” product is charged in the POS, on an invoice or in the online store. Start by creating the product.",
+        "irAlPos": "Go to POS",
+        "crearProducto": "Create membership product"
+      },
+      "atencion": {
+        "titulo": "Needs attention",
+        "nada": "Nothing pending right now.",
+        "enGracia": {
+          "titulo": "{count, plural, one {{n} membership in grace period} other {{n} memberships in grace period}}",
+          "descripcion": "Expired without renewal; still allowed in during the grace period",
+          "accion": "View and charge"
+        },
+        "porVencer": {
+          "titulo": "{count, plural, one {{n} expires in the next 7 days} other {{n} expire in the next 7 days}}",
+          "descripcion": "Remind the member or charge the renewal",
+          "accion": "View"
+        },
+        "pendientes": {
+          "titulo": "{count, plural, one {{n} awaiting payment} other {{n} awaiting payment}}",
+          "descripcion": "Sold on credit or unpaid: they activate once paid",
+          "accion": "View"
+        },
+        "planesSinProducto": {
+          "titulo": "{count, plural, one {# plan without a product} other {# plans without a product}}",
+          "descripcion": "It can’t be sold until it’s linked to a membership product",
+          "accion": "View plans"
+        }
+      },
+      "porVencer": {
+        "titulo": "Upcoming expiries",
+        "vacio": "No memberships expire in the next 7 days."
+      },
+      "enGracia": {
+        "titulo": "In grace period",
+        "vacio": "No memberships are in a grace period."
+      },
+      "porPlan": {
+        "titulo": "By plan",
+        "descripcion": "Active memberships by plan",
+        "verPlanes": "View plans",
+        "vacio": "No active memberships yet.",
+        "activas": "{count, plural, one {{n} active} other {{n} active}}"
+      },
+      "actividad": {
+        "titulo": "Recent activity",
+        "vacio": "No activity yet.",
+        "sinCliente": "No customer"
+      }
+    },
+    "miembros": {
+      "titulo": "Members",
+      "subtitulo": "{count, plural, one {# person with a membership} other {# people with a membership}}",
+      "cargando": "Loading members…",
+      "error": "We couldn’t load the members",
+      "sinVigente": "No current membership",
+      "sinResultados": "Try another name or ID number, or clear the filter.",
+      "sustantivo": {
+        "singular": "member",
+        "plural": "members"
+      },
+      "acciones": {
+        "verVigente": "View current membership",
+        "verMembresias": "View their memberships",
+        "verFicha": "View customer profile"
+      },
+      "filtros": {
+        "titulo": "Filters",
+        "vigencia": "Membership",
+        "todos": "All",
+        "conVigente": "With current",
+        "sinVigente": "Without current",
+        "verN": "{count, plural, one {Show # member} other {Show # members}}"
+      },
+      "buscar": {
+        "placeholder": "Search by name, ID number, email or phone",
+        "etiqueta": "Search members"
+      },
+      "columnas": {
+        "miembro": "Member",
+        "vigente": "Current membership",
+        "vence": "Expires",
+        "ultimaEntrada": "Last check-in",
+        "membresias": "Memberships"
+      },
+      "movil": {
+        "vigente": "{plan} · expires {fecha}",
+        "ultimaEntrada": "Last check-in: {fecha}"
+      },
+      "vacio": {
+        "titulo": "No members yet",
+        "descripcion": "A person shows up here when they buy their first membership in the POS, on an invoice or in the online store.",
+        "irAlPos": "Go to POS"
+      }
+    },
+    "pagos": {
+      "titulo": "Membership payments",
+      "subtitulo": "{count, plural, one {# line} other {# lines}} · {desde} – {hasta}",
+      "cargando": "Loading payments…",
+      "error": "We couldn’t load the payments",
+      "rango": "Date range",
+      "sinCliente": "No customer",
+      "sinFactura": "No invoice",
+      "saldo": "Balance {saldo}",
+      "sinSaldo": "Paid",
+      "verMembresia": "View membership",
+      "renovacion": "Renewal",
+      "sustantivo": {
+        "singular": "line",
+        "plural": "lines"
+      },
+      "acciones": {
+        "verVenta": "View sale",
+        "verFactura": "View invoice",
+        "verMembresia": "View membership"
+      },
+      "columnas": {
+        "fecha": "Date",
+        "cliente": "Customer",
+        "producto": "Product",
+        "cantidad": "Qty",
+        "total": "Total",
+        "estadoVenta": "Sale",
+        "factura": "Invoice",
+        "membresia": "Membership"
+      },
+      "kpis": {
+        "etiqueta": "Period totals",
+        "totalPeriodo": "Period total",
+        "totalPagina": "Total on this page",
+        "lineas": "{count, plural, one {# membership line} other {# membership lines}}",
+        "conSaldo": "With outstanding balance",
+        "conSaldoDetalle": "Invoices on this page with a balance"
+      },
+      "vacio": {
+        "titulo": "No membership payments in this range",
+        "descripcion": "Sales and invoices with membership products show up here. Change the range or sell a membership in the POS.",
+        "irAlPos": "Go to POS"
+      }
+    },
+    "detalle": {
+      "error": "We couldn’t load the membership",
+      "subtituloCodigo": "Membership {codigo}",
+      "estadoActual": "Membership status",
+      "venceEl": "Expires on {fecha}",
+      "diaDe": "Day {dia} of {total}",
+      "acciones": {
+        "verCliente": "View customer profile",
+        "otrasMembresias": "Customer’s other memberships",
+        "congelar": "Freeze",
+        "descongelar": "Unfreeze",
+        "cancelar": "Cancel membership",
+        "renovar": "Renew"
+      },
+      "toasts": {
+        "descongelada": "Membership unfrozen"
+      },
+      "descongelar": {
+        "titulo": "Unfreeze membership {codigo}",
+        "descripcionProgramado": "The freeze scheduled for {desde} is cancelled and the expiry returns to its date.",
+        "descripcionEnCurso": "Access resumes today. Unused days are removed from the expiry.",
+        "confirmar": "Unfreeze"
+      },
+      "pestanas": {
+        "etiqueta": "Membership sections",
+        "resumen": "Overview",
+        "entradas": "Check-ins",
+        "pagos": "Payments",
+        "congelamientos": "Freezes",
+        "historial": "History"
+      },
+      "kpis": {
+        "etiqueta": "Membership figures",
+        "vence": "Expires",
+        "congelamientos": "Freezes",
+        "congelamientosValor": "{usadas} of {tope}",
+        "diasUsados": "{usados} of {tope} days used",
+        "diasUsadosSinTope": "{count, plural, one {# day used} other {# days used}}",
+        "entradasMes": "Check-ins this month",
+        "ultimaEntrada": "Last: {fecha}",
+        "sinEntradas": "No check-ins yet",
+        "pagado": "Paid",
+        "nPagos": "{count, plural, =0 {No linked payments} one {# payment} other {# payments}}"
+      },
+      "vigencia": {
+        "titulo": "Validity",
+        "estado": "Status",
+        "inicio": "Start",
+        "alPagar": "When paid",
+        "activada": "Activated",
+        "periodoPagado": "Paid period",
+        "diasCongelados": "Frozen days",
+        "masDias": "{count, plural, one {+ # day} other {+ # days}}",
+        "vence": "Expires",
+        "gracia": "Grace period",
+        "graciaHasta": "until {fecha}",
+        "origen": "Source",
+        "cancelada": "Cancelled"
+      },
+      "reglas": {
+        "titulo": "Plan rules",
+        "descripcion": "Copy of the plan at the time of sale: if the plan changes, this membership doesn’t.",
+        "duracion": "Duration",
+        "cobro": "Billing",
+        "gracia": "Grace",
+        "activacion": "Activation",
+        "congelar": "Freeze",
+        "graciaDias": "{count, plural, one {# day} other {# days}}",
+        "sinGracia": "No grace period",
+        "activacionAlPagar": "When paid",
+        "activacionPrimeraEntrada": "On first check-in",
+        "activacionPrimeraEntradaVentana": "{count, plural, one {On first check-in (or automatically after # day)} other {On first check-in (or automatically after # days)}}",
+        "noCongela": "The plan doesn’t allow freezing",
+        "congela": "{veces} · {dias}",
+        "veces": "{count, plural, one {# time} other {# times}}",
+        "dias": "{count, plural, one {# day} other {# days}}",
+        "sinTope": "no limit",
+        "sedes": "{count, plural, one {# location} other {# locations}}",
+        "todasLasSedes": "All locations",
+        "horarioLibre": "No time restriction",
+        "topeDiario": "{count, plural, one {# check-in per day} other {# check-ins per day}}",
+        "sinTopeDiario": "No daily limit"
+      },
+      "miembro": {
+        "titulo": "Member",
+        "verFicha": "View profile",
+        "otrasMembresias": "View other memberships"
+      },
+      "origen": {
+        "titulo": "Where it comes from",
+        "venta": "Sale",
+        "factura": "Invoice",
+        "plan": "Plan",
+        "ver": "View",
+        "sinVenta": "Earlier enrollment without a sale"
+      },
+      "acceso": {
+        "titulo": "Access",
+        "codigo": "Access code",
+        "sedes": "Locations",
+        "horario": "Schedule",
+        "limite": "Limit"
+      },
+      "entradas": {
+        "titulo": "Check-ins",
+        "descripcion": "Last 50 recorded check-ins",
+        "permitida": "Allowed",
+        "rechazada": "Denied",
+        "vacio": {
+          "titulo": "No check-ins yet",
+          "descripcion": "Check-ins show up here when the member’s check-in is recorded."
+        }
+      },
+      "metodos": {
+        "qr": "QR",
+        "manual": "Manual",
+        "rfid": "RFID card",
+        "fingerprint": "Fingerprint",
+        "facial": "Face recognition",
+        "otro": "Other method"
+      },
+      "motivosRechazo": {
+        "sin_membresia": "No current membership",
+        "pendiente_de_pago": "Awaiting payment",
+        "congelada": "Frozen",
+        "vencida": "Expired",
+        "sede_no_permitida": "Location not allowed",
+        "fuera_de_horario": "Outside allowed hours",
+        "limite_diario": "Daily limit reached",
+        "otro": "Denied"
+      },
+      "pagos": {
+        "titulo": "Payments",
+        "tipo": {
+          "venta": "Sale",
+          "renovacion": "Renewal"
+        },
+        "verVenta": "View sale",
+        "factura": "Invoice {numero}",
+        "saldo": "Balance {saldo}",
+        "periodos": "{count, plural, one {# period} other {# periods}}",
+        "vacio": {
+          "titulo": "No linked payments",
+          "descripcion": "This membership was created before memberships came from a sale."
+        }
+      },
+      "congelamientos": {
+        "titulo": "Freezes",
+        "vacio": "It hasn’t been frozen yet.",
+        "dias": "{count, plural, one {# day} other {# days}}",
+        "motivo": "Reason: {motivo}",
+        "usados": "Used {veces} of {topeVeces} freezes and {dias} of {topeDias} days.",
+        "estados": {
+          "scheduled": "Scheduled",
+          "active": "In progress",
+          "ended": "Ended",
+          "cancelled": "Cancelled"
+        }
+      },
+      "historial": {
+        "titulo": "History",
+        "vacio": "No events yet.",
+        "dias": "{count, plural, one {# day} other {# days}}"
+      },
+      "eventos": {
+        "created": "Created",
+        "activated": "Activated",
+        "renewed": "Renewed",
+        "reactivated": "Reactivated",
+        "frozen": "Frozen",
+        "unfrozen": "Unfrozen",
+        "cancelled": "Cancelled",
+        "expired": "Expired",
+        "trimmed": "Shortened by a return or credit note",
+        "grace_started": "Entered grace period",
+        "access_granted": "Check-in allowed",
+        "access_denied": "Check-in denied",
+        "payment_received": "Payment received",
+        "payment_failed": "Payment failed",
+        "plan_changed": "Plan changed",
+        "notes_updated": "Notes updated",
+        "otro": "Other activity"
+      }
+    },
+    "congelar": {
+      "titulo": "Freeze membership {codigo}",
+      "descripcion": "{cliente} · {plan}. While frozen they can’t check in; the days are added to the expiry.",
+      "confirmar": "{count, plural, one {Freeze # day} other {Freeze # days}}",
+      "desde": "From",
+      "dias": "Days",
+      "sufijoDias": "days",
+      "resumen": "Freeze summary",
+      "vuelve": "Returns on",
+      "nuevoVencimiento": "New expiry",
+      "nuevoVencimientoValor": "{nuevo} (was {antes})",
+      "lesQuedan": "Remaining",
+      "quedan": {
+        "veces": "{count, plural, =0 {no freezes} one {# freeze} other {# freezes}}",
+        "vecesSinTope": "unlimited freezes",
+        "dias": "{count, plural, one {# day of {tope}} other {# days of {tope}}}",
+        "diasSinTope": "unlimited days"
+      },
+      "motivo": "Reason (optional)",
+      "motivoPlaceholder": "Travel, illness…",
+      "aviso": "If you ask for more days than remain, the button is disabled and says why.",
+      "bloqueo": {
+        "topeDias": "The plan allows {tope} days; {quedan} remain.",
+        "topeVeces": "The plan allows freezing {tope, plural, one {# time} other {# times}} and they have been used.",
+        "despuesDelVencimiento": "The freeze must start on {fecha} (expiry) at the latest.",
+        "pasado": "The freeze can’t start before today.",
+        "fechas": "Choose the start day and at least 1 day."
+      },
+      "toast": {
+        "congelada": "Membership frozen",
+        "programada": "Freeze scheduled from {fecha}"
+      }
+    },
+    "cancelar": {
+      "titulo": "Cancel membership {codigo}",
+      "descripcion": "{cliente} · {plan} · {estado} until {fecha}",
+      "confirmar": "Cancel membership",
+      "tituloConsecuencias": "What happens when you cancel",
+      "consecuencias": {
+        "acceso": "Access stops today; the QR and the code become invalid.",
+        "dinero": "No money is refunded. To refund, make the return or the credit note for the sale: the membership is shortened automatically.",
+        "historial": "It stays in the history with your name and the reason."
+      },
+      "rapidos": {
+        "mudanza": "Moved away",
+        "salud": "Health reasons",
+        "inconforme": "Not satisfied",
+        "otro": "Other"
+      },
+      "motivo": "Reason (required)",
+      "motivoPlaceholder": "Tell us why it’s being cancelled",
+      "toast": "Membership cancelled"
+    },
+    "renovar": {
+      "titulo": "Renew membership {codigo}",
+      "descripcion": "Renewing means selling the same product again. Once paid, validity is extended from the current expiry.",
+      "comoCobrar": "How to charge the renewal",
+      "opciones": {
+        "pos": {
+          "titulo": "Charge in the POS",
+          "descripcion": "Opens the POS with {cliente} and “{plan}” to charge."
+        },
+        "factura": {
+          "titulo": "Create sales invoice",
+          "descripcion": "Invoice with the product; if the plan is “on credit”, it stays pending until paid."
+        },
+        "enlace": {
+          "titulo": "Send payment link",
+          "descripcion": "Payment in the online store."
+        }
+      },
+      "fasePosterior": "Later phase",
+      "irAlPos": "Go to POS",
+      "irAFactura": "Create invoice",
+      "resumen": "Renewal summary",
+      "producto": "Product",
+      "vence": "Expires",
+      "vencio": "Expired",
+      "nuevaVigencia": "New validity",
+      "avisoCambioPlan": "To change plans, choose another membership product in the POS: the new validity starts when the current one ends.",
+      "bloqueo": {
+        "sinProducto": "This membership’s plan has no product: link it to one in Plans to sell it.",
+        "sinCliente": "The membership has no holder."
+      }
+    },
+    "planes": {
+      "titulo": "Plans",
+      "migaModulo": "Memberships",
+      "subtitulo": "{total, plural, one {# plan} other {# plans}} · {activos, plural, one {# active} other {# active}}",
+      "cargando": "Loading plans…",
+      "nuevo": "New plan",
+      "actualizar": "Refresh",
+      "errorTitulo": "We could not load the plans",
+      "sinPrecio": "No price",
+      "subtituloFila": "{sku} · Service › Membership",
+      "sinProductoFila": "No product · price stored in the plan",
+      "sinProductoTarjeta": "No product · cannot be sold",
+      "activasTarjeta": "{n, plural, one {# active} other {# active}}",
+      "avisoSinProducto": "{n, plural, one {# plan has no product} other {# plans have no product}}: they cannot be sold. Create a «Membership» product with their rules.",
+      "buscar": "Search plan or SKU",
+      "estadoPlan": {
+        "activo": "Active",
+        "inactivo": "Inactive",
+        "sin_producto": "No product"
+      },
+      "cobroCorto": {
+        "prepaid": "Upfront",
+        "on_credit": "On credit"
+      },
+      "acceso": {
+        "todas": "All",
+        "sedes": "{n, plural, one {# branch} other {# branches}}",
+        "todoElDia": "all day"
+      },
+      "columnas": {
+        "plan": "Plan",
+        "precio": "Price",
+        "duracion": "Duration",
+        "cobro": "Billing",
+        "acceso": "Access",
+        "activas": "Active",
+        "estado": "Status"
+      },
+      "acciones": {
+        "ver": "View plan",
+        "editarProducto": "Edit product",
+        "cargandoProducto": "Loading the product…",
+        "vender": "Sell at the POS",
+        "inactivoMotivo": "The plan is inactive: activate it in the product to sell it."
+      },
+      "kpi": {
+        "etiqueta": "Plans summary",
+        "activos": "Active plans",
+        "activosDetalle": "{n, plural, =0 {None inactive} one {# inactive} other {# inactive}}",
+        "membresias": "Active memberships",
+        "membresiasDetalle": "{n, plural, one {# live in total} other {# live in total}}",
+        "ingresos": "Revenue this month",
+        "ingresosDetalle": "Sales of membership products",
+        "sinProducto": "Plans without product",
+        "sinProductoDetalle": "Cannot be sold · review",
+        "sinProductoNinguno": "All can be sold"
+      },
+      "filtros": {
+        "estado": "Status",
+        "todos": "All",
+        "activos": "Active",
+        "inactivos": "Inactive",
+        "verResultados": "Show {n, plural, one {# plan} other {# plans}}"
+      },
+      "vista": {
+        "etiqueta": "Plans view",
+        "lista": "List",
+        "tarjetas": "Cards"
+      },
+      "vacio": {
+        "titulo": "No plans yet",
+        "descripcion": "A plan is a «Membership» product: create it in Inventory and set its duration, billing and access."
+      },
+      "sustantivo": {
+        "singular": "plan",
+        "plural": "plans"
+      }
+    },
+    "plan": {
+      "migaPlan": "Plan",
+      "errorTitulo": "We could not load the plan",
+      "subtituloRenovacion": "manual renewal",
+      "editarEnProducto": "Edit in the product",
+      "vender": "Sell at the POS",
+      "noEncontrado": {
+        "titulo": "We could not find that plan",
+        "descripcion": "It may belong to another organization or no longer exist.",
+        "volver": "Back to Plans"
+      },
+      "sinProducto": {
+        "titulo": "This plan has no product",
+        "descripcion": "It cannot be sold or edited. Create a «Membership» product with these rules and use that one."
+      },
+      "kpi": {
+        "etiqueta": "Plan figures",
+        "precio": "Current price",
+        "precioDetalle": "From the product",
+        "precioSinProducto": "Stored in the plan (legacy)",
+        "activas": "Active memberships",
+        "activasDetalle": "{n, plural, one {# live} other {# live}}",
+        "ingresos": "Revenue this month",
+        "ingresosDetalle": "Sales of this product",
+        "ventas": "Sales this month",
+        "ventasDetalle": "Lines sold this month"
+      },
+      "producto": {
+        "titulo": "Product being sold",
+        "verProducto": "View product",
+        "producto": "Product",
+        "sku": "SKU",
+        "tipo": "Type",
+        "tipoValor": "Service › Membership",
+        "precio": "Sale price",
+        "categoria": "Category",
+        "sinCategoria": "No category",
+        "nota": "The price lives only in the product. To change it, edit the product: the plan has no price of its own."
+      },
+      "reglas": {
+        "titulo": "Plan rules",
+        "editar": "Edit",
+        "editarAria": "Edit the rules in the product",
+        "duracion": "Duration",
+        "renovacion": "Renewal",
+        "renovacionValor": "Manual · extends from the expiry date",
+        "cobro": "Billing",
+        "cobroValor": {
+          "prepaid": "Upfront · activates on payment",
+          "on_credit": "On credit · activates when invoiced"
+        },
+        "gracia": "Grace period",
+        "graciaValor": "{n, plural, =0 {No grace} one {# day} other {# days}}",
+        "activacion": "Requires activation",
+        "activacionNo": "No · starts on the payment date",
+        "activacionSi": "Yes · starts at the first entry",
+        "activacionSiVentana": "Yes · or by itself after {n, plural, one {# day} other {# days}}",
+        "congelamientos": "Freezes",
+        "congelarNo": "Not allowed",
+        "congelarVeces": "{n, plural, one {Up to # time} other {Up to # times}}",
+        "congelarSinTopeVeces": "No cap on times",
+        "congelarDias": "{n, plural, one {# day in total} other {# days in total}}",
+        "congelarSinTopeDias": "no cap on days",
+        "sedes": "Branches",
+        "horario": "Schedule",
+        "horarioTodo": "All day",
+        "limite": "Daily limit",
+        "limiteValor": "{n, plural, one {# entry} other {# entries}}",
+        "limiteSin": "No limit"
+      },
+      "ultimas": {
+        "titulo": "Latest memberships",
+        "verTodas": "View all",
+        "vacioTitulo": "No memberships",
+        "vacio": "This plan has not been sold yet.",
+        "vigencia": "{desde} → {hasta}"
+      },
+      "conecta": {
+        "titulo": "How it connects",
+        "producto": "Product",
+        "ventas": "Sales this month",
+        "ventasValor": "{n} · {importe}",
+        "membresias": "Memberships",
+        "membresiasValor": "{n, plural, one {# active} other {# active}}",
+        "abrir": "Open"
+      },
+      "cambios": {
+        "titulo": "If you change the plan",
+        "texto": "Changing the rules applies to future sales. Each membership keeps a copy of the rules it was sold with: a change does not affect those who already paid."
+      }
+    },
+    "clases": {
+      "cabecera": {
+        "titulo": "Classes",
+        "subtitulo": "Group classes and their weekly schedule",
+        "nueva": "New class",
+        "actualizar": "Refresh"
+      },
+      "sinPermiso": "You don't have permission to view classes. Ask your organization admin for access.",
+      "kpi": {
+        "etiqueta": "Classes summary",
+        "hoy": "Today",
+        "programadas": "Scheduled",
+        "programadasDetalle": "From today",
+        "cupos": "Open spots",
+        "cuposDetalle": "In scheduled classes",
+        "completadas": "Completed",
+        "canceladas": "Cancelled"
+      },
+      "busqueda": {
+        "placeholder": "Search class, room, type or instructor",
+        "etiqueta": "Search classes"
+      },
+      "filtros": {
+        "estado": "Status",
+        "tipo": "Type",
+        "sede": "Location",
+        "instructor": "Instructor",
+        "todos": "All",
+        "todas": "All",
+        "ver": "{n, plural, =0 {No classes} one {View # class} other {View # classes}}"
+      },
+      "vista": {
+        "etiqueta": "Classes view",
+        "lista": "List",
+        "calendario": "Calendar"
+      },
+      "periodo": {
+        "etiqueta": "Period",
+        "proximas": "Upcoming",
+        "pasadas": "Past",
+        "todas": "All"
+      },
+      "tabla": {
+        "etiqueta": "Classes",
+        "clase": "Class",
+        "fecha": "Date and time",
+        "instructor": "Instructor",
+        "sede": "Location and room",
+        "cupo": "Spots",
+        "cupoValor": "{ocupadas} / {capacidad}",
+        "estado": "Status"
+      },
+      "sustantivo": {
+        "singular": "class",
+        "plural": "classes"
+      },
+      "estados": {
+        "active": "Scheduled",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "niveles": {
+        "all_levels": "All levels",
+        "beginner": "Beginner",
+        "intermediate": "Intermediate",
+        "advanced": "Advanced"
+      },
+      "tipos": {
+        "spinning": "Spinning",
+        "yoga": "Yoga",
+        "pilates": "Pilates",
+        "crossfit": "CrossFit",
+        "zumba": "Zumba",
+        "boxing": "Boxing",
+        "functional": "Functional",
+        "stretching": "Stretching",
+        "aerobics": "Aerobics",
+        "swimming": "Swimming",
+        "hiit": "HIIT",
+        "dance": "Dance",
+        "other": "Other"
+      },
+      "acciones": {
+        "reservas": "View bookings",
+        "editar": "Edit",
+        "duplicar": "Duplicate",
+        "completar": "Mark as completed",
+        "cancelar": "Cancel class",
+        "eliminar": "Delete"
+      },
+      "vacio": {
+        "titulo": "No classes yet",
+        "descripcion": "Create the first class so members can book.",
+        "sinResultados": "Try another term or period, or clear filters."
+      },
+      "errores": {
+        "cargar": "We couldn't load the classes.",
+        "guardar": "The class couldn't be saved. Check the details and try again.",
+        "clase_con_reservas": "The class has bookings: cancel it instead of deleting it.",
+        "clase_no_encontrada": "We couldn't find that class."
+      },
+      "toasts": {
+        "creada": "Class created",
+        "actualizada": "Class updated",
+        "movida": "Class moved to {dia} at {hora}",
+        "duplicada": "Class duplicated for {dia}",
+        "completada": "Class marked as completed",
+        "cancelada": "Class cancelled",
+        "eliminada": "Class deleted"
+      },
+      "duplicar": {
+        "titulo": "Duplicate class",
+        "descripcion": "A copy of “{titulo}” is created at {hora} on the day you choose, with the same duration.",
+        "fecha": "New date",
+        "confirmar": "Duplicate"
+      },
+      "cancelarClase": {
+        "titulo": "Cancel class",
+        "descripcion": "“{titulo}” on {dia} will be cancelled.",
+        "confirmar": "Cancel class",
+        "consecuencia": "{n, plural, =0 {It has no active bookings.} one {# active booking is left without a class.} other {# active bookings are left without a class.}}",
+        "notificar": "Notify members with a booking"
+      },
+      "eliminar": {
+        "titulo": "Delete class",
+        "descripcion": "“{titulo}” will be deleted. This can't be undone.",
+        "confirmar": "Delete",
+        "conReservas": "It has bookings: cancel it instead"
+      },
+      "calendario": {
+        "anterior": "Previous week",
+        "siguiente": "Next week",
+        "hoy": "This week",
+        "agenda": "Classes this week",
+        "sinClases": "No classes",
+        "nuevaEn": "New class on {dia} at {hora}",
+        "etiquetaClase": "{titulo}, {dia} from {desde} to {hasta}, {ocupadas} of {capacidad} spots",
+        "ayuda": "Drag a class to move it. Click an empty slot to create one. The grid runs from {desde} to {hasta}."
+      },
+      "dialogo": {
+        "tituloNueva": "New class",
+        "tituloEditar": "Edit class",
+        "descripcion": "Schedule in the organization's time zone ({zona}).",
+        "titulo": "Class name",
+        "tituloPlaceholder": "E.g. Intense spinning",
+        "tipo": "Class type",
+        "tipoNuevo": "Another type…",
+        "tipoNuevoPlaceholder": "Type the class type",
+        "nivel": "Level",
+        "sede": "Location",
+        "sedePlaceholder": "Choose the location",
+        "instructor": "Instructor",
+        "instructorPlaceholder": "Choose the instructor",
+        "fecha": "Date",
+        "hora": "Start time",
+        "terminaA": "Ends at {hora}",
+        "duracion": "Duration",
+        "minutos": "min",
+        "capacidad": "Spots",
+        "sala": "Room or place",
+        "salaPlaceholder": "E.g. Room 2",
+        "equipo": "Equipment needed",
+        "equipoPlaceholder": "E.g. towel, water",
+        "descripcionCampo": "Description",
+        "repetir": "Repeat the class",
+        "repetirAyuda": "Saves the class's repeat rule.",
+        "frecuencia": "Frequency",
+        "frecuencias": {
+          "daily": "Daily",
+          "weekly": "Weekly",
+          "monthly": "Monthly"
+        },
+        "diasSemana": "Days of the week",
+        "hasta": "Repeat until",
+        "hastaAyuda": "Empty: no end date.",
+        "cancelar": "Cancel",
+        "crear": "Create class",
+        "guardar": "Save changes",
+        "guardando": "Saving…",
+        "errores": {
+          "titulo": "Enter the class name.",
+          "tipo": "Choose or type the type.",
+          "sucursal": "Choose the location.",
+          "instructor": "Choose the instructor.",
+          "sinInstructores": "There are no instructors: add them in Human resources (GYM department or INST- position).",
+          "dia": "Choose the date.",
+          "hora": "Enter the start time.",
+          "duracion": "Duration must be between 5 and 480 minutes.",
+          "capacidad": "Spots must be at least 1.",
+          "dias": "Choose at least one day."
+        }
+      }
+    },
+    "reservas": {
+      "cabecera": {
+        "titulo": "Bookings",
+        "subtitulo": "Class bookings and attendance",
+        "subtituloClase": "{titulo} · {dia} {hora}",
+        "nueva": "New booking",
+        "actualizar": "Refresh"
+      },
+      "sinPermiso": "You don't have permission to view bookings. Ask your organization admin for access.",
+      "kpi": {
+        "etiqueta": "Bookings summary",
+        "hoy": "Today's classes",
+        "reservadas": "Booked",
+        "asistieron": "Attended",
+        "total": "Total"
+      },
+      "busqueda": {
+        "placeholder": "Search member, ID, email or class",
+        "etiqueta": "Search bookings"
+      },
+      "filtros": {
+        "estado": "Status",
+        "clase": "Class",
+        "todos": "All",
+        "ver": "{n, plural, =0 {No bookings} one {View # booking} other {View # bookings}}"
+      },
+      "fecha": {
+        "etiqueta": "Class date",
+        "todas": "All",
+        "hoy": "Today",
+        "semana": "Next 7 days"
+      },
+      "tabla": {
+        "etiqueta": "Bookings",
+        "cliente": "Member",
+        "clase": "Class",
+        "fecha": "Class date",
+        "origen": "Source",
+        "reservada": "Booked on",
+        "estado": "Status"
+      },
+      "sustantivo": {
+        "singular": "booking",
+        "plural": "bookings"
+      },
+      "estados": {
+        "booked": "Booked",
+        "checked_in": "Attended",
+        "no_show": "No-show",
+        "cancelled": "Cancelled"
+      },
+      "origenes": {
+        "staff": "Front desk",
+        "app": "App",
+        "web": "Web",
+        "kiosk": "Kiosk"
+      },
+      "acciones": {
+        "entrada": "Check in",
+        "entradaDe": "Check in {nombre}",
+        "asistio": "Mark attended",
+        "noAsistio": "Mark no-show",
+        "verClase": "View classes",
+        "editar": "Edit",
+        "duplicar": "Book another class",
+        "cancelar": "Cancel booking"
+      },
+      "vacio": {
+        "titulo": "No bookings yet",
+        "descripcion": "Members' bookings will show up here.",
+        "sinResultados": "Try another term or date, or clear filters."
+      },
+      "errores": {
+        "cargar": "We couldn't load the bookings.",
+        "guardar": "The booking couldn't be saved. Try again.",
+        "clase_sin_cupo": "The class is full.",
+        "reserva_duplicada": "That member already has a booking in this class.",
+        "clase_no_programada": "The class isn't scheduled (cancelled or completed).",
+        "clase_no_encontrada": "We couldn't find that class."
+      },
+      "toasts": {
+        "creada": "Booking created",
+        "actualizada": "Booking updated",
+        "asistio": "Attendance recorded",
+        "noAsistio": "No-show recorded",
+        "cancelada": "Booking cancelled",
+        "duplicada": "Booking created in the other class",
+        "entrada": "Check-in recorded",
+        "entradaRechazada": "Check-in denied: {motivo}"
+      },
+      "cancelar": {
+        "titulo": "Cancel booking",
+        "descripcion": "{nombre}'s booking in “{clase}” is cancelled and the spot is freed.",
+        "confirmar": "Cancel booking"
+      },
+      "duplicar": {
+        "titulo": "Book another class",
+        "descripcion": "Creates a booking for {nombre} in another scheduled class.",
+        "clase": "Class",
+        "confirmar": "Book"
+      },
+      "dialogo": {
+        "tituloNueva": "New booking",
+        "tituloEditar": "Edit booking",
+        "clase": "Class",
+        "clasePlaceholder": "Choose the class",
+        "opcionClase": "{titulo} · {dia} {hora} · {libres, plural, =0 {full} one {# spot} other {# spots}}",
+        "sinClases": "There are no scheduled classes with open spots from today.",
+        "cliente": "Member",
+        "origen": "Source",
+        "notas": "Notes",
+        "notasPlaceholder": "Optional",
+        "cancelar": "Cancel",
+        "crear": "Book",
+        "guardar": "Save changes",
+        "guardando": "Saving…",
+        "errores": {
+          "cliente": "Choose the member.",
+          "clase": "Choose the class."
+        }
+      }
+    },
+    "checkin": {
+      "cabecera": {
+        "titulo": "Check-in",
+        "subtitulo": "Record members' entries",
+        "actualizar": "Refresh",
+        "dispositivos": "Access control"
+      },
+      "sinPermiso": "You don't have permission to record check-ins. Ask your organization admin for access.",
+      "sinMembresia": "No membership",
+      "kpi": {
+        "etiqueta": "Today's check-ins",
+        "permitidas": "Check-ins today",
+        "rechazadas": "Denied today",
+        "miembros": "Unique members"
+      },
+      "sede": {
+        "etiqueta": "Location",
+        "placeholder": "Choose the location",
+        "ayuda": "The check-in is recorded at this location.",
+        "falta": "Choose the location to record the check-in."
+      },
+      "busqueda": {
+        "titulo": "Find member",
+        "etiqueta": "Find member",
+        "placeholder": "Name, ID, email, phone or code",
+        "ayuda": "You can also scan the membership QR code with the reader.",
+        "buscar": "Search",
+        "buscando": "Searching…",
+        "minimo": "Type at least 2 characters.",
+        "sinResultados": "No members match those details."
+      },
+      "resultados": {
+        "titulo": "{n, plural, one {# match} other {# matches}}"
+      },
+      "elegido": {
+        "titulo": "Member",
+        "codigo": "Access code",
+        "cancelar": "Cancel",
+        "registrar": "Check in",
+        "registrando": "Checking in…",
+        "nota": "The database checks validity, grace period, location, schedule and daily limit, and records the entry or the denial."
+      },
+      "metodo": {
+        "etiqueta": "Method",
+        "ayudaQr": "The membership QR code was scanned."
+      },
+      "metodos": {
+        "manual": "Manual",
+        "qr": "QR code",
+        "rfid": "RFID card",
+        "fingerprint": "Fingerprint",
+        "facial": "Face recognition"
+      },
+      "resultado": {
+        "permitido": "Entry allowed · {nombre}",
+        "rechazado": "Entry denied · {nombre}",
+        "bienvenida": "Membership is active.",
+        "plan": "Plan",
+        "vence": "Expires",
+        "graciaHasta": "Grace until",
+        "nueva": "New search",
+        "verMembresia": "View membership",
+        "cerrar": "Close"
+      },
+      "motivos": {
+        "sin_membresia": "No membership.",
+        "pendiente_de_pago": "The membership is pending payment.",
+        "congelada": "The membership is frozen.",
+        "vencida": "The membership has expired.",
+        "sede_no_permitida": "The plan doesn't allow entry at this location.",
+        "fuera_de_horario": "Outside the plan's access hours.",
+        "limite_diario": "Today's entry limit has been reached."
+      },
+      "avisos": {
+        "en_gracia": "In grace period {dias, plural, =0 {until today} one {# d} other {# d}}: remind them to renew.",
+        "activada_hoy": "The membership was activated with this entry."
+      },
+      "historial": {
+        "titulo": "Today's check-ins",
+        "descripcion": "{dia} · refreshes every 30 s",
+        "filtro": "Filter check-ins",
+        "todas": "All",
+        "permitidas": "Allowed",
+        "rechazadas": "Denied",
+        "permitida": "Allowed",
+        "rechazada": "Denied",
+        "vacio": "No check-ins today yet",
+        "vacioDescripcion": "Check-ins will show up here as they are recorded.",
+        "sinFiltro": "No check-ins with this filter"
+      },
+      "errores": {
+        "buscar": "We couldn't search. Try again.",
+        "historial": "We couldn't load today's check-ins."
+      }
+    },
+    "instructores": {
+      "cabecera": {
+        "titulo": "Instructors",
+        "subtitulo": "Human resources staff in the GYM department or with an instructor position",
+        "actualizar": "Refresh"
+      },
+      "sinPermiso": "You don't have permission to view instructors. Ask your organization admin for access.",
+      "sinNombre": "No name",
+      "kpi": {
+        "etiqueta": "Instructors summary",
+        "instructores": "Instructors",
+        "activos": "{n, plural, one {# active} other {# active}}",
+        "clasesSemana": "Classes this week",
+        "horasSemana": "Hours this week",
+        "asistencia": "Attendance",
+        "asistenciaDetalle": "Bookings that attended"
+      },
+      "busqueda": {
+        "placeholder": "Search instructor, email or position",
+        "etiqueta": "Search instructors"
+      },
+      "filtros": {
+        "estado": "Status",
+        "todos": "All",
+        "activos": "Active",
+        "inactivos": "Inactive"
+      },
+      "tabla": {
+        "etiqueta": "Instructors",
+        "instructor": "Instructor",
+        "cargo": "Position",
+        "clasesSemana": "Classes (week)",
+        "horasSemana": "Hours (week)",
+        "asistencia": "Attendance",
+        "estado": "Status"
+      },
+      "tarjeta": {
+        "semana": "{clases, plural, one {# class} other {# classes}} · {horas} h this week"
+      },
+      "estados": {
+        "activo": "Active",
+        "inactivo": "Inactive"
+      },
+      "vacio": {
+        "titulo": "No instructors",
+        "descripcion": "Add employees in Human resources, in the GYM department or with an INST- position.",
+        "irHrm": "Go to employees",
+        "sinResultados": "Try another term or clear the filter."
+      },
+      "errores": {
+        "cargar": "We couldn't load the instructors."
+      },
+      "panel": {
+        "pestanas": "Instructor profile",
+        "resumen": "Summary",
+        "horario": "Schedule",
+        "disponibilidad": "Availability",
+        "sinCargo": "No position",
+        "cerrar": "Close",
+        "correo": "Email",
+        "telefono": "Phone",
+        "cargo": "Position",
+        "departamento": "Department",
+        "codigo": "Employee code",
+        "tarifaHora": "Hourly rate",
+        "especialidades": "Specialties",
+        "desempeno": "Performance",
+        "clasesTotales": "Assigned classes",
+        "completadas": "Completed",
+        "canceladas": "Cancelled",
+        "reservas": "Bookings",
+        "asistencias": "Attended",
+        "tasaAsistencia": "Attendance rate"
+      },
+      "horario": {
+        "vacio": "No classes in the next 14 days",
+        "vacioDescripcion": "Assign classes from the Classes page.",
+        "verCalendario": "View the class calendar"
+      },
+      "disponibilidad": {
+        "descripcion": "Time slots when the instructor can teach.",
+        "agregar": "Add slot",
+        "agregarEn": "Add slot on {dia}",
+        "desdeEn": "From, {dia}",
+        "hastaEn": "To, {dia}",
+        "quitar": "Remove slot",
+        "noDisponible": "Not available",
+        "rangoInvalido": "The end time must be after the start time.",
+        "guardar": "Save availability",
+        "guardando": "Saving…",
+        "guardada": "Availability saved",
+        "errorGuardar": "The availability couldn't be saved.",
+        "errorCargar": "We couldn't load the saved availability; showing the default."
+      }
+    },
+    "acceso": {
+      "cabecera": {
+        "titulo": "Access control",
+        "subtitulo": "Turnstiles, kiosks and readers by location",
+        "nuevo": "New device",
+        "actualizar": "Refresh"
+      },
+      "sinPermiso": "You don't have permission to view access control. Ask your organization admin for access.",
+      "kpi": {
+        "etiqueta": "Devices summary",
+        "total": "Devices",
+        "activos": "Active",
+        "inactivos": "Inactive"
+      },
+      "busqueda": {
+        "placeholder": "Search by name, serial or location",
+        "etiqueta": "Search devices"
+      },
+      "filtros": {
+        "tipo": "Type",
+        "estado": "Status",
+        "todos": "All",
+        "activos": "Active",
+        "inactivos": "Inactive",
+        "ver": "{n, plural, =0 {No devices} one {View # device} other {View # devices}}"
+      },
+      "tipos": {
+        "tablet": "Tablet",
+        "kiosk": "Kiosk",
+        "turnstile": "Turnstile",
+        "scanner": "Scanner",
+        "door_lock": "Door lock"
+      },
+      "estados": {
+        "activo": "Active",
+        "inactivo": "Inactive"
+      },
+      "metodos": {
+        "qr": "QR",
+        "huella": "Fingerprint"
+      },
+      "tabla": {
+        "etiqueta": "Devices",
+        "dispositivo": "Device",
+        "tipo": "Type",
+        "sede": "Location",
+        "metodos": "Methods",
+        "ultimaSync": "Last sync",
+        "nunca": "Never",
+        "estado": "Status"
+      },
+      "acciones": {
+        "qr": "View QR code",
+        "kiosco": "Open kiosk",
+        "editar": "Edit",
+        "activar": "Activate",
+        "desactivar": "Deactivate",
+        "eliminar": "Delete"
+      },
+      "vacio": {
+        "titulo": "No devices yet",
+        "descripcion": "Add a kiosk or turnstile to record check-ins at the location.",
+        "sinResultados": "Try another term or clear filters."
+      },
+      "errores": {
+        "cargar": "We couldn't load the devices.",
+        "guardar": "The device couldn't be saved. Try again."
+      },
+      "toasts": {
+        "creado": "Device created",
+        "actualizado": "Device updated",
+        "activado": "Device activated",
+        "desactivado": "Device deactivated",
+        "eliminado": "Device deleted"
+      },
+      "eliminar": {
+        "titulo": "Delete device",
+        "descripcion": "“{nombre}” will be deleted. This can't be undone.",
+        "confirmar": "Delete"
+      },
+      "qr": {
+        "titulo": "Device QR code",
+        "alt": "QR code of {nombre}",
+        "expira": "Expires {fecha}",
+        "sinToken": "This device has no valid code.",
+        "abrirKiosco": "Open kiosk",
+        "cerrar": "Close"
+      },
+      "dialogo": {
+        "tituloNuevo": "New device",
+        "tituloEditar": "Edit device",
+        "descripcion": "Where it is and how it records entries.",
+        "nombre": "Name",
+        "nombrePlaceholder": "E.g. Entrance kiosk",
+        "tipo": "Type",
+        "sede": "Location",
+        "sedePlaceholder": "Choose the location",
+        "serie": "Serial number",
+        "ip": "IP address",
+        "ubicacion": "Placement",
+        "ubicacionPlaceholder": "E.g. Front desk, first floor",
+        "metodos": "Access methods",
+        "qr": "QR code",
+        "huella": "Fingerprint",
+        "cancelar": "Cancel",
+        "crear": "Create device",
+        "guardar": "Save changes",
+        "guardando": "Saving…",
+        "errores": {
+          "nombre": "Enter the name.",
+          "sede": "Choose the location."
+        }
+      }
+    },
+    "kiosco": {
+      "cargando": "Loading the device…",
+      "volver": "Back to Access control",
+      "instruccionQr": "Show your QR code",
+      "instruccion": "Enter your access code",
+      "huella": "or place your finger on the reader",
+      "campo": "Access code, ID or phone",
+      "entrar": "Enter",
+      "verificando": "Checking…",
+      "bienvenido": "Welcome!",
+      "denegado": "Access denied",
+      "vence": "Your membership expires on {fecha}",
+      "recepcion": "Please go to the front desk for more information.",
+      "noEncontrado": "We couldn't find a member with that information.",
+      "variasCoincidencias": "There are several matches: use your access code.",
+      "qrAlt": "QR code of this device",
+      "qrSeRenueva": "The QR code refreshes automatically",
+      "errores": {
+        "titulo": "The kiosk can't be opened",
+        "noEncontrado": "Device not found.",
+        "inactivo": "This device is inactive.",
+        "otraOrganizacion": "The device belongs to another organization.",
+        "cargar": "We couldn't load the device.",
+        "sinPermiso": "Your user doesn't have permission to record check-ins.",
+        "procesar": "We couldn't process the entry."
+      }
     }
   },
   "inventario": {

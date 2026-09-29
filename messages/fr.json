@@ -9268,7 +9268,20 @@
       "receta_ingrediente_repetido": "Un ingrédient est répété dans la recette avec la même unité : fusionnez-le.",
       "receta_variante_desconocida": "La recette vise une variante qui n’est plus dans le formulaire.",
       "receta_destino_repetido": "Il y a deux recettes pour le même produit ou la même variante.",
-      "guardado_en_curso": "Cet enregistrement est déjà en cours. Patientez un instant et réessayez."
+      "guardado_en_curso": "Cet enregistrement est déjà en cours. Patientez un instant et réessayez.",
+      "tipo_servicio_invalido": "Le type de service n’est pas valide.",
+      "membresia_con_variantes": "Une adhésion ne peut pas avoir de variantes : retirez-les ou choisissez un autre type de service.",
+      "membresia_con_contratos": "Ce produit a des adhésions en cours : il ne peut pas cesser d’être une adhésion.",
+      "membresia_unidad_invalida": "L’unité de durée n’est pas valide.",
+      "membresia_duracion_invalida": "La durée doit être un nombre entier supérieur ou égal à 1.",
+      "membresia_cobro_invalido": "Le mode d’encaissement n’est pas valide.",
+      "membresia_gracia_invalida": "Les jours de grâce doivent être supérieurs ou égaux à 0.",
+      "membresia_sede_invalida": "L’un des sites n’appartient pas à l’organisation.",
+      "plan_producto_invalido": "La formule doit être liée à un produit adhésion de la même organisation.",
+      "membresia_ventana_invalida": "Les jours avant activation doivent être supérieurs ou égaux à 1.",
+      "membresia_tope_invalido": "Les plafonds doivent être des nombres entiers supérieurs ou égaux à 0.",
+      "membresia_horario_dias": "Choisissez au moins un jour de la semaine.",
+      "membresia_horario_invalido": "Vérifiez la plage : «De» doit précéder «À» (sans passer minuit)."
     },
     "imagenes": {
       "insignias": {
@@ -9566,6 +9579,77 @@
       "avanzado": {
         "titulo": "Avancé",
         "descripcion": "Expédition, note interne et recette : ingrédients, rendement, perte, coût et déstockage."
+      },
+      "membresia": {
+        "titulo": "Configuration de l’adhésion",
+        "descripcion": "Durée, renouvellement, encaissement, gels et accès.",
+        "nota": "À l’enregistrement, la formule liée à ce produit est créée ou mise à jour. Le prix est celui du produit.",
+        "sinPermiso": "Il vous faut l’autorisation «Gérer les formules» d’Adhésions pour modifier cette configuration. L’enregistrement conserve l’actuelle (ou la formule par défaut : 1 mois, payé d’avance).",
+        "sinVariantes": "Une adhésion n’a pas de variantes : chaque formule est un produit. Pour une autre durée ou un autre prix, créez un autre produit adhésion.",
+        "duracion": "Durée",
+        "duracionAyuda": "Durée de chaque période payée. Un renouvellement ajoute une période à la fin de la période en cours.",
+        "duracionPresets": "Durées fréquentes",
+        "personalizada": "Personnalisée",
+        "cantidad": "Quantité",
+        "unidad": "Unité",
+        "unidades": {
+          "day": "Jours",
+          "week": "Semaines",
+          "month": "Mois",
+          "year": "Années"
+        },
+        "ejemplo": "Exemple : payée le {desde}, expire le {hasta}.",
+        "renovacionCobro": "Renouvellement et encaissement",
+        "renovacionManual": "Renouvellement manuel",
+        "renovacionManualAyuda": "Le client paie de nouveau le même produit (caisse, facture ou boutique) et la validité est prolongée à partir de l’échéance.",
+        "renovacionAutomatica": "Renouvellement automatique",
+        "renovacionAutomaticaAyuda": "Prélèvement récurrent sur la carte du client. Disponible quand une passerelle enregistrera les cartes.",
+        "fasePosterior": "Plus tard",
+        "formaCobro": "Encaissement",
+        "cobroAdelantado": "D’avance",
+        "cobroCredito": "À crédit",
+        "gracia": "Période de grâce",
+        "graciaAyuda": "Jours après l’échéance pendant lesquels l’accès reste possible.",
+        "dias": "jours",
+        "veces": "fois",
+        "alDia": "par jour",
+        "inicioCongelamientos": "Début et gels",
+        "requiereActivacion": "Activation requise",
+        "requiereActivacionAyuda": "La validité commence au premier passage (check-in), pas le jour du paiement.",
+        "ventanaActivacion": "S’active d’elle-même après",
+        "ventanaActivacionAyuda": "Sans passage pendant ces jours, la validité commence quand même. Vide = attente sans limite.",
+        "sinLimite": "Sans limite",
+        "permiteCongelar": "Gel autorisé",
+        "permiteCongelarAyuda": "Le client peut mettre son adhésion en pause ; les jours gelés s’ajoutent à l’échéance.",
+        "maxVeces": "Nombre maximal par période",
+        "maxDias": "Nombre maximal de jours au total",
+        "vacioSinTope": "Vide = sans plafond.",
+        "vacioSinLimite": "Vide = sans limite.",
+        "acceso": "Accès",
+        "accesoAyuda": "Contrôlé au check-in. Sans règles = n’importe quel site, à toute heure.",
+        "sedes": "Sites autorisés",
+        "sedesAyuda": "Vide = tous les sites de l’organisation.",
+        "sedesPlaceholder": "Ajouter un site…",
+        "sedesBuscar": "Rechercher un site…",
+        "sedesVacio": "Aucun site ne correspond",
+        "quitarSede": "Retirer {nombre}",
+        "horario": "Horaire",
+        "horarioTodo": "Toute la journée",
+        "horarioFranja": "Plage horaire",
+        "desde": "De",
+        "hasta": "À",
+        "diasSemana": "Jours de la semaine",
+        "limiteDiario": "Limite de passages par jour",
+        "resumen": "Voici ce que verra le caissier : «{texto}». Le paiement crée l’adhésion du client.",
+        "resumenSinNombre": "Sans nom",
+        "resumenSinPrecio": "sans prix",
+        "resumenTodasSedes": "tous les sites",
+        "resumenTodosLosDias": "tous les jours",
+        "resumenCualquierHora": "à toute heure",
+        "resumenCongelarVeces": "jusqu’à {n, plural, one {# gel} other {# gels}}",
+        "resumenCongelarLibre": "gels sans plafond",
+        "resumenCongelarDias": "{n, plural, one {# jour} other {# jours}}",
+        "errorSinPermiso": "Rien n’a été enregistré : configurer une adhésion exige l’autorisation «Gérer les formules» d’Adhésions (en plus de modifier les produits)."
       }
     },
     "informacion": {
@@ -9603,7 +9687,38 @@
       "mejorarIA": "Améliorer avec l’IA",
       "mejorando": "Amélioration…",
       "mejorarSinNombre": "Saisissez d’abord le nom du produit",
-      "errorIA": "Impossible d’améliorer la description. Réessayez."
+      "errorIA": "Impossible d’améliorer la description. Réessayez.",
+      "tipoServicioPregunta": "De quel type de service s’agit-il ?",
+      "tipoServicioAyuda": "Définit ce qui se passe à la vente.",
+      "tipoServicioNota": "Seul «Adhésion» a sa propre configuration pour l’instant ; les autres types sont enregistrés et serviront plus tard.",
+      "tipoServicioConVariantes": "Retirez les variantes pour en faire une adhésion : chaque formule est un produit.",
+      "tipoServicioConVivas": "Ce produit a {n, plural, one {# adhésion en cours} other {# adhésions en cours}} : il ne peut pas cesser d’être une adhésion tant qu’elles existent.",
+      "tipoServicioOpciones": {
+        "standard": {
+          "titulo": "Standard",
+          "descripcion": "On encaisse et c’est tout : conseil, livraison, installation."
+        },
+        "membership": {
+          "titulo": "Adhésion",
+          "descripcion": "Donne accès pendant une durée : mensuel, annuel, pass journée."
+        },
+        "session_pack": {
+          "titulo": "Forfait de séances",
+          "descripcion": "Un nombre d’utilisations : 10 cours, 5 massages."
+        },
+        "class": {
+          "titulo": "Cours collectif",
+          "descripcion": "Une place sur un créneau avec capacité."
+        },
+        "course": {
+          "titulo": "Formation",
+          "descripcion": "Inscription avec date de début et de fin."
+        },
+        "appointment": {
+          "titulo": "Rendez-vous",
+          "descripcion": "Réservé avec un professionnel à une heure donnée."
+        }
+      }
     },
     "precios": {
       "precioVenta": "Prix de vente",
@@ -14884,6 +14999,1395 @@
       "membresia_sin_cliente": "Une adhésion a besoin de son titulaire : choisissez le client avant d’encaisser.",
       "datos_invalidos": "Vérifiez les données du formulaire.",
       "error_interno": "Une erreur est survenue. Réessayez."
+    },
+    "pos": {
+      "motivoSinCliente": "Les adhésions nécessitent le client titulaire",
+      "dialogo": {
+        "titulo": "À qui est destinée l’adhésion ?",
+        "descripcion": "« {producto} » est une adhésion : une fois payée, elle est activée pour ce client. Choisissez ou créez le client.",
+        "etiquetaCliente": "Titulaire de l’adhésion",
+        "avisoRenovacion": "Si le client a déjà cette adhésion active, la vente la renouvelle : la nouvelle période commence à la fin de l’actuelle.",
+        "pie": "Sans client, une adhésion ne peut pas être encaissée.",
+        "despues": "Choisir plus tard",
+        "quitar": "Retirer l’adhésion",
+        "asignar": "Attribuer et ajouter",
+        "motivoAsignar": "Choisissez d’abord le client titulaire.",
+        "errorQuitar": "Impossible de retirer l’adhésion du panier. Réessayez."
+      },
+      "postVenta": {
+        "region": "{n, plural, one {Adhésion de la vente} other {Adhésions de la vente}}",
+        "titulo": {
+          "activa": "Adhésion activée",
+          "por_activar": "Adhésion prête : elle s’active au premier passage",
+          "pendiente_pago": "Adhésion en attente de paiement",
+          "otra": "Adhésion enregistrée"
+        },
+        "vigencia": "{desde} – {hasta}",
+        "codigo": "Code d’accès :",
+        "verMembresia": "Voir l’adhésion",
+        "pestanaNueva": "(s’ouvre dans un nouvel onglet)"
+      },
+      "enlace": {
+        "clienteNoEncontrado": "Le client du lien n’existe pas dans cette organisation.",
+        "productoNoEncontrado": "Le produit du lien n’existe pas ou n’est pas actif."
+      }
+    },
+    "comun": {
+      "modulo": "Adhésions",
+      "membresias": "Adhésions",
+      "membresia": "Adhésion",
+      "venderMembresia": "Vendre une adhésion",
+      "nMembresias": "{count, plural, one {# adhésion} other {# adhésions}}",
+      "sustantivo": {
+        "singular": "adhésion",
+        "plural": "adhésions"
+      },
+      "accesos": {
+        "titulo": "Accès rapides",
+        "vender": "Vendre une adhésion",
+        "checkin": "Contrôle d’accès",
+        "planes": "Formules",
+        "miembros": "Membres",
+        "pagos": "Paiements"
+      },
+      "vigencia": {
+        "quedan": "{dias, plural, =0 {Expire aujourd’hui} one {Reste # jour} other {Restent # jours}}",
+        "graciaHasta": "Grâce jusqu’au {fecha}",
+        "congelada": "Suspendue : les jours s’ajoutent à l’échéance",
+        "empiezaAlPagar": "Commence au paiement",
+        "porActivar": "S’active au premier passage",
+        "vencio": "Expirée le {fecha}",
+        "cancelada": "Annulée"
+      }
+    },
+    "pantalla": {
+      "cargando": "Chargement…",
+      "sinPermiso": {
+        "titulo": "Vous n’avez pas accès aux Adhésions",
+        "descripcion": "Demandez à l’administrateur de l’organisation l’autorisation « Voir les adhésions ».",
+        "volver": "Retour à l’accueil"
+      },
+      "noEncontrada": {
+        "titulo": "Adhésion introuvable",
+        "descripcion": "Elle n’existe peut-être pas ou appartient à une autre organisation.",
+        "volver": "Voir les adhésions"
+      },
+      "error": {
+        "titulo": "Impossible de charger les informations",
+        "descripcion": "Vérifiez votre connexion et réessayez. Si le problème persiste, signalez-le avec le code {codigo}."
+      }
+    },
+    "listado": {
+      "subtituloActivas": "{count, plural, one {# active} other {# actives}}",
+      "subtituloMovil": "{total, number} · {activas, plural, one {# active} other {# actives}}",
+      "cargando": "Chargement des adhésions…",
+      "diasCorto": "{dias} j",
+      "error": "Impossible de charger les adhésions",
+      "sinResultados": "Essayez un autre nom, document ou code, ou retirez les filtres.",
+      "kpis": {
+        "etiqueta": "Adhésions par statut",
+        "activas": "Actives",
+        "activasDetalle": "{count, plural, one {sur # adhésion} other {sur # adhésions}}",
+        "porVencer": "Expirent sous 7 jours",
+        "porVencerDetalle": "Rappeler le renouvellement",
+        "nadaPorVencer": "Rien à échéance",
+        "enGracia": "En période de grâce",
+        "vencidasDetalle": "{count, plural, =0 {Aucune expirée} one {# expirée} other {# expirées}}",
+        "congeladas": "Suspendues",
+        "pendientesDetalle": "{count, plural, =0 {Aucune en attente de paiement} one {# en attente de paiement} other {# en attente de paiement}}"
+      },
+      "buscar": {
+        "placeholder": "Rechercher un membre, un document ou un code d’accès",
+        "etiqueta": "Rechercher des adhésions"
+      },
+      "filtros": {
+        "titulo": "Filtres",
+        "estado": "Statut",
+        "plan": "Formule",
+        "todosLosPlanes": "Toutes les formules",
+        "verN": "{count, plural, one {Voir # adhésion} other {Voir # adhésions}}",
+        "estados": {
+          "todas": "Toutes",
+          "activa": "Actives",
+          "por_vencer": "À échéance (7 jours)",
+          "en_gracia": "En période de grâce",
+          "congelada": "Suspendues",
+          "pendiente": "En attente",
+          "vencida": "Expirées",
+          "cancelada": "Annulées"
+        }
+      },
+      "chips": {
+        "estado": "Statut : {estado}",
+        "plan": "Formule : {plan}",
+        "cliente": "Client : {cliente}"
+      },
+      "acciones": {
+        "ver": "Voir le détail",
+        "delCliente": "Adhésions de ce client"
+      },
+      "columnas": {
+        "miembro": "Membre",
+        "plan": "Formule",
+        "vigencia": "Validité",
+        "estado": "Statut",
+        "origen": "Origine"
+      },
+      "vacio": {
+        "titulo": "Aucune adhésion pour l’instant",
+        "descripcion": "Elles sont créées automatiquement quand un produit de type « Adhésion » est encaissé au point de vente, sur une facture ou dans la boutique en ligne. Commencez par créer le produit.",
+        "irAlPos": "Aller au point de vente",
+        "crearProducto": "Créer un produit adhésion"
+      }
+    },
+    "resumen": {
+      "titulo": "Vue d’ensemble",
+      "subtitulo": "Vue d’ensemble du jour, {fecha}",
+      "subtituloMovil": "Vue d’ensemble · aujourd’hui",
+      "cargando": "Chargement de la vue d’ensemble…",
+      "error": "Impossible de charger la vue d’ensemble",
+      "verTodos": "Tout voir",
+      "vencio": "Expirée le {fecha}",
+      "kpis": {
+        "etiqueta": "Chiffres des adhésions",
+        "activas": "Adhésions actives",
+        "totalDetalle": "{count, plural, one {sur # adhésion} other {sur # adhésions}}",
+        "enGracia": "En période de grâce",
+        "enGraciaDetalle": "Expirées mais toujours admises",
+        "porVencer": "Expirent sous 7 jours",
+        "porVencerDetalle": "Rappelez ou encaissez le renouvellement",
+        "nuevasMes": "Nouvelles ce mois-ci",
+        "nuevasMesDetalle": "Vendues ce mois-ci",
+        "ingresosMes": "Recettes du mois",
+        "ingresosMesDetalle": "Ventes de produits adhésion",
+        "entradasHoy": "Passages aujourd’hui",
+        "entradasHoyCorto": "Aujourd’hui",
+        "entradasHoyDetalle": "Passages autorisés"
+      },
+      "vacio": {
+        "titulo": "Aucune adhésion pour l’instant",
+        "descripcion": "Elles sont créées automatiquement quand un produit de type « Adhésion » est encaissé au point de vente, sur une facture ou dans la boutique en ligne. Commencez par créer le produit.",
+        "irAlPos": "Aller au point de vente",
+        "crearProducto": "Créer un produit adhésion"
+      },
+      "atencion": {
+        "titulo": "À traiter",
+        "nada": "Rien en attente pour le moment.",
+        "enGracia": {
+          "titulo": "{count, plural, one {{n} adhésion en période de grâce} other {{n} adhésions en période de grâce}}",
+          "descripcion": "Expirées sans renouvellement ; toujours admises pendant la période de grâce",
+          "accion": "Voir et encaisser"
+        },
+        "porVencer": {
+          "titulo": "{count, plural, one {{n} expire dans les 7 prochains jours} other {{n} expirent dans les 7 prochains jours}}",
+          "descripcion": "Rappelez le membre ou encaissez le renouvellement",
+          "accion": "Voir"
+        },
+        "pendientes": {
+          "titulo": "{count, plural, one {{n} en attente de paiement} other {{n} en attente de paiement}}",
+          "descripcion": "Vendues à crédit ou impayées : elles s’activent au paiement",
+          "accion": "Voir"
+        },
+        "planesSinProducto": {
+          "titulo": "{count, plural, one {# formule sans produit} other {# formules sans produit}}",
+          "descripcion": "Impossible de la vendre tant qu’elle n’est pas liée à un produit adhésion",
+          "accion": "Voir les formules"
+        }
+      },
+      "porVencer": {
+        "titulo": "Prochaines échéances",
+        "vacio": "Aucune adhésion n’expire dans les 7 prochains jours."
+      },
+      "enGracia": {
+        "titulo": "En période de grâce",
+        "vacio": "Aucune adhésion n’est en période de grâce."
+      },
+      "porPlan": {
+        "titulo": "Par formule",
+        "descripcion": "Adhésions actives par formule",
+        "verPlanes": "Voir les formules",
+        "vacio": "Aucune adhésion active pour l’instant.",
+        "activas": "{count, plural, one {{n} active} other {{n} actives}}"
+      },
+      "actividad": {
+        "titulo": "Activité récente",
+        "vacio": "Aucun mouvement pour l’instant.",
+        "sinCliente": "Sans client"
+      }
+    },
+    "miembros": {
+      "titulo": "Membres",
+      "subtitulo": "{count, plural, one {# personne avec adhésion} other {# personnes avec adhésion}}",
+      "cargando": "Chargement des membres…",
+      "error": "Impossible de charger les membres",
+      "sinVigente": "Aucune adhésion en cours",
+      "sinResultados": "Essayez un autre nom ou document, ou retirez le filtre.",
+      "sustantivo": {
+        "singular": "membre",
+        "plural": "membres"
+      },
+      "acciones": {
+        "verVigente": "Voir l’adhésion en cours",
+        "verMembresias": "Voir ses adhésions",
+        "verFicha": "Voir la fiche client"
+      },
+      "filtros": {
+        "titulo": "Filtres",
+        "vigencia": "Adhésion",
+        "todos": "Tous",
+        "conVigente": "Avec adhésion en cours",
+        "sinVigente": "Sans adhésion en cours",
+        "verN": "{count, plural, one {Voir # membre} other {Voir # membres}}"
+      },
+      "buscar": {
+        "placeholder": "Rechercher par nom, document, e-mail ou téléphone",
+        "etiqueta": "Rechercher des membres"
+      },
+      "columnas": {
+        "miembro": "Membre",
+        "vigente": "Adhésion en cours",
+        "vence": "Échéance",
+        "ultimaEntrada": "Dernier passage",
+        "membresias": "Adhésions"
+      },
+      "movil": {
+        "vigente": "{plan} · échéance {fecha}",
+        "ultimaEntrada": "Dernier passage : {fecha}"
+      },
+      "vacio": {
+        "titulo": "Aucun membre pour l’instant",
+        "descripcion": "Une personne apparaît ici lorsqu’elle achète sa première adhésion au point de vente, sur une facture ou dans la boutique en ligne.",
+        "irAlPos": "Aller au point de vente"
+      }
+    },
+    "pagos": {
+      "titulo": "Paiements des adhésions",
+      "subtitulo": "{count, plural, one {# ligne} other {# lignes}} · {desde} – {hasta}",
+      "cargando": "Chargement des paiements…",
+      "error": "Impossible de charger les paiements",
+      "rango": "Période",
+      "sinCliente": "Sans client",
+      "sinFactura": "Sans facture",
+      "saldo": "Solde {saldo}",
+      "sinSaldo": "Payée",
+      "verMembresia": "Voir l’adhésion",
+      "renovacion": "Renouvellement",
+      "sustantivo": {
+        "singular": "ligne",
+        "plural": "lignes"
+      },
+      "acciones": {
+        "verVenta": "Voir la vente",
+        "verFactura": "Voir la facture",
+        "verMembresia": "Voir l’adhésion"
+      },
+      "columnas": {
+        "fecha": "Date",
+        "cliente": "Client",
+        "producto": "Produit",
+        "cantidad": "Qté",
+        "total": "Total",
+        "estadoVenta": "Vente",
+        "factura": "Facture",
+        "membresia": "Adhésion"
+      },
+      "kpis": {
+        "etiqueta": "Totaux de la période",
+        "totalPeriodo": "Total de la période",
+        "totalPagina": "Total de cette page",
+        "lineas": "{count, plural, one {# ligne d’adhésion} other {# lignes d’adhésion}}",
+        "conSaldo": "Avec solde dû",
+        "conSaldoDetalle": "Factures de cette page avec solde"
+      },
+      "vacio": {
+        "titulo": "Aucun paiement d’adhésion sur cette période",
+        "descripcion": "Les ventes et factures avec des produits adhésion apparaissent ici. Changez la période ou vendez une adhésion au point de vente.",
+        "irAlPos": "Aller au point de vente"
+      }
+    },
+    "detalle": {
+      "error": "Impossible de charger l’adhésion",
+      "subtituloCodigo": "Adhésion {codigo}",
+      "estadoActual": "Statut de l’adhésion",
+      "venceEl": "Expire le {fecha}",
+      "diaDe": "Jour {dia} sur {total}",
+      "acciones": {
+        "verCliente": "Voir la fiche client",
+        "otrasMembresias": "Autres adhésions du client",
+        "congelar": "Suspendre",
+        "descongelar": "Réactiver",
+        "cancelar": "Annuler l’adhésion",
+        "renovar": "Renouveler"
+      },
+      "toasts": {
+        "descongelada": "Adhésion réactivée"
+      },
+      "descongelar": {
+        "titulo": "Réactiver l’adhésion {codigo}",
+        "descripcionProgramado": "La suspension prévue le {desde} est annulée et l’échéance revient à sa date.",
+        "descripcionEnCurso": "L’accès reprend aujourd’hui. Les jours non utilisés sont retirés de l’échéance.",
+        "confirmar": "Réactiver"
+      },
+      "pestanas": {
+        "etiqueta": "Sections de l’adhésion",
+        "resumen": "Vue d’ensemble",
+        "entradas": "Passages",
+        "pagos": "Paiements",
+        "congelamientos": "Suspensions",
+        "historial": "Historique"
+      },
+      "kpis": {
+        "etiqueta": "Chiffres de l’adhésion",
+        "vence": "Échéance",
+        "congelamientos": "Suspensions",
+        "congelamientosValor": "{usadas} sur {tope}",
+        "diasUsados": "{usados} jours utilisés sur {tope}",
+        "diasUsadosSinTope": "{count, plural, one {# jour utilisé} other {# jours utilisés}}",
+        "entradasMes": "Passages ce mois-ci",
+        "ultimaEntrada": "Dernier : {fecha}",
+        "sinEntradas": "Aucun passage pour l’instant",
+        "pagado": "Payé",
+        "nPagos": "{count, plural, =0 {Aucun paiement lié} one {# paiement} other {# paiements}}"
+      },
+      "vigencia": {
+        "titulo": "Validité",
+        "estado": "Statut",
+        "inicio": "Début",
+        "alPagar": "Au paiement",
+        "activada": "Activée",
+        "periodoPagado": "Période payée",
+        "diasCongelados": "Jours suspendus",
+        "masDias": "{count, plural, one {+ # jour} other {+ # jours}}",
+        "vence": "Échéance",
+        "gracia": "Période de grâce",
+        "graciaHasta": "jusqu’au {fecha}",
+        "origen": "Origine",
+        "cancelada": "Annulée"
+      },
+      "reglas": {
+        "titulo": "Règles de la formule",
+        "descripcion": "Copie de la formule au moment de la vente : si la formule change, cette adhésion ne change pas.",
+        "duracion": "Durée",
+        "cobro": "Facturation",
+        "gracia": "Grâce",
+        "activacion": "Activation",
+        "congelar": "Suspension",
+        "graciaDias": "{count, plural, one {# jour} other {# jours}}",
+        "sinGracia": "Sans période de grâce",
+        "activacionAlPagar": "Au paiement",
+        "activacionPrimeraEntrada": "Au premier passage",
+        "activacionPrimeraEntradaVentana": "{count, plural, one {Au premier passage (ou automatiquement après # jour)} other {Au premier passage (ou automatiquement après # jours)}}",
+        "noCongela": "La formule ne permet pas de suspendre",
+        "congela": "{veces} · {dias}",
+        "veces": "{count, plural, one {# fois} other {# fois}}",
+        "dias": "{count, plural, one {# jour} other {# jours}}",
+        "sinTope": "sans limite",
+        "sedes": "{count, plural, one {# site} other {# sites}}",
+        "todasLasSedes": "Tous les sites",
+        "horarioLibre": "Sans restriction horaire",
+        "topeDiario": "{count, plural, one {# passage par jour} other {# passages par jour}}",
+        "sinTopeDiario": "Sans limite quotidienne"
+      },
+      "miembro": {
+        "titulo": "Membre",
+        "verFicha": "Voir la fiche",
+        "otrasMembresias": "Voir les autres adhésions"
+      },
+      "origen": {
+        "titulo": "Provenance",
+        "venta": "Vente",
+        "factura": "Facture",
+        "plan": "Formule",
+        "ver": "Voir",
+        "sinVenta": "Inscription antérieure sans vente"
+      },
+      "acceso": {
+        "titulo": "Accès",
+        "codigo": "Code d’accès",
+        "sedes": "Sites",
+        "horario": "Horaires",
+        "limite": "Limite"
+      },
+      "entradas": {
+        "titulo": "Passages",
+        "descripcion": "Les 50 derniers passages enregistrés",
+        "permitida": "Autorisé",
+        "rechazada": "Refusé",
+        "vacio": {
+          "titulo": "Aucun passage pour l’instant",
+          "descripcion": "Les passages apparaissent ici lorsque l’entrée du membre est enregistrée."
+        }
+      },
+      "metodos": {
+        "qr": "QR",
+        "manual": "Manuel",
+        "rfid": "Carte RFID",
+        "fingerprint": "Empreinte",
+        "facial": "Reconnaissance faciale",
+        "otro": "Autre méthode"
+      },
+      "motivosRechazo": {
+        "sin_membresia": "Aucune adhésion en cours",
+        "pendiente_de_pago": "En attente de paiement",
+        "congelada": "Suspendue",
+        "vencida": "Expirée",
+        "sede_no_permitida": "Site non autorisé",
+        "fuera_de_horario": "Hors des horaires",
+        "limite_diario": "Limite quotidienne atteinte",
+        "otro": "Refusé"
+      },
+      "pagos": {
+        "titulo": "Paiements",
+        "tipo": {
+          "venta": "Vente",
+          "renovacion": "Renouvellement"
+        },
+        "verVenta": "Voir la vente",
+        "factura": "Facture {numero}",
+        "saldo": "Solde {saldo}",
+        "periodos": "{count, plural, one {# période} other {# périodes}}",
+        "vacio": {
+          "titulo": "Aucun paiement lié",
+          "descripcion": "Cette adhésion a été créée avant que les adhésions naissent d’une vente."
+        }
+      },
+      "congelamientos": {
+        "titulo": "Suspensions",
+        "vacio": "Elle n’a pas encore été suspendue.",
+        "dias": "{count, plural, one {# jour} other {# jours}}",
+        "motivo": "Motif : {motivo}",
+        "usados": "{veces} suspensions utilisées sur {topeVeces} et {dias} jours sur {topeDias}.",
+        "estados": {
+          "scheduled": "Prévue",
+          "active": "En cours",
+          "ended": "Terminée",
+          "cancelled": "Annulée"
+        }
+      },
+      "historial": {
+        "titulo": "Historique",
+        "vacio": "Aucun événement pour l’instant.",
+        "dias": "{count, plural, one {# jour} other {# jours}}"
+      },
+      "eventos": {
+        "created": "Créée",
+        "activated": "Activée",
+        "renewed": "Renouvelée",
+        "reactivated": "Réactivée",
+        "frozen": "Suspendue",
+        "unfrozen": "Réactivée après suspension",
+        "cancelled": "Annulée",
+        "expired": "Expirée",
+        "trimmed": "Raccourcie par un retour ou un avoir",
+        "grace_started": "Entrée en période de grâce",
+        "access_granted": "Passage autorisé",
+        "access_denied": "Passage refusé",
+        "payment_received": "Paiement reçu",
+        "payment_failed": "Paiement échoué",
+        "plan_changed": "Changement de formule",
+        "notes_updated": "Notes mises à jour",
+        "otro": "Autre mouvement"
+      }
+    },
+    "congelar": {
+      "titulo": "Suspendre l’adhésion {codigo}",
+      "descripcion": "{cliente} · {plan}. Pendant la suspension, l’accès est bloqué ; les jours s’ajoutent à l’échéance.",
+      "confirmar": "{count, plural, one {Suspendre # jour} other {Suspendre # jours}}",
+      "desde": "À partir du",
+      "dias": "Jours",
+      "sufijoDias": "jours",
+      "resumen": "Résumé de la suspension",
+      "vuelve": "Reprise le",
+      "nuevoVencimiento": "Nouvelle échéance",
+      "nuevoVencimientoValor": "{nuevo} (avant : {antes})",
+      "lesQuedan": "Il reste",
+      "quedan": {
+        "veces": "{count, plural, =0 {aucune suspension} one {# suspension} other {# suspensions}}",
+        "vecesSinTope": "suspensions illimitées",
+        "dias": "{count, plural, one {# jour sur {tope}} other {# jours sur {tope}}}",
+        "diasSinTope": "jours illimités"
+      },
+      "motivo": "Motif (facultatif)",
+      "motivoPlaceholder": "Voyage, arrêt maladie…",
+      "aviso": "Si vous demandez plus de jours qu’il n’en reste, le bouton se désactive et indique pourquoi.",
+      "bloqueo": {
+        "topeDias": "La formule permet {tope} jours ; il en reste {quedan}.",
+        "topeVeces": "La formule permet de suspendre {tope, plural, one {# fois} other {# fois}} et c’est déjà utilisé.",
+        "despuesDelVencimiento": "La suspension doit commencer au plus tard le {fecha} (échéance).",
+        "pasado": "La suspension ne peut pas commencer avant aujourd’hui.",
+        "fechas": "Choisissez le jour de début et au moins 1 jour."
+      },
+      "toast": {
+        "congelada": "Adhésion suspendue",
+        "programada": "Suspension prévue à partir du {fecha}"
+      }
+    },
+    "cancelar": {
+      "titulo": "Annuler l’adhésion {codigo}",
+      "descripcion": "{cliente} · {plan} · {estado} jusqu’au {fecha}",
+      "confirmar": "Annuler l’adhésion",
+      "tituloConsecuencias": "Ce qui se passe à l’annulation",
+      "consecuencias": {
+        "acceso": "L’accès cesse dès aujourd’hui ; le QR et le code deviennent invalides.",
+        "dinero": "Aucun remboursement. Pour rembourser, faites le retour ou l’avoir de la vente : l’adhésion est raccourcie automatiquement.",
+        "historial": "Reste dans l’historique avec votre nom et le motif."
+      },
+      "rapidos": {
+        "mudanza": "Déménagement",
+        "salud": "Santé",
+        "inconforme": "Pas satisfait",
+        "otro": "Autre"
+      },
+      "motivo": "Motif (obligatoire)",
+      "motivoPlaceholder": "Indiquez pourquoi elle est annulée",
+      "toast": "Adhésion annulée"
+    },
+    "renovar": {
+      "titulo": "Renouveler l’adhésion {codigo}",
+      "descripcion": "Renouveler, c’est vendre à nouveau le même produit. Une fois payée, la validité est prolongée à partir de l’échéance actuelle.",
+      "comoCobrar": "Comment encaisser le renouvellement",
+      "opciones": {
+        "pos": {
+          "titulo": "Encaisser au point de vente",
+          "descripcion": "Ouvre le point de vente avec {cliente} et « {plan} » pour l’encaissement."
+        },
+        "factura": {
+          "titulo": "Créer une facture de vente",
+          "descripcion": "Facture avec le produit ; si la formule est « à crédit », elle reste en attente jusqu’au paiement."
+        },
+        "enlace": {
+          "titulo": "Envoyer un lien de paiement",
+          "descripcion": "Paiement dans la boutique en ligne."
+        }
+      },
+      "fasePosterior": "Phase ultérieure",
+      "irAlPos": "Aller au point de vente",
+      "irAFactura": "Créer la facture",
+      "resumen": "Résumé du renouvellement",
+      "producto": "Produit",
+      "vence": "Échéance",
+      "vencio": "Expirée le",
+      "nuevaVigencia": "Nouvelle validité",
+      "avisoCambioPlan": "Pour changer de formule, choisissez un autre produit adhésion au point de vente : la nouvelle validité commence à la fin de l’actuelle.",
+      "bloqueo": {
+        "sinProducto": "La formule de cette adhésion n’a pas de produit : liez-la à un produit dans Formules pour la vendre.",
+        "sinCliente": "L’adhésion n’a pas de titulaire."
+      }
+    },
+    "planes": {
+      "titulo": "Formules",
+      "migaModulo": "Adhésions",
+      "subtitulo": "{total, plural, one {# formule} other {# formules}} · {activos, plural, one {# active} other {# actives}}",
+      "cargando": "Chargement des formules…",
+      "nuevo": "Nouvelle formule",
+      "actualizar": "Actualiser",
+      "errorTitulo": "Impossible de charger les formules",
+      "sinPrecio": "Sans prix",
+      "subtituloFila": "{sku} · Service › Adhésion",
+      "sinProductoFila": "Sans produit · prix enregistré dans la formule",
+      "sinProductoTarjeta": "Sans produit · impossible à vendre",
+      "activasTarjeta": "{n, plural, one {# active} other {# actives}}",
+      "avisoSinProducto": "{n, plural, one {# formule n’a pas de produit} other {# formules n’ont pas de produit}} : impossible à vendre. Créez un produit de type «Adhésion» avec leurs règles.",
+      "buscar": "Rechercher une formule ou un SKU",
+      "estadoPlan": {
+        "activo": "Active",
+        "inactivo": "Inactive",
+        "sin_producto": "Sans produit"
+      },
+      "cobroCorto": {
+        "prepaid": "D’avance",
+        "on_credit": "À crédit"
+      },
+      "acceso": {
+        "todas": "Tous",
+        "sedes": "{n, plural, one {# site} other {# sites}}",
+        "todoElDia": "toute la journée"
+      },
+      "columnas": {
+        "plan": "Formule",
+        "precio": "Prix",
+        "duracion": "Durée",
+        "cobro": "Encaissement",
+        "acceso": "Accès",
+        "activas": "Actives",
+        "estado": "Statut"
+      },
+      "acciones": {
+        "ver": "Voir la formule",
+        "editarProducto": "Modifier le produit",
+        "cargandoProducto": "Chargement du produit…",
+        "vender": "Vendre en caisse",
+        "inactivoMotivo": "La formule est inactive : activez-la dans le produit pour la vendre."
+      },
+      "kpi": {
+        "etiqueta": "Résumé des formules",
+        "activos": "Formules actives",
+        "activosDetalle": "{n, plural, =0 {Aucune inactive} one {# inactive} other {# inactives}}",
+        "membresias": "Adhésions actives",
+        "membresiasDetalle": "{n, plural, one {# en cours au total} other {# en cours au total}}",
+        "ingresos": "Revenus du mois",
+        "ingresosDetalle": "Ventes de produits adhésion",
+        "sinProducto": "Formules sans produit",
+        "sinProductoDetalle": "Impossible à vendre · à vérifier",
+        "sinProductoNinguno": "Toutes peuvent être vendues"
+      },
+      "filtros": {
+        "estado": "Statut",
+        "todos": "Toutes",
+        "activos": "Actives",
+        "inactivos": "Inactives",
+        "verResultados": "Voir {n, plural, one {# formule} other {# formules}}"
+      },
+      "vista": {
+        "etiqueta": "Affichage des formules",
+        "lista": "Liste",
+        "tarjetas": "Cartes"
+      },
+      "vacio": {
+        "titulo": "Aucune formule pour l’instant",
+        "descripcion": "Une formule est un produit de type «Adhésion» : créez-le dans Inventaire et définissez sa durée, son encaissement et son accès."
+      },
+      "sustantivo": {
+        "singular": "formule",
+        "plural": "formules"
+      }
+    },
+    "plan": {
+      "migaPlan": "Formule",
+      "errorTitulo": "Impossible de charger la formule",
+      "subtituloRenovacion": "renouvellement manuel",
+      "editarEnProducto": "Modifier dans le produit",
+      "vender": "Vendre en caisse",
+      "noEncontrado": {
+        "titulo": "Formule introuvable",
+        "descripcion": "Elle appartient peut-être à une autre organisation ou n’existe plus.",
+        "volver": "Retour aux formules"
+      },
+      "sinProducto": {
+        "titulo": "Cette formule n’a pas de produit",
+        "descripcion": "Elle ne peut être ni vendue ni modifiée. Créez un produit de type «Adhésion» avec ces règles et utilisez-le."
+      },
+      "kpi": {
+        "etiqueta": "Chiffres de la formule",
+        "precio": "Prix en vigueur",
+        "precioDetalle": "Celui du produit",
+        "precioSinProducto": "Enregistré dans la formule (ancien)",
+        "activas": "Adhésions actives",
+        "activasDetalle": "{n, plural, one {# en cours} other {# en cours}}",
+        "ingresos": "Revenus du mois",
+        "ingresosDetalle": "Ventes de ce produit",
+        "ventas": "Ventes du mois",
+        "ventasDetalle": "Lignes vendues ce mois-ci"
+      },
+      "producto": {
+        "titulo": "Produit vendu",
+        "verProducto": "Voir le produit",
+        "producto": "Produit",
+        "sku": "SKU",
+        "tipo": "Type",
+        "tipoValor": "Service › Adhésion",
+        "precio": "Prix de vente",
+        "categoria": "Catégorie",
+        "sinCategoria": "Sans catégorie",
+        "nota": "Le prix est uniquement celui du produit. Pour le changer, modifiez le produit : la formule n’a pas de prix propre."
+      },
+      "reglas": {
+        "titulo": "Règles de la formule",
+        "editar": "Modifier",
+        "editarAria": "Modifier les règles dans le produit",
+        "duracion": "Durée",
+        "renovacion": "Renouvellement",
+        "renovacionValor": "Manuel · prolonge à partir de l’échéance",
+        "cobro": "Encaissement",
+        "cobroValor": {
+          "prepaid": "D’avance · activée au paiement",
+          "on_credit": "À crédit · activée à l’émission"
+        },
+        "gracia": "Période de grâce",
+        "graciaValor": "{n, plural, =0 {Sans grâce} one {# jour} other {# jours}}",
+        "activacion": "Activation requise",
+        "activacionNo": "Non · commence le jour du paiement",
+        "activacionSi": "Oui · commence au premier passage",
+        "activacionSiVentana": "Oui · ou d’elle-même après {n, plural, one {# jour} other {# jours}}",
+        "congelamientos": "Gels",
+        "congelarNo": "Non autorisé",
+        "congelarVeces": "{n, plural, one {Jusqu’à # fois} other {Jusqu’à # fois}}",
+        "congelarSinTopeVeces": "Sans plafond de fois",
+        "congelarDias": "{n, plural, one {# jour au total} other {# jours au total}}",
+        "congelarSinTopeDias": "sans plafond de jours",
+        "sedes": "Sites",
+        "horario": "Horaire",
+        "horarioTodo": "Toute la journée",
+        "limite": "Limite quotidienne",
+        "limiteValor": "{n, plural, one {# passage} other {# passages}}",
+        "limiteSin": "Sans limite"
+      },
+      "ultimas": {
+        "titulo": "Dernières adhésions",
+        "verTodas": "Tout voir",
+        "vacioTitulo": "Aucune adhésion",
+        "vacio": "Cette formule n’a pas encore été vendue.",
+        "vigencia": "{desde} → {hasta}"
+      },
+      "conecta": {
+        "titulo": "Liens",
+        "producto": "Produit",
+        "ventas": "Ventes du mois",
+        "ventasValor": "{n} · {importe}",
+        "membresias": "Adhésions",
+        "membresiasValor": "{n, plural, one {# active} other {# actives}}",
+        "abrir": "Ouvrir"
+      },
+      "cambios": {
+        "titulo": "Si vous modifiez la formule",
+        "texto": "Modifier les règles s’applique aux prochaines ventes. Chaque adhésion garde une copie des règles avec lesquelles elle a été vendue : un changement n’affecte pas ceux qui ont déjà payé."
+      }
+    },
+    "clases": {
+      "cabecera": {
+        "titulo": "Cours",
+        "subtitulo": "Cours collectifs et leur planning hebdomadaire",
+        "nueva": "Nouveau cours",
+        "actualizar": "Actualiser"
+      },
+      "sinPermiso": "Vous n’avez pas l’autorisation de voir les cours. Demandez l’accès à l’administrateur de l’organisation.",
+      "kpi": {
+        "etiqueta": "Résumé des cours",
+        "hoy": "Aujourd’hui",
+        "programadas": "Programmés",
+        "programadasDetalle": "À partir d’aujourd’hui",
+        "cupos": "Places libres",
+        "cuposDetalle": "Dans les cours programmés",
+        "completadas": "Terminés",
+        "canceladas": "Annulés"
+      },
+      "busqueda": {
+        "placeholder": "Rechercher un cours, une salle, un type ou un coach",
+        "etiqueta": "Rechercher des cours"
+      },
+      "filtros": {
+        "estado": "Statut",
+        "tipo": "Type",
+        "sede": "Site",
+        "instructor": "Coach",
+        "todos": "Tous",
+        "todas": "Tous",
+        "ver": "{n, plural, =0 {Aucun cours} one {Voir # cours} other {Voir # cours}}"
+      },
+      "vista": {
+        "etiqueta": "Vue des cours",
+        "lista": "Liste",
+        "calendario": "Calendrier"
+      },
+      "periodo": {
+        "etiqueta": "Période",
+        "proximas": "À venir",
+        "pasadas": "Passés",
+        "todas": "Tous"
+      },
+      "tabla": {
+        "etiqueta": "Cours",
+        "clase": "Cours",
+        "fecha": "Date et heure",
+        "instructor": "Coach",
+        "sede": "Site et salle",
+        "cupo": "Places",
+        "cupoValor": "{ocupadas} / {capacidad}",
+        "estado": "Statut"
+      },
+      "sustantivo": {
+        "singular": "cours",
+        "plural": "cours"
+      },
+      "estados": {
+        "active": "Programmé",
+        "completed": "Terminé",
+        "cancelled": "Annulé"
+      },
+      "niveles": {
+        "all_levels": "Tous niveaux",
+        "beginner": "Débutant",
+        "intermediate": "Intermédiaire",
+        "advanced": "Avancé"
+      },
+      "tipos": {
+        "spinning": "Spinning",
+        "yoga": "Yoga",
+        "pilates": "Pilates",
+        "crossfit": "CrossFit",
+        "zumba": "Zumba",
+        "boxing": "Boxe",
+        "functional": "Fonctionnel",
+        "stretching": "Étirements",
+        "aerobics": "Aérobic",
+        "swimming": "Natation",
+        "hiit": "HIIT",
+        "dance": "Danse",
+        "other": "Autre"
+      },
+      "acciones": {
+        "reservas": "Voir les réservations",
+        "editar": "Modifier",
+        "duplicar": "Dupliquer",
+        "completar": "Marquer comme terminé",
+        "cancelar": "Annuler le cours",
+        "eliminar": "Supprimer"
+      },
+      "vacio": {
+        "titulo": "Aucun cours pour l’instant",
+        "descripcion": "Créez le premier cours pour que les membres puissent réserver.",
+        "sinResultados": "Essayez un autre terme ou une autre période, ou retirez les filtres."
+      },
+      "errores": {
+        "cargar": "Impossible de charger les cours.",
+        "guardar": "Le cours n’a pas pu être enregistré. Vérifiez les données et réessayez.",
+        "clase_con_reservas": "Le cours a des réservations : annulez-le au lieu de le supprimer.",
+        "clase_no_encontrada": "Cours introuvable."
+      },
+      "toasts": {
+        "creada": "Cours créé",
+        "actualizada": "Cours mis à jour",
+        "movida": "Cours déplacé au {dia} à {hora}",
+        "duplicada": "Cours dupliqué pour le {dia}",
+        "completada": "Cours marqué comme terminé",
+        "cancelada": "Cours annulé",
+        "eliminada": "Cours supprimé"
+      },
+      "duplicar": {
+        "titulo": "Dupliquer le cours",
+        "descripcion": "Une copie de « {titulo} » est créée à {hora} le jour choisi, avec la même durée.",
+        "fecha": "Nouvelle date",
+        "confirmar": "Dupliquer"
+      },
+      "cancelarClase": {
+        "titulo": "Annuler le cours",
+        "descripcion": "« {titulo} » du {dia} sera annulé.",
+        "confirmar": "Annuler le cours",
+        "consecuencia": "{n, plural, =0 {Aucune réservation active.} one {# réservation active reste sans cours.} other {# réservations actives restent sans cours.}}",
+        "notificar": "Prévenir les membres ayant réservé"
+      },
+      "eliminar": {
+        "titulo": "Supprimer le cours",
+        "descripcion": "« {titulo} » sera supprimé. Cette action est irréversible.",
+        "confirmar": "Supprimer",
+        "conReservas": "Il a des réservations : annulez-le plutôt"
+      },
+      "calendario": {
+        "anterior": "Semaine précédente",
+        "siguiente": "Semaine suivante",
+        "hoy": "Cette semaine",
+        "agenda": "Cours de la semaine",
+        "sinClases": "Aucun cours",
+        "nuevaEn": "Nouveau cours le {dia} à {hora}",
+        "etiquetaClase": "{titulo}, {dia} de {desde} à {hasta}, {ocupadas} places sur {capacidad}",
+        "ayuda": "Faites glisser un cours pour le déplacer. Cliquez sur un créneau vide pour en créer un. La grille va de {desde} à {hasta}."
+      },
+      "dialogo": {
+        "tituloNueva": "Nouveau cours",
+        "tituloEditar": "Modifier le cours",
+        "descripcion": "Horaire dans le fuseau de l’organisation ({zona}).",
+        "titulo": "Nom du cours",
+        "tituloPlaceholder": "Ex. : Spinning intensif",
+        "tipo": "Type de cours",
+        "tipoNuevo": "Autre type…",
+        "tipoNuevoPlaceholder": "Saisissez le type de cours",
+        "nivel": "Niveau",
+        "sede": "Site",
+        "sedePlaceholder": "Choisissez le site",
+        "instructor": "Coach",
+        "instructorPlaceholder": "Choisissez le coach",
+        "fecha": "Date",
+        "hora": "Heure de début",
+        "terminaA": "Se termine à {hora}",
+        "duracion": "Durée",
+        "minutos": "min",
+        "capacidad": "Places",
+        "sala": "Salle ou lieu",
+        "salaPlaceholder": "Ex. : Salle 2",
+        "equipo": "Matériel nécessaire",
+        "equipoPlaceholder": "Ex. : serviette, eau",
+        "descripcionCampo": "Description",
+        "repetir": "Répéter le cours",
+        "repetirAyuda": "Enregistre la règle de répétition du cours.",
+        "frecuencia": "Fréquence",
+        "frecuencias": {
+          "daily": "Quotidienne",
+          "weekly": "Hebdomadaire",
+          "monthly": "Mensuelle"
+        },
+        "diasSemana": "Jours de la semaine",
+        "hasta": "Répéter jusqu’au",
+        "hastaAyuda": "Vide : sans date de fin.",
+        "cancelar": "Annuler",
+        "crear": "Créer le cours",
+        "guardar": "Enregistrer",
+        "guardando": "Enregistrement…",
+        "errores": {
+          "titulo": "Saisissez le nom du cours.",
+          "tipo": "Choisissez ou saisissez le type.",
+          "sucursal": "Choisissez le site.",
+          "instructor": "Choisissez le coach.",
+          "sinInstructores": "Aucun coach : ajoutez-les dans Ressources humaines (département GYM ou poste INST-).",
+          "dia": "Choisissez la date.",
+          "hora": "Saisissez l’heure de début.",
+          "duracion": "La durée va de 5 à 480 minutes.",
+          "capacidad": "Il faut au moins 1 place.",
+          "dias": "Choisissez au moins un jour."
+        }
+      }
+    },
+    "reservas": {
+      "cabecera": {
+        "titulo": "Réservations",
+        "subtitulo": "Réservations de cours et présences",
+        "subtituloClase": "{titulo} · {dia} {hora}",
+        "nueva": "Nouvelle réservation",
+        "actualizar": "Actualiser"
+      },
+      "sinPermiso": "Vous n’avez pas l’autorisation de voir les réservations. Demandez l’accès à l’administrateur de l’organisation.",
+      "kpi": {
+        "etiqueta": "Résumé des réservations",
+        "hoy": "Cours du jour",
+        "reservadas": "Réservées",
+        "asistieron": "Présents",
+        "total": "Total"
+      },
+      "busqueda": {
+        "placeholder": "Rechercher un membre, un document, un e-mail ou un cours",
+        "etiqueta": "Rechercher des réservations"
+      },
+      "filtros": {
+        "estado": "Statut",
+        "clase": "Cours",
+        "todos": "Tous",
+        "ver": "{n, plural, =0 {Aucune réservation} one {Voir # réservation} other {Voir # réservations}}"
+      },
+      "fecha": {
+        "etiqueta": "Date du cours",
+        "todas": "Toutes",
+        "hoy": "Aujourd’hui",
+        "semana": "7 prochains jours"
+      },
+      "tabla": {
+        "etiqueta": "Réservations",
+        "cliente": "Membre",
+        "clase": "Cours",
+        "fecha": "Date du cours",
+        "origen": "Origine",
+        "reservada": "Réservée le",
+        "estado": "Statut"
+      },
+      "sustantivo": {
+        "singular": "réservation",
+        "plural": "réservations"
+      },
+      "estados": {
+        "booked": "Réservée",
+        "checked_in": "Présent",
+        "no_show": "Absent",
+        "cancelled": "Annulée"
+      },
+      "origenes": {
+        "staff": "Accueil",
+        "app": "Appli",
+        "web": "Web",
+        "kiosk": "Borne"
+      },
+      "acciones": {
+        "entrada": "Enregistrer l’entrée",
+        "entradaDe": "Enregistrer l’entrée de {nombre}",
+        "asistio": "Marquer présent",
+        "noAsistio": "Marquer absent",
+        "verClase": "Voir les cours",
+        "editar": "Modifier",
+        "duplicar": "Réserver un autre cours",
+        "cancelar": "Annuler la réservation"
+      },
+      "vacio": {
+        "titulo": "Aucune réservation pour l’instant",
+        "descripcion": "Les réservations des membres apparaîtront ici.",
+        "sinResultados": "Essayez un autre terme ou une autre date, ou retirez les filtres."
+      },
+      "errores": {
+        "cargar": "Impossible de charger les réservations.",
+        "guardar": "La réservation n’a pas pu être enregistrée. Réessayez.",
+        "clase_sin_cupo": "Le cours est complet.",
+        "reserva_duplicada": "Ce membre a déjà une réservation pour ce cours.",
+        "clase_no_programada": "Le cours n’est pas programmé (annulé ou terminé).",
+        "clase_no_encontrada": "Cours introuvable."
+      },
+      "toasts": {
+        "creada": "Réservation créée",
+        "actualizada": "Réservation mise à jour",
+        "asistio": "Présence enregistrée",
+        "noAsistio": "Absence enregistrée",
+        "cancelada": "Réservation annulée",
+        "duplicada": "Réservation créée pour l’autre cours",
+        "entrada": "Entrée enregistrée",
+        "entradaRechazada": "Entrée refusée : {motivo}"
+      },
+      "cancelar": {
+        "titulo": "Annuler la réservation",
+        "descripcion": "La réservation de {nombre} pour « {clase} » est annulée et la place est libérée.",
+        "confirmar": "Annuler la réservation"
+      },
+      "duplicar": {
+        "titulo": "Réserver un autre cours",
+        "descripcion": "Crée une réservation pour {nombre} dans un autre cours programmé.",
+        "clase": "Cours",
+        "confirmar": "Réserver"
+      },
+      "dialogo": {
+        "tituloNueva": "Nouvelle réservation",
+        "tituloEditar": "Modifier la réservation",
+        "clase": "Cours",
+        "clasePlaceholder": "Choisissez le cours",
+        "opcionClase": "{titulo} · {dia} {hora} · {libres, plural, =0 {complet} one {# place} other {# places}}",
+        "sinClases": "Aucun cours programmé avec des places à partir d’aujourd’hui.",
+        "cliente": "Membre",
+        "origen": "Origine",
+        "notas": "Notes",
+        "notasPlaceholder": "Facultatif",
+        "cancelar": "Annuler",
+        "crear": "Réserver",
+        "guardar": "Enregistrer",
+        "guardando": "Enregistrement…",
+        "errores": {
+          "cliente": "Choisissez le membre.",
+          "clase": "Choisissez le cours."
+        }
+      }
+    },
+    "checkin": {
+      "cabecera": {
+        "titulo": "Check-in",
+        "subtitulo": "Enregistrez l’entrée des membres",
+        "actualizar": "Actualiser",
+        "dispositivos": "Contrôle d’accès"
+      },
+      "sinPermiso": "Vous n’avez pas l’autorisation d’enregistrer des entrées. Demandez l’accès à l’administrateur de l’organisation.",
+      "sinMembresia": "Sans adhésion",
+      "kpi": {
+        "etiqueta": "Entrées du jour",
+        "permitidas": "Entrées aujourd’hui",
+        "rechazadas": "Refusées aujourd’hui",
+        "miembros": "Membres distincts"
+      },
+      "sede": {
+        "etiqueta": "Site",
+        "placeholder": "Choisissez le site",
+        "ayuda": "L’entrée est enregistrée sur ce site.",
+        "falta": "Choisissez le site pour enregistrer l’entrée."
+      },
+      "busqueda": {
+        "titulo": "Rechercher un membre",
+        "etiqueta": "Rechercher un membre",
+        "placeholder": "Nom, document, e-mail, téléphone ou code",
+        "ayuda": "Vous pouvez aussi scanner le QR code de l’adhésion avec le lecteur.",
+        "buscar": "Rechercher",
+        "buscando": "Recherche…",
+        "minimo": "Saisissez au moins 2 caractères.",
+        "sinResultados": "Aucun membre ne correspond."
+      },
+      "resultados": {
+        "titulo": "{n, plural, one {# résultat} other {# résultats}}"
+      },
+      "elegido": {
+        "titulo": "Membre",
+        "codigo": "Code d’accès",
+        "cancelar": "Annuler",
+        "registrar": "Enregistrer l’entrée",
+        "registrando": "Enregistrement…",
+        "nota": "La base vérifie la validité, la période de grâce, le site, les horaires et la limite quotidienne, puis enregistre l’entrée ou le refus."
+      },
+      "metodo": {
+        "etiqueta": "Méthode",
+        "ayudaQr": "Le QR code de l’adhésion a été scanné."
+      },
+      "metodos": {
+        "manual": "Manuelle",
+        "qr": "QR code",
+        "rfid": "Carte RFID",
+        "fingerprint": "Empreinte",
+        "facial": "Reconnaissance faciale"
+      },
+      "resultado": {
+        "permitido": "Entrée autorisée · {nombre}",
+        "rechazado": "Entrée refusée · {nombre}",
+        "bienvenida": "Adhésion en cours de validité.",
+        "plan": "Formule",
+        "vence": "Expire le",
+        "graciaHasta": "Grâce jusqu’au",
+        "nueva": "Nouvelle recherche",
+        "verMembresia": "Voir l’adhésion",
+        "cerrar": "Fermer"
+      },
+      "motivos": {
+        "sin_membresia": "Aucune adhésion.",
+        "pendiente_de_pago": "L’adhésion est en attente de paiement.",
+        "congelada": "L’adhésion est gelée.",
+        "vencida": "L’adhésion a expiré.",
+        "sede_no_permitida": "La formule n’autorise pas l’entrée sur ce site.",
+        "fuera_de_horario": "En dehors des horaires d’accès de la formule.",
+        "limite_diario": "La limite d’entrées du jour est atteinte."
+      },
+      "avisos": {
+        "en_gracia": "En période de grâce {dias, plural, =0 {jusqu’à aujourd’hui} one {# j} other {# j}} : rappelez-lui de renouveler.",
+        "activada_hoy": "L’adhésion a été activée avec cette entrée."
+      },
+      "historial": {
+        "titulo": "Entrées du jour",
+        "descripcion": "{dia} · actualisé toutes les 30 s",
+        "filtro": "Filtrer les entrées",
+        "todas": "Toutes",
+        "permitidas": "Autorisées",
+        "rechazadas": "Refusées",
+        "permitida": "Autorisée",
+        "rechazada": "Refusée",
+        "vacio": "Aucune entrée aujourd’hui",
+        "vacioDescripcion": "Les entrées apparaîtront ici dès leur enregistrement.",
+        "sinFiltro": "Aucune entrée avec ce filtre"
+      },
+      "errores": {
+        "buscar": "La recherche a échoué. Réessayez.",
+        "historial": "Impossible de charger les entrées du jour."
+      }
+    },
+    "instructores": {
+      "cabecera": {
+        "titulo": "Coachs",
+        "subtitulo": "Personnel RH du département GYM ou ayant un poste de coach",
+        "actualizar": "Actualiser"
+      },
+      "sinPermiso": "Vous n’avez pas l’autorisation de voir les coachs. Demandez l’accès à l’administrateur de l’organisation.",
+      "sinNombre": "Sans nom",
+      "kpi": {
+        "etiqueta": "Résumé des coachs",
+        "instructores": "Coachs",
+        "activos": "{n, plural, one {# actif} other {# actifs}}",
+        "clasesSemana": "Cours cette semaine",
+        "horasSemana": "Heures cette semaine",
+        "asistencia": "Présence",
+        "asistenciaDetalle": "Réservations honorées"
+      },
+      "busqueda": {
+        "placeholder": "Rechercher un coach, un e-mail ou un poste",
+        "etiqueta": "Rechercher des coachs"
+      },
+      "filtros": {
+        "estado": "Statut",
+        "todos": "Tous",
+        "activos": "Actifs",
+        "inactivos": "Inactifs"
+      },
+      "tabla": {
+        "etiqueta": "Coachs",
+        "instructor": "Coach",
+        "cargo": "Poste",
+        "clasesSemana": "Cours (semaine)",
+        "horasSemana": "Heures (semaine)",
+        "asistencia": "Présence",
+        "estado": "Statut"
+      },
+      "tarjeta": {
+        "semana": "{clases, plural, one {# cours} other {# cours}} · {horas} h cette semaine"
+      },
+      "estados": {
+        "activo": "Actif",
+        "inactivo": "Inactif"
+      },
+      "vacio": {
+        "titulo": "Aucun coach",
+        "descripcion": "Ajoutez des employés dans Ressources humaines, au département GYM ou avec un poste INST-.",
+        "irHrm": "Aller aux employés",
+        "sinResultados": "Essayez un autre terme ou retirez le filtre."
+      },
+      "errores": {
+        "cargar": "Impossible de charger les coachs."
+      },
+      "panel": {
+        "pestanas": "Fiche du coach",
+        "resumen": "Résumé",
+        "horario": "Planning",
+        "disponibilidad": "Disponibilités",
+        "sinCargo": "Sans poste",
+        "cerrar": "Fermer",
+        "correo": "E-mail",
+        "telefono": "Téléphone",
+        "cargo": "Poste",
+        "departamento": "Département",
+        "codigo": "Matricule",
+        "tarifaHora": "Tarif horaire",
+        "especialidades": "Spécialités",
+        "desempeno": "Performance",
+        "clasesTotales": "Cours attribués",
+        "completadas": "Terminés",
+        "canceladas": "Annulés",
+        "reservas": "Réservations",
+        "asistencias": "Présents",
+        "tasaAsistencia": "Taux de présence"
+      },
+      "horario": {
+        "vacio": "Aucun cours dans les 14 prochains jours",
+        "vacioDescripcion": "Attribuez-lui des cours depuis la page Cours.",
+        "verCalendario": "Voir le calendrier des cours"
+      },
+      "disponibilidad": {
+        "descripcion": "Créneaux où le coach peut donner des cours.",
+        "agregar": "Ajouter un créneau",
+        "agregarEn": "Ajouter un créneau le {dia}",
+        "desdeEn": "De, {dia}",
+        "hastaEn": "À, {dia}",
+        "quitar": "Retirer le créneau",
+        "noDisponible": "Indisponible",
+        "rangoInvalido": "L’heure de fin doit être après l’heure de début.",
+        "guardar": "Enregistrer les disponibilités",
+        "guardando": "Enregistrement…",
+        "guardada": "Disponibilités enregistrées",
+        "errorGuardar": "Les disponibilités n’ont pas pu être enregistrées.",
+        "errorCargar": "Impossible de charger les disponibilités enregistrées ; celles par défaut sont affichées."
+      }
+    },
+    "acceso": {
+      "cabecera": {
+        "titulo": "Contrôle d’accès",
+        "subtitulo": "Tourniquets, bornes et lecteurs par site",
+        "nuevo": "Nouvel appareil",
+        "actualizar": "Actualiser"
+      },
+      "sinPermiso": "Vous n’avez pas l’autorisation de voir le contrôle d’accès. Demandez l’accès à l’administrateur de l’organisation.",
+      "kpi": {
+        "etiqueta": "Résumé des appareils",
+        "total": "Appareils",
+        "activos": "Actifs",
+        "inactivos": "Inactifs"
+      },
+      "busqueda": {
+        "placeholder": "Rechercher par nom, numéro de série ou emplacement",
+        "etiqueta": "Rechercher des appareils"
+      },
+      "filtros": {
+        "tipo": "Type",
+        "estado": "Statut",
+        "todos": "Tous",
+        "activos": "Actifs",
+        "inactivos": "Inactifs",
+        "ver": "{n, plural, =0 {Aucun appareil} one {Voir # appareil} other {Voir # appareils}}"
+      },
+      "tipos": {
+        "tablet": "Tablette",
+        "kiosk": "Borne",
+        "turnstile": "Tourniquet",
+        "scanner": "Scanner",
+        "door_lock": "Serrure"
+      },
+      "estados": {
+        "activo": "Actif",
+        "inactivo": "Inactif"
+      },
+      "metodos": {
+        "qr": "QR",
+        "huella": "Empreinte"
+      },
+      "tabla": {
+        "etiqueta": "Appareils",
+        "dispositivo": "Appareil",
+        "tipo": "Type",
+        "sede": "Site",
+        "metodos": "Méthodes",
+        "ultimaSync": "Dernière synchro",
+        "nunca": "Jamais",
+        "estado": "Statut"
+      },
+      "acciones": {
+        "qr": "Voir le QR code",
+        "kiosco": "Ouvrir la borne",
+        "editar": "Modifier",
+        "activar": "Activer",
+        "desactivar": "Désactiver",
+        "eliminar": "Supprimer"
+      },
+      "vacio": {
+        "titulo": "Aucun appareil pour l’instant",
+        "descripcion": "Ajoutez une borne ou un tourniquet pour enregistrer les entrées sur le site.",
+        "sinResultados": "Essayez un autre terme ou retirez les filtres."
+      },
+      "errores": {
+        "cargar": "Impossible de charger les appareils.",
+        "guardar": "L’appareil n’a pas pu être enregistré. Réessayez."
+      },
+      "toasts": {
+        "creado": "Appareil créé",
+        "actualizado": "Appareil mis à jour",
+        "activado": "Appareil activé",
+        "desactivado": "Appareil désactivé",
+        "eliminado": "Appareil supprimé"
+      },
+      "eliminar": {
+        "titulo": "Supprimer l’appareil",
+        "descripcion": "« {nombre} » sera supprimé. Cette action est irréversible.",
+        "confirmar": "Supprimer"
+      },
+      "qr": {
+        "titulo": "QR code de l’appareil",
+        "alt": "QR code de {nombre}",
+        "expira": "Expire le {fecha}",
+        "sinToken": "Cet appareil n’a pas de code valide.",
+        "abrirKiosco": "Ouvrir la borne",
+        "cerrar": "Fermer"
+      },
+      "dialogo": {
+        "tituloNuevo": "Nouvel appareil",
+        "tituloEditar": "Modifier l’appareil",
+        "descripcion": "Où il se trouve et comment il enregistre les entrées.",
+        "nombre": "Nom",
+        "nombrePlaceholder": "Ex. : Borne de l’entrée",
+        "tipo": "Type",
+        "sede": "Site",
+        "sedePlaceholder": "Choisissez le site",
+        "serie": "Numéro de série",
+        "ip": "Adresse IP",
+        "ubicacion": "Emplacement",
+        "ubicacionPlaceholder": "Ex. : Accueil, premier étage",
+        "metodos": "Méthodes d’accès",
+        "qr": "QR code",
+        "huella": "Empreinte digitale",
+        "cancelar": "Annuler",
+        "crear": "Créer l’appareil",
+        "guardar": "Enregistrer",
+        "guardando": "Enregistrement…",
+        "errores": {
+          "nombre": "Saisissez le nom.",
+          "sede": "Choisissez le site."
+        }
+      }
+    },
+    "kiosco": {
+      "cargando": "Chargement de l’appareil…",
+      "volver": "Retour au contrôle d’accès",
+      "instruccionQr": "Présentez votre QR code",
+      "instruccion": "Saisissez votre code d’accès",
+      "huella": "ou posez votre doigt sur le lecteur",
+      "campo": "Code d’accès, document ou téléphone",
+      "entrar": "Entrer",
+      "verificando": "Vérification…",
+      "bienvenido": "Bienvenue !",
+      "denegado": "Accès refusé",
+      "vence": "Votre adhésion expire le {fecha}",
+      "recepcion": "Adressez-vous à l’accueil pour plus d’informations.",
+      "noEncontrado": "Aucun membre ne correspond à cette information.",
+      "variasCoincidencias": "Plusieurs résultats : utilisez votre code d’accès.",
+      "qrAlt": "QR code de cet appareil",
+      "qrSeRenueva": "Le QR code se renouvelle automatiquement",
+      "errores": {
+        "titulo": "Impossible d’ouvrir la borne",
+        "noEncontrado": "Appareil introuvable.",
+        "inactivo": "Cet appareil est inactif.",
+        "otraOrganizacion": "L’appareil appartient à une autre organisation.",
+        "cargar": "Impossible de charger l’appareil.",
+        "sinPermiso": "Votre utilisateur n’a pas l’autorisation d’enregistrer des entrées.",
+        "procesar": "Impossible de traiter l’entrée."
+      }
     }
   },
   "inventario": {

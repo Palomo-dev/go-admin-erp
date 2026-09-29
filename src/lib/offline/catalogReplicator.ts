@@ -150,7 +150,7 @@ class StoreWriter<S extends CatalogStoreName> {
 }
 
 const PRODUCT_COLUMNS =
-  'id, organization_id, uuid, sku, name, description, barcode, status, category_id, unit_code, parent_product_id, is_parent, variant_data, track_stock, track_serial, tag_id, station, product_type, production_type, is_composite, brand, reference, warranty_months, created_at, updated_at';
+  'id, organization_id, uuid, sku, name, description, barcode, status, category_id, unit_code, parent_product_id, is_parent, variant_data, track_stock, track_serial, tag_id, station, product_type, service_type, production_type, is_composite, brand, reference, warranty_months, created_at, updated_at';
 
 const CUSTOMER_COLUMNS =
   'id, organization_id, branch_id, first_name, last_name, full_name, email, phone, doc_type, doc_number, identification_type, identification_number, company_name, trade_name, address, city, customer_type, avatar_url, roles, tags, preferences, fiscal_municipality_id, created_at, updated_at';

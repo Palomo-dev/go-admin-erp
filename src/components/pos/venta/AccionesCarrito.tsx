@@ -12,6 +12,7 @@ import type { EstadoBotonCobrar } from '@/lib/pos/venta/requisitosCarrito';
  *
  * - Activo: «Cobrar · $ · F4» a todo el ancho (o «Abrir caja para cobrar · F9»
  *   sin caja, D4) y debajo Descuento · D, Espera · F6, Deuda · F7 y Cocina · F8.
+ *   Con una membresía sin cliente, «Cobrar» deshabilitado con su motivo (P1).
  * - En espera: «Reactivar · F6» y el cobro bloqueado con su motivo.
  * - Con deuda: Ver factura, Imprimir, «Cobrar deuda» (no exige caja) y Anular.
  *
@@ -45,6 +46,7 @@ export interface AccionesCarritoProps {
 
 export function AccionesCarrito(p: AccionesCarritoProps) {
   const t = useTranslations('posVenta.acciones');
+  const tMembresias = useTranslations('membresias.pos');
 
   if (p.modo === 'deuda') {
     return (
@@ -78,7 +80,7 @@ export function AccionesCarrito(p: AccionesCarritoProps) {
           icono={CreditCard}
           atajo={teclaAtajo('cobrar')}
           estado={p.estadoCobrar === 'listo' ? 'listo' : 'deshabilitado'}
-          motivo={enEspera ? t('motivoEnEspera') : undefined}
+          motivo={enEspera ? t('motivoEnEspera') : p.estadoCobrar === 'sin-cliente' ? tMembresias('motivoSinCliente') : undefined}
           onClick={p.onCobrar}
         />
       )}

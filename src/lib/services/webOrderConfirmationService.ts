@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { getCurrentUserId, getOrganizationId } from '@/lib/hooks/useOrganization';
 import { PropinasService } from '@/components/pos/propinas/propinasService';
 import { deliveryIntegrationService } from './deliveryIntegrationService';
 import { stockMovementService } from './stockMovementService';
@@ -92,6 +92,11 @@ class WebOrderConfirmationService {
 
     // 2. Crear sale_items y obtener los IDs insertados
     const insertedSaleItems = await this.createSaleItems(order, saleId);
+
+    // 2a. Membresías (docs/design/MEMBRESIAS-FASE-1-2.md §4, «Tienda web»): las crea y activa la
+    //     base, en el servidor (la RPC no está abierta al navegador). No bloquea la confirmación:
+    //     si falla (p. ej. pedido sin cliente) queda en el log y se puede reintentar (idempotente).
+    await this.activarMembresias(order.id);
 
     // 2b. Descontar stock definitivamente y liberar reserva
     try {
@@ -230,6 +235,22 @@ class WebOrderConfirmationService {
     const { sale_id: saleId, creada } = (data ?? {}) as { sale_id?: string; creada?: boolean };
     if (!saleId) throw new Error(`El pedido ${order.order_number} no devolvió venta`);
     return { saleId, creada: creada === true };
+  }
+
+  /** Activa las membresías de las líneas del pedido vía `POST /api/web-orders/[id]/membresias`. */
+  private async activarMembresias(orderId: string): Promise<void> {
+    try {
+      const org = getOrganizationId();
+      const r = await fetch(`/api/web-orders/${encodeURIComponent(orderId)}/membresias`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', ...(org > 0 ? { 'x-organization-id': String(org) } : {}) },
+        body: '{}',
+      });
+      if (!r.ok) console.error('[webOrderConfirmation] membresías del pedido sin activar', { orderId, estado: r.status });
+    } catch (err) {
+      console.error('[webOrderConfirmation] membresías del pedido sin activar', { orderId, err });
+    }
   }
 
   /**

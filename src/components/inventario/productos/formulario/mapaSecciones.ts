@@ -9,9 +9,11 @@ import {
   SlidersHorizontal,
   Split,
   Store,
+  UserCheck,
   type LucideIcon,
 } from 'lucide-react';
 import {
+  esMembresia,
   SECCIONES_FORMULARIO,
   type CampoFormulario,
   type ErroresFormulario,
@@ -24,6 +26,7 @@ export const ICONO_SECCION: Record<SeccionFormulario, LucideIcon> = {
   informacion: Package,
   precios: CircleDollarSign,
   impuestos: Percent,
+  membresia: UserCheck,
   inventario: Boxes,
   variantes: Split,
   modificadores: SlidersHorizontal,
@@ -33,9 +36,16 @@ export const ICONO_SECCION: Record<SeccionFormulario, LucideIcon> = {
   avanzado: Settings2,
 };
 
-/** Un servicio no maneja inventario: la sección desaparece. */
+/**
+ * Un servicio no maneja inventario: la sección desaparece. «Configuración de
+ * membresía» solo aparece si es un servicio de tipo membresía.
+ */
 export function seccionesVisibles(estado: EstadoFormularioProducto | null): SeccionFormulario[] {
-  return SECCIONES_FORMULARIO.filter((s) => !(s === 'inventario' && estado?.product_type === 'service'));
+  return SECCIONES_FORMULARIO.filter((s) => {
+    if (s === 'inventario') return estado?.product_type !== 'service';
+    if (s === 'membresia') return !!estado && esMembresia(estado);
+    return true;
+  });
 }
 
 // ── Stepper móvil (crear y duplicar) ────────────────────────────────────────
@@ -64,6 +74,16 @@ export const PASO_DE_CAMPO: Record<CampoFormulario, PasoMovil> = {
   proveedor: 'detalles',
   dimensiones: 'detalles',
   receta: 'detalles',
+  service_type: 'esencial',
+  // Móvil: la configuración de la membresía vive en el paso 2 (Figma A2 980:1146).
+  membresia_duracion: 'inventario',
+  membresia_cobro: 'inventario',
+  membresia_gracia: 'inventario',
+  membresia_activacion: 'inventario',
+  membresia_congelamiento: 'inventario',
+  membresia_sedes: 'inventario',
+  membresia_horario: 'inventario',
+  membresia_entradas: 'inventario',
 };
 
 export function primerPasoConError(errores: ErroresFormulario): PasoMovil | null {

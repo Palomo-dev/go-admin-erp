@@ -14,6 +14,7 @@
  */
 
 import type { CheckoutData, CobroVentaExistente, Sale } from '@/components/pos/types';
+import { leerMembresiasVendidas, type MembresiaVendida } from '@/lib/pos/venta/membresias';
 
 export const POS_CHECKOUT_RPC = 'pos_checkout_v1';
 
@@ -157,6 +158,12 @@ export interface CheckoutRpcResult {
   replayed: boolean;
   completed: string[];
   warnings: string[];
+  /**
+   * Membresías que creó, activó o renovó el cobro en la misma transacción
+   * (`fn_membresias_activar_venta`, docs/design/MEMBRESIAS-FASE-1-2.md §4).
+   * `[]` si la venta no lleva membresías o la base es anterior.
+   */
+  membresias: MembresiaVendida[];
 }
 
 /** Subconjunto del cliente Supabase que usa este módulo. */
@@ -355,6 +362,7 @@ export async function callCheckoutRpc(
     replayed: result.replayed === true,
     completed: result.completed ?? [],
     warnings: result.warnings ?? [],
+    membresias: leerMembresiasVendidas((data as { membresias?: unknown }).membresias),
   };
 }
 

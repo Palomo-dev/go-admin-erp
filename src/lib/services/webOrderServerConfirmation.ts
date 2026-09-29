@@ -10,6 +10,12 @@ import {
 import { resolveLineTaxWith } from './taxResolverCore';
 import { resolveOrgCurrency } from './monedaOrganizacion';
 import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
+import {
+  ERROR_MEMBRESIA_SIN_CLIENTE,
+  esErrorMembresiaSinCliente,
+  leerMembresiasVendidas,
+  type MembresiaVendida,
+} from '@/lib/pos/venta/membresias';
 
 /**
  * Sub-métodos de Wompi (pasarela de pago del website).
@@ -61,6 +67,56 @@ export interface ServerConfirmResult {
   accountReceivableId?: string;
   shipmentId?: string;
   stockErrors: string[];
+  /** Membresías que creó/activó/renovó el pedido (`fn_membresias_activar_venta`). */
+  membresias?: MembresiaVendida[];
+  /**
+   * La venta se confirmó pero sus membresías NO se activaron: código estable
+   * (`membresia_sin_cliente`) o `error_activacion`. Queda en el log del servidor.
+   */
+  membresiaError?: string;
+}
+
+/**
+ * Activa las membresías de una venta web ya confirmada (`creada=true`,
+ * `sale_items` insertados) con la RPC `fn_membresias_activar_venta`, concedida
+ * solo a service_role: se llama con el cliente service role de este servidor,
+ * y la venta la creó `fn_confirmar_pedido_web` a partir del pedido (la
+ * organización sale del pedido, nunca de un body).
+ *
+ * Comportamiento ante errores (documentado): NO lanza. El dinero ya lo cobró
+ * la pasarela y la venta ya está ligada al pedido; si esto lanzara, el resto
+ * de la cadena (stock, factura, pago, cartera, envío, estado del pedido) no se
+ * haría y un reintento no la completaría. Se registra en el log y se devuelve
+ * el código: `membresia_sin_cliente` cuando el pedido no trae email y no se
+ * pudo resolver un cliente (la membresía queda sin crear: la venta existe y la
+ * base es idempotente por `sale_item_id`, así que se puede activar después
+ * llamando la misma RPC cuando la venta tenga cliente).
+ */
+export async function activarMembresiasVentaWeb(
+  supabase: Pick<SupabaseClient, 'rpc'>,
+  saleId: string,
+  referenciaPedido?: string | null,
+): Promise<{ membresias: MembresiaVendida[]; error: string | null }> {
+  try {
+    const { data, error } = await supabase.rpc('fn_membresias_activar_venta', {
+      p_sale_id: saleId,
+      p_invoice_id: null,
+      p_source: 'web',
+      p_pagado: true,
+    });
+    if (error) {
+      const codigo = esErrorMembresiaSinCliente(error) ? ERROR_MEMBRESIA_SIN_CLIENTE : 'error_activacion';
+      console.error(
+        `[webOrderServerConfirmation] Membresías del pedido ${referenciaPedido ?? saleId} sin activar (${codigo}):`,
+        (error as { message?: string }).message,
+      );
+      return { membresias: [], error: codigo };
+    }
+    return { membresias: leerMembresiasVendidas(data), error: null };
+  } catch (err) {
+    console.error(`[webOrderServerConfirmation] Error activando membresías del pedido ${referenciaPedido ?? saleId}:`, err);
+    return { membresias: [], error: 'error_activacion' };
+  }
 }
 
 function getServiceRoleClient(): SupabaseClient {
@@ -468,6 +524,13 @@ export const webOrderServerConfirmation = {
         .insert(saleItems);
       if (itemsError) throw new Error(`Error creando sale_items: ${itemsError.message}`);
     }
+
+    // ── 2.1. Membresías (docs/design/MEMBRESIAS-FASE-1-2.md §4, «Tienda web») ──
+    // El pago ya lo aprobó la pasarela: la base crea/activa las membresías de
+    // las líneas del pedido. Nunca lanza: la venta ya quedó ligada al pedido
+    // (`fn_confirmar_pedido_web`), y un error aquí dejaría el pedido a medias
+    // para siempre (un reintento devuelve creada=false). Ver la función.
+    const membresias = await activarMembresiasVentaWeb(supabase, saleId, order.order_number);
 
     // ── 3. Descontar stock definitivamente (RPC) ──
     for (const item of order.items || []) {
@@ -920,6 +983,8 @@ export const webOrderServerConfirmation = {
       accountReceivableId,
       shipmentId,
       stockErrors,
+      ...(membresias.membresias.length > 0 ? { membresias: membresias.membresias } : {}),
+      ...(membresias.error ? { membresiaError: membresias.error } : {}),
     };
   },
 };

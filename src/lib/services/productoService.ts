@@ -69,6 +69,16 @@ export const CODIGOS_ERROR_PRODUCTO = [
   'receta_destino_repetido',
   'receta_al_producir_sin_inventario',
   'guardado_en_curso',
+  // Tipo de servicio y membresía (fn_producto_guardar · 20260929000400)
+  'tipo_servicio_invalido',
+  'membresia_con_variantes',
+  'membresia_con_contratos',
+  'membresia_unidad_invalida',
+  'membresia_duracion_invalida',
+  'membresia_cobro_invalido',
+  'membresia_gracia_invalida',
+  'membresia_sede_invalida',
+  'plan_producto_invalido',
 ] as const;
 
 export type CodigoErrorProducto = (typeof CODIGOS_ERROR_PRODUCTO)[number] | 'desconocido';
@@ -583,6 +593,8 @@ export interface ProductoCampos {
   unit_code?: string | null;
   station?: string | null;
   product_type: 'product' | 'service';
+  /** Solo si `product_type = 'service'`; en editar, sin la clave se conserva el que tenga. */
+  service_type?: TipoServicioProducto | null;
   status: 'active' | 'inactive' | 'discontinued';
   brand?: string | null;
   reference?: string | null;
@@ -654,6 +666,53 @@ export interface PayloadGuardarProducto {
   clave_idempotencia?: string;
   /** Sin esta clave las recetas no se tocan. */
   receta?: PayloadRecetaProducto;
+  /**
+   * Plan del producto membresía (exige memberships.plans.manage). Sin la clave, un producto
+   * membresía nuevo recibe el plan por defecto (1 mes, por adelantado) y uno existente lo conserva.
+   */
+  membresia?: MembresiaEntrada;
+}
+
+export type TipoServicioProducto = 'standard' | 'membership' | 'session_pack' | 'class' | 'course' | 'appointment';
+
+/** `payload.membresia` de fn_producto_guardar (se guarda en membership_plans, 1:1 con el producto). */
+export interface MembresiaEntrada {
+  duration_unit: 'day' | 'week' | 'month' | 'year';
+  duration_value: number;
+  billing_mode: 'prepaid' | 'on_credit';
+  /** «automatic» llega en una fase posterior (pasarela que guarde tarjetas). */
+  renewal_mode: 'manual';
+  grace_days: number;
+  requires_activation: boolean;
+  activation_window_days: number | null;
+  freeze_allowed: boolean;
+  freeze_max_times: number | null;
+  freeze_max_days: number | null;
+  /** Vacío = todas las sedes. */
+  allowed_branch_ids: number[];
+  /** null = sin restricción. Días ISO (1 = lunes); horas HH:mm, ambas o ninguna. */
+  access_schedule: { dias: number[]; desde?: string; hasta?: string } | null;
+  daily_checkin_limit: number | null;
+}
+
+/** Clave `membresia` de fn_producto_para_formulario (null si el producto no tiene plan). */
+export interface MembresiaFormularioServidor {
+  plan_id: number;
+  duration_unit: string | null;
+  duration_value: number | null;
+  billing_mode: string | null;
+  renewal_mode: string | null;
+  grace_days: number | null;
+  requires_activation: boolean | null;
+  activation_window_days: number | null;
+  freeze_allowed: boolean | null;
+  freeze_max_times: number | null;
+  freeze_max_days: number | null;
+  allowed_branch_ids: number[] | null;
+  access_schedule: { dias?: unknown; desde?: unknown; hasta?: unknown } | null;
+  daily_checkin_limit: number | null;
+  /** Membresías no canceladas ni vencidas del plan. */
+  membresias_vivas: number | null;
 }
 
 export interface ResultadoGuardarProducto {
@@ -668,6 +727,9 @@ export interface ResultadoGuardarProducto {
   recetas?: { destino: 'producto' | { variante: string }; product_id: number; recipe_id: number; version: number; cambio: boolean }[];
   /** La clave de idempotencia ya se había guardado: es el resultado de entonces. */
   repetido?: boolean;
+  service_type?: TipoServicioProducto | null;
+  /** Plan creado o actualizado cuando el producto es membresía. */
+  membership_plan_id?: number | null;
 }
 
 export interface DatosFormularioProducto {
@@ -735,4 +797,6 @@ export interface DatosFormularioProducto {
     display_order: number;
     shared_image_id: number | null;
   }[];
+  /** Configuración del plan si el producto es (o fue) membresía. */
+  membresia?: MembresiaFormularioServidor | null;
 }

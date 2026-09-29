@@ -1267,6 +1267,25 @@ export class POSService {
     }
   }
 
+  /**
+   * El cliente existe en la organización ACTIVA (enlace del POS
+   * `?cliente=<id>`, renovación de membresías). Filtra por organización
+   * además del RLS: un id de otra organización del mismo usuario no pasa.
+   */
+  static async existeClienteEnOrganizacion(customerId: string): Promise<boolean> {
+    if (this.usesLocalCatalog()) {
+      return !!(await posOfflineReads.getCustomerById(this.organizationId, customerId));
+    }
+    const { data, error } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('organization_id', this.organizationId)
+      .eq('id', customerId)
+      .maybeSingle();
+    if (error) throw error;
+    return !!data;
+  }
+
   static async setCartCustomer(cartId: string, customerId?: string): Promise<Cart> {
     try {
       const carts = this.readAllCarts();
@@ -1781,7 +1800,13 @@ export class POSService {
         // Mismo cierre de carrito que el camino de siempre (y misma emisión a
         // la pantalla del cliente desde saveCartsToStorage).
         await this.removeCart(cart.id);
-        return { ...rpcResult.sale, replayed: rpcResult.replayed };
+        // Membresías creadas/activadas por el cobro (misma transacción): las
+        // pinta el post-venta (frame D2). Solo se agregan si las hay.
+        return {
+          ...rpcResult.sale,
+          replayed: rpcResult.replayed,
+          ...(rpcResult.membresias.length > 0 ? { membresias: rpcResult.membresias } : {}),
+        };
       }
       throw new Error(
         'No se pudo registrar la venta: el servicio de cobro no está disponible. '
@@ -2032,7 +2057,9 @@ export class POSService {
         created_at: data.created_at,
         updated_at: data.updated_at,
         tag_id: data.tag_id,
-        parent_product_id: data.parent_product_id
+        parent_product_id: data.parent_product_id,
+        // Membresía (P1): el carrito exige cliente titular para esta línea.
+        service_type: data.service_type ?? null
       };
     } catch (error) {
       console.error('Error getting product by id:', error);

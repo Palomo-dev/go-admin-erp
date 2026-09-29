@@ -22,6 +22,7 @@ import {
   type EstadoFormularioProducto,
   type OpcionesDuplicar,
 } from '../logica/formularioProducto';
+import { membresiaFormInicial, preseleccionDesdeUrl } from '../logica/membresiaProducto';
 import { cargarCatalogos, generarSkuSugerido, idProductoPorUuid, leerPermisos } from './cargarCatalogos';
 import { CATALOGOS_VACIOS, type CatalogosFormulario } from './tipos';
 
@@ -45,6 +46,11 @@ export interface OpcionesUseProductoForm {
    * facturas o «Crear ingrediente») no debe leer el borrador del formulario de fondo.
    */
   conBorrador?: boolean;
+  /**
+   * Crear en página: lee `?tipo=servicio&servicio=membresia` (botón «Nuevo plan» de
+   * Membresías) para preseleccionar Servicio › Membresía. El diálogo no la usa.
+   */
+  leerPreseleccionUrl?: boolean;
 }
 
 const huella = (e: EstadoFormularioProducto | null): string => (e ? JSON.stringify(e) : '');
@@ -68,7 +74,13 @@ export function leerBorrador(texto: string | null | undefined): EstadoFormulario
     const e = JSON.parse(texto) as EstadoFormularioProducto;
     const valido =
       !!e && typeof e === 'object' && typeof e.sku === 'string' && !!e.receta && Array.isArray(e.variantes) && Array.isArray(e.imagenes);
-    return valido ? e : null;
+    if (!valido) return null;
+    // Borradores de antes del tipo de servicio y la membresía (2026-09-29).
+    return {
+      ...e,
+      service_type: e.service_type ?? 'standard',
+      membresia: { ...membresiaFormInicial(), ...(e.membresia ?? {}) },
+    };
   } catch {
     return null;
   }
@@ -123,7 +135,14 @@ export function conRecetas(
   };
 }
 
-export function useProductoForm({ modo, productUuid, organizacionId, sufijos, conBorrador = true }: OpcionesUseProductoForm) {
+export function useProductoForm({
+  modo,
+  productUuid,
+  organizacionId,
+  sufijos,
+  conBorrador = true,
+  leerPreseleccionUrl = false,
+}: OpcionesUseProductoForm) {
   const [fase, setFase] = useState<FaseFormulario>('cargando');
   const [errorCarga, setErrorCarga] = useState<unknown>(null);
   const [catalogos, setCatalogos] = useState<CatalogosFormulario>(CATALOGOS_VACIOS);
@@ -147,13 +166,20 @@ export function useProductoForm({ modo, productUuid, organizacionId, sufijos, co
   const estadoNuevo = useCallback(async (cat: CatalogosFormulario, org: number): Promise<EstadoFormularioProducto> => {
     const e = estadoInicial(cat.sucursales);
     e.impuestos = cat.impuestos.filter((i) => i.is_default).map((i) => i.id);
+    const pre = leerPreseleccionUrl && typeof window !== 'undefined' ? preseleccionDesdeUrl(window.location.search) : null;
+    if (pre) {
+      // Servicio ⇒ sin inventario (como el selector Producto/Servicio).
+      e.product_type = pre.product_type;
+      e.service_type = pre.service_type;
+      e.track_stock = false;
+    }
     try {
       e.sku = await generarSkuSugerido(org);
     } catch {
       e.sku = `PROD-${Date.now().toString(36).toUpperCase()}`;
     }
     return e;
-  }, []);
+  }, [leerPreseleccionUrl]);
 
   const desdeDatos = useCallback(
     (d: DatosFormularioProducto, copiar?: OpcionesDuplicar): EstadoFormularioProducto => {

@@ -8,6 +8,8 @@ import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda'
 import { teclaAtajo } from '@/lib/pos/venta/atajos';
 import { hayRafagaDelLector } from '@/hooks/useHardwareBarcodeScanner';
 import { enterCompletaVenta } from '@/components/pos/venta/cobro/teclasCobro';
+import { MembresiasVendidas } from '@/components/pos/venta/MembresiasVendidas';
+import type { MembresiaVendida } from '@/lib/pos/venta/membresias';
 
 /**
  * Post-venta del POS (POS-PLAN paso 13, Figma `247:74846` / `247:75030`): el
@@ -17,6 +19,9 @@ import { enterCompletaVenta } from '@/components/pos/venta/cobro/teclasCobro';
  * Aviso del recibo automático (sin badge «Nuevo»): enviado a la impresora de
  * caja, sin impresora de caja, sin sucursal o con error. Sin conexión
  * (Desktop), la variante «Pendiente de sincronizar · OFF-…».
+ *
+ * Membresías (frame D2 `986:615576`): si el cobro creó, activó o renovó
+ * membresías, una tarjeta por cada una (`MembresiasVendidas`).
  *
  * Solo dibuja y registra los atajos: imprimir, la factura y entregar la venta
  * a la pantalla (`onCheckoutComplete`) siguen en `CheckoutDialog`.
@@ -43,6 +48,10 @@ export interface PostVentaProps {
   onCerrar: () => void;
   /** Atajos activos (el panel abierto y sin otro diálogo encima). */
   activo: boolean;
+  /** Membresías que creó, activó o renovó la venta (frame D2). */
+  membresias?: readonly MembresiaVendida[];
+  /** Nombre del cliente titular de esas membresías. */
+  titular?: string | null;
 }
 
 export function PostVenta({
@@ -61,6 +70,8 @@ export function PostVenta({
   onFactura,
   onCerrar,
   activo,
+  membresias,
+  titular,
 }: PostVentaProps) {
   const t = useTranslations('posCobro.postVenta');
   const tAtajos = useTranslations('posVenta.atajos');
@@ -86,11 +97,20 @@ export function PostVenta({
   const secundarias: AccionResultado[] = [{ etiqueta: t('reimprimir'), onClick: onReimprimir, atajo: teclaAtajo('reimprimir'), icono: Printer }];
   if (conFactura) secundarias.push({ etiqueta: t('factura'), onClick: onFactura, atajo: teclaAtajo('factura'), icono: FileCheck2 });
 
-  const aviso = estadoRecibo ? (
+  const avisoRecibo = estadoRecibo ? (
     <p role={estadoRecibo === 'error' || estadoRecibo === 'sinImpresora' ? 'alert' : undefined}>
       {estadoRecibo === 'error' ? t('recibo.error', { detalle: detalleRecibo ?? '' }) : t(`recibo.${estadoRecibo}`)}
     </p>
-  ) : undefined;
+  ) : null;
+  // D2: las membresías de la venta van en el hueco del aviso (el kit no tiene
+  // otro entre las cifras y las acciones), antes del aviso del recibo.
+  const vendidas = membresias ?? [];
+  const aviso = vendidas.length > 0 ? (
+    <div className="flex flex-col gap-2">
+      <MembresiasVendidas membresias={vendidas}ventaPagada={pagado >= total} titular={titular} />
+      {avisoRecibo}
+    </div>
+  ) : (avisoRecibo ?? undefined);
 
   return (
     <ResultadoOperacion

@@ -109,9 +109,11 @@ interface CartViewProps {
   requiereCaja?: boolean;
   /** «Abrir caja para cobrar · F9»: abre el diálogo de apertura (lo monta la página). */
   onAbrirCaja?: () => void;
+  /** F4 con una membresía sin cliente (`sin-cliente`, P1): abre el selector del titular. */
+  onPedirCliente?: () => void;
 }
 
-export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true, atajosActivos = true, requiereCaja = true, onAbrirCaja }: CartViewProps) {
+export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true, atajosActivos = true, requiereCaja = true, onAbrirCaja, onPedirCliente }: CartViewProps) {
   const { timezone } = useOrgTimezone();
   // «Descuento · D» (paso 10): diálogo con la pestaña «A un producto».
   const [showDiscountDialog, setShowDiscountDialog] = useState(false);
@@ -673,6 +675,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   const cobrar = () => {
     if (estadoCobrar === 'listo') onCheckout(cart);
     else if (estadoCobrar === 'sin-caja') onAbrirCaja?.();
+    else if (estadoCobrar === 'sin-cliente') onPedirCliente?.();
   };
 
   // Atajos del carrito (POS-UX-V2 §3): F4 cobrar, F6 espera/reactivar, F7

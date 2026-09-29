@@ -93,6 +93,7 @@ export interface CatalogProduct {
   tag_id: number | null;
   station: string | null;
   product_type: string | null;
+  service_type?: string | null;
   production_type: string | null;
   is_composite: boolean | null;
   brand: string | null;

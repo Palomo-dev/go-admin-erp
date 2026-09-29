@@ -10,6 +10,17 @@ import {
   validarRecetaForm,
   type RecetaForm,
 } from '@/components/kit/receta/recetaLogica';
+import {
+  esTipoServicio,
+  membresiaDesdeServidor,
+  membresiaFormInicial,
+  payloadMembresia,
+  validarMembresia,
+  type CampoMembresia,
+  type CodigoValidacionMembresia,
+  type MembresiaForm,
+  type TipoServicio,
+} from './membresiaProducto';
 import { validarPatron } from './seriales';
 import { claveAtributos, nombreVariante, type Atributos } from './variantes';
 
@@ -25,6 +36,7 @@ export type SeccionFormulario =
   | 'informacion'
   | 'precios'
   | 'impuestos'
+  | 'membresia'
   | 'inventario'
   | 'variantes'
   | 'modificadores'
@@ -37,6 +49,7 @@ export const SECCIONES_FORMULARIO: readonly SeccionFormulario[] = [
   'informacion',
   'precios',
   'impuestos',
+  'membresia',
   'inventario',
   'variantes',
   'modificadores',
@@ -64,7 +77,9 @@ export type CampoFormulario =
   | 'barcode'
   | 'proveedor'
   | 'dimensiones'
-  | 'receta';
+  | 'receta'
+  | 'service_type'
+  | CampoMembresia;
 
 /** Sección donde vive cada campo (índice lateral y paso del stepper móvil). */
 export const SECCION_DE_CAMPO: Record<CampoFormulario, SeccionFormulario> = {
@@ -86,6 +101,15 @@ export const SECCION_DE_CAMPO: Record<CampoFormulario, SeccionFormulario> = {
   proveedor: 'organizacion',
   dimensiones: 'avanzado',
   receta: 'avanzado',
+  service_type: 'informacion',
+  membresia_duracion: 'membresia',
+  membresia_cobro: 'membresia',
+  membresia_gracia: 'membresia',
+  membresia_activacion: 'membresia',
+  membresia_congelamiento: 'membresia',
+  membresia_sedes: 'membresia',
+  membresia_horario: 'membresia',
+  membresia_entradas: 'membresia',
 };
 
 /** Códigos de validación: son claves i18n en `productoForm.errores.*`. */
@@ -118,7 +142,9 @@ export type CodigoValidacion =
   | 'variantes_activas'
   | 'receta_sin_ingredientes'
   | 'receta_con_errores'
-  | 'receta_al_producir_sin_inventario';
+  | 'receta_al_producir_sin_inventario'
+  | 'membresia_con_variantes'
+  | CodigoValidacionMembresia;
 
 export type ErroresFormulario = Partial<Record<CampoFormulario, CodigoValidacion>>;
 
@@ -208,6 +234,8 @@ export interface EstadoFormularioProducto {
   sku: string;
   name: string;
   product_type: 'product' | 'service';
+  /** «¿Qué tipo de servicio es?» (products.service_type); solo cuenta si es servicio. */
+  service_type: TipoServicio;
   status: 'active' | 'inactive' | 'discontinued';
   category_id: number | null;
   categorias_adicionales: number[];
@@ -264,6 +292,8 @@ export interface EstadoFormularioProducto {
    * variante exista (docs/design/PRODUCTO-RECETAS-Y-SUBSECCIONES.md §2.2).
    */
   receta: RecetaForm;
+  /** «Configuración de membresía»: solo se envía si es servicio de tipo membresía. */
+  membresia: MembresiaForm;
 }
 
 export interface SucursalBasica {
@@ -335,6 +365,7 @@ export function estadoInicial(sucursales: readonly SucursalBasica[] = []): Estad
     sku: '',
     name: '',
     product_type: 'product',
+    service_type: 'standard',
     status: 'active',
     category_id: null,
     categorias_adicionales: [],
@@ -368,6 +399,7 @@ export function estadoInicial(sucursales: readonly SucursalBasica[] = []): Estad
     height_cm: null,
     nota: '',
     receta: recetaFormInicial(),
+    membresia: membresiaFormInicial(),
   };
 }
 
@@ -400,6 +432,7 @@ export function estadoDesdeDatos(
     sku: dup ? `${s(p.sku)}${sufijos.sku}` : s(p.sku),
     name: dup ? `${s(p.name)}${sufijos.nombre}` : s(p.name),
     product_type: p.product_type === 'service' ? 'service' : 'product',
+    service_type: esTipoServicio(p.service_type) ? p.service_type : 'standard',
     status: (['active', 'inactive', 'discontinued'].includes(s(p.status)) ? s(p.status) : 'active') as EstadoFormularioProducto['status'],
     category_id: n(p.category_id),
     categorias_adicionales: dup && !copiar.categorias ? [] : [...datos.categorias_adicionales],
@@ -517,6 +550,8 @@ export function estadoDesdeDatos(
     nota: '',
     // Las recetas llegan aparte (fn_producto_recetas_para_formulario): ver recetaFormDesdeServidor.
     receta: { ...recetaFormInicial(), activa: Boolean(p.is_composite), modo: p.production_type === 'preparation' ? 'al_producir' : 'al_vender' },
+    // El plan viaja con el producto (también al duplicar: la copia es otro plan con las mismas reglas).
+    membresia: membresiaDesdeServidor(datos.membresia),
   };
   // Duplicar con imágenes y sin principal marcada: la primera.
   if (estado.imagenes.length > 0 && !estado.imagenes.some((i) => i.is_primary)) {
@@ -627,7 +662,17 @@ export function validarFormulario(
     excluirIds: idsPropios(e, contexto.productId),
   });
   if (errReceta) err.receta = errReceta;
+  if (esMembresia(e)) {
+    // Cada plan es un producto: una membresía no lleva variantes (la base también lo rechaza).
+    if (e.tiene_variantes) err.service_type = 'membresia_con_variantes';
+    Object.assign(err, validarMembresia(e.membresia));
+  }
   return err;
+}
+
+/** Servicio de tipo membresía: muestra «Configuración de membresía» y envía `payload.membresia`. */
+export function esMembresia(e: Pick<EstadoFormularioProducto, 'product_type' | 'service_type'>): boolean {
+  return e.product_type === 'service' && e.service_type === 'membership';
 }
 
 /** El producto y sus variantes: no pueden ser ingredientes de su propia receta. */
@@ -705,6 +750,20 @@ export function campoDeErrorRpc(codigo: CodigoErrorProducto): CampoFormulario | 
     case 'receta_destino_repetido':
     case 'receta_al_producir_sin_inventario':
       return 'receta';
+    case 'tipo_servicio_invalido':
+    case 'membresia_con_variantes':
+    case 'membresia_con_contratos':
+    case 'plan_producto_invalido':
+      return 'service_type';
+    case 'membresia_unidad_invalida':
+    case 'membresia_duracion_invalida':
+      return 'membresia_duracion';
+    case 'membresia_cobro_invalido':
+      return 'membresia_cobro';
+    case 'membresia_gracia_invalida':
+      return 'membresia_gracia';
+    case 'membresia_sede_invalida':
+      return 'membresia_sedes';
     default:
       return null;
   }
@@ -721,7 +780,15 @@ const limpio = (t: string): string | null => (t.trim() === '' ? null : t.trim())
 export function construirPayload(
   e: EstadoFormularioProducto,
   modo: ModoFormularioProducto,
-  opciones: { productId?: number; rutas?: Record<string, string> } = {},
+  opciones: {
+    productId?: number;
+    rutas?: Record<string, string>;
+    /**
+     * Enviar la configuración de la membresía (exige memberships.plans.manage). Sin permiso
+     * no se envía: un producto nuevo recibe el plan por defecto y uno existente conserva el suyo.
+     */
+    conMembresia?: boolean;
+  } = {},
 ): PayloadGuardarProducto {
   const rastrea = e.track_stock && e.product_type !== 'service';
   const rutas = opciones.rutas ?? {};
@@ -737,6 +804,7 @@ export function construirPayload(
       unit_code: e.unit_code || 'UN',
       station: e.station,
       product_type: e.product_type,
+      service_type: e.product_type === 'service' ? e.service_type : null,
       status: e.status,
       brand: limpio(e.brand),
       reference: limpio(e.reference),
@@ -847,6 +915,8 @@ export function construirPayload(
     e.tiene_variantes,
     e.tiene_variantes ? e.variantes.map((v) => v.clave) : [],
   );
+
+  if (esMembresia(e) && opciones.conMembresia !== false) payload.membresia = payloadMembresia(e.membresia);
 
   if (e.nota.trim()) payload.nota = e.nota;
   return payload;

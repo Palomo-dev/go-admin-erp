@@ -12,19 +12,28 @@
  * - «Deuda» exige cliente y un carrito que no esté en espera ni en deuda. El
  *   servicio (`POSService.holdCartWithDebt`) exige además líneas, total > 0 y
  *   estado activo, y rechaza con su mensaje lo que el botón deja pasar.
+ * - Membresías (P1 de docs/design/MEMBRESIAS-FASE-1-2.md, decisión del dueño,
+ *   amplía L33): una línea membresía exige cliente titular. Sin cliente el
+ *   botón queda en `sin-cliente` («Las membresías necesitan el cliente
+ *   titular»); `pos_checkout_v1` rechaza igual con `membresia_sin_cliente`.
  */
 import type { Cart } from '@/components/pos/types';
+import { membresiaSinCliente } from '@/lib/pos/venta/membresias';
 
-export type EstadoBotonCobrar = 'sin-caja' | 'vacio' | 'bloqueado' | 'listo';
+export type EstadoBotonCobrar = 'sin-caja' | 'sin-cliente' | 'vacio' | 'bloqueado' | 'listo';
 
-type CarritoParaCobrar = Pick<Cart, 'items' | 'status'>;
+type CarritoParaCobrar = Pick<Cart, 'items' | 'status'> & Partial<Pick<Cart, 'customer_id'>>;
 
 /**
  * Estado del botón «Cobrar» del carrito:
  * - `vacio`: sin líneas (hoy la botonera ni se pinta);
  * - `bloqueado`: en espera o en deuda (deshabilitado);
+ * - `sin-cliente`: lleva una membresía y no tiene cliente (deshabilitado con motivo);
  * - `sin-caja`: no hay caja abierta y la organización la exige («Abrir caja para cobrar · F9»);
  * - `listo`: se puede cobrar.
+ *
+ * `sin-cliente` va antes que `sin-caja`: abrir la caja no basta para cobrar
+ * una membresía sin titular, y el motivo dice qué falta en el carrito.
  */
 export function estadoBotonCobrar({ caja, config, carrito }: {
   caja: boolean;
@@ -33,6 +42,7 @@ export function estadoBotonCobrar({ caja, config, carrito }: {
 }): EstadoBotonCobrar {
   if (carrito.items.length === 0) return 'vacio';
   if (carrito.status === 'hold' || carrito.status === 'hold_with_debt') return 'bloqueado';
+  if (membresiaSinCliente(carrito)) return 'sin-cliente';
   if (!caja && config?.requiereCaja !== false) return 'sin-caja';
   return 'listo';
 }

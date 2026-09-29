@@ -436,7 +436,7 @@ export async function detalleMembresia(ctx: ServerOrgContext, id: number): Promi
   const freezes = (congelamientos.data ?? []) as Fila[];
   const usado = freezes
     .filter((f) => f.status !== 'cancelled')
-    .reduce((acc, f) => ({ dias: acc.dias + numero(f.days_frozen), veces: acc.veces + 1 }), { dias: 0, veces: 0 });
+    .reduce<{ dias: number; veces: number }>((acc, f) => ({ dias: acc.dias + numero(f.days_frozen), veces: acc.veces + 1 }), { dias: 0, veces: 0 });
 
   const snapshot = (r.plan_snapshot as Fila | null) ?? (plan.data as Fila | null);
   const productId = numeroONulo(r.product_id) ?? numeroONulo((plan.data as Fila | null)?.product_id);
@@ -504,7 +504,7 @@ async function preciosVigentes(ctx: ServerOrgContext, productIds: number[]): Pro
 async function planesConDatos(ctx: ServerOrgContext, soloId?: number): Promise<Array<PlanFila & { categoria: string | null; creado: string | null }>> {
   let q = ctx.supabase
     .from('membership_plans')
-    .select('*, products(id, sku, name, status, description, categories(name))')
+    .select('*, products(id, uuid, sku, name, status, description, categories(name))')
     .eq('organization_id', ctx.organizationId)
     .order('name');
   if (soloId) q = q.eq('id', soloId);
@@ -539,6 +539,7 @@ async function planesConDatos(ctx: ServerOrgContext, soloId?: number): Promise<A
       nombre: texto(prod?.name) ?? String(p.name),
       descripcion: texto(prod?.description) ?? texto(p.description),
       productId: pid,
+      productUuid: texto(prod?.uuid),
       sku: texto(prod?.sku),
       estadoProducto: texto(prod?.status),
       activo: p.is_active !== false && (texto(prod?.status) ?? 'active') === 'active',
@@ -730,12 +731,22 @@ export async function listarPagos(
   const memPorLinea = new Map<string, number>();
   for (const m of (membresias ?? []) as Fila[]) memPorLinea.set(String(m.sale_item_id), numero(m.id));
 
-  let totalImporte = 0;
+  // Total del periodo completo (no solo la página).
+  let qTotal = ctx.supabase
+    .from('sale_items')
+    .select('total, sales!inner(organization_id, sale_date)')
+    .in('product_id', ids)
+    .eq('sales.organization_id', ctx.organizationId)
+    .gt('quantity', 0)
+    .limit(10000);
+  if (filtros.desde) qTotal = qTotal.gte('sales.sale_date', plainDateToInstant(filtros.desde, tz, '00:00'));
+  if (filtros.hasta) qTotal = qTotal.lte('sales.sale_date', plainDateToInstant(filtros.hasta, tz, '23:59:59'));
+  const { data: todos } = await qTotal;
+  const totalImporte = ((todos ?? []) as Fila[]).reduce((suma, i) => suma + numero(i.total), 0);
   const filas: PagoFila[] = items.map((i) => {
     const venta = uno(i.sales as Fila | Fila[] | null);
     const c = uno(venta?.customers as Fila | Fila[] | null);
     const f = fact.get(String(i.sale_id));
-    totalImporte += numero(i.total);
     return {
       saleItemId: String(i.id),
       saleId: String(i.sale_id),

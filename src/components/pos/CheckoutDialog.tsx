@@ -39,6 +39,7 @@ import { isDesktop } from '@/lib/utils/desktop';
 import { newSaleId, ticketSaleNumber } from '@/lib/offline/salesOutbox';
 import { useTranslations } from 'next-intl';
 import { codigoErrorCobro, detalleErrorCobro } from '@/lib/pos/erroresCobro';
+import { esErrorMembresiaSinCliente } from '@/lib/pos/venta/membresias';
 import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
 import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
 // Lógica pura del cobro extraída LITERAL (POS-PLAN §2.6 L41–L52, paso 1):
@@ -98,6 +99,11 @@ interface CheckoutDialogProps {
     city?: string;
     phone?: string;
   };
+  /**
+   * La base rechazó el cobro con `membresia_sin_cliente` (P1): la pantalla
+   * cierra el cobro y abre el selector del titular. Sin él solo se avisa.
+   */
+  onPedirCliente?: () => void;
 }
 
 interface PaymentEntry {
@@ -106,7 +112,8 @@ interface PaymentEntry {
   amount: number;
 }
 
-export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, onProcessPayment, organization, currentUser, branch }: CheckoutDialogProps) {
+export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, onProcessPayment, organization, currentUser, branch, onPedirCliente }: CheckoutDialogProps) {
+  const tMembresias = useTranslations('membresias');
   const { timezone } = useOrgTimezone();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [currency, setCurrency] = useState<Currency | null>(null);
@@ -1500,6 +1507,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // Haptic feedback de error (no-op en web)
       hapticNotification('error');
       hapticImpact('heavy');
+      // P1: una membresía sin cliente titular; la base no guardó nada.
+      if (esErrorMembresiaSinCliente(error)) {
+        toast.error(tMembresias('errores.membresia_sin_cliente'));
+        onPedirCliente?.();
+        return;
+      }
       // Rechazos del servidor con código estable (precio, descuento, línea…)
       // se muestran traducidos; el resto, como llegan.
       const codigo = codigoErrorCobro(error);
@@ -1958,6 +1971,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             onFactura={handleImprimirFactura}
             onCerrar={handleCloseReceipt}
             activo={open && !showQrDialog && !showSerialSelector && !stockConfirm}
+            membresias={completedSale.membresias}
+            titular={cart.customer?.full_name ?? null}
           />
         ) : (
           <>

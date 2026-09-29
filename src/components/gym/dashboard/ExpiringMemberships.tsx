@@ -69,7 +69,7 @@ export function ExpiringMemberships({ memberships, isLoading, onExport }: Expiri
               return (
                 <Link
                   key={membership.id}
-                  href={`/app/gym/membresias/${membership.id}`}
+                  href={`/app/membresias/membresias/${membership.id}`}
                   className="flex flex-wrap items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
                   <div className="flex-1 min-w-0">
@@ -105,7 +105,7 @@ export function ExpiringMemberships({ memberships, isLoading, onExport }: Expiri
         
         {memberships.length > 0 && (
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <Link href="/app/gym/membresias?filter=expiring">
+            <Link href="/app/membresias/membresias?estado=por_vencer">
               <Button variant="outline" size="sm" className="w-full">
                 Ver todas las membresías
                 <ChevronRight className="h-4 w-4 ml-2" />

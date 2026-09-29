@@ -29,6 +29,7 @@ export interface BarraCobroMovilProps {
 
 export function BarraCobroMovil({ unidades, total, estado, onVerCarrito, onCobrar, onAbrirCaja }: BarraCobroMovilProps) {
   const t = useTranslations('posVenta.barraMovil');
+  const tMembresias = useTranslations('membresias.pos');
   const sinCaja = estado === 'sin-caja';
   return (
     <div
@@ -64,6 +65,7 @@ export function BarraCobroMovil({ unidades, total, estado, onVerCarrito, onCobra
             icono={CreditCard}
             atajo={teclaAtajo('cobrar')}
             estado={estado === 'listo' ? 'listo' : 'deshabilitado'}
+            motivo={estado === 'sin-cliente' ? tMembresias('motivoSinCliente') : undefined}
             onClick={onCobrar}
             tamano="lg"
           />

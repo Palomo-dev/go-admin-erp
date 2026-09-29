@@ -9373,7 +9373,20 @@
       "receta_ingrediente_repetido": "Un ingrediente está repetido en la receta con la misma unidad: fusiónalo.",
       "receta_variante_desconocida": "La receta apunta a una variante que ya no está en el formulario.",
       "receta_destino_repetido": "Hay dos recetas para el mismo producto o variante.",
-      "guardado_en_curso": "Este guardado ya se está procesando. Espera un momento y vuelve a intentarlo."
+      "guardado_en_curso": "Este guardado ya se está procesando. Espera un momento y vuelve a intentarlo.",
+      "tipo_servicio_invalido": "El tipo de servicio no es válido.",
+      "membresia_con_variantes": "Una membresía no puede tener variantes: quítalas o elige otro tipo de servicio.",
+      "membresia_con_contratos": "Este producto tiene membresías vigentes: no puede dejar de ser membresía.",
+      "membresia_unidad_invalida": "La unidad de duración no es válida.",
+      "membresia_duracion_invalida": "La duración debe ser un número entero de 1 o más.",
+      "membresia_cobro_invalido": "La forma de cobro no es válida.",
+      "membresia_gracia_invalida": "Los días de gracia deben ser 0 o más.",
+      "membresia_sede_invalida": "Una de las sedes no pertenece a la organización.",
+      "plan_producto_invalido": "El plan debe ligarse a un producto membresía de la misma organización.",
+      "membresia_ventana_invalida": "Los días para activarse deben ser 1 o más.",
+      "membresia_tope_invalido": "Los topes deben ser números enteros de 0 o más.",
+      "membresia_horario_dias": "Elige al menos un día de la semana.",
+      "membresia_horario_invalido": "Revisa la franja: «Desde» debe ser anterior a «Hasta» (sin cruzar la medianoche)."
     },
     "imagenes": {
       "insignias": {
@@ -9671,6 +9684,77 @@
       "avanzado": {
         "titulo": "Avanzado",
         "descripcion": "Envío, nota interna y receta: ingredientes, rendimiento, merma, costo y cómo se descuenta el inventario."
+      },
+      "membresia": {
+        "titulo": "Configuración de membresía",
+        "descripcion": "Duración, renovación, cobro, congelamientos y acceso.",
+        "nota": "Al guardar se crea o actualiza el plan ligado a este producto. El precio es el del producto.",
+        "sinPermiso": "Necesitas el permiso «Gestionar planes» de Membresías para cambiar esta configuración. Al guardar se conserva la actual (o el plan por defecto: 1 mes, por adelantado).",
+        "sinVariantes": "Una membresía no lleva variantes: cada plan es un producto. Para otra duración o precio, crea otro producto membresía.",
+        "duracion": "Duración",
+        "duracionAyuda": "Cuánto dura cada período pagado. Una renovación suma otro período al final del vigente.",
+        "duracionPresets": "Duraciones frecuentes",
+        "personalizada": "Personalizada",
+        "cantidad": "Cantidad",
+        "unidad": "Unidad",
+        "unidades": {
+          "day": "Días",
+          "week": "Semanas",
+          "month": "Meses",
+          "year": "Años"
+        },
+        "ejemplo": "Ejemplo: pagada el {desde}, vence el {hasta}.",
+        "renovacionCobro": "Renovación y cobro",
+        "renovacionManual": "Renovación manual",
+        "renovacionManualAyuda": "El cliente vuelve a pagar el mismo producto (POS, factura o tienda) y la vigencia se extiende desde el vencimiento.",
+        "renovacionAutomatica": "Renovación automática",
+        "renovacionAutomaticaAyuda": "Cobro recurrente a la tarjeta del cliente. Llega cuando una pasarela guarde tarjetas.",
+        "fasePosterior": "Más adelante",
+        "formaCobro": "Forma de cobro",
+        "cobroAdelantado": "Por adelantado",
+        "cobroCredito": "A crédito",
+        "gracia": "Período de gracia",
+        "graciaAyuda": "Días tras el vencimiento en que todavía puede entrar.",
+        "dias": "días",
+        "veces": "veces",
+        "alDia": "al día",
+        "inicioCongelamientos": "Inicio y congelamientos",
+        "requiereActivacion": "Requiere activación",
+        "requiereActivacionAyuda": "La vigencia empieza con la primera entrada (check-in), no el día del pago.",
+        "ventanaActivacion": "Se activa sola a los",
+        "ventanaActivacionAyuda": "Si no entra en estos días, la vigencia empieza igual. Vacío = espera sin límite.",
+        "sinLimite": "Sin límite",
+        "permiteCongelar": "Permite congelar",
+        "permiteCongelarAyuda": "El cliente puede pausar su membresía; los días congelados se suman al vencimiento.",
+        "maxVeces": "Máximo de veces por período",
+        "maxDias": "Máximo de días en total",
+        "vacioSinTope": "Vacío = sin tope.",
+        "vacioSinLimite": "Vacío = sin límite.",
+        "acceso": "Acceso",
+        "accesoAyuda": "Se valida en el check-in. Sin reglas = cualquier sede, cualquier hora.",
+        "sedes": "Sedes permitidas",
+        "sedesAyuda": "Vacío = todas las sedes de la organización.",
+        "sedesPlaceholder": "Añadir sede…",
+        "sedesBuscar": "Buscar sede…",
+        "sedesVacio": "No hay sedes que coincidan",
+        "quitarSede": "Quitar {nombre}",
+        "horario": "Horario",
+        "horarioTodo": "Todo el horario",
+        "horarioFranja": "Franja horaria",
+        "desde": "Desde",
+        "hasta": "Hasta",
+        "diasSemana": "Días de la semana",
+        "limiteDiario": "Límite diario de entradas",
+        "resumen": "Así lo verá el cajero: «{texto}». Al pagar se crea la membresía del cliente.",
+        "resumenSinNombre": "Sin nombre",
+        "resumenSinPrecio": "sin precio",
+        "resumenTodasSedes": "todas las sedes",
+        "resumenTodosLosDias": "todos los días",
+        "resumenCualquierHora": "cualquier hora",
+        "resumenCongelarVeces": "hasta {n, plural, one {# congelamiento} other {# congelamientos}}",
+        "resumenCongelarLibre": "congelamientos sin tope",
+        "resumenCongelarDias": "{n, plural, one {# día} other {# días}}",
+        "errorSinPermiso": "No se guardó nada: configurar una membresía exige el permiso «Gestionar planes» de Membresías (además de editar productos)."
       }
     },
     "informacion": {
@@ -9708,7 +9792,38 @@
       "mejorarIA": "Mejorar con IA",
       "mejorando": "Mejorando…",
       "mejorarSinNombre": "Escribe primero el nombre del producto",
-      "errorIA": "No se pudo mejorar la descripción. Intenta de nuevo."
+      "errorIA": "No se pudo mejorar la descripción. Intenta de nuevo.",
+      "tipoServicioPregunta": "¿Qué tipo de servicio es?",
+      "tipoServicioAyuda": "Define qué pasa cuando se vende.",
+      "tipoServicioNota": "Solo «Membresía» abre configuración por ahora; los demás tipos se guardan y se aprovecharán más adelante.",
+      "tipoServicioConVariantes": "Quita las variantes para convertirlo en membresía: cada plan es un producto.",
+      "tipoServicioConVivas": "Este producto tiene {n, plural, one {# membresía vigente} other {# membresías vigentes}}: no puede dejar de ser membresía mientras existan.",
+      "tipoServicioOpciones": {
+        "standard": {
+          "titulo": "Estándar",
+          "descripcion": "Se cobra y listo: asesoría, domicilio, instalación."
+        },
+        "membership": {
+          "titulo": "Membresía",
+          "descripcion": "Da acceso por un tiempo: mensualidad, anualidad, pase de día."
+        },
+        "session_pack": {
+          "titulo": "Paquete de sesiones",
+          "descripcion": "Un número de usos: 10 clases, 5 masajes."
+        },
+        "class": {
+          "titulo": "Clase",
+          "descripcion": "Un cupo en un horario con capacidad."
+        },
+        "course": {
+          "titulo": "Curso",
+          "descripcion": "Inscripción con fecha de inicio y fin."
+        },
+        "appointment": {
+          "titulo": "Cita",
+          "descripcion": "Se agenda con un profesional y una hora."
+        }
+      }
     },
     "precios": {
       "precioVenta": "Precio de venta",
@@ -14989,6 +15104,1395 @@
       "membresia_sin_cliente": "Una membresía necesita el cliente titular: elige el cliente antes de cobrar.",
       "datos_invalidos": "Revisa los datos del formulario.",
       "error_interno": "Algo falló. Inténtalo de nuevo."
+    },
+    "pos": {
+      "motivoSinCliente": "Las membresías necesitan el cliente titular",
+      "dialogo": {
+        "titulo": "¿A nombre de quién es la membresía?",
+        "descripcion": "«{producto}» es una membresía: al pagar se activa para este cliente. Elige o crea el cliente.",
+        "etiquetaCliente": "Titular de la membresía",
+        "avisoRenovacion": "Si el cliente ya tiene esta membresía activa, la venta la renueva: la nueva vigencia empieza al terminar la actual.",
+        "pie": "Sin cliente no se puede cobrar una membresía.",
+        "despues": "Elegir después",
+        "quitar": "Quitar la membresía",
+        "asignar": "Asignar y agregar",
+        "motivoAsignar": "Elige primero el cliente titular.",
+        "errorQuitar": "No se pudo quitar la membresía del carrito. Inténtalo de nuevo."
+      },
+      "postVenta": {
+        "region": "{n, plural, one {Membresía de la venta} other {Membresías de la venta}}",
+        "titulo": {
+          "activa": "Membresía activada",
+          "por_activar": "Membresía lista: se activa con la primera entrada",
+          "pendiente_pago": "Membresía pendiente de pago",
+          "otra": "Membresía registrada"
+        },
+        "vigencia": "{desde} – {hasta}",
+        "codigo": "Código de acceso:",
+        "verMembresia": "Ver membresía",
+        "pestanaNueva": "(se abre en una pestaña nueva)"
+      },
+      "enlace": {
+        "clienteNoEncontrado": "El cliente del enlace no existe en esta organización.",
+        "productoNoEncontrado": "El producto del enlace no existe o no está activo."
+      }
+    },
+    "comun": {
+      "modulo": "Membresías",
+      "membresias": "Membresías",
+      "membresia": "Membresía",
+      "venderMembresia": "Vender membresía",
+      "nMembresias": "{count, plural, one {# membresía} other {# membresías}}",
+      "sustantivo": {
+        "singular": "membresía",
+        "plural": "membresías"
+      },
+      "accesos": {
+        "titulo": "Accesos rápidos",
+        "vender": "Vender membresía",
+        "checkin": "Check-in",
+        "planes": "Planes",
+        "miembros": "Miembros",
+        "pagos": "Pagos"
+      },
+      "vigencia": {
+        "quedan": "{dias, plural, =0 {Vence hoy} one {Queda # día} other {Quedan # días}}",
+        "graciaHasta": "Gracia hasta {fecha}",
+        "congelada": "Congelada: los días se suman al vencimiento",
+        "empiezaAlPagar": "Empieza al pagar",
+        "porActivar": "Se activa con la primera entrada",
+        "vencio": "Venció el {fecha}",
+        "cancelada": "Cancelada"
+      }
+    },
+    "pantalla": {
+      "cargando": "Cargando…",
+      "sinPermiso": {
+        "titulo": "No tienes acceso a Membresías",
+        "descripcion": "Pide al administrador de la organización el permiso «Ver membresías».",
+        "volver": "Volver al inicio"
+      },
+      "noEncontrada": {
+        "titulo": "No encontramos esa membresía",
+        "descripcion": "Puede que no exista o que sea de otra organización.",
+        "volver": "Ver membresías"
+      },
+      "error": {
+        "titulo": "No pudimos cargar la información",
+        "descripcion": "Revisa tu conexión y vuelve a intentarlo. Si sigue fallando, avísanos con el código {codigo}."
+      }
+    },
+    "listado": {
+      "subtituloActivas": "{count, plural, one {# activa} other {# activas}}",
+      "subtituloMovil": "{total, number} · {activas, plural, one {# activa} other {# activas}}",
+      "cargando": "Cargando membresías…",
+      "diasCorto": "{dias} d",
+      "error": "No pudimos cargar las membresías",
+      "sinResultados": "Prueba con otro nombre, documento o código, o quita los filtros.",
+      "kpis": {
+        "etiqueta": "Membresías por estado",
+        "activas": "Activas",
+        "activasDetalle": "{count, plural, one {de # membresía} other {de # membresías}}",
+        "porVencer": "Vencen en 7 días",
+        "porVencerDetalle": "Recordar renovación",
+        "nadaPorVencer": "Nada por vencer",
+        "enGracia": "En gracia",
+        "vencidasDetalle": "{count, plural, =0 {Ninguna vencida} one {# vencida} other {# vencidas}}",
+        "congeladas": "Congeladas",
+        "pendientesDetalle": "{count, plural, =0 {Ninguna pendiente de pago} one {# pendiente de pago} other {# pendientes de pago}}"
+      },
+      "buscar": {
+        "placeholder": "Buscar miembro, documento o código de acceso",
+        "etiqueta": "Buscar membresías"
+      },
+      "filtros": {
+        "titulo": "Filtros",
+        "estado": "Estado",
+        "plan": "Plan",
+        "todosLosPlanes": "Todos los planes",
+        "verN": "{count, plural, one {Ver # membresía} other {Ver # membresías}}",
+        "estados": {
+          "todas": "Todas",
+          "activa": "Activas",
+          "por_vencer": "Por vencer (7 días)",
+          "en_gracia": "En gracia",
+          "congelada": "Congeladas",
+          "pendiente": "Pendientes",
+          "vencida": "Vencidas",
+          "cancelada": "Canceladas"
+        }
+      },
+      "chips": {
+        "estado": "Estado: {estado}",
+        "plan": "Plan: {plan}",
+        "cliente": "Cliente: {cliente}"
+      },
+      "acciones": {
+        "ver": "Ver detalle",
+        "delCliente": "Membresías de este cliente"
+      },
+      "columnas": {
+        "miembro": "Miembro",
+        "plan": "Plan",
+        "vigencia": "Vigencia",
+        "estado": "Estado",
+        "origen": "Origen"
+      },
+      "vacio": {
+        "titulo": "Aún no hay membresías",
+        "descripcion": "Se crean solas cuando se cobra un producto de tipo «Membresía» en el POS, en una factura o en la tienda web. Empieza por crear el producto.",
+        "irAlPos": "Ir al POS",
+        "crearProducto": "Crear producto membresía"
+      }
+    },
+    "resumen": {
+      "titulo": "Resumen",
+      "subtitulo": "Resumen de hoy, {fecha}",
+      "subtituloMovil": "Resumen · hoy",
+      "cargando": "Cargando el resumen…",
+      "error": "No pudimos cargar el resumen",
+      "verTodos": "Ver todos",
+      "vencio": "Venció {fecha}",
+      "kpis": {
+        "etiqueta": "Cifras de membresías",
+        "activas": "Membresías activas",
+        "totalDetalle": "{count, plural, one {de # membresía} other {de # membresías}}",
+        "enGracia": "En gracia",
+        "enGraciaDetalle": "Vencidas que aún entran",
+        "porVencer": "Vencen en 7 días",
+        "porVencerDetalle": "Recuerda o cobra la renovación",
+        "nuevasMes": "Nuevas del mes",
+        "nuevasMesDetalle": "Vendidas este mes",
+        "ingresosMes": "Ingresos del mes",
+        "ingresosMesDetalle": "Ventas de productos membresía",
+        "entradasHoy": "Entradas hoy",
+        "entradasHoyCorto": "Hoy",
+        "entradasHoyDetalle": "Check-ins permitidos"
+      },
+      "vacio": {
+        "titulo": "Aún no hay membresías",
+        "descripcion": "Se crean solas cuando se cobra un producto de tipo «Membresía» en el POS, en una factura o en la tienda web. Empieza por crear el producto.",
+        "irAlPos": "Ir al POS",
+        "crearProducto": "Crear producto membresía"
+      },
+      "atencion": {
+        "titulo": "Requiere atención",
+        "nada": "Nada pendiente por ahora.",
+        "enGracia": {
+          "titulo": "{count, plural, one {{n} membresía en gracia} other {{n} membresías en gracia}}",
+          "descripcion": "Vencieron sin renovar; siguen entrando durante el período de gracia",
+          "accion": "Ver y cobrar"
+        },
+        "porVencer": {
+          "titulo": "{count, plural, one {{n} vence en los próximos 7 días} other {{n} vencen en los próximos 7 días}}",
+          "descripcion": "Recuerda al miembro o cobra la renovación",
+          "accion": "Ver"
+        },
+        "pendientes": {
+          "titulo": "{count, plural, one {{n} pendiente de pago} other {{n} pendientes de pago}}",
+          "descripcion": "Vendidas a crédito o sin pagar: no se activan hasta el pago",
+          "accion": "Ver"
+        },
+        "planesSinProducto": {
+          "titulo": "{count, plural, one {# plan sin producto} other {# planes sin producto}}",
+          "descripcion": "No se puede vender hasta ligarlo a un producto de tipo membresía",
+          "accion": "Ver planes"
+        }
+      },
+      "porVencer": {
+        "titulo": "Próximos vencimientos",
+        "vacio": "Ninguna membresía vence en los próximos 7 días."
+      },
+      "enGracia": {
+        "titulo": "En período de gracia",
+        "vacio": "Ninguna membresía está en gracia."
+      },
+      "porPlan": {
+        "titulo": "Por plan",
+        "descripcion": "Membresías activas por plan",
+        "verPlanes": "Ver planes",
+        "vacio": "Aún no hay membresías activas.",
+        "activas": "{count, plural, one {{n} activa} other {{n} activas}}"
+      },
+      "actividad": {
+        "titulo": "Actividad reciente",
+        "vacio": "Sin movimientos todavía.",
+        "sinCliente": "Sin cliente"
+      }
+    },
+    "miembros": {
+      "titulo": "Miembros",
+      "subtitulo": "{count, plural, one {# persona con membresía} other {# personas con membresía}}",
+      "cargando": "Cargando miembros…",
+      "error": "No pudimos cargar los miembros",
+      "sinVigente": "Sin membresía vigente",
+      "sinResultados": "Prueba con otro nombre o documento, o quita el filtro.",
+      "sustantivo": {
+        "singular": "miembro",
+        "plural": "miembros"
+      },
+      "acciones": {
+        "verVigente": "Ver membresía vigente",
+        "verMembresias": "Ver sus membresías",
+        "verFicha": "Ver ficha del cliente"
+      },
+      "filtros": {
+        "titulo": "Filtros",
+        "vigencia": "Membresía",
+        "todos": "Todos",
+        "conVigente": "Con vigente",
+        "sinVigente": "Sin vigente",
+        "verN": "{count, plural, one {Ver # miembro} other {Ver # miembros}}"
+      },
+      "buscar": {
+        "placeholder": "Buscar por nombre, documento, correo o teléfono",
+        "etiqueta": "Buscar miembros"
+      },
+      "columnas": {
+        "miembro": "Miembro",
+        "vigente": "Membresía vigente",
+        "vence": "Vence",
+        "ultimaEntrada": "Última entrada",
+        "membresias": "Membresías"
+      },
+      "movil": {
+        "vigente": "{plan} · vence {fecha}",
+        "ultimaEntrada": "Última entrada: {fecha}"
+      },
+      "vacio": {
+        "titulo": "Aún no hay miembros",
+        "descripcion": "Una persona aparece aquí cuando compra su primera membresía en el POS, en una factura o en la tienda web.",
+        "irAlPos": "Ir al POS"
+      }
+    },
+    "pagos": {
+      "titulo": "Pagos de membresías",
+      "subtitulo": "{count, plural, one {# línea} other {# líneas}} · {desde} – {hasta}",
+      "cargando": "Cargando pagos…",
+      "error": "No pudimos cargar los pagos",
+      "rango": "Rango de fechas",
+      "sinCliente": "Sin cliente",
+      "sinFactura": "Sin factura",
+      "saldo": "Saldo {saldo}",
+      "sinSaldo": "Pagada",
+      "verMembresia": "Ver membresía",
+      "renovacion": "Renovación",
+      "sustantivo": {
+        "singular": "línea",
+        "plural": "líneas"
+      },
+      "acciones": {
+        "verVenta": "Ver venta",
+        "verFactura": "Ver factura",
+        "verMembresia": "Ver membresía"
+      },
+      "columnas": {
+        "fecha": "Fecha",
+        "cliente": "Cliente",
+        "producto": "Producto",
+        "cantidad": "Cant.",
+        "total": "Total",
+        "estadoVenta": "Venta",
+        "factura": "Factura",
+        "membresia": "Membresía"
+      },
+      "kpis": {
+        "etiqueta": "Totales del periodo",
+        "totalPeriodo": "Total del periodo",
+        "totalPagina": "Total de esta página",
+        "lineas": "{count, plural, one {# línea de membresía} other {# líneas de membresía}}",
+        "conSaldo": "Con saldo pendiente",
+        "conSaldoDetalle": "Facturas de esta página con saldo"
+      },
+      "vacio": {
+        "titulo": "Sin pagos de membresías en este rango",
+        "descripcion": "Aquí aparecen las ventas y facturas con productos de tipo membresía. Cambia el rango o vende una membresía en el POS.",
+        "irAlPos": "Ir al POS"
+      }
+    },
+    "detalle": {
+      "error": "No pudimos cargar la membresía",
+      "subtituloCodigo": "Membresía {codigo}",
+      "estadoActual": "Estado de la membresía",
+      "venceEl": "Vence el {fecha}",
+      "diaDe": "Día {dia} de {total}",
+      "acciones": {
+        "verCliente": "Ver ficha del cliente",
+        "otrasMembresias": "Otras membresías del cliente",
+        "congelar": "Congelar",
+        "descongelar": "Descongelar",
+        "cancelar": "Cancelar membresía",
+        "renovar": "Renovar"
+      },
+      "toasts": {
+        "descongelada": "Membresía descongelada"
+      },
+      "descongelar": {
+        "titulo": "Descongelar membresía {codigo}",
+        "descripcionProgramado": "Se cancela el congelamiento programado para el {desde} y el vencimiento vuelve a su fecha.",
+        "descripcionEnCurso": "Vuelve a entrar desde hoy. Los días no usados se descuentan del vencimiento.",
+        "confirmar": "Descongelar"
+      },
+      "pestanas": {
+        "etiqueta": "Secciones de la membresía",
+        "resumen": "Resumen",
+        "entradas": "Entradas",
+        "pagos": "Pagos",
+        "congelamientos": "Congelamientos",
+        "historial": "Historial"
+      },
+      "kpis": {
+        "etiqueta": "Cifras de la membresía",
+        "vence": "Vence",
+        "congelamientos": "Congelamientos",
+        "congelamientosValor": "{usadas} de {tope}",
+        "diasUsados": "{usados} de {tope} días usados",
+        "diasUsadosSinTope": "{count, plural, one {# día usado} other {# días usados}}",
+        "entradasMes": "Entradas este mes",
+        "ultimaEntrada": "Última: {fecha}",
+        "sinEntradas": "Sin entradas todavía",
+        "pagado": "Pagado",
+        "nPagos": "{count, plural, =0 {Sin pagos ligados} one {# pago} other {# pagos}}"
+      },
+      "vigencia": {
+        "titulo": "Vigencia",
+        "estado": "Estado",
+        "inicio": "Inicio",
+        "alPagar": "Al pagar",
+        "activada": "Activada",
+        "periodoPagado": "Período pagado",
+        "diasCongelados": "Días congelados",
+        "masDias": "{count, plural, one {+ # día} other {+ # días}}",
+        "vence": "Vence",
+        "gracia": "Período de gracia",
+        "graciaHasta": "hasta {fecha}",
+        "origen": "Origen",
+        "cancelada": "Cancelada"
+      },
+      "reglas": {
+        "titulo": "Reglas del plan",
+        "descripcion": "Copia del plan al venderse: si el plan cambia, esta membresía no.",
+        "duracion": "Duración",
+        "cobro": "Cobro",
+        "gracia": "Gracia",
+        "activacion": "Activación",
+        "congelar": "Congelar",
+        "graciaDias": "{count, plural, one {# día} other {# días}}",
+        "sinGracia": "Sin gracia",
+        "activacionAlPagar": "Al pagar",
+        "activacionPrimeraEntrada": "Con la primera entrada",
+        "activacionPrimeraEntradaVentana": "{count, plural, one {Con la primera entrada (o sola al # día)} other {Con la primera entrada (o sola a los # días)}}",
+        "noCongela": "El plan no permite congelar",
+        "congela": "{veces} · {dias}",
+        "veces": "{count, plural, one {# vez} other {# veces}}",
+        "dias": "{count, plural, one {# día} other {# días}}",
+        "sinTope": "sin tope",
+        "sedes": "{count, plural, one {# sede} other {# sedes}}",
+        "todasLasSedes": "Todas las sedes",
+        "horarioLibre": "Sin restricción de horario",
+        "topeDiario": "{count, plural, one {# entrada al día} other {# entradas al día}}",
+        "sinTopeDiario": "Sin límite diario"
+      },
+      "miembro": {
+        "titulo": "Miembro",
+        "verFicha": "Ver ficha",
+        "otrasMembresias": "Ver otras membresías"
+      },
+      "origen": {
+        "titulo": "De dónde viene",
+        "venta": "Venta",
+        "factura": "Factura",
+        "plan": "Plan",
+        "ver": "Ver",
+        "sinVenta": "Alta anterior sin venta"
+      },
+      "acceso": {
+        "titulo": "Acceso",
+        "codigo": "Código de acceso",
+        "sedes": "Sedes",
+        "horario": "Horario",
+        "limite": "Límite"
+      },
+      "entradas": {
+        "titulo": "Entradas",
+        "descripcion": "Últimas 50 entradas registradas",
+        "permitida": "Permitida",
+        "rechazada": "Rechazada",
+        "vacio": {
+          "titulo": "Sin entradas todavía",
+          "descripcion": "Las entradas aparecen aquí cuando se registra el check-in del miembro."
+        }
+      },
+      "metodos": {
+        "qr": "QR",
+        "manual": "Manual",
+        "rfid": "Tarjeta RFID",
+        "fingerprint": "Huella",
+        "facial": "Reconocimiento facial",
+        "otro": "Otro método"
+      },
+      "motivosRechazo": {
+        "sin_membresia": "Sin membresía vigente",
+        "pendiente_de_pago": "Pendiente de pago",
+        "congelada": "Congelada",
+        "vencida": "Vencida",
+        "sede_no_permitida": "Sede no permitida",
+        "fuera_de_horario": "Fuera de horario",
+        "limite_diario": "Límite diario alcanzado",
+        "otro": "Rechazada"
+      },
+      "pagos": {
+        "titulo": "Pagos",
+        "tipo": {
+          "venta": "Venta",
+          "renovacion": "Renovación"
+        },
+        "verVenta": "Ver venta",
+        "factura": "Factura {numero}",
+        "saldo": "Saldo {saldo}",
+        "periodos": "{count, plural, one {# período} other {# períodos}}",
+        "vacio": {
+          "titulo": "Sin pagos ligados",
+          "descripcion": "Esta membresía se dio de alta antes de que las membresías nacieran de una venta."
+        }
+      },
+      "congelamientos": {
+        "titulo": "Congelamientos",
+        "vacio": "No se ha congelado todavía.",
+        "dias": "{count, plural, one {# día} other {# días}}",
+        "motivo": "Motivo: {motivo}",
+        "usados": "Usados {veces} de {topeVeces} congelamientos y {dias} de {topeDias} días.",
+        "estados": {
+          "scheduled": "Programado",
+          "active": "En curso",
+          "ended": "Terminado",
+          "cancelled": "Cancelado"
+        }
+      },
+      "historial": {
+        "titulo": "Historial",
+        "vacio": "Sin eventos todavía.",
+        "dias": "{count, plural, one {# día} other {# días}}"
+      },
+      "eventos": {
+        "created": "Creada",
+        "activated": "Activada",
+        "renewed": "Renovada",
+        "reactivated": "Reactivada",
+        "frozen": "Congelada",
+        "unfrozen": "Descongelada",
+        "cancelled": "Cancelada",
+        "expired": "Vencida",
+        "trimmed": "Recortada por devolución o nota crédito",
+        "grace_started": "Entró en período de gracia",
+        "access_granted": "Entrada permitida",
+        "access_denied": "Entrada rechazada",
+        "payment_received": "Pago recibido",
+        "payment_failed": "Pago fallido",
+        "plan_changed": "Cambio de plan",
+        "notes_updated": "Notas actualizadas",
+        "otro": "Otro movimiento"
+      }
+    },
+    "congelar": {
+      "titulo": "Congelar membresía {codigo}",
+      "descripcion": "{cliente} · {plan}. Mientras esté congelada no puede entrar; los días se suman al vencimiento.",
+      "confirmar": "{count, plural, one {Congelar # día} other {Congelar # días}}",
+      "desde": "Desde",
+      "dias": "Días",
+      "sufijoDias": "días",
+      "resumen": "Resumen del congelamiento",
+      "vuelve": "Vuelve el",
+      "nuevoVencimiento": "Nuevo vencimiento",
+      "nuevoVencimientoValor": "{nuevo} (antes {antes})",
+      "lesQuedan": "Le quedan",
+      "quedan": {
+        "veces": "{count, plural, =0 {ningún congelamiento} one {# congelamiento} other {# congelamientos}}",
+        "vecesSinTope": "congelamientos sin tope",
+        "dias": "{count, plural, one {# día de {tope}} other {# días de {tope}}}",
+        "diasSinTope": "días sin tope"
+      },
+      "motivo": "Motivo (opcional)",
+      "motivoPlaceholder": "Viaje, incapacidad…",
+      "aviso": "Si pides más días de los que quedan, el botón se deshabilita y dice por qué.",
+      "bloqueo": {
+        "topeDias": "El plan permite {tope} días; quedan {quedan}.",
+        "topeVeces": "El plan permite congelar {tope, plural, one {# vez} other {# veces}} y ya se usaron.",
+        "despuesDelVencimiento": "El congelamiento debe empezar a más tardar el {fecha} (vencimiento).",
+        "pasado": "El congelamiento no puede empezar antes de hoy.",
+        "fechas": "Elige el día de inicio y al menos 1 día."
+      },
+      "toast": {
+        "congelada": "Membresía congelada",
+        "programada": "Congelamiento programado desde el {fecha}"
+      }
+    },
+    "cancelar": {
+      "titulo": "Cancelar membresía {codigo}",
+      "descripcion": "{cliente} · {plan} · {estado} hasta {fecha}",
+      "confirmar": "Cancelar membresía",
+      "tituloConsecuencias": "Qué pasa al cancelar",
+      "consecuencias": {
+        "acceso": "Deja de dar acceso desde hoy; el QR y el código quedan inválidos.",
+        "dinero": "No devuelve dinero. Para reembolsar, haz la devolución o la nota crédito de la venta: la membresía se recorta sola.",
+        "historial": "Queda en el historial con tu nombre y el motivo."
+      },
+      "rapidos": {
+        "mudanza": "Se mudó",
+        "salud": "Por salud",
+        "inconforme": "No está conforme",
+        "otro": "Otro"
+      },
+      "motivo": "Motivo (obligatorio)",
+      "motivoPlaceholder": "Cuéntanos por qué se cancela",
+      "toast": "Membresía cancelada"
+    },
+    "renovar": {
+      "titulo": "Renovar membresía {codigo}",
+      "descripcion": "Renovar es vender otra vez el mismo producto. Al pagarse, la vigencia se extiende desde el vencimiento actual.",
+      "comoCobrar": "Cómo cobrar la renovación",
+      "opciones": {
+        "pos": {
+          "titulo": "Cobrar en el POS",
+          "descripcion": "Abre el POS con {cliente} y «{plan}» para cobrar."
+        },
+        "factura": {
+          "titulo": "Crear factura de venta",
+          "descripcion": "Factura con el producto; si el plan es «a crédito», queda pendiente hasta el pago."
+        },
+        "enlace": {
+          "titulo": "Enviar enlace de pago",
+          "descripcion": "Pago en la tienda web."
+        }
+      },
+      "fasePosterior": "Fase posterior",
+      "irAlPos": "Ir al POS",
+      "irAFactura": "Crear factura",
+      "resumen": "Resumen de la renovación",
+      "producto": "Producto",
+      "vence": "Vence",
+      "vencio": "Venció",
+      "nuevaVigencia": "Nueva vigencia",
+      "avisoCambioPlan": "Para cambiar de plan, elige otro producto membresía en el POS: la nueva vigencia empieza al terminar la actual.",
+      "bloqueo": {
+        "sinProducto": "El plan de esta membresía no tiene producto: lígalo a uno en Planes para poder venderlo.",
+        "sinCliente": "La membresía no tiene cliente titular."
+      }
+    },
+    "planes": {
+      "titulo": "Planes",
+      "migaModulo": "Membresías",
+      "subtitulo": "{total, plural, one {# plan} other {# planes}} · {activos, plural, one {# activo} other {# activos}}",
+      "cargando": "Cargando planes…",
+      "nuevo": "Nuevo plan",
+      "actualizar": "Actualizar",
+      "errorTitulo": "No pudimos cargar los planes",
+      "sinPrecio": "Sin precio",
+      "subtituloFila": "{sku} · Servicio › Membresía",
+      "sinProductoFila": "Sin producto · precio guardado en el plan",
+      "sinProductoTarjeta": "Sin producto · no se puede vender",
+      "activasTarjeta": "{n, plural, one {# activa} other {# activas}}",
+      "avisoSinProducto": "{n, plural, one {# plan no tiene producto} other {# planes no tienen producto}}: no se puede vender. Crea un producto de tipo «Membresía» con sus reglas.",
+      "buscar": "Buscar plan o SKU",
+      "estadoPlan": {
+        "activo": "Activo",
+        "inactivo": "Inactivo",
+        "sin_producto": "Sin producto"
+      },
+      "cobroCorto": {
+        "prepaid": "Por adelantado",
+        "on_credit": "A crédito"
+      },
+      "acceso": {
+        "todas": "Todas",
+        "sedes": "{n, plural, one {# sede} other {# sedes}}",
+        "todoElDia": "todo el día"
+      },
+      "columnas": {
+        "plan": "Plan",
+        "precio": "Precio",
+        "duracion": "Duración",
+        "cobro": "Cobro",
+        "acceso": "Acceso",
+        "activas": "Activas",
+        "estado": "Estado"
+      },
+      "acciones": {
+        "ver": "Ver plan",
+        "editarProducto": "Editar producto",
+        "cargandoProducto": "Cargando el producto…",
+        "vender": "Vender en el POS",
+        "inactivoMotivo": "El plan está inactivo: actívalo en el producto para venderlo."
+      },
+      "kpi": {
+        "etiqueta": "Resumen de planes",
+        "activos": "Planes activos",
+        "activosDetalle": "{n, plural, =0 {Ninguno inactivo} one {# inactivo} other {# inactivos}}",
+        "membresias": "Membresías activas",
+        "membresiasDetalle": "{n, plural, one {# viva en total} other {# vivas en total}}",
+        "ingresos": "Ingresos del mes",
+        "ingresosDetalle": "Ventas de productos membresía",
+        "sinProducto": "Planes sin producto",
+        "sinProductoDetalle": "No se pueden vender · revisar",
+        "sinProductoNinguno": "Todos se pueden vender"
+      },
+      "filtros": {
+        "estado": "Estado",
+        "todos": "Todos",
+        "activos": "Activos",
+        "inactivos": "Inactivos",
+        "verResultados": "Ver {n, plural, one {# plan} other {# planes}}"
+      },
+      "vista": {
+        "etiqueta": "Vista de planes",
+        "lista": "Lista",
+        "tarjetas": "Tarjetas"
+      },
+      "vacio": {
+        "titulo": "Aún no hay planes",
+        "descripcion": "Un plan es un producto de tipo «Membresía»: créalo en Inventario y define su duración, cobro y acceso."
+      },
+      "sustantivo": {
+        "singular": "plan",
+        "plural": "planes"
+      }
+    },
+    "plan": {
+      "migaPlan": "Plan",
+      "errorTitulo": "No pudimos cargar el plan",
+      "subtituloRenovacion": "renovación manual",
+      "editarEnProducto": "Editar en el producto",
+      "vender": "Vender en el POS",
+      "noEncontrado": {
+        "titulo": "No encontramos ese plan",
+        "descripcion": "Puede que sea de otra organización o que ya no exista.",
+        "volver": "Volver a Planes"
+      },
+      "sinProducto": {
+        "titulo": "Este plan no tiene producto",
+        "descripcion": "No se puede vender ni editar. Crea un producto de tipo «Membresía» con estas reglas y usa ese."
+      },
+      "kpi": {
+        "etiqueta": "Cifras del plan",
+        "precio": "Precio vigente",
+        "precioDetalle": "Del producto",
+        "precioSinProducto": "Guardado en el plan (antiguo)",
+        "activas": "Membresías activas",
+        "activasDetalle": "{n, plural, one {# viva} other {# vivas}}",
+        "ingresos": "Ingresos del mes",
+        "ingresosDetalle": "Ventas de este producto",
+        "ventas": "Ventas del mes",
+        "ventasDetalle": "Líneas vendidas este mes"
+      },
+      "producto": {
+        "titulo": "Producto que se vende",
+        "verProducto": "Ver producto",
+        "producto": "Producto",
+        "sku": "SKU",
+        "tipo": "Tipo",
+        "tipoValor": "Servicio › Membresía",
+        "precio": "Precio de venta",
+        "categoria": "Categoría",
+        "sinCategoria": "Sin categoría",
+        "nota": "El precio vive solo en el producto. Para cambiarlo, edita el producto: el plan no tiene precio propio."
+      },
+      "reglas": {
+        "titulo": "Reglas del plan",
+        "editar": "Editar",
+        "editarAria": "Editar las reglas en el producto",
+        "duracion": "Duración",
+        "renovacion": "Renovación",
+        "renovacionValor": "Manual · extiende desde el vencimiento",
+        "cobro": "Forma de cobro",
+        "cobroValor": {
+          "prepaid": "Por adelantado · se activa al pagar",
+          "on_credit": "A crédito · se activa al emitir"
+        },
+        "gracia": "Período de gracia",
+        "graciaValor": "{n, plural, =0 {Sin gracia} one {# día} other {# días}}",
+        "activacion": "Requiere activación",
+        "activacionNo": "No · empieza el día del pago",
+        "activacionSi": "Sí · empieza en la primera entrada",
+        "activacionSiVentana": "Sí · o sola a {n, plural, one {# día} other {# días}}",
+        "congelamientos": "Congelamientos",
+        "congelarNo": "No permite",
+        "congelarVeces": "{n, plural, one {Hasta # vez} other {Hasta # veces}}",
+        "congelarSinTopeVeces": "Sin tope de veces",
+        "congelarDias": "{n, plural, one {# día en total} other {# días en total}}",
+        "congelarSinTopeDias": "sin tope de días",
+        "sedes": "Sedes",
+        "horario": "Horario",
+        "horarioTodo": "Todo el día",
+        "limite": "Límite diario",
+        "limiteValor": "{n, plural, one {# entrada} other {# entradas}}",
+        "limiteSin": "Sin límite"
+      },
+      "ultimas": {
+        "titulo": "Últimas membresías",
+        "verTodas": "Ver todas",
+        "vacioTitulo": "Sin membresías",
+        "vacio": "Aún no se ha vendido este plan.",
+        "vigencia": "{desde} → {hasta}"
+      },
+      "conecta": {
+        "titulo": "Cómo se conecta",
+        "producto": "Producto",
+        "ventas": "Ventas del mes",
+        "ventasValor": "{n} · {importe}",
+        "membresias": "Membresías",
+        "membresiasValor": "{n, plural, one {# activa} other {# activas}}",
+        "abrir": "Abrir"
+      },
+      "cambios": {
+        "titulo": "Si cambias el plan",
+        "texto": "Cambiar las reglas aplica a las próximas ventas. Cada membresía guarda una copia de las reglas con que se vendió: un cambio no afecta a quien ya pagó."
+      }
+    },
+    "clases": {
+      "cabecera": {
+        "titulo": "Clases",
+        "subtitulo": "Clases grupales y su horario semanal",
+        "nueva": "Nueva clase",
+        "actualizar": "Actualizar"
+      },
+      "sinPermiso": "No tienes permiso para ver las clases. Pide acceso al administrador de la organización.",
+      "kpi": {
+        "etiqueta": "Resumen de clases",
+        "hoy": "Hoy",
+        "programadas": "Programadas",
+        "programadasDetalle": "Desde hoy",
+        "cupos": "Cupos libres",
+        "cuposDetalle": "En las clases programadas",
+        "completadas": "Completadas",
+        "canceladas": "Canceladas"
+      },
+      "busqueda": {
+        "placeholder": "Buscar clase, sala, tipo o instructor",
+        "etiqueta": "Buscar clases"
+      },
+      "filtros": {
+        "estado": "Estado",
+        "tipo": "Tipo",
+        "sede": "Sede",
+        "instructor": "Instructor",
+        "todos": "Todos",
+        "todas": "Todas",
+        "ver": "{n, plural, =0 {Sin clases} one {Ver # clase} other {Ver # clases}}"
+      },
+      "vista": {
+        "etiqueta": "Vista de clases",
+        "lista": "Lista",
+        "calendario": "Calendario"
+      },
+      "periodo": {
+        "etiqueta": "Periodo",
+        "proximas": "Próximas",
+        "pasadas": "Pasadas",
+        "todas": "Todas"
+      },
+      "tabla": {
+        "etiqueta": "Clases",
+        "clase": "Clase",
+        "fecha": "Fecha y hora",
+        "instructor": "Instructor",
+        "sede": "Sede y sala",
+        "cupo": "Cupo",
+        "cupoValor": "{ocupadas} / {capacidad}",
+        "estado": "Estado"
+      },
+      "sustantivo": {
+        "singular": "clase",
+        "plural": "clases"
+      },
+      "estados": {
+        "active": "Programada",
+        "completed": "Completada",
+        "cancelled": "Cancelada"
+      },
+      "niveles": {
+        "all_levels": "Todos los niveles",
+        "beginner": "Principiante",
+        "intermediate": "Intermedio",
+        "advanced": "Avanzado"
+      },
+      "tipos": {
+        "spinning": "Spinning",
+        "yoga": "Yoga",
+        "pilates": "Pilates",
+        "crossfit": "CrossFit",
+        "zumba": "Zumba",
+        "boxing": "Boxeo",
+        "functional": "Funcional",
+        "stretching": "Estiramiento",
+        "aerobics": "Aeróbicos",
+        "swimming": "Natación",
+        "hiit": "HIIT",
+        "dance": "Baile",
+        "other": "Otro"
+      },
+      "acciones": {
+        "reservas": "Ver reservas",
+        "editar": "Editar",
+        "duplicar": "Duplicar",
+        "completar": "Marcar completada",
+        "cancelar": "Cancelar clase",
+        "eliminar": "Eliminar"
+      },
+      "vacio": {
+        "titulo": "Aún no hay clases",
+        "descripcion": "Crea la primera clase para que los miembros puedan reservar.",
+        "sinResultados": "Prueba con otro término, otro periodo o quita filtros."
+      },
+      "errores": {
+        "cargar": "No pudimos cargar las clases.",
+        "guardar": "No se pudo guardar la clase. Revisa los datos e inténtalo de nuevo.",
+        "clase_con_reservas": "La clase tiene reservas: cancélala en lugar de eliminarla.",
+        "clase_no_encontrada": "No encontramos esa clase."
+      },
+      "toasts": {
+        "creada": "Clase creada",
+        "actualizada": "Clase actualizada",
+        "movida": "Clase movida al {dia} a las {hora}",
+        "duplicada": "Clase duplicada para el {dia}",
+        "completada": "Clase marcada como completada",
+        "cancelada": "Clase cancelada",
+        "eliminada": "Clase eliminada"
+      },
+      "duplicar": {
+        "titulo": "Duplicar clase",
+        "descripcion": "Se crea una copia de «{titulo}» a las {hora} el día que elijas, con la misma duración.",
+        "fecha": "Nueva fecha",
+        "confirmar": "Duplicar"
+      },
+      "cancelarClase": {
+        "titulo": "Cancelar clase",
+        "descripcion": "«{titulo}» del {dia} quedará cancelada.",
+        "confirmar": "Cancelar clase",
+        "consecuencia": "{n, plural, =0 {No tiene reservas activas.} one {# reserva activa queda sin clase.} other {# reservas activas quedan sin clase.}}",
+        "notificar": "Avisar a los miembros con reserva"
+      },
+      "eliminar": {
+        "titulo": "Eliminar clase",
+        "descripcion": "«{titulo}» se eliminará. Esta acción no se puede deshacer.",
+        "confirmar": "Eliminar",
+        "conReservas": "Tiene reservas: cancélala en su lugar"
+      },
+      "calendario": {
+        "anterior": "Semana anterior",
+        "siguiente": "Semana siguiente",
+        "hoy": "Esta semana",
+        "agenda": "Clases de la semana",
+        "sinClases": "Sin clases",
+        "nuevaEn": "Nueva clase el {dia} a las {hora}",
+        "etiquetaClase": "{titulo}, {dia} de {desde} a {hasta}, {ocupadas} de {capacidad} cupos",
+        "ayuda": "Arrastra una clase para moverla. Haz clic en un hueco para crear una. La rejilla va de {desde} a {hasta}."
+      },
+      "dialogo": {
+        "tituloNueva": "Nueva clase",
+        "tituloEditar": "Editar clase",
+        "descripcion": "Horario en la zona de la organización ({zona}).",
+        "titulo": "Nombre de la clase",
+        "tituloPlaceholder": "Ej.: Spinning intensivo",
+        "tipo": "Tipo de clase",
+        "tipoNuevo": "Otro tipo…",
+        "tipoNuevoPlaceholder": "Escribe el tipo de clase",
+        "nivel": "Nivel",
+        "sede": "Sede",
+        "sedePlaceholder": "Elige la sede",
+        "instructor": "Instructor",
+        "instructorPlaceholder": "Elige el instructor",
+        "fecha": "Fecha",
+        "hora": "Hora de inicio",
+        "terminaA": "Termina a las {hora}",
+        "duracion": "Duración",
+        "minutos": "min",
+        "capacidad": "Cupo",
+        "sala": "Sala o ubicación",
+        "salaPlaceholder": "Ej.: Sala 2",
+        "equipo": "Equipo necesario",
+        "equipoPlaceholder": "Ej.: toalla, agua",
+        "descripcionCampo": "Descripción",
+        "repetir": "Repetir la clase",
+        "repetirAyuda": "Guarda la regla de repetición de la clase.",
+        "frecuencia": "Frecuencia",
+        "frecuencias": {
+          "daily": "Diaria",
+          "weekly": "Semanal",
+          "monthly": "Mensual"
+        },
+        "diasSemana": "Días de la semana",
+        "hasta": "Repetir hasta",
+        "hastaAyuda": "Vacío: sin fecha final.",
+        "cancelar": "Cancelar",
+        "crear": "Crear clase",
+        "guardar": "Guardar cambios",
+        "guardando": "Guardando…",
+        "errores": {
+          "titulo": "Escribe el nombre de la clase.",
+          "tipo": "Elige o escribe el tipo.",
+          "sucursal": "Elige la sede.",
+          "instructor": "Elige el instructor.",
+          "sinInstructores": "No hay instructores: regístralos en Recursos humanos (departamento GYM o cargo INST-).",
+          "dia": "Elige la fecha.",
+          "hora": "Escribe la hora de inicio.",
+          "duracion": "La duración va de 5 a 480 minutos.",
+          "capacidad": "El cupo debe ser al menos 1.",
+          "dias": "Elige al menos un día."
+        }
+      }
+    },
+    "reservas": {
+      "cabecera": {
+        "titulo": "Reservas",
+        "subtitulo": "Reservas de clases y asistencia",
+        "subtituloClase": "{titulo} · {dia} {hora}",
+        "nueva": "Nueva reserva",
+        "actualizar": "Actualizar"
+      },
+      "sinPermiso": "No tienes permiso para ver las reservas. Pide acceso al administrador de la organización.",
+      "kpi": {
+        "etiqueta": "Resumen de reservas",
+        "hoy": "Clases de hoy",
+        "reservadas": "Reservadas",
+        "asistieron": "Asistieron",
+        "total": "Total"
+      },
+      "busqueda": {
+        "placeholder": "Buscar miembro, documento, correo o clase",
+        "etiqueta": "Buscar reservas"
+      },
+      "filtros": {
+        "estado": "Estado",
+        "clase": "Clase",
+        "todos": "Todos",
+        "ver": "{n, plural, =0 {Sin reservas} one {Ver # reserva} other {Ver # reservas}}"
+      },
+      "fecha": {
+        "etiqueta": "Fecha de la clase",
+        "todas": "Todas",
+        "hoy": "Hoy",
+        "semana": "Próximos 7 días"
+      },
+      "tabla": {
+        "etiqueta": "Reservas",
+        "cliente": "Miembro",
+        "clase": "Clase",
+        "fecha": "Fecha de la clase",
+        "origen": "Origen",
+        "reservada": "Reservada",
+        "estado": "Estado"
+      },
+      "sustantivo": {
+        "singular": "reserva",
+        "plural": "reservas"
+      },
+      "estados": {
+        "booked": "Reservada",
+        "checked_in": "Asistió",
+        "no_show": "No asistió",
+        "cancelled": "Cancelada"
+      },
+      "origenes": {
+        "staff": "Recepción",
+        "app": "App",
+        "web": "Web",
+        "kiosk": "Kiosco"
+      },
+      "acciones": {
+        "entrada": "Registrar entrada",
+        "entradaDe": "Registrar entrada de {nombre}",
+        "asistio": "Marcar asistió",
+        "noAsistio": "Marcar no asistió",
+        "verClase": "Ver clases",
+        "editar": "Editar",
+        "duplicar": "Reservar otra clase",
+        "cancelar": "Cancelar reserva"
+      },
+      "vacio": {
+        "titulo": "Aún no hay reservas",
+        "descripcion": "Las reservas de los miembros aparecerán aquí.",
+        "sinResultados": "Prueba con otro término, otra fecha o quita filtros."
+      },
+      "errores": {
+        "cargar": "No pudimos cargar las reservas.",
+        "guardar": "No se pudo guardar la reserva. Inténtalo de nuevo.",
+        "clase_sin_cupo": "La clase ya no tiene cupo.",
+        "reserva_duplicada": "Ese miembro ya tiene una reserva en esta clase.",
+        "clase_no_programada": "La clase no está programada (cancelada o completada).",
+        "clase_no_encontrada": "No encontramos esa clase."
+      },
+      "toasts": {
+        "creada": "Reserva creada",
+        "actualizada": "Reserva actualizada",
+        "asistio": "Asistencia registrada",
+        "noAsistio": "Inasistencia registrada",
+        "cancelada": "Reserva cancelada",
+        "duplicada": "Reserva creada en la otra clase",
+        "entrada": "Entrada registrada",
+        "entradaRechazada": "Entrada rechazada: {motivo}"
+      },
+      "cancelar": {
+        "titulo": "Cancelar reserva",
+        "descripcion": "Se cancela la reserva de {nombre} en «{clase}» y se libera el cupo.",
+        "confirmar": "Cancelar reserva"
+      },
+      "duplicar": {
+        "titulo": "Reservar otra clase",
+        "descripcion": "Crea una reserva para {nombre} en otra clase programada.",
+        "clase": "Clase",
+        "confirmar": "Reservar"
+      },
+      "dialogo": {
+        "tituloNueva": "Nueva reserva",
+        "tituloEditar": "Editar reserva",
+        "clase": "Clase",
+        "clasePlaceholder": "Elige la clase",
+        "opcionClase": "{titulo} · {dia} {hora} · {libres, plural, =0 {sin cupo} one {# cupo} other {# cupos}}",
+        "sinClases": "No hay clases programadas con cupo desde hoy.",
+        "cliente": "Miembro",
+        "origen": "Origen",
+        "notas": "Notas",
+        "notasPlaceholder": "Opcional",
+        "cancelar": "Cancelar",
+        "crear": "Reservar",
+        "guardar": "Guardar cambios",
+        "guardando": "Guardando…",
+        "errores": {
+          "cliente": "Elige el miembro.",
+          "clase": "Elige la clase."
+        }
+      }
+    },
+    "checkin": {
+      "cabecera": {
+        "titulo": "Check-in",
+        "subtitulo": "Registra la entrada de los miembros",
+        "actualizar": "Actualizar",
+        "dispositivos": "Control de acceso"
+      },
+      "sinPermiso": "No tienes permiso para registrar entradas. Pide acceso al administrador de la organización.",
+      "sinMembresia": "Sin membresía",
+      "kpi": {
+        "etiqueta": "Entradas de hoy",
+        "permitidas": "Entradas hoy",
+        "rechazadas": "Rechazadas hoy",
+        "miembros": "Miembros distintos"
+      },
+      "sede": {
+        "etiqueta": "Sede",
+        "placeholder": "Elige la sede",
+        "ayuda": "La entrada se registra en esta sede.",
+        "falta": "Elige la sede para registrar la entrada."
+      },
+      "busqueda": {
+        "titulo": "Buscar miembro",
+        "etiqueta": "Buscar miembro",
+        "placeholder": "Nombre, documento, correo, teléfono o código",
+        "ayuda": "También puedes leer el código QR de la membresía con el lector.",
+        "buscar": "Buscar",
+        "buscando": "Buscando…",
+        "minimo": "Escribe al menos 2 caracteres.",
+        "sinResultados": "No hay miembros con esos datos."
+      },
+      "resultados": {
+        "titulo": "{n, plural, one {# coincidencia} other {# coincidencias}}"
+      },
+      "elegido": {
+        "titulo": "Miembro",
+        "codigo": "Código de acceso",
+        "cancelar": "Cancelar",
+        "registrar": "Registrar entrada",
+        "registrando": "Registrando…",
+        "nota": "La base valida vigencia, gracia, sede, horario y tope diario del plan, y registra la entrada o el rechazo."
+      },
+      "metodo": {
+        "etiqueta": "Método",
+        "ayudaQr": "Se leyó el código QR de la membresía."
+      },
+      "metodos": {
+        "manual": "Manual",
+        "qr": "Código QR",
+        "rfid": "Tarjeta RFID",
+        "fingerprint": "Huella",
+        "facial": "Reconocimiento facial"
+      },
+      "resultado": {
+        "permitido": "Entrada permitida · {nombre}",
+        "rechazado": "Entrada rechazada · {nombre}",
+        "bienvenida": "Membresía vigente.",
+        "plan": "Plan",
+        "vence": "Vence",
+        "graciaHasta": "Gracia hasta",
+        "nueva": "Nueva búsqueda",
+        "verMembresia": "Ver membresía",
+        "cerrar": "Cerrar"
+      },
+      "motivos": {
+        "sin_membresia": "No tiene una membresía.",
+        "pendiente_de_pago": "La membresía está pendiente de pago.",
+        "congelada": "La membresía está congelada.",
+        "vencida": "La membresía está vencida.",
+        "sede_no_permitida": "El plan no permite entrar en esta sede.",
+        "fuera_de_horario": "Fuera del horario de acceso del plan.",
+        "limite_diario": "Ya alcanzó el tope de entradas de hoy."
+      },
+      "avisos": {
+        "en_gracia": "En gracia {dias, plural, =0 {hasta hoy} one {# d} other {# d}}: recuérdale renovar.",
+        "activada_hoy": "La membresía se activó con esta entrada."
+      },
+      "historial": {
+        "titulo": "Entradas de hoy",
+        "descripcion": "{dia} · se actualiza cada 30 s",
+        "filtro": "Filtrar entradas",
+        "todas": "Todas",
+        "permitidas": "Permitidas",
+        "rechazadas": "Rechazadas",
+        "permitida": "Permitida",
+        "rechazada": "Rechazada",
+        "vacio": "Aún no hay entradas hoy",
+        "vacioDescripcion": "Las entradas aparecerán aquí al registrarlas.",
+        "sinFiltro": "No hay entradas con este filtro"
+      },
+      "errores": {
+        "buscar": "No pudimos buscar. Inténtalo de nuevo.",
+        "historial": "No pudimos cargar las entradas de hoy."
+      }
+    },
+    "instructores": {
+      "cabecera": {
+        "titulo": "Instructores",
+        "subtitulo": "Personal de Recursos humanos del departamento GYM o con cargo de instructor",
+        "actualizar": "Actualizar"
+      },
+      "sinPermiso": "No tienes permiso para ver los instructores. Pide acceso al administrador de la organización.",
+      "sinNombre": "Sin nombre",
+      "kpi": {
+        "etiqueta": "Resumen de instructores",
+        "instructores": "Instructores",
+        "activos": "{n, plural, one {# activo} other {# activos}}",
+        "clasesSemana": "Clases esta semana",
+        "horasSemana": "Horas esta semana",
+        "asistencia": "Asistencia",
+        "asistenciaDetalle": "Reservas que asistieron"
+      },
+      "busqueda": {
+        "placeholder": "Buscar instructor, correo o cargo",
+        "etiqueta": "Buscar instructores"
+      },
+      "filtros": {
+        "estado": "Estado",
+        "todos": "Todos",
+        "activos": "Activos",
+        "inactivos": "Inactivos"
+      },
+      "tabla": {
+        "etiqueta": "Instructores",
+        "instructor": "Instructor",
+        "cargo": "Cargo",
+        "clasesSemana": "Clases (semana)",
+        "horasSemana": "Horas (semana)",
+        "asistencia": "Asistencia",
+        "estado": "Estado"
+      },
+      "tarjeta": {
+        "semana": "{clases, plural, one {# clase} other {# clases}} · {horas} h esta semana"
+      },
+      "estados": {
+        "activo": "Activo",
+        "inactivo": "Inactivo"
+      },
+      "vacio": {
+        "titulo": "No hay instructores",
+        "descripcion": "Registra empleados en Recursos humanos, en el departamento GYM o con un cargo INST-.",
+        "irHrm": "Ir a empleados",
+        "sinResultados": "Prueba con otro término o quita el filtro."
+      },
+      "errores": {
+        "cargar": "No pudimos cargar los instructores."
+      },
+      "panel": {
+        "pestanas": "Ficha del instructor",
+        "resumen": "Resumen",
+        "horario": "Horario",
+        "disponibilidad": "Disponibilidad",
+        "sinCargo": "Sin cargo",
+        "cerrar": "Cerrar",
+        "correo": "Correo",
+        "telefono": "Teléfono",
+        "cargo": "Cargo",
+        "departamento": "Departamento",
+        "codigo": "Código de empleado",
+        "tarifaHora": "Tarifa por hora",
+        "especialidades": "Especialidades",
+        "desempeno": "Desempeño",
+        "clasesTotales": "Clases asignadas",
+        "completadas": "Completadas",
+        "canceladas": "Canceladas",
+        "reservas": "Reservas",
+        "asistencias": "Asistieron",
+        "tasaAsistencia": "Tasa de asistencia"
+      },
+      "horario": {
+        "vacio": "Sin clases en los próximos 14 días",
+        "vacioDescripcion": "Asígnale clases desde la página Clases.",
+        "verCalendario": "Ver el calendario de clases"
+      },
+      "disponibilidad": {
+        "descripcion": "Franjas en las que el instructor puede dar clases.",
+        "agregar": "Agregar franja",
+        "agregarEn": "Agregar franja el {dia}",
+        "desdeEn": "Desde, {dia}",
+        "hastaEn": "Hasta, {dia}",
+        "quitar": "Quitar franja",
+        "noDisponible": "No disponible",
+        "rangoInvalido": "La hora final debe ser posterior a la inicial.",
+        "guardar": "Guardar disponibilidad",
+        "guardando": "Guardando…",
+        "guardada": "Disponibilidad guardada",
+        "errorGuardar": "No se pudo guardar la disponibilidad.",
+        "errorCargar": "No pudimos cargar la disponibilidad guardada; se muestra la de por defecto."
+      }
+    },
+    "acceso": {
+      "cabecera": {
+        "titulo": "Control de acceso",
+        "subtitulo": "Torniquetes, kioscos y lectores por sede",
+        "nuevo": "Nuevo dispositivo",
+        "actualizar": "Actualizar"
+      },
+      "sinPermiso": "No tienes permiso para ver el control de acceso. Pide acceso al administrador de la organización.",
+      "kpi": {
+        "etiqueta": "Resumen de dispositivos",
+        "total": "Dispositivos",
+        "activos": "Activos",
+        "inactivos": "Inactivos"
+      },
+      "busqueda": {
+        "placeholder": "Buscar por nombre, serie o ubicación",
+        "etiqueta": "Buscar dispositivos"
+      },
+      "filtros": {
+        "tipo": "Tipo",
+        "estado": "Estado",
+        "todos": "Todos",
+        "activos": "Activos",
+        "inactivos": "Inactivos",
+        "ver": "{n, plural, =0 {Sin dispositivos} one {Ver # dispositivo} other {Ver # dispositivos}}"
+      },
+      "tipos": {
+        "tablet": "Tableta",
+        "kiosk": "Kiosco",
+        "turnstile": "Torniquete",
+        "scanner": "Escáner",
+        "door_lock": "Cerradura"
+      },
+      "estados": {
+        "activo": "Activo",
+        "inactivo": "Inactivo"
+      },
+      "metodos": {
+        "qr": "QR",
+        "huella": "Huella"
+      },
+      "tabla": {
+        "etiqueta": "Dispositivos",
+        "dispositivo": "Dispositivo",
+        "tipo": "Tipo",
+        "sede": "Sede",
+        "metodos": "Métodos",
+        "ultimaSync": "Última sincronización",
+        "nunca": "Nunca",
+        "estado": "Estado"
+      },
+      "acciones": {
+        "qr": "Ver código QR",
+        "kiosco": "Abrir kiosco",
+        "editar": "Editar",
+        "activar": "Activar",
+        "desactivar": "Desactivar",
+        "eliminar": "Eliminar"
+      },
+      "vacio": {
+        "titulo": "Aún no hay dispositivos",
+        "descripcion": "Agrega un kiosco o un torniquete para registrar entradas en la sede.",
+        "sinResultados": "Prueba con otro término o quita filtros."
+      },
+      "errores": {
+        "cargar": "No pudimos cargar los dispositivos.",
+        "guardar": "No se pudo guardar el dispositivo. Inténtalo de nuevo."
+      },
+      "toasts": {
+        "creado": "Dispositivo creado",
+        "actualizado": "Dispositivo actualizado",
+        "activado": "Dispositivo activado",
+        "desactivado": "Dispositivo desactivado",
+        "eliminado": "Dispositivo eliminado"
+      },
+      "eliminar": {
+        "titulo": "Eliminar dispositivo",
+        "descripcion": "«{nombre}» se eliminará. Esta acción no se puede deshacer.",
+        "confirmar": "Eliminar"
+      },
+      "qr": {
+        "titulo": "Código QR del dispositivo",
+        "alt": "Código QR de {nombre}",
+        "expira": "Vence el {fecha}",
+        "sinToken": "Este dispositivo no tiene un código vigente.",
+        "abrirKiosco": "Abrir kiosco",
+        "cerrar": "Cerrar"
+      },
+      "dialogo": {
+        "tituloNuevo": "Nuevo dispositivo",
+        "tituloEditar": "Editar dispositivo",
+        "descripcion": "Dónde está y cómo registra las entradas.",
+        "nombre": "Nombre",
+        "nombrePlaceholder": "Ej.: Kiosco de la entrada",
+        "tipo": "Tipo",
+        "sede": "Sede",
+        "sedePlaceholder": "Elige la sede",
+        "serie": "Número de serie",
+        "ip": "Dirección IP",
+        "ubicacion": "Ubicación",
+        "ubicacionPlaceholder": "Ej.: Recepción, primer piso",
+        "metodos": "Métodos de acceso",
+        "qr": "Código QR",
+        "huella": "Huella digital",
+        "cancelar": "Cancelar",
+        "crear": "Crear dispositivo",
+        "guardar": "Guardar cambios",
+        "guardando": "Guardando…",
+        "errores": {
+          "nombre": "Escribe el nombre.",
+          "sede": "Elige la sede."
+        }
+      }
+    },
+    "kiosco": {
+      "cargando": "Cargando el dispositivo…",
+      "volver": "Volver a Control de acceso",
+      "instruccionQr": "Muestra tu código QR",
+      "instruccion": "Escribe tu código de acceso",
+      "huella": "o pon tu huella en el lector",
+      "campo": "Código de acceso, documento o teléfono",
+      "entrar": "Entrar",
+      "verificando": "Verificando…",
+      "bienvenido": "¡Bienvenido!",
+      "denegado": "Acceso denegado",
+      "vence": "Tu membresía vence el {fecha}",
+      "recepcion": "Acércate a recepción para más información.",
+      "noEncontrado": "No encontramos un miembro con ese dato.",
+      "variasCoincidencias": "Hay varias coincidencias: usa tu código de acceso.",
+      "qrAlt": "Código QR de este dispositivo",
+      "qrSeRenueva": "El código QR se renueva solo",
+      "errores": {
+        "titulo": "No se puede abrir el kiosco",
+        "noEncontrado": "Dispositivo no encontrado.",
+        "inactivo": "Este dispositivo está inactivo.",
+        "otraOrganizacion": "El dispositivo es de otra organización.",
+        "cargar": "No pudimos cargar el dispositivo.",
+        "sinPermiso": "Tu usuario no tiene permiso para registrar entradas.",
+        "procesar": "No pudimos procesar la entrada."
+      }
     }
   },
   "inventario": {

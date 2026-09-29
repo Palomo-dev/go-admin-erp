@@ -99,7 +99,7 @@ const W = { column: 'created_at', months: WINDOW_MONTHS } as const;
 
 const PRODUCT_COLUMNS = [
   'id', 'organization_id', 'sku', 'name', 'category_id', 'unit_code', 'created_at', 'updated_at', 'description', 'barcode', 'status', 'tag_id',
-  'parent_product_id', 'tax_id', 'is_parent', 'variant_data', 'uuid', 'station', 'track_stock', 'is_composite', 'production_type', 'product_type',
+  'parent_product_id', 'tax_id', 'is_parent', 'variant_data', 'uuid', 'station', 'track_stock', 'is_composite', 'production_type', 'product_type', 'service_type',
   'brand', 'reference', 'track_serial', 'serial_pattern', 'auto_generate_serial', 'warranty_months', 'rating_avg', 'reviews_count', 'weight_kg',
   'length_cm', 'width_cm', 'height_cm',
 ];

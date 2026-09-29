@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, History, Lock } from 'lucide-react';
+import { FileText, History, Lock, Split } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { EmptyState, FormSection, PageHeader, Stepper, useEsEscritorio, type Miga } from '@/components/kit';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -12,11 +12,13 @@ import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import type { ModoFormularioProducto } from '@/lib/services/productoService';
+import { apiMembresias } from '@/lib/services/membresias/clienteMembresias';
 import { cn } from '@/utils/Utils';
 import { simboloMoneda, useMensajeErrorProducto } from '../detalle/ContextoProducto';
 import { useRevisionCodigos } from '../codigos/useRevisionCodigos';
 import {
   erroresPorSeccion,
+  esMembresia,
   primeraSeccionConError,
   type ErroresFormulario,
   type SeccionFormulario,
@@ -39,6 +41,7 @@ import { SeccionCodigos } from './secciones/SeccionCodigos';
 import { SeccionImagenes } from './secciones/SeccionImagenes';
 import { SeccionImpuestos } from './secciones/SeccionImpuestos';
 import { SeccionInformacion } from './secciones/SeccionInformacion';
+import { SeccionMembresia } from './secciones/SeccionMembresia';
 import { SeccionModificadores } from './secciones/SeccionModificadores';
 import { SeccionOrganizacion } from './secciones/SeccionOrganizacion';
 import { SeccionPrecios } from './secciones/SeccionPrecios';
@@ -113,8 +116,28 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
     organizacionId,
     sufijos: { sku: td('sufijoSku'), nombre: td('sufijoNombre') },
     conBorrador: layout === 'page',
+    leerPreseleccionUrl: layout === 'page' && modo === 'crear',
   });
   const { estado } = form;
+  const conMembresia = !!estado && esMembresia(estado);
+
+  // memberships.plans.manage (resuelto en el servidor): solo se consulta si el producto es membresía.
+  const [puedeMembresia, setPuedeMembresia] = useState<boolean | null>(null);
+  const permisoMembresia = useRef<Promise<boolean> | null>(null);
+  const resolverPermisoMembresia = useCallback((): Promise<boolean> => {
+    permisoMembresia.current ??= apiMembresias
+      .permisos()
+      .then((p) => p.planes === true)
+      .catch(() => false)
+      .then((v) => {
+        setPuedeMembresia(v);
+        return v;
+      });
+    return permisoMembresia.current;
+  }, []);
+  useEffect(() => {
+    if (conMembresia) void resolverPermisoMembresia();
+  }, [conMembresia, resolverPermisoMembresia]);
 
   const [guardando, setGuardando] = useState<false | 'guardar' | 'otro'>(false);
   const [paso, setPaso] = useState<PasoMovil>('esencial');
@@ -198,6 +221,7 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
     }
     setGuardando(otro ? 'otro' : 'guardar');
     try {
+      const enviarMembresia = esMembresia(estado) ? await resolverPermisoMembresia() : false;
       const r = await guardarProducto({
         organizacionId,
         estado,
@@ -205,6 +229,7 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
         productId: form.productId,
         revisarCodigos: revisar,
         claveIdempotencia: form.claveGuardado(),
+        conMembresia: enviarMembresia,
       });
       if (!r.ok) {
         if (r.tipo === 'codigos') {
@@ -216,7 +241,10 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
           toast({ title: t('errorSubida'), description: r.detalle, variant: 'destructive' });
         } else {
           const campo = form.marcarErrorServidor(r.error.codigo);
-          toast({ title: t('errorGuardar'), description: mensajeError(r.error), variant: 'destructive' });
+          // Con la configuración de membresía, «sin permiso» casi siempre es memberships.plans.manage.
+          const descripcion =
+            r.error.codigo === 'sin_permiso' && enviarMembresia ? ts('membresia.errorSinPermiso') : mensajeError(r.error);
+          toast({ title: t('errorGuardar'), description: descripcion, variant: 'destructive' });
           // Solo cuenta el campo (para abrir su sección y enfocarlo); el texto ya lo marca el hook.
           if (campo) irAError({ [campo]: r.error.codigo } as ErroresFormulario);
         }
@@ -389,7 +417,17 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
     moneda,
     hoy: fechas.getToday(),
     ordenesAbiertasReceta: form.ordenesAbiertasReceta,
+    puedeConfigurarMembresia: puedeMembresia,
+    membresiasVivas: modo === 'editar' ? Number(form.datos?.membresia?.membresias_vivas ?? 0) || 0 : 0,
   };
+
+  // Una membresía no lleva variantes: cada plan es un producto (la base también lo rechaza).
+  const avisoSinVariantes = (
+    <div role="note" className="flex items-start gap-2 rounded-lg bg-subtle p-3 text-sm text-fg-secondary">
+      <Split aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+      {ts('membresia.sinVariantes')}
+    </div>
+  );
 
   const contenido = (s: SeccionFormulario): ReactNode => {
     switch (s) {
@@ -399,9 +437,22 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
         return <SeccionPrecios {...props} />;
       case 'impuestos':
         return <SeccionImpuestos {...props} />;
+      case 'membresia':
+        return <SeccionMembresia {...props} />;
       case 'inventario':
         return <MarcoInventario {...props} />;
       case 'variantes':
+        if (esMembresia(estado)) {
+          // Si ya tenía variantes se deja la sección para quitarlas (el error lo marca «Tipo de servicio»).
+          return estado.tiene_variantes ? (
+            <div className="flex flex-col gap-4">
+              {avisoSinVariantes}
+              <SeccionVariantes {...props} />
+            </div>
+          ) : (
+            avisoSinVariantes
+          );
+        }
         return <SeccionVariantes {...props} />;
       case 'modificadores':
         return <SeccionModificadores {...props} />;
@@ -494,6 +545,7 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
           </div>
 
           <div id="paso-inventario" className={paso === 'inventario' ? 'flex flex-col gap-4' : 'hidden'}>
+            {visibles.includes('membresia') && marco('membresia', <SeccionMembresia {...props} />, { colapsable: false, abierta: true })}
             {visibles.includes('inventario') && marco('inventario', <MarcoInventario {...props} />, { colapsable: false, abierta: true })}
             <FormSection id="precios" titulo={ts('precios.titulo')} descripcion={ts('precios.descripcion')} icono={ICONO_SECCION.precios} accion={insigniaErrores('precios')}>
               <SeccionPrecios {...props} partes="costos" />

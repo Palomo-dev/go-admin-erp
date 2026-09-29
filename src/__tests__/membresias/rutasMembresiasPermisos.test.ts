@@ -20,7 +20,7 @@ const guion = {
 };
 
 jest.mock('@/lib/utils/orgContext', () => {
-  const { OrgContextError } = jest.requireActual('@/lib/utils/orgContextError');
+  const { OrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
   const jsonError = (status: number, code: string, message?: string) =>
     new Response(JSON.stringify({ error: message ?? code, code }), { status, headers: { 'Content-Type': 'application/json' } });
   return {

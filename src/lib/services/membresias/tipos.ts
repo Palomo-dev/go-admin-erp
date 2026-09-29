@@ -155,6 +155,8 @@ export interface PlanFila {
   nombre: string;
   descripcion: string | null;
   productId: number | null;
+  /** uuid del producto: las páginas de inventario usan el uuid en la URL. */
+  productUuid: string | null;
   sku: string | null;
   estadoProducto: string | null;
   activo: boolean;

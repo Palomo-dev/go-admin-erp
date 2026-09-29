@@ -60,7 +60,7 @@ export function VehicleHistoryDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <HistoryIcon className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-            Historial - {vehicle.plate_number}
+            Historial - {vehicle.plate}
           </DialogTitle>
         </DialogHeader>
 

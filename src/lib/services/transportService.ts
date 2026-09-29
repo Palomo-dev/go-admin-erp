@@ -33,9 +33,14 @@ export interface TransportCarrier {
 export interface Vehicle {
   id: string;
   organization_id: number;
-  carrier_id?: string;
+  carrier_id?: string | null;
   branch_id?: number;
-  plate_number: string;
+  // Nombres verificados en `information_schema.columns` (MCP de Supabase): son
+  // EXACTAMENTE las columnas de `public.vehicles`. Este tipo se usa como
+  // payload de insert y update, asi que una propiedad de mas aqui es un 400 de
+  // PostgREST. De combustible y de poliza de seguro no hay columna: si se
+  // quieren guardar, hace falta una migracion, no un campo en el formulario.
+  plate: string;
   vehicle_type: 'motorcycle' | 'car' | 'van' | 'truck' | 'minibus' | 'bus';
   brand?: string;
   model?: string;
@@ -43,13 +48,12 @@ export interface Vehicle {
   color?: string;
   capacity_kg?: number;
   capacity_m3?: number;
-  capacity_seats?: number;
-  fuel_type?: string;
+  passenger_capacity?: number;
   vin?: string;
   soat_expiry?: string;
-  tech_review_expiry?: string;
+  techno_expiry?: string;
   insurance_expiry?: string;
-  insurance_policy?: string;
+  operating_card_expiry?: string;
   current_driver_id?: string;
   status: 'available' | 'in_use' | 'maintenance' | 'inactive';
   is_active: boolean;
@@ -142,7 +146,7 @@ export interface Shipment {
   source_type: string;
   source_id?: string;
   customer_id?: string;
-  carrier_id?: string;
+  carrier_id?: string | null;
   tracking_number?: string;
   status: 'draft' | 'ready' | 'picked' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed' | 'returned' | 'cancelled';
   shipping_fee: number;
@@ -533,7 +537,7 @@ class TransportService {
       query = query.eq('branch_id', branchId);
     }
 
-    const { data, error } = await query.order('plate_number');
+    const { data, error } = await query.order('plate');
 
     if (error) {
       console.warn('Error fetching vehicles:', error.message);
@@ -598,12 +602,11 @@ class TransportService {
     // La consulta es de toda la organizacion (no filtra `vehicles.branch_id`),
     // asi que la zona es la de la organizacion.
     //
-    // OJO — deuda verificada por MCP, NO tocada aqui: el `.or()` de abajo
-    // nombra `tech_review_expiry`, columna que **no existe** en `vehicles` (la
-    // real es `techno_expiry`). PostgREST rechaza la consulta entera, asi que
-    // esta funcion hoy lanza siempre. Corregirlo cambia que documentos se
-    // vigilan y no es parte de esta tanda: queda anotado en
-    // docs/PROGRESO-zonas-horarias.md.
+    // El `.or()` nombraba una columna de revision tecnica que no existe: la
+    // real es `techno_expiry`. PostgREST rechazaba el filtro entero y la funcion
+    // lanzaba siempre, asi que no se vigilaba ningun documento. Corregido, y de
+    // paso se vigilan las CUATRO columnas de vencimiento que tiene la tabla:
+    // la tarjeta de operacion tambien vence.
     const zona = await resolveTimezone(organizationId);
     const dateStr = sumarDiasAlDia(todayInTz(zona), daysAhead);
 
@@ -612,7 +615,10 @@ class TransportService {
       .select('*')
       .eq('organization_id', organizationId)
       .eq('is_active', true)
-      .or(`soat_expiry.lte.${dateStr},tech_review_expiry.lte.${dateStr},insurance_expiry.lte.${dateStr}`);
+      .or(
+        `soat_expiry.lte.${dateStr},techno_expiry.lte.${dateStr},` +
+          `insurance_expiry.lte.${dateStr},operating_card_expiry.lte.${dateStr}`,
+      );
 
     if (error) throw error;
     return data as Vehicle[];
@@ -855,7 +861,7 @@ class TransportService {
       .select(`
         *,
         transport_routes(id, name, origin_stop_id, destination_stop_id),
-        vehicles(id, plate_number, vehicle_type)
+        vehicles(id, plate, vehicle_type)
       `)
       .eq('organization_id', organizationId)
       .order('scheduled_departure', { ascending: true });

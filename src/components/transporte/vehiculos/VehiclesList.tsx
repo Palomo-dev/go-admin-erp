@@ -111,7 +111,7 @@ export function VehiclesList({
         const Icon = vehicleTypeIcons[vehicle.vehicle_type] || Car;
         const status = statusConfig[vehicle.status] || statusConfig.inactive;
         const soatStatus = getExpiryStatus(vehicle.soat_expiry);
-        const techStatus = getExpiryStatus(vehicle.tech_review_expiry);
+        const techStatus = getExpiryStatus(vehicle.techno_expiry);
         const insuranceStatus = getExpiryStatus(vehicle.insurance_expiry);
         const hasWarnings = soatStatus === 'warning' || techStatus === 'warning' || insuranceStatus === 'warning';
         const hasExpired = soatStatus === 'expired' || techStatus === 'expired' || insuranceStatus === 'expired';
@@ -129,7 +129,7 @@ export function VehiclesList({
                   </div>
                   <div>
                     <h3 className="font-bold text-lg text-gray-900 dark:text-white">
-                      {vehicle.plate_number}
+                      {vehicle.plate}
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       {vehicle.brand} {vehicle.model} {vehicle.year}
@@ -217,10 +217,10 @@ export function VehiclesList({
                     <span className="font-medium">Sucursal:</span> {vehicle.branches.name}
                   </p>
                 )}
-                {vehicle.capacity_seats && (
+                {vehicle.passenger_capacity && (
                   <p className="flex items-center gap-2">
                     <User className="h-3 w-3" />
-                    Capacidad: {vehicle.capacity_seats} pasajeros
+                    Capacidad: {vehicle.passenger_capacity} pasajeros
                   </p>
                 )}
                 {vehicle.capacity_kg && (

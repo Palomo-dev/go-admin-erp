@@ -101,7 +101,7 @@ export default function VehiculosPage() {
   const filteredVehicles = vehicles.filter((v) => {
     const term = searchTerm.toLowerCase();
     const matchesSearch =
-      v.plate_number.toLowerCase().includes(term) ||
+      v.plate.toLowerCase().includes(term) ||
       (v.brand && v.brand.toLowerCase().includes(term)) ||
       (v.model && v.model.toLowerCase().includes(term));
     const matchesStatus = statusFilter === 'all' || v.status === statusFilter;
@@ -187,7 +187,7 @@ export default function VehiculosPage() {
     setSelectedVehicle({
       ...vehicle,
       id: '',
-      plate_number: `${vehicle.plate_number}-COPY`,
+      plate: `${vehicle.plate}-COPY`,
     } as Vehicle);
     setShowDialog(true);
   };
@@ -280,7 +280,7 @@ export default function VehiculosPage() {
         });
         success++;
       } catch (error) {
-        errors.push(`${vehicle.plate_number}: ${String(error)}`);
+        errors.push(`${vehicle.plate}: ${String(error)}`);
       }
     }
     
@@ -367,7 +367,7 @@ export default function VehiculosPage() {
             <AlertDialogTitle>¿Eliminar vehículo?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta acción no se puede deshacer. Se eliminará el vehículo
-              <strong> {vehicleToDelete?.plate_number}</strong> permanentemente.
+              <strong> {vehicleToDelete?.plate}</strong> permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

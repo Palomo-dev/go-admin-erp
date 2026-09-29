@@ -283,6 +283,9 @@ describe('balanceService — el historial de saldos', () => {
           error: null,
         },
       ],
+      // El puente hasta los movimientos es `open_finance_accounts`:
+      // `open_finance_transactions.account_id` es uuid, no el entero bancario.
+      open_finance_accounts: [{ data: [{ id: 'of-1' }], error: null }],
       open_finance_transactions: [{ data: [], error: null }],
     });
 
@@ -315,6 +318,7 @@ describe('balanceService — el historial de saldos', () => {
           error: null,
         },
       ],
+      open_finance_accounts: [{ data: [{ id: 'of-1' }], error: null }],
       open_finance_transactions: [
         {
           data: [

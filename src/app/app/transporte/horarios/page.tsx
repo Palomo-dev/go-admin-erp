@@ -29,9 +29,11 @@ import {
 
 interface Vehicle {
   id: string;
-  plate_number: string;
+  // Los nombres son los de public.vehicles: `plate` y `passenger_capacity`.
+  // Antes decia plate y passenger_capacity, que no existen.
+  plate: string;
   model?: string;
-  capacity_passengers?: number;
+  passenger_capacity?: number;
 }
 
 interface Driver {

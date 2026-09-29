@@ -1076,3 +1076,45 @@ asiento por movimiento `stock_movements`), por organización y id de ajuste:
 | 199 | 1 | 147 |
 
 (81 ajustes; el contador reversa el asiento por movimiento o el del documento, no ambos.)
+
+---
+
+## Anexo B6b — Catálogo maestro: imágenes, categorías, proveedores y etiquetas (2026-09-29)
+
+Commits: `77d0a418` imágenes · `7eb020d0` etiquetas · `7c48ec91` categorías · `17d3e786`
+proveedores. Solo archivos de B6b (§5.7) y los namespaces `inventarioImagenes`, `categorias`,
+`proveedores` e `inventarioEtiquetas` en es/en/fr/pt.
+
+**Migraciones** (aplicadas por el MCP, `.sql` y rollback en el repo):
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929020000_inv_b6_imagenes` | `shared_images.alt_text` y `created_by`, índices; retira `trigger_update_image_url` (asignaba `image_url`, columna inexistente: «Hacer pública» fallaba siempre con 42703); RPC `fn_imagenes_resumen`, `fn_imagenes_listado` (paginado, dos orígenes), `fn_imagen_detalle`, `fn_imagen_registrar`, `fn_imagen_actualizar`, `fn_imagenes_visibilidad`, `fn_imagen_asignar_productos`, `fn_imagenes_eliminar` (reasigna la principal) |
+| `20260929021000_inv_b6_catalogo_permisos` | `mover_categorias`, `eliminar_categoria`, `etiquetas_producto_eliminar/fusionar` exigen permiso de catálogo (antes solo pertenencia); `fn_etiqueta_guardar`; disparador de nombre de etiqueta único sin mayúsculas hacia adelante (los 4 grupos repetidos de hoy no se tocan) |
+| `20260929022000_inv_b6_importar_catalogo` | `fn_categorias_importar` y `fn_proveedores_importar`: revisar y aplicar con la misma función, una transacción, tope 2.000 filas (aplicada en dos pasos; el segundo, `…_duplicados`) |
+
+Todas DEFINER con `fn_assert_acceso_org` o `fn_productos_exigir_permiso` y `REVOKE … FROM
+public, anon`. Probado en la base con `DO … RAISE`: usuario sin permisos de catálogo → 42501 al
+escribir, otra organización → 42501, anon → 42501; nombre de etiqueta repetido → 23505.
+
+**Pantallas**: Imágenes `596:345914` rehecha (galería, pestañas, KPI, filtros, selección, panel
+«Usada en», subir con avance, asignar a productos, eliminar); Importar categorías `973:186211`;
+Importar proveedores `973:185225` / `975:185874` (4 pasos, crear o actualizar por documento);
+permisos en la interfaz y estado «sin permiso» en categorías, proveedores, etiquetas e imágenes;
+el detalle del proveedor enlaza Facturas y CxP filtradas por el proveedor; borrado el código
+muerto `DetalleProveedor.tsx` y `FormularioProveedor.tsx`.
+
+**Permisos**: la interfaz usa `fn_productos_permisos` (hook `categorias/usePermisosCatalogo.ts`,
+en lugar de duplicar lo de B0); cuando B0 publique `fn_inventario_permisos.editar_catalogo`, se
+cambia solo ese hook.
+
+**Pendiente** (fuera de B6b o con dueño):
+- Alta y edición de categorías, proveedores y el alta directa de etiquetas desde el producto
+  siguen escribiendo tablas por RLS de pertenencia: el permiso de servidor completo llega con la
+  RLS por permiso de B10.
+- Storage: las políticas de `organization_images` y `product-images` no filtran por organización
+  (B10 / seguridad).
+- El catálogo de productos (B7) aún no lee `?etiqueta=` ni `?proveedor=`; Órdenes de compra no
+  filtra por `?proveedor=` (agente de compras).
+- Tableta sin frames en Figma; categorías móviles de detalle y formulario sin frame (se usan los
+  responsivos actuales).

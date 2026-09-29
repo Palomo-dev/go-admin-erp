@@ -9933,10 +9933,6 @@
       "guardando": "Enregistrement…",
       "crear": "Créer et sélectionner",
       "slugOcupadoTitulo": "Modifiez le slug : il existe déjà"
-    },
-    "ingredienteRapido": {
-      "titulo": "Créer un ingrédient",
-      "descripcion": "Il est créé comme produit du catalogue avec son coût et ajouté à la recette."
     }
   },
   "arranque": {
@@ -19582,6 +19578,631 @@
       "fecha_invalida": "La date de péremption n'est pas valide.",
       "lotes_sin_linea": "Des lots concernent une ligne absente de la facture. Rechargez la page.",
       "error_desconocido": "La réception n'a pas pu être enregistrée. Rien n'a été reçu ; réessayez."
+    }
+  },
+  "inventarioProduccion": {
+    "inventario": "Inventaire",
+    "sustantivo": {
+      "singular": "ordre",
+      "plural": "ordres"
+    },
+    "estados": {
+      "draft": "Brouillon",
+      "confirmed": "Confirmé",
+      "in_progress": "En cours",
+      "completed": "Terminé",
+      "cancelled": "Annulé"
+    },
+    "listado": {
+      "titulo": "Production",
+      "subtitulo": "{sucursal} · {count, plural, =0 {aucun ordre ce mois-ci} one {# ordre ce mois-ci} other {{n} ordres ce mois-ci}}",
+      "todasSucursales": "Toutes les succursales",
+      "lemaSucursal": "Les ordres consomment et produisent dans leur succursale.",
+      "actualizar": "Actualiser",
+      "recetas": "Recettes",
+      "nueva": "Nouvel ordre de production",
+      "creada": "Ordre créé",
+      "kpis": {
+        "etiqueta": "Résumé de production",
+        "porConfirmar": "À confirmer",
+        "borradores": "Brouillons",
+        "enProceso": "En cours",
+        "confirmadas": "{count, plural, =0 {Aucun ordre confirmé à démarrer} one {# confirmé à démarrer} other {{n} confirmés à démarrer}}",
+        "completadasMes": "Terminés ce mois-ci",
+        "costoReal": "Coût réel {costo}",
+        "sinCostos": "Pas d’autorisation pour voir les coûts",
+        "diferencia": "Écart prévu vs produit",
+        "mermaMes": "Moins a été produit que prévu",
+        "sobreProduccion": "La quantité prévue ou plus a été produite",
+        "sinCompletadas": "Aucun ordre terminé ce mois-ci"
+      },
+      "buscar": {
+        "placeholder": "Rechercher par numéro d’ordre ou produit",
+        "etiqueta": "Rechercher des ordres de production"
+      },
+      "filtros": {
+        "estado": "Statut",
+        "desde": "Du",
+        "hasta": "Au",
+        "verN": "{count, plural, =0 {Aucun résultat} one {Voir # ordre} other {Voir {n} ordres}}"
+      },
+      "chips": {
+        "estado": "Statut : {estados}",
+        "desde": "Du {dia}",
+        "hasta": "Au {dia}",
+        "producto": "Un produit"
+      },
+      "columnas": {
+        "orden": "Ordre",
+        "producto": "Produit et recette",
+        "sucursal": "Succursale",
+        "cantidad": "Quantité",
+        "costo": "Coût",
+        "fecha": "Date",
+        "estado": "Statut"
+      },
+      "recetaTandas": "Recette v{version} · {count, plural, one {# lot de fabrication} other {{n} lots de fabrication}}",
+      "recetaVersion": "Recette v{version}",
+      "planeadas": "Prévues",
+      "producidasDe": "Produites sur {planeado}",
+      "falta": "Il manque {cantidad} de {nombre}",
+      "estimado": "Estimé",
+      "realPorUnidad": "{costo} / {unidad} réel",
+      "sinConsumos": "Aucune consommation enregistrée",
+      "etiquetaFila": "Ordre {numero} de {producto}",
+      "avisoFaltantes": "Des ordres ouverts ont des ingrédients insuffisants dans la succursale.",
+      "vacio": {
+        "titulo": "Aucun ordre de production pour l’instant",
+        "descripcion": "Créez un ordre pour fabriquer un produit avec sa recette : les ingrédients sont déduits à la fin de l’ordre et le produit entre à son coût réel."
+      },
+      "sinResultados": "Aucun ordre ne correspond à la recherche ou aux filtres.",
+      "errorCarga": "Impossible de charger les ordres de production",
+      "sinPermiso": {
+        "titulo": "Vous n’avez pas accès à la production",
+        "descripcion": "Demandez à l’administrateur de votre organisation l’autorisation de voir l’inventaire."
+      },
+      "exportar": {
+        "boton": "Exporter",
+        "sinDatos": "Aucun ordre à exporter",
+        "listo": "{count, plural, one {# ordre exporté} other {# ordres exportés}}",
+        "error": "Impossible d’exporter"
+      },
+      "csv": {
+        "orden": "Ordre",
+        "fecha": "Date",
+        "sucursal": "Succursale",
+        "producto": "Produit",
+        "sku": "SKU",
+        "receta": "Recette",
+        "aProducir": "À produire",
+        "producido": "Produit",
+        "unidad": "Unité",
+        "costo": "Coût",
+        "estado": "Statut",
+        "autor": "Créé par"
+      },
+      "masivas": {
+        "exportar": "Exporter",
+        "confirmar": "{count, plural, =0 {Confirmer} one {Confirmer # brouillon} other {Confirmer # brouillons}}",
+        "sinPermiso": "Vous n’avez pas l’autorisation de produire",
+        "soloBorradores": "Sélectionnez des ordres en brouillon"
+      }
+    },
+    "acciones": {
+      "ver": "Voir l’ordre",
+      "confirmar": {
+        "boton": "Confirmer",
+        "listo": "{numero} confirmé",
+        "error": "Impossible de confirmer l’ordre"
+      },
+      "iniciar": {
+        "boton": "Démarrer",
+        "listo": "{numero} en cours",
+        "error": "Impossible de démarrer l’ordre"
+      },
+      "completar": "Terminer la production",
+      "distribuir": "Distribuer",
+      "sinPermisoTrasladar": "Vous n’avez pas l’autorisation de transférer",
+      "kardex": "Voir le kardex",
+      "cancelar": {
+        "boton": "Annuler l’ordre",
+        "titulo": "Annuler {numero}",
+        "descripcion": "L’ordre n’est plus ouvert. Aucun stock n’est mouvementé : rien n’avait été consommé.",
+        "confirmar": "Annuler l’ordre",
+        "listo": "{numero} annulé",
+        "rapido1": "Manque d’ingrédients",
+        "rapido2": "Créé par erreur",
+        "rapido3": "Le plan de production a changé"
+      },
+      "eliminar": {
+        "boton": "Supprimer le brouillon",
+        "titulo": "Supprimer {numero}",
+        "descripcion": "Le brouillon est supprimé. Il ne mouvemente pas le stock et ne laisse aucune trace dans le kardex.",
+        "confirmar": "Supprimer",
+        "listo": "{numero} supprimé"
+      },
+      "completada": {
+        "titulo": "{numero} terminé",
+        "conCosto": "Le produit est entré en stock à {costo} par unité.",
+        "sinCosto": "Le produit est entré en stock à son coût réel."
+      }
+    },
+    "completar": {
+      "titulo": "Terminer l’ordre {numero}",
+      "descripcion": "La production entre dans l’inventaire de {sucursal} à son coût réel.",
+      "cantidad": "Quantité produite",
+      "ayuda": "Prévu : {planeado}. Jusqu’à {maximo} (150 %) est accepté. Si vous produisez moins, la différence ne consomme pas d’ingrédients.",
+      "entra": "Entre en stock",
+      "entraValor": "{cantidad} de {producto}",
+      "salen": "Sortent",
+      "salenValor": "{count, plural, =0 {Aucun ingrédient} one {# ingrédient (recette v{version} avec perte)} other {# ingrédients (recette v{version} avec perte)}}",
+      "costoReal": "Coût réel",
+      "costoRealValor": "{total} → {unidad} l’unité (met à jour le coût moyen)",
+      "quedaNegativo": "Passe en négatif",
+      "quedaNegativoValor": "{nombre} : {cantidad}",
+      "entiendo": "{count, plural, one {Je comprends que {nombre} passe en négatif} other {Je comprends que # ingrédients passent en négatif}}",
+      "marcaEntiendo": "Confirmez que le stock des ingrédients passe en négatif",
+      "confirmar": "Terminer l’ordre",
+      "errores": {
+        "requerida": "Saisissez la quantité produite",
+        "mayor_que_cero": "La quantité doit être supérieure à 0",
+        "excede": "Ne peut pas dépasser {maximo} (150 % de la quantité prévue)",
+        "decimales": "{decimales, plural, =0 {Ce produit est fabriqué en unités entières} one {# décimale maximum} other {# décimales maximum}}"
+      }
+    },
+    "nueva": {
+      "titulo": "Nouvel ordre de production",
+      "descripcion": "L’ordre conserve la version de recette avec laquelle il est créé.",
+      "descripcionProducto": "{producto} · l’ordre conserve la version de recette avec laquelle il est créé.",
+      "producto": "Produit",
+      "buscarProducto": "Rechercher un produit avec recette",
+      "buscarVacio": "Tapez pour rechercher",
+      "sinRecetas": "Aucun produit avec recette active ne correspond",
+      "recetaVersion": "v{version}",
+      "modo": {
+        "al_producir": "À la production",
+        "al_vender": "À la vente"
+      },
+      "sucursal": "Succursale",
+      "eligeSucursal": "Choisissez une succursale",
+      "cantidad": "Quantité à produire",
+      "receta": "Recette",
+      "versionActiva": "v{version} (active)",
+      "necesidades": "Besoins",
+      "necesidadesPara": "Besoins pour {cantidad} à {sucursal}",
+      "columnas": {
+        "ingrediente": "Ingrédient",
+        "necesario": "Nécessaire",
+        "disponible": "Disponible",
+        "faltante": "Manquant"
+      },
+      "merma": "(perte {pct} %)",
+      "noDescuenta": "non déduit",
+      "sinConversion": "Sans conversion",
+      "sinIngredientes": "La recette n’a pas d’ingrédients",
+      "avisoFaltante": "{count, plural, one {Il manque {cantidad} de {nombre}.} other {Il manque # ingrédients (d’abord {nombre} : {cantidad}).}} Vous pouvez quand même créer l’ordre : « Terminer » demandera de confirmer le manque.",
+      "costoEstimado": "Coût estimé : {costo}.",
+      "eligeProducto": "Choisissez le produit",
+      "escribeCantidad": "Saisissez une quantité valide",
+      "guardarBorrador": "Enregistrer le brouillon",
+      "crearYConfirmar": "Créer et confirmer"
+    },
+    "detalle": {
+      "cargando": "Chargement de l’ordre…",
+      "tituloVacio": "Ordre de production",
+      "estados": {
+        "noEncontrada": {
+          "titulo": "Nous n’avons pas trouvé cet ordre",
+          "descripcion": "Il a peut-être été supprimé ou appartient à une autre organisation."
+        },
+        "sinPermiso": {
+          "titulo": "Vous n’avez pas accès à cet ordre",
+          "descripcion": "Demandez l’autorisation de voir l’inventaire."
+        },
+        "error": {
+          "titulo": "Impossible de charger l’ordre",
+          "descripcion": "Vérifiez votre connexion et réessayez."
+        }
+      },
+      "reintentar": "Réessayer",
+      "volver": "Retour à la production",
+      "recetaVersion": "Recette v{version}",
+      "tandas": "{count, plural, one {# lot de fabrication} other {{n} lots de fabrication}}",
+      "planeadas": "{cantidad} prévues",
+      "creada": "créé le {fecha} par {autor}",
+      "imprimir": "Imprimer l’ordre",
+      "pasos": "Avancement de l’ordre",
+      "pasoMovil": "Étape {num} sur {tot} : {etiqueta}",
+      "cancelada": "Annulé le {fecha} par {autor}. Motif : {motivo}",
+      "sinConsumos": "Cet ordre a été terminé avant le changement de production et n’a enregistré aucune consommation ni mouvement de stock.",
+      "sinConsumosTitulo": "Aucune consommation",
+      "ingredientes": "Ingrédients",
+      "ingredientesPara": "Ingrédients (pour {cantidad})",
+      "columnas": {
+        "ingrediente": "Ingrédient",
+        "requerido": "Requis",
+        "enSucursal": "À {sucursal}",
+        "estado": "Statut",
+        "consumido": "Consommé",
+        "costoUnitario": "Coût unitaire",
+        "subtotal": "Sous-total",
+        "kardex": "Kardex"
+      },
+      "opcional": "Facultatif : non consommé",
+      "merma": "Perte {pct} %",
+      "noDescuenta": "Non déduit",
+      "sinConversion": "Sans conversion",
+      "falta": "Il manque {cantidad}",
+      "suficiente": "Suffisant",
+      "lote": "Lot {codigo}",
+      "movimiento": "Mouvement n° {id}",
+      "sinIngredientes": "La recette n’a pas d’ingrédients",
+      "avisoFaltante": "{count, plural, one {Il manque {cantidad} de {nombre}.} other {Il manque # ingrédients (d’abord {nombre} : {cantidad}).}} Vous pouvez demander un transfert depuis une autre succursale, acheter, ou terminer en confirmant que le stock passe en négatif.",
+      "pedirTraslado": "Demander un transfert",
+      "crearOrdenCompra": "Créer un bon de commande",
+      "consumos": "Consommations",
+      "terminado": "Produit fini",
+      "entrara": "Entrera en stock",
+      "entro": "Entré en stock",
+      "entraValor": "{cantidad} de {producto} à {sucursal}",
+      "costoEstimado": "Coût estimé",
+      "costoReal": "Coût réel",
+      "costoValor": "{total} · {unidad} par unité",
+      "promedio": "Coût moyen après",
+      "kardex": "Kardex",
+      "kardexHecho": "Consommations (sortie) et produit fini (entrée) avec leur coût",
+      "kardexPendiente": "Enregistré à la fin : consommations (sortie) et produit fini (entrée) avec leur coût",
+      "resumen": "Résumé",
+      "receta": "Recette",
+      "recetaVersionNombre": "{nombre} · v{version}",
+      "sucursal": "Succursale",
+      "planeado": "Prévu",
+      "producido": "Produit",
+      "confirmada": "Confirmé",
+      "iniciada": "Démarré",
+      "completada": "Terminé",
+      "notas": "Notes",
+      "conecta": "Liens avec le reste",
+      "recetaUsada": "Recette utilisée (version figée)",
+      "costoRecetas": "Coût des recettes",
+      "movimientosKardex": "Mouvements dans le kardex",
+      "nMovimientos": "{count, plural, =0 {Aucun} one {# mouvement} other {# mouvements}}",
+      "alCompletar": "À la fin",
+      "distribucion": "Distribution",
+      "sinDistribuir": "Non distribué",
+      "ver": "Voir"
+    },
+    "errores": {
+      "orden_no_encontrada": "L’ordre n’existe pas ou appartient à une autre organisation.",
+      "orden_estado_invalido": "Le statut de l’ordre a changé. Actualisez la page.",
+      "orden_no_editable": "Seuls les ordres en brouillon peuvent être modifiés.",
+      "producto_no_encontrado": "Le produit n’existe pas ou a été supprimé.",
+      "producto_padre": "Choisissez la variante produite, pas le produit parent.",
+      "producto_sin_inventario": "Le produit fini doit être suivi en stock pour être produit.",
+      "receta_no_encontrada": "Le produit n’a pas de recette active.",
+      "receta_inactiva": "La recette est désactivée : activez-la ou créez une nouvelle version.",
+      "receta_ingrediente_invalido": "Un ingrédient de la recette n’existe plus dans l’organisation.",
+      "conversion_faltante": "Il manque une conversion d’unités pour un ingrédient. Créez-la dans Unités et conversions.",
+      "cantidad_invalida": "La quantité doit être supérieure à 0.",
+      "cantidad_decimales": "La quantité a plus de décimales que le produit n’en admet.",
+      "excede_lo_planeado": "Impossible de produire plus de 150 % de la quantité prévue.",
+      "faltante_sin_confirmar": "Un ingrédient est insuffisant : confirmez qu’il passe en négatif pour terminer.",
+      "motivo_requerido": "Saisissez le motif de l’annulation.",
+      "accion_invalida": "Cette action n’est pas disponible pour l’ordre.",
+      "produccion_solo_por_rpc": "Les ordres de production ne changent que par leurs actions.",
+      "SUCURSAL_NO_ES_DE_LA_ORG": "La succursale n’appartient pas à votre organisation.",
+      "sin_permiso": "Vous n’avez pas l’autorisation de produire.",
+      "desconocido": "Une erreur inattendue s’est produite. Réessayez."
+    }
+  },
+  "inventarioRecetas": {
+    "inventario": "Inventaire",
+    "sustantivo": {
+      "singular": "recette",
+      "plural": "recettes"
+    },
+    "modo": {
+      "al_producir": "À la production",
+      "al_vender": "À la vente"
+    },
+    "estados": {
+      "activa": "Active",
+      "inactiva": "Inactive"
+    },
+    "fuentes": {
+      "promedio_sucursal": "Coût moyen",
+      "costo_vigente": "Dernier coût d'achat",
+      "sin_costo": "Sans coût",
+      "sin_conversion": "Sans conversion",
+      "nSinCosto": "{count, plural, one {# sans coût} other {# sans coût}}"
+    },
+    "listado": {
+      "titulo": "Recettes",
+      "subtitulo": "{organizacion} · {count, plural, =0 {aucune recette} one {# recette} other {{n} recettes}} · {activas} actives",
+      "subtituloMovil": "{activas} actives",
+      "actualizar": "Actualiser",
+      "costoRecetas": "Coût des recettes",
+      "produccion": "Production",
+      "nueva": "Nouvelle recette",
+      "crearOrden": "Créer un ordre de production",
+      "crearOrdenDe": "Créer un ordre de production pour {producto}",
+      "kpis": {
+        "etiqueta": "Résumé des recettes",
+        "activas": "Recettes actives",
+        "inactivas": "{count, plural, =0 {Aucune inactive} one {# inactive} other {{n} inactives}}",
+        "incompleto": "Avec coût incomplet",
+        "incompletoDetalle": "Ingrédients sans coût ou sans conversion",
+        "margenBajo": "Marge faible (moins de {umbral})",
+        "margenDetalle": "Revoir le prix ou la recette",
+        "ordenes": "Ordres de production du mois",
+        "verProduccion": "Voir la production"
+      },
+      "buscar": {
+        "placeholder": "Rechercher par produit ou nom de recette",
+        "etiqueta": "Rechercher des recettes"
+      },
+      "filtros": {
+        "estado": "Statut",
+        "estados": {
+          "activas": "Actives",
+          "inactivas": "Inactives",
+          "todas": "Toutes"
+        },
+        "modo": "Mode de déduction",
+        "todos": "Tous",
+        "incompleto": "Uniquement avec coût incomplet",
+        "margenBajo": "Uniquement avec marge faible",
+        "verN": "{count, plural, =0 {Aucun résultat} one {Voir # recette} other {Voir {n} recettes}}"
+      },
+      "chips": {
+        "estado": "Statut : {estado}",
+        "incompleto": "Coût incomplet",
+        "margenBajo": "Marge faible"
+      },
+      "columnas": {
+        "producto": "Produit final",
+        "rinde": "Rendement",
+        "ingredientes": "Ingrédients",
+        "costo": "Coût par unité",
+        "margen": "Marge",
+        "descuenta": "Déduit",
+        "estado": "Statut"
+      },
+      "recetaNombre": "Recette « {nombre} » · v{version}",
+      "costoCompleto": "Coût complet",
+      "nSinCosto": "{count, plural, one {# sans coût} other {# sans coût}}",
+      "nSinConversion": "{count, plural, one {# sans conversion} other {# sans conversion}}",
+      "etiquetaFila": "Recette de {producto}, version {version}",
+      "vacio": {
+        "titulo": "Aucune recette pour l'instant",
+        "descripcion": "Une recette indique quels ingrédients un produit déduit lorsqu'il est vendu ou produit, et combien il coûte."
+      },
+      "sinResultados": "Aucune recette ne correspond à la recherche ou aux filtres.",
+      "errorCarga": "Impossible de charger les recettes",
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès aux recettes",
+        "descripcion": "Demandez à l'administrateur de votre organisation l'autorisation de consulter l'inventaire."
+      },
+      "exportar": {
+        "sinDatos": "Aucune recette à exporter",
+        "listo": "{count, plural, one {# recette exportée} other {# recettes exportées}}"
+      },
+      "csv": {
+        "producto": "Produit",
+        "sku": "SKU",
+        "version": "Version",
+        "rinde": "Rendement",
+        "ingredientes": "Ingrédients",
+        "costoUnidad": "Coût par unité",
+        "precio": "Prix de vente",
+        "margen": "Marge",
+        "modo": "Déduit",
+        "estado": "Statut"
+      },
+      "masivas": {
+        "exportar": "Exporter"
+      }
+    },
+    "editor": {
+      "titulo": "Modifier la recette",
+      "nueva": "Nouvelle recette",
+      "eligeSubtitulo": "Choisissez le produit obtenu avec la recette.",
+      "subtituloNueva": "{producto} · l'enregistrement crée la version 1",
+      "subtituloEditar": "{producto} · l'enregistrement crée la version {siguiente} ; {count, plural, =0 {aucun ordre ouvert n'utilise la version {version}} one {l'ordre ouvert qui utilise la version {version} ne change pas} other {les # ordres ouverts qui utilisent la version {version} ne changent pas}}",
+      "productoFinal": "Produit final",
+      "productoFinalAyuda": "Un produit ou une variante : il ne peut pas être son propre ingrédient.",
+      "buscarProducto": "Rechercher un produit par nom ou SKU",
+      "buscarVacio": "Saisissez pour rechercher",
+      "sinProductos": "Aucun produit ne correspond",
+      "productoYRendimiento": "Produit final et mode de déduction",
+      "productoYRendimientoAyuda": "Ce que donne un lot et quand les ingrédients sortent de l'inventaire.",
+      "comoDescuenta": "Comment l'inventaire est déduit",
+      "alProducir": "À la production (ordre de production)",
+      "alVender": "À la vente (assemblé lors de la vente)",
+      "explicacionModo": "À la production : les ingrédients sont déduits à la clôture de l'ordre et le produit entre en inventaire avec son coût ; à la vente, seul le produit diminue. À la vente : rien n'est produit à l'avance ; chaque vente déduit les ingrédients. Jamais les deux à la fois.",
+      "alProducirSinInventario": "Pour produire, le produit final doit gérer l'inventaire. Activez-le sur le produit ou utilisez « À la vente ».",
+      "ingredientesTitulo": "{count, plural, =0 {Ingrédients} one {Ingrédients (#)} other {Ingrédients (#)}}",
+      "ingredientesAyuda": "Quantités pour un lot de {rinde} {unidad}.",
+      "descartar": "Abandonner",
+      "crear": "Créer la recette",
+      "guardarVersion": "Enregistrer la version {version}",
+      "guardada": "Recette enregistrée en version {version}",
+      "sinCambios": "La recette n'a pas changé : aucune nouvelle version n'a été créée",
+      "soloLectura": "Lecture seule : vous n'avez pas l'autorisation de modifier le catalogue.",
+      "versiones": "Versions",
+      "verTodas": "Tout voir",
+      "borradorVersion": "v{version} · brouillon",
+      "sinGuardar": "non enregistrée",
+      "activa": "active",
+      "nOrdenes": "{count, plural, =0 {aucun ordre} one {# ordre} other {# ordres}}",
+      "conecta": "Liens",
+      "ordenes": "Ordres de production",
+      "nAbiertas": "{count, plural, =0 {Aucun ouvert} one {# ouvert} other {# ouverts}}",
+      "costoDetallado": "Coût détaillé par ingrédient",
+      "verReporte": "Coût des recettes",
+      "conversiones": "Conversions d'unités",
+      "unidades": "Unités et conversions",
+      "kardex": "Mouvements dans le Kardex",
+      "movimientosProduccion": "Production",
+      "ver": "Voir",
+      "reintentar": "Réessayer",
+      "volver": "Retour aux recettes",
+      "estados": {
+        "noEncontrado": {
+          "titulo": "Produit introuvable",
+          "descripcion": "Il a peut-être été supprimé ou appartient à une autre organisation."
+        },
+        "error": {
+          "titulo": "Impossible de charger la recette",
+          "descripcion": "Vérifiez votre connexion et réessayez."
+        }
+      }
+    },
+    "versiones": {
+      "titulo": "Versions de la recette",
+      "activaCorta": "v{version} active",
+      "version": "Version {version}",
+      "activa": "Active",
+      "inactiva": "Inactive",
+      "nIngredientes": "{count, plural, one {# ingrédient} other {# ingrédients}}",
+      "nOrdenes": "{count, plural, =0 {Aucun ordre} one {# ordre} other {# ordres}}",
+      "nAbiertas": "{count, plural, one {# ordre ouvert} other {# ordres ouverts}}",
+      "ver": "Voir",
+      "reactivar": "Réactiver (crée v{nueva})",
+      "reactivada": "La version {nueva} a été créée avec le contenu de la version {version}",
+      "igualActiva": "Cette version est identique à la version active : aucune nouvelle n'a été créée",
+      "errorReactivar": "Impossible de réactiver la version",
+      "cargando": "Chargement…",
+      "vacio": "Ce produit n'a pas de recettes.",
+      "errorLineas": "Impossible de charger les ingrédients",
+      "merma": "perte {pct} %",
+      "opcional": "facultatif",
+      "nota": "Réactiver ne supprime rien : cela copie cette version en tant que nouvelle version. Les versions ne sont jamais modifiées ni supprimées : les ordres et le Kardex y font référence."
+    },
+    "acciones": {
+      "editar": "Modifier la recette",
+      "ver": "Voir la recette",
+      "versiones": "Voir les versions",
+      "crearOrden": "Créer un ordre de production",
+      "sinInventario": "Le produit ne gère pas l'inventaire",
+      "costo": "Voir le coût",
+      "verProducto": "Voir le produit",
+      "reactivar": "Réactiver la version {version}",
+      "reactivada": "Recette réactivée en version {version}",
+      "errorReactivar": "Impossible de réactiver la recette",
+      "desactivar": "Désactiver la recette",
+      "desactivarTitulo": "Désactiver la recette de {producto}",
+      "desactivarDescripcion": "La version {version} ne sera plus active.",
+      "consecuenciaVender": "Les ventes ne déduisent plus ses ingrédients : c'est le produit qui est déduit.",
+      "consecuenciaProducir": "Aucun nouvel ordre de production ne pourra être créé avec cette recette.",
+      "consecuenciaOrdenes": "{count, plural, =0 {Aucun ordre ouvert n'utilise cette recette.} one {L'ordre ouvert conserve sa version.} other {Les # ordres ouverts conservent leur version.}}",
+      "consecuenciaReactivar": "Vous pourrez la réactiver plus tard depuis « Voir les versions ».",
+      "desactivada": "Recette de {producto} désactivée",
+      "ordenesSiguen": "{count, plural, one {L'ordre ouvert conserve sa version.} other {Les # ordres ouverts conservent leur version.}}"
+    },
+    "costo": {
+      "titulo": "Coût des recettes",
+      "reportes": "Rapports",
+      "subtitulo": "{organizacion} · {count, plural, =0 {aucune recette active} one {# recette active} other {{n} recettes actives}} · coûts de {sucursal}",
+      "lemaFuente": "Les coûts utilisent la moyenne de cette succursale ; s'il n'y a pas de stock, le dernier coût d'achat. C'est le même coût auquel l'ingrédient sort lors de la vente.",
+      "recalcular": "Recalculer",
+      "irRecetas": "Aller aux recettes",
+      "exportar": {
+        "boton": "Exporter",
+        "sinDatos": "Aucune recette à exporter",
+        "listo": "{count, plural, one {# recette exportée} other {# recettes exportées}}",
+        "error": "Impossible d'exporter"
+      },
+      "csv": {
+        "producto": "Produit",
+        "sku": "SKU",
+        "version": "Version",
+        "rinde": "Rendement",
+        "tanda": "Coût du lot",
+        "unidad": "Coût par unité",
+        "precio": "Prix de vente",
+        "margen": "Marge",
+        "fuente": "Source du coût",
+        "sucursal": "Succursale"
+      },
+      "kpis": {
+        "etiqueta": "Résumé du coût des recettes",
+        "completas": "Recettes au coût complet",
+        "deN": "{completas} sur {total}",
+        "incompletas": "{count, plural, =0 {Toutes au coût complet} one {# avec des ingrédients sans coût} other {# avec des ingrédients sans coût}}",
+        "margenPonderado": "Marge moyenne pondérée",
+        "porVentas": "Selon les ventes des 30 derniers jours",
+        "margenBajo": "Marge inférieure à {umbral}",
+        "nRecetas": "{count, plural, one {# recette} other {{n} recettes}}",
+        "revisar": "Revoir le prix ou la recette",
+        "sinCosto": "Ingrédients sans coût",
+        "registrar": "Enregistrer un coût ou acheter"
+      },
+      "sinPermisoCostos": "Sans l'autorisation « Voir les coûts », ce rapport n'affiche que les quantités : les montants et la marge sont masqués.",
+      "buscar": {
+        "placeholder": "Rechercher une recette ou un produit",
+        "etiqueta": "Rechercher dans le coût des recettes"
+      },
+      "chips": {
+        "estado": "Recettes : {estado}"
+      },
+      "col": {
+        "expandir": "Voir les ingrédients",
+        "receta": "Recette et produit",
+        "rinde": "Rendement",
+        "tanda": "Coût du lot",
+        "unidad": "Coût/unité",
+        "precio": "Prix de vente",
+        "margen": "Marge",
+        "fuente": "Source du coût",
+        "acciones": "Actions",
+        "ingrediente": "Ingrédient",
+        "cantidad": "Quantité",
+        "enSuUnidad": "Dans son unité",
+        "costoUnitario": "Coût unitaire",
+        "subtotal": "Sous-total",
+        "peso": "% du coût"
+      },
+      "expandir": "Voir les ingrédients de {producto}",
+      "contraer": "Masquer les ingrédients de {producto}",
+      "ingredientesDe": "Ingrédients de {producto}",
+      "cargandoLineas": "Calcul en cours…",
+      "errorLineas": "Impossible de calculer le coût de cette recette",
+      "merma": "perte {pct} %",
+      "opcional": "facultatif, non compté",
+      "sinConversion": "Sans conversion",
+      "crearConversion": "Créer une conversion",
+      "registrarCosto": "Enregistrer le coût",
+      "totalCompleto": "Coût total du lot : {total}. Les ingrédients facultatifs ne sont pas comptés.",
+      "totalIncompleto": "Coût total du lot : {total} (incomplet : il manque {faltan}). Les ingrédients facultatifs ne sont pas comptés.",
+      "editarReceta": "Modifier la recette",
+      "verProducto": "Voir le produit",
+      "vacio": {
+        "titulo": "Aucune recette pour l'instant",
+        "descripcion": "Créez des recettes pour voir combien coûte chaque produit avec le coût de cette succursale."
+      },
+      "sinResultados": "Aucune recette ne correspond à la recherche ou aux filtres.",
+      "reintentar": "Réessayer",
+      "limpiar": "Effacer les filtres"
+    },
+    "errores": {
+      "receta_sin_ingredientes": "La recette doit comporter au moins un ingrédient.",
+      "receta_rinde_invalido": "Le rendement doit être supérieur à 0.",
+      "receta_unidad_invalida": "Une unité de la recette n'existe pas.",
+      "receta_merma_invalida": "La perte doit être comprise entre 0 et 99,99 %.",
+      "receta_ingrediente_invalido": "Un ingrédient ne peut pas être utilisé (supprimé, service ou produit avec variantes).",
+      "receta_autorreferida": "Le produit ne peut pas être un ingrédient de lui-même ni de ses variantes.",
+      "receta_cantidad_invalida": "Chaque ingrédient doit avoir une quantité supérieure à 0.",
+      "receta_ingrediente_repetido": "Un ingrédient est répété avec la même unité : fusionnez-le.",
+      "receta_al_producir_sin_inventario": "Pour produire, le produit final doit gérer l'inventaire.",
+      "receta_no_encontrada": "La recette n'existe pas ou appartient à une autre organisation.",
+      "receta_inactiva": "La recette est déjà désactivée.",
+      "receta_solo_por_rpc": "Les recettes ne peuvent être modifiées que depuis l'éditeur.",
+      "conversion_faltante": "Il manque une conversion d'unités pour un ingrédient.",
+      "conversion_faltante_detalle": "Il manque la conversion de {de} vers {a}. Créez-la depuis la ligne de l'ingrédient.",
+      "producto_no_encontrado": "Le produit n'existe pas ou a été supprimé.",
+      "sin_permiso": "Vous n'avez pas l'autorisation de modifier les recettes.",
+      "desconocido": "Une erreur inattendue s'est produite. Réessayez."
     }
   }
 }

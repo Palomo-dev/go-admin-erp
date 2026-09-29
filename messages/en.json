@@ -10038,10 +10038,6 @@
       "guardando": "Saving…",
       "crear": "Create and select",
       "slugOcupadoTitulo": "Change the slug: it already exists"
-    },
-    "ingredienteRapido": {
-      "titulo": "Create ingredient",
-      "descripcion": "It is created as a catalog product with its cost and added to the recipe."
     }
   },
   "arranque": {
@@ -19687,6 +19683,631 @@
       "fecha_invalida": "The expiry date is not valid.",
       "lotes_sin_linea": "There are lots for a line that is not on the invoice. Reload the page.",
       "error_desconocido": "The receipt couldn't be recorded. Nothing was received; please try again."
+    }
+  },
+  "inventarioProduccion": {
+    "inventario": "Inventory",
+    "sustantivo": {
+      "singular": "order",
+      "plural": "orders"
+    },
+    "estados": {
+      "draft": "Draft",
+      "confirmed": "Confirmed",
+      "in_progress": "In progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "listado": {
+      "titulo": "Production",
+      "subtitulo": "{sucursal} · {count, plural, =0 {no orders this month} one {# order this month} other {{n} orders this month}}",
+      "todasSucursales": "All branches",
+      "lemaSucursal": "Orders consume and produce at their own branch.",
+      "actualizar": "Refresh",
+      "recetas": "Recipes",
+      "nueva": "New production order",
+      "creada": "Order created",
+      "kpis": {
+        "etiqueta": "Production summary",
+        "porConfirmar": "To confirm",
+        "borradores": "Drafts",
+        "enProceso": "In progress",
+        "confirmadas": "{count, plural, =0 {No confirmed orders waiting to start} one {# confirmed waiting to start} other {{n} confirmed waiting to start}}",
+        "completadasMes": "Completed this month",
+        "costoReal": "Actual cost {costo}",
+        "sinCostos": "No permission to view costs",
+        "diferencia": "Planned vs. produced difference",
+        "mermaMes": "Less was produced than planned",
+        "sobreProduccion": "The planned amount or more was produced",
+        "sinCompletadas": "No orders completed this month"
+      },
+      "buscar": {
+        "placeholder": "Search by order number or product",
+        "etiqueta": "Search production orders"
+      },
+      "filtros": {
+        "estado": "Status",
+        "desde": "From",
+        "hasta": "To",
+        "verN": "{count, plural, =0 {No results} one {View # order} other {View {n} orders}}"
+      },
+      "chips": {
+        "estado": "Status: {estados}",
+        "desde": "From {dia}",
+        "hasta": "To {dia}",
+        "producto": "One product"
+      },
+      "columnas": {
+        "orden": "Order",
+        "producto": "Product and recipe",
+        "sucursal": "Branch",
+        "cantidad": "Quantity",
+        "costo": "Cost",
+        "fecha": "Date",
+        "estado": "Status"
+      },
+      "recetaTandas": "Recipe v{version} · {count, plural, one {# batch} other {{n} batches}}",
+      "recetaVersion": "Recipe v{version}",
+      "planeadas": "Planned",
+      "producidasDe": "Produced of {planeado}",
+      "falta": "{cantidad} of {nombre} missing",
+      "estimado": "Estimated",
+      "realPorUnidad": "{costo} / {unidad} actual",
+      "sinConsumos": "No consumption recorded",
+      "etiquetaFila": "Order {numero} for {producto}",
+      "avisoFaltantes": "Some open orders have ingredients that are short at the branch.",
+      "vacio": {
+        "titulo": "No production orders yet",
+        "descripcion": "Create an order to produce a product with its recipe: ingredients are deducted when it is completed and the product comes in at its actual cost."
+      },
+      "sinResultados": "No orders match the search or filters.",
+      "errorCarga": "Production orders could not be loaded",
+      "sinPermiso": {
+        "titulo": "You don't have access to production",
+        "descripcion": "Ask your organization's administrator for permission to view inventory."
+      },
+      "exportar": {
+        "boton": "Export",
+        "sinDatos": "There are no orders to export",
+        "listo": "{count, plural, one {# order exported} other {# orders exported}}",
+        "error": "Could not export"
+      },
+      "csv": {
+        "orden": "Order",
+        "fecha": "Date",
+        "sucursal": "Branch",
+        "producto": "Product",
+        "sku": "SKU",
+        "receta": "Recipe",
+        "aProducir": "To produce",
+        "producido": "Produced",
+        "unidad": "Unit",
+        "costo": "Cost",
+        "estado": "Status",
+        "autor": "Created by"
+      },
+      "masivas": {
+        "exportar": "Export",
+        "confirmar": "{count, plural, =0 {Confirm} one {Confirm # draft} other {Confirm # drafts}}",
+        "sinPermiso": "You don't have permission to produce",
+        "soloBorradores": "Select draft orders"
+      }
+    },
+    "acciones": {
+      "ver": "View order",
+      "confirmar": {
+        "boton": "Confirm",
+        "listo": "{numero} confirmed",
+        "error": "Could not confirm the order"
+      },
+      "iniciar": {
+        "boton": "Start",
+        "listo": "{numero} in progress",
+        "error": "Could not start the order"
+      },
+      "completar": "Complete production",
+      "distribuir": "Distribute",
+      "sinPermisoTrasladar": "You don't have permission to transfer",
+      "kardex": "View kardex",
+      "cancelar": {
+        "boton": "Cancel order",
+        "titulo": "Cancel {numero}",
+        "descripcion": "The order is no longer open. No inventory is moved: nothing had been consumed.",
+        "confirmar": "Cancel order",
+        "listo": "{numero} cancelled",
+        "rapido1": "Missing ingredients",
+        "rapido2": "Created by mistake",
+        "rapido3": "The production plan changed"
+      },
+      "eliminar": {
+        "boton": "Delete draft",
+        "titulo": "Delete {numero}",
+        "descripcion": "The draft is deleted. It does not move inventory or leave a trace in the kardex.",
+        "confirmar": "Delete",
+        "listo": "{numero} deleted"
+      },
+      "completada": {
+        "titulo": "{numero} completed",
+        "conCosto": "The product entered inventory at {costo} per unit.",
+        "sinCosto": "The product entered inventory at its actual cost."
+      }
+    },
+    "completar": {
+      "titulo": "Complete order {numero}",
+      "descripcion": "The output enters {sucursal}'s inventory at its actual cost.",
+      "cantidad": "Quantity produced",
+      "ayuda": "Planned: {planeado}. Up to {maximo} (150%) is accepted. If you produce less, the difference does not consume ingredients.",
+      "entra": "Enters inventory",
+      "entraValor": "{cantidad} of {producto}",
+      "salen": "Goes out",
+      "salenValor": "{count, plural, =0 {No ingredients} one {# ingredient (recipe v{version} with waste)} other {# ingredients (recipe v{version} with waste)}}",
+      "costoReal": "Actual cost",
+      "costoRealValor": "{total} → {unidad} each (updates the average)",
+      "quedaNegativo": "Goes negative",
+      "quedaNegativoValor": "{nombre}: {cantidad}",
+      "entiendo": "{count, plural, one {I understand that {nombre} goes negative} other {I understand that # ingredients go negative}}",
+      "marcaEntiendo": "Confirm that the ingredients' inventory goes negative",
+      "confirmar": "Complete order",
+      "errores": {
+        "requerida": "Enter the quantity produced",
+        "mayor_que_cero": "The quantity must be greater than 0",
+        "excede": "It cannot exceed {maximo} (150% of the planned amount)",
+        "decimales": "{decimales, plural, =0 {This product is produced in whole units} other {Maximum # decimals}}"
+      }
+    },
+    "nueva": {
+      "titulo": "New production order",
+      "descripcion": "The order keeps the recipe version it was created with.",
+      "descripcionProducto": "{producto} · the order keeps the recipe version it was created with.",
+      "producto": "Product",
+      "buscarProducto": "Search for a product with a recipe",
+      "buscarVacio": "Type to search",
+      "sinRecetas": "No product with an active recipe matches",
+      "recetaVersion": "v{version}",
+      "modo": {
+        "al_producir": "On production",
+        "al_vender": "On sale"
+      },
+      "sucursal": "Branch",
+      "eligeSucursal": "Choose a branch",
+      "cantidad": "Quantity to produce",
+      "receta": "Recipe",
+      "versionActiva": "v{version} (active)",
+      "necesidades": "Requirements",
+      "necesidadesPara": "Requirements for {cantidad} at {sucursal}",
+      "columnas": {
+        "ingrediente": "Ingredient",
+        "necesario": "Required",
+        "disponible": "Available",
+        "faltante": "Shortfall"
+      },
+      "merma": "({pct}% waste)",
+      "noDescuenta": "not deducted",
+      "sinConversion": "No conversion",
+      "sinIngredientes": "The recipe has no ingredients",
+      "avisoFaltante": "{count, plural, one {{cantidad} of {nombre} is missing.} other {# ingredients are missing (first {nombre}: {cantidad}).}} You can still create the order: “Complete” will ask you to confirm the shortfall.",
+      "costoEstimado": "Estimated cost: {costo}.",
+      "eligeProducto": "Choose the product",
+      "escribeCantidad": "Enter a valid quantity",
+      "guardarBorrador": "Save draft",
+      "crearYConfirmar": "Create and confirm"
+    },
+    "detalle": {
+      "cargando": "Loading order…",
+      "tituloVacio": "Production order",
+      "estados": {
+        "noEncontrada": {
+          "titulo": "We couldn't find this order",
+          "descripcion": "It may have been deleted or belong to another organization."
+        },
+        "sinPermiso": {
+          "titulo": "You don't have access to this order",
+          "descripcion": "Ask for permission to view inventory."
+        },
+        "error": {
+          "titulo": "The order could not be loaded",
+          "descripcion": "Check your connection and try again."
+        }
+      },
+      "reintentar": "Retry",
+      "volver": "Back to production",
+      "recetaVersion": "Recipe v{version}",
+      "tandas": "{count, plural, one {# batch} other {{n} batches}}",
+      "planeadas": "{cantidad} planned",
+      "creada": "created on {fecha} by {autor}",
+      "imprimir": "Print order",
+      "pasos": "Order progress",
+      "pasoMovil": "Step {num} of {tot}: {etiqueta}",
+      "cancelada": "Cancelled on {fecha} by {autor}. Reason: {motivo}",
+      "sinConsumos": "This order was completed before the production change and did not record consumption or move inventory.",
+      "sinConsumosTitulo": "No consumption",
+      "ingredientes": "Ingredients",
+      "ingredientesPara": "Ingredients (for {cantidad})",
+      "columnas": {
+        "ingrediente": "Ingredient",
+        "requerido": "Required",
+        "enSucursal": "At {sucursal}",
+        "estado": "Status",
+        "consumido": "Consumed",
+        "costoUnitario": "Unit cost",
+        "subtotal": "Subtotal",
+        "kardex": "Kardex"
+      },
+      "opcional": "Optional: not consumed",
+      "merma": "Waste {pct}%",
+      "noDescuenta": "Not deducted",
+      "sinConversion": "No conversion",
+      "falta": "{cantidad} missing",
+      "suficiente": "Sufficient",
+      "lote": "Lot {codigo}",
+      "movimiento": "Movement #{id}",
+      "sinIngredientes": "The recipe has no ingredients",
+      "avisoFaltante": "{count, plural, one {{cantidad} of {nombre} is missing.} other {# ingredients are missing (first {nombre}: {cantidad}).}} You can request a transfer from another branch, purchase, or complete while confirming it goes negative.",
+      "pedirTraslado": "Request transfer",
+      "crearOrdenCompra": "Create purchase order",
+      "consumos": "Consumption",
+      "terminado": "Finished product",
+      "entrara": "Will enter inventory",
+      "entro": "Entered inventory",
+      "entraValor": "{cantidad} of {producto} at {sucursal}",
+      "costoEstimado": "Estimated cost",
+      "costoReal": "Actual cost",
+      "costoValor": "{total} · {unidad} per unit",
+      "promedio": "Average cost afterwards",
+      "kardex": "Kardex",
+      "kardexHecho": "Consumption (out) and finished product (in) with their cost",
+      "kardexPendiente": "Recorded on completion: consumption (out) and finished product (in) with their cost",
+      "resumen": "Summary",
+      "receta": "Recipe",
+      "recetaVersionNombre": "{nombre} · v{version}",
+      "sucursal": "Branch",
+      "planeado": "Planned",
+      "producido": "Produced",
+      "confirmada": "Confirmed",
+      "iniciada": "Started",
+      "completada": "Completed",
+      "notas": "Notes",
+      "conecta": "How it connects",
+      "recetaUsada": "Recipe used (fixed version)",
+      "costoRecetas": "Recipe costing",
+      "movimientosKardex": "Kardex movements",
+      "nMovimientos": "{count, plural, =0 {None} one {# movement} other {# movements}}",
+      "alCompletar": "On completion",
+      "distribucion": "Distribution",
+      "sinDistribuir": "Not distributed",
+      "ver": "View"
+    },
+    "errores": {
+      "orden_no_encontrada": "The order does not exist or belongs to another organization.",
+      "orden_estado_invalido": "The order's status changed. Refresh the page.",
+      "orden_no_editable": "Only draft orders can be edited.",
+      "producto_no_encontrado": "The product does not exist or has been deleted.",
+      "producto_padre": "Choose the variant being produced, not the parent product.",
+      "producto_sin_inventario": "The finished product must track inventory to be produced.",
+      "receta_no_encontrada": "The product has no active recipe.",
+      "receta_inactiva": "The recipe is deactivated: activate it or create a new version.",
+      "receta_ingrediente_invalido": "A recipe ingredient no longer exists in the organization.",
+      "conversion_faltante": "A unit conversion for an ingredient is missing. Create it in Units and conversions.",
+      "cantidad_invalida": "The quantity must be greater than 0.",
+      "cantidad_decimales": "The quantity has more decimals than the product allows.",
+      "excede_lo_planeado": "You cannot produce more than 150% of the planned amount.",
+      "faltante_sin_confirmar": "Some ingredient is short: confirm that it goes negative to complete.",
+      "motivo_requerido": "Enter the reason for the cancellation.",
+      "accion_invalida": "That action is not available for the order.",
+      "produccion_solo_por_rpc": "Production orders can only change through their actions.",
+      "SUCURSAL_NO_ES_DE_LA_ORG": "The branch does not belong to your organization.",
+      "sin_permiso": "You don't have permission to produce.",
+      "desconocido": "An unexpected error occurred. Please try again."
+    }
+  },
+  "inventarioRecetas": {
+    "inventario": "Inventory",
+    "sustantivo": {
+      "singular": "recipe",
+      "plural": "recipes"
+    },
+    "modo": {
+      "al_producir": "On production",
+      "al_vender": "On sale"
+    },
+    "estados": {
+      "activa": "Active",
+      "inactiva": "Inactive"
+    },
+    "fuentes": {
+      "promedio_sucursal": "Average cost",
+      "costo_vigente": "Last purchase cost",
+      "sin_costo": "No cost",
+      "sin_conversion": "No conversion",
+      "nSinCosto": "{count, plural, one {# without cost} other {# without cost}}"
+    },
+    "listado": {
+      "titulo": "Recipes",
+      "subtitulo": "{organizacion} · {count, plural, =0 {no recipes} one {# recipe} other {{n} recipes}} · {activas} active",
+      "subtituloMovil": "{activas} active",
+      "actualizar": "Refresh",
+      "costoRecetas": "Recipe cost",
+      "produccion": "Production",
+      "nueva": "New recipe",
+      "crearOrden": "Create production order",
+      "crearOrdenDe": "Create production order for {producto}",
+      "kpis": {
+        "etiqueta": "Recipe summary",
+        "activas": "Active recipes",
+        "inactivas": "{count, plural, =0 {None inactive} one {# inactive} other {{n} inactive}}",
+        "incompleto": "With incomplete cost",
+        "incompletoDetalle": "Ingredients without cost or without conversion",
+        "margenBajo": "Low margin (under {umbral})",
+        "margenDetalle": "Review price or recipe",
+        "ordenes": "Production orders this month",
+        "verProduccion": "View production"
+      },
+      "buscar": {
+        "placeholder": "Search by product or recipe name",
+        "etiqueta": "Search recipes"
+      },
+      "filtros": {
+        "estado": "Status",
+        "estados": {
+          "activas": "Active",
+          "inactivas": "Inactive",
+          "todas": "All"
+        },
+        "modo": "How it deducts",
+        "todos": "All",
+        "incompleto": "Only with incomplete cost",
+        "margenBajo": "Only with low margin",
+        "verN": "{count, plural, =0 {No results} one {View # recipe} other {View {n} recipes}}"
+      },
+      "chips": {
+        "estado": "Status: {estado}",
+        "incompleto": "Incomplete cost",
+        "margenBajo": "Low margin"
+      },
+      "columnas": {
+        "producto": "Final product",
+        "rinde": "Yield",
+        "ingredientes": "Ingredients",
+        "costo": "Cost per unit",
+        "margen": "Margin",
+        "descuenta": "Deducts",
+        "estado": "Status"
+      },
+      "recetaNombre": "Recipe “{nombre}” · v{version}",
+      "costoCompleto": "Complete cost",
+      "nSinCosto": "{count, plural, one {# without cost} other {# without cost}}",
+      "nSinConversion": "{count, plural, one {# without conversion} other {# without conversion}}",
+      "etiquetaFila": "Recipe for {producto}, version {version}",
+      "vacio": {
+        "titulo": "No recipes yet",
+        "descripcion": "A recipe states which ingredients a product deducts when it is sold or produced, and how much it costs."
+      },
+      "sinResultados": "No recipe matches the search or filters.",
+      "errorCarga": "The recipes could not be loaded",
+      "sinPermiso": {
+        "titulo": "You don't have access to recipes",
+        "descripcion": "Ask your organization's administrator for permission to view inventory."
+      },
+      "exportar": {
+        "sinDatos": "There are no recipes to export",
+        "listo": "{count, plural, one {# recipe exported} other {# recipes exported}}"
+      },
+      "csv": {
+        "producto": "Product",
+        "sku": "SKU",
+        "version": "Version",
+        "rinde": "Yield",
+        "ingredientes": "Ingredients",
+        "costoUnidad": "Cost per unit",
+        "precio": "Sale price",
+        "margen": "Margin",
+        "modo": "Deducts",
+        "estado": "Status"
+      },
+      "masivas": {
+        "exportar": "Export"
+      }
+    },
+    "editor": {
+      "titulo": "Edit recipe",
+      "nueva": "New recipe",
+      "eligeSubtitulo": "Choose the product obtained with the recipe.",
+      "subtituloNueva": "{producto} · saving creates version 1",
+      "subtituloEditar": "{producto} · saving creates version {siguiente}; {count, plural, =0 {no open order uses version {version}} one {the open order using version {version} does not change} other {the # open orders using version {version} do not change}}",
+      "productoFinal": "Final product",
+      "productoFinalAyuda": "A product or a variant: it cannot be an ingredient of itself.",
+      "buscarProducto": "Search product by name or SKU",
+      "buscarVacio": "Type to search",
+      "sinProductos": "No product matches",
+      "productoYRendimiento": "Final product and how it deducts",
+      "productoYRendimientoAyuda": "What one batch yields and when the ingredients leave inventory.",
+      "comoDescuenta": "How inventory is deducted",
+      "alProducir": "On production (production order)",
+      "alVender": "On sale (assembled at the sale)",
+      "explicacionModo": "On production: ingredients are deducted when the order is completed and the product enters inventory with its cost; when it is sold, only the product goes down. On sale: nothing is produced in advance; each sale deducts the ingredients. Never both at once.",
+      "alProducirSinInventario": "To produce, the final product must track inventory. Enable it on the product or use “On sale”.",
+      "ingredientesTitulo": "{count, plural, =0 {Ingredients} other {Ingredients (#)}}",
+      "ingredientesAyuda": "Quantities for a batch of {rinde} {unidad}.",
+      "descartar": "Discard",
+      "crear": "Create recipe",
+      "guardarVersion": "Save version {version}",
+      "guardada": "Recipe saved as version {version}",
+      "sinCambios": "The recipe did not change: no new version was created",
+      "soloLectura": "Read only: you don't have permission to edit the catalog.",
+      "versiones": "Versions",
+      "verTodas": "View all",
+      "borradorVersion": "v{version} · draft",
+      "sinGuardar": "unsaved",
+      "activa": "active",
+      "nOrdenes": "{count, plural, =0 {no orders} one {# order} other {# orders}}",
+      "conecta": "How it connects",
+      "ordenes": "Production orders",
+      "nAbiertas": "{count, plural, =0 {None open} one {# open} other {# open}}",
+      "costoDetallado": "Detailed cost per ingredient",
+      "verReporte": "Recipe cost",
+      "conversiones": "Unit conversions",
+      "unidades": "Units and conversions",
+      "kardex": "Kardex movements",
+      "movimientosProduccion": "Production",
+      "ver": "View",
+      "reintentar": "Retry",
+      "volver": "Back to recipes",
+      "estados": {
+        "noEncontrado": {
+          "titulo": "We couldn't find the product",
+          "descripcion": "It may have been deleted or belong to another organization."
+        },
+        "error": {
+          "titulo": "The recipe could not be loaded",
+          "descripcion": "Check your connection and try again."
+        }
+      }
+    },
+    "versiones": {
+      "titulo": "Recipe versions",
+      "activaCorta": "v{version} active",
+      "version": "Version {version}",
+      "activa": "Active",
+      "inactiva": "Inactive",
+      "nIngredientes": "{count, plural, one {# ingredient} other {# ingredients}}",
+      "nOrdenes": "{count, plural, =0 {No orders} one {# order} other {# orders}}",
+      "nAbiertas": "{count, plural, one {# open order} other {# open orders}}",
+      "ver": "View",
+      "reactivar": "Reactivate (creates v{nueva})",
+      "reactivada": "Version {nueva} was created with the content of version {version}",
+      "igualActiva": "That version is the same as the active one: no new one was created",
+      "errorReactivar": "The version could not be reactivated",
+      "cargando": "Loading…",
+      "vacio": "This product has no recipes.",
+      "errorLineas": "The ingredients could not be loaded",
+      "merma": "waste {pct} %",
+      "opcional": "optional",
+      "nota": "Reactivating deletes nothing: it copies that version as a new version. Versions are never edited or deleted: orders and the kardex point to them."
+    },
+    "acciones": {
+      "editar": "Edit recipe",
+      "ver": "View recipe",
+      "versiones": "View versions",
+      "crearOrden": "Create production order",
+      "sinInventario": "The product does not track inventory",
+      "costo": "View cost",
+      "verProducto": "View product",
+      "reactivar": "Reactivate version {version}",
+      "reactivada": "Recipe reactivated as version {version}",
+      "errorReactivar": "The recipe could not be reactivated",
+      "desactivar": "Deactivate recipe",
+      "desactivarTitulo": "Deactivate the recipe for {producto}",
+      "desactivarDescripcion": "Version {version} will no longer be active.",
+      "consecuenciaVender": "Sales stop deducting its ingredients: the product is deducted instead.",
+      "consecuenciaProducir": "New production orders cannot be created with this recipe.",
+      "consecuenciaOrdenes": "{count, plural, =0 {There are no open orders with this recipe.} one {The open order keeps its version.} other {The # open orders keep their version.}}",
+      "consecuenciaReactivar": "You can reactivate it later from “View versions”.",
+      "desactivada": "Recipe for {producto} deactivated",
+      "ordenesSiguen": "{count, plural, one {The open order keeps its version.} other {The # open orders keep their version.}}"
+    },
+    "costo": {
+      "titulo": "Recipe cost",
+      "reportes": "Reports",
+      "subtitulo": "{organizacion} · {count, plural, =0 {no active recipes} one {# active recipe} other {{n} active recipes}} · costs from {sucursal}",
+      "lemaFuente": "Costs use this branch's average; if there is no stock, the last purchase cost. It is the same cost at which the ingredient leaves on sale.",
+      "recalcular": "Recalculate",
+      "irRecetas": "Go to recipes",
+      "exportar": {
+        "boton": "Export",
+        "sinDatos": "There are no recipes to export",
+        "listo": "{count, plural, one {# recipe exported} other {# recipes exported}}",
+        "error": "Could not export"
+      },
+      "csv": {
+        "producto": "Product",
+        "sku": "SKU",
+        "version": "Version",
+        "rinde": "Yield",
+        "tanda": "Batch cost",
+        "unidad": "Cost per unit",
+        "precio": "Sale price",
+        "margen": "Margin",
+        "fuente": "Cost source",
+        "sucursal": "Branch"
+      },
+      "kpis": {
+        "etiqueta": "Recipe cost summary",
+        "completas": "Recipes with complete cost",
+        "deN": "{completas} of {total}",
+        "incompletas": "{count, plural, =0 {All with complete cost} one {# with ingredients without cost} other {# with ingredients without cost}}",
+        "margenPonderado": "Weighted average margin",
+        "porVentas": "Based on sales in the last 30 days",
+        "margenBajo": "Margin under {umbral}",
+        "nRecetas": "{count, plural, one {# recipe} other {{n} recipes}}",
+        "revisar": "Review price or recipe",
+        "sinCosto": "Ingredients without cost",
+        "registrar": "Record cost or purchase"
+      },
+      "sinPermisoCostos": "Without the “View costs” permission this report shows quantities only: amounts and margin are hidden.",
+      "buscar": {
+        "placeholder": "Search recipe or product",
+        "etiqueta": "Search recipe cost"
+      },
+      "chips": {
+        "estado": "Recipes: {estado}"
+      },
+      "col": {
+        "expandir": "View ingredients",
+        "receta": "Recipe and product",
+        "rinde": "Yield",
+        "tanda": "Batch cost",
+        "unidad": "Cost/unit",
+        "precio": "Sale price",
+        "margen": "Margin",
+        "fuente": "Cost source",
+        "acciones": "Actions",
+        "ingrediente": "Ingredient",
+        "cantidad": "Quantity",
+        "enSuUnidad": "In its unit",
+        "costoUnitario": "Unit cost",
+        "subtotal": "Subtotal",
+        "peso": "% of cost"
+      },
+      "expandir": "View ingredients of {producto}",
+      "contraer": "Hide ingredients of {producto}",
+      "ingredientesDe": "Ingredients of {producto}",
+      "cargandoLineas": "Calculating…",
+      "errorLineas": "The cost of this recipe could not be calculated",
+      "merma": "waste {pct} %",
+      "opcional": "optional, not added",
+      "sinConversion": "No conversion",
+      "crearConversion": "Create conversion",
+      "registrarCosto": "Record cost",
+      "totalCompleto": "Total batch cost: {total}. Optional ingredients are not added.",
+      "totalIncompleto": "Total batch cost: {total} (incomplete: {faltan} missing). Optional ingredients are not added.",
+      "editarReceta": "Edit recipe",
+      "verProducto": "View product",
+      "vacio": {
+        "titulo": "No recipes yet",
+        "descripcion": "Create recipes to see how much each product costs with this branch's cost."
+      },
+      "sinResultados": "No recipe matches the search or filters.",
+      "reintentar": "Retry",
+      "limpiar": "Clear filters"
+    },
+    "errores": {
+      "receta_sin_ingredientes": "The recipe needs at least one ingredient.",
+      "receta_rinde_invalido": "The yield must be greater than 0.",
+      "receta_unidad_invalida": "A unit in the recipe does not exist.",
+      "receta_merma_invalida": "Waste must be between 0 and 99.99 %.",
+      "receta_ingrediente_invalido": "An ingredient cannot be used (deleted, a service, or a product with variants).",
+      "receta_autorreferida": "The product cannot be an ingredient of itself or of its variants.",
+      "receta_cantidad_invalida": "Each ingredient needs a quantity greater than 0.",
+      "receta_ingrediente_repetido": "An ingredient is repeated with the same unit: merge it.",
+      "receta_al_producir_sin_inventario": "To produce, the final product must track inventory.",
+      "receta_no_encontrada": "The recipe does not exist or belongs to another organization.",
+      "receta_inactiva": "The recipe is already deactivated.",
+      "receta_solo_por_rpc": "Recipes can only be changed from the editor.",
+      "conversion_faltante": "A unit conversion for an ingredient is missing.",
+      "conversion_faltante_detalle": "The conversion from {de} to {a} is missing. Create it from the ingredient's row.",
+      "producto_no_encontrado": "The product does not exist or has been deleted.",
+      "sin_permiso": "You don't have permission to edit recipes.",
+      "desconocido": "An unexpected error occurred. Please try again."
     }
   }
 }

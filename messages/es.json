@@ -10038,10 +10038,6 @@
       "guardando": "Guardando…",
       "crear": "Crear y seleccionar",
       "slugOcupadoTitulo": "Cambia el slug: ya existe"
-    },
-    "ingredienteRapido": {
-      "titulo": "Crear ingrediente",
-      "descripcion": "Se crea como producto del catálogo con su costo y queda agregado a la receta."
     }
   },
   "arranque": {
@@ -19687,6 +19683,631 @@
       "fecha_invalida": "La fecha de vencimiento no es válida.",
       "lotes_sin_linea": "Hay lotes para una línea que no está en la factura. Recarga la página.",
       "error_desconocido": "No se pudo registrar la recepción. No se recibió nada; inténtalo de nuevo."
+    }
+  },
+  "inventarioProduccion": {
+    "inventario": "Inventario",
+    "sustantivo": {
+      "singular": "orden",
+      "plural": "órdenes"
+    },
+    "estados": {
+      "draft": "Borrador",
+      "confirmed": "Confirmada",
+      "in_progress": "En proceso",
+      "completed": "Completada",
+      "cancelled": "Cancelada"
+    },
+    "listado": {
+      "titulo": "Producción",
+      "subtitulo": "{sucursal} · {count, plural, =0 {ninguna orden este mes} one {# orden este mes} other {{n} órdenes este mes}}",
+      "todasSucursales": "Todas las sucursales",
+      "lemaSucursal": "Las órdenes consumen y producen en su sucursal.",
+      "actualizar": "Actualizar",
+      "recetas": "Recetas",
+      "nueva": "Nueva orden de producción",
+      "creada": "Orden creada",
+      "kpis": {
+        "etiqueta": "Resumen de producción",
+        "porConfirmar": "Por confirmar",
+        "borradores": "Borradores",
+        "enProceso": "En proceso",
+        "confirmadas": "{count, plural, =0 {Ninguna confirmada por iniciar} one {# confirmada por iniciar} other {{n} confirmadas por iniciar}}",
+        "completadasMes": "Completadas este mes",
+        "costoReal": "Costo real {costo}",
+        "sinCostos": "Sin permiso para ver costos",
+        "diferencia": "Diferencia planeado vs. producido",
+        "mermaMes": "Se produjo menos de lo planeado",
+        "sobreProduccion": "Se produjo lo planeado o más",
+        "sinCompletadas": "Sin órdenes completadas este mes"
+      },
+      "buscar": {
+        "placeholder": "Buscar por número de orden o producto",
+        "etiqueta": "Buscar órdenes de producción"
+      },
+      "filtros": {
+        "estado": "Estado",
+        "desde": "Desde",
+        "hasta": "Hasta",
+        "verN": "{count, plural, =0 {Sin resultados} one {Ver # orden} other {Ver {n} órdenes}}"
+      },
+      "chips": {
+        "estado": "Estado: {estados}",
+        "desde": "Desde {dia}",
+        "hasta": "Hasta {dia}",
+        "producto": "Un producto"
+      },
+      "columnas": {
+        "orden": "Orden",
+        "producto": "Producto y receta",
+        "sucursal": "Sucursal",
+        "cantidad": "Cantidad",
+        "costo": "Costo",
+        "fecha": "Fecha",
+        "estado": "Estado"
+      },
+      "recetaTandas": "Receta v{version} · {count, plural, one {# tanda} other {{n} tandas}}",
+      "recetaVersion": "Receta v{version}",
+      "planeadas": "Planeadas",
+      "producidasDe": "Producidas de {planeado}",
+      "falta": "Falta {cantidad} de {nombre}",
+      "estimado": "Estimado",
+      "realPorUnidad": "{costo} / {unidad} real",
+      "sinConsumos": "Sin consumos registrados",
+      "etiquetaFila": "Orden {numero} de {producto}",
+      "avisoFaltantes": "Hay órdenes abiertas con ingredientes que no alcanzan en la sucursal.",
+      "vacio": {
+        "titulo": "Aún no hay órdenes de producción",
+        "descripcion": "Crea una orden para producir un producto con su receta: los ingredientes se descuentan al completarla y el producto entra con su costo real."
+      },
+      "sinResultados": "Ninguna orden coincide con la búsqueda o los filtros.",
+      "errorCarga": "No se pudieron cargar las órdenes de producción",
+      "sinPermiso": {
+        "titulo": "No tienes acceso a producción",
+        "descripcion": "Pide a quien administra tu organización el permiso para ver el inventario."
+      },
+      "exportar": {
+        "boton": "Exportar",
+        "sinDatos": "No hay órdenes para exportar",
+        "listo": "{count, plural, one {Se exportó # orden} other {Se exportaron # órdenes}}",
+        "error": "No se pudo exportar"
+      },
+      "csv": {
+        "orden": "Orden",
+        "fecha": "Fecha",
+        "sucursal": "Sucursal",
+        "producto": "Producto",
+        "sku": "SKU",
+        "receta": "Receta",
+        "aProducir": "A producir",
+        "producido": "Producido",
+        "unidad": "Unidad",
+        "costo": "Costo",
+        "estado": "Estado",
+        "autor": "Creada por"
+      },
+      "masivas": {
+        "exportar": "Exportar",
+        "confirmar": "{count, plural, =0 {Confirmar} one {Confirmar # borrador} other {Confirmar # borradores}}",
+        "sinPermiso": "No tienes permiso para producir",
+        "soloBorradores": "Selecciona órdenes en borrador"
+      }
+    },
+    "acciones": {
+      "ver": "Ver orden",
+      "confirmar": {
+        "boton": "Confirmar",
+        "listo": "{numero} confirmada",
+        "error": "No se pudo confirmar la orden"
+      },
+      "iniciar": {
+        "boton": "Iniciar",
+        "listo": "{numero} en proceso",
+        "error": "No se pudo iniciar la orden"
+      },
+      "completar": "Completar producción",
+      "distribuir": "Distribuir",
+      "sinPermisoTrasladar": "No tienes permiso para trasladar",
+      "kardex": "Ver kardex",
+      "cancelar": {
+        "boton": "Cancelar orden",
+        "titulo": "Cancelar {numero}",
+        "descripcion": "La orden deja de estar abierta. No se mueve inventario: nada se había consumido.",
+        "confirmar": "Cancelar orden",
+        "listo": "{numero} cancelada",
+        "rapido1": "Falta de ingredientes",
+        "rapido2": "Se creó por error",
+        "rapido3": "Cambió el plan de producción"
+      },
+      "eliminar": {
+        "boton": "Eliminar borrador",
+        "titulo": "Eliminar {numero}",
+        "descripcion": "El borrador se borra. No mueve inventario ni deja rastro en el kardex.",
+        "confirmar": "Eliminar",
+        "listo": "{numero} eliminada"
+      },
+      "completada": {
+        "titulo": "{numero} completada",
+        "conCosto": "El producto entró al inventario a {costo} por unidad.",
+        "sinCosto": "El producto entró al inventario con su costo real."
+      }
+    },
+    "completar": {
+      "titulo": "Completar orden {numero}",
+      "descripcion": "Lo producido entra al inventario de {sucursal} con su costo real.",
+      "cantidad": "Cantidad producida",
+      "ayuda": "Planeado: {planeado}. Se acepta hasta {maximo} (150 %). Si produces menos, la diferencia no consume ingredientes.",
+      "entra": "Entra al inventario",
+      "entraValor": "{cantidad} de {producto}",
+      "salen": "Salen",
+      "salenValor": "{count, plural, =0 {Ningún ingrediente} one {# ingrediente (receta v{version} con merma)} other {# ingredientes (receta v{version} con merma)}}",
+      "costoReal": "Costo real",
+      "costoRealValor": "{total} → {unidad} c/u (actualiza el promedio)",
+      "quedaNegativo": "Queda negativo",
+      "quedaNegativoValor": "{nombre}: {cantidad}",
+      "entiendo": "{count, plural, one {Entiendo que {nombre} queda en negativo} other {Entiendo que # ingredientes quedan en negativo}}",
+      "marcaEntiendo": "Confirma que el inventario de los ingredientes queda en negativo",
+      "confirmar": "Completar orden",
+      "errores": {
+        "requerida": "Escribe la cantidad producida",
+        "mayor_que_cero": "La cantidad debe ser mayor que 0",
+        "excede": "No puede superar {maximo} (150 % de lo planeado)",
+        "decimales": "{decimales, plural, =0 {Este producto se produce en unidades enteras} other {Máximo # decimales}}"
+      }
+    },
+    "nueva": {
+      "titulo": "Nueva orden de producción",
+      "descripcion": "La orden guarda la versión de receta con la que se crea.",
+      "descripcionProducto": "{producto} · la orden guarda la versión de receta con la que se crea.",
+      "producto": "Producto",
+      "buscarProducto": "Buscar un producto con receta",
+      "buscarVacio": "Escribe para buscar",
+      "sinRecetas": "Ningún producto con receta activa coincide",
+      "recetaVersion": "v{version}",
+      "modo": {
+        "al_producir": "Al producir",
+        "al_vender": "Al vender"
+      },
+      "sucursal": "Sucursal",
+      "eligeSucursal": "Elige una sucursal",
+      "cantidad": "Cantidad a producir",
+      "receta": "Receta",
+      "versionActiva": "v{version} (activa)",
+      "necesidades": "Necesidades",
+      "necesidadesPara": "Necesidades para {cantidad} en {sucursal}",
+      "columnas": {
+        "ingrediente": "Ingrediente",
+        "necesario": "Necesario",
+        "disponible": "Disponible",
+        "faltante": "Faltante"
+      },
+      "merma": "(merma {pct} %)",
+      "noDescuenta": "no descuenta",
+      "sinConversion": "Sin conversión",
+      "sinIngredientes": "La receta no tiene ingredientes",
+      "avisoFaltante": "{count, plural, one {Falta {cantidad} de {nombre}.} other {Faltan # ingredientes (primero {nombre}: {cantidad}).}} Puedes crear la orden igual: «Completar» pedirá confirmar el faltante.",
+      "costoEstimado": "Costo estimado: {costo}.",
+      "eligeProducto": "Elige el producto",
+      "escribeCantidad": "Escribe una cantidad válida",
+      "guardarBorrador": "Guardar borrador",
+      "crearYConfirmar": "Crear y confirmar"
+    },
+    "detalle": {
+      "cargando": "Cargando orden…",
+      "tituloVacio": "Orden de producción",
+      "estados": {
+        "noEncontrada": {
+          "titulo": "No encontramos esta orden",
+          "descripcion": "Puede haberse eliminado o ser de otra organización."
+        },
+        "sinPermiso": {
+          "titulo": "No tienes acceso a esta orden",
+          "descripcion": "Pide el permiso para ver el inventario."
+        },
+        "error": {
+          "titulo": "No se pudo cargar la orden",
+          "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+        }
+      },
+      "reintentar": "Reintentar",
+      "volver": "Volver a producción",
+      "recetaVersion": "Receta v{version}",
+      "tandas": "{count, plural, one {# tanda} other {{n} tandas}}",
+      "planeadas": "{cantidad} planeadas",
+      "creada": "creada el {fecha} por {autor}",
+      "imprimir": "Imprimir orden",
+      "pasos": "Avance de la orden",
+      "pasoMovil": "Paso {num} de {tot}: {etiqueta}",
+      "cancelada": "Cancelada el {fecha} por {autor}. Motivo: {motivo}",
+      "sinConsumos": "Esta orden se completó antes del cambio de producción y no registró consumos ni movió inventario.",
+      "sinConsumosTitulo": "Sin consumos",
+      "ingredientes": "Ingredientes",
+      "ingredientesPara": "Ingredientes (para {cantidad})",
+      "columnas": {
+        "ingrediente": "Ingrediente",
+        "requerido": "Requerido",
+        "enSucursal": "En {sucursal}",
+        "estado": "Estado",
+        "consumido": "Consumido",
+        "costoUnitario": "Costo unitario",
+        "subtotal": "Subtotal",
+        "kardex": "Kardex"
+      },
+      "opcional": "Opcional: no se consume",
+      "merma": "Merma {pct} %",
+      "noDescuenta": "No descuenta",
+      "sinConversion": "Sin conversión",
+      "falta": "Falta {cantidad}",
+      "suficiente": "Suficiente",
+      "lote": "Lote {codigo}",
+      "movimiento": "Movimiento #{id}",
+      "sinIngredientes": "La receta no tiene ingredientes",
+      "avisoFaltante": "{count, plural, one {Falta {cantidad} de {nombre}.} other {Faltan # ingredientes (primero {nombre}: {cantidad}).}} Puedes pedir un traslado desde otra sucursal, comprar, o completar confirmando que queda en negativo.",
+      "pedirTraslado": "Pedir traslado",
+      "crearOrdenCompra": "Crear orden de compra",
+      "consumos": "Consumos",
+      "terminado": "Producto terminado",
+      "entrara": "Entrará al inventario",
+      "entro": "Entró al inventario",
+      "entraValor": "{cantidad} de {producto} en {sucursal}",
+      "costoEstimado": "Costo estimado",
+      "costoReal": "Costo real",
+      "costoValor": "{total} · {unidad} por unidad",
+      "promedio": "Costo promedio después",
+      "kardex": "Kardex",
+      "kardexHecho": "Consumos (salida) y producto terminado (entrada) con su costo",
+      "kardexPendiente": "Se registra al completar: consumos (salida) y producto terminado (entrada) con su costo",
+      "resumen": "Resumen",
+      "receta": "Receta",
+      "recetaVersionNombre": "{nombre} · v{version}",
+      "sucursal": "Sucursal",
+      "planeado": "Planeado",
+      "producido": "Producido",
+      "confirmada": "Confirmada",
+      "iniciada": "Iniciada",
+      "completada": "Completada",
+      "notas": "Notas",
+      "conecta": "Cómo se conecta",
+      "recetaUsada": "Receta usada (versión fija)",
+      "costoRecetas": "Costo de recetas",
+      "movimientosKardex": "Movimientos en el kardex",
+      "nMovimientos": "{count, plural, =0 {Ninguno} one {# movimiento} other {# movimientos}}",
+      "alCompletar": "Al completar",
+      "distribucion": "Distribución",
+      "sinDistribuir": "Sin distribuir",
+      "ver": "Ver"
+    },
+    "errores": {
+      "orden_no_encontrada": "La orden no existe o es de otra organización.",
+      "orden_estado_invalido": "La orden cambió de estado. Actualiza la página.",
+      "orden_no_editable": "Solo se editan órdenes en borrador.",
+      "producto_no_encontrado": "El producto no existe o está eliminado.",
+      "producto_padre": "Elige la variante que se produce, no el producto padre.",
+      "producto_sin_inventario": "El producto terminado debe llevar inventario para producirlo.",
+      "receta_no_encontrada": "El producto no tiene una receta activa.",
+      "receta_inactiva": "La receta está desactivada: actívala o crea una versión nueva.",
+      "receta_ingrediente_invalido": "Un ingrediente de la receta ya no existe en la organización.",
+      "conversion_faltante": "Falta una conversión de unidades de un ingrediente. Créala en Unidades y conversiones.",
+      "cantidad_invalida": "La cantidad debe ser mayor que 0.",
+      "cantidad_decimales": "La cantidad tiene más decimales de los que admite el producto.",
+      "excede_lo_planeado": "No se puede producir más del 150 % de lo planeado.",
+      "faltante_sin_confirmar": "Algún ingrediente no alcanza: confirma que queda en negativo para completar.",
+      "motivo_requerido": "Escribe el motivo de la cancelación.",
+      "accion_invalida": "Esa acción no está disponible para la orden.",
+      "produccion_solo_por_rpc": "Las órdenes de producción solo cambian por sus acciones.",
+      "SUCURSAL_NO_ES_DE_LA_ORG": "La sucursal no es de tu organización.",
+      "sin_permiso": "No tienes permiso para producir.",
+      "desconocido": "Ocurrió un error inesperado. Inténtalo de nuevo."
+    }
+  },
+  "inventarioRecetas": {
+    "inventario": "Inventario",
+    "sustantivo": {
+      "singular": "receta",
+      "plural": "recetas"
+    },
+    "modo": {
+      "al_producir": "Al producir",
+      "al_vender": "Al vender"
+    },
+    "estados": {
+      "activa": "Activa",
+      "inactiva": "Inactiva"
+    },
+    "fuentes": {
+      "promedio_sucursal": "Costo promedio",
+      "costo_vigente": "Último costo de compra",
+      "sin_costo": "Sin costo",
+      "sin_conversion": "Sin conversión",
+      "nSinCosto": "{count, plural, one {# sin costo} other {# sin costo}}"
+    },
+    "listado": {
+      "titulo": "Recetas",
+      "subtitulo": "{organizacion} · {count, plural, =0 {sin recetas} one {# receta} other {{n} recetas}} · {activas} activas",
+      "subtituloMovil": "{activas} activas",
+      "actualizar": "Actualizar",
+      "costoRecetas": "Costo de recetas",
+      "produccion": "Producción",
+      "nueva": "Nueva receta",
+      "crearOrden": "Crear orden de producción",
+      "crearOrdenDe": "Crear orden de producción de {producto}",
+      "kpis": {
+        "etiqueta": "Resumen de recetas",
+        "activas": "Recetas activas",
+        "inactivas": "{count, plural, =0 {Ninguna inactiva} one {# inactiva} other {{n} inactivas}}",
+        "incompleto": "Con costo incompleto",
+        "incompletoDetalle": "Ingredientes sin costo o sin conversión",
+        "margenBajo": "Margen bajo (menos de {umbral})",
+        "margenDetalle": "Revisar precio o receta",
+        "ordenes": "Órdenes de producción del mes",
+        "verProduccion": "Ver producción"
+      },
+      "buscar": {
+        "placeholder": "Buscar por producto o nombre de receta",
+        "etiqueta": "Buscar recetas"
+      },
+      "filtros": {
+        "estado": "Estado",
+        "estados": {
+          "activas": "Activas",
+          "inactivas": "Inactivas",
+          "todas": "Todas"
+        },
+        "modo": "Cómo descuenta",
+        "todos": "Todos",
+        "incompleto": "Solo con costo incompleto",
+        "margenBajo": "Solo con margen bajo",
+        "verN": "{count, plural, =0 {Sin resultados} one {Ver # receta} other {Ver {n} recetas}}"
+      },
+      "chips": {
+        "estado": "Estado: {estado}",
+        "incompleto": "Costo incompleto",
+        "margenBajo": "Margen bajo"
+      },
+      "columnas": {
+        "producto": "Producto final",
+        "rinde": "Rinde",
+        "ingredientes": "Ingredientes",
+        "costo": "Costo por unidad",
+        "margen": "Margen",
+        "descuenta": "Descuenta",
+        "estado": "Estado"
+      },
+      "recetaNombre": "Receta «{nombre}» · v{version}",
+      "costoCompleto": "Costo completo",
+      "nSinCosto": "{count, plural, one {# sin costo} other {# sin costo}}",
+      "nSinConversion": "{count, plural, one {# sin conversión} other {# sin conversión}}",
+      "etiquetaFila": "Receta de {producto}, versión {version}",
+      "vacio": {
+        "titulo": "Aún no hay recetas",
+        "descripcion": "Una receta dice qué ingredientes descuenta un producto al venderlo o al producirlo, y cuánto cuesta."
+      },
+      "sinResultados": "Ninguna receta coincide con la búsqueda o los filtros.",
+      "errorCarga": "No se pudieron cargar las recetas",
+      "sinPermiso": {
+        "titulo": "No tienes acceso a las recetas",
+        "descripcion": "Pide a quien administra tu organización el permiso para ver el inventario."
+      },
+      "exportar": {
+        "sinDatos": "No hay recetas para exportar",
+        "listo": "{count, plural, one {Se exportó # receta} other {Se exportaron # recetas}}"
+      },
+      "csv": {
+        "producto": "Producto",
+        "sku": "SKU",
+        "version": "Versión",
+        "rinde": "Rinde",
+        "ingredientes": "Ingredientes",
+        "costoUnidad": "Costo por unidad",
+        "precio": "Precio de venta",
+        "margen": "Margen",
+        "modo": "Descuenta",
+        "estado": "Estado"
+      },
+      "masivas": {
+        "exportar": "Exportar"
+      }
+    },
+    "editor": {
+      "titulo": "Editar receta",
+      "nueva": "Nueva receta",
+      "eligeSubtitulo": "Elige el producto que se obtiene con la receta.",
+      "subtituloNueva": "{producto} · al guardar se crea la versión 1",
+      "subtituloEditar": "{producto} · al guardar se crea la versión {siguiente}; {count, plural, =0 {ninguna orden abierta usa la versión {version}} one {la orden abierta que usa la versión {version} no cambia} other {las # órdenes abiertas que usan la versión {version} no cambian}}",
+      "productoFinal": "Producto final",
+      "productoFinalAyuda": "Un producto o una variante: no puede ser ingrediente de sí mismo.",
+      "buscarProducto": "Buscar producto por nombre o SKU",
+      "buscarVacio": "Escribe para buscar",
+      "sinProductos": "Ningún producto coincide",
+      "productoYRendimiento": "Producto final y cómo descuenta",
+      "productoYRendimientoAyuda": "Qué se obtiene con una tanda y cuándo salen los ingredientes del inventario.",
+      "comoDescuenta": "Cómo se descuenta el inventario",
+      "alProducir": "Al producir (orden de producción)",
+      "alVender": "Al vender (se arma en la venta)",
+      "explicacionModo": "Al producir: los ingredientes se descuentan al completar la orden y el producto entra al inventario con su costo; al venderlo solo baja el producto. Al vender: no se produce por adelantado; cada venta descuenta los ingredientes. Nunca las dos cosas a la vez.",
+      "alProducirSinInventario": "Para producir, el producto final debe llevar inventario. Actívalo en el producto o usa «Al vender».",
+      "ingredientesTitulo": "{count, plural, =0 {Ingredientes} other {Ingredientes (#)}}",
+      "ingredientesAyuda": "Cantidades para una tanda de {rinde} {unidad}.",
+      "descartar": "Descartar",
+      "crear": "Crear receta",
+      "guardarVersion": "Guardar versión {version}",
+      "guardada": "Receta guardada como versión {version}",
+      "sinCambios": "La receta no cambió: no se creó otra versión",
+      "soloLectura": "Solo lectura: no tienes permiso para editar el catálogo.",
+      "versiones": "Versiones",
+      "verTodas": "Ver todas",
+      "borradorVersion": "v{version} · borrador",
+      "sinGuardar": "sin guardar",
+      "activa": "activa",
+      "nOrdenes": "{count, plural, =0 {sin órdenes} one {# orden} other {# órdenes}}",
+      "conecta": "Cómo se conecta",
+      "ordenes": "Órdenes de producción",
+      "nAbiertas": "{count, plural, =0 {Ninguna abierta} one {# abierta} other {# abiertas}}",
+      "costoDetallado": "Costo detallado por ingrediente",
+      "verReporte": "Costo de recetas",
+      "conversiones": "Conversiones de unidades",
+      "unidades": "Unidades y conversiones",
+      "kardex": "Movimientos en el kardex",
+      "movimientosProduccion": "Producción",
+      "ver": "Ver",
+      "reintentar": "Reintentar",
+      "volver": "Volver a recetas",
+      "estados": {
+        "noEncontrado": {
+          "titulo": "No encontramos el producto",
+          "descripcion": "Puede haberse eliminado o ser de otra organización."
+        },
+        "error": {
+          "titulo": "No se pudo cargar la receta",
+          "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+        }
+      }
+    },
+    "versiones": {
+      "titulo": "Versiones de la receta",
+      "activaCorta": "v{version} activa",
+      "version": "Versión {version}",
+      "activa": "Activa",
+      "inactiva": "Inactiva",
+      "nIngredientes": "{count, plural, one {# ingrediente} other {# ingredientes}}",
+      "nOrdenes": "{count, plural, =0 {Sin órdenes} one {# orden} other {# órdenes}}",
+      "nAbiertas": "{count, plural, one {# orden abierta} other {# órdenes abiertas}}",
+      "ver": "Ver",
+      "reactivar": "Reactivar (crea v{nueva})",
+      "reactivada": "Se creó la versión {nueva} con el contenido de la versión {version}",
+      "igualActiva": "Esa versión es igual a la activa: no se creó otra",
+      "errorReactivar": "No se pudo reactivar la versión",
+      "cargando": "Cargando…",
+      "vacio": "Este producto no tiene recetas.",
+      "errorLineas": "No se pudieron cargar los ingredientes",
+      "merma": "merma {pct} %",
+      "opcional": "opcional",
+      "nota": "Reactivar no borra nada: copia esa versión como versión nueva. Las versiones nunca se editan ni se eliminan: las órdenes y el kardex apuntan a ellas."
+    },
+    "acciones": {
+      "editar": "Editar receta",
+      "ver": "Ver receta",
+      "versiones": "Ver versiones",
+      "crearOrden": "Crear orden de producción",
+      "sinInventario": "El producto no lleva inventario",
+      "costo": "Ver costo",
+      "verProducto": "Ver producto",
+      "reactivar": "Reactivar versión {version}",
+      "reactivada": "Receta reactivada como versión {version}",
+      "errorReactivar": "No se pudo reactivar la receta",
+      "desactivar": "Desactivar receta",
+      "desactivarTitulo": "Desactivar la receta de {producto}",
+      "desactivarDescripcion": "La versión {version} deja de estar activa.",
+      "consecuenciaVender": "Las ventas dejan de descontar sus ingredientes: se descuenta el producto.",
+      "consecuenciaProducir": "No se pueden crear órdenes de producción nuevas con esta receta.",
+      "consecuenciaOrdenes": "{count, plural, =0 {No hay órdenes abiertas con esta receta.} one {La orden abierta sigue con su versión.} other {Las # órdenes abiertas siguen con su versión.}}",
+      "consecuenciaReactivar": "Puedes reactivarla después desde «Ver versiones».",
+      "desactivada": "Receta de {producto} desactivada",
+      "ordenesSiguen": "{count, plural, one {La orden abierta sigue con su versión.} other {Las # órdenes abiertas siguen con su versión.}}"
+    },
+    "costo": {
+      "titulo": "Costo de recetas",
+      "reportes": "Reportes",
+      "subtitulo": "{organizacion} · {count, plural, =0 {sin recetas activas} one {# receta activa} other {{n} recetas activas}} · costos de {sucursal}",
+      "lemaFuente": "Los costos usan el promedio de esta sucursal; si no hay existencias, el último costo de compra. Es el mismo costo con que sale el ingrediente al vender.",
+      "recalcular": "Recalcular",
+      "irRecetas": "Ir a recetas",
+      "exportar": {
+        "boton": "Exportar",
+        "sinDatos": "No hay recetas para exportar",
+        "listo": "{count, plural, one {Se exportó # receta} other {Se exportaron # recetas}}",
+        "error": "No se pudo exportar"
+      },
+      "csv": {
+        "producto": "Producto",
+        "sku": "SKU",
+        "version": "Versión",
+        "rinde": "Rinde",
+        "tanda": "Costo de la tanda",
+        "unidad": "Costo por unidad",
+        "precio": "Precio de venta",
+        "margen": "Margen",
+        "fuente": "Fuente del costo",
+        "sucursal": "Sucursal"
+      },
+      "kpis": {
+        "etiqueta": "Resumen del costo de recetas",
+        "completas": "Recetas con costo completo",
+        "deN": "{completas} de {total}",
+        "incompletas": "{count, plural, =0 {Todas con costo completo} one {# con ingredientes sin costo} other {# con ingredientes sin costo}}",
+        "margenPonderado": "Margen promedio ponderado",
+        "porVentas": "Por ventas de los últimos 30 días",
+        "margenBajo": "Margen menor al {umbral}",
+        "nRecetas": "{count, plural, one {# receta} other {{n} recetas}}",
+        "revisar": "Revisar precio o receta",
+        "sinCosto": "Ingredientes sin costo",
+        "registrar": "Registrar costo o comprar"
+      },
+      "sinPermisoCostos": "Sin el permiso «Ver costos» este reporte muestra solo cantidades: los importes y el margen se ocultan.",
+      "buscar": {
+        "placeholder": "Buscar receta o producto",
+        "etiqueta": "Buscar en el costo de recetas"
+      },
+      "chips": {
+        "estado": "Recetas: {estado}"
+      },
+      "col": {
+        "expandir": "Ver ingredientes",
+        "receta": "Receta y producto",
+        "rinde": "Rinde",
+        "tanda": "Costo de la tanda",
+        "unidad": "Costo/unidad",
+        "precio": "Precio de venta",
+        "margen": "Margen",
+        "fuente": "Fuente del costo",
+        "acciones": "Acciones",
+        "ingrediente": "Ingrediente",
+        "cantidad": "Cantidad",
+        "enSuUnidad": "En su unidad",
+        "costoUnitario": "Costo unitario",
+        "subtotal": "Subtotal",
+        "peso": "% del costo"
+      },
+      "expandir": "Ver ingredientes de {producto}",
+      "contraer": "Ocultar ingredientes de {producto}",
+      "ingredientesDe": "Ingredientes de {producto}",
+      "cargandoLineas": "Calculando…",
+      "errorLineas": "No se pudo calcular el costo de esta receta",
+      "merma": "merma {pct} %",
+      "opcional": "opcional, no suma",
+      "sinConversion": "Sin conversión",
+      "crearConversion": "Crear conversión",
+      "registrarCosto": "Registrar costo",
+      "totalCompleto": "Costo total de la tanda: {total}. Los ingredientes opcionales no suman.",
+      "totalIncompleto": "Costo total de la tanda: {total} (incompleto: faltan {faltan}). Los ingredientes opcionales no suman.",
+      "editarReceta": "Editar receta",
+      "verProducto": "Ver producto",
+      "vacio": {
+        "titulo": "Aún no hay recetas",
+        "descripcion": "Crea recetas para ver cuánto cuesta cada producto con el costo de esta sucursal."
+      },
+      "sinResultados": "Ninguna receta coincide con la búsqueda o los filtros.",
+      "reintentar": "Reintentar",
+      "limpiar": "Limpiar filtros"
+    },
+    "errores": {
+      "receta_sin_ingredientes": "La receta necesita al menos un ingrediente.",
+      "receta_rinde_invalido": "El rinde debe ser mayor que 0.",
+      "receta_unidad_invalida": "Una unidad de la receta no existe.",
+      "receta_merma_invalida": "La merma debe estar entre 0 y 99,99 %.",
+      "receta_ingrediente_invalido": "Un ingrediente no se puede usar (eliminado, servicio o producto con variantes).",
+      "receta_autorreferida": "El producto no puede ser ingrediente de sí mismo ni de sus variantes.",
+      "receta_cantidad_invalida": "Cada ingrediente necesita una cantidad mayor que 0.",
+      "receta_ingrediente_repetido": "Un ingrediente está repetido con la misma unidad: fusiónalo.",
+      "receta_al_producir_sin_inventario": "Para producir, el producto final debe llevar inventario.",
+      "receta_no_encontrada": "La receta no existe o es de otra organización.",
+      "receta_inactiva": "La receta ya está desactivada.",
+      "receta_solo_por_rpc": "Las recetas solo cambian desde el editor.",
+      "conversion_faltante": "Falta una conversión de unidades de un ingrediente.",
+      "conversion_faltante_detalle": "Falta la conversión de {de} a {a}. Créala desde la fila del ingrediente.",
+      "producto_no_encontrado": "El producto no existe o está eliminado.",
+      "sin_permiso": "No tienes permiso para editar recetas.",
+      "desconocido": "Ocurrió un error inesperado. Inténtalo de nuevo."
     }
   }
 }

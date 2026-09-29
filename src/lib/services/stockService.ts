@@ -1,565 +1,372 @@
+/**
+ * Existencias y movimientos (bloque B1, INVENTARIO-PLAN.md §5.2): fachada de RPC.
+ *
+ * Nada se calcula ni se escribe desde el navegador. Cada función llama a una RPC
+ * SECURITY DEFINER que valida la organización (`fn_assert_acceso_org`) y el
+ * permiso (`fn_inventario_exigir_permiso`) y, si mueve stock, lo hace SOLO por la
+ * primitiva `fn_inv_int_mover` (guardarraíl 33 de `src/__tests__/guardrails.test.ts`).
+ *
+ *   fn_stock_listado               → listarStock          (permiso ver)
+ *   fn_movimientos_listado         → listarMovimientos    (permiso ver)
+ *   fn_stock_registrar_movimiento  → registrarMovimiento  (permiso ajustar; documento de ajuste de B2)
+ *   update_product_min_stock       → guardarMinimos       (permiso ajustar o editar_catalogo)
+ *
+ * Costos (costo promedio, valor, costo unitario) llegan `null` si el usuario no
+ * tiene el permiso `costos`.
+ */
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
+import type { DireccionMovimiento, ParamsRegistrarMovimiento } from '@/lib/inventario/nucleo/tipos';
 
-// Tipos para Stock Levels
-export interface StockLevel {
-  id: number;
-  product_id: number;
+type ClienteRpc = Pick<SupabaseClient, 'rpc'>;
+
+// ─── Stock ───────────────────────────────────────────────────────────────────
+
+export const ESTADOS_STOCK = ['disponible', 'bajo_minimo', 'agotado', 'negativo'] as const;
+export type EstadoStock = (typeof ESTADOS_STOCK)[number];
+
+export const SEGUIMIENTOS_STOCK = ['lotes', 'seriales', 'sin'] as const;
+export type SeguimientoStock = (typeof SEGUIMIENTOS_STOCK)[number];
+
+export interface FiltrosStock {
+  busqueda?: string;
+  /** Sucursales del alcance; vacío o ausente = todas las de la organización. */
+  sucursales?: readonly number[];
+  estados?: readonly EstadoStock[];
+  categoria?: number;
+  seguimiento?: SeguimientoStock;
+  proveedor?: number;
+  /** El producto y sus variantes. */
+  producto?: number;
+  /** P1: true (defecto) suma las variantes bajo su padre. */
+  agrupar?: boolean;
+  orden?: 'producto' | 'disponible' | 'existencia';
+  direccion?: 'asc' | 'desc';
+}
+
+export interface StockPorSucursal {
   branch_id: number;
-  lot_id?: number;
-  qty_on_hand: number;
-  qty_reserved: number;
-  avg_cost: number;
-  min_level: number;
-  created_at: string;
-  updated_at: string;
-  // Relaciones
-  products?: {
-    id: number;
-    uuid?: string;
-    name: string;
-    sku: string;
-    barcode?: string;
-    category_id?: number;
-    categories?: {
-      id: number;
-      name: string;
-    };
-  };
-  branches?: {
-    id: number;
-    name: string;
-    branch_code?: string;
-  };
-  lots?: {
-    id: number;
-    lot_code: string;
-    expiry_date?: string;
+  sucursal: string;
+  existencia: number;
+  reservado: number;
+  disponible: number;
+  minimo: number;
+  negativo: boolean;
+  /** Fila propia del padre en esta sucursal (P1). */
+  sin_asignar: number;
+}
+
+export interface StockFila {
+  product_id: number;
+  nombre: string;
+  sku: string | null;
+  barcode: string | null;
+  parent_id: number | null;
+  /** «Negro / 42» (variant_data). */
+  atributos: string | null;
+  categoria: string | null;
+  unidad: string | null;
+  con_lotes: boolean;
+  con_seriales: boolean;
+  sigue_stock: boolean;
+  variantes: number;
+  /** agrupar = false: fila propia de un padre con variantes (P1). */
+  sin_asignar_fila: boolean;
+  existencia: number;
+  reservado: number;
+  disponible: number;
+  minimo: number;
+  lotes: number;
+  /** Existencia propia del padre que no se suma (P1: «sin asignar a variante»). */
+  sin_asignar: number;
+  estado: EstadoStock;
+  costo_promedio: number | null;
+  valor: number | null;
+  por_sucursal: StockPorSucursal[];
+}
+
+export interface KpisStock {
+  productos: number;
+  con_existencias: number;
+  valor: number | null;
+  bajo_minimo: number;
+  agotados: number;
+  negativos: number;
+  sin_asignar: number;
+}
+
+export interface RespuestaStock {
+  filas: StockFila[];
+  total: number;
+  kpis: KpisStock;
+  costos: boolean;
+  sucursales: number[];
+}
+
+const num = (v: unknown): number => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+const numONull = (v: unknown): number | null => (v === null || v === undefined ? null : num(v));
+
+/** Normaliza la respuesta de `fn_stock_listado` (numeric llega como número o texto). */
+export function aRespuestaStock(data: unknown): RespuestaStock {
+  const d = (data ?? {}) as Record<string, unknown>;
+  const k = (d.kpis ?? {}) as Record<string, unknown>;
+  const filas = Array.isArray(d.filas) ? (d.filas as Record<string, unknown>[]) : [];
+  return {
+    total: num(d.total),
+    costos: d.costos === true,
+    sucursales: Array.isArray(d.sucursales) ? (d.sucursales as unknown[]).map(num) : [],
+    kpis: {
+      productos: num(k.productos),
+      con_existencias: num(k.con_existencias),
+      valor: numONull(k.valor),
+      bajo_minimo: num(k.bajo_minimo),
+      agotados: num(k.agotados),
+      negativos: num(k.negativos),
+      sin_asignar: num(k.sin_asignar),
+    },
+    filas: filas.map((f) => ({
+      product_id: num(f.product_id),
+      nombre: String(f.nombre ?? ''),
+      sku: (f.sku as string | null) ?? null,
+      barcode: (f.barcode as string | null) || null,
+      parent_id: f.parent_id == null ? null : num(f.parent_id),
+      atributos: (f.atributos as string | null) || null,
+      categoria: (f.categoria as string | null) ?? null,
+      unidad: typeof f.unidad === 'string' ? f.unidad.trim() || null : null,
+      con_lotes: f.con_lotes === true,
+      con_seriales: f.con_seriales === true,
+      sigue_stock: f.sigue_stock !== false,
+      variantes: num(f.variantes),
+      sin_asignar_fila: f.sin_asignar_fila === true,
+      existencia: num(f.existencia),
+      reservado: num(f.reservado),
+      disponible: num(f.disponible),
+      minimo: num(f.minimo),
+      lotes: num(f.lotes),
+      sin_asignar: num(f.sin_asignar),
+      estado: (ESTADOS_STOCK as readonly string[]).includes(String(f.estado)) ? (f.estado as EstadoStock) : 'disponible',
+      costo_promedio: numONull(f.costo_promedio),
+      valor: numONull(f.valor),
+      por_sucursal: (Array.isArray(f.por_sucursal) ? (f.por_sucursal as Record<string, unknown>[]) : []).map((s) => ({
+        branch_id: num(s.branch_id),
+        sucursal: String(s.sucursal ?? ''),
+        existencia: num(s.existencia),
+        reservado: num(s.reservado),
+        disponible: num(s.disponible),
+        minimo: num(s.minimo),
+        negativo: s.negativo === true,
+        sin_asignar: num(s.sin_asignar),
+      })),
+    })),
   };
 }
 
-// Tipos para Stock Movements
-export interface StockMovement {
+function filtrosJson<T extends object>(filtros: T): Record<string, unknown> {
+  const salida: Record<string, unknown> = {};
+  for (const [clave, valor] of Object.entries(filtros)) {
+    if (valor === undefined || valor === null || valor === '') continue;
+    if (Array.isArray(valor) && valor.length === 0) continue;
+    salida[clave] = valor;
+  }
+  return salida;
+}
+
+export async function listarStock(
+  organizacionId: number,
+  filtros: FiltrosStock,
+  desde = 0,
+  limite = 25,
+  cliente: ClienteRpc = supabase,
+): Promise<RespuestaStock> {
+  const { data, error } = await cliente.rpc('fn_stock_listado', {
+    p_org: organizacionId,
+    p_filtros: filtrosJson(filtros),
+    p_desde: desde,
+    p_limite: limite,
+  });
+  if (error) throw error;
+  return aRespuestaStock(data);
+}
+
+// ─── Movimientos ─────────────────────────────────────────────────────────────
+
+export interface FiltrosMovimientos {
+  busqueda?: string;
+  sucursales?: readonly number[];
+  /** Día `YYYY-MM-DD` en la zona de la organización (inclusive). */
+  desde?: string;
+  hasta?: string;
+  direccion?: DireccionMovimiento;
+  origenes?: readonly string[];
+  producto?: number;
+  lote?: number;
+  usuario?: string;
+  solo_ingredientes?: boolean;
+  sin_documento?: boolean;
+  direccion_orden?: 'asc' | 'desc';
+}
+
+export interface MovimientoFila {
   id: number;
-  organization_id: number;
-  branch_id: number;
+  fecha: string;
   product_id: number;
-  lot_id?: number;
-  direction: 'in' | 'out';
-  qty: number;
-  unit_cost?: number;
+  nombre: string;
+  sku: string | null;
+  unidad: string | null;
+  parent_id: number | null;
+  atributos: string | null;
+  branch_id: number;
+  sucursal: string;
+  lot_id: number | null;
+  lote: string | null;
+  direccion: DireccionMovimiento;
+  cantidad: number;
+  costo_unitario: number | null;
+  costo_total: number | null;
+  costo_promedio_tras: number | null;
   source: string;
-  source_id?: string;
-  note?: string;
-  created_at: string;
-  updated_by?: string;
-  // Relaciones
-  products?: {
-    id: number;
-    uuid?: string;
-    name: string;
-    sku: string;
+  source_id: string | null;
+  nota: string | null;
+  usuario_id: string | null;
+  usuario: string | null;
+  /** Solo en el kardex: saldo corrido del producto tras el movimiento. */
+  saldo: number | null;
+}
+
+export interface KpisMovimientos {
+  entradas: number;
+  salidas: number;
+  movimientos_entrada: number;
+  movimientos_salida: number;
+  valor_salidas: number | null;
+  sin_documento: number;
+}
+
+export interface RespuestaMovimientos {
+  filas: MovimientoFila[];
+  total: number;
+  kpis: KpisMovimientos;
+  costos: boolean;
+}
+
+export function aMovimientoFila(f: Record<string, unknown>): MovimientoFila {
+  return {
+    id: num(f.id),
+    fecha: String(f.fecha ?? ''),
+    product_id: num(f.product_id),
+    nombre: String(f.nombre ?? ''),
+    sku: (f.sku as string | null) ?? null,
+    unidad: typeof f.unidad === 'string' ? f.unidad.trim() || null : null,
+    parent_id: f.parent_id == null ? null : num(f.parent_id),
+    atributos: (f.atributos as string | null) || null,
+    branch_id: num(f.branch_id),
+    sucursal: String(f.sucursal ?? ''),
+    lot_id: f.lot_id == null ? null : num(f.lot_id),
+    lote: (f.lote as string | null) ?? null,
+    direccion: f.direccion === 'in' ? 'in' : 'out',
+    cantidad: num(f.cantidad),
+    costo_unitario: numONull(f.costo_unitario),
+    costo_total: numONull(f.costo_total),
+    costo_promedio_tras: numONull(f.costo_promedio_tras),
+    source: String(f.source ?? ''),
+    source_id: f.source_id == null ? null : String(f.source_id),
+    nota: (f.nota as string | null) ?? null,
+    usuario_id: (f.usuario_id as string | null) ?? null,
+    usuario: (f.usuario as string | null) ?? null,
+    saldo: numONull(f.saldo),
   };
-  branches?: {
-    id: number;
-    name: string;
-  };
-  lots?: {
-    id: number;
-    lot_code: string;
-  };
-  profiles?: {
-    id: string;
-    first_name?: string;
-    last_name?: string;
-    email?: string;
+}
+
+export function aKpisMovimientos(k: Record<string, unknown>): KpisMovimientos {
+  return {
+    entradas: num(k.entradas),
+    salidas: num(k.salidas),
+    movimientos_entrada: num(k.movimientos_entrada),
+    movimientos_salida: num(k.movimientos_salida),
+    valor_salidas: numONull(k.valor_salidas),
+    sin_documento: num(k.sin_documento),
   };
 }
 
-// Filtros para Stock Levels
-export interface StockFilters {
-  branchId?: number;
-  categoryId?: number;
-  belowMinimum?: boolean;
-  outOfStock?: boolean;
-  searchTerm?: string;
-  tagIds?: number[];
+export function aRespuestaMovimientos(data: unknown): RespuestaMovimientos {
+  const d = (data ?? {}) as Record<string, unknown>;
+  return {
+    total: num(d.total),
+    costos: d.costos === true,
+    kpis: aKpisMovimientos((d.kpis ?? {}) as Record<string, unknown>),
+    filas: (Array.isArray(d.filas) ? (d.filas as Record<string, unknown>[]) : []).map(aMovimientoFila),
+  };
 }
 
-// Filtros para Movimientos
-export interface MovementFilters {
-  branchId?: number;
-  productId?: number;
-  source?: string;
-  direction?: 'in' | 'out';
-  dateFrom?: string;
-  dateTo?: string;
-  lotId?: number;
-  searchTerm?: string;
+export async function listarMovimientos(
+  organizacionId: number,
+  filtros: FiltrosMovimientos,
+  desde = 0,
+  limite = 25,
+  cliente: ClienteRpc = supabase,
+): Promise<RespuestaMovimientos> {
+  const { data, error } = await cliente.rpc('fn_movimientos_listado', {
+    p_org: organizacionId,
+    p_filtros: filtrosJson(filtros),
+    p_desde: desde,
+    p_limite: limite,
+  });
+  if (error) throw error;
+  return aRespuestaMovimientos(data);
 }
 
-// Estadísticas de Stock
-export interface StockStats {
-  totalProducts: number;
-  totalValue: number;
-  belowMinimum: number;
-  outOfStock: number;
-  totalBranches: number;
+// ─── Escrituras (por RPC) ────────────────────────────────────────────────────
+
+/** Contrato de B0 (`ParamsRegistrarMovimiento`) más la nota opcional. */
+export interface ParamsRegistrarMovimientoB1 extends ParamsRegistrarMovimiento {
+  p_nota?: string | null;
 }
 
-// Estadísticas de Movimientos
-export interface MovementStats {
-  totalMovements: number;
-  totalIn: number;
-  totalOut: number;
-  valueIn: number;
-  valueOut: number;
+export interface ResultadoRegistrarMovimiento {
+  ajuste_id: number;
+  /** «AJ-0161»: el documento que el kardex enlaza. */
+  numero: string | null;
 }
 
-class StockService {
-  /**
-   * Obtener niveles de stock con filtros
-   */
-  async getStockLevels(
-    organizationId: number,
-    filters?: StockFilters,
-    page: number = 1,
-    pageSize: number = 50
-  ): Promise<{ data: StockLevel[]; count: number; error: Error | null }> {
-    try {
-      let query = supabase
-        .from('stock_levels')
-        .select(`
-          *,
-          products!inner (
-            id,
-            uuid,
-            name,
-            sku,
-            barcode,
-            category_id,
-            organization_id,
-            categories (
-              id,
-              name
-            )
-          ),
-          branches (
-            id,
-            name,
-            branch_code
-          ),
-          lots (
-            id,
-            lot_code,
-            expiry_date
-          )
-        `, { count: 'exact' })
-        .eq('products.organization_id', organizationId);
-
-      // Aplicar filtros
-      if (filters?.branchId) {
-        query = query.eq('branch_id', filters.branchId);
-      }
-
-      if (filters?.categoryId) {
-        query = query.eq('products.category_id', filters.categoryId);
-      }
-
-      if (filters?.belowMinimum) {
-        query = query.lt('qty_on_hand', supabase.rpc('get_min_level'));
-      }
-
-      if (filters?.outOfStock) {
-        query = query.lte('qty_on_hand', 0);
-      }
-
-      if (filters?.searchTerm) {
-        query = query.or(`products.name.ilike.%${filters.searchTerm}%,products.sku.ilike.%${filters.searchTerm}%,products.barcode.ilike.%${filters.searchTerm}%`);
-      }
-
-      // Paginación
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-
-      const { data, error, count } = await query
-        .order('products(name)', { ascending: true })
-        .range(from, to);
-
-      if (error) throw error;
-
-      return { data: data as StockLevel[], count: count || 0, error: null };
-    } catch (error) {
-      console.error('Error obteniendo niveles de stock:', error);
-      return { data: [], count: 0, error: error as Error };
-    }
-  }
-
-  /**
-   * Obtener niveles de stock simplificado (sin paginación compleja)
-   */
-  async getStockLevelsSimple(
-    organizationId: number,
-    branchId?: number
-  ): Promise<{ data: StockLevel[]; error: Error | null }> {
-    try {
-      let query = supabase
-        .from('stock_levels')
-        .select(`
-          *,
-          products!inner (
-            id,
-            uuid,
-            name,
-            sku,
-            barcode,
-            category_id,
-            organization_id,
-            status,
-            categories (
-              id,
-              name
-            )
-          ),
-          branches (
-            id,
-            name,
-            branch_code
-          )
-        `)
-        .eq('products.organization_id', organizationId)
-        .eq('products.status', 'active');
-
-      if (branchId) {
-        query = query.eq('branch_id', branchId);
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      return { data: data as StockLevel[], error: null };
-    } catch (error) {
-      console.error('Error obteniendo niveles de stock:', error);
-      return { data: [], error: error as Error };
-    }
-  }
-
-  /**
-   * Obtener estadísticas de stock
-   */
-  async getStockStats(organizationId: number, branchId?: number): Promise<StockStats> {
-    try {
-      let query = supabase
-        .from('stock_levels')
-        .select(`
-          id,
-          qty_on_hand,
-          qty_reserved,
-          avg_cost,
-          min_level,
-          branch_id,
-          products!inner (
-            organization_id
-          )
-        `)
-        .eq('products.organization_id', organizationId);
-
-      if (branchId) {
-        query = query.eq('branch_id', branchId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      const stats: StockStats = {
-        totalProducts: data?.length || 0,
-        totalValue: 0,
-        belowMinimum: 0,
-        outOfStock: 0,
-        totalBranches: 0
-      };
-
-      const uniqueBranches = new Set<number>();
-
-      data?.forEach((item: any) => {
-        stats.totalValue += (item.qty_on_hand || 0) * (item.avg_cost || 0);
-        if (item.qty_on_hand <= 0) {
-          stats.outOfStock++;
-        } else if (item.qty_on_hand < (item.min_level || 0)) {
-          stats.belowMinimum++;
-        }
-        uniqueBranches.add(item.branch_id);
-      });
-
-      stats.totalBranches = uniqueBranches.size;
-
-      return stats;
-    } catch (error) {
-      console.error('Error obteniendo estadísticas de stock:', error);
-      return {
-        totalProducts: 0,
-        totalValue: 0,
-        belowMinimum: 0,
-        outOfStock: 0,
-        totalBranches: 0
-      };
-    }
-  }
-
-  /**
-   * Obtener movimientos de stock con filtros
-   */
-  async getStockMovements(
-    organizationId: number,
-    filters?: MovementFilters,
-    page: number = 1,
-    pageSize: number = 50
-  ): Promise<{ data: StockMovement[]; count: number; error: Error | null }> {
-    try {
-      let query = supabase
-        .from('stock_movements')
-        .select(`
-          *,
-          products (
-            id,
-            uuid,
-            name,
-            sku
-          ),
-          branches (
-            id,
-            name
-          ),
-          lots (
-            id,
-            lot_code
-          )
-        `, { count: 'exact' })
-        .eq('organization_id', organizationId);
-
-      // Aplicar filtros
-      if (filters?.branchId) {
-        query = query.eq('branch_id', filters.branchId);
-      }
-
-      if (filters?.productId) {
-        query = query.eq('product_id', filters.productId);
-      }
-
-      if (filters?.source) {
-        query = query.eq('source', filters.source);
-      }
-
-      if (filters?.direction) {
-        query = query.eq('direction', filters.direction);
-      }
-
-      if (filters?.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom);
-      }
-
-      if (filters?.dateTo) {
-        query = query.lte('created_at', filters.dateTo + 'T23:59:59');
-      }
-
-      if (filters?.lotId) {
-        query = query.eq('lot_id', filters.lotId);
-      }
-
-      if (filters?.searchTerm) {
-        // Búsqueda por nota o source_id
-        query = query.or(`note.ilike.%${filters.searchTerm}%,source_id.ilike.%${filters.searchTerm}%`);
-      }
-
-      // Paginación
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-
-      const { data, error, count } = await query
-        .order('created_at', { ascending: false })
-        .range(from, to);
-
-      if (error) throw error;
-
-      return { data: data as StockMovement[], count: count || 0, error: null };
-    } catch (error) {
-      console.error('Error obteniendo movimientos de stock:', error);
-      return { data: [], count: 0, error: error as Error };
-    }
-  }
-
-  /**
-   * Obtener estadísticas de movimientos
-   */
-  async getMovementStats(
-    organizationId: number,
-    filters?: MovementFilters
-  ): Promise<MovementStats> {
-    try {
-      let query = supabase
-        .from('stock_movements')
-        .select('id, direction, qty, unit_cost')
-        .eq('organization_id', organizationId);
-
-      if (filters?.branchId) {
-        query = query.eq('branch_id', filters.branchId);
-      }
-
-      if (filters?.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom);
-      }
-
-      if (filters?.dateTo) {
-        query = query.lte('created_at', filters.dateTo + 'T23:59:59');
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      const stats: MovementStats = {
-        totalMovements: data?.length || 0,
-        totalIn: 0,
-        totalOut: 0,
-        valueIn: 0,
-        valueOut: 0
-      };
-
-      data?.forEach((item: any) => {
-        const value = (item.qty || 0) * (item.unit_cost || 0);
-        if (item.direction === 'in') {
-          stats.totalIn += item.qty || 0;
-          stats.valueIn += value;
-        } else {
-          stats.totalOut += item.qty || 0;
-          stats.valueOut += value;
-        }
-      });
-
-      return stats;
-    } catch (error) {
-      console.error('Error obteniendo estadísticas de movimientos:', error);
-      return {
-        totalMovements: 0,
-        totalIn: 0,
-        totalOut: 0,
-        valueIn: 0,
-        valueOut: 0
-      };
-    }
-  }
-
-  /**
-   * Obtener sucursales de la organización
-   */
-  async getBranches(organizationId: number): Promise<{ id: number; name: string }[]> {
-    try {
-      const { data, error } = await supabase
-        .from('branches')
-        .select('id, name')
-        .eq('organization_id', organizationId)
-        .eq('is_active', true)
-        .order('name');
-
-      if (error) throw error;
-
-      return data || [];
-    } catch (error) {
-      console.error('Error obteniendo sucursales:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Obtener categorías de la organización
-   */
-  async getCategories(organizationId: number): Promise<{ id: number; name: string }[]> {
-    try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('id, name')
-        .eq('organization_id', organizationId)
-        .order('name');
-
-      if (error) throw error;
-
-      return data || [];
-    } catch (error) {
-      console.error('Error obteniendo categorías:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Obtener tipos de origen de movimientos
-   */
-  getSourceTypes(): { value: string; label: string }[] {
-    return [
-      { value: 'sale', label: 'Venta' },
-      { value: 'purchase', label: 'Compra' },
-      { value: 'transfer', label: 'Transferencia' },
-      { value: 'adjustment', label: 'Ajuste' },
-      { value: 'return', label: 'Devolución' },
-      { value: 'initial', label: 'Inventario Inicial' },
-      { value: 'production', label: 'Producción' },
-      { value: 'recipe_consumption', label: 'Consumo Receta' },
-      { value: 'waste', label: 'Merma' }
-    ];
-  }
-
-  /**
-   * Exportar stock a CSV
-   */
-  async exportStockToCSV(organizationId: number, branchId?: number): Promise<string> {
-    const { data } = await this.getStockLevelsSimple(organizationId, branchId);
-    
-    if (!data || data.length === 0) return '';
-
-    const headers = ['Producto', 'SKU', 'Sucursal', 'Disponible', 'Reservado', 'Mínimo', 'Costo Promedio', 'Valor Total'];
-    const rows = data.map(item => [
-      item.products?.name || '',
-      item.products?.sku || '',
-      item.branches?.name || '',
-      item.qty_on_hand?.toString() || '0',
-      item.qty_reserved?.toString() || '0',
-      item.min_level?.toString() || '0',
-      item.avg_cost?.toString() || '0',
-      ((item.qty_on_hand || 0) * (item.avg_cost || 0)).toFixed(2)
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
-    return csvContent;
-  }
-
-  /**
-   * Exportar movimientos a CSV
-   */
-  async exportMovementsToCSV(
-    organizationId: number,
-    filters?: MovementFilters
-  ): Promise<string> {
-    const { data } = await this.getStockMovements(organizationId, filters, 1, 10000);
-    
-    if (!data || data.length === 0) return '';
-
-    const headers = ['Fecha', 'Producto', 'Sucursal', 'Dirección', 'Cantidad', 'Costo Unitario', 'Origen', 'Documento', 'Nota'];
-    const rows = data.map(item => [
-      new Date(item.created_at).toLocaleString('es-CO'),
-      item.products?.name || '',
-      item.branches?.name || '',
-      item.direction === 'in' ? 'Entrada' : 'Salida',
-      item.qty?.toString() || '0',
-      item.unit_cost?.toString() || '0',
-      item.source || '',
-      item.source_id || '',
-      item.note || ''
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n');
-    return csvContent;
-  }
+export async function registrarMovimiento(
+  params: ParamsRegistrarMovimientoB1,
+  cliente: ClienteRpc = supabase,
+): Promise<ResultadoRegistrarMovimiento> {
+  const { data, error } = await cliente.rpc('fn_stock_registrar_movimiento', {
+    p_org: params.p_org,
+    p_branch: params.p_branch,
+    p_product: params.p_product,
+    p_lot: params.p_lot,
+    p_direccion: params.p_direccion,
+    p_qty: params.p_qty,
+    p_costo: params.p_costo,
+    p_motivo: params.p_motivo,
+    p_nota: params.p_nota ?? null,
+  });
+  if (error) throw error;
+  const d = (data ?? {}) as Record<string, unknown>;
+  return { ajuste_id: num(d.ajuste_id), numero: (d.numero as string | null) ?? null };
 }
 
-export const stockService = new StockService();
-export default stockService;
+export interface MinimoSucursal {
+  product_id: number;
+  branch_id: number;
+  min_level: number;
+}
+
+/** Stock mínimo por (producto, sucursal). Un mínimo en 0 apaga el aviso. */
+export async function guardarMinimos(items: readonly MinimoSucursal[], cliente: ClienteRpc = supabase): Promise<void> {
+  if (items.length === 0) return;
+  const { error } = await cliente.rpc('update_product_min_stock', { p_items: items });
+  if (error) throw error;
+}
+
+export const stockService = {
+  listarStock,
+  listarMovimientos,
+  registrarMovimiento,
+  guardarMinimos,
+};

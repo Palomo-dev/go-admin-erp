@@ -3047,7 +3047,6 @@ describe('33. Existencias: nada fuera del núcleo escribe las tablas de stock', 
   const esPrueba33 = (f: string) => /[\\/]__tests__[\\/]|\.test\.|\.spec\./.test(f);
   const PENDIENTES_POR_BLOQUE: Record<string, string> = {
     'app/api/web-orders/[id]/refund/route.ts': 'B9 · reembolso web → fn_stock_entrada',
-    'components/inventario/lotes/LotesService.ts': 'B1 · fn_lote_guardar / fn_lote_ajustar',
     'components/inventario/productos/bulk/bulkService.ts': 'B7 · costo y precio masivos por fn_producto_fijar_costo/precio',
     'components/inventario/transferencias/TransferenciasService.ts': 'B3 · fn_traslado_*',
     'lib/ai/assistant/undoService.ts': 'B9 · deshacer por fn_producto_int_ajustar_stock',

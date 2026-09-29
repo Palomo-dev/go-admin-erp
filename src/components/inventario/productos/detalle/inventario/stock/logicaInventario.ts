@@ -26,9 +26,8 @@ export function rutaAjuste(productId: number | null, tipo: TipoAjuste | null, br
 }
 
 /**
- * Nueva transferencia con el producto y la sucursal de origen. Hoy
- * `NuevaTransferenciaForm` no lee parámetros: el enlace queda listo para
- * cuando los lea (mismo contrato que la acción «Transferir» de la cabecera).
+ * Nueva transferencia con el producto y la sucursal de origen
+ * (`NuevaTransferenciaForm` lee `producto_id` y `origen`).
  */
 export function rutaTransferencia(productId: number | null, origenId?: number | null): string {
   const p = new URLSearchParams();
@@ -41,6 +40,29 @@ export function rutaTransferencia(productId: number | null, origenId?: number | 
 /** Kardex completo del módulo filtrado por el producto (la página lee `producto`). */
 export function rutaKardexCompleto(productId: number): string {
   return `/app/inventario/kardex?producto=${productId}`;
+}
+
+/** Kardex filtrado por un lote (y su producto): la página lee `producto` y `lote`. */
+export function rutaKardexLote(productId: number, lotId: number): string {
+  return `/app/inventario/kardex?producto=${productId}&lote=${lotId}`;
+}
+
+/** Lotes del módulo filtrados por el producto (la página lee `producto`). */
+export function rutaLotesProducto(productId: number): string {
+  return `/app/inventario/lotes?producto=${productId}`;
+}
+
+/**
+ * Ajuste por conteo (B2) con la sucursal y, si llegan, los productos contados.
+ * `NuevoAjusteForm` lee `producto_id` y `branchId`; `modo=conteo` y `productos`
+ * (lista separada por comas) quedan para el formulario de conteo de B2.
+ */
+export function rutaAjustePorConteo(productIds: readonly number[], branchId?: number | null): string {
+  const p = new URLSearchParams({ modo: 'conteo' });
+  if (productIds.length === 1) p.set('producto_id', String(productIds[0]));
+  if (productIds.length > 1) p.set('productos', productIds.join(','));
+  if (branchId) p.set('branchId', String(branchId));
+  return `/app/inventario/ajustes/nuevo?${p.toString()}`;
 }
 
 // ── Stock por variante ────────────────────────────────────────────────────

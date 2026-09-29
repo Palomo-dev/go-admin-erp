@@ -1,4 +1,5 @@
-export { StockHeader } from './StockHeader';
-export { StockStats } from './StockStats';
-export { StockFilters } from './StockFilters';
-export { StockTable } from './StockTable';
+export { StockPage, BadgeEstadoStock } from './StockPage';
+export { DialogoRegistrarMovimiento, type DialogoRegistrarMovimientoProps } from './DialogoRegistrarMovimiento';
+export { DialogoStockMinimo, type DialogoStockMinimoProps } from './DialogoStockMinimo';
+export { MenuNuevoMovimiento } from './MenuNuevoMovimiento';
+export { SelectorProductoStock } from './SelectorProductoStock';

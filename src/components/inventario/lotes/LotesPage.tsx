@@ -1,612 +1,627 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { AlertTriangle, Download, GitBranch, History, Layers, PackageMinus, Pencil, Plus, RefreshCw, SlidersHorizontal, Trash2 } from 'lucide-react';
+import {
+  BranchBadgeActiva,
+  BulkActionBar,
+  DataTable,
+  EmptyState,
+  FilterChips,
+  FilterPanel,
+  FormField,
+  KpiStrip,
+  ListCard,
+  ListToolbar,
+  PageHeader,
+  Pagination,
+  RowActionsMenu,
+  SearchInput,
+  StatCard,
+  useListadoServidor,
+  type AccionFila,
+  type ChipFiltro,
+  type ColumnaTabla,
+  type EstadoTabla,
+} from '@/components/kit';
+import { BadgeVencimiento } from '@/components/kit/inventario';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
-import { DataTablePagination } from '@/components/ui/DataTablePagination';
-import {
-  Package2,
-  Plus,
-  RefreshCw,
-  ArrowLeft,
-  Search,
-  Edit,
-  Trash2,
-  Copy,
-  Loader2,
-  AlertTriangle,
-  Hash,
-  Truck,
-  Package,
-  Clock,
-} from 'lucide-react';
-import { LotesService } from './LotesService';
-import { Lot, LotsStats, LotFilter } from './types';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { CampoFecha } from '@/components/kit/CampoFecha';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { getOrganizationId, getOrganizationName } from '@/lib/hooks/useOrganization';
+import { usePermisosInventario } from '@/lib/inventario/usePermisosInventario';
+import { supabase } from '@/lib/supabase/config';
+import { filasACsv } from '@/lib/utils/csv';
+import { cn } from '@/utils/Utils';
+import { rutaKardexLote } from '../productos/detalle/inventario/stock/logicaInventario';
+import { nombreArchivo } from '../stock/logica';
+import { useAlcanceSucursales, useCantidadStock, useMensajeErrorInventario } from '../stock/useInventarioB1';
+import { DialogoAjustarLote, DialogoEliminarLote, DialogoLote } from './DialogosLote';
+import { listarLotes } from './LotesService';
+import { ESTADOS_LOTE, type EstadoLote, type FiltrosLotes, type KpisLotes, type LoteFila } from './types';
 
+const CAMPOS_ORDEN = ['vence', 'lote', 'cantidad', 'creado'] as const;
+const LIMITE_EXPORTAR = 5000;
+const UMBRALES = [15, 30, 60, 90] as const;
+
+type Dialogo = { tipo: 'nuevo' } | { tipo: 'editar' | 'ajustar' | 'baja' | 'eliminar'; fila: LoteFila } | null;
+
+/** Clave de una fila (un lote puede estar en varias sucursales). */
+const claveFila = (f: LoteFila) => `${f.lot_id}:${f.branch_id ?? ''}`;
+
+/**
+ * Lotes (Figma «Lotes» 518:59165): una fila por lote y sucursal con su cantidad,
+ * vencimiento y estado en el día de la organización (`fn_lotes_listado`). Alta
+ * con cantidad inicial (entra por el ajuste aplicado y el kardex), ajustar
+ * cantidad, dar de baja por merma, eliminar (solo sin existencias ni historia) y
+ * rastrear (Trazabilidad, B4).
+ */
 export function LotesPage() {
+  const router = useRouter();
+  const params = useSearchParams();
   const { toast } = useToast();
-  const { formatDate } = useFormatDate();
-  const [lotes, setLotes] = useState<Lot[]>([]);
-  const [productos, setProductos] = useState<{ id: number; name: string; sku: string }[]>([]);
-  const [proveedores, setProveedores] = useState<{ id: number; name: string }[]>([]);
-  const [stats, setStats] = useState<LotsStats>({ total: 0, expired: 0, expiringSoon: 0, withStock: 0 });
-  const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  // Filtros
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState<string>('all');
-  const [filtroProducto, setFiltroProducto] = useState<string>('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const t = useTranslations('inventarioLotes');
+  const tp = useTranslations('inventario.permisos');
+  const tv = useTranslations('inventario.vencimiento');
+  const cantidad = useCantidadStock();
+  const moneda = useMonedaOrganizacion();
+  const { getToday, formatDate, formatPlain } = useFormatDate();
+  const mensajeError = useMensajeErrorInventario();
+  const permisos = usePermisosInventario();
+  const alcance = useAlcanceSucursales();
+  const organizacionId = getOrganizationId();
 
-  // Modal states
-  const [showModal, setShowModal] = useState(false);
-  const [editando, setEditando] = useState<Lot | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    product_id: 0,
-    lot_code: '',
-    expiry_date: '',
-    supplier_id: null as number | null,
+  const l = useListadoServidor({
+    filtros: ['estado', 'producto', 'proveedor', 'existencias', 'umbral'],
+    camposOrden: [...CAMPOS_ORDEN],
+    ordenPorDefecto: { campo: 'vence', direccion: 'asc' },
+    tamanoPorDefecto: 25,
   });
 
-  // Delete dialog
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [loteToDelete, setLoteToDelete] = useState<number | null>(null);
+  // Trazabilidad enlaza con `?busqueda=<código>`: se pasa al buscador del listado.
+  const busquedaExterna = params?.get('busqueda');
+  useEffect(() => {
+    if (busquedaExterna && !l.busqueda) l.setBusqueda(busquedaExterna);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busquedaExterna]);
 
-  const loadData = useCallback(async (showRefresh = false) => {
-    if (showRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setLoading(true);
-    }
+  const [filas, setFilas] = useState<LoteFila[]>([]);
+  const [total, setTotal] = useState(0);
+  const [kpis, setKpis] = useState<KpisLotes | null>(null);
+  const [hoy, setHoy] = useState('');
+  const [verCostos, setVerCostos] = useState(false);
+  const [cargando, setCargando] = useState(true);
+  const [estadoError, setEstadoError] = useState<'error' | 'sinPermiso' | null>(null);
+  const [recarga, setRecarga] = useState(0);
+  const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
+  const [seleccionadas, setSeleccionadas] = useState<Map<string, LoteFila>>(new Map());
+  const [exportando, setExportando] = useState(false);
+  const [proveedores, setProveedores] = useState<{ id: number; name: string }[]>([]);
+  const [dialogo, setDialogo] = useState<Dialogo>(null);
+  const recargar = useCallback(() => setRecarga((n) => n + 1), []);
 
-    try {
-      const filters: LotFilter = {
-        status: filtroEstado as LotFilter['status'],
-        productId: filtroProducto !== 'all' ? parseInt(filtroProducto) : undefined,
-        search: searchTerm || undefined,
-      };
+  const estados = (l.filtros.estado ?? '').split(',').filter((e): e is EstadoLote => (ESTADOS_LOTE as readonly string[]).includes(e));
+  const producto = /^\d+$/.test(l.filtros.producto ?? '') ? Number(l.filtros.producto) : undefined;
+  const proveedor = /^\d+$/.test(l.filtros.proveedor ?? '') ? Number(l.filtros.proveedor) : undefined;
+  const conExistencias = l.filtros.existencias === '1';
+  const umbral = UMBRALES.find((u) => String(u) === l.filtros.umbral) ?? 30;
 
-      const [lotesData, productosData, proveedoresData, statsData] = await Promise.all([
-        LotesService.obtenerLotes(filters),
-        LotesService.obtenerProductos(),
-        LotesService.obtenerProveedores(),
-        LotesService.obtenerStats(),
-      ]);
-
-      setLotes(lotesData);
-      setProductos(productosData);
-      setProveedores(proveedoresData);
-      setStats(statsData);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('Error cargando lotes:', errorMessage, error);
-      toast({
-        title: 'Error',
-        description: errorMessage || 'No se pudieron cargar los lotes',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [filtroEstado, filtroProducto, searchTerm, toast]);
+  const filtrosServidor = useMemo<FiltrosLotes>(
+    () => ({
+      busqueda: l.busqueda || undefined,
+      sucursales: alcance.sucursales,
+      estados: estados.length ? estados : undefined,
+      producto,
+      proveedor,
+      con_existencias: conExistencias || undefined,
+      umbral,
+      orden: (CAMPOS_ORDEN as readonly string[]).includes(l.orden?.campo ?? '') ? (l.orden!.campo as FiltrosLotes['orden']) : 'vence',
+      direccion: l.orden?.direccion ?? 'asc',
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [l.busqueda, alcance.sucursales, l.filtros.estado, producto, proveedor, conExistencias, umbral, l.orden?.campo, l.orden?.direccion],
+  );
+  const clave = JSON.stringify({ ...filtrosServidor, d: l.rango.desde, t: l.tamano });
+  const listo = permisos.resueltos && !alcance.cargando && !alcance.sinSucursal;
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const handleRefresh = () => loadData(true);
-
-  const openModalNuevo = () => {
-    setEditando(null);
-    setFormData({
-      product_id: productos[0]?.id || 0,
-      lot_code: '',
-      expiry_date: '',
-      supplier_id: null,
-    });
-    setShowModal(true);
-  };
-
-  const openModalEditar = (lote: Lot) => {
-    setEditando(lote);
-    setFormData({
-      product_id: lote.product_id,
-      lot_code: lote.lot_code,
-      expiry_date: lote.expiry_date || '',
-      supplier_id: lote.supplier_id,
-    });
-    setShowModal(true);
-  };
-
-  const handleGuardar = async () => {
-    if (!formData.lot_code.trim()) {
-      toast({ title: 'Error', description: 'El código de lote es requerido', variant: 'destructive' });
+    if (!listo) return;
+    if (!permisos.ver) {
+      setEstadoError('sinPermiso');
+      setCargando(false);
       return;
     }
-    if (!formData.product_id) {
-      toast({ title: 'Error', description: 'Selecciona un producto', variant: 'destructive' });
-      return;
-    }
+    let vivo = true;
+    setCargando(true);
+    listarLotes(organizacionId, filtrosServidor, l.rango.desde, l.tamano)
+      .then((r) => {
+        if (!vivo) return;
+        setFilas(r.filas);
+        setTotal(r.total);
+        setKpis(r.kpis);
+        setHoy(r.hoy);
+        setVerCostos(r.costos);
+        setEstadoError(null);
+      })
+      .catch((e: { code?: string }) => {
+        if (vivo) setEstadoError(e?.code === '42501' ? 'sinPermiso' : 'error');
+      })
+      .finally(() => {
+        if (vivo) setCargando(false);
+      });
+    return () => {
+      vivo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clave, recarga, listo, permisos.ver]);
 
+  useEffect(() => {
+    if (!listo || !permisos.ver || !organizacionId) return;
+    void supabase
+      .from('suppliers')
+      .select('id, name')
+      .eq('organization_id', organizacionId)
+      .order('name')
+      .limit(500)
+      .then(({ data }) => setProveedores((data ?? []) as { id: number; name: string }[]));
+  }, [listo, permisos.ver, organizacionId]);
+
+  const claveCriterios = JSON.stringify({ b: l.busqueda, f: l.filtros, s: alcance.sucursales });
+  useEffect(() => {
+    setSeleccion(new Set());
+    setSeleccionadas(new Map());
+  }, [claveCriterios]);
+
+  const cambiarSeleccion = (nueva: Set<string>) => {
+    setSeleccion(nueva);
+    setSeleccionadas((prev) => {
+      const m = new Map<string, LoteFila>();
+      nueva.forEach((id) => {
+        const f = filas.find((x) => claveFila(x) === id) ?? prev.get(id);
+        if (f) m.set(id, f);
+      });
+      return m;
+    });
+  };
+
+  const todasLasFilas = async () => (await listarLotes(organizacionId, filtrosServidor, 0, Math.min(Math.max(total, 1), LIMITE_EXPORTAR))).filas;
+
+  const exportar = async (soloSeleccion: boolean) => {
+    setExportando(true);
     try {
-      setSaving(true);
-      const dataToSave = {
-        ...formData,
-        expiry_date: formData.expiry_date || null,
-      };
-
-      if (editando) {
-        await LotesService.actualizarLote(editando.id, dataToSave);
-        toast({ title: 'Lote actualizado' });
-      } else {
-        await LotesService.crearLote(dataToSave);
-        toast({ title: 'Lote creado' });
+      const datos = soloSeleccion ? [...seleccionadas.values()] : await todasLasFilas();
+      if (datos.length === 0) {
+        toast({ title: t('exportar.sinDatos') });
+        return;
       }
-      setShowModal(false);
-      loadData();
-    } catch (error: unknown) {
-      toast({ title: 'Error', description: (error as { message?: string } | null)?.message || 'No se pudo guardar', variant: 'destructive' });
+      const csv = filasACsv(
+        [t('csv.lote'), t('csv.producto'), t('csv.sku'), t('csv.sucursal'), t('csv.vence'), t('csv.dias'), t('csv.cantidad'), t('csv.reservado'), t('csv.costo'), t('csv.proveedor'), t('csv.estado'), t('csv.creado')],
+        datos.map((f) => [
+          f.lot_code,
+          f.nombre,
+          f.sku ?? '',
+          f.sucursal ?? '',
+          f.expiry_date ? formatPlain(f.expiry_date) : '',
+          f.dias ?? '',
+          f.qty_on_hand,
+          f.qty_reserved,
+          f.costo_promedio ?? '',
+          f.proveedor ?? '',
+          tv(f.estado),
+          formatDate(f.creado),
+        ]),
+      );
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nombreArchivo('lotes', getToday());
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: t('exportar.listo', { count: datos.length }) });
+    } catch (e) {
+      toast({ variant: 'destructive', title: t('exportar.error'), description: mensajeError(e) });
     } finally {
-      setSaving(false);
+      setExportando(false);
     }
   };
 
-  const handleDuplicar = async (id: number) => {
-    try {
-      await LotesService.duplicarLote(id);
-      toast({ title: 'Lote duplicado' });
-      loadData();
-    } catch {
-      toast({ title: 'Error', description: 'No se pudo duplicar', variant: 'destructive' });
-    }
-  };
+  const puedeCrear = permisos.crear || permisos.editar_catalogo;
+  const accionesFila = (f: LoteFila): AccionFila[] => [
+    { id: 'movimientos', etiqueta: t('acciones.movimientos'), icono: History, onSelect: () => router.push(rutaKardexLote(f.product_id, f.lot_id)) },
+    { id: 'editar', etiqueta: t('acciones.editar'), icono: Pencil, oculta: !puedeCrear, onSelect: () => setDialogo({ tipo: 'editar', fila: f }) },
+    { id: 'ajustar', etiqueta: t('acciones.ajustar'), icono: SlidersHorizontal, oculta: !permisos.ajustar, onSelect: () => setDialogo({ tipo: 'ajustar', fila: f }) },
+    {
+      id: 'baja',
+      etiqueta: t('acciones.baja'),
+      icono: PackageMinus,
+      oculta: !permisos.ajustar,
+      deshabilitada: f.qty_on_hand <= 0,
+      motivo: t('acciones.sinExistencias'),
+      onSelect: () => setDialogo({ tipo: 'baja', fila: f }),
+    },
+    {
+      id: 'rastrear',
+      etiqueta: t('acciones.rastrear'),
+      icono: GitBranch,
+      onSelect: () => router.push(`/app/inventario/reportes/trazabilidad?codigo=${encodeURIComponent(f.lot_code)}`),
+    },
+    {
+      id: 'eliminar',
+      etiqueta: t('acciones.eliminar'),
+      icono: Trash2,
+      destructiva: true,
+      separadorAntes: true,
+      oculta: !permisos.eliminar,
+      deshabilitada: f.qty_on_hand !== 0 || f.con_historia,
+      motivo: f.qty_on_hand !== 0 ? t('acciones.conExistencias') : t('acciones.conHistoria'),
+      onSelect: () => setDialogo({ tipo: 'eliminar', fila: f }),
+    },
+  ];
 
-  const confirmDelete = (id: number) => {
-    setLoteToDelete(id);
-    setShowDeleteConfirm(true);
+  const venceTexto = (f: LoteFila) => {
+    if (f.dias === null) return t('sinCaducidad');
+    if (f.dias < 0) return tv('vencioHace', { dias: Math.abs(f.dias) });
+    if (f.dias === 0) return tv('venceHoy');
+    return tv('venceEn', { dias: f.dias });
   };
+  const claseVence = (f: LoteFila) => (f.estado === 'vencido' ? 'text-danger-text' : f.estado === 'por_vencer' ? 'text-warning-text' : 'text-fg-secondary');
 
-  const handleEliminar = async () => {
-    if (!loteToDelete) return;
-    try {
-      await LotesService.eliminarLote(loteToDelete);
-      toast({ title: 'Lote eliminado' });
-      loadData();
-    } catch (error: unknown) {
-      toast({ title: 'Error', description: (error as { message?: string } | null)?.message || 'No se pudo eliminar', variant: 'destructive' });
-    } finally {
-      setShowDeleteConfirm(false);
-      setLoteToDelete(null);
-    }
-  };
+  const chips: ChipFiltro[] = [
+    ...(estados.length ? [{ clave: 'estado', etiqueta: estados.map((e) => tv(e)).join(' · ') }] : []),
+    ...(producto ? [{ clave: 'producto', etiqueta: t('chips.producto', { nombre: filas.find((f) => f.product_id === producto)?.nombre ?? `#${producto}` }) }] : []),
+    ...(proveedor ? [{ clave: 'proveedor', etiqueta: t('chips.proveedor', { nombre: proveedores.find((p) => p.id === proveedor)?.name ?? `#${proveedor}` }) }] : []),
+    ...(conExistencias ? [{ clave: 'existencias', etiqueta: t('chips.conExistencias') }] : []),
+    ...(l.filtros.umbral ? [{ clave: 'umbral', etiqueta: t('chips.umbral', { dias: umbral }) }] : []),
+  ];
 
-  const getStatusBadge = (lote: Lot) => {
-    if (lote.is_expired) {
-      return <Badge variant="destructive">Vencido</Badge>;
-    }
-    if (lote.days_to_expiry !== null && lote.days_to_expiry !== undefined && lote.days_to_expiry <= 30) {
-      return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">Por vencer ({lote.days_to_expiry}d)</Badge>;
-    }
-    if (lote.days_to_expiry !== null && lote.days_to_expiry !== undefined) {
-      return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Activo</Badge>;
-    }
-    return <Badge variant="secondary">Sin vencimiento</Badge>;
-  };
+  const columnas: ColumnaTabla<LoteFila>[] = [
+    {
+      id: 'lote',
+      encabezado: t('columnas.lote'),
+      ordenable: true,
+      campoOrden: 'lote',
+      celda: (f) => (
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate font-medium text-fg">{f.lot_code}</span>
+          <span className="text-xs text-fg-muted">{t('creado', { fecha: formatDate(f.creado) })}</span>
+        </div>
+      ),
+    },
+    {
+      id: 'producto',
+      encabezado: t('columnas.producto'),
+      celda: (f) => (
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate font-medium text-fg">{f.nombre}</span>
+          <span className="truncate text-xs text-fg-muted">{[f.sku ? t('sku', { sku: f.sku }) : null, f.atributos].filter(Boolean).join(' · ')}</span>
+        </div>
+      ),
+    },
+    { id: 'sucursal', encabezado: t('columnas.sucursal'), ocultarDebajo: 'md', celda: (f) => <span className="truncate text-fg">{f.sucursal ?? '—'}</span> },
+    {
+      id: 'vence',
+      encabezado: t('columnas.vence'),
+      ordenable: true,
+      campoOrden: 'vence',
+      celda: (f) => (
+        <div className="flex flex-col tabular-nums">
+          <span className="text-fg">{f.expiry_date ? formatPlain(f.expiry_date) : '—'}</span>
+          <span className={cn('text-xs', claseVence(f))}>{venceTexto(f)}</span>
+        </div>
+      ),
+    },
+    {
+      id: 'cantidad',
+      encabezado: t('columnas.cantidad'),
+      alinear: 'derecha',
+      ordenable: true,
+      campoOrden: 'cantidad',
+      celda: (f) => <span className="font-semibold tabular-nums text-fg">{t('uds', { n: cantidad(f.qty_on_hand) })}</span>,
+    },
+    {
+      id: 'proveedor',
+      encabezado: t('columnas.proveedor'),
+      ocultarDebajo: 'lg',
+      celda: (f) =>
+        f.supplier_id ? (
+          <Link href={`/app/inventario/proveedores/${f.supplier_id}`} className="truncate text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+            {f.proveedor}
+          </Link>
+        ) : (
+          <span className="text-fg-muted">—</span>
+        ),
+    },
+    { id: 'estado', encabezado: t('columnas.estado'), celda: (f) => <BadgeVencimiento expiry={f.expiry_date} hoy={hoy || getToday()} umbralDias={umbral} /> },
+  ];
 
-  // Paginación
-  const totalPages = Math.ceil(lotes.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const lotesPaginados = useMemo(
-    () => lotes.slice(startIndex, startIndex + pageSize),
-    [lotes, startIndex, pageSize]
+  const estadoTabla: EstadoTabla = cargando
+    ? 'cargando'
+    : estadoError === 'sinPermiso'
+      ? 'sinPermiso'
+      : estadoError
+        ? 'error'
+        : filas.length === 0 && l.hayCriterios
+          ? 'sinResultados'
+          : 'listo';
+
+  const sustantivo = { singular: t('sustantivo.singular'), plural: t('sustantivo.plural') };
+  const subtitulo = [getOrganizationName(), kpis ? t('subtitulo', { count: kpis.lotes, n: cantidad(kpis.lotes), uds: cantidad(kpis.uds) }) : null]
+    .filter(Boolean)
+    .join(' · ');
+
+  const menuCabecera: AccionFila[] = [
+    ...UMBRALES.map((u) => ({
+      id: `umbral-${u}`,
+      etiqueta: t('menu.umbral', { dias: u }),
+      descripcion: u === umbral ? t('menu.actual') : undefined,
+      icono: AlertTriangle,
+      onSelect: () => l.setFiltro('umbral', u === 30 ? null : String(u)),
+    })),
+    { id: 'rastrear', etiqueta: t('menu.rastrear'), descripcion: t('menu.rastrearDetalle'), icono: GitBranch, separadorAntes: true, onSelect: () => router.push('/app/inventario/reportes/trazabilidad') },
+  ];
+
+  const cabecera = (
+    <PageHeader
+      titulo={t('titulo')}
+      subtitulo={alcance.sinSucursal ? getOrganizationName() : subtitulo}
+      icono={Layers}
+      cargando={cargando && estadoError === null && !alcance.sinSucursal}
+      migas={[{ etiqueta: t('migas.inventario'), href: '/app/inventario' }, { etiqueta: t('migas.existencias') }]}
+      debajo={<BranchBadgeActiva />}
+      acciones={
+        alcance.sinSucursal || estadoError === 'sinPermiso' ? undefined : (
+          <>
+            <Button variant="outline" size="icon" className="size-10" onClick={recargar} aria-label={t('actualizar')} title={t('actualizar')}>
+              <RefreshCw aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            </Button>
+            <Button variant="outline" className="h-10 gap-2" onClick={() => void exportar(false)} disabled={exportando || estadoError !== null}>
+              <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('exportar.boton')}
+            </Button>
+            {puedeCrear && (
+              <Button className="h-10 gap-2" onClick={() => setDialogo({ tipo: 'nuevo' })}>
+                <Plus aria-hidden="true" className="size-4" strokeWidth={2} />
+                {t('nuevo')}
+              </Button>
+            )}
+            <RowActionsMenu orientacion="horizontal" titulo={t('titulo')} acciones={menuCabecera} className="size-10" />
+          </>
+        )
+      }
+      movil={{
+        subtitulo: kpis ? t('subtituloMovil', { n: cantidad(kpis.lotes), porVencer: cantidad(kpis.por_vencer) }) : undefined,
+        accion:
+          puedeCrear && !alcance.sinSucursal && estadoError !== 'sinPermiso' ? (
+            <Button variant="ghost" size="icon" className="size-10" onClick={() => setDialogo({ tipo: 'nuevo' })} aria-label={t('nuevo')}>
+              <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
+            </Button>
+          ) : undefined,
+      }}
+    />
   );
 
-  const handlePageSizeChange = (newPageSize: number) => {
-    setPageSize(newPageSize);
-    setCurrentPage(1);
-  };
+  if (alcance.sinSucursal) {
+    return (
+      <div className="flex flex-col gap-4 lg:gap-5">
+        {cabecera}
+        <EmptyState variante="sinSucursal" />
+      </div>
+    );
+  }
+  if (estadoError === 'sinPermiso') {
+    return (
+      <div className="flex flex-col gap-4 lg:gap-5">
+        {cabecera}
+        <EmptyState variante="forbidden" titulo={tp('sinPermisoTitulo')} descripcion={tp('sinPermisoDescripcion')} />
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, filtroEstado, filtroProducto]);
+  const filasDialogo = dialogo && dialogo.tipo !== 'nuevo' ? filas.filter((f) => f.lot_id === dialogo.fila.lot_id) : [];
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/app/inventario">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <Package2 className="h-6 w-6 text-blue-600" />
-              </div>
-              Gestión de Lotes
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              Inventario / Lotes - Trazabilidad y vencimientos
+    <div className="flex flex-col gap-4 lg:gap-5">
+      {cabecera}
+
+      <KpiStrip etiqueta={t('kpis.etiqueta')} className="hidden sm:grid">
+        <StatCard
+          etiqueta={t('kpis.vigentes')}
+          cargando={!kpis}
+          valor={kpis ? cantidad(kpis.vigentes) : '—'}
+          tono="exito"
+          tendencia="sube"
+          detalle={kpis ? t('kpis.udsDisponibles', { n: cantidad(kpis.uds_vigentes) }) : undefined}
+          onClick={() => l.setFiltro('estado', ['vigente', 'sin_vencimiento'])}
+        />
+        <StatCard
+          etiqueta={t('kpis.porVencer')}
+          cargando={!kpis}
+          valor={kpis ? cantidad(kpis.por_vencer) : '—'}
+          tono={kpis && kpis.por_vencer > 0 ? 'advertencia' : 'neutro'}
+          iconoDetalle={kpis && kpis.por_vencer > 0 ? AlertTriangle : undefined}
+          detalle={kpis ? t('kpis.porVencerDetalle', { dias: umbral, n: cantidad(kpis.uds_por_vencer) }) : undefined}
+          onClick={() => l.setFiltro('estado', 'por_vencer')}
+        />
+        <StatCard
+          etiqueta={t('kpis.vencidos')}
+          cargando={!kpis}
+          valor={kpis ? cantidad(kpis.vencidos) : '—'}
+          tono={kpis && kpis.vencidos > 0 ? 'peligro' : 'neutro'}
+          tendencia={kpis && kpis.vencidos > 0 ? 'baja' : undefined}
+          detalle={kpis ? t('kpis.vencidosDetalle', { n: cantidad(kpis.uds_vencidas) }) : undefined}
+          onClick={() => l.setFiltro('estado', 'vencido')}
+        />
+        <StatCard
+          etiqueta={t('kpis.riesgo')}
+          cargando={!kpis}
+          valor={kpis ? (kpis.valor_riesgo === null ? '—' : moneda.formatear(kpis.valor_riesgo)) : '—'}
+          tono={kpis && (kpis.valor_riesgo ?? 0) > 0 ? 'advertencia' : 'neutro'}
+          detalle={kpis?.valor_riesgo === null ? t('kpis.sinPermisoCostos') : t('kpis.riesgoDetalle')}
+        />
+      </KpiStrip>
+
+      {kpis && kpis.vencidos > 0 && !(estados.length === 1 && estados[0] === 'vencido') && (
+        <div role="status" className="flex flex-col gap-3 rounded-xl border border-line-warning bg-warning-subtle p-4 sm:flex-row sm:items-center lg:max-w-3xl">
+          <AlertTriangle aria-hidden="true" className="size-5 shrink-0 text-warning-text" strokeWidth={1.75} />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-warning-text">{t('avisoVencidos.titulo', { count: kpis.vencidos, n: cantidad(kpis.vencidos) })}</p>
+            <p className="text-[13px] text-fg-secondary">
+              {kpis.valor_vencido !== null
+                ? t('avisoVencidos.descripcionValor', { n: cantidad(kpis.uds_vencidas), valor: moneda.formatear(kpis.valor_vencido) })
+                : t('avisoVencidos.descripcion', { n: cantidad(kpis.uds_vencidas) })}
             </p>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </Button>
-          <Button onClick={openModalNuevo} className="bg-blue-600 hover:bg-blue-700 text-white">
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Lote
+          <Button variant="outline" className="h-9 bg-surface" onClick={() => l.setFiltro('estado', 'vencido')}>
+            {t('avisoVencidos.ver')}
           </Button>
         </div>
-      </div>
+      )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Hash className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Total lotes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.expired}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Vencidos</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-                <Clock className="h-5 w-5 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.expiringSoon}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Por vencer (30d)</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <Package className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.withStock}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Con stock</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filtros y tabla */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardHeader className="pb-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
-              Lista de Lotes
-            </CardTitle>
-            <div className="flex flex-col md:flex-row gap-2">
-              <Select value={filtroEstado} onValueChange={setFiltroEstado}>
-                <SelectTrigger className="w-[150px] dark:bg-gray-900 dark:border-gray-600">
-                  <SelectValue placeholder="Estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="active">Activos</SelectItem>
-                  <SelectItem value="expiring">Por vencer</SelectItem>
-                  <SelectItem value="expired">Vencidos</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filtroProducto} onValueChange={setFiltroProducto}>
-                <SelectTrigger className="w-[180px] dark:bg-gray-900 dark:border-gray-600">
-                  <SelectValue placeholder="Producto" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los productos</SelectItem>
-                  {productos.map(p => (
-                    <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Buscar lotes..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 dark:bg-gray-900 dark:border-gray-600"
-                />
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-10">
-              <Skeleton className="h-8 w-8 mx-auto" /></div>
-          ) : lotes.length === 0 ? (
-            <div className="text-center py-10 text-gray-500 dark:text-gray-400">
-              <Package2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No hay lotes registrados</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="dark:border-gray-700">
-                  <TableHead className="dark:text-gray-300">Código</TableHead>
-                  <TableHead className="dark:text-gray-300">Producto</TableHead>
-                  <TableHead className="dark:text-gray-300">Proveedor</TableHead>
-                  <TableHead className="dark:text-gray-300 text-center">Vencimiento</TableHead>
-                  <TableHead className="dark:text-gray-300 text-center">Stock</TableHead>
-                  <TableHead className="dark:text-gray-300 text-center">Estado</TableHead>
-                  <TableHead className="dark:text-gray-300 text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {lotesPaginados.map(lote => (
-                  <TableRow key={lote.id} className={`dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${lote.is_expired ? 'bg-red-50 dark:bg-red-900/10' : ''}`}>
-                    <TableCell className="font-mono font-medium dark:text-white">
-                      {lote.lot_code}
-                    </TableCell>
-                    <TableCell className="dark:text-gray-300">
-                      <div>
-                        <p className="font-medium">{lote.product?.name}</p>
-                        <p className="text-xs text-gray-500">{lote.product?.sku}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="dark:text-gray-300">
-                      {lote.supplier?.name || '-'}
-                    </TableCell>
-                    <TableCell className="text-center dark:text-gray-300">
-                      {lote.expiry_date ? formatDate(lote.expiry_date) : '-'}
-                    </TableCell>
-                    <TableCell className="text-center dark:text-gray-300">
-                      <span className={`font-medium ${(lote.stock_quantity || 0) > 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                        {lote.stock_quantity || 0}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {getStatusBadge(lote)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => openModalEditar(lote)} className="h-8 w-8 p-0">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDuplicar(lote.id)} className="h-8 w-8 p-0">
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => confirmDelete(lote.id)}
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                          disabled={(lote.stock_quantity || 0) > 0}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+      <ListToolbar
+        busqueda={<SearchInput value={l.busqueda} onChange={l.setBusqueda} cargando={cargando} placeholder={t('buscar.placeholder')} etiqueta={t('buscar.etiqueta')} />}
+        filtros={
+          <FilterPanel conteo={l.filtrosActivos} onLimpiar={l.limpiarFiltros} nota={t('filtros.nota')} textoVerResultados={t('filtros.verN', { count: total, n: cantidad(total) })}>
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-1 text-sm font-medium text-fg">{t('filtros.estado')}</legend>
+              <div className="grid grid-cols-2 gap-2">
+                {ESTADOS_LOTE.map((e) => (
+                  <label key={e} className="flex items-center gap-2 text-sm text-fg">
+                    <Checkbox
+                      checked={estados.includes(e)}
+                      onCheckedChange={(v) => l.setFiltro('estado', v === true ? [...estados, e] : estados.filter((x) => x !== e))}
+                      className="size-[18px] rounded"
+                    />
+                    {tv(e)}
+                  </label>
                 ))}
-              </TableBody>
-            </Table>
-          )}
-
-          <DataTablePagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            totalItems={lotes.length}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={handlePageSizeChange}
-            pageSizeOptions={[10, 25, 50, 100]}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Navegación rápida */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
-            Navegación Rápida
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Link href="/app/inventario/productos">
-              <Button variant="outline" className="w-full justify-start">
-                <Package className="h-4 w-4 mr-2" />
-                Productos
-              </Button>
-            </Link>
-            <Link href="/app/inventario/stock">
-              <Button variant="outline" className="w-full justify-start">
-                <Package2 className="h-4 w-4 mr-2" />
-                Stock
-              </Button>
-            </Link>
-            <Link href="/app/inventario/proveedores">
-              <Button variant="outline" className="w-full justify-start">
-                <Truck className="h-4 w-4 mr-2" />
-                Proveedores
-              </Button>
-            </Link>
-            <Link href="/app/inventario">
-              <Button variant="outline" className="w-full justify-start">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Inventario
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Modal crear/editar */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="dark:bg-gray-800 dark:border-gray-700">
-          <DialogHeader>
-            <DialogTitle className="dark:text-white">
-              {editando ? 'Editar Lote' : 'Nuevo Lote'}
-            </DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              {editando ? 'Modificar información del lote' : 'Registrar un nuevo lote para trazabilidad'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="dark:text-gray-300">Producto *</Label>
-              <Select
-                value={formData.product_id?.toString() || ''}
-                onValueChange={(v) => setFormData(prev => ({ ...prev, product_id: parseInt(v) }))}
-                disabled={!!editando}
-              >
-                <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                  <SelectValue placeholder="Seleccionar producto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {productos.map(p => (
-                    <SelectItem key={p.id} value={p.id.toString()}>{p.name} ({p.sku})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="dark:text-gray-300">Código de Lote *</Label>
-              <Input
-                value={formData.lot_code}
-                onChange={(e) => setFormData(prev => ({ ...prev, lot_code: e.target.value.toUpperCase() }))}
-                placeholder="Ej: LOT-2025-001"
-                className="dark:bg-gray-900 dark:border-gray-600 font-mono uppercase"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="dark:text-gray-300">Fecha de Vencimiento</Label>
-              <CampoFecha
-                aria-label="Fecha de Vencimiento"
-                valor={formData.expiry_date}
-                onValorChange={(dia) => setFormData(prev => ({ ...prev, expiry_date: dia }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="dark:text-gray-300">Proveedor</Label>
-              <Select
-                value={formData.supplier_id?.toString() || 'none'}
-                onValueChange={(v) => setFormData(prev => ({ ...prev, supplier_id: v === 'none' ? null : parseInt(v) }))}
-              >
-                <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                  <SelectValue placeholder="Seleccionar proveedor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin proveedor</SelectItem>
-                  {proveedores.map(p => (
-                    <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowModal(false)} className="dark:border-gray-600">
-              Cancelar
-            </Button>
-            <Button onClick={handleGuardar} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white">
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Guardando...
-                </>
-              ) : (
-                'Guardar'
+              </div>
+            </fieldset>
+            <FormField etiqueta={t('filtros.proveedor')}>
+              {(c) => (
+                <Select value={proveedor ? String(proveedor) : 'todos'} onValueChange={(v) => l.setFiltro('proveedor', v === 'todos' ? null : v)}>
+                  <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">{t('filtros.todosProveedores')}</SelectItem>
+                    {proveedores.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </FormField>
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="lotes-existencias" className="text-sm text-fg">
+                {t('filtros.conExistencias')}
+              </label>
+              <Switch id="lotes-existencias" checked={conExistencias} onCheckedChange={(v) => l.setFiltro('existencias', v ? '1' : null)} />
+            </div>
+          </FilterPanel>
+        }
+        chips={<FilterChips chips={chips} onQuitar={(c) => l.setFiltro(c, null)} onLimpiarTodo={l.limpiarFiltros} />}
+      />
 
-      {/* Confirmación eliminar */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="dark:text-white">¿Eliminar lote?</AlertDialogTitle>
-            <AlertDialogDescription className="dark:text-gray-400">
-              Esta acción no se puede deshacer. El lote será eliminado permanentemente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="dark:border-gray-600">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleEliminar} className="bg-red-600 hover:bg-red-700">
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DataTable
+        etiqueta={t('titulo')}
+        columnas={columnas}
+        filas={filas}
+        obtenerId={claveFila}
+        estado={estadoTabla}
+        orden={l.orden}
+        onOrdenar={l.ordenarPor}
+        seleccion={seleccion}
+        onSeleccionChange={cambiarSeleccion}
+        onFilaClick={(f) => router.push(rutaKardexLote(f.product_id, f.lot_id))}
+        etiquetaFila={(f) => t('etiquetaFila', { codigo: f.lot_code, producto: f.nombre })}
+        acciones={accionesFila}
+        tonoFila={(f) => (f.estado === 'vencido' && f.qty_on_hand > 0 ? 'peligro' : undefined)}
+        tarjetaMovil={(f, ctx) => (
+          <ListCard
+            titulo={f.lot_code}
+            insignia={<BadgeVencimiento expiry={f.expiry_date} hoy={hoy || getToday()} umbralDias={umbral} />}
+            subtitulo={f.nombre}
+            meta={
+              <span className="flex flex-col gap-0.5">
+                <span className={cn('text-xs', claseVence(f))}>
+                  {f.expiry_date ? t('movil.vence', { fecha: formatPlain(f.expiry_date), texto: venceTexto(f) }) : t('sinCaducidad')}
+                </span>
+                <span className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-fg">{t('uds', { n: cantidad(f.qty_on_hand) })}</span>
+                  <span className="text-xs text-fg-muted">{f.sucursal}</span>
+                </span>
+              </span>
+            }
+            acciones={accionesFila(f)}
+            onClick={() => router.push(rutaKardexLote(f.product_id, f.lot_id))}
+            seleccionable={ctx.modoSeleccion}
+            seleccionado={ctx.seleccionado}
+            onSeleccionChange={ctx.alternar}
+            onMantenerPulsado={() => ctx.alternar(true)}
+            className={f.estado === 'vencido' && f.qty_on_hand > 0 ? 'border-line-danger bg-danger-subtle' : undefined}
+          />
+        )}
+        vacio={{
+          titulo: t('vacio.titulo'),
+          descripcion: t('vacio.descripcion'),
+          icono: Layers,
+          accion: puedeCrear ? { etiqueta: t('nuevo'), onClick: () => setDialogo({ tipo: 'nuevo' }), icono: Plus } : undefined,
+        }}
+        sinResultados={{ descripcion: t('sinResultados') }}
+        error={{ titulo: t('errorCarga') }}
+        sinPermiso={{ titulo: tp('sinPermisoTitulo'), descripcion: tp('sinPermisoDescripcion') }}
+        onLimpiarFiltros={l.limpiarTodo}
+        onReintentar={recargar}
+        termino={l.busqueda}
+        pie={<Pagination pagina={l.pagina} tamano={l.tamano} total={total} onPaginaChange={l.setPagina} onTamanoChange={l.setTamano} sustantivo={sustantivo} cargando={cargando} />}
+      />
+
+      <BulkActionBar
+        seleccionados={seleccion.size}
+        total={total}
+        sustantivo={sustantivo}
+        acciones={[{ id: 'exportar', etiqueta: t('masivas.exportar'), icono: Download, onClick: () => void exportar(true), cargando: exportando }]}
+        onLimpiar={() => cambiarSeleccion(new Set())}
+      />
+
+      <DialogoLote
+        abierto={dialogo?.tipo === 'nuevo' || dialogo?.tipo === 'editar'}
+        onAbiertoChange={(v) => !v && setDialogo(null)}
+        organizacionId={organizacionId}
+        lote={dialogo?.tipo === 'editar' ? dialogo.fila : null}
+        verCostos={verCostos}
+        puedeAjustar={permisos.ajustar}
+        onGuardado={recargar}
+      />
+      <DialogoAjustarLote
+        abierto={dialogo?.tipo === 'ajustar' || dialogo?.tipo === 'baja'}
+        onAbiertoChange={(v) => !v && setDialogo(null)}
+        organizacionId={organizacionId}
+        lote={dialogo && dialogo.tipo !== 'nuevo' ? dialogo.fila : null}
+        filasDelLote={filasDialogo}
+        darDeBaja={dialogo?.tipo === 'baja'}
+        onGuardado={recargar}
+      />
+      <DialogoEliminarLote
+        abierto={dialogo?.tipo === 'eliminar'}
+        onAbiertoChange={(v) => !v && setDialogo(null)}
+        organizacionId={organizacionId}
+        lote={dialogo?.tipo === 'eliminar' ? dialogo.fila : null}
+        onEliminado={recargar}
+      />
     </div>
   );
 }
+
+export default LotesPage;

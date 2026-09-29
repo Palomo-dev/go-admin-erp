@@ -9,6 +9,8 @@ import { enqueueOfflineSale, shouldCheckoutOffline, newLocalUuid, newSaleId } fr
 import { buildCheckoutEnvelope, callCheckoutRpc, type LineaMesaSinCobrar } from '@/lib/offline/checkoutRpc';
 import { enqueueOfflineCustomer, findLocalCustomerDuplicate, type OfflineCustomerPayload } from '@/lib/offline/customersOutbox';
 import { posOfflineReads } from '@/lib/offline/posOfflineReads';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
+import type { PaginaClientes } from '@/lib/clientes/busqueda';
 import { isDesktop } from '@/lib/utils/desktop';
 import { isAppOnline } from '@/lib/utils/offlineCache';
 import {
@@ -786,32 +788,26 @@ export class POSService {
   // ===============================
   // CLIENTES
   // ===============================
-  static async searchCustomers(filter: CustomerFilter): Promise<Customer[]> {
+  /**
+   * Búsqueda única de clientes (RPC `fn_clientes_buscar`; sin red, la misma
+   * búsqueda sobre el catálogo local): sin tildes, todas las palabras en
+   * cualquier campo, teléfono y documento por dígitos, por relevancia, con el
+   * total de coincidencias para «Mostrando 20 de N · Ver más».
+   */
+  static async buscarClientesPagina(
+    texto: string | undefined,
+    opciones: { limite?: number; desde?: number } = {},
+  ): Promise<PaginaClientes<Customer>> {
     if (this.usesLocalCatalog()) {
-      return (await posOfflineReads.searchCustomers(this.organizationId, filter.search)) as unknown as Customer[];
+      return (await posOfflineReads.buscarClientesPagina(this.organizationId, texto, opciones)) as unknown as PaginaClientes<Customer>;
     }
-    try {
-      let query = supabase
-        .from('customers')
-        .select('*')
-        .eq('organization_id', this.organizationId);
+    const r = await buscarClientes(supabase, { organizationId: this.organizationId, texto, limite: opciones.limite, desde: opciones.desde });
+    return r as unknown as PaginaClientes<Customer>;
+  }
 
-      if (filter.search) {
-        query = query.or(
-          `full_name.ilike.%${filter.search}%,email.ilike.%${filter.search}%,phone.ilike.%${filter.search}%,doc_number.ilike.%${filter.search}%,company_name.ilike.%${filter.search}%,trade_name.ilike.%${filter.search}%,identification_number.ilike.%${filter.search}%`
-        );
-      }
-
-      const { data, error } = await query
-        .order('full_name')
-        .limit(filter.search ? 20 : 50);
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error searching customers:', error);
-      throw error;
-    }
+  /** Primera página de `buscarClientesPagina` (20 filas). */
+  static async searchCustomers(filter: CustomerFilter): Promise<Customer[]> {
+    return (await this.buscarClientesPagina(filter.search)).filas;
   }
 
   static async createCustomer(customerData: Partial<Customer>): Promise<Customer> {

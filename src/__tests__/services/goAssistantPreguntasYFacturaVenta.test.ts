@@ -130,25 +130,23 @@ describe('preguntar_opciones — el modal A/B/C/Otro', () => {
 });
 
 describe('buscar_clientes', () => {
-  it('escapa comodines y busca por nombre, empresa, documento, teléfono y correo', async () => {
-    let filtro = '';
-    const client = {
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            or: (f: string) => {
-              filtro = f;
-              return { order: () => ({ limit: async () => ({ data: [{ id: 'u1', full_name: 'Ana', company_name: null, customer_type: 'person', doc_type: 'cc', doc_number: '1', phone: null, email: null }], error: null }) }) };
-            },
-          }),
-        }),
-      }),
-    };
-    const r = await buscarClientes.execute(ctxWith(client), { consulta: '50%' });
+  it('usa la búsqueda única de clientes (RPC): el texto viaja como parámetro, nunca en un `.or`', async () => {
+    const rpc = jest.fn(async () => ({
+      data: { total: 1, filas: [{ id: 'u1', full_name: 'Ana', company_name: null, customer_type: 'person', doc_type: 'cc', doc_number: '1', phone: null, email: null, relevancia: 1 }] },
+      error: null,
+    }));
+    const from = jest.fn();
+    const r = await buscarClientes.execute(ctxWith({ rpc, from }), { consulta: '50%, Pérez (hija)' });
     expect(r.ok).toBe(true);
-    expect(filtro).toContain('full_name.ilike.%50\\%%');
-    expect(filtro).toContain('doc_number.ilike.');
+    expect(rpc).toHaveBeenCalledWith('fn_clientes_buscar', expect.objectContaining({ p_q: '50%, Pérez (hija)', p_limit: 8 }));
+    expect(from).not.toHaveBeenCalled();
     expect((r.data as { clientes: Array<{ tipo: string; documento: string }> }).clientes[0]).toMatchObject({ tipo: 'persona', documento: 'cc 1' });
+  });
+
+  it('un error de la RPC se devuelve como query_error', async () => {
+    const rpc = jest.fn(async () => ({ data: null, error: { message: 'boom' } }));
+    const r = await buscarClientes.execute(ctxWith({ rpc }), { consulta: 'ana' });
+    expect(r).toMatchObject({ ok: false, errorCode: 'query_error' });
   });
 });
 

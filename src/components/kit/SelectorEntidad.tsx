@@ -9,10 +9,10 @@ import { Kbd } from './Kbd';
 import { SearchInput } from './SearchInput';
 import { ChipAlternable } from './documento/ChipAlternable';
 import { indiceSiguiente } from './navegacionTeclado';
-import { estadoListaEntidad, ofrecerCrear, type OpcionEntidad } from './selectorEntidadLogica';
+import { esPaginaEntidad, estadoListaEntidad, hayMasResultados, ofrecerCrear, type OpcionEntidad, type PaginaEntidad } from './selectorEntidadLogica';
 import { ariaAtajo } from './teclas';
 import { useEsEscritorio } from './useEsEscritorio';
-import { useKitT } from './useIdiomaKit';
+import { useFormatoEntero, useKitT } from './useIdiomaKit';
 
 /**
  * Base común de los selectores de tercero (Figma `CustomerPicker` 849:558484…,
@@ -34,6 +34,11 @@ import { useKitT } from './useIdiomaKit';
  * («Persona», «Empresa») y su `insignia` («Por cobrar $ …», «Al día»), y
  * `formularioCrear` cambia la lista por el formulario rápido dentro de la
  * misma capa: al crear, vuelve con el tercero elegido.
+ *
+ * Paginación: si `buscar` devuelve `{ items, total }` y hay más coincidencias
+ * que las mostradas, el pie dice «Mostrando 20 de 57 · Ver más» y «Ver más»
+ * vuelve a llamar a `buscar` con `desde` = filas ya mostradas. Si la búsqueda
+ * falla, se ve el error con «Reintentar» (nunca una lista vacía muda).
  */
 export interface FiltroEntidad {
   id: string;
@@ -63,13 +68,21 @@ export interface TextosSelectorEntidad {
   pendienteSync?: string;
   /** Nombre del grupo de chips de filtro. */
   filtros?: string;
+  reintentar?: string;
+  verMas?: string;
+  /** «Mostrando {n} de {total}» (números ya formateados). */
+  mostrando?: (n: string, total: string) => string;
 }
 
 export interface SelectorEntidadProps<T> {
   valor: T | null | undefined;
   aOpcion: (item: T) => OpcionEntidad;
-  /** `filtros`: ids de los chips encendidos (vacío si la pantalla no pasa `filtros`). */
-  buscar: (texto: string, senal: AbortSignal, filtros: readonly string[]) => Promise<readonly T[]>;
+  /**
+   * `filtros`: ids de los chips encendidos (vacío si la pantalla no pasa `filtros`).
+   * `desde`: filas ya mostradas («Ver más»); 0 en cada búsqueda nueva.
+   * Devolver `{ items, total }` activa «Mostrando N de M · Ver más».
+   */
+  buscar: (texto: string, senal: AbortSignal, filtros: readonly string[], desde: number) => Promise<readonly T[] | PaginaEntidad<T>>;
   onCambiar: (item: T) => void;
   onQuitar?: () => void;
   onCrear?: (texto: string) => void;
@@ -129,7 +142,7 @@ function Lista<T>({
   textoCrearNuevo?: string;
   onElegir: (item: T) => void;
   onCrear?: (texto: string) => void;
-  textos: Required<Omit<TextosSelectorEntidad, 'crear'>> & { crear: (texto: string) => string };
+  textos: Required<Omit<TextosSelectorEntidad, 'crear' | 'mostrando'>> & { crear: (texto: string) => string; mostrando: (n: string, total: string) => string };
   etiqueta: string;
   grupoExtra?: ReactNode;
   debounceMs: number;
@@ -138,7 +151,10 @@ function Lista<T>({
 }) {
   const [texto, setTexto] = useState('');
   const [items, setItems] = useState<readonly T[]>([]);
+  const [totalCoincidencias, setTotalCoincidencias] = useState<number | null>(null);
+  const [cargandoMas, setCargandoMas] = useState(false);
   const [cargando, setCargando] = useState(true);
+  const formatoEntero = useFormatoEntero();
   const [error, setError] = useState(false);
   const [activo, setActivo] = useState(0);
   const controlador = useRef<AbortController | null>(null);
@@ -155,11 +171,13 @@ function Lista<T>({
       const c = new AbortController();
       controlador.current = c;
       setCargando(true);
+      setCargandoMas(false);
       setError(false);
-      buscar(q, c.signal, conFiltros ?? activosRef.current)
+      buscar(q, c.signal, conFiltros ?? activosRef.current, 0)
         .then((r) => {
           if (c.signal.aborted) return;
-          setItems(r);
+          setItems(esPaginaEntidad(r) ? r.items : r);
+          setTotalCoincidencias(esPaginaEntidad(r) ? r.total : null);
           setActivo(0);
         })
         .catch(() => {
@@ -176,6 +194,30 @@ function Lista<T>({
     ejecutar('');
     return () => controlador.current?.abort();
   }, [ejecutar]);
+
+  // «Ver más»: la página siguiente de la misma consulta, añadida al final.
+  const verMas = () => {
+    controlador.current?.abort();
+    const c = new AbortController();
+    controlador.current = c;
+    const desde = items.length;
+    setCargandoMas(true);
+    setError(false);
+    buscar(consultaRef.current, c.signal, activosRef.current, desde)
+      .then((r) => {
+        if (c.signal.aborted) return;
+        const nuevos = esPaginaEntidad(r) ? r.items : r;
+        setItems((previos) => [...previos.slice(0, desde), ...nuevos]);
+        setTotalCoincidencias(esPaginaEntidad(r) ? r.total : null);
+      })
+      .catch(() => {
+        if (!c.signal.aborted) setError(true);
+      })
+      .finally(() => {
+        if (!c.signal.aborted) setCargandoMas(false);
+      });
+  };
+  const conMas = !error && hayMasResultados(items.length, totalCoincidencias);
 
   const opciones = items.map(aOpcion);
   const conCrear = !!onCrear && ofrecerCrear(texto, opciones);
@@ -260,8 +302,15 @@ function Lista<T>({
         )}
         {estado === 'error' && (
           <li role="presentation" className="flex items-center gap-2 px-2.5 py-3 text-sm text-danger-text">
-            <CircleAlert aria-hidden="true" className="size-4" strokeWidth={1.5} />
-            {textos.error}
+            <CircleAlert aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} />
+            <span role="alert" className="min-w-0 flex-1">{textos.error}</span>
+            <button
+              type="button"
+              onClick={() => ejecutar(consultaRef.current)}
+              className="shrink-0 rounded-md px-2 py-1 text-sm font-medium text-link hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              {textos.reintentar}
+            </button>
           </li>
         )}
         {(estado === 'inicial' || estado === 'sinResultados') && !conCrear && (
@@ -326,6 +375,20 @@ function Lista<T>({
           </li>
         )}
       </ul>
+      {conMas && totalCoincidencias !== null && (
+        <div className="flex items-center justify-between gap-2 px-2.5 text-xs text-fg-secondary" aria-live="polite">
+          <span>{textos.mostrando(formatoEntero(items.length), formatoEntero(totalCoincidencias))}</span>
+          <button
+            type="button"
+            onClick={verMas}
+            disabled={cargandoMas}
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-link hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60"
+          >
+            {cargandoMas && <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />}
+            {textos.verMas}
+          </button>
+        </div>
+      )}
       {textoCrearNuevo && onCrear && (
         <button
           type="button"
@@ -399,6 +462,9 @@ export function SelectorEntidad<T>({
     editar: textosProp?.editar ?? t('picker.editar'),
     pendienteSync: textosProp?.pendienteSync ?? t('picker.pendienteSync'),
     filtros: textosProp?.filtros ?? t('filtros.titulo'),
+    reintentar: textosProp?.reintentar ?? t('picker.reintentar'),
+    verMas: textosProp?.verMas ?? t('picker.verMas'),
+    mostrando: textosProp?.mostrando ?? ((n: string, total: string) => t('picker.mostrando', { n, total })),
   };
   const idLista = useId();
   const opcion = valor ? aOpcion(valor) : null;

@@ -33,6 +33,7 @@ import {
 import { precioVigente } from '@/lib/pos/precioVigente';
 import { sinRetenciones } from '@/lib/services/taxResolverCore';
 import { agotadoPorStock } from '@/lib/pos/stockDisponible';
+import { buscarClientesEnLista, type PaginaClientes } from '@/lib/clientes/busqueda';
 
 /** Mensaje único para «no hay catálogo local todavía». */
 export const CATALOG_NOT_REPLICATED_MESSAGE = 'Catálogo local aún no replicado: conecta a internet una vez';
@@ -359,19 +360,24 @@ export async function getCategoryRanking(organizationId: number): Promise<Record
 
 // ── Clientes ──
 
-const CUSTOMER_SEARCH_FIELDS: Array<keyof CatalogCustomer> = ['full_name', 'email', 'phone', 'doc_number', 'company_name', 'trade_name', 'identification_number'];
-
-/** Equivalente offline de `POSService.searchCustomers` (mismos campos y límites). */
-export async function searchCustomers(organizationId: number, search: string | undefined): Promise<CatalogCustomer[]> {
+/**
+ * Equivalente offline de `POSService.buscarClientesPagina`: la MISMA búsqueda
+ * que la RPC `fn_clientes_buscar` (reglas compartidas en
+ * `src/lib/clientes/busqueda.ts`) sobre el catálogo local.
+ */
+export async function buscarClientesPagina(
+  organizationId: number,
+  search: string | undefined,
+  opciones: { limite?: number; desde?: number } = {},
+): Promise<PaginaClientes<CatalogCustomer & { relevancia: number }>> {
   await requireCatalog(organizationId);
   const rows = await getCatalogRowsByOrg('customers', organizationId);
-  const term = norm(search?.trim());
-  const filtered = term
-    ? rows.filter((c) => CUSTOMER_SEARCH_FIELDS.some((f) => norm(c[f] as string | null).includes(term)))
-    : rows;
-  return filtered
-    .sort((a, b) => norm(a.full_name).localeCompare(norm(b.full_name), 'es'))
-    .slice(0, term ? 20 : 50);
+  return buscarClientesEnLista(rows, search, opciones);
+}
+
+/** Primera página de `buscarClientesPagina` (equivalente de `POSService.searchCustomers`). */
+export async function searchCustomers(organizationId: number, search: string | undefined): Promise<CatalogCustomer[]> {
+  return (await buscarClientesPagina(organizationId, search)).filas;
 }
 
 /** Mensaje único para «ese cliente no está en el catálogo local». */
@@ -432,6 +438,7 @@ export const posOfflineReads = {
   getCategories,
   getCategoryRanking,
   searchCustomers,
+  buscarClientesPagina,
   getCustomerById,
   getPaymentMethodRows,
   getCurrencyRows,

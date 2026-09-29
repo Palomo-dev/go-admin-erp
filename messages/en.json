@@ -3568,6 +3568,9 @@
       "ver": "View",
       "editar": "Edit",
       "pendienteSync": "Pending sync",
+      "reintentar": "Retry",
+      "verMas": "Show more",
+      "mostrando": "Showing {n} of {total}",
       "cliente": {
         "etiqueta": "Customer",
         "placeholder": "Add customer",

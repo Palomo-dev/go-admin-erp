@@ -8,6 +8,7 @@ import { clasesBadgeTono } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { POSService } from '@/lib/services/posService';
 import { supabase } from '@/lib/supabase/config';
+import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
 import { useCommissionRate } from '@/lib/hooks/useCommissionRate';
 import { PrintService, BusinessInfo, CashierInfo } from '@/lib/services/printService';
 import { PrintJobsService } from '@/lib/services/printJobsService';
@@ -698,7 +699,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         `)
         .eq('organization_id', cart.organization_id)
         .not('address', 'is', null)
-        .or(`address.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%,phone.ilike.%${query}%`)
+        // Entrecomillado (helper único): una coma o un paréntesis no rompen el `or`.
+        .or(ilikeAnyOf(['address', 'first_name', 'last_name', 'phone'], query))
         .limit(8);
       if (error) throw error;
       const results = (data || []).map((c: any) => ({

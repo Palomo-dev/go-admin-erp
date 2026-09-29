@@ -3463,6 +3463,9 @@
       "ver": "Ver",
       "editar": "Editar",
       "pendienteSync": "Sincronização pendente",
+      "reintentar": "Tentar novamente",
+      "verMas": "Ver mais",
+      "mostrando": "Mostrando {n} de {total}",
       "cliente": {
         "etiqueta": "Cliente",
         "placeholder": "Adicionar cliente",

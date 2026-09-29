@@ -263,9 +263,15 @@ function tipoDeFiltros(filtros: readonly string[]): 'persona' | 'empresa' | null
   return p === e ? null : p ? 'persona' : 'empresa';
 }
 
-export async function buscarClientesDocumento(org: number, texto: string, filtros: readonly string[]): Promise<FilaCliente[]> {
+/** «Elegir cliente»: una página (20) de la búsqueda única de clientes, con el total para «Ver más». */
+export async function buscarClientesDocumento(
+  org: number,
+  texto: string,
+  filtros: readonly string[],
+  desde = 0,
+): Promise<{ filas: FilaCliente[]; total: number }> {
   const tipo = tipoDeFiltros(filtros);
-  const { filas } = await listarClientes({
+  return listarClientes({
     organizationId: org,
     branchId: null,
     criterios: {
@@ -276,10 +282,9 @@ export async function buscarClientesDocumento(org: number, texto: string, filtro
       estado: filtros.includes('activos') ? null : 'todos',
     },
     orden: null,
-    desde: 0,
+    desde,
     tamano: 20,
   });
-  return filas;
 }
 
 export async function buscarProveedoresDocumento(org: number, texto: string, filtros: readonly string[]): Promise<ProveedorListadoItem[]> {

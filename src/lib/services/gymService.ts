@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { todayInTz, toPlainDate, plainDateToInstant } from '@/lib/utils/dateCore';
@@ -1350,22 +1351,9 @@ export async function searchCustomersForReservation(
   organizationId?: number
 ): Promise<Array<{ id: string; nombre: string; documento: string | null; correo: string | null; telefono: string | null }>> {
   const orgId = organizationId || getOrganizationId();
-  // Sin comas ni paréntesis: rompen la sintaxis de `.or()` de PostgREST.
-  const limpio = term.replace(/[,()*%\\]/g, ' ').trim();
-  if (limpio.length < 2) return [];
-  const p = `%${limpio}%`;
-  const { data, error } = await supabase
-    .from('customers')
-    .select('id, full_name, first_name, last_name, identification_number, email, phone')
-    .eq('organization_id', orgId)
-    .or(
-      `full_name.ilike.${p},first_name.ilike.${p},last_name.ilike.${p},identification_number.ilike.${p},email.ilike.${p},phone.ilike.${p}`
-    )
-    .limit(20);
-  if (error) {
-    console.error('Error buscando clientes:', error);
-    throw error;
-  }
+  if (term.trim().length < 2) return [];
+  // Búsqueda única de clientes (RPC): el texto nunca va dentro de un `.or()`.
+  const { filas: data } = await buscarClientes(supabase, { organizationId: orgId, texto: term, limite: 20 });
   return ((data || []) as Array<{
     id: string;
     full_name: string | null;

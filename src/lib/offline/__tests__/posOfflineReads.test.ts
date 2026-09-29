@@ -76,7 +76,8 @@ async function seed() {
   await putCatalogRows('product_recipes', [{ id: 9, organization_id: ORG, product_id: 6, name: 'Confección' }]);
   await putCatalogRows('customers', [
     customer('c1', 'Ana Pérez', { email: 'ana@example.com', phone: '3001112233' }),
-    customer('c2', 'Bruno Díaz', { doc_number: '1020304050' }),
+    // doc_number es la columna generada de identification_number: llegan las dos.
+    customer('c2', 'Bruno Díaz', { identification_number: '1020304050', doc_number: '1020304050' }),
     customer('c3', 'Carla Ruiz', { company_name: 'Calzados del Norte' }),
   ]);
   await putCatalogRows('payment_methods', [
@@ -245,6 +246,10 @@ describe('categorías, clientes, pagos, monedas e impuestos', () => {
     expect((await posOfflineReads.searchCustomers(ORG, '300111')).map((c) => c.id)).toEqual(['c1']);
     expect((await posOfflineReads.searchCustomers(ORG, '10203')).map((c) => c.id)).toEqual(['c2']);
     expect((await posOfflineReads.searchCustomers(ORG, 'norte')).map((c) => c.id)).toEqual(['c3']);
+    // Búsqueda única: sin tildes, todas las palabras en cualquier orden, documento con puntos.
+    expect((await posOfflineReads.searchCustomers(ORG, 'diaz bruno')).map((c) => c.id)).toEqual(['c2']);
+    expect((await posOfflineReads.searchCustomers(ORG, '1.020.304.050')).map((c) => c.id)).toEqual(['c2']);
+    expect(await posOfflineReads.buscarClientesPagina(ORG, 'a', { limite: 1 })).toMatchObject({ total: 3 });
     expect((await posOfflineReads.searchCustomers(ORG, undefined)).map((c) => c.full_name)).toEqual(['Ana Pérez', 'Bruno Díaz', 'Carla Ruiz']);
   });
 

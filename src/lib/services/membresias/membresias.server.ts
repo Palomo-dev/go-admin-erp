@@ -7,6 +7,7 @@
  * funciones de la base (M6). Este módulo lee, arma las vistas y traduce errores.
  */
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
 import { isOrgAdminLike } from '@/lib/utils/orgAdmin';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { plainDateToInstant, toPlainDate } from '@/lib/utils/dateCore';
@@ -247,16 +248,16 @@ export interface FiltrosMembresias {
   porPagina?: number;
 }
 
+/** Hasta 300 clientes que coinciden (búsqueda única de clientes, por relevancia). */
 async function clientesQueCoinciden(ctx: ServerOrgContext, q: string): Promise<string[]> {
-  const p = patronBusqueda(q);
-  if (!p) return [];
-  const { data } = await ctx.supabase
-    .from('customers')
-    .select('id')
-    .eq('organization_id', ctx.organizationId)
-    .or(`full_name.ilike.%${p}%,identification_number.ilike.%${p}%,email.ilike.%${p}%,phone.ilike.%${p}%`)
-    .limit(300);
-  return ((data ?? []) as Fila[]).map((c) => String(c.id));
+  if (!q.trim()) return [];
+  const ids: string[] = [];
+  for (let desde = 0; desde < 300; desde += 100) {
+    const { filas } = await buscarClientes(ctx.supabase, { organizationId: ctx.organizationId, texto: q, limite: 100, desde });
+    ids.push(...filas.map((c) => String(c.id)));
+    if (filas.length < 100) break;
+  }
+  return ids;
 }
 
 export async function listarMembresias(ctx: ServerOrgContext, filtros: FiltrosMembresias): Promise<ListadoMembresias> {

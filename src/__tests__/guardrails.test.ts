@@ -3125,3 +3125,38 @@ describe('33. Existencias: nada fuera del núcleo escribe las tablas de stock', 
     expect(llaman).toEqual([]);
   });
 });
+
+// ── Búsqueda única de clientes (2026-09-29) ─────────────────────────────────
+// Cada pantalla buscaba clientes con su propio `.or(full_name.ilike.%${texto}%…)`:
+// sin tildes, frase completa, 20 primeros por orden alfabético y una coma o un
+// paréntesis rompían el filtro (la lista salía vacía). Ahora todas pasan por
+// `buscarClientes` (RPC fn_clientes_buscar) y el POS sin red por el espejo
+// `buscarClientesEnLista` (src/lib/clientes/busqueda.ts).
+describe('Búsqueda única de clientes', () => {
+  const esPruebaCli = (f: string) => /[\/]__tests__[\/]|\.test\.tsx?$/.test(f);
+
+  test('ningún archivo interpola texto en un .or() sobre columnas de clientes', () => {
+    const RE = /\.or\(\s*`[^`]*\b(full_name|first_name|last_name|identification_number|doc_number|company_name|trade_name)\.ilike[^`]*\$\{/;
+    const ofensores = walkDir(SRC_ROOT)
+      .filter((f) => !esPruebaCli(f))
+      .filter((f) => RE.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(ofensores).toEqual([]);
+  });
+
+  test('la RPC fn_clientes_buscar solo se llama desde el servicio único', () => {
+    const llaman = walkDir(SRC_ROOT)
+      .filter((f) => !esPruebaCli(f))
+      .filter((f) => /rpc\(\s*['"]fn_clientes_buscar['"]/.test(readFile(f)))
+      .map(rel);
+    expect(llaman).toEqual(['lib/services/customers/busquedaClientesService.ts']);
+  });
+
+  test('el POS (en línea y sin red) usa la búsqueda única', () => {
+    const pos = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'services', 'posService.ts')));
+    expect(pos).toMatch(/buscarClientes\(supabase,/);
+    expect(pos).not.toMatch(/from\(\s*['"]customers['"]\s*\)[\s\S]{0,300}?\.or\(/);
+    const offline = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'offline', 'posOfflineReads.ts')));
+    expect(offline).toMatch(/buscarClientesEnLista\(/);
+  });
+});

@@ -247,16 +247,17 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
     .join(' · ');
 
   // ── Filtro «Cliente» (mismo buscador que el listado de facturas de venta) ──
-  const buscarClientes = useCallback(async (texto: string): Promise<ClientePicker[]> => {
+  const buscarClientes = useCallback(async (texto: string, _senal: AbortSignal, _filtros: readonly string[], desde: number) => {
     const r = await listarClientes({
       organizationId: getOrganizationId(),
       branchId: null,
       criterios: { busqueda: texto },
       orden: null,
-      desde: 0,
+      desde,
       tamano: 10,
     });
-    return r.filas.map((c) => ({ id: c.id, nombre: c.full_name ?? c.company_name ?? '', documento: c.identification_number, correo: c.email, telefono: c.phone }));
+    const items: ClientePicker[] = r.filas.map((c) => ({ id: c.id, nombre: c.full_name ?? c.company_name ?? '', documento: c.identification_number, correo: c.email, telefono: c.phone }));
+    return { items, total: r.total };
   }, []);
 
   const nombreClienteFiltro =

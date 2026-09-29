@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/lib/supabase/config';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
 import { SearchDataResult } from './types';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
@@ -55,7 +56,8 @@ export const searchData = async (searchTerm: string, resultLimit: number = 5, si
       withTimeout(supabase.from('branches').select('id, name, organization_id').ilike('name', `%${term}%`).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
       withTimeout(supabase.from('products').select('id, name, sku, description, organization_id').or(`name.ilike.%${term}%, sku.ilike.%${term}%, barcode.ilike.%${term}%`).eq('organization_id', organizationId).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
       withTimeout(supabase.from('suppliers').select('id, name, nit, email').or(`name.ilike.%${term}%, nit.ilike.%${term}%, email.ilike.%${term}%`).eq('organization_id', organizationId).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
-      withTimeout(supabase.from('customers').select('id, first_name, last_name, email, full_name, company_name, trade_name, organization_id, avatar_url, identification_number').or(`first_name.ilike.%${term}%, last_name.ilike.%${term}%, email.ilike.%${term}%, full_name.ilike.%${term}%, company_name.ilike.%${term}%, trade_name.ilike.%${term}%, phone.ilike.%${term}%, identification_number.ilike.%${term}%`).eq('organization_id', organizationId).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
+      // Clientes: búsqueda única (RPC fn_clientes_buscar), el texto nunca va dentro de un `.or()`.
+      withTimeout(buscarClientes(supabase, { organizationId, texto: term, limite: resultLimit }).then((r) => ({ data: r.filas, error: null }))),
       withTimeout(supabase.from('categories').select('id, name, slug').ilike('name', `%${term}%`).eq('organization_id', organizationId).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
       withTimeout(supabase.from('invoice_sales').select('id, number, total, status, customer_id, customers(full_name)').or(`number.ilike.%${term}%`).eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
       withTimeout(supabase.from('web_orders').select('id, order_number, customer_name, status, total').or(`order_number.ilike.%${term}%, customer_name.ilike.%${term}%`).eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),

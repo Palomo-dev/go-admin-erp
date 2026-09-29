@@ -3568,6 +3568,9 @@
       "ver": "Ver",
       "editar": "Editar",
       "pendienteSync": "Pendiente de sincronizar",
+      "reintentar": "Reintentar",
+      "verMas": "Ver más",
+      "mostrando": "Mostrando {n} de {total}",
       "cliente": {
         "etiqueta": "Cliente",
         "placeholder": "Agregar cliente",

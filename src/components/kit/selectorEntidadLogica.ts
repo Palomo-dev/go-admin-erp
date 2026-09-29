@@ -41,6 +41,25 @@ export function estadoListaEntidad({
   return texto.trim() ? 'sinResultados' : 'inicial';
 }
 
+/**
+ * Resultado paginado de `buscar`: una página y el total de coincidencias. Con
+ * él la lista muestra «Mostrando 20 de 57 · Ver más»; con un arreglo simple,
+ * no (la pantalla no sabe cuántas hay).
+ */
+export interface PaginaEntidad<T> {
+  items: readonly T[];
+  total: number;
+}
+
+export function esPaginaEntidad<T>(r: readonly T[] | PaginaEntidad<T>): r is PaginaEntidad<T> {
+  return !Array.isArray(r) && typeof r === 'object' && r !== null && Array.isArray((r as PaginaEntidad<T>).items);
+}
+
+/** Hay más coincidencias que las mostradas (solo con total conocido). */
+export function hayMasResultados(mostrados: number, total: number | null): boolean {
+  return total !== null && total > mostrados;
+}
+
 /** Se ofrece crear si hay texto y ninguna opción se llama exactamente así (sin tildes ni mayúsculas). */
 export function ofrecerCrear(texto: string, opciones: readonly Pick<OpcionEntidad, 'titulo'>[]): boolean {
   const t = normalizarBusqueda(texto).trim();

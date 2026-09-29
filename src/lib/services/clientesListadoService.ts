@@ -167,7 +167,8 @@ export async function listarClientes(args: {
     p_org: args.organizationId,
     p_branch: args.branchId,
     ...parametrosFiltro(args.criterios),
-    p_orden: args.orden?.campo ?? 'nombre',
+    // Con texto y sin orden elegido: relevancia de la búsqueda única de clientes.
+    p_orden: args.orden?.campo ?? (args.criterios.busqueda?.trim() ? 'relevancia' : 'nombre'),
     p_direccion: args.orden?.direccion ?? 'asc',
     p_limite: args.tamano,
     p_desplazamiento: args.desde,

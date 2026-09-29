@@ -145,9 +145,9 @@ describe('Elegir cliente con chips y alta en línea', () => {
     );
     const opcion = await screen.findByRole('option', { name: /Comercial Andina/ });
     expect(within(opcion).getByText('Por cobrar $ 1.200.000')).toBeTruthy();
-    expect(buscar).toHaveBeenCalledWith('', expect.anything(), ['activos']);
+    expect(buscar).toHaveBeenCalledWith('', expect.anything(), ['activos'], 0);
     fireEvent.click(screen.getByRole('button', { name: 'Empresa' }));
-    await waitFor(() => expect(buscar).toHaveBeenLastCalledWith('', expect.anything(), ['activos', 'empresa']));
+    await waitFor(() => expect(buscar).toHaveBeenLastCalledWith('', expect.anything(), ['activos', 'empresa'], 0));
 
     fireEvent.click(screen.getByRole('button', { name: 'Crear cliente' }));
     fireEvent.change(screen.getByLabelText(/Nombres/), { target: { value: 'Laura' } });

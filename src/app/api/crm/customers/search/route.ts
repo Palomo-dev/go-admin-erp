@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
-import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,23 +30,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Buscar por nombre (ilike) o teléfono (ilike)
-    const { data, error } = await ctx.supabase
-      .from('customers')
-      .select('id, first_name, last_name, phone, email')
-      .eq('organization_id', ctx.organizationId)
-      // Helper único (F12-misc): término entrecomillado, comas/paréntesis no rompen el `or`.
-      .or(ilikeAnyOf(['first_name', 'last_name', 'phone'], q))
-      .limit(limit);
-
-    if (error) {
-      console.error('[CRM customers/search] error:', error.message);
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, data: data ?? [] });
+    // Búsqueda única de clientes (RPC): sin tildes, todas las palabras, dígitos.
+    const { filas } = await buscarClientes(ctx.supabase, { organizationId: ctx.organizationId, texto: q, limite: limit });
+    const data = filas.map((c) => ({ id: c.id, first_name: c.first_name, last_name: c.last_name, phone: c.phone, email: c.email }));
+    return NextResponse.json({ success: true, data });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Error desconocido';
+    const message =
+      error && typeof error === 'object' && 'message' in error ? String((error as { message: unknown }).message) : 'Error desconocido';
     console.error('[CRM customers/search] error:', message);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }

@@ -95,7 +95,10 @@ export function ElegirCliente({ cliente, onCambiar, sucursal, layout = 'fila', .
   );
 
   const buscar = useCallback(
-    async (texto: string, _senal: AbortSignal, filtros: readonly string[]) => (await buscarClientesDocumento(getOrganizationId(), texto, filtros)).map(aPicker),
+    async (texto: string, _senal: AbortSignal, filtros: readonly string[], desde: number) => {
+      const { filas, total } = await buscarClientesDocumento(getOrganizationId(), texto, filtros, desde);
+      return { items: filas.map(aPicker), total };
+    },
     [aPicker],
   );
 

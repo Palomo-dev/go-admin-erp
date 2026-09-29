@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { todayInTz } from '@/lib/utils/dateCore';
 import { getDayRange } from '@/lib/utils/dateRanges';
@@ -891,15 +892,9 @@ class ParkingService {
     phone?: string;
   }>> {
     try {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('id, full_name, email, phone')
-        .eq('organization_id', organizationId)
-        .or(`full_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%,company_name.ilike.%${query}%,trade_name.ilike.%${query}%,identification_number.ilike.%${query}%`)
-        .limit(10);
-
-      if (error) throw error;
-      return data || [];
+      // Búsqueda única de clientes (RPC): sin tildes, todas las palabras, dígitos.
+      const { filas } = await buscarClientes(supabase, { organizationId, texto: query, limite: 10 });
+      return filas.map((c) => ({ id: c.id, full_name: c.full_name ?? '', email: c.email ?? undefined, phone: c.phone ?? undefined }));
     } catch (error) {
       console.error('Error buscando clientes:', error);
       throw error;

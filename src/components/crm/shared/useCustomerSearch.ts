@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
 
 export interface CustomerHit {
   id: string;
@@ -36,23 +36,33 @@ export function useCustomerSearch(query: string, enabled: boolean) {
     const timer = setTimeout(async () => {
       setLoading(true);
       setError(null);
-      let req = supabase
-        .from('customers')
-        .select('id, full_name, email, phone')
-        .eq('organization_id', orgId)
-        .order('updated_at', { ascending: false })
-        .limit(8);
-      // Helper único: el término va entrecomillado, así que comas, paréntesis o
-      // comillas del usuario no rompen el filtro `or` de PostgREST (PGRST100).
-      const filter = ilikeAnyOf(['full_name', 'email'], query);
-      if (filter) req = req.or(filter);
-      const { data, error: err } = await req;
+      let data: CustomerHit[] = [];
+      let err: string | null = null;
+      if (query.trim()) {
+        // Búsqueda única de clientes (RPC): sin tildes, todas las palabras, dígitos.
+        try {
+          const { filas } = await buscarClientes(supabase, { organizationId: orgId, texto: query, limite: 8 });
+          data = filas.map((c) => ({ id: c.id, full_name: c.full_name, email: c.email, phone: c.phone }));
+        } catch (e) {
+          err = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : 'No se pudieron buscar clientes.';
+        }
+      } else {
+        // Sin texto: los más recientes, como siempre.
+        const r = await supabase
+          .from('customers')
+          .select('id, full_name, email, phone')
+          .eq('organization_id', orgId)
+          .order('updated_at', { ascending: false })
+          .limit(8);
+        data = (r.data ?? []) as CustomerHit[];
+        err = r.error?.message ?? null;
+      }
       if (cancelled) return;
       if (err) {
-        setError(err.message);
+        setError(err);
         setHits([]);
       } else {
-        setHits((data ?? []) as CustomerHit[]);
+        setHits(data);
       }
       setLoading(false);
     }, 250);

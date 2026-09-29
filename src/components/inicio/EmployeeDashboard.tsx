@@ -31,6 +31,7 @@ import {
   Package,
   Users,
   CalendarDays,
+  Info,
   type LucideIcon,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -44,6 +45,8 @@ import { supabase } from '@/lib/supabase/config';
 import type { UserPermissionContext } from '@/lib/middleware/permissions';
 import { NotificationService } from '@/components/app-layout/Header/Notifications/NotificationService';
 import type { Notification } from '@/components/app-layout/Header/Notifications/types';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { ESTADOS_TAREA_ABIERTA } from '@/lib/dashboard/bloqueHoy';
 
 interface EmployeeDashboardProps {
   organizationId?: number | null;
@@ -80,10 +83,16 @@ const MODULE_ACCESS_CATALOG: Array<{
 // no conoce `todo` / `in_progress` / `done` (son estados del módulo PM).
 const TASK_STATUS_CONFIG: Record<string, { labelKey: string; tono: TonoBadge; icon: LucideIcon }> = {
   todo: { labelKey: 'home.taskStatus.todo', tono: 'neutro', icon: Circle },
+  // `tasks.status` en la base: open · in_progress · done · canceled. `open`
+  // caía al respaldo sin querer; ahora es explícito (Figma E.5).
+  open: { labelKey: 'home.taskStatus.todo', tono: 'neutro', icon: Circle },
   in_progress: { labelKey: 'home.taskStatus.inProgress', tono: 'informacion', icon: Clock },
   done: { labelKey: 'home.taskStatus.done', tono: 'exito', icon: CheckCircle2 },
   completed: { labelKey: 'home.taskStatus.done', tono: 'exito', icon: CheckCircle2 },
 };
+
+/** Lista de tareas (antes `/app/pm`, que solo redirigía). */
+const RUTA_TAREAS = '/app/pm/tareas';
 
 const CLASE_VER_TODAS =
   'flex items-center gap-1 rounded-md text-sm font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
@@ -91,6 +100,9 @@ const CLASE_VER_TODAS =
 export function EmployeeDashboard({ organizationId, userId, permContext }: EmployeeDashboardProps) {
   const t = useTranslations('home');
   const tRoot = useTranslations();
+  // Vencimientos y fechas de aviso con la zona de la organización (E.4, E.9):
+  // antes se pintaba el timestamptz crudo y `toLocaleString()` del navegador.
+  const { formatDateTime } = useFormatDate();
 
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
@@ -106,12 +118,16 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
     }
     try {
       setTasksLoading(true);
-      // Tareas del módulo PM asignadas al usuario actual, no completadas.
+      // Tareas asignadas al usuario actual y aún abiertas, por vencimiento
+      // (Figma E.6: «ordenadas por vencimiento»; antes eran las 5 últimas
+      // creadas, incluidas las completadas y canceladas).
       const { data, error } = await supabase
         .from('tasks')
         .select('id, title, status, due_date, type')
         .eq('organization_id', organizationId)
         .eq('assigned_to', userId)
+        .in('status', [...ESTADOS_TAREA_ABIERTA])
+        .order('due_date', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: false })
         .limit(5);
 
@@ -213,7 +229,7 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
           titulo={t('myTasks')}
           icono={CheckCircle2}
           accion={
-            <Link href="/app/pm" className={CLASE_VER_TODAS}>
+            <Link href={RUTA_TAREAS} className={CLASE_VER_TODAS}>
               {t('viewAll')}
               <ChevronRight aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
             </Link>
@@ -235,7 +251,7 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
                 return (
                   <Link
                     key={task.id}
-                    href="/app/pm"
+                    href={RUTA_TAREAS}
                     className="flex items-center gap-3 rounded-lg border border-line p-3 transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
                     <StatusIcon aria-hidden="true" className="size-4 shrink-0 text-fg-muted" strokeWidth={1.5} />
@@ -245,7 +261,7 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
                       </p>
                       {task.due_date && (
                         <p className="mt-0.5 text-xs text-fg-secondary">
-                          {t('dueDate')}: {task.due_date}
+                          {t('dueDate')}: {formatDateTime(task.due_date)}
                         </p>
                       )}
                     </div>
@@ -309,7 +325,7 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
                       </p>
                     )}
                     <p className="mt-1 text-[11px] text-fg-muted">
-                      {new Date(notif.created_at).toLocaleString()}
+                      {formatDateTime(notif.created_at)}
                     </p>
                   </div>
                 </div>
@@ -318,6 +334,12 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
           )}
         </Tarjeta>
       </div>
+
+      {/* Por qué no ve cifras (Figma 448:209010, E.11): una frase, sin culpa. */}
+      <p className="flex items-center gap-2 rounded-xl border border-line bg-subtle px-4 py-3 text-sm text-fg-secondary">
+        <Info aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} />
+        {t('panel.soloAdministracion')}
+      </p>
     </div>
   );
 }

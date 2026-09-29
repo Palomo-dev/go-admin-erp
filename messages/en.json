@@ -666,7 +666,8 @@
         "eventosTotales": "Total events",
         "usuariosActivos": "Active users",
         "modulosActivos": "Active modules"
-      }
+      },
+      "soloAdministracion": "Financial indicators are only available to the organization's administrators."
     },
     "datosEmpresa": {
       "titulo": "Complete your company details",
@@ -677,6 +678,68 @@
         "ciudad": "city",
         "direccion": "address"
       }
+    },
+    "hoy": {
+      "titulo": "Today",
+      "porAtender": "{n, plural, =0 {All caught up} one {# thing to handle} other {# things to handle}}",
+      "actualizadoALas": "Updated at {hora}",
+      "vacioTitulo": "Nothing to handle today",
+      "vacioDesc": "Overdue receivables, stock shortages, web orders and tasks due today will show up here.",
+      "etiquetas": {
+        "porCobrar": "Overdue receivables",
+        "stockCritico": "Critical stock",
+        "pedidosWeb": "Web orders",
+        "cajasAnteriores": "Registers left open",
+        "misTareas": "My tasks"
+      },
+      "estados": {
+        "vencido": "Overdue",
+        "critico": "Critical",
+        "urgente": "Urgent",
+        "revisar": "Review",
+        "paraHoy": "Due today",
+        "alDia": "Up to date"
+      },
+      "cifras": {
+        "sinVencidos": "Nothing overdue",
+        "cuentas": "{n, plural, one {# account} other {# accounts}}",
+        "sinFaltantes": "No shortages",
+        "productos": "{n, plural, one {# product} other {# products}}",
+        "sinPendientes": "None pending",
+        "pendientes": "{n, plural, one {# pending} other {# pending}}",
+        "cajasAbiertas": "{n, plural, one {# open register} other {# open registers}}",
+        "abiertas": "{n, plural, one {# open} other {# open}}"
+      },
+      "detalles": {
+        "carteraAlDia": "No overdue accounts",
+        "cuentasVencidas": "{n, plural, one {# account} other {# accounts}} · oldest {dias, plural, one {# day} other {# days}}",
+        "variasMonedas": "In several currencies · oldest {dias, plural, one {# day} other {# days}}",
+        "stockAlDia": {
+          "estaSucursal": "Everything above minimum at this branch",
+          "tusSucursales": "Everything above minimum at your branches"
+        },
+        "stockBajo": {
+          "estaSucursal": "Below minimum at this branch{agotados, plural, =0 {} one { · # out of stock} other { · # out of stock}}",
+          "tusSucursales": "Below minimum at your branches{agotados, plural, =0 {} one { · # out of stock} other { · # out of stock}}"
+        },
+        "pedidosAlDia": "No orders to confirm",
+        "pedidosSinConfirmar": "Awaiting payment confirmation",
+        "cajasDesde": "Open for {dias, plural, one {# day} other {# days}}",
+        "tareasVencidas": "{n, plural, one {# overdue} other {# overdue}}{hoy, plural, =0 {} one { · # due today} other { · # due today}}",
+        "tareasHoy": "{n, plural, one {# due today} other {# due today}}",
+        "tareasSinVencer": "None due today"
+      },
+      "acciones": {
+        "verCartera": "View receivables",
+        "cobrar": "Collect",
+        "verExistencias": "View stock",
+        "reponer": "Restock",
+        "verPedidos": "View orders",
+        "atender": "Handle",
+        "verCajas": "View registers",
+        "abrir": "Open"
+      },
+      "verTodas": "See all {n} · {resto}"
     }
   },
   "org": {
@@ -22263,6 +22326,268 @@
     "toast": {
       "error": "Error",
       "plantilla": "Template downloaded"
+    }
+  },
+  "perfil": {
+    "navegacion": "My profile sections",
+    "volver": "Back",
+    "editar": "Edit",
+    "seUnio": "Joined on {fecha}",
+    "sinNombre": "Unnamed",
+    "secciones": {
+      "datos-personales": "Personal details",
+      "seguridad": "Security",
+      "preferencias": "Preferences",
+      "sesiones": "Sessions and devices",
+      "organizacion-roles": "Organization and roles",
+      "notificaciones": "Notifications",
+      "panel-vendedor": "Seller panel",
+      "eliminar-cuenta": "Delete account"
+    },
+    "errores": {
+      "sinSesion": "No user session was found",
+      "cargarPerfil": "Couldn't load the profile details",
+      "cargarDatos": "Couldn't load the user details"
+    },
+    "preferencias": {
+      "titulo": "Preferences",
+      "descripcion": "Theme, language and time zone.",
+      "tema": "Theme",
+      "temaAyuda": "Saved to your account and applied on all your devices.",
+      "claro": "Light",
+      "oscuro": "Dark",
+      "sistema": "System",
+      "idioma": "Language",
+      "zonaHoraria": "Time zone",
+      "zonaHorariaAyuda": "Dates are shown in the organization's time zone."
+    },
+    "vendedor": {
+      "titulo": "Seller panel",
+      "descripcion": "Sell with us and earn commissions on every referral.",
+      "yaEresTitulo": "You're already a seller",
+      "yaEresDesc": "Your account is linked to the seller panel. Open it to see your commissions, payouts and referrals.",
+      "abrir": "Open seller panel",
+      "convierteteTitulo": "Become a seller",
+      "convierteteDesc": "Activate your seller account and earn commissions on every customer you refer. You'll use the same credentials, email and avatar as in the ERP.",
+      "activar": "Activate seller account",
+      "activando": "Activating…",
+      "exito": "You're now a seller! Your account is linked.",
+      "errorSinSesion": "You need to sign in to activate the seller account.",
+      "errorCrear": "Couldn't create the seller account",
+      "errorConexion": "Couldn't reach the service. Try again later.",
+      "errorProcesar": "Couldn't process the request",
+      "errorToast": "Couldn't activate the seller account"
+    }
+  },
+  "asistente": {
+    "cabecera": {
+      "titulo": "GO Assistant",
+      "conversaciones": "Conversations",
+      "volver": "Back to the conversation",
+      "nueva": "New conversation",
+      "historial": "Previous conversations",
+      "voz": "Reply with audio",
+      "vozActiva": "Reply with audio: on",
+      "ampliar": "Expand",
+      "reducir": "Collapse",
+      "cerrar": "Close",
+      "abrir": "Open GO Assistant"
+    },
+    "bienvenida": {
+      "saludo": "Hi, {nombre}!",
+      "texto": "Ask me about your data, ask me to record something or upload a file. Before saving anything I show you a summary to confirm.",
+      "sugerenciasPara": "Suggestions for {pagina}",
+      "sugerencias": "Suggestions",
+      "respaldo1": "How do I create a new product?",
+      "respaldo2": "How do I get a sales report?",
+      "respaldo3": "How do I register a new customer?"
+    },
+    "mensaje": {
+      "escuchar": "Listen",
+      "escucharRespuesta": "Listen to the reply",
+      "leyendo": "Reading…",
+      "detenerLectura": "Stop reading",
+      "copiar": "Copy",
+      "copiarRespuesta": "Copy reply",
+      "copiado": "Copied",
+      "vozNoActiva": "Your organization hasn't turned on audio replies.",
+      "leeDocumento": "Read this document."
+    },
+    "pasos": {
+      "pensando": "Thinking…",
+      "enCurso": "Steps in progress",
+      "plegados": "{n, plural, one {# step} other {# steps}} · View",
+      "anuncio": {
+        "pensando": "GO Assistant is thinking",
+        "consultando": "GO Assistant is checking your data",
+        "escribiendo": "GO Assistant is replying",
+        "lista": "Reply ready"
+      }
+    },
+    "pregunta": {
+      "etiqueta": "Question from the assistant",
+      "opciones": "Options",
+      "otro": "Other: I'll type it",
+      "atajo": "Shortcut: press {letras}"
+    },
+    "tarjeta": {
+      "etiqueta": "Confirm action: {titulo}",
+      "estado": {
+        "pendiente": "To confirm",
+        "ejecutando": "Saving",
+        "completada": "Done",
+        "deshecha": "Undone",
+        "error": "Not completed",
+        "caducada": "Expired"
+      },
+      "puedesDeshacer": "You can undo it for {n, plural, one {# minute} other {# minutes}}.",
+      "avisoContable": "This action affects your accounting.",
+      "falta": "Missing: {campos}. Tell me in the chat before confirming.",
+      "irreversible": "This action can't be undone from the chat.",
+      "caducaEn": "The proposal expires in {n, plural, one {# minute} other {# minutes}}.",
+      "caducada": "This proposal expired and can no longer be confirmed. Ask me for a new summary.",
+      "nota": "Nothing is saved until you confirm · Confirming uses no credits",
+      "formulario": "Open the full form",
+      "formularioAyuda": "Opens the same Customers form, with this data already filled in",
+      "repetir": "You're about to: {resumen} Shall I confirm it?",
+      "confirmar": "Confirm",
+      "siConfirmar": "Yes, confirm",
+      "guardando": "Saving…",
+      "volver": "Back",
+      "corregir": "Correct",
+      "rechazar": "Reject",
+      "atajos": "Ctrl+Enter confirms · Esc rejects",
+      "atajosRepetir": "Ctrl+Enter confirms · Esc goes back",
+      "pedirOtro": "Ask for a new summary",
+      "ver": {
+        "customer": "View customer",
+        "product": "View product",
+        "sale": "View sale",
+        "purchase_order": "View purchase order",
+        "inventory_transfer": "View transfer",
+        "inventory_adjustment": "View adjustment",
+        "invoice_purchase": "View purchase invoice",
+        "invoice_sales": "View sales invoice",
+        "generico": "View"
+      },
+      "deshacer": "Undo",
+      "deshacerMin": "Undo · {n} min",
+      "deshaciendo": "Undoing…",
+      "corregirReintentar": "Correct and retry",
+      "errorGenerico": "The action couldn't be completed. Try again.",
+      "errorRed": "The action couldn't be completed. Check its status before trying again.",
+      "errorCancelar": "I couldn't cancel that proposal. Reload the history before continuing.",
+      "errorDeshacer": "It couldn't be undone.",
+      "canceladaMensaje": "Action cancelled.",
+      "corregirMensaje": "Tell me what you want to correct. I'll prepare a new summary to confirm; the previous proposal is already cancelled.",
+      "caducadaMensaje": "That proposal expired. Tell me again what you need and I'll prepare a new summary."
+    },
+    "masiva": {
+      "filas": "{n, plural, one {# row} other {# rows}}",
+      "nuevos": "{n, plural, one {# new} other {# new}}",
+      "existen": "{n, plural, one {# already exists} other {# already exist}}",
+      "omiten": "{n, plural, one {# skipped} other {# skipped}}",
+      "pie": "{n} will be loaded · duplicates by SKU, barcode or name · all or nothing (a single transaction)",
+      "tabla": "Rows to load",
+      "colProducto": "Product",
+      "colSku": "SKU",
+      "colPrecio": "Price",
+      "colStock": "Stock",
+      "colEstado": "Status",
+      "sinNombre": "(no name)",
+      "estado": {
+        "nuevo": "New",
+        "existente": "Exists",
+        "error": "Skipped"
+      },
+      "seOmite": "Skipped",
+      "seOmiteMotivo": "{motivo}: skipped",
+      "yaExiste": "Already exists",
+      "coincidePor": "Matches by {campo}",
+      "campo": {
+        "sku": "SKU",
+        "barcode": "barcode",
+        "nombre": "name"
+      },
+      "verEnGrande": "View all {n} rows expanded",
+      "verFilas": "View the {n} rows",
+      "ocultarFilas": "Hide the rows"
+    },
+    "aviso": {
+      "creditosBajosTitulo": "{n, plural, one {You have # credit left} other {You have # credits left}}",
+      "creditosBajosRespuestas": "{n, plural, =0 {Not enough for a full reply.} one {Enough for about one more reply.} other {Enough for about # replies.}}",
+      "creditosBajosSinPromedio": "When they run out, the assistant pauses until you buy more.",
+      "sinCreditosTitulo": "No AI credits",
+      "sinCreditosTexto": "The assistant is paused until you buy a pack or your plan renews. Your conversations are kept.",
+      "sinPermisoTitulo": "You don't have permission for that",
+      "sinPermisoTexto": "Your role or plan doesn't include that action. I can show you the information or walk you through the process.",
+      "sesionTitulo": "Your session expired",
+      "sesionTexto": "Sign in again to continue. Your conversation is saved.",
+      "limiteTitulo": "You're going too fast",
+      "limiteTexto": "Wait a few seconds and try again.",
+      "errorTitulo": "The reply is incomplete",
+      "errorTexto": "I couldn't complete the reply.",
+      "errorConservado": "Your message is back in the text box. Check the history before retrying: the turn may have gone through.",
+      "comprarCreditos": "Buy credits",
+      "verPermisos": "See my permissions",
+      "iniciarSesion": "Sign in",
+      "reintentar": "Retry",
+      "descartar": "Dismiss notice"
+    },
+    "composer": {
+      "etiqueta": "Message for GO Assistant",
+      "placeholder": "Ask or request something…",
+      "placeholderSinCreditos": "No credits: the assistant is paused",
+      "transcribiendo": "Transcribing your note…",
+      "adjuntar": "Attach file or photo",
+      "adjuntos": "Attached files",
+      "quitarAdjunto": "Remove {nombre}",
+      "adjuntosNoDisponibles": "I can't read files yet. For now, tell me in writing what it says.",
+      "dictar": "Dictate",
+      "detenerGrabacion": "Stop and transcribe",
+      "grabando": "Recording… {tiempo}",
+      "enviar": "Send message",
+      "detener": "Stop reply",
+      "contextoActivo": "The assistant knows you're on {pagina}. Tap to stop sending it.",
+      "contextoInactivo": "No page context. Tap to send it again.",
+      "ayuda": "Enter sends · Shift+Enter new line",
+      "ayudaMovil": "Tap send to submit",
+      "ayudaRespondiendo": "Esc stops the reply",
+      "ayudaGrabando": "When you stop, the text stays here for review · Esc cancels",
+      "ayudaSinCreditos": "Buy credits to continue",
+      "creditos": "{n, plural, one {# credit} other {# credits}}",
+      "notaDudosa": "I didn't catch the note well: check the text before sending it.",
+      "notaVacia": "Nothing was heard in the note. Try recording again, closer to the microphone.",
+      "notaError": "I couldn't transcribe the note.",
+      "sinMicrofono": "I couldn't use the microphone. Check the browser permission.",
+      "soltar": "Drop the photo or file here",
+      "limiteArchivo": "Some files couldn't be attached: the limit is 20 MB per file."
+    },
+    "historial": {
+      "etiqueta": "Conversation history",
+      "buscar": "Search the history",
+      "cargando": "Loading history…",
+      "errorCarga": "The history couldn't be loaded.",
+      "errorArchivar": "The conversation couldn't be archived.",
+      "errorAbrir": "I couldn't open that conversation. Try again.",
+      "reintentar": "Retry",
+      "vacio": "No saved conversations yet.",
+      "sinCoincidencias": "No conversation matches the search.",
+      "sinTitulo": "Untitled conversation",
+      "grupo": {
+        "hoy": "Today",
+        "ayer": "Yesterday",
+        "semana": "This week",
+        "anteriores": "Earlier"
+      },
+      "mensajes": "{n, plural, one {# message} other {# messages}}",
+      "archivar": "Archive “{titulo}”",
+      "archivarAyuda": "Archive",
+      "nota": "Archiving removes the conversation from the list; it doesn't delete it."
+    },
+    "pie": {
+      "aviso": "It can make mistakes: check what matters",
+      "permisos": "Assistant permissions"
     }
   }
 }

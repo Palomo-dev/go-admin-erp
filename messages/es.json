@@ -666,7 +666,8 @@
         "eventosTotales": "Eventos totales",
         "usuariosActivos": "Usuarios activos",
         "modulosActivos": "Módulos activos"
-      }
+      },
+      "soloAdministracion": "Los indicadores financieros son solo para la administración de la organización."
     },
     "datosEmpresa": {
       "titulo": "Completa los datos de tu empresa",
@@ -677,6 +678,68 @@
         "ciudad": "la ciudad",
         "direccion": "la dirección"
       }
+    },
+    "hoy": {
+      "titulo": "Hoy",
+      "porAtender": "{n, plural, =0 {Todo al día} one {# cosa por atender} other {# cosas por atender}}",
+      "actualizadoALas": "Actualizado a las {hora}",
+      "vacioTitulo": "Nada que atender hoy",
+      "vacioDesc": "Cuando haya cobros vencidos, faltantes de stock, pedidos web o tareas para hoy, aparecerán aquí.",
+      "etiquetas": {
+        "porCobrar": "Por cobrar vencido",
+        "stockCritico": "Stock crítico",
+        "pedidosWeb": "Pedidos web",
+        "cajasAnteriores": "Cajas sin cerrar",
+        "misTareas": "Mis tareas"
+      },
+      "estados": {
+        "vencido": "Vencido",
+        "critico": "Crítico",
+        "urgente": "Urgente",
+        "revisar": "Revisar",
+        "paraHoy": "Para hoy",
+        "alDia": "Al día"
+      },
+      "cifras": {
+        "sinVencidos": "Sin vencidos",
+        "cuentas": "{n, plural, one {# cuenta} other {# cuentas}}",
+        "sinFaltantes": "Sin faltantes",
+        "productos": "{n, plural, one {# producto} other {# productos}}",
+        "sinPendientes": "Sin pendientes",
+        "pendientes": "{n, plural, one {# pendiente} other {# pendientes}}",
+        "cajasAbiertas": "{n, plural, one {# caja abierta} other {# cajas abiertas}}",
+        "abiertas": "{n, plural, one {# abierta} other {# abiertas}}"
+      },
+      "detalles": {
+        "carteraAlDia": "Ninguna cuenta vencida",
+        "cuentasVencidas": "{n, plural, one {# cuenta} other {# cuentas}} · {dias, plural, one {# día} other {# días}} la más vieja",
+        "variasMonedas": "En varias monedas · {dias, plural, one {# día} other {# días}} la más vieja",
+        "stockAlDia": {
+          "estaSucursal": "Todo sobre el mínimo en esta sucursal",
+          "tusSucursales": "Todo sobre el mínimo en tus sucursales"
+        },
+        "stockBajo": {
+          "estaSucursal": "Bajo el mínimo en esta sucursal{agotados, plural, =0 {} one { · # agotado} other { · # agotados}}",
+          "tusSucursales": "Bajo el mínimo en tus sucursales{agotados, plural, =0 {} one { · # agotado} other { · # agotados}}"
+        },
+        "pedidosAlDia": "Ningún pedido por confirmar",
+        "pedidosSinConfirmar": "Esperan confirmación de pago",
+        "cajasDesde": "Abierta desde hace {dias, plural, one {# día} other {# días}}",
+        "tareasVencidas": "{n, plural, one {# vencida} other {# vencidas}}{hoy, plural, =0 {} one { · # vence hoy} other { · # vencen hoy}}",
+        "tareasHoy": "{n, plural, one {# vence hoy} other {# vencen hoy}}",
+        "tareasSinVencer": "Ninguna vence hoy"
+      },
+      "acciones": {
+        "verCartera": "Ver cartera",
+        "cobrar": "Cobrar",
+        "verExistencias": "Ver existencias",
+        "reponer": "Reponer",
+        "verPedidos": "Ver pedidos",
+        "atender": "Atender",
+        "verCajas": "Ver cajas",
+        "abrir": "Abrir"
+      },
+      "verTodas": "Ver las {n} · {resto}"
     }
   },
   "org": {
@@ -22263,6 +22326,268 @@
     "toast": {
       "error": "Error",
       "plantilla": "Plantilla descargada"
+    }
+  },
+  "perfil": {
+    "navegacion": "Secciones de mi perfil",
+    "volver": "Volver",
+    "editar": "Editar",
+    "seUnio": "Se unió el {fecha}",
+    "sinNombre": "Sin nombre",
+    "secciones": {
+      "datos-personales": "Datos personales",
+      "seguridad": "Seguridad",
+      "preferencias": "Preferencias",
+      "sesiones": "Sesiones y dispositivos",
+      "organizacion-roles": "Organización y roles",
+      "notificaciones": "Notificaciones",
+      "panel-vendedor": "Panel de vendedor",
+      "eliminar-cuenta": "Eliminar cuenta"
+    },
+    "errores": {
+      "sinSesion": "No se encontró la sesión del usuario",
+      "cargarPerfil": "No se pudieron cargar los datos del perfil",
+      "cargarDatos": "No se pudieron cargar los datos del usuario"
+    },
+    "preferencias": {
+      "titulo": "Preferencias",
+      "descripcion": "Tema, idioma y zona horaria.",
+      "tema": "Tema",
+      "temaAyuda": "Se guarda en tu cuenta y se aplica en todos tus dispositivos.",
+      "claro": "Claro",
+      "oscuro": "Oscuro",
+      "sistema": "Sistema",
+      "idioma": "Idioma",
+      "zonaHoraria": "Zona horaria",
+      "zonaHorariaAyuda": "Las fechas se muestran con la zona horaria de la organización."
+    },
+    "vendedor": {
+      "titulo": "Panel de vendedor",
+      "descripcion": "Vende con nosotros y genera comisiones por cada referencia.",
+      "yaEresTitulo": "Ya eres vendedor",
+      "yaEresDesc": "Tu cuenta está vinculada al panel de vendedores. Entra para ver tus comisiones, pagos y referidos.",
+      "abrir": "Abrir panel de vendedor",
+      "convierteteTitulo": "Conviértete en vendedor",
+      "convierteteDesc": "Activa tu cuenta de vendedor y genera comisiones por cada cliente que refieras. Usarás las mismas credenciales, el mismo correo y el mismo avatar que en el ERP.",
+      "activar": "Activar cuenta de vendedor",
+      "activando": "Activando…",
+      "exito": "¡Ya eres vendedor! Tu cuenta quedó vinculada.",
+      "errorSinSesion": "Debes iniciar sesión para activar la cuenta de vendedor.",
+      "errorCrear": "No se pudo crear la cuenta de vendedor",
+      "errorConexion": "No se pudo conectar con el servicio. Intenta más tarde.",
+      "errorProcesar": "No se pudo procesar la solicitud",
+      "errorToast": "No se pudo activar la cuenta de vendedor"
+    }
+  },
+  "asistente": {
+    "cabecera": {
+      "titulo": "GO Asistente",
+      "conversaciones": "Conversaciones",
+      "volver": "Volver a la conversación",
+      "nueva": "Nueva conversación",
+      "historial": "Conversaciones anteriores",
+      "voz": "Responder en audio",
+      "vozActiva": "Responder en audio: activado",
+      "ampliar": "Ampliar",
+      "reducir": "Reducir",
+      "cerrar": "Cerrar",
+      "abrir": "Abrir GO Asistente"
+    },
+    "bienvenida": {
+      "saludo": "¡Hola, {nombre}!",
+      "texto": "Pregúntame por tus datos, pídeme que registre algo o súbeme un archivo. Antes de guardar cualquier cosa te muestro un resumen para que lo confirmes.",
+      "sugerenciasPara": "Sugerencias para {pagina}",
+      "sugerencias": "Sugerencias",
+      "respaldo1": "¿Cómo creo un producto nuevo?",
+      "respaldo2": "¿Cómo saco un reporte de ventas?",
+      "respaldo3": "¿Cómo registro un cliente nuevo?"
+    },
+    "mensaje": {
+      "escuchar": "Escuchar",
+      "escucharRespuesta": "Escuchar respuesta",
+      "leyendo": "Leyendo…",
+      "detenerLectura": "Detener lectura",
+      "copiar": "Copiar",
+      "copiarRespuesta": "Copiar respuesta",
+      "copiado": "Copiado",
+      "vozNoActiva": "Tu organización no tiene activada la respuesta en audio.",
+      "leeDocumento": "Lee este documento."
+    },
+    "pasos": {
+      "pensando": "Pensando…",
+      "enCurso": "Pasos en curso",
+      "plegados": "{n, plural, one {# paso} other {# pasos}} · Ver",
+      "anuncio": {
+        "pensando": "GO Asistente está pensando",
+        "consultando": "GO Asistente está consultando tus datos",
+        "escribiendo": "GO Asistente está respondiendo",
+        "lista": "Respuesta lista"
+      }
+    },
+    "pregunta": {
+      "etiqueta": "Pregunta del asistente",
+      "opciones": "Opciones",
+      "otro": "Otro: lo escribo",
+      "atajo": "Atajo: pulsa {letras}"
+    },
+    "tarjeta": {
+      "etiqueta": "Confirmar acción: {titulo}",
+      "estado": {
+        "pendiente": "Por confirmar",
+        "ejecutando": "Guardando",
+        "completada": "Hecha",
+        "deshecha": "Deshecha",
+        "error": "No se completó",
+        "caducada": "Caducó"
+      },
+      "puedesDeshacer": "Puedes deshacerlo durante {n, plural, one {# minuto} other {# minutos}}.",
+      "avisoContable": "Esta acción tiene impacto contable.",
+      "falta": "Falta: {campos}. Dímelo en el chat antes de confirmar.",
+      "irreversible": "Esta acción no se puede deshacer desde el chat.",
+      "caducaEn": "La propuesta caduca en {n, plural, one {# minuto} other {# minutos}}.",
+      "caducada": "Esta propuesta caducó y ya no se puede confirmar. Pídeme un resumen nuevo.",
+      "nota": "No se guarda nada hasta que confirmes · Confirmar no gasta créditos",
+      "formulario": "Abrir el formulario completo",
+      "formularioAyuda": "Abre el mismo formulario del módulo de Clientes, con estos datos ya puestos",
+      "repetir": "Vas a: {resumen} ¿Lo confirmo?",
+      "confirmar": "Confirmar",
+      "siConfirmar": "Sí, confirmar",
+      "guardando": "Guardando…",
+      "volver": "Volver",
+      "corregir": "Corregir",
+      "rechazar": "Rechazar",
+      "atajos": "Ctrl+Enter confirma · Esc rechaza",
+      "atajosRepetir": "Ctrl+Enter confirma · Esc vuelve",
+      "pedirOtro": "Pedir un resumen nuevo",
+      "ver": {
+        "customer": "Ver cliente",
+        "product": "Ver producto",
+        "sale": "Ver venta",
+        "purchase_order": "Ver orden de compra",
+        "inventory_transfer": "Ver traslado",
+        "inventory_adjustment": "Ver ajuste",
+        "invoice_purchase": "Ver factura de compra",
+        "invoice_sales": "Ver factura de venta",
+        "generico": "Ver"
+      },
+      "deshacer": "Deshacer",
+      "deshacerMin": "Deshacer · {n} min",
+      "deshaciendo": "Deshaciendo…",
+      "corregirReintentar": "Corregir y reintentar",
+      "errorGenerico": "No se pudo ejecutar la acción. Vuelve a intentarlo.",
+      "errorRed": "No se pudo ejecutar la acción. Revisa su estado antes de intentarlo otra vez.",
+      "errorCancelar": "No pude cancelar esa propuesta. Recarga el historial antes de continuar.",
+      "errorDeshacer": "No se pudo deshacer.",
+      "canceladaMensaje": "Acción cancelada.",
+      "corregirMensaje": "Dime qué quieres corregir. Prepararé un nuevo resumen para confirmar; la propuesta anterior ya está cancelada.",
+      "caducadaMensaje": "Esa propuesta caducó. Dime otra vez qué necesitas y te preparo un resumen nuevo."
+    },
+    "masiva": {
+      "filas": "{n, plural, one {# fila} other {# filas}}",
+      "nuevos": "{n, plural, one {# nuevo} other {# nuevos}}",
+      "existen": "{n, plural, one {# ya existe} other {# ya existen}}",
+      "omiten": "{n, plural, one {# se omite} other {# se omiten}}",
+      "pie": "Se cargarán {n} · duplicados por SKU, código de barras o nombre · todo o nada (una sola transacción)",
+      "tabla": "Filas de la carga",
+      "colProducto": "Producto",
+      "colSku": "SKU",
+      "colPrecio": "Precio",
+      "colStock": "Stock",
+      "colEstado": "Estado",
+      "sinNombre": "(sin nombre)",
+      "estado": {
+        "nuevo": "Nuevo",
+        "existente": "Ya existe",
+        "error": "Se omite"
+      },
+      "seOmite": "Se omite",
+      "seOmiteMotivo": "{motivo}: se omite",
+      "yaExiste": "Ya existe",
+      "coincidePor": "Coincide por {campo}",
+      "campo": {
+        "sku": "SKU",
+        "barcode": "código de barras",
+        "nombre": "nombre"
+      },
+      "verEnGrande": "Ver las {n} filas en grande",
+      "verFilas": "Ver las {n} filas",
+      "ocultarFilas": "Ocultar las filas"
+    },
+    "aviso": {
+      "creditosBajosTitulo": "{n, plural, one {Te queda # crédito} other {Te quedan # créditos}}",
+      "creditosBajosRespuestas": "{n, plural, =0 {No alcanzan para una respuesta completa.} one {Alcanzan para una respuesta más, aproximadamente.} other {Alcanzan para unas # respuestas.}}",
+      "creditosBajosSinPromedio": "Cuando se acaben, el asistente queda en pausa hasta que compres más.",
+      "sinCreditosTitulo": "Sin créditos de IA",
+      "sinCreditosTexto": "El asistente queda en pausa hasta que compres un paquete o se renueve tu plan. Tus conversaciones se conservan.",
+      "sinPermisoTitulo": "No tienes permiso para eso",
+      "sinPermisoTexto": "Tu cargo o tu plan no incluyen esa acción. Puedo mostrarte la información o explicarte el proceso paso a paso.",
+      "sesionTitulo": "Tu sesión caducó",
+      "sesionTexto": "Vuelve a iniciar sesión para seguir. Tu conversación está guardada.",
+      "limiteTitulo": "Vas muy rápido",
+      "limiteTexto": "Espera unos segundos y vuelve a intentarlo.",
+      "errorTitulo": "La respuesta quedó incompleta",
+      "errorTexto": "No pude completar la respuesta.",
+      "errorConservado": "Tu mensaje volvió al cuadro de texto. Revisa el historial antes de reintentar: el turno pudo haber avanzado.",
+      "comprarCreditos": "Comprar créditos",
+      "verPermisos": "Ver mis permisos",
+      "iniciarSesion": "Iniciar sesión",
+      "reintentar": "Reintentar",
+      "descartar": "Descartar aviso"
+    },
+    "composer": {
+      "etiqueta": "Mensaje para GO Asistente",
+      "placeholder": "Pregunta o pide algo…",
+      "placeholderSinCreditos": "Sin créditos: el asistente está en pausa",
+      "transcribiendo": "Transcribiendo tu nota…",
+      "adjuntar": "Adjuntar archivo o foto",
+      "adjuntos": "Archivos adjuntos",
+      "quitarAdjunto": "Quitar {nombre}",
+      "adjuntosNoDisponibles": "Todavía no puedo leer archivos. Por ahora cuéntame por escrito qué dice.",
+      "dictar": "Dictar",
+      "detenerGrabacion": "Detener y transcribir",
+      "grabando": "Grabando… {tiempo}",
+      "enviar": "Enviar mensaje",
+      "detener": "Detener respuesta",
+      "contextoActivo": "El asistente sabe que estás en {pagina}. Tócalo para no enviarlo.",
+      "contextoInactivo": "Sin contexto de página. Tócalo para volver a enviarlo.",
+      "ayuda": "Enter envía · Shift+Enter nueva línea",
+      "ayudaMovil": "Toca enviar para mandar",
+      "ayudaRespondiendo": "Esc detiene la respuesta",
+      "ayudaGrabando": "Al parar, el texto queda aquí para revisarlo · Esc cancela",
+      "ayudaSinCreditos": "Compra créditos para seguir",
+      "creditos": "{n, plural, one {# crédito} other {# créditos}}",
+      "notaDudosa": "No entendí bien la nota: revisa el texto antes de enviarlo.",
+      "notaVacia": "No se oyó nada en la nota. Prueba a grabar de nuevo, más cerca del micrófono.",
+      "notaError": "No pude transcribir la nota.",
+      "sinMicrofono": "No pude usar el micrófono. Revisa el permiso del navegador.",
+      "soltar": "Suelta aquí la foto o el archivo",
+      "limiteArchivo": "No pude adjuntar algunos archivos: el límite es 20 MB por archivo."
+    },
+    "historial": {
+      "etiqueta": "Historial de conversaciones",
+      "buscar": "Buscar en el historial",
+      "cargando": "Cargando historial…",
+      "errorCarga": "No se pudo cargar el historial.",
+      "errorArchivar": "No se pudo archivar la conversación.",
+      "errorAbrir": "No pude abrir esa conversación. Inténtalo otra vez.",
+      "reintentar": "Reintentar",
+      "vacio": "Todavía no hay conversaciones guardadas.",
+      "sinCoincidencias": "Ninguna conversación coincide con la búsqueda.",
+      "sinTitulo": "Conversación sin título",
+      "grupo": {
+        "hoy": "Hoy",
+        "ayer": "Ayer",
+        "semana": "Esta semana",
+        "anteriores": "Anteriores"
+      },
+      "mensajes": "{n, plural, one {# mensaje} other {# mensajes}}",
+      "archivar": "Archivar «{titulo}»",
+      "archivarAyuda": "Archivar",
+      "nota": "Archivar quita la conversación de la lista; no la borra."
+    },
+    "pie": {
+      "aviso": "Puede equivocarse: revisa lo importante",
+      "permisos": "Permisos del asistente"
     }
   }
 }

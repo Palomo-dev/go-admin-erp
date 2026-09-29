@@ -174,12 +174,12 @@ export function CostoRecetasPage() {
         r.filas.map((f) => [f.producto.nombre, f.producto.sku, `v${f.version}`, `${f.rinde} ${f.unidad_rinde}`, f.costo_tanda, f.costo_unidad, f.precio, f.margen, tc(`fuentes.${f.fuente}`), sucursalNombre]),
       );
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `costo_recetas_${getToday()}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `costo_recetas_${getToday()}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
       toast({ title: t('exportar.listo', { count: r.filas.length }) });
     } catch {

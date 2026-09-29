@@ -70,8 +70,8 @@ export function DetailSidebar({ opportunity, customer, totals, displayAmount, on
         </Card>
       )}
 
-      {/* Botón para generar enlace de pago Stripe (solo asesores) */}
-      <AdvisorPaymentLinkButton organizationId={opportunity.organization_id} />
+      {/* Botón para generar enlace de pago Stripe (solo personal interno de GO Admin) */}
+      <AdvisorPaymentLinkButton customerEmail={customer?.email} />
 
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-3">

@@ -2,12 +2,16 @@
  * API Endpoint: Crear Stripe Checkout Session para Asesores de Ventas
  * GO Admin ERP - Checkout Session anual sin período de prueba
  * 
- * Permite a asesores de ventas (super admin o rol 5) generar un enlace de pago
- * Stripe para planes anuales sin período de prueba, destinado a ventas directas
- * en reuniones con clientes.
+ * Permite SOLO a personal interno de GO Admin generar enlaces de pago Stripe
+ * para organizaciones clientes, sin período de prueba.
  *
- * Seguridad: Requiere sesión autenticada y que el usuario tenga role_id 5
- * (vendedor), role_id 1/2 (admin) o is_super_admin = true.
+ * Seguridad (IDOR mitigado): Requiere sesión autenticada Y que el usuario sea:
+ *   - Super admin (is_super_admin = true), O
+ *   - Miembro con role_id 1/2/5 de la organización interna de GO Admin
+ *     (cuyo ID se lee de GOADMIN_INTERNAL_ORG_ID).
+ * 
+ * Si GOADMIN_INTERNAL_ORG_ID no está definida, solo super admin puede usar este endpoint.
+ * Los admins de organizaciones clientes NO pueden generar checkouts para otras organizaciones.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -20,6 +24,9 @@ import {
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const GOADMIN_INTERNAL_ORG_ID = process.env.GOADMIN_INTERNAL_ORG_ID
+  ? parseInt(process.env.GOADMIN_INTERNAL_ORG_ID, 10)
+  : null
 
 function createSupabaseClient() {
   return createClient(supabaseUrl, supabaseServiceKey, {
@@ -31,12 +38,38 @@ function createSupabaseClient() {
 }
 
 /**
- * Verificar si el usuario tiene permisos de asesor de ventas
- * (super admin, admin organizacional o vendedor - roles 1, 2 o 5)
+ * Verificar si el usuario es personal interno de GO Admin con permisos de asesor.
+ * 
+ * Requiere:
+ *  - is_super_admin = true, O
+ *  - Membresía con role_id 1/2/5 en la organización interna de GO Admin
+ * 
+ * Si GOADMIN_INTERNAL_ORG_ID no está configurada, solo super admin tiene acceso.
  */
-function isAdvisorOrAdmin(membership: { is_super_admin: boolean | null; role_id: number | null }): boolean {
-  if (membership.is_super_admin === true) return true
-  if (membership.role_id && [1, 2, 5].includes(membership.role_id)) return true
+async function isInternalAdvisor(
+  userId: string,
+  currentMembership: { is_super_admin: boolean | null; role_id: number | null; organization_id: number }
+): Promise<boolean> {
+  // Super admin siempre tiene acceso
+  if (currentMembership.is_super_admin === true) return true
+
+  // Si no hay organización interna configurada, solo super admin
+  if (!GOADMIN_INTERNAL_ORG_ID) return false
+
+  // Verificar que el usuario tenga membresía activa con role 1/2/5 en la org interna
+  const supabase = createSupabaseClient()
+  const { data: internalMembership } = await supabase
+    .from('organization_members')
+    .select('role_id, is_super_admin')
+    .eq('user_id', userId)
+    .eq('organization_id', GOADMIN_INTERNAL_ORG_ID)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (!internalMembership) return false
+  if (internalMembership.is_super_admin === true) return true
+  if (internalMembership.role_id && [1, 2, 5].includes(internalMembership.role_id)) return true
+
   return false
 }
 
@@ -76,19 +109,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verificar sesión y permisos (debe ser asesor o admin)
-    let userId: string
+    // Verificar sesión y permisos (debe ser personal interno de GO Admin)
+    let userId: string = 'unknown'
     try {
       const ctx = await getServerOrgContext()
       userId = ctx.userId
 
-      // Verificar que el usuario sea asesor o admin en GO Admin (organización interna)
-      // Los asesores pueden crear enlaces para CUALQUIER organización cliente
-      if (!isAdvisorOrAdmin(ctx.membership)) {
-        console.warn('[advisor-checkout] Usuario sin permisos de asesor:', { userId, roleId: ctx.membership.role_id })
+      // Verificar que el usuario sea personal interno de GO Admin
+      const hasAccess = await isInternalAdvisor(userId, ctx.membership)
+      if (!hasAccess) {
+        console.warn('[advisor-checkout] Usuario sin acceso (no es personal interno):', {
+          userId,
+          organizationId: ctx.organizationId,
+          roleId: ctx.membership.role_id,
+        })
         return NextResponse.json(
-          { error: 'No tienes permisos para generar enlaces de pago. Requiere rol de asesor o administrador.' },
+          { error: 'Acceso denegado. Solo personal interno de GO Admin puede generar enlaces de pago.' },
           { status: 403 }
+        )
+      }
+
+      // Prevenir generar checkout para la organización interna misma
+      if (GOADMIN_INTERNAL_ORG_ID && organizationId === GOADMIN_INTERNAL_ORG_ID) {
+        return NextResponse.json(
+          { error: 'No se puede generar un checkout para la organización interna de GO Admin' },
+          { status: 400 }
         )
       }
     } catch (err) {
@@ -191,8 +236,7 @@ export async function POST(request: NextRequest) {
         metadata: {
           organizationId: organizationId.toString(),
           planCode: planCode,
-          plan_id: plan.id.toString(),
-          interval: interval,
+          billingPeriod: interval === 'year' ? 'yearly' : 'monthly',
           source: 'advisor',
           created_by: userId,
         },
@@ -200,8 +244,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         organizationId: organizationId.toString(),
         planCode: planCode,
-        plan_id: plan.id.toString(),
-        interval: interval,
+        billingPeriod: interval === 'year' ? 'yearly' : 'monthly',
         userId: userId,
         source: 'advisor_checkout',
       },
@@ -222,14 +265,13 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Log en servidor (en producción podrías usar una tabla de audit logs)
+    // Log en servidor (sin URL completa por seguridad)
     console.log('✅ Enlace de pago generado por asesor:', {
       userId,
-      organizationId,
+      targetOrgId: organizationId,
       planCode,
       interval,
       sessionId: checkoutSession.id,
-      url: checkoutSession.url,
     })
 
     return NextResponse.json({
@@ -240,9 +282,15 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: unknown) {
-    console.error('❌ Error creando checkout de asesor:', error)
+    // No exponer detalles de error de Stripe al cliente
+    console.error('❌ Error creando checkout de asesor:', {
+      userId: userId || 'unknown',
+      organizationId,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Error interno del servidor' },
+      { error: 'Error generando el enlace de pago. Contacta a soporte técnico.' },
       { status: 500 }
     )
   }

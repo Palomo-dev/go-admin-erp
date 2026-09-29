@@ -1,14 +1,15 @@
 /**
- * Botón para que asesores de ventas generen enlaces de pago Stripe
- * sin período de prueba para ventas directas en reuniones con clientes.
+ * Botón para que personal interno de GO Admin genere enlaces de pago Stripe
+ * sin período de prueba para organizaciones clientes.
  * 
- * Visible solo para usuarios con rol de asesor (1, 2, 5) o super admin.
+ * Visible solo para personal interno (is_super_admin O role 1/2/5 en org interna).
+ * Permite buscar y seleccionar la organización cliente objetivo.
  */
 
 'use client'
 
-import { useState } from 'react'
-import { CreditCard, Copy, Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { CreditCard, Copy, Loader2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -26,11 +27,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/use-toast'
 import { useOrganization } from '@/lib/hooks/useOrganization'
 
 interface AdvisorPaymentLinkButtonProps {
-  organizationId: number
+  /** Email del cliente de la oportunidad para pre-llenar búsqueda */
+  customerEmail?: string | null
   compact?: boolean
   className?: string
 }
@@ -38,26 +41,96 @@ interface AdvisorPaymentLinkButtonProps {
 type PlanCode = 'pro' | 'business' | 'ultimate'
 type Interval = 'year' | 'month'
 
+interface ClientOrg {
+  id: number
+  name: string
+  email: string | null
+  nit: string | null
+}
+
 const PLANS: Record<PlanCode, string> = {
   pro: 'Pro',
   business: 'Business',
   ultimate: 'Ultimate',
 }
 
-export function AdvisorPaymentLinkButton({ organizationId, compact, className }: AdvisorPaymentLinkButtonProps) {
+const GOADMIN_INTERNAL_ORG_ID = process.env.NEXT_PUBLIC_GOADMIN_INTERNAL_ORG_ID
+  ? parseInt(process.env.NEXT_PUBLIC_GOADMIN_INTERNAL_ORG_ID, 10)
+  : null
+
+export function AdvisorPaymentLinkButton({ customerEmail, compact, className }: AdvisorPaymentLinkButtonProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [searching, setSearching] = useState(false)
   const [plan, setPlan] = useState<PlanCode>('pro')
   const [interval, setInterval] = useState<Interval>('year')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [organizations, setOrganizations] = useState<ClientOrg[]>([])
+  const [selectedOrg, setSelectedOrg] = useState<ClientOrg | null>(null)
   const [paymentLink, setPaymentLink] = useState<string | null>(null)
   const [expiresAt, setExpiresAt] = useState<string | null>(null)
-  const { memberRoleId, isSuperAdmin } = useOrganization()
+  const { organizationId, memberRoleId, isSuperAdmin } = useOrganization()
 
-  // Solo mostrar para asesores y admins (roles 1, 2, 5 o super admin)
-  const hasAdvisorPermission = isSuperAdmin || (memberRoleId && [1, 2, 5].includes(memberRoleId))
-  if (!hasAdvisorPermission) return null
+  // Verificar si es personal interno: super admin O role 1/2/5 en la org interna
+  const isInternalStaff =
+    isSuperAdmin ||
+    (GOADMIN_INTERNAL_ORG_ID &&
+      organizationId === GOADMIN_INTERNAL_ORG_ID &&
+      memberRoleId &&
+      [1, 2, 5].includes(memberRoleId))
+
+  // Pre-llenar búsqueda con email del cliente al abrir el diálogo
+  useEffect(() => {
+    if (open && customerEmail && !selectedOrg && !searchQuery) {
+      setSearchQuery(customerEmail)
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      searchOrganizations(customerEmail)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, customerEmail])
+
+  // Solo mostrar para personal interno
+  if (!isInternalStaff) return null
+
+  const searchOrganizations = async (query: string) => {
+    if (!query.trim()) {
+      setOrganizations([])
+      return
+    }
+
+    setSearching(true)
+    try {
+      const res = await fetch(`/api/stripe/search-client-organizations?q=${encodeURIComponent(query)}&limit=20`)
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Error buscando organizaciones')
+      }
+
+      setOrganizations(data.organizations || [])
+    } catch (error) {
+      console.error('Error buscando organizaciones:', error)
+      toast({
+        title: 'Error',
+        description: 'No se pudieron buscar organizaciones',
+        variant: 'destructive',
+      })
+      setOrganizations([])
+    } finally {
+      setSearching(false)
+    }
+  }
 
   const handleGenerate = async () => {
+    if (!selectedOrg) {
+      toast({
+        title: 'Error',
+        description: 'Selecciona una organización cliente',
+        variant: 'destructive',
+      })
+      return
+    }
+
     setLoading(true)
     setPaymentLink(null)
     setExpiresAt(null)
@@ -67,7 +140,7 @@ export function AdvisorPaymentLinkButton({ organizationId, compact, className }:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          organizationId,
+          organizationId: selectedOrg.id,
           planCode: plan,
           interval,
         }),
@@ -111,7 +184,14 @@ export function AdvisorPaymentLinkButton({ organizationId, compact, className }:
       setExpiresAt(null)
       setPlan('pro')
       setInterval('year')
+      setSearchQuery('')
+      setOrganizations([])
+      setSelectedOrg(null)
     }, 200)
+  }
+
+  const handleSearch = () => {
+    searchOrganizations(searchQuery)
   }
 
   return (
@@ -132,7 +212,7 @@ export function AdvisorPaymentLinkButton({ organizationId, compact, className }:
             </CardHeader>
             <CardContent>
               <CardDescription className="text-xs mb-3">
-                Genera un enlace de pago Stripe anual sin período de prueba para cerrar la venta en esta reunión
+                Genera un enlace de pago Stripe anual sin período de prueba para cerrar la venta
               </CardDescription>
               <Button variant="outline" size="sm" className="w-full">
                 <CreditCard className="h-4 w-4 mr-2" />
@@ -143,17 +223,75 @@ export function AdvisorPaymentLinkButton({ organizationId, compact, className }:
         )}
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Generar enlace de pago Stripe</DialogTitle>
           <DialogDescription>
-            Crea un enlace de pago sin período de prueba para que el cliente pague su plan ahora mismo
+            Crea un enlace de pago sin período de prueba para una organización cliente
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {!paymentLink ? (
             <>
+              {/* Selector de organización cliente */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Organización cliente *
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Buscar por nombre, email o NIT..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSearch}
+                    disabled={searching}
+                  >
+                    {searching ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+
+                {organizations.length > 0 && (
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-48 overflow-y-auto">
+                    {organizations.map((org) => (
+                      <button
+                        key={org.id}
+                        onClick={() => setSelectedOrg(org)}
+                        className={`w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-700 last:border-b-0 ${
+                          selectedOrg?.id === org.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                        }`}
+                      >
+                        <div className="font-medium text-sm">{org.name}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {org.email && <span>{org.email}</span>}
+                          {org.nit && <span className="ml-2">NIT: {org.nit}</span>}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {selectedOrg && (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                      Organización seleccionada:
+                    </p>
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      {selectedOrg.name} (ID: {selectedOrg.id})
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Plan
@@ -193,7 +331,7 @@ export function AdvisorPaymentLinkButton({ organizationId, compact, className }:
                 </p>
               </div>
 
-              <Button onClick={handleGenerate} disabled={loading} className="w-full">
+              <Button onClick={handleGenerate} disabled={loading || !selectedOrg} className="w-full">
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -244,7 +382,7 @@ export function AdvisorPaymentLinkButton({ organizationId, compact, className }:
                 <Button variant="outline" onClick={handleClose} className="flex-1">
                   Cerrar
                 </Button>
-                <Button onClick={() => { setPaymentLink(null); setExpiresAt(null); }} variant="secondary" className="flex-1">
+                <Button onClick={() => { setPaymentLink(null); setExpiresAt(null); setSelectedOrg(null); }} variant="secondary" className="flex-1">
                   Generar otro
                 </Button>
               </div>

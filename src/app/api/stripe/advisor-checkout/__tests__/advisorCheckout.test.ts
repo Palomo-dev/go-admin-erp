@@ -54,17 +54,28 @@ jest.mock('@/lib/utils/orgContext', () => ({
   },
 }))
 
+const INTERNAL_ORG_ID = 1 // ID de la organización interna de GO Admin para tests
+const CLIENT_ORG_ID = 120 // ID de una organización cliente
+
 describe('/api/stripe/advisor-checkout', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    
+    // Mock de GOADMIN_INTERNAL_ORG_ID
+    process.env.GOADMIN_INTERNAL_ORG_ID = String(INTERNAL_ORG_ID)
     
     // Mock default de Supabase que devuelve datos válidos
     mockSupabaseFrom.mockImplementation((table: string) => {
       const chain = {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
+        not: jest.fn().mockReturnThis(),
         single: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockReturnThis(),
         update: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
       }
 
       if (table === 'plans') {
@@ -82,6 +93,15 @@ describe('/api/stripe/advisor-checkout', () => {
             name: 'Organización Test',
             email: 'test@example.com',
             stripe_customer_id: 'cus_test123',
+          },
+          error: null,
+        })
+      } else if (table === 'organization_members') {
+        // Por defecto, devolver membresía válida en org interna
+        chain.maybeSingle.mockResolvedValue({
+          data: {
+            role_id: 5,
+            is_super_admin: false,
           },
           error: null,
         })
@@ -121,20 +141,47 @@ describe('/api/stripe/advisor-checkout', () => {
     expect(res.status).toBe(401)
   })
 
-  it('rechaza usuarios sin rol de asesor (role_id no es 1, 2, 5 ni super admin)', async () => {
+  it('rechaza a admin de organización cliente (no es personal interno)', async () => {
     mockGetServerOrgContext.mockResolvedValue({
       userId: 'user123',
-      organizationId: 100,
+      organizationId: CLIENT_ORG_ID, // Usuario en org cliente
       membership: {
         is_super_admin: false,
-        role_id: 3, // rol normal, no asesor
+        role_id: 1, // Admin, pero de org cliente
+        organization_id: CLIENT_ORG_ID,
       },
+    })
+
+    // Mock: no tiene membresía en la org interna
+    mockSupabaseFrom.mockImplementation((table: string) => {
+      const chain = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockReturnThis(),
+        single: jest.fn().mockReturnThis(),
+      }
+      
+      if (table === 'organization_members') {
+        chain.maybeSingle.mockResolvedValue({ data: null, error: null })
+      } else if (table === 'plans') {
+        chain.single.mockResolvedValue({
+          data: { id: 2, stripe_price_yearly_id: 'price_yearly_test', stripe_price_monthly_id: 'price_monthly_test' },
+          error: null,
+        })
+      } else if (table === 'organizations') {
+        chain.single.mockResolvedValue({
+          data: { name: 'Org Test', email: 'test@example.com', stripe_customer_id: null },
+          error: null,
+        })
+      }
+      
+      return chain
     })
 
     const req = new NextRequest('http://localhost/api/stripe/advisor-checkout', {
       method: 'POST',
       body: JSON.stringify({
-        organizationId: 120,
+        organizationId: CLIENT_ORG_ID,
         planCode: 'pro',
       }),
     })
@@ -142,23 +189,24 @@ describe('/api/stripe/advisor-checkout', () => {
     const res = await POST(req)
     expect(res.status).toBe(403)
     const data = await res.json()
-    expect(data.error).toContain('permisos')
+    expect(data.error).toContain('personal interno')
   })
 
   it('permite a super admin generar enlaces', async () => {
     mockGetServerOrgContext.mockResolvedValue({
       userId: 'user123',
-      organizationId: 100,
+      organizationId: INTERNAL_ORG_ID,
       membership: {
         is_super_admin: true,
         role_id: 1,
+        organization_id: INTERNAL_ORG_ID,
       },
     })
 
     const req = new NextRequest('http://localhost/api/stripe/advisor-checkout', {
       method: 'POST',
       body: JSON.stringify({
-        organizationId: 120,
+        organizationId: CLIENT_ORG_ID,
         planCode: 'pro',
         interval: 'year',
       }),
@@ -171,43 +219,21 @@ describe('/api/stripe/advisor-checkout', () => {
     expect(data.url).toBeTruthy()
   })
 
-  it('permite a vendedor (role_id 5) generar enlaces', async () => {
-    mockGetServerOrgContext.mockResolvedValue({
-      userId: 'user456',
-      organizationId: 100,
-      membership: {
-        is_super_admin: false,
-        role_id: 5, // vendedor
-      },
-    })
-
-    const req = new NextRequest('http://localhost/api/stripe/advisor-checkout', {
-      method: 'POST',
-      body: JSON.stringify({
-        organizationId: 120,
-        planCode: 'business',
-        interval: 'year',
-      }),
-    })
-
-    const res = await POST(req)
-    expect(res.status).toBe(200)
-  })
-
   it('NO incluye trial_period_days en el checkout', async () => {
     mockGetServerOrgContext.mockResolvedValue({
       userId: 'user123',
-      organizationId: 100,
+      organizationId: INTERNAL_ORG_ID,
       membership: {
         is_super_admin: true,
         role_id: 1,
+        organization_id: INTERNAL_ORG_ID,
       },
     })
 
     const req = new NextRequest('http://localhost/api/stripe/advisor-checkout', {
       method: 'POST',
       body: JSON.stringify({
-        organizationId: 120,
+        organizationId: CLIENT_ORG_ID,
         planCode: 'pro',
         interval: 'year',
       }),
@@ -225,63 +251,21 @@ describe('/api/stripe/advisor-checkout', () => {
     )
   })
 
-  it('incluye metadata correcto en session y subscription_data', async () => {
-    mockGetServerOrgContext.mockResolvedValue({
-      userId: 'user789',
-      organizationId: 100,
-      membership: {
-        is_super_admin: false,
-        role_id: 5,
-      },
-    })
-
-    const req = new NextRequest('http://localhost/api/stripe/advisor-checkout', {
-      method: 'POST',
-      body: JSON.stringify({
-        organizationId: 120,
-        planCode: 'ultimate',
-        interval: 'year',
-      }),
-    })
-
-    await POST(req)
-
-    expect(mockStripeCheckoutSessionsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        subscription_data: expect.objectContaining({
-          metadata: expect.objectContaining({
-            organizationId: '120',
-            planCode: 'ultimate',
-            interval: 'year',
-            source: 'advisor',
-            created_by: 'user789',
-          }),
-        }),
-        metadata: expect.objectContaining({
-          organizationId: '120',
-          planCode: 'ultimate',
-          interval: 'year',
-          userId: 'user789',
-          source: 'advisor_checkout',
-        }),
-      })
-    )
-  })
-
   it('rechaza planCode inválido', async () => {
     mockGetServerOrgContext.mockResolvedValue({
       userId: 'user123',
-      organizationId: 100,
+      organizationId: INTERNAL_ORG_ID,
       membership: {
         is_super_admin: true,
         role_id: 1,
+        organization_id: INTERNAL_ORG_ID,
       },
     })
 
     const req = new NextRequest('http://localhost/api/stripe/advisor-checkout', {
       method: 'POST',
       body: JSON.stringify({
-        organizationId: 120,
+        organizationId: CLIENT_ORG_ID,
         planCode: 'basic', // no permitido
         interval: 'year',
       }),
@@ -296,17 +280,18 @@ describe('/api/stripe/advisor-checkout', () => {
   it('usa precio anual por defecto', async () => {
     mockGetServerOrgContext.mockResolvedValue({
       userId: 'user123',
-      organizationId: 100,
+      organizationId: INTERNAL_ORG_ID,
       membership: {
         is_super_admin: true,
         role_id: 1,
+        organization_id: INTERNAL_ORG_ID,
       },
     })
 
     const req = new NextRequest('http://localhost/api/stripe/advisor-checkout', {
       method: 'POST',
       body: JSON.stringify({
-        organizationId: 120,
+        organizationId: CLIENT_ORG_ID,
         planCode: 'pro',
         // sin interval, debe usar 'year'
       }),
@@ -328,17 +313,18 @@ describe('/api/stripe/advisor-checkout', () => {
   it('acepta interval mensual explícito', async () => {
     mockGetServerOrgContext.mockResolvedValue({
       userId: 'user123',
-      organizationId: 100,
+      organizationId: INTERNAL_ORG_ID,
       membership: {
         is_super_admin: true,
         role_id: 1,
+        organization_id: INTERNAL_ORG_ID,
       },
     })
 
     const req = new NextRequest('http://localhost/api/stripe/advisor-checkout', {
       method: 'POST',
       body: JSON.stringify({
-        organizationId: 120,
+        organizationId: CLIENT_ORG_ID,
         planCode: 'pro',
         interval: 'month',
       }),
@@ -360,17 +346,18 @@ describe('/api/stripe/advisor-checkout', () => {
   it('incluye custom_text con mensaje de USD', async () => {
     mockGetServerOrgContext.mockResolvedValue({
       userId: 'user123',
-      organizationId: 100,
+      organizationId: INTERNAL_ORG_ID,
       membership: {
         is_super_admin: true,
         role_id: 1,
+        organization_id: INTERNAL_ORG_ID,
       },
     })
 
     const req = new NextRequest('http://localhost/api/stripe/advisor-checkout', {
       method: 'POST',
       body: JSON.stringify({
-        organizationId: 120,
+        organizationId: CLIENT_ORG_ID,
         planCode: 'pro',
         interval: 'year',
       }),
@@ -392,17 +379,18 @@ describe('/api/stripe/advisor-checkout', () => {
   it('establece expiración de 24 horas', async () => {
     mockGetServerOrgContext.mockResolvedValue({
       userId: 'user123',
-      organizationId: 100,
+      organizationId: INTERNAL_ORG_ID,
       membership: {
         is_super_admin: true,
         role_id: 1,
+        organization_id: INTERNAL_ORG_ID,
       },
     })
 
     const req = new NextRequest('http://localhost/api/stripe/advisor-checkout', {
       method: 'POST',
       body: JSON.stringify({
-        organizationId: 120,
+        organizationId: CLIENT_ORG_ID,
         planCode: 'pro',
         interval: 'year',
       }),

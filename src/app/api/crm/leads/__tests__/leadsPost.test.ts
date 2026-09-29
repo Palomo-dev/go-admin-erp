@@ -18,14 +18,6 @@
  */
 
 const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
-// Extiende la clase real: `readOrgBody` (punto único) lanza la real y las rutas hacen `instanceof`.
-class FakeOrgContextError extends RealOrgContextError {
-  statusCode: number;
-  constructor(message: string, statusCode = 401) {
-    super(message, statusCode);
-    this.statusCode = statusCode;
-  }
-}
 
 /** Error tal y como lo devuelve PostgREST ante `unique_customer_email_per_org`. */
 const ERROR_CORREO_DUPLICADO = {
@@ -92,6 +84,8 @@ jest.mock('@/lib/utils/orgContext', () => ({
     userId: 'u-1',
     supabase: fakeSupabase(),
   })),
+  // La ruta exige crm.leads.create en el servidor; aquí se concede (el 403 se prueba aparte).
+  hasOrgAdminOrPermission: jest.fn(async () => true),
 }));
 
 import { NextRequest } from 'next/server';

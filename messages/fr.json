@@ -665,7 +665,8 @@
         "eventosTotales": "Total des événements",
         "usuariosActivos": "Utilisateurs actifs",
         "modulosActivos": "Modules actifs"
-      }
+      },
+      "soloAdministracion": "Les indicateurs financiers sont réservés à l'administration de l'organisation."
     },
     "datosEmpresa": {
       "titulo": "Complétez les informations de votre entreprise",
@@ -676,6 +677,68 @@
         "ciudad": "la ville",
         "direccion": "l’adresse"
       }
+    },
+    "hoy": {
+      "titulo": "Aujourd'hui",
+      "porAtender": "{n, plural, =0 {Tout est à jour} one {# point à traiter} other {# points à traiter}}",
+      "actualizadoALas": "Mis à jour à {hora}",
+      "vacioTitulo": "Rien à traiter aujourd'hui",
+      "vacioDesc": "Les créances échues, ruptures de stock, commandes web et tâches du jour apparaîtront ici.",
+      "etiquetas": {
+        "porCobrar": "Créances échues",
+        "stockCritico": "Stock critique",
+        "pedidosWeb": "Commandes web",
+        "cajasAnteriores": "Caisses non clôturées",
+        "misTareas": "Mes tâches"
+      },
+      "estados": {
+        "vencido": "Échu",
+        "critico": "Critique",
+        "urgente": "Urgent",
+        "revisar": "À vérifier",
+        "paraHoy": "Pour aujourd'hui",
+        "alDia": "À jour"
+      },
+      "cifras": {
+        "sinVencidos": "Aucune échéance",
+        "cuentas": "{n, plural, one {# compte} other {# comptes}}",
+        "sinFaltantes": "Aucune rupture",
+        "productos": "{n, plural, one {# produit} other {# produits}}",
+        "sinPendientes": "Aucune en attente",
+        "pendientes": "{n, plural, one {# en attente} other {# en attente}}",
+        "cajasAbiertas": "{n, plural, one {# caisse ouverte} other {# caisses ouvertes}}",
+        "abiertas": "{n, plural, one {# ouverte} other {# ouvertes}}"
+      },
+      "detalles": {
+        "carteraAlDia": "Aucun compte échu",
+        "cuentasVencidas": "{n, plural, one {# compte} other {# comptes}} · la plus ancienne : {dias, plural, one {# jour} other {# jours}}",
+        "variasMonedas": "En plusieurs devises · la plus ancienne : {dias, plural, one {# jour} other {# jours}}",
+        "stockAlDia": {
+          "estaSucursal": "Tout au-dessus du minimum dans cette succursale",
+          "tusSucursales": "Tout au-dessus du minimum dans vos succursales"
+        },
+        "stockBajo": {
+          "estaSucursal": "Sous le minimum dans cette succursale{agotados, plural, =0 {} one { · # en rupture} other { · # en rupture}}",
+          "tusSucursales": "Sous le minimum dans vos succursales{agotados, plural, =0 {} one { · # en rupture} other { · # en rupture}}"
+        },
+        "pedidosAlDia": "Aucune commande à confirmer",
+        "pedidosSinConfirmar": "En attente de confirmation du paiement",
+        "cajasDesde": "Ouverte depuis {dias, plural, one {# jour} other {# jours}}",
+        "tareasVencidas": "{n, plural, one {# en retard} other {# en retard}}{hoy, plural, =0 {} one { · # pour aujourd'hui} other { · # pour aujourd'hui}}",
+        "tareasHoy": "{n, plural, one {# pour aujourd'hui} other {# pour aujourd'hui}}",
+        "tareasSinVencer": "Aucune pour aujourd'hui"
+      },
+      "acciones": {
+        "verCartera": "Voir les créances",
+        "cobrar": "Encaisser",
+        "verExistencias": "Voir le stock",
+        "reponer": "Réapprovisionner",
+        "verPedidos": "Voir les commandes",
+        "atender": "Traiter",
+        "verCajas": "Voir les caisses",
+        "abrir": "Ouvrir"
+      },
+      "verTodas": "Voir les {n} · {resto}"
     }
   },
   "org": {
@@ -21912,6 +21975,514 @@
       "agregado": "Ajouté : {cantidad} · {producto} · {importe}",
       "deshacer": "Annuler",
       "pesadaCancelada": "La pesée de « {producto} » a été annulée : elle n’était pas confirmée."
+    }
+  },
+  "leadsImportar": {
+    "boton": "Importer",
+    "titulo": "Importer des leads",
+    "subtitulo": "Chargez un CSV ou un Excel : chaque ligne crée la fiche client (ou réutilise celle qui existe) et son lead.",
+    "subtituloArchivo": "{nombre} · feuille {hoja}",
+    "extra": "Lot : {lote}",
+    "plantillaArchivo": "modele_leads",
+    "migas": {
+      "crm": "CRM",
+      "leads": "Leads",
+      "importar": "Importer"
+    },
+    "pasos": {
+      "etiqueta": "Étapes de l'import",
+      "origen": "Fichier",
+      "mapeo": "Colonnes",
+      "validacion": "Validation",
+      "vista": "Aperçu",
+      "resultado": "Résultat",
+      "resumenMovil": "Étape {n} sur {total} · {paso}"
+    },
+    "acciones": {
+      "continuar": "Continuer",
+      "volver": "Retour",
+      "revisar": "Revoir les lignes",
+      "plantilla": "Télécharger le modèle",
+      "importar": "Importer {n} lignes",
+      "cancelar": "Annuler",
+      "validar": "Valider",
+      "validarDeNuevo": "Valider à nouveau",
+      "importarOtro": "Importer un autre fichier",
+      "verLeads": "Voir les leads",
+      "detener": "Arrêter"
+    },
+    "origen": {
+      "titulo": "Fichier",
+      "descripcion": "CSV, XLS ou XLSX avec jusqu'à {max} lignes par fichier.",
+      "soltar": "Glissez le fichier ou cliquez pour le choisir",
+      "formatos": "CSV, XLS ou XLSX · 10 Mo maximum",
+      "leyendo": "Lecture du fichier…",
+      "filas": "{n} lignes avec des données",
+      "hoja": "Feuille",
+      "hojaAyuda": "Choisissez la feuille des prospects ; les autres (résumé, sources…) sont ignorées.",
+      "sinCabecera": "Aucune ligne d'en-têtes avec le nom de l'entreprise n'a été trouvée. Choisissez la bonne ligne à l'étape suivante.",
+      "demasiadas": "Le fichier contient {n} lignes et le maximum est {max}. Divisez-le en plusieurs lots.",
+      "errorFormato": "Format non pris en charge : utilisez CSV, XLS ou XLSX.",
+      "errorTamano": "Le fichier dépasse 10 Mo.",
+      "errorLectura": "Impossible de lire le fichier.",
+      "sinDatos": "Le fichier n'a aucune feuille avec des données.",
+      "ayudaTitulo": "Quelles colonnes sont reconnues ?",
+      "ayuda": "Nom commercial ou entreprise, raison sociale, numéro fiscal (avec ou sans clé), contact, téléphone ou mobile (enregistré au format international +57…), e-mail, adresse, quartier, ville, région, zone, secteur, sous-secteur, priorité (A/B/C), valeur, formule, site web, sources (URL), horaires, notes et étiquettes. Un nom et un téléphone ou un e-mail sont requis. Les autres colonnes peuvent rester non importées."
+    },
+    "mapeo": {
+      "titulo": "Colonnes",
+      "descripcion": "{n} colonnes reconnues sur {total}. Vérifiez et corrigez l'affectation.",
+      "filaCabecera": "Ligne d'en-têtes",
+      "fila": "Ligne {n}",
+      "noImportar": "Ne pas importer",
+      "columnaSinNombre": "Colonne {n}",
+      "campoDe": "Champ pour la colonne {columna}",
+      "multiple": "accepte plusieurs colonnes",
+      "faltaNombre": "Affectez une colonne de nom : nom commercial, raison sociale ou contact.",
+      "faltaContacto": "Affectez une colonne de téléphone ou d'e-mail : sans eux, le lead ne peut pas être contacté."
+    },
+    "campos": {
+      "idExterno": "ID externe",
+      "prioridad": "Priorité",
+      "nombre": "Nom commercial",
+      "razonSocial": "Raison sociale",
+      "contacto": "Contact",
+      "nit": "Numéro fiscal",
+      "dv": "Clé du numéro fiscal",
+      "telefono": "Téléphone",
+      "tipoTelefono": "Type de téléphone",
+      "correo": "E-mail",
+      "web": "Site web",
+      "direccion": "Adresse",
+      "barrio": "Quartier",
+      "ciudad": "Ville",
+      "departamento": "Région",
+      "zona": "Zone",
+      "sector": "Secteur",
+      "subsector": "Sous-secteur",
+      "plan": "Formule probable",
+      "valor": "Valeur",
+      "verificacion": "Vérification",
+      "fechaVerificacion": "Date de vérification",
+      "fuente": "Source (URL)",
+      "horario": "Horaires de contact",
+      "notas": "Notes",
+      "etiquetas": "Étiquettes",
+      "rne": "Registre d'opposition (info)"
+    },
+    "cabeceras": {
+      "idExterno": "ID externe",
+      "nombre": "Nom commercial",
+      "razonSocial": "Raison sociale",
+      "nit": "Numéro fiscal",
+      "contacto": "Contact",
+      "telefono": "Téléphone",
+      "correo": "E-mail",
+      "direccion": "Adresse",
+      "barrio": "Quartier",
+      "ciudad": "Ville",
+      "departamento": "Région",
+      "sector": "Secteur",
+      "subsector": "Sous-secteur",
+      "prioridad": "Priorité",
+      "valor": "Valeur",
+      "plan": "Formule",
+      "web": "Site web",
+      "fuente": "Source",
+      "notas": "Notes",
+      "etiquetas": "Étiquettes"
+    },
+    "validacion": {
+      "opciones": "Options",
+      "lote": "Nom du lot",
+      "loteAyuda": "Identifie cet import : réimporter le même lot ne crée pas de doublons.",
+      "loteFalta": "Saisissez un nom de lot.",
+      "tipoCliente": "Type de client",
+      "empresa": "Entreprise",
+      "persona": "Personne",
+      "moneda": "Devise de la valeur",
+      "monedaBase": "Celle de l'organisation",
+      "monedaAyuda": "Si votre organisation n'utilise pas cette devise, la valeur est convertie dans la vôtre au taux du jour.",
+      "pais": "Pays des téléphones",
+      "paisAyuda": "Pour compléter les numéros sans indicatif.",
+      "resumen": "Résultat de la validation",
+      "validando": "Validation par rapport à vos clients…",
+      "pendiente": "Validez pour voir ce qui se passera avec chaque ligne.",
+      "error": "La validation a échoué : {mensaje}",
+      "kpi": {
+        "crear": "Nouveau client et lead",
+        "ligar": "Lead pour un client existant",
+        "omitir": "Ignorées",
+        "error": "Avec erreur"
+      },
+      "rne": "{n} lignes resteront en attente de vérification RNE : elles ne doivent pas être appelées avant d'être vérifiées dans le Registre des numéros exclus (Colombie).",
+      "rneExcluidos": "{n} numéros figurent déjà dans votre liste d'exclusion (RNE) : ils sont importés mais ne seront pas appelés.",
+      "conversion": "La valeur en {origen} est convertie en {destino} au taux du {fecha} ({tasa}).",
+      "sinTasa": "Aucun taux de change pour {origen} : la valeur est enregistrée à 0 et l'originale est conservée dans la fiche.",
+      "frecuentes": "Les plus fréquents",
+      "filasCon": "{n} lignes :"
+    },
+    "vista": {
+      "titulo": "{n} lignes",
+      "buscar": "Rechercher par nom, téléphone ou ville",
+      "filtrar": "Filtrer les lignes",
+      "filtros": {
+        "todas": "Toutes",
+        "importar": "Importées",
+        "omitir": "Ignorées",
+        "error": "Avec erreur"
+      },
+      "columnas": {
+        "accion": "Action",
+        "fila": "Ligne",
+        "nombre": "Nom",
+        "telefono": "Téléphone",
+        "ciudad": "Ville"
+      },
+      "excluir": "Exclure de l'import",
+      "incluir": "Inclure à nouveau",
+      "vacio": "Aucune ligne",
+      "sinResultados": "Aucune ligne ne correspond",
+      "sustantivo": {
+        "singular": "ligne",
+        "plural": "lignes"
+      },
+      "pie": "{importar} lignes seront importées · {resto} non"
+    },
+    "accion": {
+      "crear": "Créer",
+      "ligar": "Lier à l'existant",
+      "omitir": "Ignorer",
+      "error": "Erreur",
+      "excluida": "Exclue"
+    },
+    "motivos": {
+      "duplicado_archivo": "Répétée dans le fichier (ligne {fila})",
+      "lead_abierto": "Le client a déjà un lead ouvert",
+      "ya_importado": "Déjà importée dans ce lot",
+      "duplicado_bd": "Existe déjà dans la base"
+    },
+    "coincide": "Client existant : {nombre} ({por})",
+    "por": {
+      "telefono": "par téléphone",
+      "nit": "par numéro fiscal",
+      "correo": "par e-mail",
+      "id_externo": "par ID externe"
+    },
+    "mensajes": {
+      "sin_nombre": "Sans nom",
+      "sin_contacto": "Sans téléphone ni e-mail",
+      "telefono_invalido": "Téléphone invalide : {valor}",
+      "correo_invalido": "E-mail invalide : {valor}",
+      "telefono_descartado": "Téléphone invalide écarté : {valor}",
+      "correo_descartado": "E-mail invalide écarté : {valor}",
+      "nit_invalido": "Numéro fiscal invalide écarté : {valor}",
+      "nit_dv_invalido": "La clé ne correspond pas au numéro fiscal {valor} : enregistré sans clé",
+      "valor_invalido": "Valeur non numérique : {valor}",
+      "web_invalida": "Site web invalide : {valor}",
+      "prioridad_desconocida": "Priorité « {valor} » sans bande A/B/C : conservée comme étiquette",
+      "empresa_sin_nombre": "Entreprise sans nom commercial ni raison sociale",
+      "rne_excluido": "Numéro dans votre liste d'exclusion (RNE) : il ne sera pas appelé",
+      "sin_tasa": "Aucun taux de change pour {moneda} : valeur à 0",
+      "conflicto": "Conflit lors de la création : {detalle}",
+      "alta_rechazada": "Création refusée : {detalle}",
+      "error_bd": "Erreur de base de données : {detalle}",
+      "bloque": "Le bloc a échoué : {detalle}"
+    },
+    "resultado": {
+      "enCurso": "Import en cours…",
+      "terminada": "Import terminé",
+      "detenida": "Import arrêté",
+      "bloque": "Bloc {actual} sur {total} · {procesadas} lignes sur {filas}",
+      "kpi": {
+        "creados": "Clients et leads créés",
+        "ligados": "Leads liés à des clients existants",
+        "omitidos": "Ignorés (doublons)",
+        "errores": "Avec erreur",
+        "sinIntentar": "Non tentés"
+      },
+      "rne": "Les leads importés sont en attente de vérification RNE : vérifiez les numéros dans le Registre des numéros exclus avant de les appeler.",
+      "errorBloque": "Le bloc {n} a échoué : {mensaje}. Le relancer ne crée pas de doublons.",
+      "errores": "{n} lignes avec erreur",
+      "sinErrores": "Aucune ligne en erreur.",
+      "esperando": "En attente du serveur…",
+      "fila": "Ligne {n}",
+      "descargar": "Télécharger le résultat (CSV)",
+      "reporte": {
+        "archivo": "resultat_import_leads",
+        "fila": "Ligne",
+        "nombre": "Nom",
+        "telefono": "Téléphone",
+        "resultado": "Résultat",
+        "cliente": "Client",
+        "detalle": "Détail"
+      }
+    },
+    "toast": {
+      "error": "Erreur",
+      "plantilla": "Modèle téléchargé"
+    }
+  },
+  "perfil": {
+    "navegacion": "Sections de mon profil",
+    "volver": "Retour",
+    "editar": "Modifier",
+    "seUnio": "Inscrit le {fecha}",
+    "sinNombre": "Sans nom",
+    "secciones": {
+      "datos-personales": "Données personnelles",
+      "seguridad": "Sécurité",
+      "preferencias": "Préférences",
+      "sesiones": "Sessions et appareils",
+      "organizacion-roles": "Organisation et rôles",
+      "notificaciones": "Notifications",
+      "panel-vendedor": "Espace vendeur",
+      "eliminar-cuenta": "Supprimer le compte"
+    },
+    "errores": {
+      "sinSesion": "Aucune session utilisateur trouvée",
+      "cargarPerfil": "Impossible de charger les données du profil",
+      "cargarDatos": "Impossible de charger les données de l'utilisateur"
+    },
+    "preferencias": {
+      "titulo": "Préférences",
+      "descripcion": "Thème, langue et fuseau horaire.",
+      "tema": "Thème",
+      "temaAyuda": "Enregistré dans votre compte et appliqué sur tous vos appareils.",
+      "claro": "Clair",
+      "oscuro": "Sombre",
+      "sistema": "Système",
+      "idioma": "Langue",
+      "zonaHoraria": "Fuseau horaire",
+      "zonaHorariaAyuda": "Les dates s'affichent dans le fuseau horaire de l'organisation."
+    },
+    "vendedor": {
+      "titulo": "Espace vendeur",
+      "descripcion": "Vendez avec nous et touchez une commission sur chaque recommandation.",
+      "yaEresTitulo": "Vous êtes déjà vendeur",
+      "yaEresDesc": "Votre compte est lié à l'espace vendeur. Ouvrez-le pour voir vos commissions, paiements et filleuls.",
+      "abrir": "Ouvrir l'espace vendeur",
+      "convierteteTitulo": "Devenez vendeur",
+      "convierteteDesc": "Activez votre compte vendeur et touchez une commission sur chaque client recommandé. Vous utiliserez les mêmes identifiants, e-mail et avatar que dans l'ERP.",
+      "activar": "Activer le compte vendeur",
+      "activando": "Activation…",
+      "exito": "Vous êtes vendeur ! Votre compte est lié.",
+      "errorSinSesion": "Connectez-vous pour activer le compte vendeur.",
+      "errorCrear": "Impossible de créer le compte vendeur",
+      "errorConexion": "Impossible de joindre le service. Réessayez plus tard.",
+      "errorProcesar": "Impossible de traiter la demande",
+      "errorToast": "Impossible d'activer le compte vendeur"
+    }
+  },
+  "asistente": {
+    "cabecera": {
+      "titulo": "GO Assistant",
+      "conversaciones": "Conversations",
+      "volver": "Revenir à la conversation",
+      "nueva": "Nouvelle conversation",
+      "historial": "Conversations précédentes",
+      "voz": "Répondre en audio",
+      "vozActiva": "Répondre en audio : activé",
+      "ampliar": "Agrandir",
+      "reducir": "Réduire",
+      "cerrar": "Fermer",
+      "abrir": "Ouvrir GO Assistant"
+    },
+    "bienvenida": {
+      "saludo": "Bonjour, {nombre} !",
+      "texto": "Interrogez-moi sur vos données, demandez-moi d’enregistrer quelque chose ou envoyez-moi un fichier. Avant d’enregistrer quoi que ce soit, je vous montre un résumé à confirmer.",
+      "sugerenciasPara": "Suggestions pour {pagina}",
+      "sugerencias": "Suggestions",
+      "respaldo1": "Comment créer un nouveau produit ?",
+      "respaldo2": "Comment obtenir un rapport des ventes ?",
+      "respaldo3": "Comment enregistrer un nouveau client ?"
+    },
+    "mensaje": {
+      "escuchar": "Écouter",
+      "escucharRespuesta": "Écouter la réponse",
+      "leyendo": "Lecture…",
+      "detenerLectura": "Arrêter la lecture",
+      "copiar": "Copier",
+      "copiarRespuesta": "Copier la réponse",
+      "copiado": "Copié",
+      "vozNoActiva": "Votre organisation n’a pas activé les réponses audio.",
+      "leeDocumento": "Lis ce document."
+    },
+    "pasos": {
+      "pensando": "Réflexion…",
+      "enCurso": "Étapes en cours",
+      "plegados": "{n, plural, one {# étape} other {# étapes}} · Voir",
+      "anuncio": {
+        "pensando": "GO Assistant réfléchit",
+        "consultando": "GO Assistant consulte vos données",
+        "escribiendo": "GO Assistant répond",
+        "lista": "Réponse prête"
+      }
+    },
+    "pregunta": {
+      "etiqueta": "Question de l’assistant",
+      "opciones": "Options",
+      "otro": "Autre : je l’écris",
+      "atajo": "Raccourci : appuyez sur {letras}"
+    },
+    "tarjeta": {
+      "etiqueta": "Confirmer l’action : {titulo}",
+      "estado": {
+        "pendiente": "À confirmer",
+        "ejecutando": "Enregistrement",
+        "completada": "Effectuée",
+        "deshecha": "Annulée",
+        "error": "Non effectuée",
+        "caducada": "Expirée"
+      },
+      "puedesDeshacer": "Vous pouvez l’annuler pendant {n, plural, one {# minute} other {# minutes}}.",
+      "avisoContable": "Cette action a un impact comptable.",
+      "falta": "Manquant : {campos}. Dites-le-moi dans le chat avant de confirmer.",
+      "irreversible": "Cette action ne peut pas être annulée depuis le chat.",
+      "caducaEn": "La proposition expire dans {n, plural, one {# minute} other {# minutes}}.",
+      "caducada": "Cette proposition a expiré et ne peut plus être confirmée. Demandez-moi un nouveau résumé.",
+      "nota": "Rien n’est enregistré avant votre confirmation · Confirmer ne consomme pas de crédits",
+      "formulario": "Ouvrir le formulaire complet",
+      "formularioAyuda": "Ouvre le même formulaire du module Clients, avec ces données déjà saisies",
+      "repetir": "Vous allez : {resumen} Je confirme ?",
+      "confirmar": "Confirmer",
+      "siConfirmar": "Oui, confirmer",
+      "guardando": "Enregistrement…",
+      "volver": "Retour",
+      "corregir": "Corriger",
+      "rechazar": "Refuser",
+      "atajos": "Ctrl+Entrée confirme · Échap refuse",
+      "atajosRepetir": "Ctrl+Entrée confirme · Échap revient",
+      "pedirOtro": "Demander un nouveau résumé",
+      "ver": {
+        "customer": "Voir le client",
+        "product": "Voir le produit",
+        "sale": "Voir la vente",
+        "purchase_order": "Voir le bon de commande",
+        "inventory_transfer": "Voir le transfert",
+        "inventory_adjustment": "Voir l’ajustement",
+        "invoice_purchase": "Voir la facture d’achat",
+        "invoice_sales": "Voir la facture de vente",
+        "generico": "Voir"
+      },
+      "deshacer": "Annuler",
+      "deshacerMin": "Annuler · {n} min",
+      "deshaciendo": "Annulation…",
+      "corregirReintentar": "Corriger et réessayer",
+      "errorGenerico": "L’action n’a pas pu être effectuée. Réessayez.",
+      "errorRed": "L’action n’a pas pu être effectuée. Vérifiez son état avant de réessayer.",
+      "errorCancelar": "Je n’ai pas pu annuler cette proposition. Rechargez l’historique avant de continuer.",
+      "errorDeshacer": "Impossible d’annuler.",
+      "canceladaMensaje": "Action annulée.",
+      "corregirMensaje": "Dites-moi ce que vous voulez corriger. Je préparerai un nouveau résumé à confirmer ; la proposition précédente est déjà annulée.",
+      "caducadaMensaje": "Cette proposition a expiré. Redites-moi ce dont vous avez besoin et je vous prépare un nouveau résumé."
+    },
+    "masiva": {
+      "filas": "{n, plural, one {# ligne} other {# lignes}}",
+      "nuevos": "{n, plural, one {# nouveau} other {# nouveaux}}",
+      "existen": "{n, plural, one {# existe déjà} other {# existent déjà}}",
+      "omiten": "{n, plural, one {# ignorée} other {# ignorées}}",
+      "pie": "{n} seront chargés · doublons par SKU, code-barres ou nom · tout ou rien (une seule transaction)",
+      "tabla": "Lignes du chargement",
+      "colProducto": "Produit",
+      "colSku": "SKU",
+      "colPrecio": "Prix",
+      "colStock": "Stock",
+      "colEstado": "État",
+      "sinNombre": "(sans nom)",
+      "estado": {
+        "nuevo": "Nouveau",
+        "existente": "Existe",
+        "error": "Ignorée"
+      },
+      "seOmite": "Ignorée",
+      "seOmiteMotivo": "{motivo} : ignorée",
+      "yaExiste": "Existe déjà",
+      "coincidePor": "Correspond par {campo}",
+      "campo": {
+        "sku": "SKU",
+        "barcode": "code-barres",
+        "nombre": "nom"
+      },
+      "verEnGrande": "Voir les {n} lignes en grand",
+      "verFilas": "Voir les {n} lignes",
+      "ocultarFilas": "Masquer les lignes"
+    },
+    "aviso": {
+      "creditosBajosTitulo": "{n, plural, one {Il vous reste # crédit} other {Il vous reste # crédits}}",
+      "creditosBajosRespuestas": "{n, plural, =0 {Pas assez pour une réponse complète.} one {Assez pour environ une réponse de plus.} other {Assez pour environ # réponses.}}",
+      "creditosBajosSinPromedio": "Une fois épuisés, l’assistant se met en pause jusqu’à ce que vous en achetiez.",
+      "sinCreditosTitulo": "Plus de crédits IA",
+      "sinCreditosTexto": "L’assistant est en pause jusqu’à l’achat d’un pack ou le renouvellement de votre forfait. Vos conversations sont conservées.",
+      "sinPermisoTitulo": "Vous n’avez pas l’autorisation",
+      "sinPermisoTexto": "Votre poste ou votre forfait n’inclut pas cette action. Je peux vous montrer l’information ou vous expliquer la démarche pas à pas.",
+      "sesionTitulo": "Votre session a expiré",
+      "sesionTexto": "Reconnectez-vous pour continuer. Votre conversation est enregistrée.",
+      "limiteTitulo": "Vous allez trop vite",
+      "limiteTexto": "Patientez quelques secondes puis réessayez.",
+      "errorTitulo": "La réponse est incomplète",
+      "errorTexto": "Je n’ai pas pu terminer la réponse.",
+      "errorConservado": "Votre message est revenu dans la zone de texte. Vérifiez l’historique avant de réessayer : le tour a pu aboutir.",
+      "comprarCreditos": "Acheter des crédits",
+      "verPermisos": "Voir mes autorisations",
+      "iniciarSesion": "Se connecter",
+      "reintentar": "Réessayer",
+      "descartar": "Fermer l’avis"
+    },
+    "composer": {
+      "etiqueta": "Message pour GO Assistant",
+      "placeholder": "Posez une question ou demandez quelque chose…",
+      "placeholderSinCreditos": "Plus de crédits : l’assistant est en pause",
+      "transcribiendo": "Transcription de votre note…",
+      "adjuntar": "Joindre un fichier ou une photo",
+      "adjuntos": "Fichiers joints",
+      "quitarAdjunto": "Retirer {nombre}",
+      "adjuntosNoDisponibles": "Je ne sais pas encore lire les fichiers. Pour l’instant, écrivez-moi ce qu’il contient.",
+      "dictar": "Dicter",
+      "detenerGrabacion": "Arrêter et transcrire",
+      "grabando": "Enregistrement… {tiempo}",
+      "enviar": "Envoyer le message",
+      "detener": "Arrêter la réponse",
+      "contextoActivo": "L’assistant sait que vous êtes sur {pagina}. Touchez pour ne plus l’envoyer.",
+      "contextoInactivo": "Sans contexte de page. Touchez pour l’envoyer de nouveau.",
+      "ayuda": "Entrée envoie · Maj+Entrée nouvelle ligne",
+      "ayudaMovil": "Touchez envoyer pour transmettre",
+      "ayudaRespondiendo": "Échap arrête la réponse",
+      "ayudaGrabando": "À l’arrêt, le texte reste ici pour être relu · Échap annule",
+      "ayudaSinCreditos": "Achetez des crédits pour continuer",
+      "creditos": "{n, plural, one {# crédit} other {# crédits}}",
+      "notaDudosa": "Je n’ai pas bien compris la note : relisez le texte avant de l’envoyer.",
+      "notaVacia": "Rien n’a été entendu. Réessayez plus près du micro.",
+      "notaError": "Je n’ai pas pu transcrire la note.",
+      "sinMicrofono": "Impossible d’utiliser le micro. Vérifiez l’autorisation du navigateur.",
+      "soltar": "Déposez la photo ou le fichier ici",
+      "limiteArchivo": "Certains fichiers n’ont pas pu être joints : la limite est de 20 Mo par fichier."
+    },
+    "historial": {
+      "etiqueta": "Historique des conversations",
+      "buscar": "Rechercher dans l’historique",
+      "cargando": "Chargement de l’historique…",
+      "errorCarga": "Impossible de charger l’historique.",
+      "errorArchivar": "Impossible d’archiver la conversation.",
+      "errorAbrir": "Je n’ai pas pu ouvrir cette conversation. Réessayez.",
+      "reintentar": "Réessayer",
+      "vacio": "Aucune conversation enregistrée pour l’instant.",
+      "sinCoincidencias": "Aucune conversation ne correspond à la recherche.",
+      "sinTitulo": "Conversation sans titre",
+      "grupo": {
+        "hoy": "Aujourd’hui",
+        "ayer": "Hier",
+        "semana": "Cette semaine",
+        "anteriores": "Plus ancien"
+      },
+      "mensajes": "{n, plural, one {# message} other {# messages}}",
+      "archivar": "Archiver « {titulo} »",
+      "archivarAyuda": "Archiver",
+      "nota": "Archiver retire la conversation de la liste ; elle n’est pas supprimée."
+    },
+    "pie": {
+      "aviso": "Il peut se tromper : vérifiez l’essentiel",
+      "permisos": "Autorisations de l’assistant"
     }
   }
 }

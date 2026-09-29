@@ -22,6 +22,8 @@ let db: FakeDb;
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError: RealOrgContextError,
   getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: U(200), supabase: fakeSupabase(db) })),
+  // La ruta exige crm.leads.create en el servidor; aquí se concede (el 403 se prueba aparte).
+  hasOrgAdminOrPermission: jest.fn(async () => true),
 }));
 
 import { NextRequest } from 'next/server';
@@ -111,5 +113,17 @@ describe('POST /api/crm/leads · respuesta 201 con assignment', () => {
     db.tables.organization_settings.push({ id: U(500), organization_id: ORG, key: 'crm_lead_assignment', settings: { enabled: false } });
     const json = await (await POST(peticion(cuerpo()))).json();
     expect(json.assignment).toEqual({ status: 'skipped', reason: expect.any(String) });
+  });
+});
+
+describe('POST /api/crm/leads · permiso crm.leads.create', () => {
+  it('sin el permiso → 403 y NADA se escribe (ni cliente ni lead)', async () => {
+    const { hasOrgAdminOrPermission } = jest.requireMock('@/lib/utils/orgContext') as { hasOrgAdminOrPermission: jest.Mock };
+    hasOrgAdminOrPermission.mockResolvedValueOnce(false);
+    const res = await POST(peticion(cuerpo()));
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe('FORBIDDEN');
+    expect(hasOrgAdminOrPermission).toHaveBeenLastCalledWith(expect.objectContaining({ organizationId: ORG }), 'crm.leads.create');
+    expect(escrituras()).toEqual([]);
   });
 });

@@ -19,7 +19,6 @@ import {
   DashboardAtajos,
   DashboardActividad,
   DashboardTendencia,
-  DashboardAlertas,
   PeriodoSelector,
   OnboardingBanner,
   DashboardModulos,
@@ -35,6 +34,7 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { usePermissionContext } from '@/hooks/usePermissionContext';
 import { veePanelCompleto } from '@/lib/dashboard/accesoPanel';
 import { EmployeeDashboard } from '@/components/inicio/EmployeeDashboard';
+import { BloqueHoy } from '@/components/inicio/BloqueHoy';
 import { TarjetaDatosEmpresa } from '@/components/inicio/TarjetaDatosEmpresa';
 import { useDesktopCatalog } from '@/lib/offline/useDesktopCatalog';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
@@ -77,6 +77,8 @@ function InicioContent() {
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  // «Actualizar» también recarga el bloque «Hoy», que pide lo suyo aparte.
+  const [versionHoy, setVersionHoy] = useState(0);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [errorCarga, setErrorCarga] = useState(false);
   const [activeModuleCodes, setActiveModuleCodes] = useState<string[] | undefined>(undefined);
@@ -233,6 +235,7 @@ function InicioContent() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
+    setVersionHoy((v) => v + 1);
     await loadData();
     setIsRefreshing(false);
     toast({ title: t('dashboardUpdated') });
@@ -343,6 +346,10 @@ function InicioContent() {
         />
       ) : canSeeFinancialDashboard ? (
         <>
+          {/* Bloque «Hoy» (Figma 445:137185): lo accionable de la sucursal
+              activa, primero. Sustituye a DashboardAlertas. */}
+          <BloqueHoy organizationId={organization.id} sucursal={branchFilter} version={versionHoy} />
+
           {/* KPIs y Actividad dependen de `dashboardData`: son los únicos que
               muestran skeleton al cambiar de periodo. El resto de secciones
               carga por su cuenta y se monta desde el principio, en paralelo,
@@ -357,12 +364,6 @@ function InicioContent() {
           ) : (
             <DashboardKPIs data={isLoading ? null : (dashboardData?.kpis ?? null)} isLoading={isLoading} periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} branchFilter={branchFilter} />
           )}
-
-          {/* Alertas consolidadas de módulos */}
-          <DashboardAlertas
-            organizationId={organization?.id}
-            activeModuleCodes={activeModuleCodes}
-          />
 
           {/* Actividad Reciente + Tendencia de Ventas */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -12,49 +12,22 @@
  * «Valor unitario»).
  */
 
-import * as XLSX from 'xlsx';
+import { filaVacia, leerLibro, type Matriz } from '@/lib/importacion/libro';
 import { autoMapear, encontrarFilaCabecera, type CampoProducto, type Mapeo } from './campos';
 import { normalizarCabecera, parseBooleano, parseNumero, slugificar, textoCelda } from './texto';
 import type { FilaImport, Mensaje } from './tipos';
 
-export type Matriz = unknown[][];
+// La lectura del libro vive en `@/lib/importacion/libro` (compartida con el
+// importador de leads); se reexporta para no mover los imports de productos.
+export { decodificarCsv, extensionAdmitida, EXTENSIONES_ADMITIDAS, filaVacia, type Matriz } from '@/lib/importacion/libro';
 export type FormatoArchivo = 'generico' | 'space' | 'sistema';
 
-export const EXTENSIONES_ADMITIDAS = ['.csv', '.xlsx', '.xls'] as const;
 /** 10 MB: un catálogo de 20 000 productos en CSV pesa ~4 MB. */
 export const TAMANO_MAXIMO_ARCHIVO = 10 * 1024 * 1024;
 
-export function extensionAdmitida(nombre: string): boolean {
-  const n = nombre.toLowerCase();
-  return EXTENSIONES_ADMITIDAS.some((e) => n.endsWith(e));
-}
-
-/**
- * CSV: se decodifica como UTF-8 y, si trae caracteres inválidos (Excel en
- * Windows guarda en Windows-1252), como Windows-1252. Así «Categoría» no llega
- * como «CategorÃ­a». El separador («,», «;» o tabulador) lo detecta SheetJS.
- */
-export function decodificarCsv(buffer: ArrayBuffer): string {
-  const utf8 = new TextDecoder('utf-8').decode(buffer);
-  const texto = utf8.includes('\uFFFD') ? new TextDecoder('windows-1252').decode(buffer) : utf8;
-  return texto.replace(/^\uFEFF/, '');
-}
-
 /** Primera hoja del archivo como matriz (filas × celdas), sin filas completamente vacías al final. */
 export function leerMatriz(buffer: ArrayBuffer, nombre: string): Matriz {
-  const esCsv = nombre.toLowerCase().endsWith('.csv');
-  const libro = esCsv
-    ? XLSX.read(decodificarCsv(buffer), { type: 'string', raw: true })
-    : XLSX.read(buffer, { type: 'array' });
-  const hoja = libro.SheetNames[0] ? libro.Sheets[libro.SheetNames[0]] : undefined;
-  if (!hoja) return [];
-  const matriz = XLSX.utils.sheet_to_json<unknown[]>(hoja, { header: 1, defval: null, raw: true, blankrows: true });
-  while (matriz.length && filaVacia(matriz[matriz.length - 1])) matriz.pop();
-  return matriz;
-}
-
-export function filaVacia(fila: unknown[] | undefined): boolean {
-  return !fila || fila.every((c) => c === null || c === undefined || String(c).trim() === '');
+  return leerLibro(buffer, nombre).matriz();
 }
 
 // ─── Detección de formato ──────────────────────────────────────────────────

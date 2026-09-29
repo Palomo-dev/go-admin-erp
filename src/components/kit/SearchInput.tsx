@@ -86,6 +86,8 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
   const t = useKitT();
   const placeholder = placeholderProp ?? t('busqueda.placeholder');
   const [texto, setTexto] = React.useState(value);
+  // Lo que hay escrito en el campo, sin esperar al render (ver el efecto de `value`).
+  const textoRef = React.useRef(value);
   const ultimoEmitido = React.useRef(value);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const onChangeRef = React.useRef(onChange);
@@ -105,9 +107,16 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
   React.useEffect(() => () => debounced.cancelar(), [debounced]);
 
   // El valor cambió desde fuera (limpiar filtros, «atrás» del navegador).
+  // Si `value` es lo mismo que ya está escrito, es el eco de `onValueChange`
+  // (la pantalla guarda cada tecla en el mismo estado que pasa como `value`):
+  // no es un cambio externo y NO se cancela la búsqueda pendiente. Antes se
+  // cancelaba y `onChange` no llegaba nunca: en el selector de clientes del POS
+  // se escribía «pepe» y seguía la lista completa.
   React.useEffect(() => {
+    if (value === textoRef.current) return;
     if (value !== ultimoEmitido.current) {
       ultimoEmitido.current = value;
+      textoRef.current = value;
       debounced.cancelar();
       setTexto(value);
     }
@@ -125,6 +134,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
   }, [atajo]);
 
   const cambiar = (v: string) => {
+    textoRef.current = v;
     setTexto(v);
     onValueChange?.(v);
     debounced.llamar(v);
@@ -132,6 +142,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
 
   const limpiar = () => {
     debounced.cancelar();
+    textoRef.current = '';
     setTexto('');
     onValueChange?.('');
     ultimoEmitido.current = '';

@@ -1,10 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { autoAssignLead, type LeadAssignmentOutcome } from './leadAutoAssign';
-import { clean, resolveLeadCustomer, rollbackCustomer, type LeadCreateFailure, type NewCustomerInput } from './leadCustomer';
+import { clean, resolveLeadCustomer, rollbackCustomer, type LeadCreateFailure, type LeadCustomerExtras, type NewCustomerInput } from './leadCustomer';
 
 // Reexportados para los llamadores previos a la extracción (F12, referidos).
 export { isUniqueViolation, rollbackCustomer, splitPersonName } from './leadCustomer';
-export type { NewCustomerInput } from './leadCustomer';
+export type { LeadCustomerExtras, NewCustomerInput } from './leadCustomer';
 
 /**
  * Alta de un lead con ficha de cliente (`customers` + `opportunities` con
@@ -26,6 +26,13 @@ export type { NewCustomerInput } from './leadCustomer';
 /** Origen por defecto de un lead creado a mano desde el ERP. */
 export const MANUAL_LEAD_SOURCE = 'manual_erp';
 
+/**
+ * Permiso de crear leads (`permissions.code`). Lo exigen POST /api/crm/leads y la
+ * importación, resuelto en el servidor con `hasOrgAdminOrPermission` (super admin
+ * y roles 1/2 pasan; el resto, por rol o cargo con `check_user_permission`).
+ */
+export const LEADS_CREATE_PERMISSION = 'crm.leads.create';
+
 export const OPPORTUNITY_DEAL_TYPES = ['new', 'renewal', 'expansion', 'referral', 'partner'] as const;
 export type OpportunityDealType = (typeof OPPORTUNITY_DEAL_TYPES)[number];
 
@@ -45,6 +52,32 @@ export interface CreateLeadBody {
   next_contact_at?: string;
   temperature?: string;
   branch_id?: number;
+}
+
+/**
+ * Columnas extra del lead que solo pone el servidor (importador de leads,
+ * `leadsImportService`). No salen del cuerpo de `POST /api/crm/leads`, cuyo
+ * contrato no cambia.
+ */
+export interface LeadOpportunityExtras {
+  metadata?: Record<string, unknown> | null;
+  vertical_id?: string | null;
+  icp_band?: 'A' | 'B' | 'C' | null;
+}
+
+/** Extras de servidor para la ficha nueva y el lead (ver `LeadCustomerExtras`). */
+export interface LeadCreateExtras {
+  customer?: LeadCustomerExtras;
+  opportunity?: LeadOpportunityExtras;
+}
+
+function opportunityExtrasPayload(extras: LeadOpportunityExtras | undefined): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (!extras) return out;
+  if (extras.metadata) out.metadata = extras.metadata;
+  if (extras.vertical_id) out.vertical_id = extras.vertical_id;
+  if (extras.icp_band && ['A', 'B', 'C'].includes(extras.icp_band)) out.icp_band = extras.icp_band;
+  return out;
 }
 
 export interface LeadCreateContext {
@@ -80,7 +113,12 @@ const bad = (error: string): LeadCreateResult => ({ status: 400, error });
  * `record_type` y `status` no se leen del cuerpo: siempre 'lead' y 'open'.
  * Errores de BD inesperados se lanzan (la ruta los convierte en 500).
  */
-export async function createLeadWithCustomer(ctx: LeadCreateContext, body: CreateLeadBody): Promise<LeadCreateResult> {
+export async function createLeadWithCustomer(
+  ctx: LeadCreateContext,
+  body: CreateLeadBody,
+  /** Solo servidor (importador de leads). Las rutas HTTP de alta manual no lo pasan. */
+  extras?: LeadCreateExtras,
+): Promise<LeadCreateResult> {
   const { supabase, organizationId } = ctx;
 
   const name = clean(body.name);
@@ -149,7 +187,7 @@ export async function createLeadWithCustomer(ctx: LeadCreateContext, body: Creat
   }
 
   // ── 3. Cliente: existente o nuevo. Sin ficha no hay lead contactable ─────
-  const ficha = await resolveLeadCustomer(ctx, body, branchId);
+  const ficha = await resolveLeadCustomer(ctx, body, branchId, extras?.customer);
   if (!ficha.ok) return ficha.result;
   const { customerId, createdCustomerId } = ficha;
 
@@ -192,6 +230,7 @@ export async function createLeadWithCustomer(ctx: LeadCreateContext, body: Creat
   const { data: lead, error: insertError } = await supabase
     .from('opportunities')
     .insert({
+      ...opportunityExtrasPayload(extras?.opportunity),
       organization_id: organizationId,
       branch_id: branchId,
       pipeline_id: pipelineId,

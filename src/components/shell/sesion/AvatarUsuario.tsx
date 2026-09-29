@@ -10,12 +10,14 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 
-type Tamano = 32 | 40 | 48;
+type Tamano = 32 | 40 | 48 | 80;
 
 const TAMANOS: Record<Tamano, { caja: string; texto: string; punto: string }> = {
   32: { caja: 'h-8 w-8', texto: 'text-xs', punto: 'h-2.5 w-2.5 -bottom-px -right-px' },
   40: { caja: 'h-10 w-10', texto: 'text-sm', punto: 'h-3 w-3 -bottom-px -right-px' },
   48: { caja: 'h-12 w-12', texto: 'text-base font-semibold', punto: 'h-3 w-3 bottom-0 right-0' },
+  // Cabecera de «Mi perfil» (Figma 344:9281).
+  80: { caja: 'h-20 w-20', texto: 'text-2xl font-semibold', punto: 'h-4 w-4 bottom-1 right-1' },
 };
 
 export function iniciales(nombre?: string | null, respaldo?: string | null): string {

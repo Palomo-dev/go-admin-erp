@@ -42,6 +42,10 @@ export interface ActionOutcome {
   /** Para "Ver <entidad>" cuando el servidor devuelve a dónde ir. */
   entity?: { type: string; id: string | number; url?: string } | null;
   undoAvailable?: boolean;
+  /** ISO: hasta cuándo se puede deshacer (lo devuelve `/execute-action`). */
+  undoUntil?: string | null;
+  /** Se deshizo desde la tarjeta: queda como «Deshecha», sin «Ver» ni «Deshacer». */
+  undone?: boolean;
 }
 
 /** Pregunta con opciones del asistente (estilo A/B/C/Otro). */
@@ -49,6 +53,16 @@ export interface PendingQuestion {
   question: string;
   options: Array<{ key: string; label: string; value?: string }>;
   allowOther: boolean;
+}
+
+/** Saldo y estado del panel (`GET /api/ai-assistant/credits`). */
+export interface AssistantCreditsState {
+  credits: number;
+  level: 'ok' | 'low' | 'empty';
+  /** Créditos que cuesta de verdad una respuesta en la organización; `null` si no hay datos. */
+  avgPerReply: number | null;
+  /** La organización activó «Escuchar»; `null` si no se pudo saber. */
+  ttsEnabled: boolean | null;
 }
 
 export interface ActionPreviewLine {

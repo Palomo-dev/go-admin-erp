@@ -19,6 +19,43 @@ export interface NewCustomerInput {
   customer_type?: string;
 }
 
+/**
+ * Columnas adicionales de la ficha NUEVA que solo pone el servidor (el
+ * importador de leads). NUNCA salen del cuerpo de una petición: `POST
+ * /api/crm/leads` no las pasa y su contrato no cambia. Solo se escriben las
+ * que traen valor (un `null` deja el DEFAULT de la columna, p. ej. `timezone`).
+ * `do_not_call` no está a propósito: una importación no decide bajas.
+ */
+export interface LeadCustomerExtras {
+  trade_name?: string | null;
+  identification_type?: string | null;
+  identification_number?: string | null;
+  dv?: number | null;
+  address?: string | null;
+  city?: string | null;
+  notes?: string | null;
+  metadata?: Record<string, unknown> | null;
+  tags?: string[] | null;
+  vertical_id?: string | null;
+  timezone?: string | null;
+}
+
+const CUSTOMER_EXTRA_KEYS: ReadonlyArray<keyof LeadCustomerExtras> = [
+  'trade_name', 'identification_type', 'identification_number', 'dv', 'address', 'city', 'notes', 'metadata', 'tags', 'vertical_id', 'timezone',
+];
+
+/** Solo las columnas permitidas y con valor (lista blanca: nada del objeto se cuela en el INSERT). */
+export function customerExtrasPayload(extras: LeadCustomerExtras | undefined): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (!extras) return out;
+  for (const k of CUSTOMER_EXTRA_KEYS) {
+    const v = extras[k];
+    if (v === null || v === undefined || (typeof v === 'string' && v.trim() === '')) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
 /** Contexto mínimo que necesita este módulo (subconjunto de `LeadCreateContext`). */
 export interface LeadCustomerContext {
   organizationId: number;
@@ -89,6 +126,8 @@ export async function resolveLeadCustomer(
   ctx: LeadCustomerContext,
   body: { customer_id?: string; new_customer?: NewCustomerInput },
   branchId: number | null,
+  /** Solo servidor (importador): columnas extra de la ficha NUEVA. Se ignora con `customer_id`. */
+  extras?: LeadCustomerExtras,
 ): Promise<LeadCustomerResolution> {
   const { supabase, organizationId } = ctx;
   let customerId = clean(body.customer_id);
@@ -123,6 +162,7 @@ export async function resolveLeadCustomer(
     const { data: customer, error } = await supabase
       .from('customers')
       .insert({
+        ...customerExtrasPayload(extras),
         organization_id: organizationId,
         branch_id: branchId,
         first_name: first,

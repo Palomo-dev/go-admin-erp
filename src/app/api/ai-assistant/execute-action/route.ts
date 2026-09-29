@@ -243,7 +243,13 @@ export async function POST(request: NextRequest) {
         console.error('[GO Assistant] Auditoría pendiente', { actionId, error: auditError });
       }
     }
-    return reply({ ...result, historySaved: await persistResult(result) });
+    // Hasta cuándo se puede deshacer, para que la tarjeta diga «Deshacer · 12 min»
+    // en vez de ofrecer un botón que a los 15 minutos responde que ya no. Va
+    // solo en la respuesta: el plazo real lo vuelve a calcular /undo-action.
+    const undoUntil = outcome.ok && outcome.undo
+      ? new Date(Date.now() + caps.undoWindowMinutes * 60_000).toISOString()
+      : null;
+    return reply({ ...result, undoUntil, historySaved: await persistResult(result) });
   } catch (error) {
     if (error instanceof OrgContextError) return reply({ success: false, error: error.message, code: error.code }, error.statusCode);
     if (error instanceof SyntaxError) return reply({ success: false, code: 'BAD_REQUEST', message: 'JSON inválido.' }, 400);

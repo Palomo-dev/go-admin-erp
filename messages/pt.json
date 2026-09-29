@@ -665,7 +665,8 @@
         "eventosTotales": "Total de eventos",
         "usuariosActivos": "Usuários ativos",
         "modulosActivos": "Módulos ativos"
-      }
+      },
+      "soloAdministracion": "Os indicadores financeiros são exclusivos da administração da organização."
     },
     "datosEmpresa": {
       "titulo": "Complete os dados da sua empresa",
@@ -676,6 +677,68 @@
         "ciudad": "a cidade",
         "direccion": "o endereço"
       }
+    },
+    "hoy": {
+      "titulo": "Hoje",
+      "porAtender": "{n, plural, =0 {Tudo em dia} one {# item para resolver} other {# itens para resolver}}",
+      "actualizadoALas": "Atualizado às {hora}",
+      "vacioTitulo": "Nada para resolver hoje",
+      "vacioDesc": "Contas a receber vencidas, faltas de estoque, pedidos web e tarefas de hoje aparecerão aqui.",
+      "etiquetas": {
+        "porCobrar": "A receber vencido",
+        "stockCritico": "Estoque crítico",
+        "pedidosWeb": "Pedidos web",
+        "cajasAnteriores": "Caixas sem fechar",
+        "misTareas": "Minhas tarefas"
+      },
+      "estados": {
+        "vencido": "Vencido",
+        "critico": "Crítico",
+        "urgente": "Urgente",
+        "revisar": "Revisar",
+        "paraHoy": "Para hoje",
+        "alDia": "Em dia"
+      },
+      "cifras": {
+        "sinVencidos": "Sem vencidos",
+        "cuentas": "{n, plural, one {# conta} other {# contas}}",
+        "sinFaltantes": "Sem faltas",
+        "productos": "{n, plural, one {# produto} other {# produtos}}",
+        "sinPendientes": "Sem pendentes",
+        "pendientes": "{n, plural, one {# pendente} other {# pendentes}}",
+        "cajasAbiertas": "{n, plural, one {# caixa aberto} other {# caixas abertos}}",
+        "abiertas": "{n, plural, one {# aberta} other {# abertas}}"
+      },
+      "detalles": {
+        "carteraAlDia": "Nenhuma conta vencida",
+        "cuentasVencidas": "{n, plural, one {# conta} other {# contas}} · a mais antiga com {dias, plural, one {# dia} other {# dias}}",
+        "variasMonedas": "Em várias moedas · a mais antiga com {dias, plural, one {# dia} other {# dias}}",
+        "stockAlDia": {
+          "estaSucursal": "Tudo acima do mínimo nesta filial",
+          "tusSucursales": "Tudo acima do mínimo nas suas filiais"
+        },
+        "stockBajo": {
+          "estaSucursal": "Abaixo do mínimo nesta filial{agotados, plural, =0 {} one { · # esgotado} other { · # esgotados}}",
+          "tusSucursales": "Abaixo do mínimo nas suas filiais{agotados, plural, =0 {} one { · # esgotado} other { · # esgotados}}"
+        },
+        "pedidosAlDia": "Nenhum pedido para confirmar",
+        "pedidosSinConfirmar": "Aguardando confirmação de pagamento",
+        "cajasDesde": "Aberto há {dias, plural, one {# dia} other {# dias}}",
+        "tareasVencidas": "{n, plural, one {# vencida} other {# vencidas}}{hoy, plural, =0 {} one { · # vence hoje} other { · # vencem hoje}}",
+        "tareasHoy": "{n, plural, one {# vence hoje} other {# vencem hoje}}",
+        "tareasSinVencer": "Nenhuma vence hoje"
+      },
+      "acciones": {
+        "verCartera": "Ver contas a receber",
+        "cobrar": "Cobrar",
+        "verExistencias": "Ver estoque",
+        "reponer": "Repor",
+        "verPedidos": "Ver pedidos",
+        "atender": "Atender",
+        "verCajas": "Ver caixas",
+        "abrir": "Abrir"
+      },
+      "verTodas": "Ver as {n} · {resto}"
     }
   },
   "org": {
@@ -21912,6 +21975,514 @@
       "agregado": "Adicionado: {cantidad} · {producto} · {importe}",
       "deshacer": "Desfazer",
       "pesadaCancelada": "A pesagem de “{producto}” foi cancelada: não estava confirmada."
+    }
+  },
+  "leadsImportar": {
+    "boton": "Importar",
+    "titulo": "Importar leads",
+    "subtitulo": "Envie um CSV ou Excel: cada linha cria a ficha do cliente (ou usa a existente) e o seu lead.",
+    "subtituloArchivo": "{nombre} · planilha {hoja}",
+    "extra": "Lote: {lote}",
+    "plantillaArchivo": "modelo_leads",
+    "migas": {
+      "crm": "CRM",
+      "leads": "Leads",
+      "importar": "Importar"
+    },
+    "pasos": {
+      "etiqueta": "Etapas da importação",
+      "origen": "Arquivo",
+      "mapeo": "Colunas",
+      "validacion": "Validação",
+      "vista": "Pré-visualização",
+      "resultado": "Resultado",
+      "resumenMovil": "Etapa {n} de {total} · {paso}"
+    },
+    "acciones": {
+      "continuar": "Continuar",
+      "volver": "Voltar",
+      "revisar": "Revisar linhas",
+      "plantilla": "Baixar modelo",
+      "importar": "Importar {n} linhas",
+      "cancelar": "Cancelar",
+      "validar": "Validar",
+      "validarDeNuevo": "Validar novamente",
+      "importarOtro": "Importar outro arquivo",
+      "verLeads": "Ver leads",
+      "detener": "Parar"
+    },
+    "origen": {
+      "titulo": "Arquivo",
+      "descripcion": "CSV, XLS ou XLSX com até {max} linhas por arquivo.",
+      "soltar": "Arraste o arquivo ou clique para escolhê-lo",
+      "formatos": "CSV, XLS ou XLSX · máximo 10 MB",
+      "leyendo": "Lendo o arquivo…",
+      "filas": "{n} linhas com dados",
+      "hoja": "Planilha",
+      "hojaAyuda": "Escolha a planilha com os prospects; as demais (resumo, fontes…) são ignoradas.",
+      "sinCabecera": "Não encontramos uma linha de cabeçalhos com o nome do negócio. Escolha a linha correta na próxima etapa.",
+      "demasiadas": "O arquivo tem {n} linhas e o máximo é {max}. Divida-o em vários lotes.",
+      "errorFormato": "Formato não suportado: use CSV, XLS ou XLSX.",
+      "errorTamano": "O arquivo passa de 10 MB.",
+      "errorLectura": "Não foi possível ler o arquivo.",
+      "sinDatos": "O arquivo não tem planilhas com dados.",
+      "ayudaTitulo": "Quais colunas são reconhecidas?",
+      "ayuda": "Nome comercial ou empresa, razão social, NIT (com ou sem dígito verificador), contato, telefone ou celular (salvo no formato internacional +57…), e-mail, endereço, bairro, cidade, região, zona, setor, subsetor, prioridade (A/B/C), valor, plano, site, fontes (URL), horário, notas e etiquetas. É preciso um nome e um telefone ou e-mail. As demais colunas podem ficar sem importar."
+    },
+    "mapeo": {
+      "titulo": "Colunas",
+      "descripcion": "{n} de {total} colunas reconhecidas. Revise e corrija a atribuição.",
+      "filaCabecera": "Linha de cabeçalhos",
+      "fila": "Linha {n}",
+      "noImportar": "Não importar",
+      "columnaSinNombre": "Coluna {n}",
+      "campoDe": "Campo para a coluna {columna}",
+      "multiple": "aceita várias colunas",
+      "faltaNombre": "Atribua uma coluna de nome: nome comercial, razão social ou contato.",
+      "faltaContacto": "Atribua uma coluna de telefone ou e-mail: sem eles o lead não pode ser contatado."
+    },
+    "campos": {
+      "idExterno": "ID externo",
+      "prioridad": "Prioridade",
+      "nombre": "Nome comercial",
+      "razonSocial": "Razão social",
+      "contacto": "Contato",
+      "nit": "NIT",
+      "dv": "Dígito verificador do NIT",
+      "telefono": "Telefone",
+      "tipoTelefono": "Tipo de telefone",
+      "correo": "E-mail",
+      "web": "Site",
+      "direccion": "Endereço",
+      "barrio": "Bairro",
+      "ciudad": "Cidade",
+      "departamento": "Região",
+      "zona": "Zona",
+      "sector": "Setor",
+      "subsector": "Subsetor",
+      "plan": "Plano provável",
+      "valor": "Valor",
+      "verificacion": "Verificação",
+      "fechaVerificacion": "Data de verificação",
+      "fuente": "Fonte (URL)",
+      "horario": "Horário de contato",
+      "notas": "Notas",
+      "etiquetas": "Etiquetas",
+      "rne": "Registro de exclusão (info)"
+    },
+    "cabeceras": {
+      "idExterno": "ID externo",
+      "nombre": "Nome comercial",
+      "razonSocial": "Razão social",
+      "nit": "NIT",
+      "contacto": "Contato",
+      "telefono": "Telefone",
+      "correo": "E-mail",
+      "direccion": "Endereço",
+      "barrio": "Bairro",
+      "ciudad": "Cidade",
+      "departamento": "Região",
+      "sector": "Setor",
+      "subsector": "Subsetor",
+      "prioridad": "Prioridade",
+      "valor": "Valor",
+      "plan": "Plano",
+      "web": "Site",
+      "fuente": "Fonte",
+      "notas": "Notas",
+      "etiquetas": "Etiquetas"
+    },
+    "validacion": {
+      "opciones": "Opções",
+      "lote": "Nome do lote",
+      "loteAyuda": "Identifica esta importação: importar o mesmo lote de novo não duplica.",
+      "loteFalta": "Informe um nome de lote.",
+      "tipoCliente": "Tipo de cliente",
+      "empresa": "Empresa",
+      "persona": "Pessoa",
+      "moneda": "Moeda do valor",
+      "monedaBase": "A da organização",
+      "monedaAyuda": "Se a sua organização não usa essa moeda, o valor é convertido para a sua com a cotação do dia.",
+      "pais": "País dos telefones",
+      "paisAyuda": "Para completar os números sem código do país.",
+      "resumen": "Resultado da validação",
+      "validando": "Validando com os seus clientes…",
+      "pendiente": "Valide para ver o que acontecerá com cada linha.",
+      "error": "Não foi possível validar: {mensaje}",
+      "kpi": {
+        "crear": "Cliente e lead novos",
+        "ligar": "Lead para cliente existente",
+        "omitir": "Ignoradas",
+        "error": "Com erro"
+      },
+      "rne": "{n} linhas ficarão com verificação RNE pendente: não devem ser ligadas até serem verificadas no Registro de Números Excluídos (Colômbia).",
+      "rneExcluidos": "{n} números já estão na sua lista de exclusão (RNE): são importados, mas não serão ligados.",
+      "conversion": "O valor em {origen} é convertido para {destino} com a cotação de {fecha} ({tasa}).",
+      "sinTasa": "Não há cotação para {origen}: o valor é salvo como 0 e o original fica na ficha.",
+      "frecuentes": "Mais frequentes",
+      "filasCon": "{n} linhas:"
+    },
+    "vista": {
+      "titulo": "{n} linhas",
+      "buscar": "Buscar por nome, telefone ou cidade",
+      "filtrar": "Filtrar linhas",
+      "filtros": {
+        "todas": "Todas",
+        "importar": "Importadas",
+        "omitir": "Ignoradas",
+        "error": "Com erro"
+      },
+      "columnas": {
+        "accion": "Ação",
+        "fila": "Linha",
+        "nombre": "Nome",
+        "telefono": "Telefone",
+        "ciudad": "Cidade"
+      },
+      "excluir": "Excluir da importação",
+      "incluir": "Incluir novamente",
+      "vacio": "Sem linhas",
+      "sinResultados": "Nenhuma linha corresponde",
+      "sustantivo": {
+        "singular": "linha",
+        "plural": "linhas"
+      },
+      "pie": "{importar} linhas serão importadas · {resto} não"
+    },
+    "accion": {
+      "crear": "Criar",
+      "ligar": "Vincular a existente",
+      "omitir": "Ignorar",
+      "error": "Erro",
+      "excluida": "Excluída"
+    },
+    "motivos": {
+      "duplicado_archivo": "Repetida no arquivo (linha {fila})",
+      "lead_abierto": "O cliente já tem um lead aberto",
+      "ya_importado": "Já importada neste lote",
+      "duplicado_bd": "Já existe na base"
+    },
+    "coincide": "Cliente existente: {nombre} ({por})",
+    "por": {
+      "telefono": "por telefone",
+      "nit": "por NIT",
+      "correo": "por e-mail",
+      "id_externo": "por ID externo"
+    },
+    "mensajes": {
+      "sin_nombre": "Sem nome",
+      "sin_contacto": "Sem telefone nem e-mail",
+      "telefono_invalido": "Telefone inválido: {valor}",
+      "correo_invalido": "E-mail inválido: {valor}",
+      "telefono_descartado": "Telefone inválido descartado: {valor}",
+      "correo_descartado": "E-mail inválido descartado: {valor}",
+      "nit_invalido": "NIT inválido descartado: {valor}",
+      "nit_dv_invalido": "O dígito verificador não corresponde ao NIT {valor}: salvo sem ele",
+      "valor_invalido": "Valor não numérico: {valor}",
+      "web_invalida": "Site inválido: {valor}",
+      "prioridad_desconocida": "Prioridade «{valor}» sem faixa A/B/C: fica como etiqueta",
+      "empresa_sin_nombre": "Empresa sem nome comercial nem razão social",
+      "rne_excluido": "Número na sua lista de exclusão (RNE): não será ligado",
+      "sin_tasa": "Sem cotação para {moneda}: valor 0",
+      "conflicto": "Conflito ao criar: {detalle}",
+      "alta_rechazada": "Criação recusada: {detalle}",
+      "error_bd": "Erro de banco de dados: {detalle}",
+      "bloque": "O bloco falhou: {detalle}"
+    },
+    "resultado": {
+      "enCurso": "Importando…",
+      "terminada": "Importação concluída",
+      "detenida": "Importação interrompida",
+      "bloque": "Bloco {actual} de {total} · {procesadas} de {filas} linhas",
+      "kpi": {
+        "creados": "Clientes e leads criados",
+        "ligados": "Leads vinculados a clientes existentes",
+        "omitidos": "Ignorados por duplicidade",
+        "errores": "Com erro",
+        "sinIntentar": "Não tentados"
+      },
+      "rne": "Os leads importados ficaram com verificação RNE pendente: verifique os números no Registro de Números Excluídos antes de ligar.",
+      "errorBloque": "O bloco {n} falhou: {mensaje}. Tentar de novo não duplica.",
+      "errores": "{n} linhas com erro",
+      "sinErrores": "Nenhuma linha com erro.",
+      "esperando": "Aguardando o servidor…",
+      "fila": "Linha {n}",
+      "descargar": "Baixar resultado (CSV)",
+      "reporte": {
+        "archivo": "resultado_importacao_leads",
+        "fila": "Linha",
+        "nombre": "Nome",
+        "telefono": "Telefone",
+        "resultado": "Resultado",
+        "cliente": "Cliente",
+        "detalle": "Detalhe"
+      }
+    },
+    "toast": {
+      "error": "Erro",
+      "plantilla": "Modelo baixado"
+    }
+  },
+  "perfil": {
+    "navegacion": "Seções do meu perfil",
+    "volver": "Voltar",
+    "editar": "Editar",
+    "seUnio": "Entrou em {fecha}",
+    "sinNombre": "Sem nome",
+    "secciones": {
+      "datos-personales": "Dados pessoais",
+      "seguridad": "Segurança",
+      "preferencias": "Preferências",
+      "sesiones": "Sessões e dispositivos",
+      "organizacion-roles": "Organização e funções",
+      "notificaciones": "Notificações",
+      "panel-vendedor": "Painel de vendedor",
+      "eliminar-cuenta": "Excluir conta"
+    },
+    "errores": {
+      "sinSesion": "Nenhuma sessão de usuário encontrada",
+      "cargarPerfil": "Não foi possível carregar os dados do perfil",
+      "cargarDatos": "Não foi possível carregar os dados do usuário"
+    },
+    "preferencias": {
+      "titulo": "Preferências",
+      "descripcion": "Tema, idioma e fuso horário.",
+      "tema": "Tema",
+      "temaAyuda": "Fica salvo na sua conta e vale em todos os seus dispositivos.",
+      "claro": "Claro",
+      "oscuro": "Escuro",
+      "sistema": "Sistema",
+      "idioma": "Idioma",
+      "zonaHoraria": "Fuso horário",
+      "zonaHorariaAyuda": "As datas são exibidas no fuso horário da organização."
+    },
+    "vendedor": {
+      "titulo": "Painel de vendedor",
+      "descripcion": "Venda conosco e ganhe comissões por cada indicação.",
+      "yaEresTitulo": "Você já é vendedor",
+      "yaEresDesc": "Sua conta está vinculada ao painel de vendedores. Abra-o para ver suas comissões, pagamentos e indicações.",
+      "abrir": "Abrir painel de vendedor",
+      "convierteteTitulo": "Torne-se vendedor",
+      "convierteteDesc": "Ative sua conta de vendedor e ganhe comissões por cada cliente que indicar. Você usará as mesmas credenciais, o mesmo e-mail e o mesmo avatar do ERP.",
+      "activar": "Ativar conta de vendedor",
+      "activando": "Ativando…",
+      "exito": "Agora você é vendedor! Sua conta foi vinculada.",
+      "errorSinSesion": "Faça login para ativar a conta de vendedor.",
+      "errorCrear": "Não foi possível criar a conta de vendedor",
+      "errorConexion": "Não foi possível conectar ao serviço. Tente mais tarde.",
+      "errorProcesar": "Não foi possível processar a solicitação",
+      "errorToast": "Não foi possível ativar a conta de vendedor"
+    }
+  },
+  "asistente": {
+    "cabecera": {
+      "titulo": "GO Assistente",
+      "conversaciones": "Conversas",
+      "volver": "Voltar à conversa",
+      "nueva": "Nova conversa",
+      "historial": "Conversas anteriores",
+      "voz": "Responder em áudio",
+      "vozActiva": "Responder em áudio: ativado",
+      "ampliar": "Ampliar",
+      "reducir": "Reduzir",
+      "cerrar": "Fechar",
+      "abrir": "Abrir GO Assistente"
+    },
+    "bienvenida": {
+      "saludo": "Olá, {nombre}!",
+      "texto": "Pergunte-me sobre seus dados, peça que eu registre algo ou envie um arquivo. Antes de salvar qualquer coisa, mostro um resumo para você confirmar.",
+      "sugerenciasPara": "Sugestões para {pagina}",
+      "sugerencias": "Sugestões",
+      "respaldo1": "Como crio um novo produto?",
+      "respaldo2": "Como tiro um relatório de vendas?",
+      "respaldo3": "Como cadastro um novo cliente?"
+    },
+    "mensaje": {
+      "escuchar": "Ouvir",
+      "escucharRespuesta": "Ouvir a resposta",
+      "leyendo": "Lendo…",
+      "detenerLectura": "Parar leitura",
+      "copiar": "Copiar",
+      "copiarRespuesta": "Copiar resposta",
+      "copiado": "Copiado",
+      "vozNoActiva": "Sua organização não ativou as respostas em áudio.",
+      "leeDocumento": "Leia este documento."
+    },
+    "pasos": {
+      "pensando": "Pensando…",
+      "enCurso": "Etapas em andamento",
+      "plegados": "{n, plural, one {# etapa} other {# etapas}} · Ver",
+      "anuncio": {
+        "pensando": "O GO Assistente está pensando",
+        "consultando": "O GO Assistente está consultando seus dados",
+        "escribiendo": "O GO Assistente está respondendo",
+        "lista": "Resposta pronta"
+      }
+    },
+    "pregunta": {
+      "etiqueta": "Pergunta do assistente",
+      "opciones": "Opções",
+      "otro": "Outro: vou escrever",
+      "atajo": "Atalho: pressione {letras}"
+    },
+    "tarjeta": {
+      "etiqueta": "Confirmar ação: {titulo}",
+      "estado": {
+        "pendiente": "A confirmar",
+        "ejecutando": "Salvando",
+        "completada": "Concluída",
+        "deshecha": "Desfeita",
+        "error": "Não concluída",
+        "caducada": "Expirou"
+      },
+      "puedesDeshacer": "Você pode desfazer durante {n, plural, one {# minuto} other {# minutos}}.",
+      "avisoContable": "Esta ação tem impacto contábil.",
+      "falta": "Falta: {campos}. Diga-me no chat antes de confirmar.",
+      "irreversible": "Esta ação não pode ser desfeita pelo chat.",
+      "caducaEn": "A proposta expira em {n, plural, one {# minuto} other {# minutos}}.",
+      "caducada": "Esta proposta expirou e não pode mais ser confirmada. Peça-me um novo resumo.",
+      "nota": "Nada é salvo até você confirmar · Confirmar não gasta créditos",
+      "formulario": "Abrir o formulário completo",
+      "formularioAyuda": "Abre o mesmo formulário do módulo Clientes, com estes dados já preenchidos",
+      "repetir": "Você vai: {resumen} Posso confirmar?",
+      "confirmar": "Confirmar",
+      "siConfirmar": "Sim, confirmar",
+      "guardando": "Salvando…",
+      "volver": "Voltar",
+      "corregir": "Corrigir",
+      "rechazar": "Recusar",
+      "atajos": "Ctrl+Enter confirma · Esc recusa",
+      "atajosRepetir": "Ctrl+Enter confirma · Esc volta",
+      "pedirOtro": "Pedir um novo resumo",
+      "ver": {
+        "customer": "Ver cliente",
+        "product": "Ver produto",
+        "sale": "Ver venda",
+        "purchase_order": "Ver pedido de compra",
+        "inventory_transfer": "Ver transferência",
+        "inventory_adjustment": "Ver ajuste",
+        "invoice_purchase": "Ver fatura de compra",
+        "invoice_sales": "Ver fatura de venda",
+        "generico": "Ver"
+      },
+      "deshacer": "Desfazer",
+      "deshacerMin": "Desfazer · {n} min",
+      "deshaciendo": "Desfazendo…",
+      "corregirReintentar": "Corrigir e tentar de novo",
+      "errorGenerico": "Não foi possível executar a ação. Tente novamente.",
+      "errorRed": "Não foi possível executar a ação. Verifique o status antes de tentar de novo.",
+      "errorCancelar": "Não consegui cancelar essa proposta. Recarregue o histórico antes de continuar.",
+      "errorDeshacer": "Não foi possível desfazer.",
+      "canceladaMensaje": "Ação cancelada.",
+      "corregirMensaje": "Diga o que você quer corrigir. Vou preparar um novo resumo para confirmar; a proposta anterior já está cancelada.",
+      "caducadaMensaje": "Essa proposta expirou. Diga de novo o que você precisa e preparo um novo resumo."
+    },
+    "masiva": {
+      "filas": "{n, plural, one {# linha} other {# linhas}}",
+      "nuevos": "{n, plural, one {# novo} other {# novos}}",
+      "existen": "{n, plural, one {# já existe} other {# já existem}}",
+      "omiten": "{n, plural, one {# ignorada} other {# ignoradas}}",
+      "pie": "Serão carregados {n} · duplicados por SKU, código de barras ou nome · tudo ou nada (uma única transação)",
+      "tabla": "Linhas da carga",
+      "colProducto": "Produto",
+      "colSku": "SKU",
+      "colPrecio": "Preço",
+      "colStock": "Estoque",
+      "colEstado": "Status",
+      "sinNombre": "(sem nome)",
+      "estado": {
+        "nuevo": "Novo",
+        "existente": "Já existe",
+        "error": "Ignorada"
+      },
+      "seOmite": "Ignorada",
+      "seOmiteMotivo": "{motivo}: ignorada",
+      "yaExiste": "Já existe",
+      "coincidePor": "Coincide por {campo}",
+      "campo": {
+        "sku": "SKU",
+        "barcode": "código de barras",
+        "nombre": "nome"
+      },
+      "verEnGrande": "Ver as {n} linhas ampliadas",
+      "verFilas": "Ver as {n} linhas",
+      "ocultarFilas": "Ocultar as linhas"
+    },
+    "aviso": {
+      "creditosBajosTitulo": "{n, plural, one {Resta # crédito} other {Restam # créditos}}",
+      "creditosBajosRespuestas": "{n, plural, =0 {Não é suficiente para uma resposta completa.} one {Dá para mais uma resposta, aproximadamente.} other {Dá para umas # respostas.}}",
+      "creditosBajosSinPromedio": "Quando acabarem, o assistente fica em pausa até você comprar mais.",
+      "sinCreditosTitulo": "Sem créditos de IA",
+      "sinCreditosTexto": "O assistente fica em pausa até você comprar um pacote ou seu plano ser renovado. Suas conversas são mantidas.",
+      "sinPermisoTitulo": "Você não tem permissão para isso",
+      "sinPermisoTexto": "Seu cargo ou plano não inclui essa ação. Posso mostrar a informação ou explicar o processo passo a passo.",
+      "sesionTitulo": "Sua sessão expirou",
+      "sesionTexto": "Entre novamente para continuar. Sua conversa está salva.",
+      "limiteTitulo": "Você está indo rápido demais",
+      "limiteTexto": "Espere alguns segundos e tente novamente.",
+      "errorTitulo": "A resposta ficou incompleta",
+      "errorTexto": "Não consegui concluir a resposta.",
+      "errorConservado": "Sua mensagem voltou para a caixa de texto. Verifique o histórico antes de tentar de novo: o turno pode ter avançado.",
+      "comprarCreditos": "Comprar créditos",
+      "verPermisos": "Ver minhas permissões",
+      "iniciarSesion": "Entrar",
+      "reintentar": "Tentar de novo",
+      "descartar": "Dispensar aviso"
+    },
+    "composer": {
+      "etiqueta": "Mensagem para o GO Assistente",
+      "placeholder": "Pergunte ou peça algo…",
+      "placeholderSinCreditos": "Sem créditos: o assistente está em pausa",
+      "transcribiendo": "Transcrevendo sua nota…",
+      "adjuntar": "Anexar arquivo ou foto",
+      "adjuntos": "Arquivos anexados",
+      "quitarAdjunto": "Remover {nombre}",
+      "adjuntosNoDisponibles": "Ainda não consigo ler arquivos. Por enquanto, escreva o que ele diz.",
+      "dictar": "Ditar",
+      "detenerGrabacion": "Parar e transcrever",
+      "grabando": "Gravando… {tiempo}",
+      "enviar": "Enviar mensagem",
+      "detener": "Parar resposta",
+      "contextoActivo": "O assistente sabe que você está em {pagina}. Toque para não enviar.",
+      "contextoInactivo": "Sem contexto de página. Toque para enviar de novo.",
+      "ayuda": "Enter envia · Shift+Enter nova linha",
+      "ayudaMovil": "Toque em enviar para mandar",
+      "ayudaRespondiendo": "Esc para a resposta",
+      "ayudaGrabando": "Ao parar, o texto fica aqui para revisar · Esc cancela",
+      "ayudaSinCreditos": "Compre créditos para continuar",
+      "creditos": "{n, plural, one {# crédito} other {# créditos}}",
+      "notaDudosa": "Não entendi bem a nota: revise o texto antes de enviar.",
+      "notaVacia": "Não se ouviu nada na nota. Tente gravar de novo, mais perto do microfone.",
+      "notaError": "Não consegui transcrever a nota.",
+      "sinMicrofono": "Não consegui usar o microfone. Verifique a permissão do navegador.",
+      "soltar": "Solte aqui a foto ou o arquivo",
+      "limiteArchivo": "Não foi possível anexar alguns arquivos: o limite é 20 MB por arquivo."
+    },
+    "historial": {
+      "etiqueta": "Histórico de conversas",
+      "buscar": "Buscar no histórico",
+      "cargando": "Carregando histórico…",
+      "errorCarga": "Não foi possível carregar o histórico.",
+      "errorArchivar": "Não foi possível arquivar a conversa.",
+      "errorAbrir": "Não consegui abrir essa conversa. Tente novamente.",
+      "reintentar": "Tentar de novo",
+      "vacio": "Ainda não há conversas salvas.",
+      "sinCoincidencias": "Nenhuma conversa corresponde à busca.",
+      "sinTitulo": "Conversa sem título",
+      "grupo": {
+        "hoy": "Hoje",
+        "ayer": "Ontem",
+        "semana": "Esta semana",
+        "anteriores": "Anteriores"
+      },
+      "mensajes": "{n, plural, one {# mensagem} other {# mensagens}}",
+      "archivar": "Arquivar “{titulo}”",
+      "archivarAyuda": "Arquivar",
+      "nota": "Arquivar tira a conversa da lista; não a apaga."
+    },
+    "pie": {
+      "aviso": "Pode errar: revise o que é importante",
+      "permisos": "Permissões do assistente"
     }
   }
 }

@@ -12,7 +12,7 @@
  * importar en cualquier idioma (lo comprueba importacion.test.ts).
  */
 
-import { normalizarCabecera } from './texto';
+import { autoMapearCon, encontrarFilaCabeceraCon, reasignarColumnaCon } from '@/lib/importacion/mapeoColumnas';
 
 export type CampoProducto =
   | 'sku'
@@ -92,22 +92,11 @@ export type Mapeo = Array<CampoProducto | null>;
 
 /**
  * Reconoce las cabeceras de una fila. Cada campo se asigna a la primera
- * columna que lo nombra; las repeticiones quedan sin importar.
+ * columna que lo nombra; las repeticiones quedan sin importar. La regla es la
+ * genérica de `@/lib/importacion/mapeoColumnas` (la comparte el importador de leads).
  */
 export function autoMapear(cabeceras: unknown[]): Mapeo {
-  const usados = new Set<CampoProducto>();
-  return cabeceras.map((h) => {
-    const norm = normalizarCabecera(h);
-    if (!norm) return null;
-    for (const def of CAMPOS) {
-      if (usados.has(def.campo)) continue;
-      if (def.alias.includes(norm)) {
-        usados.add(def.campo);
-        return def.campo;
-      }
-    }
-    return null;
-  });
+  return autoMapearCon(CAMPOS, cabeceras);
 }
 
 /** Cuántas columnas reconoce una fila (para encontrar la cabecera). */
@@ -121,12 +110,7 @@ export function columnasReconocidas(fila: unknown[]): number {
  * pone la cabecera en la fila 5). `-1` si no hay.
  */
 export function encontrarFilaCabecera(matriz: unknown[][]): number {
-  for (let i = 0; i < Math.min(10, matriz.length); i++) {
-    const mapa = autoMapear(matriz[i] ?? []);
-    const reconocidas = mapa.filter(Boolean).length;
-    if (reconocidas >= 2 && (mapa.includes('name') || mapa.includes('sku'))) return i;
-  }
-  return -1;
+  return encontrarFilaCabeceraCon(CAMPOS, matriz, ['name', 'sku']);
 }
 
 /** Campos obligatorios que el mapeo no cubre. */
@@ -136,9 +120,5 @@ export function camposObligatoriosFaltantes(mapeo: Mapeo): CampoProducto[] {
 
 /** Cambia el campo de una columna; si otro ya lo tenía, se lo quita (un campo, una columna). */
 export function reasignarColumna(mapeo: Mapeo, columna: number, campo: CampoProducto | null): Mapeo {
-  return mapeo.map((c, i) => {
-    if (i === columna) return campo;
-    if (campo && c === campo) return null;
-    return c;
-  });
+  return reasignarColumnaCon(CAMPOS, mapeo, columna, campo);
 }

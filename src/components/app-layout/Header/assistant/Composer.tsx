@@ -1,33 +1,35 @@
 'use client';
 
 /**
- * GO Assistant — composer.
+ * GO Asistente — composer (Figma `AsistenteComposer` 664:16404, Estado =
+ * vacío / escribiendo / con adjunto / grabando / respondiendo / sin créditos).
  *
- * El anterior era un `<Input>` de UNA línea: dictar un pedido largo o pegar el
- * texto de una factura era imposible, y no había forma de adjuntar nada ni de
- * hablar. Este es el que el plan pide en §11.2.
+ * - **Caja** en Fondo de lienzo con borde fuerte y radio 16: el texto arriba
+ *   (1 a 8 líneas; Enter envía, Shift+Enter salta; en móvil Enter siempre
+ *   salta) y debajo la fila de herramientas: adjuntar, dictar, el **chip de la
+ *   página** que el asistente recibe como contexto y, a la derecha, enviar
+ *   (Tinte si está vacío, Azul acción con texto, Detener mientras responde).
+ * - **Adjuntar**: botón, arrastrar y soltar sobre todo el panel y pegar una
+ *   captura.
+ * - **Dictar**: el texto queda en el composer para revisarlo ANTES de enviar.
+ * - **Pie**: el atajo que aplica en cada estado y el saldo discreto (gris,
+ *   ámbar por debajo de 50, rojo en 0).
  *
- * Qué hace y por qué:
- * - **Textarea que crece** de 1 a 8 líneas. `Enter` envía, `Shift+Enter` salta
- *   de línea (en móvil `Enter` siempre salta: ahí el teclado no distingue).
- * - **Adjuntar**: botón, arrastrar y soltar sobre todo el panel, y **pegar
- *   desde el portapapeles** — que es como se manda una captura de pantalla, el
- *   caso más común en soporte.
- * - **Micrófono**: pulsar para grabar, con contador y forma de onda. Al parar,
- *   se transcribe y el texto entra en el composer para que el usuario lo
- *   corrija ANTES de enviarlo, en vez de mandarlo a ciegas.
- * - **Parar**: mientras responde, el botón de enviar se convierte en detener.
- *   Sin esto, una respuesta larga que arrancó mal hay que aguantarla entera.
- *
- * Los adjuntos se recogen aquí pero todavía NO se procesan: la extracción de
- * facturas es F4. Se muestran con un aviso honesto en vez de aceptarlos en
- * silencio y no hacer nada con ellos.
+ * Mejoras sobre el Figma:
+ * - La forma de onda es el **nivel real del micrófono** (AnalyserNode), no un
+ *   dibujo: si no se mueve, el micrófono no está captando, y se ve antes de
+ *   gastar un crédito en transcribir silencio.
+ * - **Esc cancela la grabación** sin transcribir (y sin cobrar).
+ * - El chip de contexto **se puede quitar** con un toque (lo que dice la
+ *   descripción del componente en Figma) y lo anuncia con `aria-pressed`.
+ * - Sin créditos, la caja se bloquea con el motivo en el placeholder.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Send, Loader2, Paperclip, Mic, Square, X, FileText, ImageIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useLocale, useTranslations } from 'next-intl';
+import { Coins, FileText, ImageIcon, Loader2, MapPin, Mic, Paperclip, Send, Square, X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import type { AssistantCreditsState } from '@/lib/ai/assistant/clientTypes';
 
 export type ComposerAttachment = import('@/lib/ai/assistant/attachments').AssistantAttachment;
 
@@ -45,14 +47,17 @@ interface ComposerProps {
   attachmentsEnabled: boolean;
   disabled?: boolean;
   /** Saldo de créditos de IA de la organización, para el pie. `null` = aún no se sabe. */
-  credits?: { credits: number; level: 'ok' | 'low' | 'empty' } | null;
+  credits?: AssistantCreditsState | null;
+  /** Chip «dónde estás»: la página que el asistente recibe como contexto. */
+  contexto?: { pagina: string | null; activo: boolean; onAlternar(): void } | null;
 }
 
 const MAX_ROWS = 8;
-const LINE_HEIGHT = 24;
+const LINE_HEIGHT = 20;
 const MAX_CHARS = 8000;
+const BARRAS = 14;
 
-/** Tipos que el asistente sabrá leer en F4. Se filtra ya para no dar falsas esperanzas. */
+/** Tipos que el asistente sabe leer. Se filtra ya para no dar falsas esperanzas. */
 const ACCEPTED = 'image/*,application/pdf,.csv,.xlsx,.xls';
 
 export default function Composer({
@@ -68,7 +73,10 @@ export default function Composer({
   disabled = false,
   focusRequest = 0,
   credits = null,
+  contexto = null,
 }: ComposerProps) {
+  const t = useTranslations('asistente.composer');
+  const locale = useLocale();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -76,9 +84,15 @@ export default function Composer({
   /** Aviso bajo el composer tras una nota de voz (baja confianza, error). */
   const [voiceNote, setVoiceNote] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(0);
+  const [niveles, setNiveles] = useState<number[]>(() => Array(BARRAS).fill(0.15));
   const [isMobile, setIsMobile] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const cancelarRef = useRef(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const sinCreditos = credits?.level === 'empty';
+  const bloqueado = disabled || sinCreditos;
 
   useEffect(() => {
     if (focusRequest > 0) textareaRef.current?.focus();
@@ -97,7 +111,7 @@ export default function Composer({
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, MAX_ROWS * LINE_HEIGHT + 16)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, MAX_ROWS * LINE_HEIGHT + 4)}px`;
   }, []);
 
   useEffect(() => {
@@ -110,12 +124,20 @@ export default function Composer({
     return () => clearInterval(timer);
   }, [isRecording]);
 
+  useEffect(
+    () => () => {
+      recorderRef.current?.stream.getTracks().forEach((track) => track.stop());
+      void audioCtxRef.current?.close().catch(() => undefined);
+    },
+    []
+  );
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // En móvil `Enter` siempre salta de línea: el teclado virtual no distingue
     // Shift de forma fiable y enviar sin querer es peor que un salto de más.
-    if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !isMobile) {
       e.preventDefault();
-      if ((value.trim() || attachments.length) && !isLoading && !disabled) onSubmit();
+      if ((value.trim() || attachments.length) && !isLoading && !bloqueado) onSubmit();
     }
   };
 
@@ -128,16 +150,52 @@ export default function Composer({
     }
   };
 
+  /** Nivel real del micrófono para la forma de onda. Si el navegador no deja, se queda quieta. */
+  const medirNivel = (stream: MediaStream) => {
+    try {
+      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      audioCtxRef.current = ctx;
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 64;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      const datos = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') return;
+        analyser.getByteFrequencyData(datos);
+        const paso = Math.max(1, Math.floor(datos.length / BARRAS));
+        setNiveles(Array.from({ length: BARRAS }, (_, i) => Math.max(0.12, (datos[i * paso] ?? 0) / 255)));
+        window.setTimeout(tick, 100);
+      };
+      tick();
+    } catch {
+      /* sin analizador: la grabación funciona igual */
+    }
+  };
+
+  const cerrarAnalizador = () => {
+    const ctx = audioCtxRef.current;
+    audioCtxRef.current = null;
+    void ctx?.close().catch(() => undefined);
+    setNiveles(Array(BARRAS).fill(0.15));
+  };
+
   const startRecording = async () => {
+    setVoiceNote(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       chunksRef.current = [];
+      cancelarRef.current = false;
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
       recorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
+        stream.getTracks().forEach((track) => track.stop());
+        cerrarAnalizador();
+        // Cancelada con Esc: no se transcribe, y por tanto no se cobra.
+        if (cancelarRef.current) return;
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
         if (blob.size === 0) return;
 
@@ -145,7 +203,7 @@ export default function Composer({
         try {
           const form = new FormData();
           form.append('audio', blob, 'nota.webm');
-          form.append('language', 'es');
+          form.append('language', locale.slice(0, 2) || 'es');
           const res = await fetch('/api/ai-assistant/transcribe', { method: 'POST', body: form });
           const data = await res.json();
           if (res.ok && data.text) {
@@ -155,17 +213,17 @@ export default function Composer({
             // §5.5.1: la confianza se enseña. Si el proveedor no está seguro,
             // se le pide al usuario que revise antes de enviar.
             const conf = typeof data.confidence === 'number' ? data.confidence : null;
-            setVoiceNote(conf !== null && conf < 0.7 ? 'No entendí bien la nota: revisa el texto antes de enviarlo.' : null);
+            setVoiceNote(conf !== null && conf < 0.7 ? t('notaDudosa') : null);
             setTimeout(() => textareaRef.current?.focus(), 50);
           } else if (res.ok && !data.text) {
-            setVoiceNote('No se oyó nada en la nota. Prueba a grabar de nuevo, más cerca del micrófono.');
+            setVoiceNote(t('notaVacia'));
           } else {
             console.error('Error transcribiendo:', data.error);
-            setVoiceNote(typeof data.error === 'string' ? data.error : 'No pude transcribir la nota.');
+            setVoiceNote(typeof data.error === 'string' ? data.error : t('notaError'));
           }
         } catch (error) {
           console.error('Error transcribiendo:', error);
-          setVoiceNote('No pude transcribir la nota.');
+          setVoiceNote(t('notaError'));
         } finally {
           setIsTranscribing(false);
         }
@@ -174,42 +232,68 @@ export default function Composer({
       recorderRef.current = recorder;
       setSeconds(0);
       setIsRecording(true);
+      medirNivel(stream);
     } catch (error) {
       console.error('No se pudo acceder al micrófono:', error);
+      setVoiceNote(t('sinMicrofono'));
     }
   };
 
-  const stopRecording = () => {
+  const stopRecording = (cancelar = false) => {
+    cancelarRef.current = cancelar;
     recorderRef.current?.stop();
     recorderRef.current = null;
     setIsRecording(false);
   };
 
   const nearLimit = value.length > MAX_CHARS * 0.9;
-  const canSend = value.trim().length > 0 && !isLoading && !disabled;
+  const hayContenido = value.trim().length > 0 || attachments.length > 0;
+  const canSend = hayContenido && !isLoading && !bloqueado;
+  const mmss = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+
+  const ayuda = isRecording
+    ? t('ayudaGrabando')
+    : isLoading
+      ? t('ayudaRespondiendo')
+      : sinCreditos
+        ? t('ayudaSinCreditos')
+        : isMobile
+          ? t('ayudaMovil')
+          : t('ayuda');
+
+  const iconoBoton = 'h-8 w-8 shrink-0 flex items-center justify-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
-    <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
+    <div
+      className="flex shrink-0 flex-col gap-2 border-t border-line bg-surface px-4 py-3"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && isRecording) {
+          e.preventDefault();
+          e.stopPropagation();
+          stopRecording(true);
+        }
+      }}
+    >
       {attachments.length > 0 && (
-        <ul className="flex flex-wrap gap-2 mb-2" aria-label="Archivos adjuntos">
+        <ul className="flex flex-wrap gap-2" aria-label={t('adjuntos')}>
           {attachments.map((a) => (
             <li
               key={a.id}
-              className="group relative flex items-center gap-1.5 pl-2 pr-1 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs"
+              className="flex items-center gap-1.5 rounded-lg border border-line bg-subtle py-1 pl-2 pr-1 text-xs"
             >
               {a.file.type.startsWith('image/') ? (
-                <ImageIcon size={12} className="text-gray-500" aria-hidden="true" />
+                <ImageIcon className="h-3 w-3 text-fg-muted" strokeWidth={1.5} aria-hidden="true" />
               ) : (
-                <FileText size={12} className="text-gray-500" aria-hidden="true" />
+                <FileText className="h-3 w-3 text-fg-muted" strokeWidth={1.5} aria-hidden="true" />
               )}
-              <span className="max-w-[140px] truncate text-gray-700 dark:text-gray-300">{a.file.name}</span>
+              <span className="max-w-[160px] truncate text-fg-secondary">{a.file.name}</span>
               <button
                 type="button"
                 onClick={() => onRemoveAttachment(a.id)}
-                className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-                aria-label={`Quitar ${a.file.name}`}
+                className="rounded p-0.5 text-fg-muted outline-none hover:bg-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-brand"
+                aria-label={t('quitarAdjunto', { nombre: a.file.name })}
               >
-                <X size={12} />
+                <X className="h-3 w-3" strokeWidth={1.5} aria-hidden="true" />
               </button>
             </li>
           ))}
@@ -217,49 +301,24 @@ export default function Composer({
       )}
 
       {attachments.length > 0 && !attachmentsEnabled && (
-        <p className="mb-2 text-[11px] text-amber-700 dark:text-amber-400">
-          Todavía no puedo leer archivos: lo estoy aprendiendo. Por ahora cuéntame por escrito qué dice.
-        </p>
+        <p className="text-[11px] text-warning-text">{t('adjuntosNoDisponibles')}</p>
       )}
 
       <div
         className={cn(
-          'flex items-end gap-1.5 rounded-2xl border bg-gray-50 dark:bg-gray-800 px-2 py-1.5 transition-colors',
-          'border-gray-300 dark:border-gray-600 focus-within:border-blue-500 dark:focus-within:border-blue-500'
+          'flex flex-col gap-2 rounded-2xl border bg-canvas pb-2 pl-3 pr-2 pt-2.5 transition-colors',
+          'border-line-strong focus-within:border-brand',
+          bloqueado && 'opacity-70'
         )}
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept={ACCEPTED}
-          className="hidden"
-          onChange={(e) => {
-            const files = Array.from(e.target.files ?? []);
-            if (files.length > 0) onAttach(files);
-            e.target.value = '';
-          }}
-        />
-
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isLoading || disabled}
-          className="h-8 w-8 flex-shrink-0 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-          aria-label="Adjuntar archivo"
-          title="Adjuntar archivo o foto"
-        >
-          <Paperclip size={16} />
-        </Button>
-
         {isRecording ? (
-          <div className="flex-1 flex items-center gap-2 px-1 py-1.5" aria-live="polite">
-            <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
-            <span className="text-sm text-gray-700 dark:text-gray-300 tabular-nums">
-              Grabando… {String(Math.floor(seconds / 60)).padStart(2, '0')}:
-              {String(seconds % 60).padStart(2, '0')}
+          <div className="flex min-h-5 items-center gap-2" aria-live="polite">
+            <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-danger motion-reduce:animate-none" aria-hidden="true" />
+            <span className="text-sm text-fg tabular-nums">{t('grabando', { tiempo: mmss })}</span>
+            <span className="flex h-4 items-center gap-[3px]" aria-hidden="true">
+              {niveles.map((nivel, i) => (
+                <span key={i} className="w-[3px] rounded-full bg-brand" style={{ height: `${Math.round(nivel * 16)}px` }} />
+              ))}
             </span>
           </div>
         ) : (
@@ -274,96 +333,129 @@ export default function Composer({
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             rows={1}
-            placeholder={isTranscribing ? 'Transcribiendo tu nota…' : 'Escribe, pega una captura o dicta…'}
-            disabled={isLoading || isTranscribing || disabled}
-            aria-label="Mensaje para GO Assistant"
-            className={cn(
-              'flex-1 resize-none bg-transparent border-0 outline-none',
-              'text-sm text-gray-900 dark:text-white placeholder:text-gray-400',
-              'py-1.5 px-1 leading-6 max-h-[200px]',
-              'disabled:opacity-60'
-            )}
+            placeholder={isTranscribing ? t('transcribiendo') : sinCreditos ? t('placeholderSinCreditos') : t('placeholder')}
+            disabled={isLoading || isTranscribing || bloqueado}
+            aria-label={t('etiqueta')}
+            className="max-h-[164px] w-full resize-none border-0 bg-transparent p-0 text-sm leading-5 text-fg outline-none placeholder:text-fg-muted disabled:cursor-not-allowed"
           />
         )}
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={isRecording ? stopRecording : startRecording}
-          disabled={isLoading || isTranscribing || disabled}
-          className={cn(
-            'h-8 w-8 flex-shrink-0',
-            isRecording
-              ? 'text-red-600 hover:text-red-700'
-              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-          )}
-          aria-label={isRecording ? 'Detener grabación' : 'Dictar mensaje'}
-          title={isRecording ? 'Detener y transcribir' : 'Dictar'}
-        >
-          {isTranscribing ? <Loader2 size={16} className="animate-spin" /> : isRecording ? <Square size={16} /> : <Mic size={16} />}
-        </Button>
+        <div className="flex items-center gap-1">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept={ACCEPTED}
+            className="hidden"
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? []);
+              if (files.length > 0) onAttach(files);
+              e.target.value = '';
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading || bloqueado || isRecording}
+            className={cn(iconoBoton, 'text-fg-secondary hover:bg-hover hover:text-fg')}
+            aria-label={t('adjuntar')}
+            title={t('adjuntar')}
+          >
+            <Paperclip className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={isRecording ? () => stopRecording(false) : startRecording}
+            disabled={isLoading || isTranscribing || bloqueado}
+            className={cn(iconoBoton, isRecording ? 'text-danger-text hover:bg-danger-subtle' : 'text-fg-secondary hover:bg-hover hover:text-fg')}
+            aria-label={isRecording ? t('detenerGrabacion') : t('dictar')}
+            title={isRecording ? t('detenerGrabacion') : t('dictar')}
+          >
+            {isTranscribing ? (
+              <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" strokeWidth={1.5} aria-hidden="true" />
+            ) : isRecording ? (
+              <Square className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+            ) : (
+              <Mic className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+            )}
+          </button>
 
-        {/*
-          Mientras responde, enviar se convierte en detener: una respuesta larga
-          que arrancó mal no debería haber que aguantarla entera.
-        */}
-        <Button
-          type="button"
-          size="icon"
-          onClick={isLoading ? onStop : onSubmit}
-          disabled={!isLoading && !canSend}
-          className={cn(
-            'h-8 w-8 flex-shrink-0 rounded-lg',
-            isLoading
-              ? 'bg-gray-700 hover:bg-gray-800 text-white'
-              : 'bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-300 dark:disabled:bg-gray-700'
+          {contexto?.pagina && (
+            <button
+              type="button"
+              onClick={contexto.onAlternar}
+              aria-pressed={contexto.activo}
+              title={contexto.activo ? t('contextoActivo', { pagina: contexto.pagina }) : t('contextoInactivo')}
+              className={cn(
+                'flex min-w-0 items-center gap-1 rounded-full border py-1 pl-1.5 pr-2 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand',
+                contexto.activo
+                  ? 'border-line bg-subtle text-fg-secondary hover:bg-hover'
+                  : 'border-dashed border-line-strong bg-transparent text-fg-muted line-through hover:bg-hover'
+              )}
+            >
+              <MapPin className="h-3 w-3 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+              <span className="truncate">{contexto.pagina}</span>
+            </button>
           )}
-          aria-label={isLoading ? 'Detener respuesta' : 'Enviar mensaje'}
-        >
-          {isLoading ? <Square size={14} /> : <Send size={16} />}
-        </Button>
+
+          <div className="flex-1" />
+
+          {/*
+            Mientras responde, enviar se convierte en detener: una respuesta larga
+            que arrancó mal no debería haber que aguantarla entera.
+          */}
+          <button
+            type="button"
+            onClick={isLoading ? onStop : onSubmit}
+            disabled={!isLoading && !canSend}
+            className={cn(
+              iconoBoton,
+              isLoading
+                ? 'bg-fg text-surface hover:bg-fg/90'
+                : hayContenido && !bloqueado
+                  ? 'bg-brand-action text-fg-on-brand hover:bg-brand-action-hover'
+                  : 'bg-brand-tint text-brand-action disabled:opacity-100'
+            )}
+            aria-label={isLoading ? t('detener') : t('enviar')}
+            aria-keyshortcuts={isLoading ? 'Escape' : 'Enter'}
+          >
+            {isLoading ? (
+              <Square className="h-3.5 w-3.5" strokeWidth={2} fill="currentColor" aria-hidden="true" />
+            ) : (
+              <Send className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+            )}
+          </button>
+        </div>
       </div>
 
-      {/*
-        El saldo, visible desde que se abre el panel. Antes solo aparecía al
-        fallar un turno por falta de créditos: enterarse del saldo por el error
-        es enterarse tarde.
-      */}
-      {credits && credits.level !== 'ok' && (
-        <p
-          role="status"
-          className={cn(
-            'mt-1.5 px-1 text-[11px]',
-            credits.level === 'empty' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'
-          )}
-        >
-          {credits.level === 'empty'
-            ? 'Te quedaste sin créditos de IA. '
-            : `Te quedan ${credits.credits.toLocaleString('es-CO')} créditos de IA. `}
-          <a href="/app/plan" className="underline underline-offset-2">
-            Comprar créditos
-          </a>
-        </p>
-      )}
-
-      <div className="flex items-center justify-between mt-1.5 px-1">
+      <div className="flex items-center gap-1.5 px-1">
         {voiceNote ? (
-          <p className="text-[10px] text-amber-600 dark:text-amber-400" role="status">
+          <p className="min-w-0 flex-1 text-xs font-medium text-warning-text" role="status">
             {voiceNote}
           </p>
         ) : (
-          <p className="text-[10px] text-gray-400">
-            {isMobile ? 'Toca enviar para mandar' : 'Enter envía · Shift+Enter salta de línea'}
-            {credits && credits.level === 'ok' && (
-              <span className="ml-2 tabular-nums">· {credits.credits.toLocaleString('es-CO')} créditos</span>
-            )}
-          </p>
+          <p className="min-w-0 flex-1 truncate text-xs font-medium text-fg-muted">{ayuda}</p>
         )}
         {/* El contador solo aparece cerca del límite: antes es ruido. */}
         {nearLimit && (
-          <p className="text-[10px] text-amber-600 tabular-nums">
-            {value.length.toLocaleString('es-CO')} / {MAX_CHARS.toLocaleString('es-CO')}
+          <p className="shrink-0 text-xs text-warning-text tabular-nums">
+            {value.length.toLocaleString(locale)} / {MAX_CHARS.toLocaleString(locale)}
+          </p>
+        )}
+        {/*
+          El saldo, visible desde que se abre el panel. Antes solo aparecía al
+          fallar un turno por falta de créditos: enterarse del saldo por el error
+          es enterarse tarde. Gris normal, ámbar bajo, rojo en 0.
+        */}
+        {credits && (
+          <p
+            className={cn(
+              'flex shrink-0 items-center gap-1 text-xs font-medium tabular-nums',
+              credits.level === 'empty' ? 'text-danger-text' : credits.level === 'low' ? 'text-warning-text' : 'text-fg-muted'
+            )}
+          >
+            <Coins className="h-3 w-3" strokeWidth={1.5} aria-hidden="true" />
+            {t('creditos', { n: credits.credits })}
           </p>
         )}
       </div>

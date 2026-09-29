@@ -1,8 +1,9 @@
 'use client';
 
-import { Check, X, AlertTriangle, Loader2, Pencil, ClipboardList } from 'lucide-react';
+import { Check, X, AlertTriangle, Loader2, Pencil, ClipboardList, CircleCheck, CircleAlert, ExternalLink, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { PendingAction } from '@/lib/ai/assistant/clientTypes';
+import { cn } from '@/utils/Utils';
+import type { ActionOutcome, PendingAction } from '@/lib/ai/assistant/clientTypes';
 import BulkPreviewTable from './assistant/BulkPreviewTable';
 
 interface Props {
@@ -13,13 +14,28 @@ interface Props {
   /** Abrir el formulario REAL del módulo (hoy: clientes) prellenado. */
   onOpenForm?: () => void;
   isExecuting?: boolean;
+  /** Desenlace: la tarjeta pasa a "completada" o "error" en su sitio. */
+  outcome?: ActionOutcome | null;
+  /** Deshacer desde la propia tarjeta, mientras la ventana siga abierta. */
+  onUndo?: () => void;
+  isUndoing?: boolean;
 }
 
 /** Acciones que tienen un formulario de módulo que se puede abrir desde la tarjeta. */
 const WITH_MODULE_FORM = new Set<string>(['create_customer']);
 
 /** Conserva el nombre por compatibilidad de imports; ya no es un formulario. */
-export default function ActionConfirmationForm({ action, onConfirm, onCorrect, onReject, onOpenForm, isExecuting = false }: Props) {
+export default function ActionConfirmationForm({
+  action,
+  onConfirm,
+  onCorrect,
+  onReject,
+  onOpenForm,
+  isExecuting = false,
+  outcome = null,
+  onUndo,
+  isUndoing = false,
+}: Props) {
   const preview = action.preview;
   const lines = preview?.lines.length ? preview.lines : action.fields
     .filter((field) => field.value !== undefined && field.value !== null && field.value !== '')
@@ -53,6 +69,44 @@ export default function ActionConfirmationForm({ action, onConfirm, onCorrect, o
         {preview?.reversible === false && <p className="text-sm text-red-700 dark:text-red-300">Esta acción no se puede deshacer desde el chat.</p>}
         <p className="text-xs text-gray-600 dark:text-gray-400">¿Algo está mal? Pulsa Corregir y dime qué cambiar. No se guardará nada hasta que confirmes.</p>
       </div>
+      {outcome ? (
+        <div
+          className={cn(
+            'flex flex-wrap items-start gap-2 border-t p-3 text-sm dark:border-gray-700',
+            outcome.ok ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'
+          )}
+          role="status"
+        >
+          {outcome.ok ? (
+            <CircleCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          ) : (
+            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          )}
+          <p className="min-w-0 flex-1 break-words">{outcome.message}</p>
+          <div className="flex w-full flex-wrap gap-2 pt-1">
+            {outcome.ok && outcome.entity?.url && (
+              <Button variant="outline" asChild className="min-h-9">
+                <a href={outcome.entity.url}>
+                  <ExternalLink className="mr-2 h-4 w-4" aria-hidden="true" />
+                  Ver
+                </a>
+              </Button>
+            )}
+            {outcome.ok && outcome.undoAvailable && onUndo && (
+              <Button variant="ghost" onClick={onUndo} disabled={isUndoing} className="min-h-9">
+                <Undo2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                {isUndoing ? 'Deshaciendo…' : 'Deshacer'}
+              </Button>
+            )}
+            {!outcome.ok && (
+              <Button variant="outline" onClick={onCorrect} className="min-h-9">
+                <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
+                Corregir y reintentar
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : (
       <div className="flex flex-wrap gap-2 border-t p-3 dark:border-gray-700">
         <Button onClick={onConfirm} disabled={isExecuting || missing.length > 0} className="min-h-11 flex-1">
           {isExecuting ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Check className="mr-2 h-4 w-4" aria-hidden="true" />}
@@ -66,6 +120,7 @@ export default function ActionConfirmationForm({ action, onConfirm, onCorrect, o
         )}
         <Button variant="ghost" onClick={onReject} disabled={isExecuting} className="min-h-11"><X className="mr-2 h-4 w-4" aria-hidden="true" />Rechazar</Button>
       </div>
+      )}
     </section>
   );
 }

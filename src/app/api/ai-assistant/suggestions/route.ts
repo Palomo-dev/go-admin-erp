@@ -24,9 +24,10 @@ export async function POST(request: NextRequest) {
   ];
 
   let ctx;
+  let body: unknown;
   try {
     ctx = await getServerOrgContext(request);
-    await readOrgBody(ctx, request);
+    body = await readOrgBody(ctx, request);
   } catch (err) {
     if (err instanceof OrgContextError) {
       return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode });
@@ -44,10 +45,15 @@ export async function POST(request: NextRequest) {
 
   try {
     const caps = await getAssistantCapabilities(ctx);
+    // La ruta la manda el cliente y solo sirve para elegir frases de una
+    // lista fija; no decide permisos ni toca la base.
+    const raw = (body as { currentPath?: unknown } | null)?.currentPath;
+    const currentPath = typeof raw === 'string' && raw.startsWith('/') ? raw.slice(0, 200) : null;
     const suggestions = await aiAssistantService.generateQuickSuggestions(
       ctx.supabase,
       ctx.organizationId,
-      caps
+      caps,
+      currentPath
     );
     return NextResponse.json({ suggestions });
   } catch (error) {

@@ -187,6 +187,36 @@ export function sanitizeHistory(
     }));
 }
 
+/**
+ * Sugerencias de la pantalla en la que está el usuario.
+ *
+ * El panel manda `currentPath`; se mapea por prefijo de ruta, de lo más
+ * específico a lo más general. Sin ruta conocida, no aporta nada y mandan las
+ * sugerencias del estado real de la organización.
+ */
+export function suggestionsForPath(currentPath?: string | null): string[] {
+  const path = typeof currentPath === 'string' ? currentPath.toLowerCase() : '';
+  if (!path) return [];
+  const reglas: Array<[string, string[]]> = [
+    ['/app/finanzas/facturas-venta', ['Crea una factura de venta', '¿Qué facturas están por vencer?']],
+    ['/app/finanzas/facturas-compra', ['Registra esta factura de compra', '¿Cuánto debo a proveedores?']],
+    ['/app/finanzas/cuentas-por-cobrar', ['¿Qué clientes me deben?']],
+    ['/app/finanzas/cuentas-por-pagar', ['¿Qué facturas de compra vencen esta semana?']],
+    ['/app/inventario/productos', ['Sube este listado de productos', '¿Qué productos están sin stock?']],
+    ['/app/inventario/traslados', ['Traslada productos entre sucursales']],
+    ['/app/inventario', ['¿Qué productos están por agotarse?', 'Crea un ajuste de inventario']],
+    ['/app/clientes', ['Crea un cliente nuevo', '¿Cuántos clientes registré este mes?']],
+    ['/app/proveedores', ['Crea una orden de compra']],
+    ['/app/pos', ['Registra una venta', '¿Cuánto vendí hoy?']],
+    ['/app/crm', ['¿Qué oportunidades tengo abiertas?']],
+    ['/app/reportes', ['Resume las ventas del mes']],
+  ];
+  for (const [prefijo, frases] of reglas) {
+    if (path.startsWith(prefijo)) return frases;
+  }
+  return [];
+}
+
 class AIAssistantService {
   /**
    * Prompt del sistema construido con el estado REAL de la organización.
@@ -411,9 +441,15 @@ class AIAssistantService {
   async generateQuickSuggestions(
     supabase: SupabaseClient,
     organizationId: number,
-    caps: AssistantCapabilities
+    caps: AssistantCapabilities,
+    /** Ruta del ERP donde está el usuario, para sugerir lo de ESA pantalla. */
+    currentPath?: string | null
   ): Promise<string[]> {
     const suggestions: string[] = [];
+
+    // Lo primero, lo de la pantalla en la que está: una sugerencia sobre
+    // categorías mientras mira una factura es ruido.
+    for (const s of suggestionsForPath(currentPath)) suggestions.push(s);
 
     try {
       const [paymentMethods, uncategorized, categories] = await Promise.all([

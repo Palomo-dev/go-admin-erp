@@ -44,6 +44,8 @@ interface ComposerProps {
   /** `false` mientras F4 no exista: se avisa en vez de aceptar en silencio. */
   attachmentsEnabled: boolean;
   disabled?: boolean;
+  /** Saldo de créditos de IA de la organización, para el pie. `null` = aún no se sabe. */
+  credits?: { credits: number; level: 'ok' | 'low' | 'empty' } | null;
 }
 
 const MAX_ROWS = 8;
@@ -65,6 +67,7 @@ export default function Composer({
   attachmentsEnabled,
   disabled = false,
   focusRequest = 0,
+  credits = null,
 }: ComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -322,6 +325,28 @@ export default function Composer({
         </Button>
       </div>
 
+      {/*
+        El saldo, visible desde que se abre el panel. Antes solo aparecía al
+        fallar un turno por falta de créditos: enterarse del saldo por el error
+        es enterarse tarde.
+      */}
+      {credits && credits.level !== 'ok' && (
+        <p
+          role="status"
+          className={cn(
+            'mt-1.5 px-1 text-[11px]',
+            credits.level === 'empty' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'
+          )}
+        >
+          {credits.level === 'empty'
+            ? 'Te quedaste sin créditos de IA. '
+            : `Te quedan ${credits.credits.toLocaleString('es-CO')} créditos de IA. `}
+          <a href="/app/plan" className="underline underline-offset-2">
+            Comprar créditos
+          </a>
+        </p>
+      )}
+
       <div className="flex items-center justify-between mt-1.5 px-1">
         {voiceNote ? (
           <p className="text-[10px] text-amber-600 dark:text-amber-400" role="status">
@@ -330,6 +355,9 @@ export default function Composer({
         ) : (
           <p className="text-[10px] text-gray-400">
             {isMobile ? 'Toca enviar para mandar' : 'Enter envía · Shift+Enter salta de línea'}
+            {credits && credits.level === 'ok' && (
+              <span className="ml-2 tabular-nums">· {credits.credits.toLocaleString('es-CO')} créditos</span>
+            )}
           </p>
         )}
         {/* El contador solo aparece cerca del límite: antes es ruido. */}

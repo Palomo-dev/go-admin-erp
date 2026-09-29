@@ -10038,6 +10038,10 @@
       "guardando": "Saving…",
       "crear": "Create and select",
       "slugOcupadoTitulo": "Change the slug: it already exists"
+    },
+    "ingredienteRapido": {
+      "titulo": "Create ingredient",
+      "descripcion": "It is created as a catalog product with its cost and added to the recipe."
     }
   },
   "arranque": {

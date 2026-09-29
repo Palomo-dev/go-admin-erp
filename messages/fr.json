@@ -9933,6 +9933,10 @@
       "guardando": "Enregistrement…",
       "crear": "Créer et sélectionner",
       "slugOcupadoTitulo": "Modifiez le slug : il existe déjà"
+    },
+    "ingredienteRapido": {
+      "titulo": "Créer un ingrédient",
+      "descripcion": "Il est créé comme produit du catalogue avec son coût et ajouté à la recette."
     }
   },
   "arranque": {

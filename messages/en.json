@@ -10844,7 +10844,8 @@
     "titulo": "Purchase invoices",
     "sustantivo": {
       "singular": "purchase invoice",
-      "plural": "purchase invoices"
+      "plural": "purchase invoices",
+      "genero": "femenino"
     },
     "migas": {
       "finanzas": "Finance"
@@ -10932,10 +10933,13 @@
         "emision": "Issue date",
         "todos": "All",
         "todas": "All",
-        "verN": "Show {n} results"
+        "verN": "Show {n} results",
+        "proveedor": "Supplier"
       },
       "chips": {
-        "rango": "Issued: {desde} – {hasta}"
+        "rango": "Issued: {desde} – {hasta}",
+        "proveedor": "Supplier: {nombre}",
+        "emision": "Issued: {rango}"
       },
       "columnas": {
         "numero": "Number",
@@ -10945,7 +10949,8 @@
         "saldo": "Balance",
         "recepcion": "Receipt",
         "estado": "Status",
-        "documentoSoporte": "Support doc."
+        "documentoSoporte": "Support doc.",
+        "proveedor": "Supplier"
       },
       "acciones": {
         "ver": "View details",
@@ -10993,7 +10998,10 @@
       "vacio": {
         "titulo": "No purchase invoices yet",
         "descripcion": "Record a supplier's first invoice or generate it from a received purchase order."
-      }
+      },
+      "imprimirA": "Print invoice {numero}",
+      "eliminarTitulo": "Delete draft {numero}?",
+      "eliminarDescripcion": "This can't be undone."
     },
     "detalle": {
       "titulo": "Invoice {numero}",
@@ -11055,7 +11063,14 @@
         "vacio": "No payments yet",
         "aCuota": "To an installment",
         "comprobanteDe": "Payment voucher for {monto}",
-        "programado": "Scheduled, not approved: {monto}"
+        "programado": "Scheduled, not approved: {monto}",
+        "columnas": {
+          "fecha": "Date",
+          "metodo": "Method",
+          "referencia": "Reference",
+          "importe": "Amount",
+          "estado": "Status"
+        }
       },
       "confirmada": {
         "conRecepcion": "Invoice confirmed and received into inventory",
@@ -11106,7 +11121,9 @@
           "duplicada": "Duplicate invoice",
           "devolucion": "Return to supplier"
         }
-      }
+      },
+      "eliminarTitulo": "Delete draft {numero}?",
+      "eliminarDescripcion": "This can't be undone."
     },
     "formulario": {
       "tituloNueva": "New purchase invoice",
@@ -11261,7 +11278,8 @@
     },
     "sustantivo": {
       "singular": "account payable",
-      "plural": "accounts payable"
+      "plural": "accounts payable",
+      "genero": "femenino"
     },
     "migas": {
       "finanzas": "Finance"
@@ -11306,7 +11324,8 @@
         "estado": "Status",
         "antiguedad": "Aging",
         "todos": "All",
-        "verN": "Show {n} results"
+        "verN": "Show {n} results",
+        "proveedor": "Supplier"
       },
       "columnas": {
         "proveedor": "Supplier",
@@ -11314,7 +11333,9 @@
         "monto": "Amount",
         "saldo": "Balance",
         "cuotas": "Installments",
-        "estado": "Status"
+        "estado": "Status",
+        "documento": "Document",
+        "antiguedad": "Aging"
       },
       "acciones": {
         "ver": "View details",
@@ -11360,6 +11381,10 @@
       "vacio": {
         "titulo": "No accounts payable",
         "descripcion": "They are created when a purchase invoice is confirmed."
+      },
+      "programarA": "Schedule payment to {proveedor}",
+      "chips": {
+        "proveedor": "Supplier: {nombre}"
       }
     },
     "aprobaciones": {
@@ -11431,13 +11456,40 @@
         "pagarCuota": "Pay installment {numero}",
         "eliminar": "Delete plan",
         "eliminarConfirmar": "Delete the installment plan? The account balance doesn't change.",
-        "eliminado": "Installment plan deleted"
+        "eliminado": "Installment plan deleted",
+        "columnas": {
+          "numero": "No.",
+          "vence": "Due",
+          "valor": "Amount",
+          "pagado": "Paid",
+          "saldo": "Balance",
+          "estado": "Status"
+        },
+        "eliminarTitulo": "Delete the installment plan?",
+        "eliminarDescripcion": "The account balance doesn't change."
       },
       "pagos": {
         "titulo": "Payments",
         "vacio": "No payments yet",
         "aCuota": "To an installment",
-        "comprobanteDe": "Payment voucher for {monto}"
+        "comprobanteDe": "Payment voucher for {monto}",
+        "columnas": {
+          "fecha": "Date",
+          "metodo": "Method",
+          "referencia": "Reference",
+          "importe": "Amount",
+          "estado": "Status"
+        }
+      },
+      "kpis": {
+        "pagado": "Paid: {monto}",
+        "programado": "Scheduled, not approved: {monto}"
+      },
+      "proveedorDatos": {
+        "nombre": "Name",
+        "nit": "Tax ID",
+        "telefono": "Phone",
+        "correo": "Email"
       }
     },
     "estadoCuenta": {
@@ -14070,6 +14122,22 @@
       "no_autenticado": "Your session expired. Sign in again.",
       "sin_organizacion": "The active organization was not found.",
       "desconocido": "The operation could not be completed."
+    },
+    "anular": {
+      "descripcion": "Voiding can't be undone.",
+      "ingreso": {
+        "titulo": "Void this income entry?",
+        "boton": "Void income entry"
+      },
+      "egreso": {
+        "titulo": "Void this expense entry?",
+        "boton": "Void expense entry"
+      },
+      "transferencia": {
+        "titulo": "Void this transfer?",
+        "boton": "Void transfer",
+        "consecuencia": "The balances of both accounts are reversed."
+      }
     }
   },
   "documentosVenta": {
@@ -14486,6 +14554,10 @@
       "nueva": "New withholding",
       "editar": "Edit withholding",
       "nota": "A withholding is applied by the buyer: it is not added to the price, it is not assigned to products and it cannot be the default rate."
+    },
+    "titulo": "Taxes",
+    "migas": {
+      "finanzas": "Finance"
     }
   },
   "receta": {

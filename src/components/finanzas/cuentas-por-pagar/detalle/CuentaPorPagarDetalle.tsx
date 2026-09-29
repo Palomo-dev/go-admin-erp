@@ -11,11 +11,26 @@
  * - Historial de pagos (de la CxP y de su factura) con comprobante de egreso.
  * - Estado de cuenta del proveedor.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { CalendarClock, CalendarRange, ClipboardList, FileText, HandCoins, ScrollText, Trash2, Wallet } from 'lucide-react';
-import { EmptyState, FilaDato, RowActionsMenu, StatusBadge, Tarjeta, type AccionFila } from '@/components/kit';
+import { CalendarClock, CalendarRange, ClipboardList, FileText, HandCoins, Hourglass, ReceiptText, ScrollText, Trash2, Truck, Wallet } from 'lucide-react';
+import {
+  AccionRapida,
+  DataTable,
+  Dialogo,
+  EmptyState,
+  FilaDato,
+  KpiStrip,
+  ListaDatos,
+  RowActionsMenu,
+  StatCard,
+  StatusBadge,
+  Tarjeta,
+  clasesBoton,
+  type AccionFila,
+  type ColumnaTabla,
+} from '@/components/kit';
 import { CadenaDocumento, DocumentoCabecera, type EslabonDocumento } from '@/components/kit/documento';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
@@ -25,7 +40,7 @@ import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { abrirDocumento } from '@/lib/documents/cliente';
 import { clienteCompras, ErrorPeticionCompra } from '@/lib/services/compras/clienteCompras';
-import { leerDetalleCxp, type DetalleCxp } from '@/lib/services/compras/lecturasCompras';
+import { leerDetalleCxp, type CuotaLeida, type DetalleCxp, type PagoCompraLeido } from '@/lib/services/compras/lecturasCompras';
 import { RUTA_COMPRAS_FINANZAS, RUTA_CXP, RUTA_PROVEEDORES } from '@/components/finanzas/facturas-compra/rutasCompras';
 import { RegistrarPagoProveedor } from '../RegistrarPagoProveedor';
 import { ProgramarPagoDialog } from '../ProgramarPagoDialog';
@@ -33,7 +48,7 @@ import { AprobacionesPanel } from '../AprobacionesPanel';
 import { EstadoCuentaProveedorDialog } from '../EstadoCuentaProveedorDialog';
 import { PlanCuotasDialog } from '../PlanCuotasDialog';
 
-type Dialogo = 'pagar' | 'programar' | 'plan' | 'estadoCuenta' | null;
+type DialogoAbierto = 'pagar' | 'programar' | 'plan' | 'estadoCuenta' | 'eliminarPlan' | null;
 
 function estadoCuenta(c: DetalleCxp, hoy: string, diaVence: string | null): string {
   if (c.status === 'void' || c.status === 'cancelled') return 'anulada';
@@ -54,8 +69,10 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
   const [recarga, setRecarga] = useState(0);
-  const [dialogo, setDialogo] = useState<Dialogo>(null);
+  const [dialogo, setDialogo] = useState<DialogoAbierto>(null);
   const [cuotaPago, setCuotaPago] = useState<string | null>(null);
+  const [eliminandoPlan, setEliminandoPlan] = useState(false);
+  const idMotivoPagar = useId();
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
 
   useEffect(() => {
@@ -109,17 +126,68 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
   const planConAbonos = c.cuotas.some((q) => q.paid_amount > 0);
   const titulo = c.factura ? td('titulo', { numero: c.factura.number_ext }) : td('tituloSinFactura');
 
+  // Se confirma con el diálogo del manual (PATRONES §8), no con el confirm del navegador.
   const eliminarPlan = async () => {
-    if (!window.confirm(td('cuotas.eliminarConfirmar'))) return;
+    setEliminandoPlan(true);
     try {
       await clienteCompras.eliminarPlanCuotas(c.id);
       toastSuccess(td('cuotas.eliminado'));
+      setDialogo(null);
       recargar();
     } catch (e) {
       const codigo = e instanceof ErrorPeticionCompra ? e.codigo : 'error_desconocido';
       toastError(te.has(codigo) ? te(codigo as never) : te('error_desconocido'));
+    } finally {
+      setEliminandoPlan(false);
     }
   };
+
+  const estadoCuota = (q: CuotaLeida): string => {
+    const vencida = q.balance > 0 && q.due_date < hoy;
+    return q.balance <= 0 || q.status === 'paid' ? 'pagada' : vencida ? 'vencida' : q.paid_amount > 0 ? 'parcial' : 'pendiente';
+  };
+
+  const columnasCuotas: ColumnaTabla<CuotaLeida>[] = [
+    { id: 'numero', encabezado: td('cuotas.columnas.numero'), ancho: 48, celda: (q) => <span className="tabular-nums">{q.installment_number}</span> },
+    { id: 'vence', encabezado: td('cuotas.columnas.vence'), celda: (q) => <span className="whitespace-nowrap tabular-nums">{formatPlain(q.due_date)}</span> },
+    { id: 'valor', encabezado: td('cuotas.columnas.valor'), variante: 'importe', celda: (q) => formatear(q.amount) },
+    { id: 'pagado', encabezado: td('cuotas.columnas.pagado'), variante: 'importe', ocultarDebajo: 'md', celda: (q) => formatear(q.paid_amount) },
+    { id: 'saldo', encabezado: td('cuotas.columnas.saldo'), variante: 'importe', celda: (q) => formatear(q.balance) },
+    {
+      id: 'estado',
+      encabezado: td('cuotas.columnas.estado'),
+      celda: (q) => {
+        const e = estadoCuota(q);
+        return <StatusBadge estado={e} etiqueta={t(`estado.${e}`)} />;
+      },
+    },
+  ];
+
+  const columnasPagos: ColumnaTabla<PagoCompraLeido>[] = [
+    {
+      id: 'fecha',
+      encabezado: td('pagos.columnas.fecha'),
+      celda: (p) => <span className="whitespace-nowrap tabular-nums">{formatDateTime(p.payment_date ?? p.created_at)}</span>,
+    },
+    { id: 'metodo', encabezado: td('pagos.columnas.metodo'), ocultarDebajo: 'sm', celda: (p) => p.method ?? '—' },
+    {
+      id: 'referencia',
+      encabezado: td('pagos.columnas.referencia'),
+      ocultarDebajo: 'md',
+      celda: (p) => (
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate">{p.reference ?? '—'}</span>
+          {p.installment_id && <span className="text-xs text-fg-secondary">{td('pagos.aCuota')}</span>}
+        </div>
+      ),
+    },
+    { id: 'importe', encabezado: td('pagos.columnas.importe'), variante: 'importe', celda: (p) => formatear(p.amount) },
+    {
+      id: 'estado',
+      encabezado: td('pagos.columnas.estado'),
+      celda: (p) => (p.status !== 'completed' ? <StatusBadge estado={p.status ?? 'pendiente'} /> : null),
+    },
+  ];
 
   const eslabones: EslabonDocumento[] = [];
   if (c.factura) {
@@ -168,9 +236,6 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
     },
   ];
 
-  const botonClase =
-    'inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
-
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
       <DocumentoCabecera
@@ -186,21 +251,46 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
                 type="button"
                 disabled={!permisos.crear}
                 title={!permisos.crear ? td('motivos.sinPermiso') : undefined}
+                aria-describedby={!permisos.crear ? idMotivoPagar : undefined}
                 onClick={() => {
                   setCuotaPago(null);
                   setDialogo('pagar');
                 }}
-                className={`${botonClase} bg-brand-action text-fg-on-brand hover:bg-brand-action-hover`}
+                className={clasesBoton({ variante: 'primario' })}
               >
                 <Wallet aria-hidden="true" className="size-4" strokeWidth={1.5} />
                 {td('acciones.pagar')}
               </button>
+            )}
+            {abierta && !permisos.crear && (
+              <span id={idMotivoPagar} className="sr-only">
+                {td('motivos.sinPermiso')}
+              </span>
             )}
             <RowActionsMenu orientacion="horizontal" tamano="md" titulo={titulo} acciones={menu} />
           </>
         }
         debajo={eslabones.length > 1 ? <CadenaDocumento eslabones={eslabones} etiqueta={td('enlaces')} /> : undefined}
       />
+
+      {/* Figma Y1 (740:53850): cuatro cifras de la cuenta en lugar de la tarjeta «Resumen». */}
+      <KpiStrip etiqueta={td('resumen')}>
+        <StatCard
+          etiqueta={td('monto')}
+          icono={ReceiptText}
+          valor={formatear(c.amount)}
+          detalle={td('kpis.pagado', { monto: formatear(Math.max(0, c.amount - c.balance)) })}
+        />
+        <StatCard
+          etiqueta={td('saldo')}
+          icono={Wallet}
+          valor={formatear(c.balance)}
+          tono={c.balance > 0 ? 'peligro' : 'exito'}
+          detalle={programadoPendiente > 0 ? td('kpis.programado', { monto: formatear(programadoPendiente) }) : undefined}
+        />
+        <StatCard etiqueta={td('vencimiento')} icono={CalendarClock} valor={formatDate(c.due_date)} tono={estado === 'vencida' ? 'peligro' : 'neutro'} />
+        <StatCard etiqueta={t('antiguedad.titulo')} icono={Hourglass} valor={t(`estado.${estado}`)} tono={estado === 'vencida' ? 'peligro' : 'neutro'} />
+      </KpiStrip>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
         <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
@@ -212,12 +302,16 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
             icono={CalendarRange}
             accion={
               c.cuotas.length > 0 && !planConAbonos && permisos.crear ? (
-                <button type="button" onClick={() => void eliminarPlan()} className="inline-flex items-center gap-1 text-sm font-medium text-danger-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                <button
+                  type="button"
+                  onClick={() => setDialogo('eliminarPlan')}
+                  className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'text-danger-text hover:text-danger-text' })}
+                >
                   <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
                   {td('cuotas.eliminar')}
                 </button>
               ) : c.cuotas.length === 0 && abierta && permisos.crear ? (
-                <button type="button" onClick={() => setDialogo('plan')} className="text-sm font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                <button type="button" onClick={() => setDialogo('plan')} className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'text-link hover:text-link' })}>
                   {td('acciones.plan')}
                 </button>
               ) : undefined
@@ -226,38 +320,27 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
             {c.cuotas.length === 0 ? (
               <p className="pb-4 text-sm text-fg-secondary">{td('cuotas.vacio')}</p>
             ) : (
-              <ul className="flex flex-col divide-y divide-line pb-2">
-                {c.cuotas.map((q) => {
-                  const vencida = q.balance > 0 && q.due_date < hoy;
-                  const estadoQ = q.balance <= 0 || q.status === 'paid' ? 'pagada' : vencida ? 'vencida' : q.paid_amount > 0 ? 'parcial' : 'pendiente';
-                  return (
-                    <li key={q.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                      <div className="flex min-w-0 flex-col">
-                        <span className="font-medium text-fg">{td('cuotas.numero', { numero: q.installment_number, fecha: formatPlain(q.due_date) })}</span>
-                        <span className="text-xs text-fg-secondary tabular-nums">
-                          {td('cuotas.detalle', { valor: formatear(q.amount), saldo: formatear(q.balance) })}
-                        </span>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <StatusBadge estado={estadoQ} etiqueta={t(`estado.${estadoQ}`)} />
-                        {estadoQ !== 'pagada' && abierta && permisos.crear && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCuotaPago(q.id);
-                              setDialogo('pagar');
-                            }}
-                            aria-label={td('cuotas.pagarCuota', { numero: q.installment_number })}
-                            className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                          >
-                            <Wallet aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                          </button>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+              <DataTable
+                densidad="compacta"
+                etiqueta={td('cuotas.titulo')}
+                columnas={columnasCuotas}
+                filas={c.cuotas}
+                obtenerId={(q) => q.id}
+                virtualizar={false}
+                accionesRapidas={(q) =>
+                  estadoCuota(q) !== 'pagada' && abierta && permisos.crear ? (
+                    <AccionRapida
+                      soloIcono
+                      icono={Wallet}
+                      etiqueta={td('cuotas.pagarCuota', { numero: q.installment_number })}
+                      onClick={() => {
+                        setCuotaPago(q.id);
+                        setDialogo('pagar');
+                      }}
+                    />
+                  ) : null
+                }
+              />
             )}
           </Tarjeta>
 
@@ -265,31 +348,24 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
             {c.pagos.length === 0 ? (
               <p className="pb-4 text-sm text-fg-secondary">{td('pagos.vacio')}</p>
             ) : (
-              <ul className="flex flex-col divide-y divide-line pb-2">
-                {c.pagos.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                    <div className="flex min-w-0 flex-col">
-                      <span className="font-medium text-fg">{formatear(p.amount)}</span>
-                      <span className="truncate text-xs text-fg-secondary">
-                        {[formatDateTime(p.payment_date ?? p.created_at), p.method, p.reference, p.installment_id ? td('pagos.aCuota') : null].filter(Boolean).join(' · ')}
-                      </span>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {p.status !== 'completed' && <StatusBadge estado={p.status ?? 'pendiente'} />}
-                      {p.status === 'completed' && (
-                        <button
-                          type="button"
-                          onClick={() => abrirDocumento('comprobante-egreso', p.id)}
-                          aria-label={td('pagos.comprobanteDe', { monto: formatear(p.amount) })}
-                          className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                        >
-                          <FileText aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                        </button>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              <DataTable
+                densidad="compacta"
+                etiqueta={td('pagos.titulo')}
+                columnas={columnasPagos}
+                filas={c.pagos}
+                obtenerId={(p) => p.id}
+                virtualizar={false}
+                accionesRapidas={(p) =>
+                  p.status === 'completed' ? (
+                    <AccionRapida
+                      soloIcono
+                      icono={FileText}
+                      etiqueta={td('pagos.comprobanteDe', { monto: formatear(p.amount) })}
+                      onClick={() => abrirDocumento('comprobante-egreso', p.id)}
+                    />
+                  ) : null
+                }
+              />
             )}
           </Tarjeta>
 
@@ -317,27 +393,25 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
         </div>
 
         <div className="flex min-w-0 flex-col gap-4">
-          <Tarjeta titulo={td('resumen')}>
-            <div className="flex flex-col pb-3">
-              <FilaDato etiqueta={td('monto')} valor={formatear(c.amount)} />
-              <FilaDato etiqueta={td('pagado')} valor={formatear(Math.max(0, c.amount - c.balance))} />
-              {programadoPendiente > 0 && <FilaDato etiqueta={td('programado')} valor={formatear(programadoPendiente)} tono="advertencia" />}
-              <FilaDato etiqueta={td('saldo')} valor={formatear(c.balance)} tamano="lg" separadorAntes tono={c.balance > 0 ? 'peligro' : 'exito'} />
-            </div>
-          </Tarjeta>
-          <Tarjeta titulo={td('datos')}>
-            <div className="flex flex-col pb-3">
+          {/* Figma Y1 (740:54404): el proveedor en su propia tarjeta, separado de los datos de la cuenta. */}
+          <Tarjeta titulo={td('proveedor')} icono={Truck}>
+            <ListaDatos className="pb-3">
               <FilaDato
-                etiqueta={td('proveedor')}
+                etiqueta={td('proveedorDatos.nombre')}
                 valor={c.proveedor?.name ?? '—'}
                 href={c.proveedor?.uuid ? `${RUTA_PROVEEDORES}/${c.proveedor.uuid}` : undefined}
-                descripcion={[c.proveedor?.nit ? `NIT ${c.proveedor.nit}` : null, c.proveedor?.phone, c.proveedor?.email].filter(Boolean).join(' · ') || undefined}
               />
+              {c.proveedor?.nit && <FilaDato etiqueta={td('proveedorDatos.nit')} valor={c.proveedor.nit} />}
+              {c.proveedor?.phone && <FilaDato etiqueta={td('proveedorDatos.telefono')} valor={c.proveedor.phone} />}
+              {c.proveedor?.email && <FilaDato etiqueta={td('proveedorDatos.correo')} valor={c.proveedor.email} />}
+            </ListaDatos>
+          </Tarjeta>
+          <Tarjeta titulo={td('datos')}>
+            <ListaDatos className="pb-3">
               {c.factura && <FilaDato etiqueta={td('factura')} valor={c.factura.number_ext} href={`${RUTA_COMPRAS_FINANZAS}/${c.factura.id}`} />}
-              <FilaDato etiqueta={td('vencimiento')} valor={formatDate(c.due_date)} tono={estado === 'vencida' ? 'peligro' : undefined} />
               <FilaDato etiqueta={td('moneda')} valor={ctxMoneda.code} />
               <FilaDato etiqueta={td('creada')} valor={formatDateTime(c.created_at)} />
-            </div>
+            </ListaDatos>
           </Tarjeta>
         </div>
       </div>
@@ -363,6 +437,14 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
         hoy={hoy}
         cuotas={cuotasAbiertas.map((q) => ({ id: q.id, numero: q.installment_number, saldo: q.balance, vencimiento: q.due_date }))}
         onProgramado={recargar}
+      />
+      <Dialogo
+        abierto={dialogo === 'eliminarPlan'}
+        onAbiertoChange={(v) => !v && !eliminandoPlan && setDialogo(null)}
+        titulo={td('cuotas.eliminarTitulo')}
+        descripcion={td('cuotas.eliminarDescripcion')}
+        ancho={440}
+        primario={{ etiqueta: td('cuotas.eliminar'), onClick: () => void eliminarPlan(), destructiva: true, cargando: eliminandoPlan }}
       />
       <PlanCuotasDialog abierto={dialogo === 'plan'} onAbiertoChange={(v) => !v && setDialogo(null)} cuentaId={c.id} saldo={c.balance} moneda={ctxMoneda} hoy={hoy} onCreado={recargar} />
       {c.proveedor && (

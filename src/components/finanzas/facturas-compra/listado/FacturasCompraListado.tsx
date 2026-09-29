@@ -30,13 +30,17 @@ import {
   Wallet,
 } from 'lucide-react';
 import {
+  AccionRapida,
   BranchBadgeActiva,
   BulkActionBar,
+  ChipDocumento,
   DataTable,
   DateRangeButton,
+  Dialogo,
   FilterChips,
   FilterPanel,
   FormField,
+  KpiCompacto,
   KpiStrip,
   ListCard,
   ListToolbar,
@@ -47,13 +51,16 @@ import {
   SegmentedControl,
   StatCard,
   StatusBadge,
+  SupplierPicker,
+  clasesBoton,
   useListadoServidor,
   type AccionFila,
   type ChipFiltro,
   type ColumnaTabla,
   type ListadoServidor,
+  type ProveedorPicker,
 } from '@/components/kit';
-import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
+import { useEtiquetaRango, useFormatoEntero } from '@/components/kit/useIdiomaKit';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -61,9 +68,10 @@ import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
-import { abrirDocumento } from '@/lib/documents/cliente';
+import { abrirDocumento, imprimirDocumento } from '@/lib/documents/cliente';
 import { clienteCompras, ErrorPeticionCompra } from '@/lib/services/compras/clienteCompras';
 import {
+  buscarProveedores,
   listarFacturasCompra,
   resumenFacturasCompra,
   type FilaFacturaCompra,
@@ -76,6 +84,25 @@ import { RUTA_PROVEEDORES, useBaseCompras } from '../rutasCompras';
 const ESTADOS = ['borrador', 'pendiente', 'parcial', 'vencida', 'pagada', 'anulada'] as const;
 const RECEPCIONES = ['por_recibir', 'recibido', 'no_aplica'] as const;
 const DIA_RE = /^\d{4}-\d{2}-\d{2}$/;
+const ID_RE = /^\d+$/;
+/**
+ * Tamaños de página del listado (Figma «Mostrando 1–25»). Van a
+ * `useListadoServidor` y a `Pagination`: la lista por defecto del kit es
+ * [10, 20, 50, 100] y un `tamanoPorDefecto` fuera de ella se cambia en silencio
+ * por el primero (10). Lo fija src/__tests__/finanzas/compras/paginacionListados.test.ts.
+ */
+const TAMANOS_PAGINA_COMPRAS = [25, 50, 100] as const;
+
+/** Proveedor del buscador (o de la fila) en la forma del `SupplierPicker`. */
+function aProveedorPicker(p: { id: number; name: string; nit: string | null; dv?: string | null; contact?: string | null; phone?: string | null }): ProveedorPicker {
+  return {
+    id: String(p.id),
+    nombre: p.name,
+    nit: p.nit ? `NIT ${p.nit}${p.dv ? `-${p.dv}` : ''}` : null,
+    contacto: p.contact ?? null,
+    telefono: p.phone ?? null,
+  };
+}
 
 function filtrosServidor(l: ListadoServidor, branch: number | null): Omit<FiltrosFacturasCompra, 'offset' | 'limite'> {
   const f = l.filtros;
@@ -83,6 +110,7 @@ function filtrosServidor(l: ListadoServidor, branch: number | null): Omit<Filtro
     busqueda: l.busqueda || null,
     estado: (ESTADOS as readonly string[]).includes(f.estado ?? '') ? f.estado : null,
     recepcion: (RECEPCIONES as readonly string[]).includes(f.recepcion ?? '') ? f.recepcion : null,
+    proveedor: ID_RE.test(f.proveedor ?? '') ? Number(f.proveedor) : null,
     desde: DIA_RE.test(f.desde ?? '') ? f.desde : null,
     hasta: DIA_RE.test(f.hasta ?? '') ? f.hasta : null,
     branch,
@@ -110,13 +138,20 @@ export default function FacturasCompraListado() {
     (valor: number, codigo?: string | null) => crearFormateadorMoneda(moneda.paraDocumento(codigo))(valor),
     [moneda],
   );
-  const sustantivo = { singular: t('sustantivo.singular'), plural: t('sustantivo.plural') };
+  const rangoLegible = useEtiquetaRango();
+  // El género va en los mensajes: «factura» es femenino en es/fr/pt.
+  const sustantivo = {
+    singular: t('sustantivo.singular'),
+    plural: t('sustantivo.plural'),
+    genero: t('sustantivo.genero') === 'femenino' ? ('femenino' as const) : ('masculino' as const),
+  };
 
   const l = useListadoServidor({
-    filtros: ['estado', 'recepcion', 'desde', 'hasta'],
+    filtros: ['estado', 'recepcion', 'desde', 'hasta', 'proveedor'],
     camposOrden: ['fecha', 'vencimiento', 'total', 'saldo', 'numero'],
     ordenPorDefecto: { campo: 'fecha', direccion: 'desc' },
     tamanoPorDefecto: 25,
+    tamanosPermitidos: TAMANOS_PAGINA_COMPRAS,
   });
 
   const [filas, setFilas] = useState<FilaFacturaCompra[]>([]);
@@ -128,6 +163,9 @@ export default function FacturasCompraListado() {
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
   const [pagando, setPagando] = useState<FilaFacturaCompra | null>(null);
   const [exportando, setExportando] = useState(false);
+  const [eliminando, setEliminando] = useState<FilaFacturaCompra | null>(null);
+  const [borrando, setBorrando] = useState(false);
+  const [proveedorElegido, setProveedorElegido] = useState<ProveedorPicker | null>(null);
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
 
   const filtros = filtrosServidor(l, branchFilter ?? null);
@@ -224,8 +262,9 @@ export default function FacturasCompraListado() {
     }
   };
 
+  // Se confirma con el diálogo del manual (PATRONES §8), no con el confirm del navegador.
   const eliminar = async (f: FilaFacturaCompra) => {
-    if (!window.confirm(t('listado.eliminarConfirmar', { numero: f.number_ext }))) return;
+    setBorrando(true);
     try {
       await clienteCompras.eliminarBorrador(f.id);
       toastSuccess(t('listado.eliminada', { numero: f.number_ext }));
@@ -233,8 +272,26 @@ export default function FacturasCompraListado() {
     } catch (e) {
       const codigo = e instanceof ErrorPeticionCompra ? e.codigo : 'error_desconocido';
       toastError(t.has(`errores.${codigo}`) ? t(`errores.${codigo}` as never) : t('errores.error_desconocido'));
+    } finally {
+      setBorrando(false);
+      setEliminando(null);
     }
   };
+
+  const buscarProveedor = useCallback(
+    async (texto: string, senal: AbortSignal) => (await buscarProveedores(getOrganizationId(), texto, senal)).map(aProveedorPicker),
+    [],
+  );
+  // En la URL solo va el id: el nombre sale de lo elegido o de las filas ya filtradas por ese proveedor.
+  const idProveedor = ID_RE.test(l.filtros.proveedor ?? '') ? l.filtros.proveedor : null;
+  const filaProveedor = idProveedor ? filas.find((f) => String(f.supplier_id) === idProveedor) : undefined;
+  const proveedorFiltro: ProveedorPicker | null = !idProveedor
+    ? null
+    : proveedorElegido?.id === idProveedor
+      ? proveedorElegido
+      : filaProveedor
+        ? aProveedorPicker({ id: filaProveedor.supplier_id, name: filaProveedor.supplier_name, nit: filaProveedor.supplier_nit })
+        : { id: idProveedor, nombre: t('listado.filtros.proveedor') };
 
   const accionesDe = (f: FilaFacturaCompra): AccionFila[] => {
     const abierta = f.status !== 'draft' && f.status !== 'void' && f.balance > 0;
@@ -261,18 +318,28 @@ export default function FacturasCompraListado() {
     if (f.status === 'draft') {
       acciones.push(
         { id: 'editar', etiqueta: t('listado.acciones.editar'), icono: Pencil, onSelect: () => router.push(`${base}/${f.id}/editar`) },
-        { id: 'eliminar', etiqueta: t('listado.acciones.eliminar'), icono: Trash2, onSelect: () => void eliminar(f), destructiva: true },
+        { id: 'eliminar', etiqueta: t('listado.acciones.eliminar'), icono: Trash2, onSelect: () => setEliminando(f), destructiva: true },
       );
     }
     return acciones;
   };
 
+  /** «Emisión: 1 – 22 sep 2026» (no el `YYYY-MM-DD` crudo); con un solo extremo, «Emisión: 1 sep 2026 – …». */
+  const etiquetaChipRango = (desde: string | undefined, hasta: string | undefined): string => {
+    const d = desde && DIA_RE.test(desde) ? desde : null;
+    const h = hasta && DIA_RE.test(hasta) ? hasta : null;
+    if (d && h) return t('listado.chips.emision', { rango: rangoLegible({ desde: d, hasta: h }) });
+    return t('listado.chips.rango', {
+      desde: d ? rangoLegible({ desde: d, hasta: d }) : '…',
+      hasta: h ? rangoLegible({ desde: h, hasta: h }) : '…',
+    });
+  };
+
   const chips: ChipFiltro[] = [
     l.filtros.estado ? { clave: 'estado', etiqueta: t(`estadoPago.${l.filtros.estado}` as never) } : null,
     l.filtros.recepcion ? { clave: 'recepcion', etiqueta: t(`recepcion.${l.filtros.recepcion}` as never) } : null,
-    l.filtros.desde || l.filtros.hasta
-      ? { clave: 'desde', etiqueta: t('listado.chips.rango', { desde: l.filtros.desde ?? '…', hasta: l.filtros.hasta ?? '…' }) }
-      : null,
+    l.filtros.desde || l.filtros.hasta ? { clave: 'desde', etiqueta: etiquetaChipRango(l.filtros.desde, l.filtros.hasta) } : null,
+    proveedorFiltro ? { clave: 'proveedor', etiqueta: t('listado.chips.proveedor', { nombre: proveedorFiltro.nombre }) } : null,
   ].filter((c): c is ChipFiltro => !!c);
 
   const columnas: ColumnaTabla<FilaFacturaCompra>[] = [
@@ -280,13 +347,16 @@ export default function FacturasCompraListado() {
       id: 'numero',
       encabezado: t('listado.columnas.numero'),
       ordenable: true,
+      variante: 'mono',
+      celda: (f) => <span className="whitespace-nowrap font-medium text-fg">{f.number_ext}</span>,
+    },
+    {
+      id: 'proveedor',
+      encabezado: t('listado.columnas.proveedor'),
       celda: (f) => (
         <div className="flex min-w-0 flex-col">
-          <span className="truncate font-medium text-fg">{f.number_ext}</span>
-          <span className="truncate text-xs text-fg-secondary">
-            {f.supplier_name}
-            {f.supplier_nit ? ` · ${f.supplier_nit}` : ''}
-          </span>
+          <span className="truncate text-fg">{f.supplier_name}</span>
+          {f.supplier_nit && <span className="truncate text-xs text-fg-secondary">{f.supplier_nit}</span>}
         </div>
       ),
     },
@@ -304,7 +374,18 @@ export default function FacturasCompraListado() {
         </div>
       ),
     },
-    { id: 'total', encabezado: t('listado.columnas.total'), variante: 'importe', ordenable: true, celda: (f) => formatear(f.total, f.currency) },
+    {
+      id: 'total',
+      encabezado: t('listado.columnas.total'),
+      variante: 'importe',
+      ordenable: true,
+      celda: (f) => (
+        <div className="flex flex-col items-end">
+          <span>{formatear(f.total, f.currency)}</span>
+          <span className="text-xs text-fg-secondary">{f.currency ?? moneda.code}</span>
+        </div>
+      ),
+    },
     { id: 'saldo', encabezado: t('listado.columnas.saldo'), variante: 'importe', ordenable: true, celda: (f) => formatear(f.balance, f.currency) },
     { id: 'recepcion', encabezado: t('listado.columnas.recepcion'), ocultarDebajo: 'lg', celda: (f) => <StatusBadge estado={f.recepcion} etiqueta={t(`recepcion.${f.recepcion}`)} /> },
     { id: 'estado', encabezado: t('listado.columnas.estado'), celda: (f) => <StatusBadge estado={textoEstado(f)} etiqueta={f.estado_pago === 'vencida' && f.dias_vencida ? t('estadoVencida', { dias: f.dias_vencida }) : t(`estadoPago.${f.estado_pago}`)} /> },
@@ -314,13 +395,7 @@ export default function FacturasCompraListado() {
       ocultarDebajo: 'xl',
       celda: (f) =>
         f.documento_soporte ? (
-          <Link
-            href={`/app/finanzas/documentos-soporte/${f.documento_soporte.id}`}
-            onClick={(e) => e.stopPropagation()}
-            className="text-sm text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-          >
-            {f.documento_soporte.referencia}
-          </Link>
+          <ChipDocumento tipo="documentoSoporte" numero={f.documento_soporte.referencia} href={`/app/finanzas/documentos-soporte/${f.documento_soporte.id}`} />
         ) : (
           <span className="text-fg-muted">—</span>
         ),
@@ -340,17 +415,11 @@ export default function FacturasCompraListado() {
         debajo={<BranchBadgeActiva />}
         acciones={
           <>
-            <Link
-              href={RUTA_PROVEEDORES}
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
+            <Link href={RUTA_PROVEEDORES} className={clasesBoton({ variante: 'secundario' })}>
               <Truck aria-hidden="true" className="size-4" strokeWidth={1.5} />
               {t('listado.proveedores')}
             </Link>
-            <Link
-              href={`${base}/nuevo`}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-            >
+            <Link href={`${base}/nuevo`} className={clasesBoton({ variante: 'primario' })}>
               <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
               {t('listado.nueva')}
             </Link>
@@ -365,11 +434,7 @@ export default function FacturasCompraListado() {
         movil={{
           subtitulo: t('listado.subtitulo', { n: entero(total) }),
           accion: (
-            <Link
-              href={`${base}/nuevo`}
-              aria-label={t('listado.nueva')}
-              className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
+            <Link href={`${base}/nuevo`} aria-label={t('listado.nueva')} className={clasesBoton({ variante: 'fantasma', className: 'w-10 px-0 text-fg' })}>
               <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
             </Link>
           ),
@@ -412,6 +477,30 @@ export default function FacturasCompraListado() {
           onClick={() => l.setFiltro('recepcion', 'por_recibir')}
         />
       </KpiStrip>
+
+      {/* Móvil: una franja de cifras en lugar de las cuatro tarjetas (Figma KpiCompacto, patrón Y6). */}
+      <KpiCompacto
+        className="sm:hidden"
+        etiqueta={t('listado.kpis.etiqueta')}
+        cargando={!resumen}
+        cifras={[
+          { id: 'porPagar', etiqueta: t('listado.kpis.porPagar'), valor: formatearBase(resumen?.total_por_pagar ?? 0), onClick: () => l.setFiltro('estado', 'pendiente') },
+          {
+            id: 'vencidas',
+            etiqueta: t('listado.kpis.vencidas'),
+            valor: formatearBase(resumen?.vencidas_total ?? 0),
+            tono: resumen && resumen.vencidas > 0 ? 'peligro' : 'neutro',
+            onClick: () => l.setFiltro('estado', 'vencida'),
+          },
+          {
+            id: 'porRecibir',
+            etiqueta: t('listado.kpis.porRecibir'),
+            valor: resumen ? entero(resumen.por_recibir) : '—',
+            tono: resumen && resumen.por_recibir > 0 ? 'advertencia' : 'neutro',
+            onClick: () => l.setFiltro('recepcion', 'por_recibir'),
+          },
+        ]}
+      />
 
       <ListToolbar
         busqueda={
@@ -467,6 +556,20 @@ export default function FacturasCompraListado() {
                 />
               )}
             </FormField>
+            <SupplierPicker
+              layout="campo"
+              proveedor={proveedorFiltro}
+              etiqueta={t('listado.filtros.proveedor')}
+              buscar={buscarProveedor}
+              onCambiar={(p) => {
+                setProveedorElegido(p);
+                l.setFiltro('proveedor', p.id);
+              }}
+              onQuitar={() => {
+                setProveedorElegido(null);
+                l.setFiltro('proveedor', null);
+              }}
+            />
           </FilterPanel>
         }
         chips={
@@ -491,22 +594,19 @@ export default function FacturasCompraListado() {
         onFilaClick={(f) => router.push(`${base}/${f.id}`)}
         etiquetaFila={(f) => t('listado.etiquetaFila', { numero: f.number_ext, proveedor: f.supplier_name })}
         acciones={accionesDe}
-        accionesRapidas={(f) =>
-          f.status !== 'draft' && f.status !== 'void' && f.balance > 0 ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setPagando(f);
-              }}
-              aria-label={t('listado.pagarA', { numero: f.number_ext })}
-              title={t('listado.acciones.pagar')}
-              className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
-              <Wallet aria-hidden="true" className="size-4" strokeWidth={1.5} />
-            </button>
-          ) : null
-        }
+        accionesRapidas={(f) => (
+          <>
+            <AccionRapida
+              soloIcono
+              icono={Wallet}
+              etiqueta={t('listado.pagarA', { numero: f.number_ext })}
+              onClick={() => setPagando(f)}
+              deshabilitada={f.status === 'draft' || f.status === 'void' || f.balance <= 0}
+              motivo={f.status === 'draft' ? t('listado.motivos.borrador') : t('listado.motivos.sinSaldo')}
+            />
+            <AccionRapida soloIcono icono={Printer} etiqueta={t('listado.imprimirA', { numero: f.number_ext })} onClick={() => imprimirDocumento('factura-compra', f.id)} />
+          </>
+        )}
         tarjetaMovil={(f, ctx) => (
           <ListCard
             icono={ReceiptText}
@@ -544,6 +644,7 @@ export default function FacturasCompraListado() {
             total={total}
             onPaginaChange={l.setPagina}
             onTamanoChange={l.setTamano}
+            opcionesTamano={TAMANOS_PAGINA_COMPRAS}
             sustantivo={sustantivo}
             cargando={cargando}
           />
@@ -557,6 +658,17 @@ export default function FacturasCompraListado() {
         acciones={[{ id: 'exportar', etiqueta: t('listado.exportar.seleccion'), icono: Download, onClick: () => void exportar(true), cargando: exportando }]}
         onLimpiar={() => setSeleccion(new Set())}
       />
+
+      {eliminando && (
+        <Dialogo
+          abierto
+          onAbiertoChange={(v) => !v && !borrando && setEliminando(null)}
+          titulo={t('listado.eliminarTitulo', { numero: eliminando.number_ext })}
+          descripcion={t('listado.eliminarDescripcion')}
+          ancho={440}
+          primario={{ etiqueta: t('listado.acciones.eliminar'), onClick: () => void eliminar(eliminando), destructiva: true, cargando: borrando }}
+        />
+      )}
 
       {pagando && (
         <RegistrarPagoProveedor

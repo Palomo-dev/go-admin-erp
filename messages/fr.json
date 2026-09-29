@@ -10739,7 +10739,8 @@
     "titulo": "Factures d'achat",
     "sustantivo": {
       "singular": "facture d'achat",
-      "plural": "factures d'achat"
+      "plural": "factures d'achat",
+      "genero": "femenino"
     },
     "migas": {
       "finanzas": "Finances"
@@ -10827,10 +10828,13 @@
         "emision": "Émission",
         "todos": "Tous",
         "todas": "Toutes",
-        "verN": "Voir {n} résultats"
+        "verN": "Voir {n} résultats",
+        "proveedor": "Fournisseur"
       },
       "chips": {
-        "rango": "Émission : {desde} – {hasta}"
+        "rango": "Émission : {desde} – {hasta}",
+        "proveedor": "Fournisseur : {nombre}",
+        "emision": "Émission : {rango}"
       },
       "columnas": {
         "numero": "Numéro",
@@ -10840,7 +10844,8 @@
         "saldo": "Solde",
         "recepcion": "Réception",
         "estado": "Statut",
-        "documentoSoporte": "Doc. justificatif"
+        "documentoSoporte": "Doc. justificatif",
+        "proveedor": "Fournisseur"
       },
       "acciones": {
         "ver": "Voir le détail",
@@ -10888,7 +10893,10 @@
       "vacio": {
         "titulo": "Pas encore de factures d'achat",
         "descripcion": "Enregistrez la première facture d'un fournisseur ou générez-la depuis un bon de commande réceptionné."
-      }
+      },
+      "imprimirA": "Imprimer la facture {numero}",
+      "eliminarTitulo": "Supprimer le brouillon {numero} ?",
+      "eliminarDescripcion": "Action irréversible."
     },
     "detalle": {
       "titulo": "Facture {numero}",
@@ -10950,7 +10958,14 @@
         "vacio": "Pas encore de paiements",
         "aCuota": "Sur une échéance",
         "comprobanteDe": "Bon de décaissement de {monto}",
-        "programado": "Programmé, non approuvé : {monto}"
+        "programado": "Programmé, non approuvé : {monto}",
+        "columnas": {
+          "fecha": "Date",
+          "metodo": "Mode",
+          "referencia": "Référence",
+          "importe": "Montant",
+          "estado": "Statut"
+        }
       },
       "confirmada": {
         "conRecepcion": "Facture confirmée et réceptionnée en stock",
@@ -11001,7 +11016,9 @@
           "duplicada": "Facture en double",
           "devolucion": "Retour au fournisseur"
         }
-      }
+      },
+      "eliminarTitulo": "Supprimer le brouillon {numero} ?",
+      "eliminarDescripcion": "Action irréversible."
     },
     "formulario": {
       "tituloNueva": "Nouvelle facture d'achat",
@@ -11156,7 +11173,8 @@
     },
     "sustantivo": {
       "singular": "compte fournisseur",
-      "plural": "comptes fournisseurs"
+      "plural": "comptes fournisseurs",
+      "genero": "masculino"
     },
     "migas": {
       "finanzas": "Finances"
@@ -11201,7 +11219,8 @@
         "estado": "Statut",
         "antiguedad": "Ancienneté",
         "todos": "Tous",
-        "verN": "Voir {n} résultats"
+        "verN": "Voir {n} résultats",
+        "proveedor": "Fournisseur"
       },
       "columnas": {
         "proveedor": "Fournisseur",
@@ -11209,7 +11228,9 @@
         "monto": "Montant",
         "saldo": "Solde",
         "cuotas": "Échéances",
-        "estado": "Statut"
+        "estado": "Statut",
+        "documento": "Document",
+        "antiguedad": "Ancienneté"
       },
       "acciones": {
         "ver": "Voir le détail",
@@ -11255,6 +11276,10 @@
       "vacio": {
         "titulo": "Aucun compte fournisseur",
         "descripcion": "Ils sont créés à la confirmation d'une facture d'achat."
+      },
+      "programarA": "Programmer un paiement à {proveedor}",
+      "chips": {
+        "proveedor": "Fournisseur : {nombre}"
       }
     },
     "aprobaciones": {
@@ -11326,13 +11351,40 @@
         "pagarCuota": "Payer l'échéance {numero}",
         "eliminar": "Supprimer l'échéancier",
         "eliminarConfirmar": "Supprimer l'échéancier ? Le solde du compte ne change pas.",
-        "eliminado": "Échéancier supprimé"
+        "eliminado": "Échéancier supprimé",
+        "columnas": {
+          "numero": "N°",
+          "vence": "Échéance",
+          "valor": "Montant",
+          "pagado": "Payé",
+          "saldo": "Solde",
+          "estado": "Statut"
+        },
+        "eliminarTitulo": "Supprimer l'échéancier ?",
+        "eliminarDescripcion": "Le solde du compte ne change pas."
       },
       "pagos": {
         "titulo": "Paiements",
         "vacio": "Pas encore de paiements",
         "aCuota": "Sur une échéance",
-        "comprobanteDe": "Bon de décaissement de {monto}"
+        "comprobanteDe": "Bon de décaissement de {monto}",
+        "columnas": {
+          "fecha": "Date",
+          "metodo": "Mode",
+          "referencia": "Référence",
+          "importe": "Montant",
+          "estado": "Statut"
+        }
+      },
+      "kpis": {
+        "pagado": "Payé : {monto}",
+        "programado": "Programmé, non approuvé : {monto}"
+      },
+      "proveedorDatos": {
+        "nombre": "Nom",
+        "nit": "N° fiscal",
+        "telefono": "Téléphone",
+        "correo": "E-mail"
       }
     },
     "estadoCuenta": {
@@ -13965,6 +14017,22 @@
       "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
       "sin_organizacion": "L'organisation active est introuvable.",
       "desconocido": "L'opération n'a pas pu aboutir."
+    },
+    "anular": {
+      "descripcion": "L'annulation est irréversible.",
+      "ingreso": {
+        "titulo": "Annuler cet encaissement ?",
+        "boton": "Annuler l'encaissement"
+      },
+      "egreso": {
+        "titulo": "Annuler ce décaissement ?",
+        "boton": "Annuler le décaissement"
+      },
+      "transferencia": {
+        "titulo": "Annuler ce virement ?",
+        "boton": "Annuler le virement",
+        "consecuencia": "Les soldes des deux comptes sont rétablis."
+      }
     }
   },
   "documentosVenta": {
@@ -14381,6 +14449,10 @@
       "nueva": "Nouvelle retenue",
       "editar": "Modifier la retenue",
       "nota": "Une retenue est pratiquée par l’acheteur : elle ne s’ajoute pas au prix, ne s’attribue pas aux produits et ne peut pas être le taux par défaut."
+    },
+    "titulo": "Taxes",
+    "migas": {
+      "finanzas": "Finances"
     }
   },
   "receta": {

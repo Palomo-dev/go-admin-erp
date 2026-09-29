@@ -36,6 +36,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { useTranslations } from 'next-intl';
+import { DialogoMotivo } from '@/components/kit';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { transferenciasService, BankTransfer } from '@/lib/services/transferenciasService';
@@ -66,6 +67,9 @@ export function TransferenciasPage() {
   const t = useTranslations('tesoreria');
   const [transfers, setTransfers] = useState<BankTransfer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Anular con motivo (DialogoMotivo del kit), no con confirm() + prompt() del navegador.
+  const [anulando, setAnulando] = useState<string | null>(null);
+  const [anulandoOcupado, setAnulandoOcupado] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [stats, setStats] = useState({
@@ -106,12 +110,14 @@ export function TransferenciasPage() {
     loadData();
   }, [loadData]);
 
-  const handleCancel = async (id: string) => {
-    if (!confirm('¿Está seguro de anular esta transferencia? Se revertirán los saldos.')) return;
-    
-    const reason = prompt('Motivo de la anulación:');
+  const handleCancel = (id: string) => setAnulando(id);
+
+  const confirmarAnulacion = async (reason: string) => {
+    const id = anulando;
+    if (!id) return;
+    setAnulandoOcupado(true);
     try {
-      const result = await transferenciasService.cancelTransfer(id, reason || undefined);
+      const result = await transferenciasService.cancelTransfer(id, reason);
       if (result.success) {
         toast({
           title: 'Éxito',
@@ -123,6 +129,9 @@ export function TransferenciasPage() {
       }
     } catch {
       toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
+    } finally {
+      setAnulandoOcupado(false);
+      setAnulando(null);
     }
   };
 
@@ -395,6 +404,16 @@ export function TransferenciasPage() {
           setShowNewDialog(false);
           loadData();
         }}
+      />
+      <DialogoMotivo
+        abierto={!!anulando}
+        onAbiertoChange={(v) => !v && !anulandoOcupado && setAnulando(null)}
+        titulo={t('anular.transferencia.titulo')}
+        descripcion={t('anular.descripcion')}
+        textoConfirmar={t('anular.transferencia.boton')}
+        consecuencias={[t('anular.transferencia.consecuencia')]}
+        cargando={anulandoOcupado}
+        onConfirmar={(motivo) => void confirmarAnulacion(motivo)}
       />
     </div>
   );

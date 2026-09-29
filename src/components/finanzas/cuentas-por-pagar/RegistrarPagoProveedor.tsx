@@ -16,6 +16,8 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { RegistrarPagoDialog, type DocumentoPago as DocumentoKit, type ValorPago } from '@/components/kit/documento';
 import type { MetodoPagoOpcion } from '@/components/kit/metodosPago';
+import { FormField } from '@/components/kit';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
@@ -34,8 +36,8 @@ export interface RegistrarPagoProveedorProps {
   onRegistrado?: (resultado: ResultadoPago) => void;
 }
 
-const SELECT_CLASES =
-  'h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
+/** Radix `Select` no admite `value=""`: «ninguna» (cuota o cuenta bancaria) va con este centinela. */
+const NINGUNA = 'ninguna';
 
 async function pedirContexto(documento: string, id: string): Promise<ContextoPago> {
   const org = getOrganizationId();
@@ -184,30 +186,42 @@ export function RegistrarPagoProveedor({
   const camposExtra = (
     <>
       {principal && principal.cuotas.length > 0 && (
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
-          {t('cuota')}
-          <select value={cuotaId} onChange={(e) => setCuotaId(e.target.value)} className={SELECT_CLASES}>
-            <option value="">{t('cuotaNinguna')}</option>
-            {principal.cuotas.map((c) => (
-              <option key={c.id} value={c.id}>
-                {t('cuotaOpcion', { numero: c.numero, fecha: formatPlain(c.vencimiento), saldo: formatear(c.saldo) })}
-              </option>
-            ))}
-          </select>
-        </label>
+        <FormField etiqueta={t('cuota')}>
+          {(f) => (
+            <Select value={cuotaId || NINGUNA} onValueChange={(v) => setCuotaId(v === NINGUNA ? '' : v)}>
+              <SelectTrigger id={f.id} aria-labelledby={f.idEtiqueta} className="h-10 border-line-strong bg-surface">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NINGUNA}>{t('cuotaNinguna')}</SelectItem>
+                {principal.cuotas.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {t('cuotaOpcion', { numero: c.numero, fecha: formatPlain(c.vencimiento), saldo: formatear(c.saldo) })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </FormField>
       )}
       {(contexto?.cuentasBancarias.length ?? 0) > 0 && (
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
-          {tc('cuentaOrigen')}
-          <select value={cuentaBancaria} onChange={(e) => setCuentaBancaria(e.target.value)} className={SELECT_CLASES}>
-            <option value="">{t('cuentaBancariaNinguna')}</option>
-            {contexto?.cuentasBancarias.map((c) => (
-              <option key={c.id} value={c.id}>
-                {[c.name, c.bank_name, c.ultimos ? `···${c.ultimos}` : null].filter(Boolean).join(' · ')}
-              </option>
-            ))}
-          </select>
-        </label>
+        <FormField etiqueta={tc('cuentaOrigen')}>
+          {(f) => (
+            <Select value={cuentaBancaria || NINGUNA} onValueChange={(v) => setCuentaBancaria(v === NINGUNA ? '' : v)}>
+              <SelectTrigger id={f.id} aria-labelledby={f.idEtiqueta} className="h-10 border-line-strong bg-surface">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NINGUNA}>{t('cuentaBancariaNinguna')}</SelectItem>
+                {contexto?.cuentasBancarias.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {[c.name, c.bank_name, c.ultimos ? `···${c.ultimos}` : null].filter(Boolean).join(' · ')}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </FormField>
       )}
       {errorMonto && (
         <p role="alert" className="text-sm text-danger-text">

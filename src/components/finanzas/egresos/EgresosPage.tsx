@@ -36,6 +36,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { useTranslations } from 'next-intl';
+import { DialogoMotivo } from '@/components/kit';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { movimientosService, UnifiedMovement, type MovementRef } from '@/lib/services/movimientosService';
@@ -54,6 +55,9 @@ export function EgresosPage() {
   const t = useTranslations('tesoreria');
   const [movements, setMovements] = useState<UnifiedMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Anular con motivo (DialogoMotivo del kit), no con confirm() + prompt() del navegador.
+  const [anulando, setAnulando] = useState<MovementRef | null>(null);
+  const [anulandoOcupado, setAnulandoOcupado] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [stats, setStats] = useState({
@@ -108,12 +112,14 @@ export function EgresosPage() {
     }
   };
 
-  const handleCancel = async (ref: MovementRef) => {
-    if (!confirm('¿Está seguro de anular este egreso?')) return;
-    
-    const reason = prompt('Motivo de la anulación:');
+  const handleCancel = (ref: MovementRef) => setAnulando(ref);
+
+  const confirmarAnulacion = async (reason: string) => {
+    const ref = anulando;
+    if (!ref) return;
+    setAnulandoOcupado(true);
     try {
-      const result = await movimientosService.cancelMovement(ref, reason || undefined);
+      const result = await movimientosService.cancelMovement(ref, reason);
       if (result.success) {
         toast({ title: 'Éxito', description: 'Egreso anulado correctamente' });
         loadData();
@@ -122,6 +128,9 @@ export function EgresosPage() {
       }
     } catch {
       toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
+    } finally {
+      setAnulandoOcupado(false);
+      setAnulando(null);
     }
   };
 
@@ -379,6 +388,15 @@ export function EgresosPage() {
           setShowNewDialog(false);
           loadData();
         }}
+      />
+      <DialogoMotivo
+        abierto={!!anulando}
+        onAbiertoChange={(v) => !v && !anulandoOcupado && setAnulando(null)}
+        titulo={t('anular.egreso.titulo')}
+        descripcion={t('anular.descripcion')}
+        textoConfirmar={t('anular.egreso.boton')}
+        cargando={anulandoOcupado}
+        onConfirmar={(motivo) => void confirmarAnulacion(motivo)}
       />
     </div>
   );

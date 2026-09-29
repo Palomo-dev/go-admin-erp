@@ -10739,7 +10739,8 @@
     "titulo": "Faturas de compra",
     "sustantivo": {
       "singular": "fatura de compra",
-      "plural": "faturas de compra"
+      "plural": "faturas de compra",
+      "genero": "femenino"
     },
     "migas": {
       "finanzas": "Finanças"
@@ -10827,10 +10828,13 @@
         "emision": "Emissão",
         "todos": "Todos",
         "todas": "Todas",
-        "verN": "Ver {n} resultados"
+        "verN": "Ver {n} resultados",
+        "proveedor": "Fornecedor"
       },
       "chips": {
-        "rango": "Emissão: {desde} – {hasta}"
+        "rango": "Emissão: {desde} – {hasta}",
+        "proveedor": "Fornecedor: {nombre}",
+        "emision": "Emissão: {rango}"
       },
       "columnas": {
         "numero": "Número",
@@ -10840,7 +10844,8 @@
         "saldo": "Saldo",
         "recepcion": "Recebimento",
         "estado": "Status",
-        "documentoSoporte": "Doc. suporte"
+        "documentoSoporte": "Doc. suporte",
+        "proveedor": "Fornecedor"
       },
       "acciones": {
         "ver": "Ver detalhes",
@@ -10888,7 +10893,10 @@
       "vacio": {
         "titulo": "Ainda não há faturas de compra",
         "descripcion": "Registre a primeira fatura de um fornecedor ou gere-a a partir de uma ordem de compra recebida."
-      }
+      },
+      "imprimirA": "Imprimir fatura {numero}",
+      "eliminarTitulo": "Excluir o rascunho {numero}?",
+      "eliminarDescripcion": "Não é possível desfazer."
     },
     "detalle": {
       "titulo": "Fatura {numero}",
@@ -10950,7 +10958,14 @@
         "vacio": "Ainda não há pagamentos",
         "aCuota": "Para uma parcela",
         "comprobanteDe": "Comprovante de pagamento de {monto}",
-        "programado": "Programado sem aprovação: {monto}"
+        "programado": "Programado sem aprovação: {monto}",
+        "columnas": {
+          "fecha": "Data",
+          "metodo": "Método",
+          "referencia": "Referência",
+          "importe": "Valor",
+          "estado": "Status"
+        }
       },
       "confirmada": {
         "conRecepcion": "Fatura confirmada e recebida no estoque",
@@ -11001,7 +11016,9 @@
           "duplicada": "Fatura duplicada",
           "devolucion": "Devolução ao fornecedor"
         }
-      }
+      },
+      "eliminarTitulo": "Excluir o rascunho {numero}?",
+      "eliminarDescripcion": "Não é possível desfazer."
     },
     "formulario": {
       "tituloNueva": "Nova fatura de compra",
@@ -11156,7 +11173,8 @@
     },
     "sustantivo": {
       "singular": "conta a pagar",
-      "plural": "contas a pagar"
+      "plural": "contas a pagar",
+      "genero": "femenino"
     },
     "migas": {
       "finanzas": "Finanças"
@@ -11201,7 +11219,8 @@
         "estado": "Status",
         "antiguedad": "Antiguidade",
         "todos": "Todos",
-        "verN": "Ver {n} resultados"
+        "verN": "Ver {n} resultados",
+        "proveedor": "Fornecedor"
       },
       "columnas": {
         "proveedor": "Fornecedor",
@@ -11209,7 +11228,9 @@
         "monto": "Valor",
         "saldo": "Saldo",
         "cuotas": "Parcelas",
-        "estado": "Status"
+        "estado": "Status",
+        "documento": "Documento",
+        "antiguedad": "Antiguidade"
       },
       "acciones": {
         "ver": "Ver detalhes",
@@ -11255,6 +11276,10 @@
       "vacio": {
         "titulo": "Não há contas a pagar",
         "descripcion": "Elas são criadas ao confirmar uma fatura de compra."
+      },
+      "programarA": "Programar pagamento para {proveedor}",
+      "chips": {
+        "proveedor": "Fornecedor: {nombre}"
       }
     },
     "aprobaciones": {
@@ -11326,13 +11351,40 @@
         "pagarCuota": "Pagar a parcela {numero}",
         "eliminar": "Excluir plano",
         "eliminarConfirmar": "Excluir o plano de parcelas? O saldo da conta não muda.",
-        "eliminado": "Plano de parcelas excluído"
+        "eliminado": "Plano de parcelas excluído",
+        "columnas": {
+          "numero": "N.º",
+          "vence": "Vencimento",
+          "valor": "Valor",
+          "pagado": "Pago",
+          "saldo": "Saldo",
+          "estado": "Status"
+        },
+        "eliminarTitulo": "Excluir o plano de parcelas?",
+        "eliminarDescripcion": "O saldo da conta não muda."
       },
       "pagos": {
         "titulo": "Pagamentos",
         "vacio": "Ainda não há pagamentos",
         "aCuota": "Para uma parcela",
-        "comprobanteDe": "Comprovante de pagamento de {monto}"
+        "comprobanteDe": "Comprovante de pagamento de {monto}",
+        "columnas": {
+          "fecha": "Data",
+          "metodo": "Método",
+          "referencia": "Referência",
+          "importe": "Valor",
+          "estado": "Status"
+        }
+      },
+      "kpis": {
+        "pagado": "Pago: {monto}",
+        "programado": "Programado sem aprovação: {monto}"
+      },
+      "proveedorDatos": {
+        "nombre": "Nome",
+        "nit": "ID fiscal",
+        "telefono": "Telefone",
+        "correo": "E-mail"
       }
     },
     "estadoCuenta": {
@@ -13965,6 +14017,22 @@
       "no_autenticado": "Sua sessão expirou. Entre novamente.",
       "sin_organizacion": "A organização ativa não foi encontrada.",
       "desconocido": "Não foi possível concluir a operação."
+    },
+    "anular": {
+      "descripcion": "A anulação não pode ser desfeita.",
+      "ingreso": {
+        "titulo": "Anular esta receita?",
+        "boton": "Anular receita"
+      },
+      "egreso": {
+        "titulo": "Anular esta despesa?",
+        "boton": "Anular despesa"
+      },
+      "transferencia": {
+        "titulo": "Anular esta transferência?",
+        "boton": "Anular transferência",
+        "consecuencia": "Os saldos das duas contas são revertidos."
+      }
     }
   },
   "documentosVenta": {
@@ -14381,6 +14449,10 @@
       "nueva": "Nova retenção",
       "editar": "Editar retenção",
       "nota": "A retenção é feita pelo comprador: não é somada ao preço, não é atribuída a produtos e não pode ser a alíquota padrão."
+    },
+    "titulo": "Impostos",
+    "migas": {
+      "finanzas": "Finanças"
     }
   },
   "receta": {

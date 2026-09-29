@@ -13,8 +13,7 @@
  * - Ya no existe el «Registrar pago» de pruebas en borrador, ni recepcionar una
  *   factura `partial` dos veces (lo decide la base con `stock_received_at`).
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
@@ -22,7 +21,6 @@ import {
   BookOpen,
   CalendarClock,
   CheckCircle2,
-  FileCheck,
   FileText,
   HandCoins,
   ClipboardList,
@@ -34,16 +32,23 @@ import {
   Wallet,
 } from 'lucide-react';
 import {
+  AccionRapida,
+  DataTable,
+  Dialogo,
   DialogoMotivo,
   EmptyState,
   FilaDato,
+  ListaDatos,
   RowActionsMenu,
   StatusBadge,
   Tarjeta,
+  clasesBoton,
   type AccionFila,
+  type ColumnaTabla,
 } from '@/components/kit';
 import {
   CadenaDocumento,
+  ChipDocumento,
   DocumentoCabecera,
   DocumentoLineas,
   DocumentoTotales,
@@ -59,13 +64,13 @@ import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { abrirDocumento, imprimirDocumento } from '@/lib/documents/cliente';
 import { accionesPermitidas, calcularTotalesCompra, estadoRecepcion } from '@/lib/services/compras/logica';
 import { clienteCompras, ErrorPeticionCompra } from '@/lib/services/compras/clienteCompras';
-import { leerDetalleFacturaCompra, type DetalleFacturaCompra } from '@/lib/services/compras/lecturasCompras';
+import { leerDetalleFacturaCompra, type DetalleFacturaCompra, type PagoCompraLeido } from '@/lib/services/compras/lecturasCompras';
 import { RegistrarPagoProveedor } from '@/components/finanzas/cuentas-por-pagar/RegistrarPagoProveedor';
 import { ProgramarPagoDialog } from '@/components/finanzas/cuentas-por-pagar/ProgramarPagoDialog';
 import { RUTA_CXP, RUTA_PROVEEDORES, useBaseCompras } from '../rutasCompras';
 import { DialogoConfirmarCompra, DialogoRecepcionar } from './DialogosCompra';
 
-type Dialogo = 'confirmar' | 'recepcionar' | 'anular' | 'pagar' | 'programar' | null;
+type DialogoAbierto = 'confirmar' | 'recepcionar' | 'anular' | 'pagar' | 'programar' | 'eliminar' | null;
 
 export default function DetalleFacturaCompraV2({ id }: { id: string }) {
   const router = useRouter();
@@ -80,7 +85,8 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
   const [recarga, setRecarga] = useState(0);
-  const [dialogo, setDialogo] = useState<Dialogo>(null);
+  const [dialogo, setDialogo] = useState<DialogoAbierto>(null);
+  const idMotivoAcciones = useId();
   const [ocupado, setOcupado] = useState(false);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
@@ -132,7 +138,22 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
   };
 
   if (cargando && !f) {
-    return <DocumentoCabecera tipo="facturaCompra" titulo={td('cargando')} cargando migas={[{ etiqueta: t('titulo'), href: base }]} />;
+    // Misma rejilla que el detalle listo: cabecera, líneas y totales en esqueleto (plan §3.2).
+    return (
+      <div className="flex flex-col gap-4 lg:gap-5">
+        <DocumentoCabecera tipo="facturaCompra" titulo={td('cargando')} cargando migas={[{ etiqueta: t('titulo'), href: base }]} />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
+          <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
+            <Tarjeta titulo={td('lineas')} sinRelleno>
+              <DocumentoLineas lineas={[]} modo="lectura" moneda={ctxMoneda} etiqueta={td('lineas')} estado="cargando" />
+            </Tarjeta>
+          </div>
+          <div className="flex min-w-0 flex-col gap-4">
+            <DocumentoTotales variante="compra" moneda={ctxMoneda} subtotal={0} total={0} cargando />
+          </div>
+        </div>
+      </div>
+    );
   }
   if (error || !f) {
     return (
@@ -246,21 +267,54 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
       motivo: td('motivos.sinPermiso'),
       destructiva: true,
       separadorAntes: true,
-      onSelect: () => {
-        if (!window.confirm(td('eliminarConfirmar', { numero: f.number_ext }))) return;
-        void clienteCompras
-          .eliminarBorrador(f.id)
-          .then(() => {
-            toastSuccess(td('eliminada', { numero: f.number_ext }));
-            router.push(base);
-          })
-          .catch((e) => toastError(mensajeError(e)));
-      },
+      // Se confirma con el diálogo del manual (PATRONES §8), no con el confirm del navegador.
+      onSelect: () => setDialogo('eliminar'),
     },
   ];
 
-  const botonClase =
-    'inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
+  const eliminarBorrador = () => {
+    setOcupado(true);
+    void clienteCompras
+      .eliminarBorrador(f.id)
+      .then(() => {
+        toastSuccess(td('eliminada', { numero: f.number_ext }));
+        setDialogo(null);
+        router.push(base);
+      })
+      .catch((e) => toastError(mensajeError(e)))
+      .finally(() => setOcupado(false));
+  };
+
+  // Botones deshabilitados con su motivo (title + aria-describedby), no ocultos.
+  const sinPermisoCrear = !permisos.crear;
+  const motivoCrear = sinPermisoCrear ? td('motivos.sinPermiso') : undefined;
+  const describeMotivo = sinPermisoCrear ? idMotivoAcciones : undefined;
+
+  const columnasPagos: ColumnaTabla<PagoCompraLeido>[] = [
+    {
+      id: 'fecha',
+      encabezado: td('pagos.columnas.fecha'),
+      celda: (p) => <span className="whitespace-nowrap tabular-nums">{formatDateTime(p.payment_date ?? p.created_at)}</span>,
+    },
+    { id: 'metodo', encabezado: td('pagos.columnas.metodo'), ocultarDebajo: 'sm', celda: (p) => p.method ?? '—' },
+    {
+      id: 'referencia',
+      encabezado: td('pagos.columnas.referencia'),
+      ocultarDebajo: 'md',
+      celda: (p) => (
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate">{p.reference ?? '—'}</span>
+          {p.installment_id && <span className="text-xs text-fg-secondary">{td('pagos.aCuota')}</span>}
+        </div>
+      ),
+    },
+    { id: 'importe', encabezado: td('pagos.columnas.importe'), variante: 'importe', celda: (p) => formatear(p.amount) },
+    {
+      id: 'estado',
+      encabezado: td('pagos.columnas.estado'),
+      celda: (p) => (p.status !== 'completed' ? <StatusBadge estado={p.status ?? 'pendiente'} /> : null),
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
@@ -274,39 +328,64 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
           <>
             {f.status !== 'draft' && f.status !== 'void' && <StatusBadge estado={recepcion} etiqueta={t(`recepcion.${recepcion}`)} />}
             {f.documentoSoporte && (
-              <Link
+              <ChipDocumento
+                tipo="documentoSoporte"
+                numero={f.documentoSoporte.referencia}
                 href={`/app/finanzas/documentos-soporte/${f.documentoSoporte.id}`}
-                className="inline-flex h-6 items-center gap-1 rounded-full border border-line bg-surface px-2 text-xs text-fg-secondary hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                <FileCheck aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
-                {f.documentoSoporte.referencia}
-              </Link>
+                tamano="md"
+              />
             )}
           </>
         }
         acciones={
           <>
-            <button type="button" onClick={() => imprimirDocumento('factura-compra', f.id)} className={`${botonClase} border border-line-strong bg-surface text-fg hover:bg-hover`}>
+            <button type="button" onClick={() => imprimirDocumento('factura-compra', f.id)} className={clasesBoton({ variante: 'secundario' })}>
               <Printer aria-hidden="true" className="size-4" strokeWidth={1.5} />
               {td('acciones.imprimir')}
             </button>
             {acciones.confirmar && (
-              <button type="button" disabled={!permisos.crear} title={!permisos.crear ? td('motivos.sinPermiso') : undefined} onClick={() => setDialogo('confirmar')} className={`${botonClase} bg-brand-action text-fg-on-brand hover:bg-brand-action-hover`}>
+              <button
+                type="button"
+                disabled={sinPermisoCrear}
+                title={motivoCrear}
+                aria-describedby={describeMotivo}
+                onClick={() => setDialogo('confirmar')}
+                className={clasesBoton({ variante: 'primario' })}
+              >
                 <CheckCircle2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
                 {td('acciones.confirmar')}
               </button>
             )}
             {acciones.recepcionar && (
-              <button type="button" disabled={!permisos.crear} title={!permisos.crear ? td('motivos.sinPermiso') : undefined} onClick={() => setDialogo('recepcionar')} className={`${botonClase} border border-line-strong bg-surface text-fg hover:bg-hover`}>
+              <button
+                type="button"
+                disabled={sinPermisoCrear}
+                title={motivoCrear}
+                aria-describedby={describeMotivo}
+                onClick={() => setDialogo('recepcionar')}
+                className={clasesBoton({ variante: 'secundario' })}
+              >
                 <PackageCheck aria-hidden="true" className="size-4" strokeWidth={1.5} />
                 {td('acciones.recepcionar')}
               </button>
             )}
             {acciones.registrarPago && (
-              <button type="button" disabled={!permisos.crear} title={!permisos.crear ? td('motivos.sinPermiso') : undefined} onClick={() => setDialogo('pagar')} className={`${botonClase} bg-brand-action text-fg-on-brand hover:bg-brand-action-hover`}>
+              <button
+                type="button"
+                disabled={sinPermisoCrear}
+                title={motivoCrear}
+                aria-describedby={describeMotivo}
+                onClick={() => setDialogo('pagar')}
+                className={clasesBoton({ variante: 'primario' })}
+              >
                 <Wallet aria-hidden="true" className="size-4" strokeWidth={1.5} />
                 {td('acciones.pagar')}
               </button>
+            )}
+            {motivoCrear && (
+              <span id={idMotivoAcciones} className="sr-only">
+                {motivoCrear}
+              </span>
             )}
             <RowActionsMenu orientacion="horizontal" tamano="md" titulo={td('titulo', { numero: f.number_ext })} acciones={menu} />
           </>
@@ -325,7 +404,7 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
             icono={HandCoins}
             accion={
               acciones.registrarPago && permisos.crear ? (
-                <button type="button" onClick={() => setDialogo('pagar')} className="text-sm font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                <button type="button" onClick={() => setDialogo('pagar')} className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'text-link hover:text-link' })}>
                   {td('acciones.pagar')}
                 </button>
               ) : undefined
@@ -334,31 +413,24 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
             {f.pagos.length === 0 ? (
               <p className="pb-4 text-sm text-fg-secondary">{td('pagos.vacio')}</p>
             ) : (
-              <ul className="flex flex-col divide-y divide-line pb-2">
-                {f.pagos.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                    <div className="flex min-w-0 flex-col">
-                      <span className="font-medium text-fg">{formatear(p.amount)}</span>
-                      <span className="truncate text-xs text-fg-secondary">
-                        {[formatDateTime(p.payment_date ?? p.created_at), p.method, p.reference, p.installment_id ? td('pagos.aCuota') : null].filter(Boolean).join(' · ')}
-                      </span>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {p.status !== 'completed' && <StatusBadge estado={p.status ?? 'pendiente'} />}
-                      {p.status === 'completed' && (
-                        <button
-                          type="button"
-                          onClick={() => abrirDocumento('comprobante-egreso', p.id)}
-                          aria-label={td('pagos.comprobanteDe', { monto: formatear(p.amount) })}
-                          className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                        >
-                          <FileText aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                        </button>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              <DataTable
+                densidad="compacta"
+                etiqueta={td('pagos.titulo')}
+                columnas={columnasPagos}
+                filas={f.pagos}
+                obtenerId={(p) => p.id}
+                virtualizar={false}
+                accionesRapidas={(p) =>
+                  p.status === 'completed' ? (
+                    <AccionRapida
+                      soloIcono
+                      icono={FileText}
+                      etiqueta={td('pagos.comprobanteDe', { monto: formatear(p.amount) })}
+                      onClick={() => abrirDocumento('comprobante-egreso', p.id)}
+                    />
+                  ) : null
+                }
+              />
             )}
             {f.programaciones.some((p) => p.status === 'pending') && (
               <p className="border-t border-line py-3 text-sm text-warning-text">
@@ -389,7 +461,7 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
           />
 
           <Tarjeta titulo={td('datos.titulo')}>
-            <div className="flex flex-col pb-3">
+            <ListaDatos className="pb-3">
               <FilaDato
                 etiqueta={td('datos.proveedor')}
                 valor={f.proveedor?.name ?? '—'}
@@ -406,27 +478,25 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
                 etiqueta={td('datos.recepcion')}
                 valor={f.stock_received_at ? formatDateTime(f.stock_received_at) : t(`recepcion.${recepcion}`)}
               />
-            </div>
+            </ListaDatos>
           </Tarjeta>
 
           {f.cuenta && (
             <Tarjeta titulo={td('cuenta.titulo')} icono={ClipboardList}>
-              <div className="flex flex-col pb-3">
+              <ListaDatos className="pb-3">
                 <FilaDato etiqueta={td('cuenta.monto')} valor={formatear(f.cuenta.amount)} />
                 <FilaDato etiqueta={td('cuenta.saldo')} valor={formatear(f.cuenta.balance)} tono={f.cuenta.balance > 0 ? 'peligro' : 'exito'} />
                 <FilaDato etiqueta={td('cuenta.ver')} valor={td('cuenta.abrir')} href={`${RUTA_CXP}/${f.cuenta.id}`} />
-              </div>
+              </ListaDatos>
             </Tarjeta>
           )}
 
           {f.asientos.length > 0 && (
             <Tarjeta titulo={td('asientos')} icono={BookOpen}>
-              <ul className="flex flex-col gap-1 pb-3 text-sm">
+              <ul aria-label={td('asientos')} className="flex flex-wrap gap-2">
                 {f.asientos.map((a) => (
-                  <li key={a.id}>
-                    <Link href={`/app/finanzas/contabilidad/asientos/${a.id}`} className="text-link underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
-                      {a.memo ?? `#${a.id}`}
-                    </Link>
+                  <li key={a.id} className="min-w-0 max-w-full">
+                    <ChipDocumento tipo="asiento" numero={a.memo ?? `#${a.id}`} href={`/app/finanzas/contabilidad/asientos/${a.id}`} tamano="md" />
                   </li>
                 ))}
               </ul>
@@ -477,6 +547,14 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
         cargando={ocupado}
         error={errorAccion}
         onConfirmar={(motivo) => void ejecutar(() => clienteCompras.anular(f.id, motivo), td('anular.listo'))}
+      />
+      <Dialogo
+        abierto={dialogo === 'eliminar'}
+        onAbiertoChange={(v) => !v && !ocupado && setDialogo(null)}
+        titulo={td('eliminarTitulo', { numero: f.number_ext })}
+        descripcion={td('eliminarDescripcion')}
+        ancho={440}
+        primario={{ etiqueta: td('acciones.eliminar'), onClick: eliminarBorrador, destructiva: true, cargando: ocupado }}
       />
       {dialogo === 'pagar' && (
         <RegistrarPagoProveedor

@@ -10,7 +10,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { CheckCircle2, PackageCheck } from 'lucide-react';
-import { Dialogo } from '@/components/kit';
+import { DataTable, Dialogo } from '@/components/kit';
 import { Checkbox } from '@/components/ui/checkbox';
 import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { costoUnitarioCompra } from '@/lib/services/compras/logica';
@@ -140,33 +140,18 @@ export function DialogoRecepcionar({
     >
       <div className="flex flex-col gap-3">
         {conProducto.length > 0 && (
-          <div className="overflow-x-auto rounded-lg border border-line">
-            <table className="w-full text-sm">
-              <caption className="sr-only">{t('tabla')}</caption>
-              <thead className="bg-subtle text-left text-xs text-fg-secondary">
-                <tr>
-                  <th scope="col" className="px-3 py-2 font-medium">
-                    {t('producto')}
-                  </th>
-                  <th scope="col" className="px-3 py-2 text-right font-medium">
-                    {t('cantidad')}
-                  </th>
-                  <th scope="col" className="px-3 py-2 text-right font-medium">
-                    {t('costo')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {conProducto.map((l) => (
-                  <tr key={l.id} className="border-t border-line">
-                    <td className="px-3 py-2 text-fg">{l.description}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{l.qty}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatear(costoUnitarioCompra(l, taxIncluded))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            densidad="compacta"
+            etiqueta={t('tabla')}
+            filas={conProducto}
+            obtenerId={(l) => l.id}
+            virtualizar={false}
+            columnas={[
+              { id: 'producto', encabezado: t('producto'), celda: (l) => <span className="text-fg">{l.description}</span> },
+              { id: 'cantidad', encabezado: t('cantidad'), variante: 'importe', celda: (l) => l.qty },
+              { id: 'costo', encabezado: t('costo'), variante: 'importe', celda: (l) => formatear(costoUnitarioCompra(l, taxIncluded)) },
+            ]}
+          />
         )}
         <p className="text-xs text-fg-muted">{t('ayudaCosto')}</p>
         {sinProducto > 0 && <p className="text-sm text-fg-secondary">{t('lineasSinProducto', { n: sinProducto })}</p>}

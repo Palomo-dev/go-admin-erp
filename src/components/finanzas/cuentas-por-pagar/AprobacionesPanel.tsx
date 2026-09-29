@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Ban, CheckCircle2, ShieldCheck, XCircle } from 'lucide-react';
-import { DialogoMotivo, Tarjeta } from '@/components/kit';
+import { DialogoMotivo, Tarjeta, clasesBoton } from '@/components/kit';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
@@ -91,9 +91,6 @@ export function AprobacionesPanel({ programaciones, moneda, puedeAprobar, onCamb
   const pendientes = programaciones.filter((p) => p.status === 'pending');
   if (pendientes.length === 0) return null;
 
-  const boton =
-    'inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50';
-
   return (
     <Tarjeta id={id} titulo={t('titulo', { n: pendientes.length })} descripcion={t('descripcion')} icono={ShieldCheck} tono="advertencia">
       <ul className="flex flex-col divide-y divide-line pb-2">
@@ -119,7 +116,7 @@ export function AprobacionesPanel({ programaciones, moneda, puedeAprobar, onCamb
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 {propia && (
-                  <button type="button" disabled={ocupado === p.id} onClick={() => void decidir(p, 'cancelar')} className={`${boton} text-fg-secondary hover:bg-hover`}>
+                  <button type="button" disabled={ocupado === p.id} onClick={() => void decidir(p, 'cancelar')} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
                     <Ban aria-hidden="true" className="size-4" strokeWidth={1.5} />
                     {t('cancelar')}
                   </button>
@@ -132,7 +129,7 @@ export function AprobacionesPanel({ programaciones, moneda, puedeAprobar, onCamb
                     setErrorRechazo(null);
                     setRechazando(p);
                   }}
-                  className={`${boton} border border-line-strong bg-surface text-fg hover:bg-hover`}
+                  className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}
                 >
                   <XCircle aria-hidden="true" className="size-4" strokeWidth={1.5} />
                   {t('rechazar')}
@@ -143,7 +140,7 @@ export function AprobacionesPanel({ programaciones, moneda, puedeAprobar, onCamb
                   title={motivoAprobar}
                   aria-describedby={motivoAprobar ? `motivo-aprobar-${p.id}` : undefined}
                   onClick={() => void decidir(p, 'aprobar')}
-                  className={`${boton} bg-brand-action text-fg-on-brand hover:bg-brand-action-hover`}
+                  className={clasesBoton({ variante: 'primario', tamano: 'sm' })}
                 >
                   <CheckCircle2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
                   {t('aprobar')}

@@ -9,17 +9,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { CalendarClock } from 'lucide-react';
-import { Dialogo, FormField } from '@/components/kit';
-// El índice del kit aún no reexporta CampoNumero (pedido al agente del kit).
-import { CampoNumero } from '@/components/kit/CampoNumero';
+import { CampoFecha, CampoNumero, Dialogo, FormField } from '@/components/kit';
 import { simboloMoneda } from '@/components/kit/documento';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toastSuccess } from '@/components/ui/use-toast';
 import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { validarMontoPago } from '@/lib/services/compras/logica';
 import { clienteCompras, ErrorPeticionCompra } from '@/lib/services/compras/clienteCompras';
-import { CampoFecha } from '@/components/kit/CampoFecha';
+
+/** Radix `Select` no admite `value=""`: «sin cuota» va con este centinela. */
+const SIN_CUOTA = 'ninguna';
 
 export interface ProgramarPagoDialogProps {
   abierto: boolean;
@@ -144,23 +145,27 @@ export function ProgramarPagoDialog({
         {cuotas.length > 0 && (
           <FormField etiqueta={t('cuota')}>
             {(c) => (
-              <select
-                id={c.id}
-                value={cuota}
-                onChange={(e) => {
-                  setCuota(e.target.value);
-                  const elegida = cuotas.find((q) => q.id === e.target.value);
+              <Select
+                value={cuota || SIN_CUOTA}
+                onValueChange={(v) => {
+                  const id = v === SIN_CUOTA ? '' : v;
+                  setCuota(id);
+                  const elegida = cuotas.find((q) => q.id === id);
                   if (elegida) setMonto(Math.min(elegida.saldo, disponible));
                 }}
-                className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
-                <option value="">{t('cuotaNinguna')}</option>
-                {cuotas.map((q) => (
-                  <option key={q.id} value={q.id}>
-                    {t('cuotaOpcion', { numero: q.numero, saldo: formatear(q.saldo) })}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SIN_CUOTA}>{t('cuotaNinguna')}</SelectItem>
+                  {cuotas.map((q) => (
+                    <SelectItem key={q.id} value={q.id}>
+                      {t('cuotaOpcion', { numero: q.numero, saldo: formatear(q.saldo) })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </FormField>
         )}

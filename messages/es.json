@@ -10844,7 +10844,8 @@
     "titulo": "Facturas de compra",
     "sustantivo": {
       "singular": "factura de compra",
-      "plural": "facturas de compra"
+      "plural": "facturas de compra",
+      "genero": "femenino"
     },
     "migas": {
       "finanzas": "Finanzas"
@@ -10932,10 +10933,13 @@
         "emision": "Emisión",
         "todos": "Todos",
         "todas": "Todas",
-        "verN": "Ver {n} resultados"
+        "verN": "Ver {n} resultados",
+        "proveedor": "Proveedor"
       },
       "chips": {
-        "rango": "Emisión: {desde} – {hasta}"
+        "rango": "Emisión: {desde} – {hasta}",
+        "proveedor": "Proveedor: {nombre}",
+        "emision": "Emisión: {rango}"
       },
       "columnas": {
         "numero": "Número",
@@ -10945,7 +10949,8 @@
         "saldo": "Saldo",
         "recepcion": "Recepción",
         "estado": "Estado",
-        "documentoSoporte": "Doc. soporte"
+        "documentoSoporte": "Doc. soporte",
+        "proveedor": "Proveedor"
       },
       "acciones": {
         "ver": "Ver detalle",
@@ -10993,7 +10998,10 @@
       "vacio": {
         "titulo": "Aún no hay facturas de compra",
         "descripcion": "Registra la primera factura de un proveedor o genérala desde una orden de compra recibida."
-      }
+      },
+      "imprimirA": "Imprimir factura {numero}",
+      "eliminarTitulo": "¿Eliminar el borrador {numero}?",
+      "eliminarDescripcion": "No se puede deshacer."
     },
     "detalle": {
       "titulo": "Factura {numero}",
@@ -11055,7 +11063,14 @@
         "vacio": "Aún no hay pagos",
         "aCuota": "A una cuota",
         "comprobanteDe": "Comprobante de egreso por {monto}",
-        "programado": "Programado sin aprobar: {monto}"
+        "programado": "Programado sin aprobar: {monto}",
+        "columnas": {
+          "fecha": "Fecha",
+          "metodo": "Método",
+          "referencia": "Referencia",
+          "importe": "Importe",
+          "estado": "Estado"
+        }
       },
       "confirmada": {
         "conRecepcion": "Factura confirmada y recibida en inventario",
@@ -11106,7 +11121,9 @@
           "duplicada": "Factura duplicada",
           "devolucion": "Devolución al proveedor"
         }
-      }
+      },
+      "eliminarTitulo": "¿Eliminar el borrador {numero}?",
+      "eliminarDescripcion": "No se puede deshacer."
     },
     "formulario": {
       "tituloNueva": "Nueva factura de compra",
@@ -11261,7 +11278,8 @@
     },
     "sustantivo": {
       "singular": "cuenta por pagar",
-      "plural": "cuentas por pagar"
+      "plural": "cuentas por pagar",
+      "genero": "femenino"
     },
     "migas": {
       "finanzas": "Finanzas"
@@ -11306,7 +11324,8 @@
         "estado": "Estado",
         "antiguedad": "Antigüedad",
         "todos": "Todos",
-        "verN": "Ver {n} resultados"
+        "verN": "Ver {n} resultados",
+        "proveedor": "Proveedor"
       },
       "columnas": {
         "proveedor": "Proveedor",
@@ -11314,7 +11333,9 @@
         "monto": "Monto",
         "saldo": "Saldo",
         "cuotas": "Cuotas",
-        "estado": "Estado"
+        "estado": "Estado",
+        "documento": "Documento",
+        "antiguedad": "Antigüedad"
       },
       "acciones": {
         "ver": "Ver detalle",
@@ -11360,6 +11381,10 @@
       "vacio": {
         "titulo": "No hay cuentas por pagar",
         "descripcion": "Nacen al confirmar una factura de compra."
+      },
+      "programarA": "Programar pago a {proveedor}",
+      "chips": {
+        "proveedor": "Proveedor: {nombre}"
       }
     },
     "aprobaciones": {
@@ -11431,13 +11456,40 @@
         "pagarCuota": "Pagar la cuota {numero}",
         "eliminar": "Eliminar plan",
         "eliminarConfirmar": "¿Eliminar el plan de cuotas? El saldo de la cuenta no cambia.",
-        "eliminado": "Plan de cuotas eliminado"
+        "eliminado": "Plan de cuotas eliminado",
+        "columnas": {
+          "numero": "N.º",
+          "vence": "Vence",
+          "valor": "Valor",
+          "pagado": "Pagado",
+          "saldo": "Saldo",
+          "estado": "Estado"
+        },
+        "eliminarTitulo": "¿Eliminar el plan de cuotas?",
+        "eliminarDescripcion": "El saldo de la cuenta no cambia."
       },
       "pagos": {
         "titulo": "Pagos",
         "vacio": "Aún no hay pagos",
         "aCuota": "A una cuota",
-        "comprobanteDe": "Comprobante de egreso por {monto}"
+        "comprobanteDe": "Comprobante de egreso por {monto}",
+        "columnas": {
+          "fecha": "Fecha",
+          "metodo": "Método",
+          "referencia": "Referencia",
+          "importe": "Importe",
+          "estado": "Estado"
+        }
+      },
+      "kpis": {
+        "pagado": "Pagado: {monto}",
+        "programado": "Programado sin aprobar: {monto}"
+      },
+      "proveedorDatos": {
+        "nombre": "Nombre",
+        "nit": "NIT",
+        "telefono": "Teléfono",
+        "correo": "Correo"
       }
     },
     "estadoCuenta": {
@@ -14070,6 +14122,22 @@
       "no_autenticado": "Su sesión expiró. Inicie sesión de nuevo.",
       "sin_organizacion": "No se encontró la organización activa.",
       "desconocido": "No se pudo completar la operación."
+    },
+    "anular": {
+      "descripcion": "La anulación no se puede deshacer.",
+      "ingreso": {
+        "titulo": "¿Anular este ingreso?",
+        "boton": "Anular ingreso"
+      },
+      "egreso": {
+        "titulo": "¿Anular este egreso?",
+        "boton": "Anular egreso"
+      },
+      "transferencia": {
+        "titulo": "¿Anular esta transferencia?",
+        "boton": "Anular transferencia",
+        "consecuencia": "Se revierten los saldos de las dos cuentas."
+      }
     }
   },
   "documentosVenta": {
@@ -14486,6 +14554,10 @@
       "nueva": "Nueva retención",
       "editar": "Editar retención",
       "nota": "Una retención la practica el comprador: no se suma al precio, no se asigna a productos y no puede ser la tarifa por defecto."
+    },
+    "titulo": "Impuestos",
+    "migas": {
+      "finanzas": "Finanzas"
     }
   },
   "receta": {

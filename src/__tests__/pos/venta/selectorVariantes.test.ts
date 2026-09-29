@@ -143,3 +143,35 @@ describe('selectorVariantesLogica (kit)', () => {
     expect(totalSelector(null, 2)).toBeNull();
   });
 });
+
+// HANDOFF 2026-09-29 §8.4: el selector del POS ordenaba alfabético («L, M, S, XL, XS»).
+describe('estadoAtributos con el orden del catálogo', () => {
+  const tallas = ['L', 'M', 'S', 'XL', 'XS'].map((t, i) => ({ id: i + 1, price: 1000, variant_data: { Talla: t, Color: i % 2 ? 'Rojo' : 'Negro' } }));
+  const catalogo = {
+    tipos: [
+      { nombre: 'Color', orden: 2, estilo: 'color' as const },
+      { nombre: 'Talla', orden: 1, estilo: 'texto' as const },
+    ],
+    valores: [
+      { tipo: 'Talla', valor: 'XS', orden: 1, hex: null },
+      { tipo: 'Talla', valor: 'S', orden: 2, hex: null },
+      { tipo: 'Talla', valor: 'M', orden: 3, hex: null },
+      { tipo: 'Talla', valor: 'L', orden: 4, hex: null },
+      { tipo: 'Talla', valor: 'XL', orden: 5, hex: null },
+      { tipo: 'Color', valor: 'Rojo', orden: 1, hex: '#f00' },
+      { tipo: 'Color', valor: 'Negro', orden: 2, hex: '#000' },
+    ],
+  };
+
+  it('tipos y valores en el orden del catálogo', () => {
+    const r = estadoAtributos(tallas, {}, catalogo);
+    expect(r.map((a) => a.nombre)).toEqual(['Talla', 'Color']);
+    expect(r[0].valores.map((v) => v.valor)).toEqual(['XS', 'S', 'M', 'L', 'XL']);
+    expect(r[1].valores.map((v) => v.valor)).toEqual(['Rojo', 'Negro']);
+  });
+
+  it('sin catálogo se conserva el orden de antes', () => {
+    const r = estadoAtributos(tallas, {});
+    expect(r.find((a) => a.nombre === 'Talla')!.valores.map((v) => v.valor)).toEqual(['L', 'M', 'S', 'XL', 'XS']);
+  });
+});

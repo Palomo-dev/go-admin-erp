@@ -9,6 +9,9 @@ import { SelectorVariantes, type GrupoSelector, type StockVarianteSelector } fro
 import { MarcadorSinFoto } from '@/components/kit/ProductCard';
 import { acotarCantidad, etiquetaResumenVariante } from '@/components/kit/selectorVariantesLogica';
 import { CachedProductImage } from './CachedProductImage';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { variantesService } from '@/components/inventario/variantes/variantesService';
+import type { CatalogoOrden } from '@/components/inventario/variantes/logicaVariantes';
 import {
   agruparAtributos,
   alternarModificador,
@@ -162,8 +165,28 @@ export function VariantSelectorDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cargar]);
 
+  // Orden del catálogo de variantes (tallas «XS, S, M, L, XL», colores en su orden), no alfabético.
+  // Se lee una vez por organización; si falla, se queda el orden alfabético de antes.
+  const [catalogo, setCatalogo] = useState<CatalogoOrden | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const org = getOrganizationId();
+    if (!org) return;
+    let vivo = true;
+    variantesService
+      .catalogoOrden(Number(org))
+      .then((c) => vivo && setCatalogo(c))
+      .catch((error) => console.warn('No se pudo leer el orden del catálogo de variantes:', error));
+    return () => {
+      vivo = false;
+    };
+  }, [open]);
+
   const hayAtributos = useMemo(() => Object.keys(agruparAtributos(variants)).length > 0, [variants]);
-  const atributos = useMemo(() => (hayAtributos ? estadoAtributos(variants, selectedAttributes) : []), [hayAtributos, variants, selectedAttributes]);
+  const atributos = useMemo(
+    () => (hayAtributos ? estadoAtributos(variants, selectedAttributes, catalogo) : []),
+    [hayAtributos, variants, selectedAttributes, catalogo],
+  );
 
   const selectedModifiers: SelectedModifier[] = modificadoresElegidos(modifierGroups, selectedModifierIds);
   const extras = extraDeModificadores(selectedModifiers);

@@ -6,6 +6,7 @@
  * variante que coincide con los atributos y cuándo se puede confirmar.
  */
 import type { ProductModifierGroup } from '@/lib/services/productModifiersService';
+import { ordenarAtributosSegunCatalogo, type CatalogoOrden } from '@/components/inventario/variantes/logicaVariantes';
 
 export interface ModificadorElegido {
   groupId: number;
@@ -173,8 +174,17 @@ export interface EstadoValorAtributo {
 export function estadoAtributos<V extends VarianteConStock>(
   variants: V[],
   elegidos: Record<string, string>,
+  /**
+   * Orden del catálogo de variantes (tipos y valores por `display_order`). Sin
+   * él, orden alfabético («L, M, S, XL, XS»), como antes.
+   */
+  catalogo?: CatalogoOrden | null,
 ): Array<{ nombre: string; valores: EstadoValorAtributo[] }> {
-  return Object.entries(agruparAtributos(variants)).map(([nombre, valores]) => ({
+  const grupos = agruparAtributos(variants);
+  const ordenados: Array<[string, string[]]> = catalogo
+    ? ordenarAtributosSegunCatalogo(grupos, catalogo).map((a) => [a.nombre, a.valores.map((v) => v.valor)])
+    : Object.entries(grupos);
+  return ordenados.map(([nombre, valores]) => ({
     nombre,
     valores: valores.map((valor) => {
       const exacta = buscarVariante(variants, { ...elegidos, [nombre]: valor });

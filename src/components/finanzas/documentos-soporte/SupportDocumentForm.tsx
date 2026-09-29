@@ -377,7 +377,9 @@ export function SupportDocumentForm() {
         description: item.description,
         qty: Number(item.qty),
         unit_price: Number(item.unit_price),
-        tax_code: item.tax_code || '01',
+        // tax_code es FK a tax_templates(code): '01' (código DIAN) no existe ahí y hacía fallar el
+        // guardado. Sin impuesto elegido va null; al enviar, mapTaxCode(null) ya da el '01' de Factus.
+        tax_code: item.tax_code || null,
         tax_rate: Number(item.tax_rate || 0),
         total_line:
           Number(item.qty) * Number(item.unit_price) - (Number(item.discount_amount) || 0),

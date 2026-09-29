@@ -20885,6 +20885,142 @@
       "reenviar": "Enviar um novo link",
       "reenviando": "Enviando…",
       "espera": "Enviamos vários links seguidos. Aguarde alguns minutos."
+    },
+    "registro": {
+      "pasoCuenta": "Sua conta",
+      "pasoCorreo": "Confirme seu e-mail",
+      "titulo": "Crie sua conta",
+      "descripcion": "Comece com o teste grátis. Não pedimos cartão.",
+      "nombre": "Nome",
+      "apellido": "Sobrenome",
+      "correoAyuda": "Enviaremos um link para confirmá-lo.",
+      "telefono": "Telefone (opcional)",
+      "terminos": "Aceito os <terminos>Termos</terminos> e a <privacidad>Política de privacidade</privacidad>",
+      "terminosObligatorio": "Para criar a conta você precisa aceitar os Termos e a Política de privacidade.",
+      "google": "Cadastrar com o Google",
+      "yaTienesCuenta": "Já tem conta?",
+      "iniciaSesion": "Entre",
+      "error": "Não conseguimos criar a conta. Tente de novo em um instante.",
+      "revisaTitulo": "Verifique seu e-mail",
+      "revisa": "Enviamos um link para {correo} para confirmar sua conta. Abra-o neste ou em outro dispositivo.",
+      "revisaSiguiente": "Depois de confirmar, seguimos com sua organização, sua filial e seu plano.",
+      "yaConfirmaste": "Já confirmou?",
+      "reenviar": "Reenviar o link",
+      "reenviarEn": "Reenviar em {segundos} s",
+      "otroCorreo": "Usar outro e-mail"
+    },
+    "alta": {
+      "crearOUnirse": "Criar uma organização ou entrar em uma",
+      "crear": "Criar uma nova",
+      "unirse": "Entrar com um código",
+      "codigo": "Código ou link de convite",
+      "codigoAyuda": "Cole o link completo do e-mail ou só o código.",
+      "codigoInvalido": "Esse código não tem o formato de um convite.",
+      "usarCodigo": "Continuar com o código",
+      "nombre": "Nome comercial",
+      "tipo": "Tipo de negócio",
+      "elegirTipo": "Escolha o tipo",
+      "nit": "NIT (identificação fiscal)",
+      "nitDv": "Dígito verificador: {dv}",
+      "nitAyuda": "Opcional por enquanto. Precisamos dele para a fatura eletrônica.",
+      "razonSocial": "Razão social",
+      "razonSocialAyuda": "Se deixar vazio, usamos o nome comercial.",
+      "correo": "E-mail da organização",
+      "telefono": "Telefone (opcional)",
+      "subdominio": "Subdomínio",
+      "subdominioCorto": "Use pelo menos 3 letras ou números.",
+      "subdominioOcupado": "Esse subdomínio já está em uso.",
+      "subdominioLibre": "Disponível.",
+      "subdominioRevisando": "Verificando…",
+      "subdominioAyuda": "O endereço da sua loja e do seu site. Só letras e números.",
+      "masDatos": "Mais dados (opcional): endereço, CEP, site e descrição",
+      "direccion": "Endereço",
+      "codigoPostal": "CEP",
+      "sitioWeb": "Site",
+      "descripcion": "Descrição",
+      "tarifa": "Imposto padrão dos seus produtos",
+      "tarifaAyuda": "Usamos quando um produto não tem imposto próprio.",
+      "tarifas": {
+        "IVA_19": "IVA 19% (alíquota geral)",
+        "IVA_5": "IVA 5%",
+        "NINGUNA": "Nenhum: vendo produtos excluídos ou isentos"
+      },
+      "logo": "Logo",
+      "colorPrimario": "Cor principal",
+      "colorSecundario": "Cor secundária",
+      "mismaUbicacion": "Mesmo endereço da organização",
+      "sucursalNombre": "Nome da filial",
+      "sucursalNombrePorDefecto": "Filial principal",
+      "sucursalCodigo": "Código",
+      "sucursalTelefono": "Telefone da filial (opcional)",
+      "errorSubdominio": "Esse subdomínio já está em uso. Volte ao primeiro passo e escolha outro.",
+      "errorCrear": "Não conseguimos criar a organização. Revise os dados e tente de novo.",
+      "creando": "Criando sua organização…",
+      "orgTitulo": "Sua organização",
+      "orgDescripcion": "Os dados com que você vai faturar. O resto você completa depois.",
+      "pasoOrg": "Sua organização",
+      "sucTitulo": "Sua filial principal",
+      "sucDescripcion": "O lugar onde você vende ou atende. Pode adicionar mais filiais depois.",
+      "pasoSuc": "Filial principal",
+      "planTitulo": "Escolha seu plano",
+      "planDescripcion": "Comece com o teste grátis; mude de plano quando quiser.",
+      "pasoPlan": "Plano",
+      "pagoTitulo": "Forma de pagamento",
+      "pagoDescripcion": "Salve um cartão para quando o teste terminar, ou faça isso depois.",
+      "pasoPago": "Forma de pagamento"
+    },
+    "ubicacion": {
+      "pais": "País",
+      "paisDeducido": "Pelo seu navegador. Mude se não estiver certo.",
+      "elegirPais": "Escolha o país",
+      "ciudad": "Cidade",
+      "departamentoDe": "Estado: {departamento}",
+      "ciudadAyuda": "Digite para buscar; o estado é preenchido sozinho.",
+      "cargando": "Carregando cidades…",
+      "buscarCiudad": "Buscar cidade",
+      "sinCiudades": "Não encontramos essa cidade.",
+      "estado": "Estado, província ou região"
+    },
+    "terminosPagina": {
+      "titulo": "Termos de uso do GO Admin",
+      "actualizacion": "Última atualização: 29 de setembro de 2026",
+      "verPrivacidad": "Leia também a Política de privacidade",
+      "aceptacion": {
+        "titulo": "Aceitação",
+        "texto": "Ao criar uma conta ou usar o GO Admin você aceita estes termos. Se usa o GO Admin em nome de uma empresa, declara que pode aceitá-los por ela."
+      },
+      "servicio": {
+        "titulo": "O serviço",
+        "texto": "O GO Admin é um software de gestão na nuvem (PDV, estoque, clientes, finanças e mais). Melhoramos continuamente e algumas funções dependem do plano contratado."
+      },
+      "cuenta": {
+        "titulo": "Sua conta e sua segurança",
+        "texto": "Você é responsável pelo que é feito com sua conta. Use uma senha própria e forte, não a compartilhe e avise-nos se suspeitar de acesso indevido. Quem administra uma organização decide quem entra e com quais permissões."
+      },
+      "pagos": {
+        "titulo": "Planos, teste e pagamentos",
+        "texto": "Os planos pagos começam com um período de teste quando aplicável. Ao terminar, o plano escolhido é cobrado na forma de pagamento cadastrada. Você pode mudar ou cancelar o plano no aplicativo; o que já foi pago não é reembolsado, salvo exigência legal."
+      },
+      "datos": {
+        "titulo": "Seus dados",
+        "texto": "Os dados que você registra no GO Admin são da sua organização. Nós os tratamos conforme a Política de privacidade e a lei de proteção de dados pessoais aplicável, só para prestar o serviço."
+      },
+      "uso": {
+        "titulo": "Uso permitido",
+        "texto": "Não use o GO Admin para atividades ilegais, para enviar comunicações não solicitadas nem para tentar acessar dados de outras organizações. Podemos suspender contas que descumpram estas regras."
+      },
+      "responsabilidad": {
+        "titulo": "Responsabilidade",
+        "texto": "Fazemos o razoável para que o serviço esteja disponível e seguro, mas não garantimos que funcione sem interrupções. Revise as informações fiscais e contábeis antes de apresentá-las às autoridades."
+      },
+      "cambios": {
+        "titulo": "Mudanças nos termos",
+        "texto": "Se mudarmos estes termos, avisaremos no aplicativo ou por e-mail. Continuar usando o GO Admin depois do aviso significa aceitar as mudanças."
+      },
+      "contacto": {
+        "titulo": "Contato",
+        "texto": "Dúvidas sobre estes termos: soporte@goadmin.io."
+      }
     }
   },
   "inventarioUnidades": {

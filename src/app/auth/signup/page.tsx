@@ -1,1021 +1,268 @@
 'use client';
 
-// Forzar renderizado dinámico para evitar errores de useSearchParams
-export const dynamic = 'force-dynamic';
-
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+/**
+ * Registro — pasos 1 y 2 de 6: «Tu cuenta» y «Confirma tu correo» (acceso v3,
+ * decisión v2-8 / R5 opción B; Figma sección 18, filas 3 y 3f;
+ * docs/design/AUTH-ACCESO-V2.md §11 y §13).
+ *
+ * Primero la cuenta y la confirmación del correo; la organización, la
+ * sucursal, el plan y la tarjeta van después (/auth/signup/organizacion), ya
+ * con el correo confirmado. Antes se pedía todo —tarjeta incluida— y, con la
+ * confirmación apagada, se creaba la organización sin confirmar nada.
+ *
+ * Conserva: `?ref=` (vendedor; se guarda para el alta), Google, y los enlaces
+ * viejos `?step=organization&google=true` (redirigen al asistente). El idioma
+ * preferido es el del selector de la pantalla (antes un campo con idiomas que
+ * la app no tiene) y la foto de perfil se pone en Perfil (antes se subía sin
+ * sesión).
+ */
+import { useEffect, useRef, useState, Suspense } from 'react';
 import Link from 'next/link';
-import PersonalInfoStep from '../../../components/auth/PersonalInfoStep';
-import OrganizationStep from '../../../components/auth/OrganizationStep';
-import BranchStep from '../../../components/auth/BranchStep';
-import VerificationStep from '../../../components/auth/VerificationStep';
-import SubscriptionStep from '../../../components/auth/SubscriptionStep';
-import PaymentMethodStep from '../../../components/auth/PaymentMethodStep';
+import { useLocale, useTranslations } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
+import { Loader2, MailCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
-import { extractGoogleUserNames } from '@/lib/auth/googleAuth';
-import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
-import { setOrganizationDefaultTaxByCode, type CodigoTarifaPorDefecto } from '@/lib/services/defaultTaxService';
-import { useTranslations } from 'next-intl';
-import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
-import { Firma, Isotipo } from '@/components/shell/marca/Firma';
-import type { User } from '@supabase/supabase-js';
+import { handleGoogleLogin, reenviarConfirmacion } from '@/lib/auth';
+import { FormField } from '@/components/kit/FormField';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  EscenaAcceso,
+  TarjetaAcceso,
+  ProgresoPasos,
+  CampoContrasena,
+  MedidorFortaleza,
+  useEvaluacionContrasena,
+  PhoneField,
+  AvisoAcceso,
+  DividerTexto,
+  BotonProveedor,
+  PieEnlace,
+  IconoDestacado,
+} from '@/components/kit/acceso';
+import { CLAVE_MOTIVO, type MotivoRechazo } from '@/lib/auth/politicaContrasena';
+import { paisDesdeNavegador, alfa2DeAlfa3 } from '@/lib/utils/paisNavegador';
+import { guardarReferido } from '@/lib/auth/referido';
 
-// Definición de tipos
-interface SignupData {
-  // Datos personales
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  phone: string;
-  avatarUrl?: string; // NUEVO - Storage path del avatar
-  preferredLanguage?: string; // NUEVO - Idioma preferido
-  // Tipo de unión
-  joinType: 'create' | 'join';
-  // Si crea organización
-  organizationName: string;
-  organizationType: number | null;
-  organizationLegalName?: string;
-  organizationDescription?: string;
-  organizationEmail?: string;
-  organizationPhone?: string;
-  organizationAddress?: string;
-  organizationCity?: string;
-  organizationState?: string;
-  organizationCountry?: string;
-  organizationCountryCode?: string;
-  organizationStateCode?: string;
-  organizationMunicipalityId?: string;
-  organizationPostalCode?: string;
-  organizationTaxId?: string;
-  organizationNit?: string;
-  organizationDv?: string;
-  organizationWebsite?: string;
-  organizationPrimaryColor?: string;
-  organizationSecondaryColor?: string;
-  organizationSubdomain?: string;
-  logoUrl?: string; // NUEVO - Storage path del logo
-  defaultTaxCode?: CodigoTarifaPorDefecto; // Tarifa por defecto para productos sin impuesto
-  // Si se une con código
-  invitationCode: string;
-  // Datos de sucursal principal
-  branchName: string;
-  branchCode: string;
-  branchAddress?: string;
-  branchCity?: string;
-  branchState?: string;
-  branchCountry?: string;
-  branchCountryCode?: string;
-  branchStateCode?: string;
-  branchMunicipalityId?: string;
-  branchPostalCode?: string;
-  branchPhone?: string;
-  branchEmail?: string;
-  branchTaxIdentification?: string; // NUEVO - NIT/RUT de la sucursal
-  branchOpeningHours?: string; // NUEVO - JSON string de horarios
-  branchFeatures?: string; // NUEVO - JSON string de características
-  // Datos de suscripción
-  subscriptionPlan: string;
-  billingPeriod: 'monthly' | 'yearly';
-  skipTrial: boolean;
-  // Código de vendedor (referral)
-  referralCode?: string;
-  // Datos de Stripe (método de pago)
-  stripeCustomerId?: string;
-  stripePaymentMethodId?: string;
-  // Cupón de descuento
-  couponCode?: string;
-  validatedCoupon?: {
-    code: string;
-    name: string;
-    discountType: 'percentage' | 'fixed';
-    discountValue: number;
-    durationMonths: number | null;
-    discountDescription: string;
-    durationDescription: string;
-  } | null;
-}
+const CORREO_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ESPERA_REENVIO_S = 60;
+/** Países del catálogo para el prefijo del teléfono (el catálogo real se lee en el alta). */
+const PAISES_TELEFONO = ['COL', 'MEX', 'CHL', 'BRA', 'ESP', 'GBR', 'JPN', 'AUS', 'CAN', 'USA'];
 
 function SignupContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const t = useTranslations('auth.signup');
-  const [currentStep, setCurrentStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isGoogleUser, setIsGoogleUser] = useState(false);
-  const [googleUserData, setGoogleUserData] = useState<User | null>(null);
-  const [signupData, setSignupData] = useState<SignupData>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    phone: '',
-    avatarUrl: '',
-    preferredLanguage: 'es',
-    joinType: 'create',
-    organizationName: '',
-    organizationType: null,
-    organizationLegalName: '',
-    organizationDescription: '',
-    organizationEmail: '',
-    organizationPhone: '',
-    organizationAddress: '',
-    organizationCity: '',
-    organizationState: '',
-    organizationCountry: '',
-    organizationCountryCode: '',
-    organizationStateCode: '',
-    organizationMunicipalityId: '',
-    organizationPostalCode: '',
-    organizationTaxId: '',
-    organizationNit: '',
-    organizationDv: '',
-    organizationWebsite: '',
-    organizationPrimaryColor: '',
-    organizationSecondaryColor: '',
-    organizationSubdomain: '',
-    logoUrl: undefined,
-    invitationCode: '',
-    branchName: 'Sucursal Principal',
-    branchCode: 'MAIN-001',
-    branchAddress: '',
-    branchCity: '',
-    branchState: '',
-    branchCountry: '',
-    branchCountryCode: '',
-    branchStateCode: '',
-    branchMunicipalityId: '',
-    branchPostalCode: '',
-    branchPhone: '',
-    branchEmail: '',
-    branchTaxIdentification: '',
-    branchOpeningHours: '',
-    branchFeatures: '',
-    subscriptionPlan: 'pro',
-    billingPeriod: 'monthly',
-    skipTrial: false,
-    referralCode: '',
-    couponCode: undefined,
-  });
+  const t = useTranslations('acceso.registro');
+  const tc = useTranslations('acceso.comun');
+  const tp = useTranslations('acceso.contrasena');
+  const tl = useTranslations('acceso.login');
+  const locale = useLocale();
+  const params = useSearchParams();
+  const [nombre, setNombre] = useState('');
+  const [apellido, setApellido] = useState('');
+  const [correo, setCorreo] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmar, setConfirmar] = useState('');
+  const [terminos, setTerminos] = useState(false);
+  const [errores, setErrores] = useState<Record<string, string>>({});
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [paso, setPaso] = useState<'cuenta' | 'correo'>('cuenta');
+  const [segundos, setSegundos] = useState(0);
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [isoTelefono, setIsoTelefono] = useState<string | undefined>(undefined);
+  const temporizador = useRef<ReturnType<typeof setInterval> | null>(null);
+  const evaluacion = useEvaluacionContrasena(password, correo);
 
-  // Leer código de vendedor de la URL (?ref=VEND-001)
   useEffect(() => {
-    if (!searchParams) return;
-    const refCode = searchParams.get('ref');
-    if (refCode) {
-      console.log('🔍 Código de vendedor detectado:', refCode);
-      updateFormData({ referralCode: refCode });
+    // Enlaces viejos del registro de 6 pasos (Google sin organización): al asistente.
+    if (params?.get('step') === 'organization') {
+      window.location.replace('/auth/signup/organizacion');
+      return;
     }
-  }, [searchParams]);
-
-  // Verificar si viene de Google OAuth
-  useEffect(() => {
-    if (!searchParams) return;
-    const checkGoogleUser = async () => {
-      const isFromGoogle = searchParams.get('google') === 'true';
-      const stepParam = searchParams.get('step');
-      
-      if (isFromGoogle) {
-        // Verificar sesión activa de Google
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error || !session || session.user.app_metadata?.provider !== 'google') {
-          // No hay sesión de Google válida, redirigir a login
-          router.push('/auth/login?error=google-session-expired');
-          return;
-        }
-        
-        setIsGoogleUser(true);
-        setGoogleUserData(session.user);
-        
-        // Extraer datos del usuario de Google
-        const { firstName, lastName } = extractGoogleUserNames({
-          id: session.user.id,
-          email: session.user.email || '',
-          user_metadata: session.user.user_metadata || {}
-        });
-        
-        // Actualizar datos del formulario con información de Google
-        updateFormData({
-          firstName,
-          lastName,
-          email: session.user.email || '',
-          password: '', // No necesario para usuarios de Google
-          confirmPassword: ''
-        });
-        
-        // Si viene con step=organization, ir directamente al paso 2
-        if (stepParam === 'organization') {
-          setCurrentStep(2);
-        }
-      }
-    };
-    
-    checkGoogleUser();
-  }, [searchParams, router]);
-
-  // Actualizar datos del formulario
-  const updateFormData = (data: Partial<SignupData>) => {
-    setSignupData((prev) => ({ ...prev, ...data }));
-  };
-
-  // Avanzar al siguiente paso
-  const nextStep = async () => {
-    console.log(`SignupPage: Avanzando del paso ${currentStep} al paso ${currentStep + 1}`);
-    
-    if (currentStep === 1 && !isGoogleUser) {
-      setLoading(true);
-      setError(null);
-      
-      // Verificar si el correo ya está registrado en auth.users (incluye usuarios fantasma de invitaciones)
-      try {
-        const res = await fetch('/api/auth/check-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: signupData.email }),
-        });
-        const data = await res.json();
-        if (data.exists) {
-          setError(t('emailAlreadyRegistered'));
-          setLoading(false);
-          return;
-        }
-      } catch {
-        // Si el API falla, continuar con validación de profiles como fallback
-        const { data: existingUsers } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', signupData.email)
-          .maybeSingle();
-
-        if (existingUsers) {
-          setError(t('emailAlreadyRegistered'));
-          setLoading(false);
-          return;
-        }
-      }
-      
-      setLoading(false);
-    }
-    
-    setCurrentStep((prev) => {
-      const newStep = prev + 1;
-      console.log(`SignupPage: Paso actualizado a ${newStep}`);
-      return newStep;
+    guardarReferido(params?.get('ref'));
+    setIsoTelefono(alfa2DeAlfa3(paisDesdeNavegador(PAISES_TELEFONO)) ?? undefined);
+    // Con sesión abierta (p. ej. Google sin organización) se sigue en el asistente.
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) window.location.replace('/auth/signup/organizacion');
     });
+    return () => {
+      if (temporizador.current) clearInterval(temporizador.current);
+    };
+  }, [params]);
+
+  const contar = () => {
+    setSegundos(ESPERA_REENVIO_S);
+    if (temporizador.current) clearInterval(temporizador.current);
+    temporizador.current = setInterval(() => {
+      setSegundos((s) => {
+        if (s <= 1 && temporizador.current) clearInterval(temporizador.current);
+        return Math.max(0, s - 1);
+      });
+    }, 1000);
   };
 
-  // Retroceder al paso anterior
-  const prevStep = () => {
-    setCurrentStep((prev) => prev - 1);
-  };
-
-  // Función para crear todos los datos del registro (perfil, org, branch, etc.)
-  const createSignupData = async (userId: string, email: string) => {
-    console.log('🚀 Creando datos de registro para usuario:', userId);
-    
-    try {
-      // 1. Crear perfil del usuario
-      console.log('1️⃣ Creando perfil...');
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: userId,
-          first_name: signupData.firstName,
-          last_name: signupData.lastName,
-          email: email,
-          phone: signupData.phone || null,
-          avatar_url: signupData.avatarUrl || null,
-          preferred_language: signupData.preferredLanguage || 'es',
-          status: 'active'
-        }, { onConflict: 'id' });
-      
-      if (profileError) {
-        console.error('❌ Error creando perfil:', profileError);
-        throw profileError;
-      }
-      console.log('✅ Perfil creado exitosamente');
-      
-      // 2. Crear organización (solo si joinType es 'create')
-      if (signupData.joinType === 'create' && signupData.organizationName) {
-        console.log('2️⃣ Creando organización:', signupData.organizationName);
-
-        // Determinar planId antes del insert para que el trigger cree la suscripción correcta
-        const planSlug = (signupData.subscriptionPlan || '').toLowerCase();
-        const planId = planSlug.includes('ultimate') ? 5 : (planSlug.includes('business') ? 3 : 2);
-
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .insert({
-            name: signupData.organizationName,
-            legal_name: signupData.organizationLegalName || signupData.organizationName,
-            type_id: signupData.organizationType || 2,
-            description: signupData.organizationDescription || null,
-            email: signupData.organizationEmail || email,
-            phone: signupData.organizationPhone || null,
-            website: signupData.organizationWebsite || null,
-            tax_id: signupData.organizationTaxId || null,
-            nit: signupData.organizationNit || null,
-            dv: signupData.organizationDv ? parseInt(signupData.organizationDv, 10) : null,
-            address: signupData.organizationAddress || null,
-            city: signupData.organizationCity || null,
-            state: signupData.organizationState || null,
-            country: signupData.organizationCountry || 'Colombia',
-            country_code: signupData.organizationCountryCode || 'COL',
-            municipality_id: signupData.organizationMunicipalityId || null,
-            postal_code: signupData.organizationPostalCode || null,
-            primary_color: signupData.organizationPrimaryColor || '#3B82F6',
-            secondary_color: signupData.organizationSecondaryColor || '#F59E0B',
-            subdomain: signupData.organizationSubdomain || null,
-            logo_url: signupData.logoUrl || null,
-            owner_user_id: userId,
-            created_by: userId,
-            plan_id: planId,
-            status: 'active'
-          })
-          .select('id')
-          .single();
-        
-        if (orgError) {
-          console.error('❌ Error creando organización:', orgError);
-          throw orgError;
-        }
-        
-        const orgId = orgData.id;
-        console.log('✅ Organización creada con ID:', orgId);
-        // NOTA: El trigger create_default_subscription ya crea la suscripción automáticamente
-        // NOTA: El trigger setup_organization_defaults configura impuestos, monedas y métodos de pago
-        
-        // 3. Crear membresía del usuario como super admin (ANTES de branches para cumplir RLS)
-        console.log('3️⃣ Creando membresía de organización...');
-        const { error: memberError } = await supabase
-          .from('organization_members')
-          .insert({
-            organization_id: orgId,
-            user_id: userId,
-            role_id: 2, // Admin de organización
-            is_super_admin: true,
-            is_active: true
-          });
-        
-        if (memberError) {
-          console.error('❌ Error creando membresía:', memberError);
-          throw memberError;
-        }
-        console.log('✅ Membresía creada exitosamente');
-
-        // Tarifa por defecto elegida en el paso de organización. El disparador
-        // setup_organization_defaults ya sembró los impuestos; aquí solo se
-        // marca is_default. No bloquea el registro.
-        if (signupData.defaultTaxCode) {
-          try {
-            await setOrganizationDefaultTaxByCode(supabase, orgId, signupData.defaultTaxCode);
-          } catch (taxError) {
-            console.warn('⚠️ No se pudo guardar la tarifa por defecto (no bloquea signup):', taxError);
-          }
-        }
-        
-        // Registrar vendedor si viene con código de referido
-        if (signupData.referralCode) {
-          console.log('🔍 Registrando referral de vendedor:', signupData.referralCode);
-          try {
-            // RPC que valida que el llamante administre la organización; la
-            // tabla sellers ya no es legible por otros usuarios.
-            const { data: registrado, error: refRpcError } = await supabase
-              .rpc('fn_registrar_referido_vendedor', {
-                p_referral_code: signupData.referralCode,
-                p_organization_id: orgId,
-              });
-
-            if (refRpcError) {
-              console.warn('⚠️ No se pudo registrar el referido:', refRpcError.message);
-            } else if (registrado) {
-              console.log('✅ Referral de vendedor registrado');
-            } else {
-              console.warn('⚠️ Código de vendedor no encontrado:', signupData.referralCode);
-            }
-          } catch (refError) {
-            console.error('⚠️ Error registrando referral (no bloquea signup):', refError);
-          }
-        }
-        
-        // Guardar la organización activa. guardarOrganizacionActiva escribe
-        // `organizacionActiva`, las claves legacy que AppLayout lee para su
-        // estado inicial de orgId/orgName, y las cookies de organización.
-        guardarOrganizacionActiva({ id: orgId, name: signupData.organizationName });
-
-        // Actualizar last_org_id en el perfil para que el fallback del AppLayout funcione
-        await supabase
-          .from('profiles')
-          .update({ last_org_id: orgId })
-          .eq('id', userId);
-        
-        // 4. Actualizar sucursal principal (el trigger trg_create_default_branch_and_period ya la crea)
-        console.log('4️⃣ Actualizando sucursal principal...');
-        const openingHours = signupData.branchOpeningHours ? 
-          (typeof signupData.branchOpeningHours === 'string' ? JSON.parse(signupData.branchOpeningHours) : signupData.branchOpeningHours) :
-          {
-            monday: { open: '09:00', close: '18:00', closed: false },
-            tuesday: { open: '09:00', close: '18:00', closed: false },
-            wednesday: { open: '09:00', close: '18:00', closed: false },
-            thursday: { open: '09:00', close: '18:00', closed: false },
-            friday: { open: '09:00', close: '18:00', closed: false },
-            saturday: { open: '10:00', close: '15:00', closed: false },
-            sunday: { closed: true }
-          };
-        
-        const features = signupData.branchFeatures ?
-          (typeof signupData.branchFeatures === 'string' ? JSON.parse(signupData.branchFeatures) : signupData.branchFeatures) :
-          {};
-        
-        const { data: updatedBranches, error: branchError } = await supabase
-          .from('branches')
-          .update({
-            name: signupData.branchName || 'Sucursal Principal',
-            branch_code: signupData.branchCode || 'MAIN-001',
-            address: signupData.branchAddress || signupData.organizationAddress || null,
-            city: signupData.branchCity || signupData.organizationCity || null,
-            state: signupData.branchState || signupData.organizationState || null,
-            country: (signupData.branchCountry || signupData.organizationCountry || 'Colombia') === 'COL' ? 'Colombia' : (signupData.branchCountry || signupData.organizationCountry || 'Colombia'),
-            country_code: signupData.branchCountryCode || signupData.organizationCountryCode || null,
-            state_code: signupData.branchStateCode || null,
-            municipality_id: signupData.branchMunicipalityId || signupData.organizationMunicipalityId || null,
-            postal_code: signupData.branchPostalCode || signupData.organizationPostalCode || null,
-            phone: signupData.branchPhone || signupData.organizationPhone || null,
-            email: signupData.branchEmail || signupData.organizationEmail || email,
-            tax_identification: signupData.branchTaxIdentification || null,
-            opening_hours: openingHours,
-            features: features,
-            is_main: true,
-            is_active: true,
-            is_web_stock_source: true
-          })
-          .eq('organization_id', orgId)
-          .eq('is_main', true)
-          .select();
-        
-        if (branchError) {
-          console.error('❌ Error actualizando sucursal principal:', branchError);
-          throw branchError;
-        }
-        if (!updatedBranches || updatedBranches.length === 0) {
-          throw new Error(t('errorMainBranchNotFound'));
-        }
-        console.log('✅ Sucursal principal actualizada exitosamente');
-        
-        // 4.5. Asignar al creador como gerente de la sucursal principal
-        const { error: managerError } = await supabase
-          .from('branches')
-          .update({ manager_id: userId })
-          .eq('organization_id', orgId)
-          .eq('is_main', true);
-        
-        if (managerError) {
-          console.warn('⚠️ No se pudo asignar manager_id a la sucursal principal:', managerError);
-        } else {
-          console.log('✅ Creador asignado como gerente de la sucursal principal');
-        }
-
-        // 4.6. Crear registro en member_branches para que la asignación sea visible
-        const branchId = updatedBranches?.[0]?.id;
-        if (branchId) {
-          const { data: memberRecord, error: memberFetchError } = await supabase
-            .from('organization_members')
-            .select('id')
-            .eq('organization_id', orgId)
-            .eq('user_id', userId)
-            .single();
-
-          if (memberFetchError) {
-            console.warn('⚠️ No se pudo obtener el member_id para member_branches:', memberFetchError);
-          } else if (memberRecord) {
-            const { error: memberBranchError } = await supabase
-              .from('member_branches')
-              .insert({
-                organization_member_id: memberRecord.id,
-                branch_id: branchId
-              });
-            if (memberBranchError) {
-              console.warn('⚠️ No se pudo crear registro en member_branches:', memberBranchError);
-            } else {
-              console.log('✅ Usuario asignado a la sucursal principal en member_branches');
-            }
-          }
-        }
-        
-        // 5. Crear/actualizar suscripción
-        console.log('5️⃣ Configurando suscripción...');
-        console.log('🔍 DEBUG signup - Plan:', signupData.subscriptionPlan);
-        
-        // Determinar planCode basado en selección (planId ya fue calculado arriba)
-        let planCode: string;
-
-        if (signupData.subscriptionPlan.includes('ultimate')) {
-          planCode = 'ultimate';
-        } else if (signupData.subscriptionPlan.includes('business')) {
-          planCode = 'business';
-        } else {
-          planCode = 'pro';
-        }
-
-        // Inferir billingPeriod desde subscriptionPlan si no está explícito
-        const billingPeriod = signupData.billingPeriod || (signupData.subscriptionPlan.includes('yearly') ? 'yearly' : 'monthly');
-
-        // Obtener trial_days del plan desde la BD
-        const { data: planData } = await supabase
-          .from('plans')
-          .select('trial_days')
-          .eq('code', planCode)
-          .single();
-        const trialDays = planData?.trial_days || 15;
-
-        // Intentar crear suscripción en Stripe (no bloqueante)
-        let stripeSubscriptionId: string | null = null;
-        let stripeCustomerId: string | null = null;
-        let stripeTrialEnd: string | null = null;
-
-        try {
-            console.log('🔍 DEBUG signup - Llamando a /api/stripe/create-subscription...');
-            const stripeResponse = await fetch('/api/stripe/create-subscription', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                organizationId: orgId,
-                planCode: planCode,
-                billingPeriod: billingPeriod,
-                useTrial: !signupData.skipTrial,
-                userId: userId,
-                email: email,
-                customerName: `${signupData.firstName} ${signupData.lastName || ''}`.trim(),
-                ...(signupData.stripeCustomerId ? { existingCustomerId: signupData.stripeCustomerId } : {}),
-                ...(signupData.stripePaymentMethodId ? { paymentMethodId: signupData.stripePaymentMethodId } : {}),
-                ...(signupData.couponCode ? { couponCode: signupData.couponCode } : {}),
-              }),
-            });
-
-            const stripeResult = await stripeResponse.json();
-            console.log('🔍 DEBUG signup - Stripe response:', stripeResponse.status, stripeResult);
-
-            if (stripeResponse.ok && stripeResult.success) {
-              stripeSubscriptionId = stripeResult.subscriptionId;
-              stripeCustomerId = stripeResult.customerId;
-              stripeTrialEnd = stripeResult.trialEnd || null;
-              console.log('✅ Suscripción creada en Stripe:', stripeSubscriptionId);
-            } else {
-              console.error('❌ Error en respuesta de Stripe API:', stripeResult);
-            }
-        } catch (stripeError) {
-            console.error('❌ Error en llamada a Stripe API (no bloqueante):', stripeError);
-        }
-
-        // Siempre actualizar la suscripción en la BD, con o sin Stripe
-        const now = new Date();
-        const trialEnd = stripeTrialEnd 
-          ? new Date(stripeTrialEnd).toISOString()
-          : new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000).toISOString();
-
-        const updatePayload: Record<string, unknown> = {
-          plan_id: planId,
-          billing_period: billingPeriod,
-          ...(signupData.skipTrial
-            ? {
-                trial_start: null,
-                trial_end: null,
-                status: 'active',
-              }
-            : {
-                trial_start: now.toISOString(),
-                trial_end: trialEnd,
-                status: 'trialing',
-              }
-          ),
-        };
-
-        // Solo incluir IDs de Stripe si se crearon
-        if (stripeSubscriptionId) updatePayload.stripe_subscription_id = stripeSubscriptionId;
-        if (stripeCustomerId) updatePayload.stripe_customer_id = stripeCustomerId;
-
-        console.log('🔍 DEBUG signup - Actualizando BD con:', updatePayload);
-
-        const { data: updateData, error: updateError } = await supabase
-          .from('subscriptions')
-          .update(updatePayload)
-          .eq('organization_id', orgId)
-          .select();
-
-        if (updateError) {
-          console.error('❌ Error actualizando suscripción en BD:', updateError);
-        } else {
-          console.log('✅ Suscripción actualizada en BD:', updateData);
-        }
-        
-        // También actualizar plan_id en organizations para que el super admin lo vea
-        const { error: orgUpdateError } = await supabase
-          .from('organizations')
-          .update({ plan_id: planId })
-          .eq('id', orgId);
-        
-        if (orgUpdateError) {
-          console.error('❌ Error actualizando plan_id en organización:', orgUpdateError);
-        }
-        
-        // Actualizar last_org_id en el perfil
-        await supabase
-          .from('profiles')
-          .update({ last_org_id: orgId })
-          .eq('id', userId);
-        
-        console.log('🎉 ¡Registro completo exitosamente!');
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('❌ Error en createSignupData:', error);
-      throw error;
+  const enviar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAviso(null);
+    const err: Record<string, string> = {};
+    if (!nombre.trim()) err.nombre = tc('obligatorio');
+    if (!apellido.trim()) err.apellido = tc('obligatorio');
+    if (!CORREO_RE.test(correo.trim())) err.correo = tc('correoInvalido');
+    if (!evaluacion.valida) {
+      err.password = tp(!evaluacion.requisitos.longitud ? 'errorLongitud' : !evaluacion.requisitos.distintaDelCorreo ? 'errorIgualCorreo' : 'errorFiltrada');
     }
-  };
+    if (password !== confirmar) err.confirmar = tp('errorConfirmacion');
+    if (!terminos) err.terminos = t('terminosObligatorio');
+    setErrores(err);
+    if (Object.keys(err).length) return;
 
-  // Manejar el registro de usuario - crear en Supabase Auth y datos
-  const handleAuthSignup = async () => {
-    setLoading(true);
-    setError(null);
-
+    setEnviando(true);
     try {
-      console.log('Iniciando proceso de registro para:', signupData.email);
-      
-      if (isGoogleUser && googleUserData) {
-        // Usuario de Google ya autenticado, crear datos con el flujo completo
-        console.log('Usuario de Google completando signup:', googleUserData.id);
-        await createSignupData(googleUserData.id, googleUserData.email || '');
-        // Usar window.location.replace (full reload) en lugar de router.push para
-        // sincronizar las cookies de sesión de Supabase antes de montar AppLayout,
-        // igual que el flujo de login. Con router.push (client-side) AppLayout puede
-        // montarse antes de que la sesión esté hidratada y no detectar la organización.
-        window.location.replace('/app/inicio');
+      const res = await fetch('/api/auth/registro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, apellido, correo: correo.trim(), telefono, password, idioma: locale, terminos }),
+      });
+      const cuerpo = (await res.json().catch(() => ({}))) as { codigo?: string };
+      if (res.ok) {
+        setPaso('correo');
+        contar();
         return;
       }
-
-      // Crear usuario en Supabase Auth con todos los datos en metadata
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: signupData.email,
-        password: signupData.password,
-        options: {
-          data: {
-            first_name: signupData.firstName,
-            last_name: signupData.lastName,
-            phone: signupData.phone,
-            // Guardar todos los datos del signup para usar después de verificación
-            signup_data: JSON.stringify({
-              // Datos personales
-              firstName: signupData.firstName,
-              lastName: signupData.lastName,
-              phone: signupData.phone,
-              avatarUrl: signupData.avatarUrl,
-              preferredLanguage: signupData.preferredLanguage || 'es',
-              // Tipo de unión
-              joinType: signupData.joinType,
-              // Datos de organización
-              organizationName: signupData.organizationName,
-              organizationTypeId: signupData.organizationType?.toString(),
-              organizationLegalName: signupData.organizationLegalName,
-              organizationDescription: signupData.organizationDescription,
-              organizationEmail: signupData.organizationEmail,
-              organizationPhone: signupData.organizationPhone,
-              organizationAddress: signupData.organizationAddress,
-              organizationCity: signupData.organizationCity,
-              organizationState: signupData.organizationState,
-              organizationCountry: signupData.organizationCountry || 'Colombia',
-              organizationCountryCode: signupData.organizationCountryCode || 'COL',
-              organizationStateCode: signupData.organizationStateCode,
-              organizationMunicipalityId: signupData.organizationMunicipalityId,
-              organizationPostalCode: signupData.organizationPostalCode,
-              organizationTaxId: signupData.organizationTaxId,
-              organizationNit: signupData.organizationNit,
-              organizationWebsite: signupData.organizationWebsite,
-              organizationPrimaryColor: signupData.organizationPrimaryColor,
-              organizationSecondaryColor: signupData.organizationSecondaryColor,
-              organizationSubdomain: signupData.organizationSubdomain,
-              logoUrl: signupData.logoUrl,
-              defaultTaxCode: signupData.defaultTaxCode,
-              // Código de invitación
-              invitationCode: signupData.invitationCode,
-              // Datos de sucursal
-              branchName: signupData.branchName,
-              branchCode: signupData.branchCode,
-              branchAddress: signupData.branchAddress,
-              branchCity: signupData.branchCity,
-              branchState: signupData.branchState,
-              branchCountry: signupData.branchCountry || 'COL',
-              branchCountryCode: signupData.branchCountryCode,
-              branchStateCode: signupData.branchStateCode,
-              branchMunicipalityId: signupData.branchMunicipalityId,
-              branchPostalCode: signupData.branchPostalCode,
-              branchPhone: signupData.branchPhone,
-              branchEmail: signupData.branchEmail,
-              branchTaxIdentification: signupData.branchTaxIdentification,
-              branchOpeningHours: signupData.branchOpeningHours,
-              branchFeatures: signupData.branchFeatures,
-              // Datos de suscripción
-              subscriptionPlan: signupData.subscriptionPlan,
-              billingPeriod: signupData.billingPeriod,
-              skipTrial: signupData.skipTrial,
-              // Datos de Stripe
-              stripeCustomerId: signupData.stripeCustomerId,
-              stripePaymentMethodId: signupData.stripePaymentMethodId,
-              // Cupón
-              couponCode: signupData.couponCode
-            })
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback?complete_signup=true`
-        }
-      });
-
-      if (authError) {
-        console.error('Error en Supabase Auth:', authError);
-        // Traducir errores comunes de Supabase
-        const errorMsg = authError.message || '';
-        if (errorMsg.toLowerCase().includes('already registered') || errorMsg.toLowerCase().includes('already been registered')) {
-          throw new Error(t('emailAlreadyRegistered'));
-        }
-        throw new Error(errorMsg || t('errorCreateAccount'));
-      }
-
-      if (!authData.user) {
-        throw new Error(t('errorCreateUser'));
-      }
-
-      console.log('Usuario creado exitosamente en Auth:', authData.user.id);
-      
-      // IMPORTANTE: Verificar si el email ya está confirmado (confirmación deshabilitada)
-      // Si email_confirmed_at existe, el email ya está confirmado y debemos crear los datos inmediatamente
-      if (authData.user.email_confirmed_at || authData.session) {
-        console.log('📧 Email ya confirmado o sesión activa, creando datos inmediatamente...');
-        
-        try {
-          await createSignupData(authData.user.id, signupData.email);
-
-          // Con "Confirm email" desactivado, Supabase no envía el correo de
-          // confirmación automáticamente en signUp(). Se dispara aparte, sin
-          // bloquear el acceso a la app (el usuario ya tiene sesión activa).
-          try {
-            await supabase.auth.resend({ type: 'signup', email: signupData.email });
-          } catch (resendError) {
-            console.warn('No se pudo enviar el correo de confirmación (no bloqueante):', resendError);
-          }
-          
-          // Redirigir al dashboard directamente (la sesión ya está activa).
-          // Usar window.location.replace (full reload) para sincronizar cookies de
-          // sesión antes de montar AppLayout, igual que el flujo de login.
-          window.location.replace('/app/inicio?welcome=true');
-          return;
-        } catch (createError: unknown) {
-          console.error('Error creando datos de registro:', createError);
-          const detalle = createError instanceof Error && createError.message ? createError.message : t('errorUnknown');
-          throw new Error(`${t('errorSetupAccount')} - ${detalle}`);
-        }
-      }
-      
-      // Si llegamos aquí, el email necesita confirmación
-      console.log('Email de verificación enviado a:', signupData.email);
-      nextStep();
-      
-    } catch (err: unknown) {
-      console.error('Error en registro:', err);
-      setError(err instanceof Error && err.message ? err.message : t('errorCreateAccount'));
+      if (res.status === 429) setAviso(tl('demasiadasSolicitudes'));
+      else if (cuerpo.codigo && cuerpo.codigo in CLAVE_MOTIVO) setErrores({ password: tp(CLAVE_MOTIVO[cuerpo.codigo as MotivoRechazo]) });
+      else setAviso(t('error'));
+    } catch {
+      setAviso(t('error'));
     } finally {
-      setLoading(false);
+      setEnviando(false);
     }
   };
 
-  // Nota: La creación de datos de organización ahora se maneja automáticamente
-  // por el trigger de base de datos 'complete_signup_after_email_verification'
-  // que se ejecuta cuando el email es confirmado por Supabase.
+  const reenviar = async () => {
+    const r = await reenviarConfirmacion(correo.trim());
+    setAviso(r.espera ? tl('demasiadasSolicitudes') : null);
+    contar();
+  };
 
-  const formCardClass = [
-    currentStep === 4 ? 'max-w-3xl' : 'max-w-2xl',
-    'w-full space-y-3 sm:space-y-5 md:space-y-6',
-    'bg-white dark:bg-gray-800 p-5 pb-20 sm:p-6 sm:pb-8 md:p-8 md:pb-10',
-    'rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative',
-    'border border-gray-100 dark:border-gray-700 my-4 max-h-[88vh] overflow-y-auto',
-    'lg:my-6 lg:max-w-2xl lg:p-8 lg:pb-12 z-10',
-  ].join(' ');
-
-  return (
-    <div className="min-h-screen flex items-stretch justify-center bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black relative overflow-hidden">
-      {/* Fondo decorativo animado: planeta, nubes, cohete, estrellas */}
-      <AuthSceneBackground />
-
-      {/* Panel de branding - solo desktop */}
-      <div className="hidden lg:flex lg:w-2/5 items-center justify-center p-12 relative z-10">
-        <div className="relative z-10 max-w-sm text-white">
-          {/* Firma del manual de marca, variante sobre fondo azul */}
-          <div className="mb-8">
-            <Firma invertido />
-          </div>
-          <h1 className="text-3xl xl:text-4xl font-bold mb-4 leading-tight">
-            {t('pageTitle')}
-          </h1>
-          <p className="text-base xl:text-lg text-blue-100 dark:text-gray-300 mb-8 leading-relaxed">
-            {t('brandPanel.subtitle')}
-          </p>
-          {/* Pasos del proceso */}
-          <ul className="space-y-3 text-blue-50 dark:text-gray-300">
-            <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">1</span>
-              <span className="text-sm">{t('brandPanel.steps.personal')}</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">2</span>
-              <span className="text-sm">{t('brandPanel.steps.organization')}</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">3</span>
-              <span className="text-sm">{t('brandPanel.steps.mainBranch')}</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">4</span>
-              <span className="text-sm">{t('brandPanel.steps.plan')}</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">5</span>
-              <span className="text-sm">{t('brandPanel.steps.payment')}</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">6</span>
-              <span className="text-sm">{t('brandPanel.steps.verification')}</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      {/* Panel del formulario - flota sobre el fondo azul */}
-      <div className="w-full lg:w-3/5 flex items-start sm:items-center justify-center py-4 sm:py-6 md:py-10 px-4 sm:px-6 md:px-8 lg:px-10 lg:h-screen lg:overflow-y-auto lg:py-0 relative z-10">
-
-      <div className={formCardClass}>
-        <div className="flex flex-col items-center">
-          {/* Isotipo del manual de marca (en desktop lo lleva el panel azul) */}
-          <div className="mb-2 sm:mb-3 lg:hidden">
-            <Isotipo tamano={40} />
-          </div>
-          
-          {/* Título mejorado */}
-          <h2 className="text-center text-lg sm:text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent mb-1">
-            {isGoogleUser ? t('googleAccountSetup') : t('pageTitle')}
-          </h2>
-          {isGoogleUser && (
-            <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {t('googleAccount', { email: signupData.email })}
-            </p>
-          )}
-          
-          {/* Indicador de pasos (6 pasos) */}
-          <div className="flex justify-center w-full mt-2 sm:mt-3 mb-3 sm:mb-4">
-            <div className="flex items-center space-x-1 sm:space-x-2">
-              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
-                1
-              </div>
-              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 2 ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-600'}`}></div>
-              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
-                2
-              </div>
-              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 3 ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-600'}`}></div>
-              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 3 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
-                3
-              </div>
-              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 4 ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-600'}`}></div>
-              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 4 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
-                4
-              </div>
-              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 5 ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-600'}`}></div>
-              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 5 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
-                5
-              </div>
-              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 6 ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-600'}`}></div>
-              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 6 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
-                6
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 dark:bg-red-900/30 dark:border-red-500 dark:text-red-300 px-2 py-1.5 sm:px-3 sm:py-2 rounded text-xs sm:text-sm relative" role="alert">
-            <span className="block sm:inline">{error}</span>
-          </div>
-        )}
-        
-        {/* Pasos del formulario */}
-        {currentStep === 1 && !isGoogleUser && (
-          <PersonalInfoStep 
-            formData={signupData} 
-            updateFormData={updateFormData} 
-            onNext={nextStep}
-            error={error}
-            loading={loading}
-          />
-        )}
-        
-        {/* Para usuarios de Google, mostrar información de bienvenida en el paso 1 */}
-        {currentStep === 1 && isGoogleUser && (
-          <div className="text-center py-4 sm:py-6">
-            <div className="mb-3 sm:mb-5">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto mb-2 sm:mb-3 bg-green-100 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 sm:w-7 sm:h-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1.5">
-                {t('googleWelcome', { name: signupData.firstName })}
-              </h3>
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4 px-3">
-                {t('googleLinked')}
-              </p>
-            </div>
-            <button
-              onClick={nextStep}
-              className="bg-blue-600 text-white px-5 py-2 sm:px-7 sm:py-2.5 text-xs sm:text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-            >
-              {t('continueSetup')}
+  if (paso === 'correo') {
+    return (
+      <EscenaAcceso>
+        <TarjetaAcceso
+          pasos={<ProgresoPasos actual={2} total={6} etiqueta={t('pasoCorreo')} />}
+          titulo={t('revisaTitulo')}
+          descripcion={t('revisa', { correo: correo.trim() })}
+          icono={<IconoDestacado icono={MailCheck} />}
+          aviso={aviso ? <AvisoAcceso tono="advertencia">{aviso}</AvisoAcceso> : <AvisoAcceso tono="info">{t('revisaSiguiente')}</AvisoAcceso>}
+          pie={<PieEnlace pregunta={t('yaConfirmaste')} enlace={tl('entrar')} href="/auth/login" />}
+        >
+          <div className="flex flex-col gap-2">
+            <button type="button" onClick={reenviar} disabled={segundos > 0} className={clasesBoton({ variante: 'secundario', anchoCompleto: true })}>
+              {segundos > 0 ? t('reenviarEn', { segundos }) : t('reenviar')}
+            </button>
+            <button type="button" onClick={() => setPaso('cuenta')} className="text-[13px] font-medium text-link underline-offset-4 hover:underline">
+              {t('otroCorreo')}
             </button>
           </div>
-        )}
-        
-        {currentStep === 2 && (
-          <OrganizationStep 
-            formData={signupData} 
-            updateFormData={updateFormData} 
-            onNext={nextStep}
-            onBack={prevStep}
-            loading={loading}
+        </TarjetaAcceso>
+      </EscenaAcceso>
+    );
+  }
+
+  return (
+    <EscenaAcceso>
+      <TarjetaAcceso
+        pasos={<ProgresoPasos actual={1} total={6} etiqueta={t('pasoCuenta')} />}
+        titulo={t('titulo')}
+        descripcion={t('descripcion')}
+        aviso={aviso ? <AvisoAcceso tono="error">{aviso}</AvisoAcceso> : undefined}
+        pie={<PieEnlace pregunta={t('yaTienesCuenta')} enlace={t('iniciaSesion')} href="/auth/login" />}
+      >
+        <form className="flex flex-col gap-4" onSubmit={enviar} noValidate>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormField etiqueta={t('nombre')} obligatorio error={errores.nombre}>
+              <Input value={nombre} onChange={(e) => setNombre(e.target.value)} autoComplete="given-name" className="h-10 rounded-lg" />
+            </FormField>
+            <FormField etiqueta={t('apellido')} obligatorio error={errores.apellido}>
+              <Input value={apellido} onChange={(e) => setApellido(e.target.value)} autoComplete="family-name" className="h-10 rounded-lg" />
+            </FormField>
+          </div>
+          <FormField etiqueta={tc('correo')} obligatorio error={errores.correo} ayuda={t('correoAyuda')}>
+            <Input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} autoComplete="email" inputMode="email" className="h-10 rounded-lg" placeholder="nombre@empresa.com" />
+          </FormField>
+          <PhoneField etiqueta={t('telefono')} valor={telefono} onValor={setTelefono} defaultIso={isoTelefono} />
+          <CampoContrasena
+            etiqueta={tc('contrasena')}
+            valor={password}
+            onValor={setPassword}
+            modo="nueva"
+            obligatorio
+            error={errores.password}
+            debajo={<MedidorFortaleza evaluacion={evaluacion} />}
           />
-        )}
-        
-        {currentStep === 3 && (
-          <BranchStep 
-            formData={signupData} 
-            updateFormData={updateFormData} 
-            onNext={nextStep}
-            onBack={prevStep}
-            loading={loading}
+          <CampoContrasena
+            etiqueta={tc('confirmarContrasena')}
+            valor={confirmar}
+            onValor={setConfirmar}
+            modo="nueva"
+            name="confirm-password"
+            obligatorio
+            error={errores.confirmar}
           />
-        )}
-        
-        {currentStep === 4 && (
-          <SubscriptionStep 
-            formData={signupData} 
-            updateFormData={updateFormData} 
-            onNext={nextStep}
-            onBack={prevStep}
-            loading={loading}
-          />
-        )}
-        
-        {currentStep === 5 && (
-          <PaymentMethodStep 
-            formData={signupData} 
-            updateFormData={updateFormData} 
-            onNext={handleAuthSignup}
-            onBack={prevStep}
-            onSkip={handleAuthSignup}
-            loading={loading}
-          />
-        )}
-        
-        {currentStep === 6 && (
-          <VerificationStep 
-            email={signupData.email}
-          />
-        )}
-        
-        {/* Enlace a login */}
-        <div className="text-center mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-gray-100 dark:border-gray-700">
-          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-            {t('hasAccount')}{' '}
-            <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
-              {t('login')}
-            </Link>
-          </p>
-        </div>
-      </div>
-      </div>
-    </div>
+          <div className="space-y-1">
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="terminos"
+                checked={terminos}
+                onCheckedChange={(v) => setTerminos(v === true)}
+                aria-invalid={!!errores.terminos}
+                aria-describedby={errores.terminos ? 'terminos-error' : undefined}
+                className="mt-0.5"
+              />
+              <label htmlFor="terminos" className="text-[13px] text-fg">
+                {t.rich('terminos', {
+                  terminos: (c) => (
+                    <Link href="/terminos" target="_blank" className="font-medium text-link underline-offset-4 hover:underline">
+                      {c}
+                    </Link>
+                  ),
+                  privacidad: (c) => (
+                    <Link href="/privacy" target="_blank" className="font-medium text-link underline-offset-4 hover:underline">
+                      {c}
+                    </Link>
+                  ),
+                })}
+              </label>
+            </div>
+            {errores.terminos && (
+              <p id="terminos-error" role="alert" className="text-xs text-danger-text">
+                {errores.terminos}
+              </p>
+            )}
+          </div>
+          <button type="submit" disabled={enviando} className={clasesBoton({ anchoCompleto: true })}>
+            {enviando && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+            {tc('continuar')}
+          </button>
+        </form>
+        <DividerTexto />
+        <BotonProveedor
+          proveedor="google"
+          texto={t('google')}
+          disabled={loadingGoogle}
+          onClick={() => handleGoogleLogin({ setLoading: setLoadingGoogle, setError: (m) => m && setAviso(t('error')) })}
+        />
+      </TarjetaAcceso>
+    </EscenaAcceso>
   );
 }
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={null}>
       <SignupContent />
     </Suspense>
   );
 }
+

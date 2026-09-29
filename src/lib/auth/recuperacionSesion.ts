@@ -32,13 +32,14 @@ export function destinoInternoSeguro(raw: string | null | undefined): string {
 /**
  * Destino tras iniciar sesión (R15, docs/design/AUTH-ACCESO-V2.md §6): el mismo
  * filtro que `destinoInternoSeguro` (antes `redirectTo` de sessionStorage se
- * usaba sin validar), con UNA excepción: la vuelta al asistente de invitación
- * (`/auth/invite?invite_code=…`), que manda al login a quien ya tiene cuenta y
- * debe volver a aceptar.
+ * usaba sin validar), con DOS excepciones: la vuelta al asistente de
+ * invitación (`/auth/invite?invite_code=…`), que manda al login a quien ya
+ * tiene cuenta y debe volver a aceptar, y la del alta de la organización tras
+ * confirmar el correo (`/auth/signup/organizacion`).
  */
 export function destinoTrasLogin(raw: string | null | undefined): string {
   const destino = typeof raw === 'string' ? raw.trim() : '';
-  if (/^\/auth\/invite(\?|$)/.test(destino) && !/[\u0000-\u001f]/.test(destino)) return destino;
+  if (/^\/auth\/(invite|signup\/organizacion)(\?|$)/.test(destino) && !/[\u0000-\u001f]/.test(destino)) return destino;
   return destinoInternoSeguro(destino);
 }
 

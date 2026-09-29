@@ -20885,6 +20885,142 @@
       "reenviar": "Envoyer un nouveau lien",
       "reenviando": "Envoi…",
       "espera": "Nous avons envoyé plusieurs liens d’affilée. Patientez quelques minutes."
+    },
+    "registro": {
+      "pasoCuenta": "Votre compte",
+      "pasoCorreo": "Confirmez votre e-mail",
+      "titulo": "Créez votre compte",
+      "descripcion": "Commencez par l’essai gratuit. Aucune carte demandée.",
+      "nombre": "Prénom",
+      "apellido": "Nom",
+      "correoAyuda": "Nous vous enverrons un lien pour le confirmer.",
+      "telefono": "Téléphone (facultatif)",
+      "terminos": "J’accepte les <terminos>Conditions</terminos> et la <privacidad>Politique de confidentialité</privacidad>",
+      "terminosObligatorio": "Pour créer le compte, vous devez accepter les Conditions et la Politique de confidentialité.",
+      "google": "M’inscrire avec Google",
+      "yaTienesCuenta": "Vous avez déjà un compte ?",
+      "iniciaSesion": "Connectez-vous",
+      "error": "Nous n’avons pas pu créer le compte. Réessayez dans un instant.",
+      "revisaTitulo": "Consultez votre messagerie",
+      "revisa": "Nous avons envoyé un lien à {correo} pour confirmer votre compte. Ouvrez-le sur cet appareil ou sur un autre.",
+      "revisaSiguiente": "Une fois confirmé, nous continuons avec votre organisation, votre établissement et votre formule.",
+      "yaConfirmaste": "Déjà confirmé ?",
+      "reenviar": "Renvoyer le lien",
+      "reenviarEn": "Renvoyer dans {segundos} s",
+      "otroCorreo": "Utiliser une autre adresse"
+    },
+    "alta": {
+      "crearOUnirse": "Créer une organisation ou en rejoindre une",
+      "crear": "En créer une",
+      "unirse": "Rejoindre avec un code",
+      "codigo": "Code ou lien d’invitation",
+      "codigoAyuda": "Collez le lien complet de l’e-mail ou seulement le code.",
+      "codigoInvalido": "Ce code n’a pas le format d’une invitation.",
+      "usarCodigo": "Continuer avec le code",
+      "nombre": "Nom commercial",
+      "tipo": "Type d’activité",
+      "elegirTipo": "Choisissez le type",
+      "nit": "Numéro fiscal (NIT)",
+      "nitDv": "Chiffre de contrôle : {dv}",
+      "nitAyuda": "Facultatif pour l’instant. Nécessaire pour la facturation électronique.",
+      "razonSocial": "Raison sociale",
+      "razonSocialAyuda": "Si vous la laissez vide, nous utilisons le nom commercial.",
+      "correo": "E-mail de l’organisation",
+      "telefono": "Téléphone (facultatif)",
+      "subdominio": "Sous-domaine",
+      "subdominioCorto": "Utilisez au moins 3 lettres ou chiffres.",
+      "subdominioOcupado": "Ce sous-domaine est déjà utilisé.",
+      "subdominioLibre": "Disponible.",
+      "subdominioRevisando": "Vérification…",
+      "subdominioAyuda": "L’adresse de votre boutique et de votre site. Lettres et chiffres uniquement.",
+      "masDatos": "Plus d’informations (facultatif) : adresse, code postal, site web et description",
+      "direccion": "Adresse",
+      "codigoPostal": "Code postal",
+      "sitioWeb": "Site web",
+      "descripcion": "Description",
+      "tarifa": "Taxe par défaut de vos produits",
+      "tarifaAyuda": "Nous l’utilisons quand un produit n’a pas sa propre taxe.",
+      "tarifas": {
+        "IVA_19": "TVA 19 % (taux normal)",
+        "IVA_5": "TVA 5 %",
+        "NINGUNA": "Aucune : je vends des produits exclus ou exonérés"
+      },
+      "logo": "Logo",
+      "colorPrimario": "Couleur principale",
+      "colorSecundario": "Couleur secondaire",
+      "mismaUbicacion": "Même adresse que l’organisation",
+      "sucursalNombre": "Nom de l’établissement",
+      "sucursalNombrePorDefecto": "Établissement principal",
+      "sucursalCodigo": "Code",
+      "sucursalTelefono": "Téléphone de l’établissement (facultatif)",
+      "errorSubdominio": "Ce sous-domaine est déjà utilisé. Revenez à la première étape et choisissez-en un autre.",
+      "errorCrear": "Nous n’avons pas pu créer l’organisation. Vérifiez les informations et réessayez.",
+      "creando": "Création de votre organisation…",
+      "orgTitulo": "Votre organisation",
+      "orgDescripcion": "Les informations avec lesquelles vous facturerez. Le reste peut attendre.",
+      "pasoOrg": "Votre organisation",
+      "sucTitulo": "Votre établissement principal",
+      "sucDescripcion": "Le lieu où vous vendez ou recevez. Vous pourrez en ajouter d’autres ensuite.",
+      "pasoSuc": "Établissement principal",
+      "planTitulo": "Choisissez votre formule",
+      "planDescripcion": "Commencez par l’essai gratuit ; changez de formule quand vous voulez.",
+      "pasoPlan": "Formule",
+      "pagoTitulo": "Moyen de paiement",
+      "pagoDescripcion": "Enregistrez une carte pour la fin de l’essai, ou faites-le plus tard.",
+      "pasoPago": "Moyen de paiement"
+    },
+    "ubicacion": {
+      "pais": "Pays",
+      "paisDeducido": "D’après votre navigateur. Modifiez-le si ce n’est pas le bon.",
+      "elegirPais": "Choisissez le pays",
+      "ciudad": "Ville",
+      "departamentoDe": "Région : {departamento}",
+      "ciudadAyuda": "Tapez pour rechercher ; la région se remplit toute seule.",
+      "cargando": "Chargement des villes…",
+      "buscarCiudad": "Rechercher une ville",
+      "sinCiudades": "Nous n’avons pas trouvé cette ville.",
+      "estado": "État, province ou région"
+    },
+    "terminosPagina": {
+      "titulo": "Conditions d’utilisation de GO Admin",
+      "actualizacion": "Dernière mise à jour : 29 septembre 2026",
+      "verPrivacidad": "Lisez aussi la Politique de confidentialité",
+      "aceptacion": {
+        "titulo": "Acceptation",
+        "texto": "En créant un compte ou en utilisant GO Admin, vous acceptez ces conditions. Si vous utilisez GO Admin pour une entreprise, vous déclarez pouvoir les accepter en son nom."
+      },
+      "servicio": {
+        "titulo": "Le service",
+        "texto": "GO Admin est un logiciel de gestion dans le cloud (caisse, stock, clients, finances et plus). Nous l’améliorons en continu et certaines fonctions dépendent de la formule choisie."
+      },
+      "cuenta": {
+        "titulo": "Votre compte et sa sécurité",
+        "texto": "Vous êtes responsable de ce qui est fait avec votre compte. Utilisez un mot de passe personnel et solide, ne le partagez pas et prévenez-nous en cas d’accès suspect. La personne qui administre une organisation décide qui y accède et avec quels droits."
+      },
+      "pagos": {
+        "titulo": "Formules, essai et paiements",
+        "texto": "Les formules payantes commencent par une période d’essai le cas échéant. À la fin, la formule choisie est débitée sur le moyen de paiement enregistré. Vous pouvez la changer ou l’annuler depuis l’application ; les sommes déjà payées ne sont pas remboursées sauf obligation légale."
+      },
+      "datos": {
+        "titulo": "Vos données",
+        "texto": "Les données que vous saisissez dans GO Admin appartiennent à votre organisation. Nous les traitons selon la Politique de confidentialité et la loi applicable sur les données personnelles, uniquement pour fournir le service."
+      },
+      "uso": {
+        "titulo": "Usage autorisé",
+        "texto": "N’utilisez pas GO Admin pour des activités illégales, pour envoyer des communications non sollicitées ou pour tenter d’accéder aux données d’autres organisations. Nous pouvons suspendre les comptes qui enfreignent ces règles."
+      },
+      "responsabilidad": {
+        "titulo": "Responsabilité",
+        "texto": "Nous faisons le raisonnable pour que le service soit disponible et sûr, sans garantir qu’il fonctionne sans interruption. Vérifiez les informations fiscales et comptables avant de les déclarer."
+      },
+      "cambios": {
+        "titulo": "Modifications",
+        "texto": "Si nous modifions ces conditions, nous vous préviendrons dans l’application ou par e-mail. Continuer à utiliser GO Admin après l’avis vaut acceptation."
+      },
+      "contacto": {
+        "titulo": "Contact",
+        "texto": "Pour toute question sur ces conditions, écrivez à soporte@goadmin.io."
+      }
     }
   },
   "inventarioUnidades": {

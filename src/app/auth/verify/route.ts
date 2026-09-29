@@ -243,24 +243,22 @@ export async function GET(request: NextRequest) {
       const user = data.user;
       console.log('Email verification successful for user:', user.id, 'type:', type);
 
-      // signup: completar registro (crear perfil, organización, etc.) y redirigir
+      // signup (acceso v3, R5 opción B): el correo quedó confirmado y la sesión
+      // abierta. Se crea el perfil si falta (y, para altas antiguas con
+      // `signup_data`, la organización que ya traían) y se sigue: sin
+      // organización, al asistente de alta; con ella, a la app. Ya no se cierra
+      // la sesión para pedir otra vez la contraseña.
       if (type === 'signup') {
-        if (completeSignup) {
-          console.log('Completando registro tras verificación de email...');
-          const { alreadyExisted } = await completeSignupAfterEmailConfirmation(supabase, user);
-
-          if (alreadyExisted) {
-            // El perfil ya existía (signup con sesión inmediata, sin bloqueo por
-            // confirmación). Este correo solo confirma el email; la sesión sigue
-            // activa, así que se manda directo a la app sin re-loguear.
-            return redirectWithCookies('/app/inicio?email_confirmed=true');
-          }
-
-          // Caso legado: el perfil se creó apenas ahora, se pide login limpio.
-          await supabase.auth.signOut();
-          return redirectWithCookies(
-            '/auth/login?success=email-confirmed&message=' + encodeURIComponent('Tu cuenta ha sido confirmada exitosamente. Por favor, inicia sesión con tu email y contraseña.')
-          );
+        await completeSignupAfterEmailConfirmation(supabase, user);
+        const { data: miembros } = await getSupabaseAdmin()
+          .from('organization_members')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .limit(1);
+        const tieneOrganizacion = Array.isArray(miembros) && miembros.length > 0;
+        if (completeSignup || !tieneOrganizacion) {
+          return redirectWithCookies(tieneOrganizacion ? '/app/inicio?email_confirmed=true' : '/auth/signup/organizacion');
         }
         return redirectWithCookies('/app/inicio');
       }

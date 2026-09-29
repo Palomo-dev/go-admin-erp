@@ -20990,6 +20990,142 @@
       "reenviar": "Send a new link",
       "reenviando": "Sending…",
       "espera": "We sent several links in a row. Wait a few minutes."
+    },
+    "registro": {
+      "pasoCuenta": "Your account",
+      "pasoCorreo": "Confirm your email",
+      "titulo": "Create your account",
+      "descripcion": "Start with the free trial. No card required.",
+      "nombre": "First name",
+      "apellido": "Last name",
+      "correoAyuda": "We will send you a link to confirm it.",
+      "telefono": "Phone (optional)",
+      "terminos": "I accept the <terminos>Terms</terminos> and the <privacidad>Privacy policy</privacidad>",
+      "terminosObligatorio": "To create the account you must accept the Terms and the Privacy policy.",
+      "google": "Sign up with Google",
+      "yaTienesCuenta": "Already have an account?",
+      "iniciaSesion": "Sign in",
+      "error": "We could not create the account. Try again in a moment.",
+      "revisaTitulo": "Check your email",
+      "revisa": "We sent a link to {correo} to confirm your account. Open it on this device or any other.",
+      "revisaSiguiente": "Once confirmed, we continue with your organization, branch and plan.",
+      "yaConfirmaste": "Already confirmed?",
+      "reenviar": "Resend the link",
+      "reenviarEn": "Resend in {segundos} s",
+      "otroCorreo": "Use another email"
+    },
+    "alta": {
+      "crearOUnirse": "Create an organization or join one",
+      "crear": "Create a new one",
+      "unirse": "Join with a code",
+      "codigo": "Invitation code or link",
+      "codigoAyuda": "Paste the full link from the email or just the code.",
+      "codigoInvalido": "That code does not look like an invitation.",
+      "usarCodigo": "Continue with the code",
+      "nombre": "Trade name",
+      "tipo": "Business type",
+      "elegirTipo": "Choose the type",
+      "nit": "Tax ID (NIT)",
+      "nitDv": "Check digit: {dv}",
+      "nitAyuda": "Optional for now. We need it for electronic invoicing.",
+      "razonSocial": "Legal name",
+      "razonSocialAyuda": "If you leave it empty, we use the trade name.",
+      "correo": "Organization email",
+      "telefono": "Phone (optional)",
+      "subdominio": "Subdomain",
+      "subdominioCorto": "Use at least 3 letters or numbers.",
+      "subdominioOcupado": "That subdomain is already taken.",
+      "subdominioLibre": "Available.",
+      "subdominioRevisando": "Checking…",
+      "subdominioAyuda": "The address of your store and website. Letters and numbers only.",
+      "masDatos": "More details (optional): address, postal code, website and description",
+      "direccion": "Address",
+      "codigoPostal": "Postal code",
+      "sitioWeb": "Website",
+      "descripcion": "Description",
+      "tarifa": "Default tax for your products",
+      "tarifaAyuda": "We use it when a product has no tax of its own.",
+      "tarifas": {
+        "IVA_19": "VAT 19% (standard rate)",
+        "IVA_5": "VAT 5%",
+        "NINGUNA": "None: I sell excluded or exempt products"
+      },
+      "logo": "Logo",
+      "colorPrimario": "Main color",
+      "colorSecundario": "Secondary color",
+      "mismaUbicacion": "Same location as the organization",
+      "sucursalNombre": "Branch name",
+      "sucursalNombrePorDefecto": "Main branch",
+      "sucursalCodigo": "Code",
+      "sucursalTelefono": "Branch phone (optional)",
+      "errorSubdominio": "That subdomain is already taken. Go back to the first step and choose another.",
+      "errorCrear": "We could not create the organization. Check the details and try again.",
+      "creando": "Creating your organization…",
+      "orgTitulo": "Your organization",
+      "orgDescripcion": "The details you will invoice with. You can complete the rest later.",
+      "pasoOrg": "Your organization",
+      "sucTitulo": "Your main branch",
+      "sucDescripcion": "The place where you sell or serve. You can add more branches later.",
+      "pasoSuc": "Main branch",
+      "planTitulo": "Choose your plan",
+      "planDescripcion": "Start with the free trial; change plans whenever you want.",
+      "pasoPlan": "Plan",
+      "pagoTitulo": "Payment method",
+      "pagoDescripcion": "Save a card for when the trial ends, or do it later.",
+      "pasoPago": "Payment method"
+    },
+    "ubicacion": {
+      "pais": "Country",
+      "paisDeducido": "Based on your browser. Change it if it is wrong.",
+      "elegirPais": "Choose the country",
+      "ciudad": "City",
+      "departamentoDe": "State: {departamento}",
+      "ciudadAyuda": "Type to search; the state fills in automatically.",
+      "cargando": "Loading cities…",
+      "buscarCiudad": "Search city",
+      "sinCiudades": "We could not find that city.",
+      "estado": "State, province or region"
+    },
+    "terminosPagina": {
+      "titulo": "GO Admin Terms of Use",
+      "actualizacion": "Last updated: September 29, 2026",
+      "verPrivacidad": "Also read the Privacy policy",
+      "aceptacion": {
+        "titulo": "Acceptance",
+        "texto": "By creating an account or using GO Admin you accept these terms. If you use GO Admin on behalf of a company, you confirm you can accept them for it."
+      },
+      "servicio": {
+        "titulo": "The service",
+        "texto": "GO Admin is cloud management software (point of sale, inventory, customers, finance and more). We keep improving it and some features depend on the plan you choose."
+      },
+      "cuenta": {
+        "titulo": "Your account and its security",
+        "texto": "You are responsible for what is done with your account. Use your own strong password, do not share it and tell us if you suspect unauthorized access. Whoever manages an organization decides who gets in and with which permissions."
+      },
+      "pagos": {
+        "titulo": "Plans, trial and payments",
+        "texto": "Paid plans start with a trial period when applicable. When it ends, the chosen plan is charged to the registered payment method. You can change or cancel your plan in the app; payments already made are not refunded unless required by law."
+      },
+      "datos": {
+        "titulo": "Your data",
+        "texto": "The data you record in GO Admin belongs to your organization. We process it according to the Privacy policy and the applicable personal data protection law, only to provide the service."
+      },
+      "uso": {
+        "titulo": "Acceptable use",
+        "texto": "Do not use GO Admin for illegal activities, to send unsolicited communications or to try to access other organizations’ data. We may suspend accounts that break these rules."
+      },
+      "responsabilidad": {
+        "titulo": "Liability",
+        "texto": "We do what is reasonable to keep the service available and secure, but we do not guarantee it will run without interruptions. Review tax and accounting information before filing it with the authorities."
+      },
+      "cambios": {
+        "titulo": "Changes to the terms",
+        "texto": "If we change these terms we will let you know in the app or by email. Continuing to use GO Admin after the notice means you accept the changes."
+      },
+      "contacto": {
+        "titulo": "Contact",
+        "texto": "For questions about these terms, write to soporte@goadmin.io."
+      }
     }
   },
   "inventarioUnidades": {

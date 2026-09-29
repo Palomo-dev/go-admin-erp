@@ -267,7 +267,7 @@ function SelectOrganizationContent() {
             </p>
           }
         >
-          <Link href="/auth/signup?step=organization&google=true" className={clasesBoton({ anchoCompleto: true })}>
+          <Link href="/auth/signup/organizacion" className={clasesBoton({ anchoCompleto: true })}>
             <Plus className="size-4" aria-hidden="true" />
             {t('crear')}
           </Link>

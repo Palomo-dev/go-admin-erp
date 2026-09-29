@@ -903,6 +903,10 @@ async function handleRouteProtection(
     // Es un espejo sin datos propios: el carrito le llega por BroadcastChannel
     // desde la caja y la marca degrada a vacío si no puede leerse. Pública a
     // propósito para que una sesión caída nunca ponga un login frente al cliente.
+    // Términos y Privacidad: el registro obliga a aceptarlos y los enlaza
+    // (acceso v3, decisión v2-11). Antes /privacy mandaba al login.
+    pathname === '/terminos' ||
+    pathname === '/privacy' ||
     pathname === '/pos-display' ||
     pathname.startsWith('/pos-display/') ||
     pathname.includes('/_next/') ||

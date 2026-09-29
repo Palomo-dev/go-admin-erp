@@ -220,8 +220,10 @@ function LoginContent() {
       }
       if (await enlaceDeInvitacionEnviado(correo)) return;
       const redirectTo = sessionStorage.getItem('redirectTo');
-      // Vuelta al asistente de invitación: allí se une a la organización.
-      const destino = redirectTo?.startsWith('/auth/invite') ? destinoTrasLogin(redirectTo) : '/auth/select-organization';
+      // Vuelta al asistente de invitación (allí se une a la organización) o al
+      // alta de la organización tras confirmar el correo.
+      const vuelta = destinoTrasLogin(redirectTo);
+      const destino = vuelta.startsWith('/auth/') ? vuelta : '/auth/select-organization';
       await proceedWithLogin(rememberMe, correo, { destino });
     } catch (err) {
       console.error('[login] No se pudo continuar tras iniciar sesión:', err);

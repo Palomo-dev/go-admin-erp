@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { parseCodigoTarifaPorDefecto, setOrganizationDefaultTaxByCode } from '@/lib/services/defaultTaxService';
 
@@ -124,8 +124,11 @@ export async function GET(request: NextRequest) {
         const user = data.user;
         console.log('Authentication successful for user:', user.id, 'Email:', user.email);
         
-        // Para OAuth (Google login), crear o actualizar perfil
-        if (user.app_metadata?.provider === 'google') {
+        // OAuth (Google y, en la app, Microsoft): crear o actualizar el perfil.
+        // Antes solo se reconocía Google y cualquier otro proveedor se trataba
+        // como confirmación de correo (Microsoft terminaba en un login vacío).
+        const proveedor = user.app_metadata?.provider;
+        if (proveedor && proveedor !== 'email' && proveedor !== 'phone') {
           // Cookie para hidratación client-side (la página select-organization la lee como fallback)
           pendingCookies.set('go-admin-oauth-session', JSON.stringify({
             access_token: data.session.access_token,
@@ -150,13 +153,16 @@ export async function GET(request: NextRequest) {
           if (redirectTo && redirectTo.includes('/auth/invite?code=')) {
             return redirectWithCookies(redirectTo);
           } else {
+            // Confirmación del correo (acceso v3, R5 opción B): perfil (y la
+            // organización de altas antiguas con signup_data) y se sigue con la
+            // sesión abierta: sin organización, al asistente de alta.
             await completeSignupAfterEmailConfirmation(supabase, user);
-            await supabase.auth.signOut();
-            return redirectWithCookies('/auth/login?success=email-confirmed&message=' + encodeURIComponent('Tu cuenta ha sido confirmada exitosamente. Por favor, inicia sesión con tu email y contraseña.'));
+            const tieneOrganizacion = await checkUserOrganization(supabase, user.id);
+            return redirectWithCookies(tieneOrganizacion ? '/app/inicio?email_confirmed=true' : '/auth/signup/organizacion');
           }
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error processing auth callback:', error);
       return redirectWithCookies('/auth/login?error=callback-processing-failed');
     }
@@ -166,7 +172,7 @@ export async function GET(request: NextRequest) {
 }
 
 // Función para crear o actualizar el perfil del usuario con datos de Google
-async function createOrUpdateUserProfile(supabase: any, user: any) {
+async function createOrUpdateUserProfile(supabase: SupabaseClient, user: User) {
   try {
     console.log('Creating/updating user profile for:', user.id);
     
@@ -256,14 +262,14 @@ async function createOrUpdateUserProfile(supabase: any, user: any) {
       
       console.log('Profile created successfully');
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in createOrUpdateUserProfile:', error);
     // No lanzar error para no interrumpir el flujo de login
   }
 }
 
 // Función para verificar si el usuario tiene una organización asignada
-async function checkUserOrganization(supabase: any, userId: string): Promise<boolean> {
+async function checkUserOrganization(supabase: SupabaseClient, userId: string): Promise<boolean> {
   try {
     console.log('Checking user organization for:', userId);
     
@@ -272,9 +278,10 @@ async function checkUserOrganization(supabase: any, userId: string): Promise<boo
       .select('id, organization_id')
       .eq('user_id', userId)
       .eq('is_active', true)
-      .single();
-    
-    if (error && error.code !== 'PGRST116') {
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
       console.error('Error checking organization membership:', error);
       return false;
     }
@@ -283,7 +290,7 @@ async function checkUserOrganization(supabase: any, userId: string): Promise<boo
     console.log('User has organization:', hasOrganization);
     
     return hasOrganization;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in checkUserOrganization:', error);
     return false;
   }
@@ -293,7 +300,7 @@ async function checkUserOrganization(supabase: any, userId: string): Promise<boo
 // Devuelve { alreadyExisted: true } si el perfil ya existía (creado en el signup
 // inmediato, ya que "Confirm email" está desactivado) para que el caller decida
 // el redirect sin repetir la creación de datos.
-export async function completeSignupAfterEmailConfirmation(supabase: any, user: any): Promise<{ alreadyExisted: boolean }> {
+export async function completeSignupAfterEmailConfirmation(supabase: SupabaseClient, user: User): Promise<{ alreadyExisted: boolean }> {
   try {
     console.log('🚀 Starting complete signup for user:', user.id);
 
@@ -312,7 +319,8 @@ export async function completeSignupAfterEmailConfirmation(supabase: any, user: 
     
     // Extraer datos del signup guardados en metadata
     const metadata = user.user_metadata || {};
-    let signupData: any = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JSON heredado de altas antiguas (signup_data), sin esquema
+    let signupData: Record<string, any> = {};
     
     if (metadata.signup_data) {
       try {
@@ -527,7 +535,7 @@ export async function completeSignupAfterEmailConfirmation(supabase: any, user: 
       console.log('⚠️ Skipping organization creation - join type is not "create" or no organization name');
     }
     return { alreadyExisted: false };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error in completeSignupAfterEmailConfirmation:', error);
     // No lanzar error para no interrumpir el flujo de confirmación
     return { alreadyExisted: false };

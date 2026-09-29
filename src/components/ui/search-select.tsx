@@ -36,6 +36,10 @@ interface SearchSelectProps {
   createLabel?: (texto: string) => string;
   /** Texto de la fila sin búsqueda («Crear categoría»); sin él, solo aparece al escribir. */
   createEmptyLabel?: string;
+  /** Id del disparador (para <label htmlFor> / FormField). */
+  id?: string;
+  'aria-describedby'?: string;
+  'aria-invalid'?: boolean;
 }
 
 export function SearchSelect({
@@ -52,6 +56,9 @@ export function SearchSelect({
   onCreate,
   createLabel,
   createEmptyLabel,
+  id,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
 }: SearchSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
@@ -68,10 +75,12 @@ export function SearchSelect({
 
   const filteredOptions = React.useMemo(() => {
     if (!search) return options;
-    const lower = search.toLowerCase();
+    // Sin distinguir tildes: «medellin» encuentra «Medellín».
+    const plano = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const lower = plano(search);
     return options.filter((opt) =>
-      opt.label.toLowerCase().includes(lower) ||
-      (opt.sublabel?.toLowerCase().includes(lower) ?? false)
+      plano(opt.label).includes(lower) ||
+      (opt.sublabel ? plano(opt.sublabel).includes(lower) : false)
     );
   }, [options, search]);
 
@@ -106,8 +115,11 @@ export function SearchSelect({
         <Button
           type="button"
           variant="outline"
+          id={id}
           role="combobox"
           aria-expanded={open}
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid}
           disabled={disabled}
           className={cn(
             'w-full justify-between h-10 font-normal bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700',

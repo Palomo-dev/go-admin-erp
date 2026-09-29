@@ -1852,3 +1852,17 @@ manda el navegador (`item.price`) en lugar de recalcularlo en el servidor.
 - Revisión visual en el navegador pendiente (no se arrancó el servidor de desarrollo del dueño).
 
 **Estado al parar (orden del dueño)**: todo B7 está commiteado; no quedan archivos de B7 sin commit en el árbol (`detalle/precios/CampoVigencia.tsx` sigue con cambios de otra sesión, no tocados). Falta: lo de B7.5 y repetir `tsc` en copia limpia de HEAD.
+
+### B6a.6 Estado al corte (2026-09-29, relevo a otro chat)
+
+- Hecho y en HEAD: `aedeb27d`, `8ed4b997`, `4810bff7`, `2c9c0d89`, `a8cc773d` (este anexo). Las 10
+  migraciones `20260929160000…161200_inv_b6a_*` están aplicadas y con su `.sql` y rollback en el repo
+  (los pasos `…_ajuste` de 2b, 6 y 9 están dentro de su archivo).
+- Archivos de B6a sin commit en el árbol: ninguno.
+- Verificado en una copia limpia de HEAD (`2c9c0d89`): jest de B6a (variantes, unidades, kit de
+  receta), `guardrails.test.ts`, `guardrail-rutas-sin-cliente-navegador` y `test:tz-all` en verde;
+  `traduccionesModulos` solo falla por `kit.estados.sin_fe` (previo, de finanzas). eslint limpio en
+  los archivos de B6a.
+- Falta: el `tsc` completo sobre la copia limpia no terminó antes del corte (la máquina corría tres
+  a la vez); el `tsc` de los archivos de B6a y sus dependencias pasó sin errores en el árbol. Lo
+  demás pendiente está en B6a.4 (contratos para POS, B5, B7, B8, B10) y B6a.5.

@@ -666,6 +666,16 @@
         "usuariosActivos": "Usuários ativos",
         "modulosActivos": "Módulos ativos"
       }
+    },
+    "datosEmpresa": {
+      "titulo": "Complete os dados da sua empresa",
+      "descripcion": "{cantidad, plural, one {Falta {campos}, um dado de que você precisa para emitir nota eletrônica e que aparece nas suas faturas e recibos.} other {Faltam {campos}. Você precisa deles para emitir nota eletrônica, e eles aparecem nas suas faturas e recibos.}}",
+      "accion": "Completar dados",
+      "campo": {
+        "nit": "o NIT",
+        "ciudad": "a cidade",
+        "direccion": "o endereço"
+      }
     }
   },
   "org": {
@@ -3228,7 +3238,8 @@
       "devuelta": "Devolvida",
       "devuelto": "Devolvido",
       "devuelta_parcial": "Devolvida parcialmente",
-      "devuelto_parcial": "Devolvido parcialmente"
+      "devuelto_parcial": "Devolvido parcialmente",
+      "sin_fe": "Sem NF-e"
     },
     "filaDato": {
       "oculto": "Oculto"

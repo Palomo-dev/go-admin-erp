@@ -666,6 +666,16 @@
         "usuariosActivos": "Utilisateurs actifs",
         "modulosActivos": "Modules actifs"
       }
+    },
+    "datosEmpresa": {
+      "titulo": "Complétez les informations de votre entreprise",
+      "descripcion": "{cantidad, plural, one {Il manque {campos}, une information nécessaire pour la facturation électronique et qui figure sur vos factures et reçus.} other {Il manque {campos}. Ces informations sont nécessaires pour la facturation électronique et figurent sur vos factures et reçus.}}",
+      "accion": "Compléter",
+      "campo": {
+        "nit": "le NIT",
+        "ciudad": "la ville",
+        "direccion": "l’adresse"
+      }
     }
   },
   "org": {
@@ -3228,7 +3238,8 @@
       "devuelta": "Retournée",
       "devuelto": "Retourné",
       "devuelta_parcial": "Retournée en partie",
-      "devuelto_parcial": "Retourné en partie"
+      "devuelto_parcial": "Retourné en partie",
+      "sin_fe": "Sans FE"
     },
     "filaDato": {
       "oculto": "Masqué"

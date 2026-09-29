@@ -667,6 +667,16 @@
         "usuariosActivos": "Usuarios activos",
         "modulosActivos": "Módulos activos"
       }
+    },
+    "datosEmpresa": {
+      "titulo": "Completa los datos de tu empresa",
+      "descripcion": "{cantidad, plural, one {Falta {campos}, un dato que necesitas para facturar electrónicamente y que aparece en tus facturas y recibos.} other {Faltan {campos}. Los necesitas para facturar electrónicamente y aparecen en tus facturas y recibos.}}",
+      "accion": "Completar datos",
+      "campo": {
+        "nit": "el NIT",
+        "ciudad": "la ciudad",
+        "direccion": "la dirección"
+      }
     }
   },
   "org": {
@@ -3333,7 +3343,8 @@
       "devuelta": "Devuelta",
       "devuelto": "Devuelto",
       "devuelta_parcial": "Devuelta parcial",
-      "devuelto_parcial": "Devuelto parcial"
+      "devuelto_parcial": "Devuelto parcial",
+      "sin_fe": "Sin FE"
     },
     "filaDato": {
       "oculto": "Oculto"

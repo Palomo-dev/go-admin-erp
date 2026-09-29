@@ -35,6 +35,7 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { usePermissionContext } from '@/hooks/usePermissionContext';
 import { veePanelCompleto } from '@/lib/dashboard/accesoPanel';
 import { EmployeeDashboard } from '@/components/inicio/EmployeeDashboard';
+import { TarjetaDatosEmpresa } from '@/components/inicio/TarjetaDatosEmpresa';
 import { useDesktopCatalog } from '@/lib/offline/useDesktopCatalog';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz } from '@/lib/utils/dateDisplay';
@@ -303,6 +304,9 @@ function InicioContent() {
           </>
         }
       />
+
+      {/* Datos mínimos de la empresa (acceso v3, fase 7): solo a quien administra. */}
+      {rolResuelto && <TarjetaDatosEmpresa organizationId={organization?.id} permContext={permContext} />}
 
       {/* Onboarding para organizaciones nuevas */}
       <OnboardingBanner

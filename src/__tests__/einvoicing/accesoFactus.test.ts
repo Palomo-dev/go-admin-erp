@@ -40,7 +40,7 @@ const ENV_ORIGINAL = { ...process.env };
 let credsOrg: Record<string, unknown> | null;
 let estados: Array<Record<string, unknown>>;
 
-function crearDb(tablas: Tablas = { organizations: [{ id: 132, nit: '900123456-7' }] }) {
+function crearDb(tablas: Tablas = { organizations: [{ id: 132, nit: '900123456-7', city: 'Medellín', address: 'Calle 10 # 5-20' }] }) {
   return crearDobleSupabase(tablas, {
     fn_factus_credenciales_leer: () => ({ data: credsOrg ? [credsOrg] : [] }),
     fn_factus_servicio_estado: (args) => {
@@ -123,6 +123,22 @@ describe('verificarYActivar', () => {
     const r = await verificarYActivar(132);
     expect(r).toMatchObject({ ok: false, activado: false });
     expect(estados[0]).toMatchObject({ p_status: 'pending_activation', p_company_nit: null, p_check_ok: false });
+  });
+
+  test('faltan ciudad y dirección de la empresa → no activa, lo dice y no lo registra como fallo de credenciales', async () => {
+    db = crearDb({ organizations: [{ id: 132, nit: '900123456-7', city: ' ', address: null }] });
+    getCompany.mockResolvedValue({ nit: '900123456', dv: '7', name: 'Empresa' });
+    const r = await verificarYActivar(132, 'usuario-1');
+    expect(r).toMatchObject({ ok: false, activado: false, datosFaltantes: ['ciudad', 'direccion'] });
+    expect(r.mensaje).toContain('la ciudad y la dirección');
+    expect(estados).toHaveLength(0);
+  });
+
+  test('sin NIT (ni nit ni tax_id) → no activa', async () => {
+    db = crearDb({ organizations: [{ id: 132, nit: null, tax_id: '', city: 'Medellín', address: 'Calle 10 # 5-20' }] });
+    getCompany.mockResolvedValue({ nit: '900123456', dv: '7', name: 'Empresa' });
+    const r = await verificarYActivar(132);
+    expect(r).toMatchObject({ ok: false, activado: false, datosFaltantes: ['nit'] });
   });
 
   test('Factus caído → no registra nada (el cron reintenta)', async () => {

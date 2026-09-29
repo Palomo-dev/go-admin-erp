@@ -667,6 +667,16 @@
         "usuariosActivos": "Active users",
         "modulosActivos": "Active modules"
       }
+    },
+    "datosEmpresa": {
+      "titulo": "Complete your company details",
+      "descripcion": "{cantidad, plural, one {Your company's {campos} is missing. You need it to issue electronic invoices, and it appears on your invoices and receipts.} other {Your company's {campos} are missing. You need them to issue electronic invoices, and they appear on your invoices and receipts.}}",
+      "accion": "Complete details",
+      "campo": {
+        "nit": "tax ID (NIT)",
+        "ciudad": "city",
+        "direccion": "address"
+      }
     }
   },
   "org": {
@@ -3333,7 +3343,8 @@
       "devuelta": "Returned",
       "devuelto": "Returned",
       "devuelta_parcial": "Partially returned",
-      "devuelto_parcial": "Partially returned"
+      "devuelto_parcial": "Partially returned",
+      "sin_fe": "No e-invoice"
     },
     "filaDato": {
       "oculto": "Hidden"

@@ -7554,7 +7554,12 @@
         "actualizados": "Actualizados",
         "conAvisos": "Con avisos",
         "fallidos": "Fallidos",
-        "pendientes": "{n, plural, =0 {sin pendientes} one {# pendiente} other {# pendientes}}"
+        "pendientes": "{n, plural, =0 {sin pendientes} one {# pendiente} other {# pendientes}}",
+        "importados": "Importados",
+        "importadosDetalle": "{creados} creados · {actualizados} actualizados",
+        "omitidos": "Omitidos",
+        "omitidosDetalle": "Ya existían",
+        "sinIntentar": "Sin intentar"
       },
       "omitidos": "{n, plural, one {# fila omitida} other {# filas omitidas}} por el modo elegido.",
       "errorLote": "El lote {n} no se pudo importar: {mensaje}. Sus filas quedaron sin importar.",
@@ -7578,7 +7583,9 @@
         "resultado": "Resultado",
         "mensajes": "Mensajes",
         "archivo": "reporte_importacion_productos"
-      }
+      },
+      "cuadre": "{seleccionados} seleccionados · {importados} importados + {omitidos} omitidos + {fallidos} fallidos + {sinIntentar} sin intentar",
+      "conAvisosLinea": "{n, plural, one {# producto importado con avisos} other {# productos importados con avisos}}: están en el reporte."
     },
     "mensajes": {
       "sinNombre": "Falta el nombre",

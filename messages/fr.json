@@ -7449,7 +7449,12 @@
         "actualizados": "Mis à jour",
         "conAvisos": "Avec avertissements",
         "fallidos": "En échec",
-        "pendientes": "{n, plural, =0 {aucun en attente} one {# en attente} other {# en attente}}"
+        "pendientes": "{n, plural, =0 {aucun en attente} one {# en attente} other {# en attente}}",
+        "importados": "Importés",
+        "importadosDetalle": "{creados} créés · {actualizados} mis à jour",
+        "omitidos": "Ignorés",
+        "omitidosDetalle": "Existaient déjà",
+        "sinIntentar": "Non tentés"
       },
       "omitidos": "{n, plural, one {# ligne ignorée} other {# lignes ignorées}} selon le mode choisi.",
       "errorLote": "Le lot {n} n’a pas pu être importé : {mensaje}. Ses lignes n’ont pas été importées.",
@@ -7473,7 +7478,9 @@
         "resultado": "Résultat",
         "mensajes": "Messages",
         "archivo": "rapport_import_produits"
-      }
+      },
+      "cuadre": "{seleccionados} sélectionnés · {importados} importés + {omitidos} ignorés + {fallidos} en échec + {sinIntentar} non tentés",
+      "conAvisosLinea": "{n, plural, one {# produit importé avec des avertissements} other {# produits importés avec des avertissements}} : voir le rapport."
     },
     "mensajes": {
       "sinNombre": "Le nom manque",

@@ -774,3 +774,68 @@ la v3 cambia a propósito, con el motivo en el propio test):
   «Nueva organización» dentro de la app.
 - **Escena**: `EscenaAcceso` pinta cielo y viajero con variables `auth/*` (modo claro = día de pie,
   oscuro = noche sentado); estática en móvil y con `prefers-reduced-motion`.
+
+---
+
+## 13. Estado de la implementación en código (2026-09-29, corte por orden del dueño)
+
+El trabajo se detuvo a pedido del dueño para seguir en otro chat. Todo lo commiteado se verificó en
+una copia limpia de HEAD (`git archive`): `tsc` sin errores y las pruebas de acceso, kit, middleware,
+guardarraíles e invitaciones en verde.
+
+### 13.1 Fases hechas
+
+| Fase | Commit | Qué quedó |
+|---|---|---|
+| Paso 1 · análisis | `530fbd2d` | §12: inventario, matriz de paridad, decisiones; pruebas de caracterización (middleware, callback, verify) |
+| 1 · kit y tokens | `c9b49b75` | Tokens `night/*` y `auth/*` (Figma → `figma-tokens.json` → `tokens.css` → Tailwind); `src/components/kit/acceso` (EscenaAcceso con el viajero día/noche por tema, TarjetaAcceso, Enlace, DividerTexto, IconoDestacado, PieEnlace, ProgresoPasos, AvisoAcceso, BotonProveedor, CampoContrasena, MedidorFortaleza, PhoneField, píldora idioma + tema); `lib/auth/politicaContrasena.ts` (10 caracteres, distinta del correo, no filtrada por HIBP k-anonimato) |
+| 2 · pantallas | `4edde851` | Login (mensaje único de credenciales, avisos por catálogo, sin popup: 0/1/N organizaciones), selector único de organización, recuperar (respuesta neutra), restablecer solo con sesión del enlace del correo (`/api/auth/restablecer`, amr verificado, cerrar otras sesiones), verificación en una pantalla (`/auth/verify/resent` → 308), `/auth/session-expired` → 308 al login con aviso, `redirectTo` validado siempre, `/api/auth/reenviar-confirmacion` uniforme |
+| 3 · registro, ubicación y alta | `fce3708f` | Registro dividido (`/auth/signup` cuenta + «Revisa tu correo»; `/auth/signup/organizacion` organización, sucursal, plan y pago tras confirmar), `/api/auth/registro` (cuenta sin confirmar, respuesta uniforme, aviso por correo si ya existía, términos obligatorios), RPC `fn_alta_organizacion` + `altaOrganizacionService` (un solo alta, también «Nueva organización» en la app), país según el navegador y obligatorio, «Ciudad» con buscador, «Misma ubicación de la organización», `/terminos` mínima (pendiente de revisión legal) y `/privacy` públicas, callback reconoce cualquier proveedor OAuth |
+| 4 · invitación | `708e3804` | Invitación en v3, traducida, en `<form>`, dos pasos; la cuenta la crea el servidor con la política única; 39999d0f intacto (guardarraíl 34 y sus pruebas en verde) |
+
+Migración aplicada por MCP: `20260929190000_fn_alta_organizacion` (con su rollback, en `fce3708f`).
+Figma: sección 18 renombrada «aprobada, en código» con la fila 9 (ubicación en registro 3 y 4 y la
+tarjeta de Inicio «Completa los datos de tu empresa»: nodos 1170:173, 1170:668, 1170:744210); la
+sección 17 (v2) se movió a «99 Archivo — versiones anteriores»; Índice actualizado.
+
+### 13.2 Archivos sin commit en el árbol (míos)
+
+Ninguno con contenido pendiente. Por el corte quedó sin realinear el índice compartido en las rutas
+de la fase 4 (`src/app/api/auth/accept-invitation/route.ts`, `src/app/auth/invite/page.tsx`,
+`src/components/auth/AuthSceneBackground.tsx`, `src/components/auth/InvitationWizard.tsx`,
+`src/components/auth/__tests__/invitacionV3.test.tsx`): su contenido ya está en `708e3804`; solo
+falta `git reset -q HEAD -- <esas rutas>` cuando no haya `index.lock`. Los cambios que muestran
+`messages/*.json` y `src/__tests__/guardrails.test.ts` son de otras sesiones (el namespace `acceso` y
+las entradas de `SIN_PUERTA` del registro y del reenvío ya están en HEAD).
+
+### 13.3 Lo que falta (fases 5 a 8)
+
+- **5 · seguridad**: bloqueo por intentos en el servidor (tabla + RPC service_role, `POST
+  /api/auth/acceso` y `signInWithEmail` por esa ruta; la pantalla ya pinta el aviso con hora);
+  retirar `checkAuthProvider`, `/api/auth/check-email` y revocar `check_email_exists` /
+  `get_auth_provider_by_email` a `anon` y `authenticated`; ocultar el interruptor 2FA y pasar el cambio
+  de contraseña del Perfil a una ruta de servidor con la política única; borrar los componentes
+  huérfanos (`InvitationForm`, `OrganizationSelector`, `PasswordField`, `PasswordStrengthIndicator`,
+  `EmailResendComponent`, `PermissionGuard`, `EnterpriseConfig*`, `lib/auth/checkProvider.ts`).
+  **Hallazgos críticos encontrados en esta tanda (sin tocar, para decidir):** la política
+  `organization_members_insert_request` deja a cualquier sesión insertarse en CUALQUIER organización
+  con cualquier `role_id` (activo por defecto), y `organization_members_self_update` deja a un
+  miembro cambiarse `role_id`, `is_super_admin` u `organization_id` de su propia fila. Ningún flujo
+  legítimo del ERP las necesita (las altas de dueño van por `organization_members_insert_owner`; las
+  invitaciones por `accept_invitation_atomic`; go-admin-super usa service role). Propuesta: quitar la
+  primera y poner un disparador que impida esos cambios en la propia fila salvo desde funciones del
+  servidor. Además, `subscriptions_insert_update_delete_policy` deja a cualquier miembro cambiar la
+  suscripción de su organización (estado y plan).
+- **6 · rutas**: `/auth/logout` real (R3), `forgot-password` como excepción con sesión en el
+  middleware (R7), sin organización → `/auth/select-organization` desde el middleware (R12),
+  `redirectTo` con la query y no solo `/app/*` (R15), quitar la regla vieja de `session-expired`.
+- **7 · Inicio y FE**: la tarjeta «Completa los datos de tu empresa» (dibujada en Figma, fila 9) y
+  exigir NIT, ciudad y dirección al activar la facturación electrónica (releer Inicio antes: lo tocó la
+  auditoría).
+- **8 · datos**: migración que pone `country_code` (y `country` si falta) a las sucursales sin país:
+  70 de 94 (67 «Colombia», 2 «México», 1 sin país → el de su organización); de paso las 12
+  organizaciones con «Colombia» sin `country_code`. Con conteos antes y después y rollback.
+- Revisión en el navegador interno (claro/oscuro, 390/1024/1440) y `get_advisors` final (línea base:
+  anon DEFINER 15, authenticated DEFINER 442; la fase 3 no añadió funciones DEFINER).
+- Pendiente del dueño en el panel de Supabase: encender «Leaked password protection» y mínimo 10
+  caracteres en Auth › Password security (hoy la protección la hace el servidor de la app).

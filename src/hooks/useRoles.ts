@@ -12,7 +12,7 @@ export interface UseRolesReturn {
   error: string | null;
   
   // Funciones de gestión de roles
-  createRole: (roleData: Omit<Role, 'id' | 'created_at' | 'is_system'>) => Promise<Role | null>;
+  createRole: (roleData: Omit<Role, 'id' | 'created_at' | 'is_system'> & { organizationId: number }) => Promise<Role | null>;
   updateRole: (roleId: number, roleData: Partial<Role>) => Promise<Role | null>;
   deleteRole: (roleId: number) => Promise<boolean>;
   cloneRole: (roleId: number, newName: string) => Promise<Role | null>;
@@ -88,9 +88,9 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
   }, [organizationId, loadRoles]);
 
   // Crear rol
-  const createRole = useCallback(async (roleData: Omit<Role, 'id' | 'created_at' | 'is_system'>): Promise<Role | null> => {
+  const createRole = useCallback(async (roleData: Omit<Role, 'id' | 'created_at' | 'is_system'> & { organizationId: number }): Promise<Role | null> => {
     try {
-      // La tabla roles es global: no lleva organization_id
+      // Roles por organización: incluir organization_id
       const newRole = await roleService.createRole(roleData);
 
       toast.success('Rol creado exitosamente');

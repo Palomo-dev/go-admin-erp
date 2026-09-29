@@ -7,6 +7,7 @@ export interface Role {
   name: string;
   description?: string;
   is_system: boolean;
+  organization_id?: number | null;
   created_at?: string;
 }
 
@@ -98,8 +99,10 @@ export const rolesManagementService = {
         role_permissions(permission_id),
         organization_members!organization_members_role_id_fkey(id)
       `)
+      .or(`organization_id.is.null,organization_id.eq.${organizationId}`)
       .neq('id', 1)
       .order('is_system', { ascending: false })
+      .order('organization_id', { ascending: true, nullsFirst: true })
       .order('name', { ascending: true });
     
     if (error) throw error;
@@ -139,13 +142,14 @@ export const rolesManagementService = {
     return null;
   },
 
-  async createRole(roleData: Omit<Role, 'id' | 'created_at' | 'is_system'>): Promise<Role> {
+  async createRole(roleData: Omit<Role, 'id' | 'created_at' | 'is_system'> & { organizationId: number }): Promise<Role> {
     const { data, error } = await supabase
       .from('roles')
       .insert({
         name: roleData.name,
         description: roleData.description,
-        is_system: false
+        is_system: false,
+        organization_id: roleData.organizationId
       })
       .select()
       .single();

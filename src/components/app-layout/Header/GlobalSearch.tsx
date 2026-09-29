@@ -222,7 +222,7 @@ const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: 
               name: `${m.membership_plans?.name || t('membership')} - ${m.customers?.full_name || ''}`,
               description: `${m.status || ''} - ${formatPlainDate(m.start_date)} → ${formatPlainDate(m.end_date)}`,
               type: 'membership' as const,
-              url: `/app/gym/membresias/${m.id}`
+              url: `/app/membresias/membresias/${m.id}`
             })),
 
             // Vehículos de parqueadero

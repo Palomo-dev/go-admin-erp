@@ -63,7 +63,8 @@ const moduleIcons: Record<string, LucideIcon> = {
   'calendar': Calendar,
   'operations': Activity,
   'chat': MessageSquare,
-  'gym': Dumbbell
+  'gym': Dumbbell,
+  'memberships': UserCheck
 };
 
 // Función para obtener el icono de un módulo

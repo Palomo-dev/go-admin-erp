@@ -402,7 +402,8 @@
       "timeline": "Timeline",
       "chat": "Chat",
       "noActivePrefix": "Não há módulos de negócio ativos. Ative módulos desde",
-      "configLink": "Configuração de módulos"
+      "configLink": "Configuração de módulos",
+      "memberships": "Assinaturas"
     },
     "modulesNav": {
       "ariaLabel": "Navegação entre módulos"
@@ -2154,7 +2155,17 @@
       "crm_automatizaciones": "Automações",
       "crm_objeciones": "Objeções",
       "crm_referidos": "Indicações",
-      "crm_partners": "Parceiros"
+      "crm_partners": "Parceiros",
+      "membresias": "Resumo",
+      "membresias_miembros": "Membros",
+      "membresias_membresias": "Assinaturas",
+      "membresias_planes": "Planos",
+      "membresias_clases": "Aulas",
+      "membresias_reservas": "Reservas",
+      "membresias_check-in": "Check-in",
+      "membresias_instructores": "Instrutores",
+      "membresias_control-de-acceso": "Controle de acesso",
+      "membresias_pagos": "Pagamentos"
     },
     "grupos": {
       "venta": "Venda",
@@ -2188,7 +2199,8 @@
     "emailNotConfirmed": "E-mail não confirmado",
     "sending": "Enviando...",
     "resend": "Reenviar",
-    "backToMenu": "Menu"
+    "backToMenu": "Menu",
+    "membresias": "Assinaturas"
   },
   "posCustomerDisplay": {
     "indicator": {
@@ -14435,5 +14447,52 @@
     "descargando": "Gerando PDF…",
     "errorTitulo": "Erro",
     "error": "Não foi possível gerar o documento"
+  },
+  "membresias": {
+    "modulo": "Assinaturas",
+    "estados": {
+      "pendiente_pago": "Aguardando pagamento",
+      "por_activar": "A ativar",
+      "activa": "Ativa",
+      "congelada": "Congelada",
+      "en_gracia": "Carência {dias, plural, =0 {hoje} one {# d} other {# d}}",
+      "vencida": "Vencida",
+      "cancelada": "Cancelada"
+    },
+    "origen": {
+      "pos": "Ponto de venda",
+      "invoice": "Fatura",
+      "web": "Loja online",
+      "manual_legacy": "Cadastro anterior"
+    },
+    "duracion": {
+      "day": "{n, plural, one {# dia} other {# dias}}",
+      "week": "{n, plural, one {# semana} other {# semanas}}",
+      "month": "{n, plural, one {# mês} other {# meses}}",
+      "year": "{n, plural, one {# ano} other {# anos}}"
+    },
+    "cobro": {
+      "prepaid": "Antecipado · ativa ao pagar",
+      "on_credit": "A prazo · ativa ao emitir a fatura"
+    },
+    "errores": {
+      "sin_permiso": "Você não tem permissão para esta ação em Assinaturas.",
+      "membresia_no_encontrada": "Não encontramos essa assinatura.",
+      "membresia_no_congelable": "Só é possível congelar uma assinatura ativa ou em carência.",
+      "congelamiento_no_permitido": "O plano desta assinatura não permite congelar.",
+      "fechas_invalidas": "Verifique as datas: o fim não pode ser antes do início.",
+      "congelamiento_en_el_pasado": "O congelamento não pode começar antes de hoje.",
+      "congelamiento_despues_del_vencimiento": "O congelamento deve começar antes do vencimento.",
+      "congelamiento_en_curso": "Já existe um congelamento ativo ou programado.",
+      "congelamiento_tope_veces": "O número máximo de congelamentos do plano foi atingido.",
+      "congelamiento_tope_dias": "Excede o total de dias de congelamento permitido pelo plano.",
+      "sin_congelamiento": "Esta assinatura não tem congelamento ativo.",
+      "motivo_requerido": "Escreva o motivo (pelo menos 3 caracteres).",
+      "cliente_no_encontrado": "Não encontramos esse cliente.",
+      "sucursal_invalida": "A unidade não pertence à organização.",
+      "membresia_sin_cliente": "Uma assinatura precisa do titular: escolha o cliente antes de cobrar.",
+      "datos_invalidos": "Verifique os dados do formulário.",
+      "error_interno": "Algo deu errado. Tente novamente."
+    }
   }
 }

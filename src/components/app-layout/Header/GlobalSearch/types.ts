@@ -54,7 +54,7 @@ export const PAGINAS_PREDEFINIDAS = [
   { id: 'pedidos-online', name: 'Pedidos Online', type: 'page', url: '/app/pos/pedidos-online' },
   { id: 'reservas', name: 'Reservas', type: 'page', url: '/app/pms/reservas' },
   { id: 'espacios', name: 'Espacios', type: 'page', url: '/app/pms/espacios' },
-  { id: 'membresias', name: 'Membresías', type: 'page', url: '/app/gym/membresias' },
+  { id: 'membresias', name: 'Membresías', type: 'page', url: '/app/membresias/membresias' },
   { id: 'parking', name: 'Parqueadero', type: 'page', url: '/app/pms/parking' },
   { id: 'reportes', name: 'Reportes', type: 'page', url: '/app/reportes' },
   { id: 'calendario', name: 'Calendario', type: 'page', url: '/app/calendario' },

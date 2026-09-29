@@ -179,7 +179,7 @@ export function CalendarView({ organizationId, className }: CalendarViewProps) {
       reservation: '/app/pms/reservaciones',
       housekeeping: '/app/pms/housekeeping',
       maintenance: '/app/pms/mantenimiento',
-      gym_class: '/app/gym/horarios',
+      gym_class: '/app/membresias/clases?vista=calendario',
       trip: '/app/transporte/viajes',
     };
 

@@ -402,7 +402,8 @@
       "timeline": "Timeline",
       "chat": "Chat",
       "noActivePrefix": "No active business modules. Activate modules from",
-      "configLink": "Module configuration"
+      "configLink": "Module configuration",
+      "memberships": "Memberships"
     },
     "modulesNav": {
       "ariaLabel": "Navigation between modules"
@@ -2158,7 +2159,17 @@
       "crm_automatizaciones": "Automations",
       "crm_objeciones": "Objections",
       "crm_referidos": "Referrals",
-      "crm_partners": "Partners"
+      "crm_partners": "Partners",
+      "membresias": "Overview",
+      "membresias_miembros": "Members",
+      "membresias_membresias": "Memberships",
+      "membresias_planes": "Plans",
+      "membresias_clases": "Classes",
+      "membresias_reservas": "Bookings",
+      "membresias_check-in": "Check-in",
+      "membresias_instructores": "Instructors",
+      "membresias_control-de-acceso": "Access control",
+      "membresias_pagos": "Payments"
     },
     "grupos": {
       "venta": "Sales",
@@ -2189,7 +2200,8 @@
       "marketing": "Marketing",
       "automatizacion": "Automation"
     },
-    "backToMenu": "Menu"
+    "backToMenu": "Menu",
+    "membresias": "Memberships"
   },
   "crm": {
     "title": "CRM",
@@ -14540,5 +14552,52 @@
     "descargando": "Generating PDF…",
     "errorTitulo": "Error",
     "error": "The document could not be generated"
+  },
+  "membresias": {
+    "modulo": "Memberships",
+    "estados": {
+      "pendiente_pago": "Awaiting payment",
+      "por_activar": "To activate",
+      "activa": "Active",
+      "congelada": "Frozen",
+      "en_gracia": "Grace {dias, plural, =0 {today} one {# d} other {# d}}",
+      "vencida": "Expired",
+      "cancelada": "Cancelled"
+    },
+    "origen": {
+      "pos": "Point of sale",
+      "invoice": "Invoice",
+      "web": "Online store",
+      "manual_legacy": "Earlier sign-up"
+    },
+    "duracion": {
+      "day": "{n, plural, one {# day} other {# days}}",
+      "week": "{n, plural, one {# week} other {# weeks}}",
+      "month": "{n, plural, one {# month} other {# months}}",
+      "year": "{n, plural, one {# year} other {# years}}"
+    },
+    "cobro": {
+      "prepaid": "Prepaid · activates on payment",
+      "on_credit": "On credit · activates when the invoice is issued"
+    },
+    "errores": {
+      "sin_permiso": "You don't have permission for this action in Memberships.",
+      "membresia_no_encontrada": "We couldn't find that membership.",
+      "membresia_no_congelable": "Only an active or grace-period membership can be frozen.",
+      "congelamiento_no_permitido": "This membership's plan doesn't allow freezing.",
+      "fechas_invalidas": "Check the dates: the end can't be before the start.",
+      "congelamiento_en_el_pasado": "A freeze can't start before today.",
+      "congelamiento_despues_del_vencimiento": "The freeze must start before the expiry date.",
+      "congelamiento_en_curso": "There is already an active or scheduled freeze.",
+      "congelamiento_tope_veces": "The plan's maximum number of freezes has been reached.",
+      "congelamiento_tope_dias": "This exceeds the total freeze days the plan allows.",
+      "sin_congelamiento": "This membership has no active freeze.",
+      "motivo_requerido": "Write the reason (at least 3 characters).",
+      "cliente_no_encontrado": "We couldn't find that customer.",
+      "sucursal_invalida": "The location doesn't belong to the organization.",
+      "membresia_sin_cliente": "A membership needs its holder: choose the customer before charging.",
+      "datos_invalidos": "Check the form data.",
+      "error_interno": "Something went wrong. Please try again."
+    }
   }
 }

@@ -402,7 +402,8 @@
       "timeline": "Timeline",
       "chat": "Chat",
       "noActivePrefix": "Aucun module métier actif. Activez les modules depuis",
-      "configLink": "Configuration des modules"
+      "configLink": "Configuration des modules",
+      "memberships": "Adhésions"
     },
     "modulesNav": {
       "ariaLabel": "Navigation entre modules"
@@ -2154,7 +2155,17 @@
       "crm_automatizaciones": "Automatisations",
       "crm_objeciones": "Objections",
       "crm_referidos": "Parrainages",
-      "crm_partners": "Partenaires"
+      "crm_partners": "Partenaires",
+      "membresias": "Vue d'ensemble",
+      "membresias_miembros": "Membres",
+      "membresias_membresias": "Adhésions",
+      "membresias_planes": "Formules",
+      "membresias_clases": "Cours",
+      "membresias_reservas": "Réservations",
+      "membresias_check-in": "Enregistrement",
+      "membresias_instructores": "Instructeurs",
+      "membresias_control-de-acceso": "Contrôle d'accès",
+      "membresias_pagos": "Paiements"
     },
     "grupos": {
       "venta": "Vente",
@@ -2188,7 +2199,8 @@
     "emailNotConfirmed": "E-mail non confirmé",
     "sending": "Envoi...",
     "resend": "Renvoyer",
-    "backToMenu": "Menu"
+    "backToMenu": "Menu",
+    "membresias": "Adhésions"
   },
   "posCustomerDisplay": {
     "indicator": {
@@ -14435,5 +14447,52 @@
     "descargando": "Génération du PDF…",
     "errorTitulo": "Erreur",
     "error": "Impossible de générer le document"
+  },
+  "membresias": {
+    "modulo": "Adhésions",
+    "estados": {
+      "pendiente_pago": "En attente de paiement",
+      "por_activar": "À activer",
+      "activa": "Active",
+      "congelada": "Suspendue",
+      "en_gracia": "Délai de grâce {dias, plural, =0 {aujourd’hui} one {# j} other {# j}}",
+      "vencida": "Expirée",
+      "cancelada": "Annulée"
+    },
+    "origen": {
+      "pos": "Point de vente",
+      "invoice": "Facture",
+      "web": "Boutique en ligne",
+      "manual_legacy": "Inscription antérieure"
+    },
+    "duracion": {
+      "day": "{n, plural, one {# jour} other {# jours}}",
+      "week": "{n, plural, one {# semaine} other {# semaines}}",
+      "month": "{n, plural, one {# mois} other {# mois}}",
+      "year": "{n, plural, one {# an} other {# ans}}"
+    },
+    "cobro": {
+      "prepaid": "Payée d’avance · s’active au paiement",
+      "on_credit": "À crédit · s’active à l’émission de la facture"
+    },
+    "errores": {
+      "sin_permiso": "Vous n’avez pas l’autorisation pour cette action dans Adhésions.",
+      "membresia_no_encontrada": "Adhésion introuvable.",
+      "membresia_no_congelable": "Seule une adhésion active ou en délai de grâce peut être suspendue.",
+      "congelamiento_no_permitido": "La formule de cette adhésion ne permet pas de la suspendre.",
+      "fechas_invalidas": "Vérifiez les dates : la fin ne peut pas précéder le début.",
+      "congelamiento_en_el_pasado": "La suspension ne peut pas commencer avant aujourd’hui.",
+      "congelamiento_despues_del_vencimiento": "La suspension doit commencer avant l’échéance.",
+      "congelamiento_en_curso": "Une suspension est déjà active ou programmée.",
+      "congelamiento_tope_veces": "Le nombre maximal de suspensions de la formule est atteint.",
+      "congelamiento_tope_dias": "Le total de jours de suspension autorisé par la formule est dépassé.",
+      "sin_congelamiento": "Cette adhésion n’a pas de suspension active.",
+      "motivo_requerido": "Indiquez le motif (au moins 3 caractères).",
+      "cliente_no_encontrado": "Client introuvable.",
+      "sucursal_invalida": "Le site n’appartient pas à l’organisation.",
+      "membresia_sin_cliente": "Une adhésion a besoin de son titulaire : choisissez le client avant d’encaisser.",
+      "datos_invalidos": "Vérifiez les données du formulaire.",
+      "error_interno": "Une erreur est survenue. Réessayez."
+    }
   }
 }

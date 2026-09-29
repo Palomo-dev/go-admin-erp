@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { MODULE_PAGES } from '@/lib/config/modulePages';
+import { canonicalModuleCode } from '@/lib/config/moduleAliases';
 
 export interface Module {
   code: string;
@@ -221,6 +222,8 @@ export const moduleManagementService = {
    * Activar un módulo para una organización
    */
   async activateModule(organizationId: number, moduleCode: string, supabaseClient = supabase, modulePages?: Array<{ name: string; href: string }>): Promise<ModuleActivationResult> {
+    // Alias (gym → memberships): activar el código viejo activa el nuevo.
+    moduleCode = canonicalModuleCode(moduleCode);
     try {
       console.log(`moduleManagementService.activateModule - Starting for org ${organizationId}, module ${moduleCode}`);
       
@@ -328,6 +331,7 @@ export const moduleManagementService = {
    * Desactivar un módulo para una organización
    */
   async deactivateModule(organizationId: number, moduleCode: string, supabaseClient = supabase): Promise<ModuleActivationResult> {
+    moduleCode = canonicalModuleCode(moduleCode);
     try {
       // Verificar que el módulo existe
       const { data: module, error: moduleError } = await supabaseClient
@@ -430,6 +434,7 @@ export const moduleManagementService = {
    * Verificar si una organización puede acceder a un módulo específico
    */
   async canAccessModule(organizationId: number, moduleCode: string, supabaseClient = supabase): Promise<boolean> {
+    moduleCode = canonicalModuleCode(moduleCode);
     const { data, error } = await supabaseClient
       .from('organization_modules')
       .select('is_active')

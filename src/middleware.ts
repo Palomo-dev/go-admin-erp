@@ -437,7 +437,8 @@ const routeToModuleMap: Record<string, string> = {
   '/app/calendario': 'calendar',
   '/app/timeline': 'operations',
   '/app/chat': 'chat',
-  '/app/gym': 'gym',
+  // Membresías (antes gym): /app/gym/* redirige a /app/membresias/* en next.config.js.
+  '/app/membresias': 'memberships',
 };
 
 /**

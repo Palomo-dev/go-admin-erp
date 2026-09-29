@@ -1681,9 +1681,13 @@ describe('23. stock_movements.source: CHECK, lista de TS y código coinciden', (
     const escritos = origenesDelCodigo();
 
     // Que el rastreo siga encontrando algo: si un cambio de formato lo deja a
-    // cero, este guardarraíl pasaría sin comprobar nada.
-    expect(escritos.size).toBeGreaterThanOrEqual(10);
-    expect([...escritos.keys()]).toEqual(expect.arrayContaining(['purchase_order', 'transfer_in']));
+    // cero, este guardarraíl pasaría sin comprobar nada. El piso baja a medida
+    // que los escritores TS pasan a RPC (§3.2): B3 (2026-09-29) retiró
+    // TransferenciasService, el último que escribía transfer_out/transfer_in
+    // desde TS (ahora fn_traslado_* por fn_inv_int_mover), así que transfer_in
+    // ya no se exige aquí.
+    expect(escritos.size).toBeGreaterThanOrEqual(5);
+    expect([...escritos.keys()]).toEqual(expect.arrayContaining(['purchase_order']));
 
     const rechazados = [...escritos.entries()]
       .filter(([valor]) => !admitidos.has(valor))
@@ -3048,7 +3052,6 @@ describe('33. Existencias: nada fuera del núcleo escribe las tablas de stock', 
   const PENDIENTES_POR_BLOQUE: Record<string, string> = {
     'app/api/web-orders/[id]/refund/route.ts': 'B9 · reembolso web → fn_stock_entrada',
     'components/inventario/productos/bulk/bulkService.ts': 'B7 · costo y precio masivos por fn_producto_fijar_costo/precio',
-    'components/inventario/transferencias/TransferenciasService.ts': 'B3 · fn_traslado_*',
     'lib/ai/assistant/undoService.ts': 'B9 · deshacer por fn_producto_int_ajustar_stock',
     'lib/services/adjustmentService.ts': 'B2 · fn_ajuste_aplicar',
     'lib/services/aiActionsService.ts': 'B9 · actualizar stock por fn_producto_int_ajustar_stock',

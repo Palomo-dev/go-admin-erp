@@ -28,6 +28,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getModulePages } from '@/lib/config/modulePages';
 import { filtrarPaginasActivas } from '@/lib/navigation/paginaActiva';
+import { canonicalModuleCode, moduleCodeVariants } from '@/lib/config/moduleAliases';
 import type { JsonSchemaObject, ToolContext, ToolDefinition, ToolPreview, ToolResult } from '../types';
 
 /** El preview de una herramienta de lectura nunca se enseña: se ejecuta directo. */
@@ -101,17 +102,29 @@ async function cargarModulosActivos(
   }
 
   const filas = (data ?? []) as FilaModulo[];
-  return filas
-    .map((f) => {
-      const m = Array.isArray(f.modules) ? f.modules[0] : f.modules;
-      return {
-        codigo: f.module_code,
-        nombre: m?.name ?? f.module_code,
-        descripcion: m?.description ?? null,
-        es_nucleo: m?.is_core === true,
-        rank: m?.rank ?? null,
-      };
-    })
+  // Códigos viejos (alias): «gym» se generalizó como «memberships» y un
+  // disparador mantiene las dos filas activas a la vez (43 organizaciones el
+  // 2026-09-29). Sin canonizar, el asistente contaba un módulo «gym» sin
+  // ninguna pantalla —el catálogo ya no lo conoce— además del de membresías.
+  // Gana la fila cuyo código ya es el canónico: su nombre es el vigente.
+  const porCodigo = new Map<string, ModuloActivo & { canonica: boolean }>();
+  for (const f of filas) {
+    const m = Array.isArray(f.modules) ? f.modules[0] : f.modules;
+    const codigo = canonicalModuleCode(f.module_code);
+    const canonica = codigo === f.module_code;
+    const previo = porCodigo.get(codigo);
+    if (previo && (previo.canonica || !canonica)) continue;
+    porCodigo.set(codigo, {
+      codigo,
+      nombre: m?.name ?? codigo,
+      descripcion: m?.description ?? null,
+      es_nucleo: m?.is_core === true,
+      rank: m?.rank ?? null,
+      canonica,
+    });
+  }
+  return Array.from(porCodigo.values())
+    .map((m): ModuloActivo => ({ codigo: m.codigo, nombre: m.nombre, descripcion: m.descripcion, es_nucleo: m.es_nucleo, rank: m.rank }))
     .sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999) || a.nombre.localeCompare(b.nombre));
 }
 
@@ -145,12 +158,14 @@ async function cargarPaginas(
   }
   if (activos.length === 0) return [];
 
+  // Los alias también: una página apagada bajo el código viejo sigue apagada.
+  activos = Array.from(new Set(activos.map(canonicalModuleCode)));
   const { data, error } = await supabase
     .from('organization_module_pages')
     .select('module_code, page_href')
     .eq('organization_id', organizationId)
     .eq('is_active', false)
-    .in('module_code', activos);
+    .in('module_code', activos.flatMap(moduleCodeVariants));
 
   if (error) {
     console.warn('[GO Assistant] No se pudieron leer las páginas de los módulos:', error.message);
@@ -159,8 +174,9 @@ async function cargarPaginas(
 
   const paginasOcultas: Record<string, string[]> = {};
   for (const f of (data ?? []) as Array<{ module_code: string; page_href: string }>) {
-    if (!paginasOcultas[f.module_code]) paginasOcultas[f.module_code] = [];
-    paginasOcultas[f.module_code].push(f.page_href);
+    const codigo = canonicalModuleCode(f.module_code);
+    if (!paginasOcultas[codigo]) paginasOcultas[codigo] = [];
+    paginasOcultas[codigo].push(f.page_href);
   }
 
   const acceso = { modulosActivos: activos, paginasOcultas };
@@ -592,8 +608,11 @@ export const explicarConfiguracion: ToolDefinition<ExplicarArgs> = {
     }
 
     const buscado = normalizar(args.modulo);
+    // «gym» (código viejo) encuentra «memberships»: el modelo puede haberlo
+    // leído en una conversación anterior o en la documentación.
+    const buscadoCanonico = normalizar(canonicalModuleCode(buscado));
     const modulo =
-      modulos.find((m) => normalizar(m.codigo) === buscado) ??
+      modulos.find((m) => normalizar(m.codigo) === buscado || normalizar(m.codigo) === buscadoCanonico) ??
       modulos.find((m) => normalizar(m.nombre) === buscado) ??
       modulos.find((m) => normalizar(m.nombre).includes(buscado) || buscado.includes(normalizar(m.codigo)));
 

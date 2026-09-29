@@ -1,9 +1,40 @@
 'use client';
 
-import { Check, X, AlertTriangle, Loader2, Pencil, ClipboardList, CircleCheck, CircleAlert, ExternalLink, Undo2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+/**
+ * GO Asistente — tarjeta de confirmación (Figma `AsistenteConfirmacion`
+ * 663:16182, Estado = pendiente / ejecutando / completada / error; pantallas 06
+ * `667:36553` y 07 `667:36967`).
+ *
+ * Solo lectura: se corrige hablando («Corregir» rechaza la propuesta en el
+ * servidor y la siguiente frase produce otra). La tarjeta cambia de estado en
+ * su sitio —pendiente → ejecutando → completada (con «Ver» y «Deshacer») o
+ * error— en vez de dejar un mensaje suelto con ✅/❌.
+ *
+ * Mejoras sobre el Figma, todas por la política documentada o por honestidad:
+ * - **Riesgo alto: el resumen se repite antes de ejecutar** (§6.2 del plan).
+ *   El primer «Confirmar» enseña «Vas a: …» y pide un segundo «Sí, confirmar».
+ * - **Créditos**: el Figma decía «≈1 crédito». Confirmar NO cobra (la
+ *   ejecución no llama al modelo; el turno que preparó el resumen ya se cobró:
+ *   `ai_agent_actions.credits` vale 0 en las 23 propuestas de la base). La
+ *   tarjeta lo dice así.
+ * - **Caducidad visible**: la propuesta caduca a los 30 min; a partir de los
+ *   últimos 5 se avisa, y caducada se bloquea «Confirmar» en vez de dejar que
+ *   el servidor responda 409.
+ * - **Deshacer con los minutos que quedan** («Deshacer · 12 min»), con el
+ *   plazo que devuelve el servidor, y estado «Deshecha» al terminar.
+ * - Teclado con el foco en la tarjeta: Ctrl/⌘+Enter confirma (paso a paso en
+ *   riesgo alto) y Esc rechaza o vuelve atrás.
+ */
+
+import React, { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { AlertTriangle, Check, CircleAlert, CircleCheck, ExternalLink, Loader2, Pencil, Undo2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { clasesBoton } from '@/components/kit/botonClases';
 import { cn } from '@/utils/Utils';
 import type { ActionOutcome, PendingAction } from '@/lib/ai/assistant/clientTypes';
+import { minutosRestantes, requiereDobleConfirmacion, type ModoPanel } from '@/lib/ai/assistant/panelUi';
+import { enlaceEntidad, tipoEnlazable } from '@/lib/ai/assistant/entityLinks';
 import BulkPreviewTable from './assistant/BulkPreviewTable';
 
 interface Props {
@@ -19,10 +50,38 @@ interface Props {
   /** Deshacer desde la propia tarjeta, mientras la ventana siga abierta. */
   onUndo?: () => void;
   isUndoing?: boolean;
+  /** Ancho del panel: la carga masiva se pinta distinta en cada uno. */
+  modo?: ModoPanel;
+  /** Pasar el panel a ampliado para ver la tabla completa. */
+  onVerEnGrande?: () => void;
+  /** Tomar el foco al aparecer (escritorio), para que el teclado funcione ya. */
+  enfocar?: boolean;
+  /** Propuesta caducada: cerrarla y volver al composer para pedir otra. */
+  onExpiredDismiss?: () => void;
 }
 
 /** Acciones que tienen un formulario de módulo que se puede abrir desde la tarjeta. */
 const WITH_MODULE_FORM = new Set<string>(['create_customer']);
+
+/** Avisar de la caducidad cuando queden estos minutos o menos. */
+const AVISO_CADUCIDAD_MIN = 5;
+
+type Estado = 'pendiente' | 'ejecutando' | 'completada' | 'deshecha' | 'error' | 'caducada';
+
+function estadoDe(outcome: ActionOutcome | null, ejecutando: boolean, caducada: boolean): Estado {
+  if (outcome) return outcome.undone ? 'deshecha' : outcome.ok ? 'completada' : 'error';
+  if (ejecutando) return 'ejecutando';
+  return caducada ? 'caducada' : 'pendiente';
+}
+
+const TONO_ESTADO = {
+  pendiente: 'marca',
+  ejecutando: 'informacion',
+  completada: 'exito',
+  deshecha: 'neutro',
+  error: 'peligro',
+  caducada: 'neutro',
+} as const;
 
 /** Conserva el nombre por compatibilidad de imports; ya no es un formulario. */
 export default function ActionConfirmationForm({
@@ -35,7 +94,16 @@ export default function ActionConfirmationForm({
   outcome = null,
   onUndo,
   isUndoing = false,
+  modo = 'acoplado',
+  onVerEnGrande,
+  enfocar = false,
+  onExpiredDismiss,
 }: Props) {
+  const t = useTranslations('asistente.tarjeta');
+  const ref = useRef<HTMLElement>(null);
+  const [repitiendo, setRepitiendo] = useState(false);
+  const [ahora, setAhora] = useState(() => Date.now());
+
   const preview = action.preview;
   const lines = preview?.lines.length ? preview.lines : action.fields
     .filter((field) => field.value !== undefined && field.value !== null && field.value !== '')
@@ -43,83 +111,228 @@ export default function ActionConfirmationForm({
   const missing = action.fields.filter((field) => field.required && (field.value === undefined || field.value === null || field.value === ''));
   const summaryId = 'action-summary-' + action.id;
 
+  const minutosCaduca = minutosRestantes(action.expiresAt, ahora);
+  const caducada = !outcome && minutosCaduca === 0;
+  const estado = estadoDe(outcome, isExecuting, caducada);
+  const minutosDeshacer = outcome?.ok && outcome.undoAvailable ? minutosRestantes(outcome.undoUntil ?? null, ahora) : null;
+  const puedeDeshacer = Boolean(outcome?.ok && outcome.undoAvailable && onUndo && minutosDeshacer !== 0);
+  const dobleConfirmacion = requiereDobleConfirmacion(action.risk);
+  const enlace = outcome?.ok && !outcome.undone ? enlaceEntidad(outcome.entity ?? null) : null;
+  const tipoEntidad = tipoEnlazable(outcome?.entity?.type);
+
+  // El reloj solo corre mientras algo depende de él (caducidad o deshacer).
+  useEffect(() => {
+    if (estado !== 'pendiente' && !(estado === 'completada' && outcome?.undoAvailable)) return;
+    const id = window.setInterval(() => setAhora(Date.now()), 15_000);
+    return () => window.clearInterval(id);
+  }, [estado, outcome?.undoAvailable]);
+
+  useEffect(() => {
+    if (enfocar) ref.current?.focus({ preventScroll: true });
+  }, [enfocar]);
+
+  // Otra propuesta en la misma tarjeta: el segundo paso no se hereda.
+  useEffect(() => setRepitiendo(false), [action.id]);
+
+  const confirmar = () => {
+    if (isExecuting || missing.length > 0 || caducada) return;
+    if (dobleConfirmacion && !repitiendo) {
+      setRepitiendo(true);
+      return;
+    }
+    onConfirm();
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (estado !== 'pendiente') return;
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      confirmar();
+    } else if (e.key === 'Escape') {
+      // Se queda aquí: el Esc del panel (cerrar) no debe dispararse a la vez.
+      e.preventDefault();
+      e.stopPropagation();
+      if (repitiendo) setRepitiendo(false);
+      else onReject();
+    }
+  };
+
+  const titulo = action.title;
+  const descripcion = outcome ? outcome.message : preview?.summary || action.description;
+
   return (
-    <section aria-label={'Confirmar acción: ' + action.title} aria-describedby={summaryId} aria-busy={isExecuting}
-      className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      <div className="space-y-2 border-b p-4 dark:border-gray-700">
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100">{action.title}</h3>
-        <p id={summaryId} className="text-sm text-gray-700 dark:text-gray-300">{preview?.summary || action.description}</p>
-        {action.risk === 'high' && <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Revisa el resumen: esta acción tiene impacto contable.</p>}
+    <section
+      ref={ref}
+      tabIndex={-1}
+      onKeyDown={onKeyDown}
+      aria-label={t('etiqueta', { titulo })}
+      aria-describedby={summaryId}
+      aria-busy={isExecuting}
+      className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand"
+    >
+      {/* Encabezado */}
+      <div className="space-y-1.5 px-4 pb-3 pt-4">
+        <div className="flex items-center gap-2">
+          {estado === 'completada' && <CircleCheck className="h-5 w-5 shrink-0 text-success-text" strokeWidth={1.5} aria-hidden="true" />}
+          {estado === 'error' && <CircleAlert className="h-5 w-5 shrink-0 text-danger-text" strokeWidth={1.5} aria-hidden="true" />}
+          <h3 className="min-w-0 flex-1 text-base font-semibold leading-[22px] text-fg">{titulo}</h3>
+          <Badge tono={TONO_ESTADO[estado]} tamano="sm" className="shrink-0">
+            {t(`estado.${estado}`)}
+          </Badge>
+        </div>
+        <p id={summaryId} className="break-words text-[13px] leading-[18px] text-fg-secondary" role={outcome ? 'status' : undefined}>
+          {descripcion}
+          {puedeDeshacer && minutosDeshacer ? ` ${t('puedesDeshacer', { n: minutosDeshacer })}` : ''}
+        </p>
       </div>
-      <div className="space-y-3 p-4">
-        <dl className="space-y-2 text-sm">
-          {lines.map((line, index) => (
-            <div key={line.label + index} className="grid grid-cols-2 gap-3">
-              <dt className="break-words text-gray-600 dark:text-gray-400">{line.label}</dt>
-              <dd className="break-words text-right text-gray-900 dark:text-gray-100">{line.value}</dd>
-            </div>
-          ))}
-          {Object.entries(preview?.totals ?? {}).map(([label, value]) => (
-            <div key={label} className="flex justify-between gap-3 border-t pt-2 font-semibold"><dt>{label}</dt><dd>{value}</dd></div>
-          ))}
-        </dl>
-        {preview?.bulk && <BulkPreviewTable bulk={preview.bulk} />}
-        {(preview?.warnings ?? []).map((warning, index) => <p key={index} className="flex gap-2 text-sm text-amber-800 dark:text-amber-300"><AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />{warning}</p>)}
-        {missing.length > 0 && <p className="text-sm text-amber-800 dark:text-amber-300">Falta: {missing.map((field) => field.label).join(', ')}. Dímelo en el chat antes de confirmar.</p>}
-        {preview?.reversible === false && <p className="text-sm text-red-700 dark:text-red-300">Esta acción no se puede deshacer desde el chat.</p>}
-        <p className="text-xs text-gray-600 dark:text-gray-400">¿Algo está mal? Pulsa Corregir y dime qué cambiar. No se guardará nada hasta que confirmes.</p>
+
+      {/* Datos */}
+      <div className="space-y-2 border-t border-line px-4 py-3">
+        {lines.length > 0 && (
+          <dl className="space-y-2">
+            {lines.map((line, index) => (
+              <div key={line.label + index} className="flex items-start gap-3">
+                <dt className="w-24 shrink-0 break-words text-[13px] leading-[18px] text-fg-secondary">{line.label}</dt>
+                <dd className="min-w-0 flex-1 break-words text-right text-sm font-medium text-fg">{line.value}</dd>
+              </div>
+            ))}
+            {Object.entries(preview?.totals ?? {}).map(([label, value]) => (
+              <div key={label} className="flex justify-between gap-3 border-t border-line pt-2 text-sm font-semibold text-fg">
+                <dt>{label}</dt>
+                <dd className="tabular-nums">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+
+        {preview?.bulk && !outcome && <BulkPreviewTable bulk={preview.bulk} modo={modo} onVerEnGrande={onVerEnGrande} />}
+
+        {!outcome && (preview?.warnings ?? []).map((warning, index) => (
+          <p key={index} className="flex gap-2 text-[13px] leading-[18px] text-warning-text">
+            <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+            {warning}
+          </p>
+        ))}
+
+        {!outcome && action.risk === 'high' && (
+          <p className="flex items-center gap-2 rounded-lg bg-warning-subtle px-3 py-2 text-[13px] leading-[18px] text-warning-text">
+            <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+            {t('avisoContable')}
+          </p>
+        )}
+
+        {!outcome && missing.length > 0 && (
+          <p className="text-[13px] leading-[18px] text-warning-text">
+            {t('falta', { campos: missing.map((field) => field.label).join(', ') })}
+          </p>
+        )}
+
+        {!outcome && preview?.reversible === false && (
+          <p className="text-[13px] font-medium leading-[18px] text-danger-text">{t('irreversible')}</p>
+        )}
+
+        {estado === 'pendiente' && minutosCaduca !== null && minutosCaduca <= AVISO_CADUCIDAD_MIN && (
+          <p className="text-[13px] leading-[18px] text-warning-text" role="status">
+            {t('caducaEn', { n: minutosCaduca })}
+          </p>
+        )}
+        {estado === 'caducada' && (
+          <p className="text-[13px] leading-[18px] text-fg-secondary" role="status">{t('caducada')}</p>
+        )}
+
+        {(estado === 'pendiente' || estado === 'ejecutando') && (
+          <p className="flex flex-wrap gap-x-1 text-xs font-medium leading-4 text-fg-muted">
+            <span>{t('nota')}</span>
+            {onOpenForm && WITH_MODULE_FORM.has(action.type) && (
+              <>
+                <span aria-hidden="true">·</span>
+                <button
+                  type="button"
+                  onClick={onOpenForm}
+                  disabled={isExecuting}
+                  className="rounded text-link underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
+                  title={t('formularioAyuda')}
+                >
+                  {t('formulario')}
+                </button>
+              </>
+            )}
+          </p>
+        )}
       </div>
-      {outcome ? (
-        <div
-          className={cn(
-            'flex flex-wrap items-start gap-2 border-t p-3 text-sm dark:border-gray-700',
-            outcome.ok ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'
+
+      {/* Acciones */}
+      {estado === 'pendiente' || estado === 'ejecutando' ? (
+        <div className="border-t border-line">
+          {repitiendo && (
+            <p className="bg-brand-tint px-4 py-3 text-[13px] leading-[18px] text-fg" role="status">
+              {t('repetir', { resumen: preview?.summary || action.description || titulo })}
+            </p>
           )}
-          role="status"
-        >
-          {outcome.ok ? (
-            <CircleCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          ) : (
-            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          )}
-          <p className="min-w-0 flex-1 break-words">{outcome.message}</p>
-          <div className="flex w-full flex-wrap gap-2 pt-1">
-            {outcome.ok && outcome.entity?.url && (
-              <Button variant="outline" asChild className="min-h-9">
-                <a href={outcome.entity.url}>
-                  <ExternalLink className="mr-2 h-4 w-4" aria-hidden="true" />
-                  Ver
-                </a>
-              </Button>
-            )}
-            {outcome.ok && outcome.undoAvailable && onUndo && (
-              <Button variant="ghost" onClick={onUndo} disabled={isUndoing} className="min-h-9">
-                <Undo2 className="mr-2 h-4 w-4" aria-hidden="true" />
-                {isUndoing ? 'Deshaciendo…' : 'Deshacer'}
-              </Button>
-            )}
-            {!outcome.ok && (
-              <Button variant="outline" onClick={onCorrect} className="min-h-9">
-                <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
-                Corregir y reintentar
-              </Button>
+          <div className="flex flex-wrap items-center gap-2 p-3">
+            <button
+              type="button"
+              onClick={confirmar}
+              disabled={isExecuting || missing.length > 0}
+              aria-keyshortcuts="Control+Enter Meta+Enter"
+              className={clasesBoton({ variante: 'primario', tamano: 'md', className: 'min-w-0 flex-1' })}
+            >
+              {isExecuting ? (
+                <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" strokeWidth={1.5} aria-hidden="true" />
+              ) : (
+                <Check className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+              )}
+              {isExecuting ? t('guardando') : repitiendo ? t('siConfirmar') : t('confirmar')}
+            </button>
+            {repitiendo ? (
+              <button type="button" onClick={() => setRepitiendo(false)} disabled={isExecuting} className={clasesBoton({ variante: 'secundario', tamano: 'md' })}>
+                {t('volver')}
+              </button>
+            ) : (
+              <>
+                <button type="button" onClick={onCorrect} disabled={isExecuting} className={clasesBoton({ variante: 'secundario', tamano: 'md' })}>
+                  {t('corregir')}
+                </button>
+                <button type="button" onClick={onReject} disabled={isExecuting} aria-keyshortcuts="Escape" className={clasesBoton({ variante: 'fantasma', tamano: 'md' })}>
+                  {t('rechazar')}
+                </button>
+              </>
             )}
           </div>
+          <p className="hidden px-4 pb-3 text-xs font-medium text-fg-muted lg:block">{repitiendo ? t('atajosRepetir') : t('atajos')}</p>
+        </div>
+      ) : estado === 'caducada' ? (
+        <div className="flex flex-wrap gap-2 border-t border-line p-3">
+          <button type="button" onClick={onExpiredDismiss ?? onReject} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+            <Pencil className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+            {t('pedirOtro')}
+          </button>
         </div>
       ) : (
-      <div className="flex flex-wrap gap-2 border-t p-3 dark:border-gray-700">
-        <Button onClick={onConfirm} disabled={isExecuting || missing.length > 0} className="min-h-11 flex-1">
-          {isExecuting ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Check className="mr-2 h-4 w-4" aria-hidden="true" />}
-          {isExecuting ? 'Procesando…' : 'Confirmar'}
-        </Button>
-        <Button variant="outline" onClick={onCorrect} disabled={isExecuting} className="min-h-11"><Pencil className="mr-2 h-4 w-4" aria-hidden="true" />Corregir</Button>
-        {onOpenForm && WITH_MODULE_FORM.has(action.type) && (
-          <Button variant="outline" onClick={onOpenForm} disabled={isExecuting} className="min-h-11" title="Abre el mismo formulario del módulo de Clientes, con estos datos ya puestos">
-            <ClipboardList className="mr-2 h-4 w-4" aria-hidden="true" />Formulario completo
-          </Button>
-        )}
-        <Button variant="ghost" onClick={onReject} disabled={isExecuting} className="min-h-11"><X className="mr-2 h-4 w-4" aria-hidden="true" />Rechazar</Button>
-      </div>
+        <div className={cn('flex flex-wrap gap-2 border-t border-line p-3', estado === 'deshecha' && 'hidden')}>
+          {enlace && (
+            <a href={enlace} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+              <ExternalLink className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+              {tipoEntidad ? t(`ver.${tipoEntidad}`) : t('ver.generico')}
+            </a>
+          )}
+          {puedeDeshacer && (
+            <button type="button" onClick={onUndo} disabled={isUndoing} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
+              {isUndoing ? (
+                <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" strokeWidth={1.5} aria-hidden="true" />
+              ) : (
+                <Undo2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+              )}
+              {isUndoing ? t('deshaciendo') : minutosDeshacer ? t('deshacerMin', { n: minutosDeshacer }) : t('deshacer')}
+            </button>
+          )}
+          {estado === 'error' && (
+            <button type="button" onClick={onCorrect} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+              <Pencil className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+              {t('corregirReintentar')}
+            </button>
+          )}
+        </div>
       )}
     </section>
   );

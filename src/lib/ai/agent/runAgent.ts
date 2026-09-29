@@ -55,6 +55,13 @@ export type AgentEvent =
     }
   | { type: 'usage'; model: string; promptTokens: number; completionTokens: number; credits: number }
   | { type: 'error'; message: string; code?: string }
+  /**
+   * Aviso que no corta el turno. Hoy solo `FORBIDDEN_TOOL`: el modelo pidió una
+   * herramienta que existe pero que a esta persona no se le ofreció (permisos,
+   * módulo o nivel). El panel pinta el aviso «sin permiso» con «Ver mis
+   * permisos» en vez de dejarlo en una frase del modelo (Figma `668:40068`).
+   */
+  | { type: 'notice'; code: 'FORBIDDEN_TOOL'; tool: string }
   | { type: 'done'; content: string };
 
 export type AgentEmit = (event: AgentEvent) => void | Promise<void>;
@@ -139,6 +146,7 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentOutput> {
   let answeringModel = resolved.model;
   let pendingActionId: string | null = null;
   const toolCalls: Array<{ name: string; ok: boolean }> = [];
+  let forbiddenNotified = false;
 
   for (let iteration = 0; iteration < maxIterations; iteration++) {
     // El adaptador elige el endpoint segun el modelo: los `gpt-5.x` van por la
@@ -196,6 +204,12 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentOutput> {
       // El modelo pidió algo que no existe o que no se le ofreció. Se le dice,
       // en vez de fallar: sabrá reconducir.
       if (!tool || !tools.some((t) => t.name === call.name)) {
+        // Existe pero no se ofreció: es una denegación, y la persona tiene que
+        // poder verla como tal. Una sola vez por turno.
+        if (tool && !forbiddenNotified) {
+          forbiddenNotified = true;
+          await emit({ type: 'notice', code: 'FORBIDDEN_TOOL', tool: call.name });
+        }
         messages.push({
           role: 'tool',
           toolCallId: call.id,

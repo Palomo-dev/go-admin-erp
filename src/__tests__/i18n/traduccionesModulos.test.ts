@@ -88,6 +88,8 @@ const MODULOS: Record<string, string[]> = {
   inventarioTrazabilidad: SERIALES_B4,
   // Inventario B2 (2026-09-29): ajustes y ajuste por conteo.
   inventarioAjustes: ['src/components/inventario/ajustes', 'src/app/app/inventario/ajustes'],
+  // GO Asistente, panel del header (Figma «GO Asistente — escritorio», 2026-09-29).
+  asistente: ['src/components/app-layout/Header', 'src/lib/ai/assistant'],
 };
 
 type Arbol = { [clave: string]: string | Arbol };

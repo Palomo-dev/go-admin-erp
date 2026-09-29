@@ -28,6 +28,8 @@ export interface StreamHandlers {
   onUsage(usage: { model: string; credits: number }): void;
   onMeta(meta: { conversationId: string }): void;
   onError(error: { message: string; code?: string }): void;
+  /** Aviso que no corta el turno (hoy: `FORBIDDEN_TOOL`). Opcional: los llamadores viejos lo ignoran. */
+  onNotice?(notice: { code: string; tool?: string }): void;
 }
 
 export interface StreamResult {
@@ -227,6 +229,11 @@ export async function streamAssistant(
           case 'meta':
             if (typeof payload.conversationId === 'string') {
               handlers.onMeta({ conversationId: payload.conversationId });
+            }
+            break;
+          case 'notice':
+            if (typeof payload.code === 'string') {
+              handlers.onNotice?.({ code: payload.code, tool: typeof payload.tool === 'string' ? payload.tool : undefined });
             }
             break;
           case 'error':

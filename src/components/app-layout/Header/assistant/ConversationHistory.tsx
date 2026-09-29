@@ -1,34 +1,34 @@
 'use client';
 
 /**
- * GO Assistant — historial de conversaciones (§11.6).
+ * GO Asistente — historial de conversaciones (§11.6; Figma `AsistenteHistorial`
+ * 664:16540 + `AsistenteHistorialFila` 664:16539, pantalla 10 `668:38333`).
  *
- * La F1 dejó la conversación persistida y el panel sin forma de recuperarla:
- * el hilo estaba en la base y el usuario lo veía desaparecer igual. Esta es la
- * mitad de cliente que faltaba, contra
- * `GET /api/ai-assistant/conversations` y `GET .../conversations/[id]`.
+ * Es una vista del propio panel: la cabecera («Conversaciones» con ← para
+ * volver) la pinta `PanelHeader`; aquí van el buscador, los grupos por fecha y
+ * las filas.
  *
  * Decisiones:
+ * - **Los grupos (Hoy, Ayer, Esta semana, Anteriores) se calculan en la zona
+ *   horaria de la organización**, no en la del navegador ni en UTC: a las
+ *   20:00 en Bogotá ya es mañana en UTC (el bug del «día corrido»).
  * - **El buscador filtra en el cliente**, sobre los títulos ya cargados. Con un
- *   tope de 50 hilos no hay nada que ganar yendo al servidor por cada tecla, y
- *   sí que perder: latencia y una consulta por pulsación.
- * - **"Borrar" archiva.** El botón dice "Archivar" porque eso es exactamente lo
- *   que hace el endpoint: el hilo es la traza de por qué se propuso cada
- *   acción y no se destruye. Prometer un borrado que no ocurre sería mentir.
- * - **Se quita de la lista al archivar sin recargar**: el usuario ve el efecto
- *   inmediato, y si el servidor falla vuelve a aparecer con un aviso.
- * - Accesibilidad (§11.7): la lista es un `<ul>` navegable con teclado, cada
- *   hilo un botón con `aria-current` cuando es el que está abierto, y el estado
- *   de carga se anuncia con `aria-live="polite"`.
- *
- * El panel es quien decide qué hacer con el identificador: este componente no
- * sabe nada del hilo activo más allá de resaltarlo.
+ *   tope de 50 hilos no hay nada que ganar yendo al servidor por cada tecla.
+ * - **"Borrar" archiva.** El botón dice «Archivar» porque eso es lo que hace el
+ *   endpoint: el hilo es la traza de por qué se propuso cada acción.
+ * - **Se quita de la lista al archivar sin recargar**; si el servidor falla,
+ *   vuelve a aparecer con un aviso.
+ * - Accesibilidad: cada grupo es una lista con su encabezado, cada hilo un
+ *   botón con `aria-current` cuando es el abierto, «Archivar» aparece también
+ *   con el foco (no solo con el ratón) y la carga se anuncia con `aria-live`.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Archive, Loader2, MessageSquare, RefreshCw, Search, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useLocale, useTranslations } from 'next-intl';
+import { Archive, Loader2, Search } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { agruparPorFecha, type GrupoFecha } from '@/lib/ai/assistant/panelUi';
 
 export interface ConversationSummary {
   id: string;
@@ -43,61 +43,56 @@ interface ConversationHistoryProps {
   activeId?: string | null;
   /** El panel decide cómo retomarlo (cargar mensajes, cerrar el historial…). */
   onSelect(conversationId: string): void;
-  /** Opcional: cerrar el historial (botón en la cabecera). */
-  onClose?(): void;
   /** Cambiar este número fuerza a recargar: útil al terminar un turno. */
   refreshToken?: number;
   className?: string;
 }
 
-const SIN_TITULO = 'Conversación sin título';
-
-/** Fecha corta y en español, relativa cuando es reciente. */
-function fechaCorta(iso: string | null): string {
-  if (!iso) return '';
+/** «9:42», «lunes» o «12 sep»: lo que ayuda a reconocer el hilo en su grupo. */
+function cuando(iso: string, grupo: GrupoFecha, zona: string, locale: string): string {
   const fecha = new Date(iso);
   if (Number.isNaN(fecha.getTime())) return '';
-
-  const minutos = Math.floor((Date.now() - fecha.getTime()) / 60000);
-  if (minutos < 1) return 'ahora';
-  if (minutos < 60) return `hace ${minutos} min`;
-  if (minutos < 60 * 24) return `hace ${Math.floor(minutos / 60)} h`;
-  if (minutos < 60 * 24 * 7) return `hace ${Math.floor(minutos / (60 * 24))} d`;
-
-  return fecha.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+  try {
+    const opciones: Intl.DateTimeFormatOptions =
+      grupo === 'hoy' || grupo === 'ayer'
+        ? { hour: 'numeric', minute: '2-digit' }
+        : grupo === 'semana'
+          ? { weekday: 'long' }
+          : { day: 'numeric', month: 'short' };
+    return new Intl.DateTimeFormat(locale, { ...opciones, timeZone: zona }).format(fecha);
+  } catch {
+    return '';
+  }
 }
 
-export default function ConversationHistory({
-  activeId,
-  onSelect,
-  onClose,
-  refreshToken = 0,
-  className,
-}: ConversationHistoryProps) {
+export default function ConversationHistory({ activeId, onSelect, refreshToken = 0, className }: ConversationHistoryProps) {
+  const t = useTranslations('asistente.historial');
+  const locale = useLocale();
+  const { timezone } = useOrgTimezone();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [archivando, setArchivando] = useState<string | null>(null);
 
-  const cargar = useCallback(async (signal?: AbortSignal) => {
-    setCargando(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/ai-assistant/conversations?limit=50', {
-        signal,
-        credentials: 'same-origin',
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as { conversations?: ConversationSummary[] };
-      setConversations(Array.isArray(json.conversations) ? json.conversations : []);
-    } catch (err) {
-      if ((err as Error).name === 'AbortError') return;
-      setError('No se pudo cargar el historial.');
-    } finally {
-      setCargando(false);
-    }
-  }, []);
+  const cargar = useCallback(
+    async (signal?: AbortSignal) => {
+      setCargando(true);
+      setError(null);
+      try {
+        const res = await fetch('/api/ai-assistant/conversations?limit=50', { signal, credentials: 'same-origin' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = (await res.json()) as { conversations?: ConversationSummary[] };
+        setConversations(Array.isArray(json.conversations) ? json.conversations : []);
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return;
+        setError(t('errorCarga'));
+      } finally {
+        setCargando(false);
+      }
+    },
+    [t]
+  );
 
   useEffect(() => {
     const control = new AbortController();
@@ -112,156 +107,114 @@ export default function ConversationHistory({
       // Optimista: el usuario ve el efecto ya. Si falla, se devuelve la lista.
       setConversations((c) => c.filter((x) => x.id !== id));
       try {
-        const res = await fetch(`/api/ai-assistant/conversations/${id}`, {
-          method: 'DELETE',
-          credentials: 'same-origin',
-        });
+        const res = await fetch(`/api/ai-assistant/conversations/${id}`, { method: 'DELETE', credentials: 'same-origin' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch {
         setConversations(previas);
-        setError('No se pudo archivar la conversación.');
+        setError(t('errorArchivar'));
       } finally {
         setArchivando(null);
       }
     },
-    [conversations]
+    [conversations, t]
   );
 
-  const filtradas = useMemo(() => {
+  const grupos = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return conversations;
-    return conversations.filter((c) => (c.title ?? SIN_TITULO).toLowerCase().includes(q));
-  }, [conversations, busqueda]);
+    const filtradas = q ? conversations.filter((c) => (c.title ?? t('sinTitulo')).toLowerCase().includes(q)) : conversations;
+    return agruparPorFecha(filtradas, (c) => c.last_message_at ?? c.created_at, timezone);
+  }, [conversations, busqueda, timezone, t]);
+
+  const total = grupos.reduce((n, g) => n + g.elementos.length, 0);
 
   return (
-    <section
-      className={cn('flex flex-col h-full bg-white dark:bg-gray-900', className)}
-      aria-label="Historial de conversaciones"
-    >
-      <header className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-        <h2 className="text-sm font-medium text-gray-900 dark:text-gray-100 flex-1">Conversaciones</h2>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-gray-500"
-          onClick={() => void cargar()}
-          aria-label="Recargar historial"
-        >
-          <RefreshCw size={14} className={cn(cargando && 'animate-spin')} aria-hidden="true" />
-        </Button>
-        {onClose && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-gray-500"
-            onClick={onClose}
-            aria-label="Cerrar historial"
-          >
-            <X size={14} aria-hidden="true" />
-          </Button>
-        )}
-      </header>
-
-      <div className="px-3 py-2 flex-shrink-0">
+    <section className={cn('flex h-full flex-col bg-surface', className)} aria-label={t('etiqueta')}>
+      <div className="shrink-0 px-4 pb-2 pt-4">
         <div className="relative">
-          <Search
-            size={14}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
-            aria-hidden="true"
-          />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted" strokeWidth={1.5} aria-hidden="true" />
           <input
             type="search"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar en el historial"
-            aria-label="Buscar en el historial"
-            className="w-full pl-8 pr-2 py-1.5 text-sm rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={t('buscar')}
+            aria-label={t('buscar')}
+            className="h-10 w-full rounded-lg border border-line bg-surface pl-9 pr-3 text-sm text-fg outline-none placeholder:text-fg-muted focus:border-brand focus-visible:ring-2 focus-visible:ring-brand/30"
           />
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 pb-2" aria-live="polite" aria-busy={cargando}>
+      <div className="flex-1 overflow-y-auto px-4 pb-4" aria-live="polite" aria-busy={cargando}>
         {cargando && conversations.length === 0 && (
-          <p className="flex items-center gap-2 px-2 py-3 text-sm text-gray-500">
-            <Loader2 size={14} className="animate-spin" aria-hidden="true" />
-            Cargando historial…
+          <p className="flex items-center gap-2 py-3 text-sm text-fg-secondary">
+            <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" strokeWidth={1.5} aria-hidden="true" />
+            {t('cargando')}
           </p>
         )}
 
         {error && (
-          <p className="px-2 py-2 text-sm text-amber-700 dark:text-amber-400" role="status">
+          <p className="flex flex-wrap items-center gap-2 py-2 text-sm text-warning-text" role="status">
             {error}
+            <button type="button" onClick={() => void cargar()} className="rounded text-link underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-brand">
+              {t('reintentar')}
+            </button>
           </p>
         )}
 
-        {!cargando && !error && filtradas.length === 0 && (
-          <p className="px-2 py-3 text-sm text-gray-500">
-            {conversations.length === 0
-              ? 'Todavía no hay conversaciones guardadas.'
-              : 'Ningún hilo coincide con la búsqueda.'}
-          </p>
+        {!cargando && !error && total === 0 && (
+          <p className="py-3 text-sm text-fg-secondary">{conversations.length === 0 ? t('vacio') : t('sinCoincidencias')}</p>
         )}
 
-        <ul className="space-y-0.5">
-          {filtradas.map((c) => {
-            const activa = c.id === activeId;
-            return (
-              <li key={c.id} className="group relative">
-                <button
-                  type="button"
-                  onClick={() => onSelect(c.id)}
-                  aria-current={activa ? 'true' : undefined}
-                  className={cn(
-                    'w-full text-left rounded-md px-2 py-2 pr-9 transition-colors',
-                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
-                    activa
-                      ? 'bg-blue-50 dark:bg-blue-900/30'
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                  )}
-                >
-                  <span className="flex items-start gap-2">
-                    <MessageSquare
-                      size={14}
-                      className="mt-0.5 flex-shrink-0 text-gray-400"
-                      aria-hidden="true"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-gray-900 dark:text-gray-100">
-                        {c.title ?? SIN_TITULO}
+        {grupos.map(({ grupo, elementos }) => (
+          <div key={grupo} className="pt-2">
+            <h3 className="px-0 pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-fg-muted">{t(`grupo.${grupo}`)}</h3>
+            <ul className="space-y-0.5">
+              {elementos.map((c) => {
+                const activa = c.id === activeId;
+                const titulo = c.title ?? t('sinTitulo');
+                const hora = cuando(c.last_message_at ?? c.created_at, grupo, timezone, locale);
+                return (
+                  <li key={c.id} className="group relative">
+                    <button
+                      type="button"
+                      onClick={() => onSelect(c.id)}
+                      aria-current={activa ? 'true' : undefined}
+                      className={cn(
+                        'w-full rounded-lg px-3 py-2 pr-10 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand',
+                        activa ? 'bg-brand-tint' : 'hover:bg-hover'
+                      )}
+                    >
+                      <span className={cn('block truncate text-sm', activa ? 'text-brand-deep' : 'text-fg')}>{titulo}</span>
+                      <span className="block text-xs text-fg-muted">
+                        {[
+                          grupo === 'hoy' || grupo === 'ayer' ? `${t(`grupo.${grupo}`)}, ${hora}` : hora,
+                          c.message_count > 0 ? t('mensajes', { n: c.message_count }) : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
                       </span>
-                      <span className="block text-[11px] text-gray-500">
-                        {fechaCorta(c.last_message_at ?? c.created_at)}
-                        {c.message_count > 0 && ` · ${c.message_count} mensajes`}
-                      </span>
-                    </span>
-                  </span>
-                </button>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void archivar(c.id)}
+                      disabled={archivando === c.id}
+                      aria-label={t('archivar', { titulo })}
+                      title={t('archivarAyuda')}
+                      className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-fg-muted opacity-0 outline-none transition-opacity hover:bg-pressed hover:text-fg focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-brand group-hover:opacity-100 disabled:opacity-50"
+                    >
+                      {archivando === c.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" strokeWidth={1.5} aria-hidden="true" />
+                      ) : (
+                        <Archive className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
 
-                <button
-                  type="button"
-                  onClick={() => void archivar(c.id)}
-                  disabled={archivando === c.id}
-                  aria-label={`Archivar "${c.title ?? SIN_TITULO}"`}
-                  className={cn(
-                    'absolute right-1.5 top-1.5 p-1.5 rounded text-gray-400',
-                    'hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700',
-                    'opacity-0 group-hover:opacity-100 focus:opacity-100',
-                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
-                    'disabled:opacity-50'
-                  )}
-                >
-                  {archivando === c.id ? (
-                    <Loader2 size={13} className="animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Archive size={13} aria-hidden="true" />
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        {total > 0 && <p className="pt-4 text-xs text-fg-muted">{t('nota')}</p>}
       </div>
     </section>
   );

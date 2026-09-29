@@ -513,3 +513,109 @@ class ProductionOrderService {
 }
 
 export const productionOrderService = new ProductionOrderService();
+
+// ─── Pestaña «Producción» del detalle de producto (fn_producto_produccion_resumen) ──
+
+export interface ResumenProduccionProducto {
+  producto: { id: number; nombre: string; unidad: string; track_stock: boolean; es_padre: boolean; parent_product_id: number | null; modo: 'al_producir' | 'al_vender'; decimales: number };
+  /** La receta que usa hoy (propia o, en una variante sin receta, la del padre). */
+  receta_efectiva: { recipe_id: number; product_id: number; heredada: boolean; al_producir: boolean; version: number } | null;
+  receta_propia: { recipe_id: number; version: number; nombre: string | null; creada_en: string | null } | null;
+  versiones: number;
+  variantes_con_receta: { product_id: number; nombre: string; recipe_id: number; version: number }[];
+  usado_en: { recipe_id: number; product_id: number; producto: string; version: number }[];
+  usado_en_total: number;
+  ordenes: number;
+  ordenes_abiertas: number;
+  traslados: number;
+  movimientos_produccion: number;
+  conversiones: { id: number; de: string; a: string; factor: number; alcance: 'global' | 'organizacion' }[];
+  /** Compuesto, con receta, ingrediente de otra receta u órdenes: la pestaña tiene contenido. */
+  mostrar: boolean;
+  permisos: PermisosInventario;
+  editar_receta: boolean;
+}
+
+export interface TrasladoProducto {
+  id: number;
+  codigo: string;
+  estado: string;
+  origen: { id: number; nombre: string };
+  destino: { id: number; nombre: string };
+  enviado: number;
+  recibido: number;
+  orden_produccion: { id: number; numero: string } | null;
+  creado_en: string | null;
+}
+
+export function aResumenProduccion(v: unknown): ResumenProduccionProducto {
+  const d = obj(v);
+  const p = obj(d.producto);
+  const ef = d.receta_efectiva ? obj(d.receta_efectiva) : null;
+  const pr = d.receta_propia ? obj(d.receta_propia) : null;
+  const lista = (x: unknown) => (Array.isArray(x) ? (x as unknown[]).map(obj) : []);
+  return {
+    producto: {
+      id: num(p.id),
+      nombre: String(p.nombre ?? ''),
+      unidad: String(p.unidad ?? 'UN').trim() || 'UN',
+      track_stock: p.track_stock === true,
+      es_padre: p.es_padre === true,
+      parent_product_id: numONull(p.parent_product_id),
+      modo: p.modo === 'al_producir' ? 'al_producir' : 'al_vender',
+      decimales: num(p.decimales),
+    },
+    receta_efectiva: ef
+      ? { recipe_id: num(ef.recipe_id), product_id: num(ef.product_id), heredada: ef.heredada === true, al_producir: ef.al_producir === true, version: num(ef.version) || 1 }
+      : null,
+    receta_propia: pr ? { recipe_id: num(pr.recipe_id), version: num(pr.version) || 1, nombre: textoONull(pr.nombre), creada_en: textoONull(pr.creada_en) } : null,
+    versiones: num(d.versiones),
+    variantes_con_receta: lista(d.variantes_con_receta).map((x) => ({ product_id: num(x.product_id), nombre: String(x.nombre ?? ''), recipe_id: num(x.recipe_id), version: num(x.version) || 1 })),
+    usado_en: lista(d.usado_en).map((x) => ({ recipe_id: num(x.recipe_id), product_id: num(x.product_id), producto: String(x.producto ?? ''), version: num(x.version) || 1 })),
+    usado_en_total: num(d.usado_en_total),
+    ordenes: num(d.ordenes),
+    ordenes_abiertas: num(d.ordenes_abiertas),
+    traslados: num(d.traslados),
+    movimientos_produccion: num(d.movimientos_produccion),
+    conversiones: lista(d.conversiones).map((x) => ({
+      id: num(x.id),
+      de: String(x.de ?? '').trim(),
+      a: String(x.a ?? '').trim(),
+      factor: num(x.factor),
+      alcance: x.alcance === 'global' ? 'global' : 'organizacion',
+    })),
+    mostrar: d.mostrar === true,
+    permisos: d.permisos ? aPermisosInventario(d.permisos) : SIN_PERMISOS_INVENTARIO,
+    editar_receta: d.editar_receta === true,
+  };
+}
+
+export async function resumenProduccionProducto(organizationId: number, productId: number, senal?: AbortSignal): Promise<ResumenProduccionProducto> {
+  let q = supabase.rpc('fn_producto_produccion_resumen', { p_org: organizationId, p_product: productId });
+  if (senal) q = q.abortSignal(senal);
+  const { data, error } = await q;
+  if (error) throw new ErrorProduccion(error);
+  return aResumenProduccion(data);
+}
+
+export async function distribucionProducto(organizationId: number, productId: number, senal?: AbortSignal): Promise<TrasladoProducto[]> {
+  let q = supabase.rpc('fn_producto_distribucion', { p_org: organizationId, p_product: productId, p_limite: 100 });
+  if (senal) q = q.abortSignal(senal);
+  const { data, error } = await q;
+  if (error) throw new ErrorProduccion(error);
+  return (Array.isArray(data) ? (data as unknown[]) : []).map((x) => {
+    const t = obj(x);
+    const op = t.orden_produccion ? obj(t.orden_produccion) : null;
+    return {
+      id: num(t.id),
+      codigo: String(t.codigo ?? ''),
+      estado: String(t.estado ?? ''),
+      origen: { id: num(obj(t.origen).id), nombre: String(obj(t.origen).nombre ?? '') },
+      destino: { id: num(obj(t.destino).id), nombre: String(obj(t.destino).nombre ?? '') },
+      enviado: num(t.enviado),
+      recibido: num(t.recibido),
+      orden_produccion: op ? { id: num(op.id), numero: String(op.numero ?? '') } : null,
+      creado_en: textoONull(t.creado_en),
+    };
+  });
+}

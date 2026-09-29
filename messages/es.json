@@ -20611,5 +20611,201 @@
       "hex": "Hex",
       "sku": "Código SKU"
     }
+  },
+  "subseccion": {
+    "reintentar": "Reintentar",
+    "estados": {
+      "error": {
+        "titulo": "No se pudo cargar la producción de este producto",
+        "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+      },
+      "sinPermiso": {
+        "titulo": "No tienes acceso a producción",
+        "descripcion": "Pide el permiso para ver el inventario."
+      }
+    },
+    "pestanas": {
+      "etiqueta": "Secciones de producción",
+      "receta": "Receta",
+      "costo": "Costo",
+      "ordenes": "Órdenes",
+      "distribucion": "Distribución",
+      "unidades": "Unidades"
+    },
+    "receta": {
+      "titulo": "Receta",
+      "activaDesde": "activa desde el {fecha}",
+      "laUsan": "la usan las ventas y las órdenes nuevas",
+      "editar": "Editar receta",
+      "crear": "Crear receta",
+      "exportar": "Exportar receta (CSV)",
+      "crearOrden": "Crear orden de producción",
+      "base": "{nombre} · v{version}",
+      "recetaBase": "Receta base",
+      "resumenLinea": "Rinde {rinde} · {count, plural, =0 {sin ingredientes} one {# ingrediente} other {# ingredientes}}",
+      "recetaDe": "Receta de:",
+      "compartida": "Compartida",
+      "propiaDe": "{nombre} · propia v{version}",
+      "col": {
+        "ingrediente": "Ingrediente",
+        "cantidad": "Cantidad",
+        "costo": "Costo",
+        "inventario": "Inventario"
+      },
+      "seLlevaEn": "se lleva en {unidad}",
+      "merma": "merma {pct} %",
+      "opcional": "opcional",
+      "sinInventario": "sin inventario",
+      "sinConversion": "Sin conversión",
+      "descuenta": "Descuenta",
+      "noDescuenta": "No descuenta",
+      "sinIngredientes": "La receta no tiene ingredientes",
+      "conecta": "Cómo se conecta",
+      "ordenesAbiertas": "Órdenes de producción abiertas",
+      "usadoEn": "Usado como ingrediente en",
+      "nRecetas": "{count, plural, =0 {ninguna receta} one {# receta} other {# recetas}}",
+      "versiones": "Versiones de la receta",
+      "movimientos": "Movimientos de producción",
+      "ver": "Ver",
+      "usadoEnTitulo": "{count, plural, one {Usado en # receta} other {Usado en # recetas}}",
+      "heredadaTitulo": "Usa la receta del producto padre",
+      "heredadaDescripcion": "Esta variante no tiene receta propia: al venderla o producirla se usa la versión {version} del producto padre.",
+      "verPadre": "Ver la receta del padre",
+      "vacioTitulo": "Este producto no tiene receta",
+      "vacioDescripcion": "Una receta descuenta sus ingredientes al vender o al producir y calcula el costo del producto.",
+      "desactivadaTitulo": "La receta está desactivada",
+      "desactivadaDescripcion": "Las ventas descuentan el producto, no sus ingredientes. Puedes reactivar una versión anterior.",
+      "verVersiones": "Ver versiones",
+      "csv": {
+        "ingrediente": "Ingrediente",
+        "sku": "SKU",
+        "cantidad": "Cantidad",
+        "unidad": "Unidad",
+        "merma": "Merma %",
+        "opcional": "Opcional",
+        "costo": "Costo"
+      }
+    },
+    "costo": {
+      "titulo": "Costo de receta",
+      "descripcion": "Se calcula con fn_receta_costo, la misma función del formulario, del reporte y de la venta. Fuente por ingrediente: promedio de la sucursal → último costo de compra → sin costo.",
+      "registrarFaltante": "Registrar costo faltante",
+      "exportar": "Exportar CSV",
+      "irReporte": "Ir al reporte de costo de recetas",
+      "recalcular": "Recalcular",
+      "sinDatos": "Aún no hay costo calculado",
+      "sucursal": "Sucursal",
+      "version": "Versión",
+      "versionActiva": "Versión {version} (activa)",
+      "versionN": "Versión {version}",
+      "kpis": "Costo de la receta",
+      "tanda": "Costo de la tanda",
+      "rinde": "Rinde {rinde}",
+      "unidad": "Costo por unidad",
+      "vsAnterior": "v{version}: {costo} ({cambio})",
+      "precio": "Precio de venta",
+      "sinPrecio": "Sin precio vigente",
+      "margen": "Margen",
+      "col": {
+        "ingrediente": "Ingrediente",
+        "netoBruto": "Neto → bruto",
+        "neto": "Neto",
+        "bruto": "Bruto",
+        "unidad": "Unidad",
+        "costoUnitario": "Costo unitario",
+        "fuente": "Fuente del costo",
+        "linea": "Costo de la línea",
+        "estado": "Estado"
+      },
+      "merma": "merma {pct} %",
+      "sinInventario": "sin inventario",
+      "sinConversion": "Sin conversión",
+      "opcional": "Opcional",
+      "sinCosto": "Sin costo",
+      "respaldo": "Respaldo",
+      "conCosto": "Con costo",
+      "sinIngredientes": "La receta no tiene ingredientes",
+      "porVersion": "Costo por unidad por versión",
+      "activa": "activa",
+      "sinPermiso": "Sin el permiso «Ver costos» esta sección muestra solo cantidades: los importes y el margen se ocultan.",
+      "sinRecetaTitulo": "Sin receta, sin costo de receta",
+      "sinRecetaDescripcion": "Crea la receta en la sección Receta para ver cuánto cuesta el producto."
+    },
+    "ordenes": {
+      "titulo": "Órdenes de producción",
+      "descripcion": "Órdenes que producen este producto con su receta. Se crean aquí o desde Inventario › Producción.",
+      "nueva": "Nueva orden",
+      "col": {
+        "orden": "Orden",
+        "sucursal": "Sucursal",
+        "aProducir": "A producir",
+        "fecha": "Fecha",
+        "costo": "Costo",
+        "estado": "Estado"
+      },
+      "etiquetaFila": "Orden {numero}",
+      "vacioTitulo": "Sin órdenes de producción",
+      "vacioDescripcion": "Crea una orden para producir este producto con su receta.",
+      "vacioSinReceta": "Para producir, el producto necesita una receta activa.",
+      "hojaTitulo": "Orden {numero}",
+      "pasos": "Avance de la orden",
+      "receta": "Receta",
+      "aProducir": "A producir",
+      "producido": "Producido",
+      "iniciada": "Iniciada",
+      "completada": "Completada",
+      "costoEstimado": "Costo estimado",
+      "costoReal": "Costo real",
+      "costoValor": "{total} ({unidad} c/u)",
+      "motivo": "Motivo de la cancelación",
+      "necesidades": "Necesidades",
+      "noDescuenta": "no descuenta",
+      "falta": "Falta",
+      "suficiente": "Suficiente",
+      "avisoFaltante": "Falta {cantidad} de {nombre} en {sucursal}. Al completar, el consumo lo deja en negativo y se avisa en el kardex; «Completar» pide confirmarlo.",
+      "consumos": "Consumos",
+      "salioDeAqui": "Salió de aquí",
+      "verOrden": "Ver orden",
+      "completar": "Completar…"
+    },
+    "distribucion": {
+      "titulo": "Distribución",
+      "descripcion": "Traslados que llevan este producto: origen → destino, enviado, recibido y la orden de producción de la que salió.",
+      "nueva": "Nueva distribución",
+      "col": {
+        "traslado": "Traslado",
+        "ruta": "Origen → destino",
+        "enviado": "Enviado",
+        "recibido": "Recibido",
+        "orden": "Orden de origen",
+        "estado": "Estado"
+      },
+      "estados": {
+        "pending": "Pendiente",
+        "in_transit": "En tránsito",
+        "received": "Recibido",
+        "cancelled": "Cancelado"
+      },
+      "etiquetaFila": "Traslado {codigo}",
+      "vacioTitulo": "Sin traslados",
+      "vacioDescripcion": "{producto} todavía no se ha enviado a otra sucursal."
+    },
+    "unidades": {
+      "titulo": "Unidades y conversión",
+      "descripcion": "Unidad base: {unidad}. Conversiones que aplican a este producto (las mismas que usa la receta al descontar).",
+      "gestionar": "Gestionar conversiones",
+      "col": {
+        "de": "De",
+        "a": "Equivale a",
+        "inversa": "Inversa",
+        "alcance": "Alcance"
+      },
+      "alcance": {
+        "organizacion": "De la organización",
+        "global": "Global"
+      },
+      "vacioTitulo": "Sin conversiones",
+      "vacioDescripcion": "No hay conversiones desde o hacia {unidad}. Créalas en Unidades y conversiones."
+    }
   }
 }

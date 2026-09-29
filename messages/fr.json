@@ -20506,5 +20506,201 @@
       "hex": "Hex",
       "sku": "Code SKU"
     }
+  },
+  "subseccion": {
+    "reintentar": "Réessayer",
+    "estados": {
+      "error": {
+        "titulo": "Impossible de charger la production de ce produit",
+        "descripcion": "Vérifiez votre connexion et réessayez."
+      },
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès à la production",
+        "descripcion": "Demandez l'autorisation de consulter l'inventaire."
+      }
+    },
+    "pestanas": {
+      "etiqueta": "Sections de production",
+      "receta": "Recette",
+      "costo": "Coût",
+      "ordenes": "Ordres",
+      "distribucion": "Distribution",
+      "unidades": "Unités"
+    },
+    "receta": {
+      "titulo": "Recette",
+      "activaDesde": "active depuis le {fecha}",
+      "laUsan": "utilisée par les ventes et les nouveaux ordres",
+      "editar": "Modifier la recette",
+      "crear": "Créer une recette",
+      "exportar": "Exporter la recette (CSV)",
+      "crearOrden": "Créer un ordre de production",
+      "base": "{nombre} · v{version}",
+      "recetaBase": "Recette de base",
+      "resumenLinea": "Rendement {rinde} · {count, plural, =0 {aucun ingrédient} one {# ingrédient} other {# ingrédients}}",
+      "recetaDe": "Recette de :",
+      "compartida": "Partagée",
+      "propiaDe": "{nombre} · propre v{version}",
+      "col": {
+        "ingrediente": "Ingrédient",
+        "cantidad": "Quantité",
+        "costo": "Coût",
+        "inventario": "Inventaire"
+      },
+      "seLlevaEn": "géré en {unidad}",
+      "merma": "perte {pct} %",
+      "opcional": "facultatif",
+      "sinInventario": "sans inventaire",
+      "sinConversion": "Sans conversion",
+      "descuenta": "Déduit",
+      "noDescuenta": "Ne déduit pas",
+      "sinIngredientes": "La recette n'a pas d'ingrédients",
+      "conecta": "Comment elle s'articule",
+      "ordenesAbiertas": "Ordres de production ouverts",
+      "usadoEn": "Utilisé comme ingrédient dans",
+      "nRecetas": "{count, plural, =0 {aucune recette} one {# recette} other {# recettes}}",
+      "versiones": "Versions de la recette",
+      "movimientos": "Mouvements de production",
+      "ver": "Voir",
+      "usadoEnTitulo": "{count, plural, one {Utilisé dans # recette} other {Utilisé dans # recettes}}",
+      "heredadaTitulo": "Utilise la recette du produit parent",
+      "heredadaDescripcion": "Cette variante n'a pas de recette propre : à la vente ou à la production, la version {version} du produit parent est utilisée.",
+      "verPadre": "Voir la recette du parent",
+      "vacioTitulo": "Ce produit n'a pas de recette",
+      "vacioDescripcion": "Une recette déduit ses ingrédients lors de la vente ou de la production et calcule le coût du produit.",
+      "desactivadaTitulo": "La recette est désactivée",
+      "desactivadaDescripcion": "Les ventes déduisent le produit, pas ses ingrédients. Vous pouvez réactiver une version antérieure.",
+      "verVersiones": "Voir les versions",
+      "csv": {
+        "ingrediente": "Ingrédient",
+        "sku": "SKU",
+        "cantidad": "Quantité",
+        "unidad": "Unité",
+        "merma": "Perte %",
+        "opcional": "Facultatif",
+        "costo": "Coût"
+      }
+    },
+    "costo": {
+      "titulo": "Coût de la recette",
+      "descripcion": "Calculé avec fn_receta_costo, la même fonction que celle du formulaire, du rapport et de la vente. Source par ingrédient : moyenne de la succursale → dernier coût d'achat → sans coût.",
+      "registrarFaltante": "Enregistrer le coût manquant",
+      "exportar": "Exporter en CSV",
+      "irReporte": "Aller au rapport de coût des recettes",
+      "recalcular": "Recalculer",
+      "sinDatos": "Aucun coût calculé pour l'instant",
+      "sucursal": "Succursale",
+      "version": "Version",
+      "versionActiva": "Version {version} (active)",
+      "versionN": "Version {version}",
+      "kpis": "Coût de la recette",
+      "tanda": "Coût du lot",
+      "rinde": "Rendement {rinde}",
+      "unidad": "Coût unitaire",
+      "vsAnterior": "v{version} : {costo} ({cambio})",
+      "precio": "Prix de vente",
+      "sinPrecio": "Aucun prix en vigueur",
+      "margen": "Marge",
+      "col": {
+        "ingrediente": "Ingrédient",
+        "netoBruto": "Net → brut",
+        "neto": "Net",
+        "bruto": "Brut",
+        "unidad": "Unité",
+        "costoUnitario": "Coût unitaire",
+        "fuente": "Source du coût",
+        "linea": "Coût de la ligne",
+        "estado": "Statut"
+      },
+      "merma": "perte {pct} %",
+      "sinInventario": "sans inventaire",
+      "sinConversion": "Sans conversion",
+      "opcional": "Facultatif",
+      "sinCosto": "Sans coût",
+      "respaldo": "Secours",
+      "conCosto": "Avec coût",
+      "sinIngredientes": "La recette n'a pas d'ingrédients",
+      "porVersion": "Coût unitaire par version",
+      "activa": "active",
+      "sinPermiso": "Sans l'autorisation « Voir les coûts », cette section n'affiche que les quantités : les montants et la marge sont masqués.",
+      "sinRecetaTitulo": "Sans recette, pas de coût de recette",
+      "sinRecetaDescripcion": "Créez la recette dans la section Recette pour voir combien coûte le produit."
+    },
+    "ordenes": {
+      "titulo": "Ordres de production",
+      "descripcion": "Ordres qui produisent ce produit avec sa recette. Ils se créent ici ou depuis Inventaire › Production.",
+      "nueva": "Nouvel ordre",
+      "col": {
+        "orden": "Ordre",
+        "sucursal": "Succursale",
+        "aProducir": "À produire",
+        "fecha": "Date",
+        "costo": "Coût",
+        "estado": "Statut"
+      },
+      "etiquetaFila": "Ordre {numero}",
+      "vacioTitulo": "Aucun ordre de production",
+      "vacioDescripcion": "Créez un ordre pour produire ce produit avec sa recette.",
+      "vacioSinReceta": "Pour produire, le produit doit avoir une recette active.",
+      "hojaTitulo": "Ordre {numero}",
+      "pasos": "Avancement de l'ordre",
+      "receta": "Recette",
+      "aProducir": "À produire",
+      "producido": "Produit",
+      "iniciada": "Commencé",
+      "completada": "Terminé",
+      "costoEstimado": "Coût estimé",
+      "costoReal": "Coût réel",
+      "costoValor": "{total} ({unidad} l'unité)",
+      "motivo": "Motif de l'annulation",
+      "necesidades": "Besoins",
+      "noDescuenta": "ne déduit pas",
+      "falta": "Manque",
+      "suficiente": "Suffisant",
+      "avisoFaltante": "Il manque {cantidad} de {nombre} à {sucursal}. À la clôture, la consommation le laisse en négatif et un avertissement est inscrit dans le Kardex ; « Terminer » demande de le confirmer.",
+      "consumos": "Consommations",
+      "salioDeAqui": "Provient d'ici",
+      "verOrden": "Voir l'ordre",
+      "completar": "Terminer…"
+    },
+    "distribucion": {
+      "titulo": "Distribution",
+      "descripcion": "Transferts qui transportent ce produit : origine → destination, envoyé, reçu et l'ordre de production dont il provient.",
+      "nueva": "Nouvelle distribution",
+      "col": {
+        "traslado": "Transfert",
+        "ruta": "Origine → destination",
+        "enviado": "Envoyé",
+        "recibido": "Reçu",
+        "orden": "Ordre d'origine",
+        "estado": "Statut"
+      },
+      "estados": {
+        "pending": "En attente",
+        "in_transit": "En transit",
+        "received": "Reçu",
+        "cancelled": "Annulé"
+      },
+      "etiquetaFila": "Transfert {codigo}",
+      "vacioTitulo": "Aucun transfert",
+      "vacioDescripcion": "{producto} n'a pas encore été envoyé à une autre succursale."
+    },
+    "unidades": {
+      "titulo": "Unités et conversion",
+      "descripcion": "Unité de base : {unidad}. Conversions qui s'appliquent à ce produit (les mêmes que la recette utilise lors de la déduction).",
+      "gestionar": "Gérer les conversions",
+      "col": {
+        "de": "De",
+        "a": "Équivaut à",
+        "inversa": "Inverse",
+        "alcance": "Portée"
+      },
+      "alcance": {
+        "organizacion": "De l'organisation",
+        "global": "Globale"
+      },
+      "vacioTitulo": "Aucune conversion",
+      "vacioDescripcion": "Il n'y a aucune conversion depuis ou vers {unidad}. Créez-les dans Unités et conversions."
+    }
   }
 }

@@ -9,7 +9,7 @@ import { join } from 'path';
 type Arbol = { [k: string]: string | Arbol };
 const leer = (l: string) => JSON.parse(readFileSync(join(process.cwd(), `messages/${l}.json`), 'utf8')) as Record<string, Arbol>;
 const IDIOMAS = ['es', 'en', 'fr', 'pt'] as const;
-const NAMESPACES = ['inventarioProduccion', 'inventarioRecetas'] as const;
+const NAMESPACES = ['inventarioProduccion', 'inventarioRecetas', 'subseccion'] as const;
 
 function hojas(a: Arbol, prefijo = ''): Record<string, string> {
   const out: Record<string, string> = {};

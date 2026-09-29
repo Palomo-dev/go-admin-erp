@@ -20611,5 +20611,201 @@
       "hex": "Hex",
       "sku": "SKU code"
     }
+  },
+  "subseccion": {
+    "reintentar": "Retry",
+    "estados": {
+      "error": {
+        "titulo": "Couldn't load production for this product",
+        "descripcion": "Check your connection and try again."
+      },
+      "sinPermiso": {
+        "titulo": "You don't have access to production",
+        "descripcion": "Ask for permission to view inventory."
+      }
+    },
+    "pestanas": {
+      "etiqueta": "Production sections",
+      "receta": "Recipe",
+      "costo": "Cost",
+      "ordenes": "Orders",
+      "distribucion": "Distribution",
+      "unidades": "Units"
+    },
+    "receta": {
+      "titulo": "Recipe",
+      "activaDesde": "active since {fecha}",
+      "laUsan": "used by sales and new orders",
+      "editar": "Edit recipe",
+      "crear": "Create recipe",
+      "exportar": "Export recipe (CSV)",
+      "crearOrden": "Create production order",
+      "base": "{nombre} · v{version}",
+      "recetaBase": "Base recipe",
+      "resumenLinea": "Yields {rinde} · {count, plural, =0 {no ingredients} one {# ingredient} other {# ingredients}}",
+      "recetaDe": "Recipe from:",
+      "compartida": "Shared",
+      "propiaDe": "{nombre} · own v{version}",
+      "col": {
+        "ingrediente": "Ingredient",
+        "cantidad": "Quantity",
+        "costo": "Cost",
+        "inventario": "Inventory"
+      },
+      "seLlevaEn": "tracked in {unidad}",
+      "merma": "waste {pct} %",
+      "opcional": "optional",
+      "sinInventario": "no inventory",
+      "sinConversion": "No conversion",
+      "descuenta": "Deducts",
+      "noDescuenta": "Doesn't deduct",
+      "sinIngredientes": "The recipe has no ingredients",
+      "conecta": "How it connects",
+      "ordenesAbiertas": "Open production orders",
+      "usadoEn": "Used as an ingredient in",
+      "nRecetas": "{count, plural, =0 {no recipes} one {# recipe} other {# recipes}}",
+      "versiones": "Recipe versions",
+      "movimientos": "Production movements",
+      "ver": "View",
+      "usadoEnTitulo": "{count, plural, one {Used in # recipe} other {Used in # recipes}}",
+      "heredadaTitulo": "Uses the parent product's recipe",
+      "heredadaDescripcion": "This variant has no recipe of its own: when it's sold or produced, version {version} of the parent product is used.",
+      "verPadre": "View the parent's recipe",
+      "vacioTitulo": "This product has no recipe",
+      "vacioDescripcion": "A recipe deducts its ingredients when selling or producing and calculates the product's cost.",
+      "desactivadaTitulo": "The recipe is deactivated",
+      "desactivadaDescripcion": "Sales deduct the product, not its ingredients. You can reactivate a previous version.",
+      "verVersiones": "View versions",
+      "csv": {
+        "ingrediente": "Ingredient",
+        "sku": "SKU",
+        "cantidad": "Quantity",
+        "unidad": "Unit",
+        "merma": "Waste %",
+        "opcional": "Optional",
+        "costo": "Cost"
+      }
+    },
+    "costo": {
+      "titulo": "Recipe cost",
+      "descripcion": "Calculated with fn_receta_costo, the same function used by the form, the report and the sale. Source per ingredient: branch average → last purchase cost → no cost.",
+      "registrarFaltante": "Record missing cost",
+      "exportar": "Export CSV",
+      "irReporte": "Go to the recipe cost report",
+      "recalcular": "Recalculate",
+      "sinDatos": "No cost calculated yet",
+      "sucursal": "Branch",
+      "version": "Version",
+      "versionActiva": "Version {version} (active)",
+      "versionN": "Version {version}",
+      "kpis": "Recipe cost",
+      "tanda": "Batch cost",
+      "rinde": "Yields {rinde}",
+      "unidad": "Cost per unit",
+      "vsAnterior": "v{version}: {costo} ({cambio})",
+      "precio": "Sale price",
+      "sinPrecio": "No current price",
+      "margen": "Margin",
+      "col": {
+        "ingrediente": "Ingredient",
+        "netoBruto": "Net → gross",
+        "neto": "Net",
+        "bruto": "Gross",
+        "unidad": "Unit",
+        "costoUnitario": "Unit cost",
+        "fuente": "Cost source",
+        "linea": "Line cost",
+        "estado": "Status"
+      },
+      "merma": "waste {pct} %",
+      "sinInventario": "no inventory",
+      "sinConversion": "No conversion",
+      "opcional": "Optional",
+      "sinCosto": "No cost",
+      "respaldo": "Fallback",
+      "conCosto": "With cost",
+      "sinIngredientes": "The recipe has no ingredients",
+      "porVersion": "Cost per unit by version",
+      "activa": "active",
+      "sinPermiso": "Without the “View costs” permission this section shows quantities only: amounts and margin are hidden.",
+      "sinRecetaTitulo": "No recipe, no recipe cost",
+      "sinRecetaDescripcion": "Create the recipe in the Recipe section to see how much the product costs."
+    },
+    "ordenes": {
+      "titulo": "Production orders",
+      "descripcion": "Orders that produce this product with its recipe. They're created here or from Inventory › Production.",
+      "nueva": "New order",
+      "col": {
+        "orden": "Order",
+        "sucursal": "Branch",
+        "aProducir": "To produce",
+        "fecha": "Date",
+        "costo": "Cost",
+        "estado": "Status"
+      },
+      "etiquetaFila": "Order {numero}",
+      "vacioTitulo": "No production orders",
+      "vacioDescripcion": "Create an order to produce this product with its recipe.",
+      "vacioSinReceta": "To produce, the product needs an active recipe.",
+      "hojaTitulo": "Order {numero}",
+      "pasos": "Order progress",
+      "receta": "Recipe",
+      "aProducir": "To produce",
+      "producido": "Produced",
+      "iniciada": "Started",
+      "completada": "Completed",
+      "costoEstimado": "Estimated cost",
+      "costoReal": "Actual cost",
+      "costoValor": "{total} ({unidad} each)",
+      "motivo": "Cancellation reason",
+      "necesidades": "Requirements",
+      "noDescuenta": "doesn't deduct",
+      "falta": "Short",
+      "suficiente": "Enough",
+      "avisoFaltante": "{cantidad} of {nombre} is missing at {sucursal}. On completion, consumption leaves it negative and a warning is logged in the Kardex; “Complete” asks you to confirm it.",
+      "consumos": "Consumption",
+      "salioDeAqui": "Came from here",
+      "verOrden": "View order",
+      "completar": "Complete…"
+    },
+    "distribucion": {
+      "titulo": "Distribution",
+      "descripcion": "Transfers that carry this product: origin → destination, sent, received and the production order it came from.",
+      "nueva": "New distribution",
+      "col": {
+        "traslado": "Transfer",
+        "ruta": "Origin → destination",
+        "enviado": "Sent",
+        "recibido": "Received",
+        "orden": "Source order",
+        "estado": "Status"
+      },
+      "estados": {
+        "pending": "Pending",
+        "in_transit": "In transit",
+        "received": "Received",
+        "cancelled": "Cancelled"
+      },
+      "etiquetaFila": "Transfer {codigo}",
+      "vacioTitulo": "No transfers",
+      "vacioDescripcion": "{producto} hasn't been sent to another branch yet."
+    },
+    "unidades": {
+      "titulo": "Units and conversion",
+      "descripcion": "Base unit: {unidad}. Conversions that apply to this product (the same ones the recipe uses when deducting).",
+      "gestionar": "Manage conversions",
+      "col": {
+        "de": "From",
+        "a": "Equals",
+        "inversa": "Inverse",
+        "alcance": "Scope"
+      },
+      "alcance": {
+        "organizacion": "Organization",
+        "global": "Global"
+      },
+      "vacioTitulo": "No conversions",
+      "vacioDescripcion": "There are no conversions from or to {unidad}. Create them in Units and conversions."
+    }
   }
 }

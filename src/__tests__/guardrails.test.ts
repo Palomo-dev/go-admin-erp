@@ -2947,3 +2947,77 @@ describe('32. Tasas de cambio: clave de servidor y catálogo solo de plataforma'
     }
   });
 });
+
+/**
+ * 34. Invitaciones: el código no sale del servidor (GO-sec, auditoría de
+ * acceso 2026-09-28, docs/design/AUTH-ACCESO-V2.md §4.1).
+ *
+ * `invitations.code` es la credencial que mete a quien la tenga en una
+ * organización. `/auth/verify` la entregaba a quien solo conociera el correo
+ * invitado; el navegador del admin la generaba con Math.random() y la leía de
+ * la tabla; la clave anónima podía listarlas todas por RLS.
+ *
+ * Reglas:
+ *  - Solo el servidor (`src/app/api/**`, `src/app/auth/verify/route.ts`,
+ *    `src/lib/auth/invitaciones.ts`) consulta `invitations` pidiendo `code`,
+ *    usa `*`, inserta, o llama `validate_invitation_by_code`.
+ *  - En `/auth/verify` la invitación solo se busca con el correo que PROBÓ
+ *    `verifyOtp` (`user.email`), nunca con el de la URL, y no hay consultas
+ *    directas a `invitations`.
+ *  - Ninguna respuesta de `/api/auth/invite*` devuelve el código ni `inviteUrl`.
+ */
+describe('34. Invitaciones: el código de invitación no sale del servidor', () => {
+  const SERVIDOR = [
+    /^app\/api\//,
+    /^app\/auth\/verify\/route\.ts$/,
+    /^lib\/auth\/invitaciones\.ts$/,
+  ];
+  const esServidor = (r: string) => SERVIDOR.some((re) => re.test(r));
+  const CONSULTA_RE = /from\(\s*['"]invitations['"]\s*\)([\s\S]{0,400}?);/g;
+
+  const archivos = walkDir(SRC_ROOT).filter((f) => !isExcluded(f));
+
+  it('fuera del servidor nadie pide invitations.code, usa select(*) ni inserta invitaciones', () => {
+    const infractores: string[] = [];
+    for (const f of archivos) {
+      const r = rel(f);
+      if (esServidor(r)) continue;
+      const contenido = stripAllComments(readFile(f));
+      for (const m of contenido.matchAll(CONSULTA_RE)) {
+        const cadena = m[1];
+        const selects = [...cadena.matchAll(/\.select\(\s*(['"`])([\s\S]*?)\1/g)].map((s) => s[2]);
+        const pideCodigo = selects.some((s) => s.split(',').some((c) => /^\s*(code|\*)\s*$/.test(c)));
+        const inserta = /\.(insert|upsert)\(/.test(cadena);
+        const sinColumnas = /\.select\(\s*\)/.test(cadena);
+        if (pideCodigo || inserta || sinColumnas) infractores.push(r);
+      }
+      if (/validate_invitation_by_code/.test(contenido)) infractores.push(`${r} (validate_invitation_by_code)`);
+    }
+    expect(infractores).toEqual([]);
+  });
+
+  it('/auth/verify solo busca la invitación con el correo que probó verifyOtp', () => {
+    const contenido = stripAllComments(readFile(path.join(SRC_ROOT, 'app', 'auth', 'verify', 'route.ts')));
+    expect(contenido).not.toMatch(/from\(\s*['"]invitations['"]\s*\)\s*\.select/);
+    const llamadas = [...contenido.matchAll(/codigoInvitacionDelCorreoVerificado\(([^)]*)\)/g)]
+      .map((m) => m[1].trim())
+      .filter((arg) => !arg.includes(':')); // la definición lleva tipos
+    expect(llamadas.length).toBeGreaterThan(0);
+    expect(llamadas.every((arg) => arg === 'user.email')).toBe(true);
+    // El helper por correo solo vive dentro de la función de arriba.
+    expect((contenido.match(/buscarInvitacionVigentePorCorreo\(/g) ?? []).length).toBe(1);
+  });
+
+  it('las respuestas de /api/auth/invite* no llevan el código ni inviteUrl', () => {
+    const dir = path.join(SRC_ROOT, 'app', 'api', 'auth');
+    const infractores: string[] = [];
+    for (const f of walkDir(dir).filter((x) => !isExcluded(x))) {
+      const contenido = stripAllComments(readFile(f));
+      for (const m of contenido.matchAll(/NextResponse\.json\(\s*\{([\s\S]*?)\}\s*[,)]/g)) {
+        // `code: err.code` (código de error) sí vale; `code: invitacion.code` no.
+        if (/\binviteUrl\b|\bcode:\s*\w*(invit|fila|row|pending)\w*\.code\b|\binvite_code\b/i.test(m[1])) infractores.push(rel(f));
+      }
+    }
+    expect(infractores).toEqual([]);
+  });
+});

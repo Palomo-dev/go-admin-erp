@@ -87,7 +87,8 @@ function InviteContent() {
         return;
       }
 
-      const invitationData = contexto.invitation;
+      // El servidor no devuelve el código: el del enlace es el que se canjea.
+      const invitationData: InvitationWizardData = { ...contexto.invitation, code: inviteCode };
 
       // PASO 2: Sesión activa en el navegador (viene de verifyOtp tras el clic
       // en el correo, o es la de otro usuario). El asistente decide con ella.

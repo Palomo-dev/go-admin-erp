@@ -16982,6 +16982,418 @@
       "eligeUno": "Choisissez au moins un produit"
     }
   },
+  "inventarioAjustes": {
+    "inventario": "Inventaire",
+    "existencias": "Stocks",
+    "nAjustes": "{count, plural, =1 {# ajustement} other {{n} ajustements}}",
+    "sustantivo": {
+      "singular": "ajustement",
+      "plural": "ajustements"
+    },
+    "estados": {
+      "draft": "Brouillon",
+      "posted": "Appliqué",
+      "cancelled": "Écarté"
+    },
+    "tipos": {
+      "entrada": "Entrée",
+      "salida": "Sortie"
+    },
+    "razones": {
+      "physical_count": "Inventaire physique",
+      "discrepancy": "Écart constaté",
+      "damaged": "Endommagé",
+      "expired": "Périmé",
+      "theft": "Vol ou perte",
+      "production_waste": "Déchet de production",
+      "production_input": "Entrée de production",
+      "initial_setup": "Stock initial",
+      "purchase_return": "Retour d'achat",
+      "audit": "Audit",
+      "system_error": "Correction d'erreur",
+      "other": "Autre"
+    },
+    "listado": {
+      "titulo": "Ajustements d'inventaire",
+      "tituloMovil": "Ajustements",
+      "subtituloMovil": "{total} · {borradores, plural, =0 {aucun brouillon} =1 {1 brouillon} other {{n} brouillons}}",
+      "lema": "inventaires, pertes et corrections",
+      "actualizar": "Actualiser",
+      "nuevo": "Nouvel ajustement",
+      "uds": "u.",
+      "nProductos": "{count, plural, =1 {1 produit} other {{n} produits}}",
+      "etiquetaFila": "Ajustement {codigo} de {sucursal}",
+      "errorCarga": "Impossible de charger les ajustements",
+      "errorSeleccionarTodo": "Impossible de sélectionner tous les ajustements",
+      "sinResultados": "Essayez un autre numéro, produit ou note, ou retirez des filtres.",
+      "vacio": {
+        "titulo": "Pas encore d'ajustements",
+        "descripcion": "Enregistrez un inventaire physique, une perte ou une correction : l'ajustement laisse son mouvement dans le registre de stock."
+      },
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès aux ajustements",
+        "descripcion": "Demandez à un administrateur la permission d'inventaire pour voir les ajustements."
+      },
+      "buscar": {
+        "placeholder": "Rechercher par numéro, produit ou note",
+        "etiqueta": "Rechercher des ajustements"
+      },
+      "kpis": {
+        "etiqueta": "Résumé des ajustements",
+        "mes": "Ajustements du mois",
+        "enSucursales": "{count, plural, =0 {aucun ce mois-ci} =1 {dans 1 succursale} other {dans {n} succursales}}",
+        "borradores": "Brouillons",
+        "sinAplicar": "non appliqués : ils ne modifient pas le stock",
+        "ningunBorrador": "aucun en attente",
+        "aplicados": "Appliqués",
+        "conKardex": "avec leur mouvement dans le registre de stock",
+        "impactoMes": "Impact net du mois",
+        "impactoDetalle": "manquants moins excédents, au coût",
+        "sinCostos": "pas de permission pour voir les coûts"
+      },
+      "aviso": {
+        "titulo": "{count, plural, =1 {1 brouillon non appliqué} other {{n} brouillons non appliqués}}, le plus ancien depuis {dias, plural, =1 {1 jour} other {# jours}}",
+        "tituloHoy": "{count, plural, =1 {1 brouillon non appliqué} other {{n} brouillons non appliqués}}",
+        "descripcion": "Tant qu'ils sont en brouillon, le stock ne change pas. En les appliquant, le stock au moment du comptage est figé et le registre de stock est écrit.",
+        "verBorradores": "Voir les brouillons"
+      },
+      "filtros": {
+        "estado": "Statut",
+        "tipo": "Type",
+        "todos": "Tous",
+        "razon": "Motif",
+        "todas": "Tous",
+        "desde": "Du",
+        "hasta": "Au",
+        "verN": "{count, plural, =1 {Voir 1 ajustement} other {Voir {n} ajustements}}"
+      },
+      "chips": {
+        "estado": "Statut : {estados}",
+        "desde": "Du {dia}",
+        "hasta": "Au {dia}"
+      },
+      "columnas": {
+        "ajuste": "Ajustement",
+        "sucursal": "Succursale",
+        "tipo": "Type",
+        "razon": "Motif",
+        "productos": "Produits",
+        "diferencia": "Écart",
+        "impacto": "Impact",
+        "estado": "Statut"
+      },
+      "exportar": {
+        "boton": "Exporter",
+        "sinDatos": "Aucun ajustement à exporter",
+        "listo": "{count, plural, =1 {1 ajustement exporté} other {# ajustements exportés}}",
+        "error": "Impossible d'exporter"
+      },
+      "csv": {
+        "ajuste": "Ajustement",
+        "fecha": "Date",
+        "sucursal": "Succursale",
+        "tipo": "Type",
+        "razon": "Motif",
+        "productos": "Produits",
+        "diferencia": "Écart",
+        "unidad": "Unité",
+        "impacto": "Impact",
+        "estado": "Statut",
+        "autor": "Enregistré par",
+        "nota": "Note"
+      },
+      "masivas": {
+        "aplicar": "Appliquer",
+        "exportar": "Exporter",
+        "imprimir": "Imprimer",
+        "imprimirUno": "Choisissez un seul ajustement à imprimer",
+        "descartar": "{count, plural, =1 {Écarter 1 brouillon} other {Écarter # brouillons}}",
+        "sinPermiso": "Vous n'avez pas la permission d'ajuster l'inventaire",
+        "soloBorradores": "Seuls les brouillons peuvent être appliqués"
+      }
+    },
+    "acciones": {
+      "ver": "Voir le détail",
+      "editar": "Modifier le brouillon",
+      "duplicar": "Dupliquer comme nouvel inventaire",
+      "verKardex": "Voir dans le registre de stock",
+      "kardexAlAplicar": "Le registre de stock s'écrit à l'application",
+      "sinPermiso": "Vous n'avez pas la permission d'ajuster l'inventaire",
+      "aplicar": {
+        "accion": "Appliquer l'ajustement",
+        "titulo": "Appliquer l'ajustement {codigo}",
+        "tituloVarios": "{count, plural, =1 {Appliquer 1 ajustement} other {Appliquer # ajustements}}",
+        "descripcion": "C'est fait en une seule opération : tout est appliqué ou rien ne l'est.",
+        "punto1": "Le stock actuel est figé comme « système au comptage » et l'écart est recalculé.",
+        "punto2": "Un mouvement est écrit dans le registre de stock pour chaque produit avec un écart.",
+        "punto3": "Une seule écriture comptable est passée pour la valeur nette au coût moyen.",
+        "confirmar": "Appliquer",
+        "listo": "{codigo} appliqué · {count, plural, =0 {aucun mouvement} =1 {1 mouvement dans le registre} other {# mouvements dans le registre}}",
+        "listoVarios": "{count, plural, =1 {1 ajustement appliqué} other {# ajustements appliqués}}",
+        "yaAplicado": "{codigo} était déjà appliqué : rien n’a bougé à nouveau",
+        "recalculadoTitulo": "Le stock a changé depuis le comptage de {codigo}",
+        "recalculadoDescripcion": "{count, plural, =1 {Pour 1 produit l'écart a été recalculé} other {Pour # produits l'écart a été recalculé}} par rapport au stock à l'application.",
+        "fallos": "{count, plural, =1 {1 ajustement n'a pas été appliqué} other {# ajustements n'ont pas été appliqués}}"
+      },
+      "descartar": {
+        "accion": "Écarter le brouillon",
+        "titulo": "Écarter le brouillon {codigo}",
+        "tituloVarios": "{count, plural, =1 {Écarter 1 brouillon} other {Écarter # brouillons}}",
+        "descripcion": "Le brouillon est écarté avec son motif ; il n'est pas supprimé et ne modifie pas le stock.",
+        "confirmar": "Écarter",
+        "consecuencia1": "Rien n'est écrit dans le registre de stock ni en comptabilité.",
+        "consecuencia2": "Il ne pourra plus être modifié ni appliqué ; vous pouvez le dupliquer comme nouvel inventaire.",
+        "rapido1": "Comptage erroné",
+        "rapido2": "Brouillon en double",
+        "rapido3": "N'est plus nécessaire",
+        "listo": "{count, plural, =1 {Brouillon écarté} other {# brouillons écartés}}",
+        "fallos": "{count, plural, =1 {1 brouillon n'a pas été écarté} other {# brouillons n'ont pas été écartés}}"
+      }
+    },
+    "detalle": {
+      "titulo": "Ajustement {codigo}",
+      "tituloVacio": "Ajustement",
+      "cargando": "Chargement de l'ajustement",
+      "error": "Impossible de charger l'ajustement",
+      "volver": "Retour aux ajustements",
+      "noEncontrado": {
+        "titulo": "Ajustement introuvable",
+        "descripcion": "Il n'existe pas ou appartient à une autre organisation."
+      },
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès à cet ajustement",
+        "descripcion": "Demandez à un administrateur la permission d'inventaire."
+      },
+      "contadoEl": "compté le {fecha}",
+      "registradoEl": "enregistré le {fecha}",
+      "aplicadoEl": "appliqué le {fecha}",
+      "por": "par {nombre}",
+      "imprimir": "Imprimer",
+      "editar": "Modifier",
+      "aplicar": "Appliquer l'ajustement",
+      "uds": "u.",
+      "sku": "SKU {sku}",
+      "seriales": "numéros de série {lista}",
+      "hoy": "aujourd'hui : {n}",
+      "kpis": {
+        "etiqueta": "Résumé de l'ajustement",
+        "productos": "Produits comptés",
+        "faltantes": "Manquants",
+        "sobrantes": "Excédents",
+        "enProductos": "{count, plural, =0 {aucun produit} =1 {sur 1 produit} other {sur {n} produits}}",
+        "impacto": "Impact au coût",
+        "alCosto": "au coût moyen de la succursale",
+        "sinCostos": "pas de permission pour voir les coûts"
+      },
+      "avisoBorrador": {
+        "titulo": "Brouillon : il ne modifie pas encore le stock",
+        "descripcion": "À l'application, le stock au moment du comptage est figé, {count, plural, =0 {aucun mouvement n'est écrit} =1 {1 mouvement est écrit dans le registre de stock} other {{n} mouvements sont écrits dans le registre de stock}} et l'écart est valorisé au coût moyen. Si quelqu'un a vendu depuis le comptage, l'écart est recalculé et nous vous prévenons.",
+        "cambiados": "{count, plural, =1 {Le stock de 1 produit a changé depuis le comptage} other {Le stock de {n} produits a changé depuis le comptage}} : son écart est recalculé à l'application."
+      },
+      "avisoAplicado": {
+        "titulo": "Appliqué · {count, plural, =0 {aucun mouvement dans le registre} =1 {1 mouvement dans le registre} other {{n} mouvements dans le registre}}",
+        "descripcion": "Les chiffres « Système au comptage » sont ceux de l'application et ne changent plus. Ce détail ne les recalcule pas avec le stock actuel.",
+        "recalculados": "{count, plural, =1 {L'écart de 1 produit a été recalculé} other {L'écart de # produits a été recalculé}} car le stock a changé depuis le comptage : {productos}.",
+        "asiento": "Écriture comptable n° {id}",
+        "sinAsiento": "Aucune écriture comptable : l'organisation n'a pas de règle d'ajustement active ou la valeur est nulle."
+      },
+      "avisoDescartado": {
+        "titulo": "Écarté le {fecha} par {nombre}",
+        "motivo": "Motif : {motivo}"
+      },
+      "columnas": {
+        "producto": "Produit",
+        "lote": "Lot",
+        "sistema": "Système au comptage",
+        "sistemaAntes": "Stock avant",
+        "contado": "Compté",
+        "entra": "Entre",
+        "sale": "Sort",
+        "diferencia": "Écart",
+        "costo": "Coût moyen",
+        "impacto": "Impact"
+      },
+      "renglones": {
+        "etiqueta": "Lignes de l'ajustement",
+        "tituloConteo": "Lignes du comptage · {count, plural, =1 {1 produit} other {{n} produits}} ({sin} sans écart)",
+        "titulo": "Lignes · {count, plural, =1 {1 produit} other {{n} produits}}",
+        "vacio": "Cet ajustement n'a pas de lignes"
+      },
+      "movil": {
+        "lote": "Lot {lote}",
+        "sinLote": "Sans lot",
+        "sistema": "système {n}"
+      },
+      "movimientos": {
+        "titulo": "Mouvements générés dans le registre de stock · {n}",
+        "etiqueta": "Mouvements du registre de stock générés par l'ajustement",
+        "fecha": "Date",
+        "producto": "Produit",
+        "tipo": "Type",
+        "sucursalLote": "Succursale · lot",
+        "cantidad": "Quantité",
+        "costo": "Coût unit.",
+        "enKardex": "Dans le registre",
+        "verKardex": "Voir dans le registre de stock",
+        "saldoTras": "solde après l'ajustement : {n}"
+      }
+    },
+    "formulario": {
+      "titulo": "Nouvel ajustement d'inventaire",
+      "tituloEditar": "Modifier le brouillon d'ajustement",
+      "tituloMovil": "Nouvel ajustement",
+      "tituloEditarMovil": "Modifier le brouillon",
+      "subtitulo": "Comptez ce qu'il y a et le système calcule l'écart avec ce qu'il y avait au moment du comptage",
+      "migaNuevo": "Nouvel ajustement",
+      "migaEditar": "Modifier le brouillon",
+      "cancelar": "Annuler",
+      "guardarBorrador": "Enregistrer le brouillon",
+      "guardarYAplicar": "Enregistrer et appliquer",
+      "aplicar": "Appliquer l'ajustement",
+      "volver": "Retour aux ajustements",
+      "cargando": "Chargement des produits",
+      "errorCarga": "Impossible de préparer l'ajustement",
+      "noEncontrado": "L'ajustement n'existe pas ou appartient à une autre organisation",
+      "revisa": "Vérifiez les champs signalés",
+      "borradorGuardado": "Brouillon enregistré : il ne modifie pas encore le stock",
+      "yaEsta": "{nombre} est déjà dans l'ajustement",
+      "uds": "u.",
+      "sku": "SKU {sku}",
+      "conSeriales": "avec numéros de série",
+      "sinLote": "Sans lot",
+      "loteVence": "{lote} · expire le {fecha}",
+      "loteVencido": "{lote} · périmé",
+      "loteDe": "Lot de {nombre}",
+      "cantidadDe": "{etiqueta} de {nombre}",
+      "costoDe": "Coût unitaire de {nombre}",
+      "quitar": "Retirer {nombre}",
+      "alContar": "au comptage : {n}",
+      "sinPermiso": {
+        "titulo": "Vous ne pouvez pas ajuster l'inventaire",
+        "descripcion": "Demandez à un administrateur la permission « Ajuster l'inventaire »."
+      },
+      "cerrado": {
+        "titulo": "Cet ajustement ne peut plus être modifié",
+        "descripcion": "Un ajustement appliqué ou écarté ne change pas. Pour corriger, créez un nouvel ajustement ou dupliquez celui-ci comme nouvel inventaire.",
+        "verAjuste": "Voir l'ajustement"
+      },
+      "modos": {
+        "entrada": "Entrée",
+        "salida": "Sortie",
+        "conteo": "Comptage"
+      },
+      "ayudaModo": {
+        "entrada": "Indiquez la quantité qui entre pour chaque produit.",
+        "salida": "Indiquez la quantité qui sort pour chaque produit. Le stock ne peut pas devenir négatif.",
+        "conteo": "Indiquez ce que vous avez compté ; le système calcule l'écart avec ce qu'il y avait."
+      },
+      "datos": {
+        "titulo": "Données de l'ajustement",
+        "sucursal": "Succursale",
+        "sucursalAyuda": "Celle du sélecteur en haut",
+        "elegirSucursal": "Choisissez une succursale",
+        "razon": "Motif",
+        "fechaConteo": "Date du comptage",
+        "fecha": "Date",
+        "fechaAyuda": "Heure de {zona}",
+        "modo": "Type d'ajustement",
+        "nota": "Note",
+        "notaPlaceholder": "Par exemple : comptage de l'entrepôt après la fermeture"
+      },
+      "productos": {
+        "titulo": "Produits · {n}",
+        "tituloConteo": "Produits comptés · {n}",
+        "descripcion": "Scannez ou cherchez ; le système prend le stock de la succursale et du lot.",
+        "descripcionConteo": "Scannez ou cherchez ; le système prend le stock de la succursale et du lot au moment du comptage.",
+        "buscar": "Rechercher un produit à ajouter…",
+        "escanear": "Scanner un code",
+        "agregar": "Ajouter des produits",
+        "vacioTitulo": "Pas encore de produits",
+        "vacioDescripcion": "Scannez un code ou cherchez par nom ou SKU.",
+        "tabla": "Produits de l'ajustement",
+        "dialogoTitulo": "Ajouter des produits à l'ajustement",
+        "dialogoDescripcion": "Coût moyen · stock de {sucursal}"
+      },
+      "columnas": {
+        "producto": "Produit",
+        "lote": "Lot",
+        "sistema": "Système",
+        "existencia": "Stock",
+        "contado": "Compté",
+        "entra": "Entre",
+        "sale": "Sort",
+        "diferencia": "Écart",
+        "queda": "Reste",
+        "costo": "Coût moyen",
+        "acciones": "Actions"
+      },
+      "movil": {
+        "sistema": "Système : {n}",
+        "sinCantidad": "Quantité manquante",
+        "sinDiferencia": "Sans écart",
+        "diferencia": "Écart {n}"
+      },
+      "seriales": {
+        "salen": "{count, plural, =1 {Numéro de série qui sort :} other {Numéros de série qui sortent (#) :}}",
+        "entran": "{count, plural, =1 {Numéro de série qui entre :} other {Numéros de série qui entrent (#) :}}",
+        "quitar": "Retirer le numéro de série {serial}",
+        "elegir": "Choisir le numéro de série de {nombre}",
+        "elegirPlaceholder": "Choisir un numéro",
+        "ninguno": "Aucun numéro de série dans cette succursale",
+        "escribir": "Saisissez ou scannez puis Entrée",
+        "escribirDe": "Nouveau numéro de série de {nombre}",
+        "notaSalida": "Le numéro de série passe à « Endommagé » avec l'ajustement",
+        "notaEntrada": "Il est enregistré comme nouveau numéro de série dans la succursale"
+      },
+      "errores": {
+        "sucursal": "Choisissez la succursale",
+        "razon": "Choisissez le motif",
+        "fecha": "Indiquez la date et l'heure",
+        "sinRenglones": "Ajoutez au moins un produit",
+        "cantidad": "Saisissez une quantité valide",
+        "negativo": "La sortie rend le stock négatif",
+        "costo": "Cet excédent n'a pas de coût moyen : saisissez le coût unitaire",
+        "seriales": "Numéros de série manquants : indiquez-en {n}"
+      },
+      "resumen": {
+        "productos": "Produits",
+        "faltantes": "Manquants",
+        "sobrantes": "Excédents",
+        "impacto": "Impact au coût",
+        "nota": "Enregistrer le brouillon ne modifie pas le stock. « Enregistrer et appliquer » écrit le registre de stock en une seule transaction.",
+        "movil": "{productos, plural, =1 {1 produit} other {{n} produits}} · écart {diferencia} · impact {impacto}"
+      },
+      "confirmar": {
+        "titulo": "Enregistrer et appliquer l'ajustement",
+        "descripcion": "{count, plural, =0 {Aucun produit n'a d'écart} =1 {1 produit a un écart} other {{n} produits ont un écart}}. Il est enregistré et appliqué en une seule transaction.",
+        "faltantes": "Manquants : {n} ({productos, plural, =1 {1 produit} other {# produits}})",
+        "sobrantes": "Excédents : {n} ({productos, plural, =1 {1 produit} other {# produits}})",
+        "impacto": "Impact au coût : {importe}",
+        "nota": "Si le stock a changé depuis le comptage, l'écart est recalculé à l'application et nous vous prévenons.",
+        "aplicar": "Appliquer"
+      }
+    },
+    "errores": {
+      "ajuste_no_encontrado": "L'ajustement n'existe pas ou appartient à une autre organisation.",
+      "ajuste_cerrado": "L'ajustement est déjà appliqué ou écarté : il ne peut pas changer.",
+      "ajuste_descartado": "L'ajustement est écarté : il ne peut pas être appliqué.",
+      "ajuste_aplicado": "L'ajustement est déjà appliqué : il ne peut pas être écarté.",
+      "modo_invalido": "Type d'ajustement non valide.",
+      "razon_requerida": "Choisissez le motif de l'ajustement.",
+      "nota_muy_larga": "La note est trop longue (1 000 caractères maximum).",
+      "sin_renglones": "Ajoutez au moins un produit.",
+      "demasiados_renglones": "Un ajustement accepte jusqu'à 500 produits.",
+      "renglon_repetido": "Le même produit et lot apparaît deux fois.",
+      "fecha_invalida": "La date n'est pas valide.",
+      "fecha_futura": "La date du comptage ne peut pas être dans le futur.",
+      "costo_requerido": "Des excédents n’ont pas de coût : saisissez leur coût unitaire.",
+      "costo_requerido_productos": "Ces excédents n'ont pas de coût : {productos}. Saisissez leur coût unitaire.",
+      "producto_sin_control_stock": "Un produit ne suit pas le stock et ne peut pas être ajusté.",
+      "motivo_requerido": "Saisissez le motif (au moins 3 caractères).",
+      "motivo_muy_largo": "Le motif est trop long.",
+      "desconocido": "L'opération n'a pas pu être réalisée."
+    }
+  },
   "inventarioSeriales": {
     "comun": {
       "titulo": "Numéros de série",
@@ -17722,6 +18134,714 @@
       "sinPrecio": "« {producto} » n’a pas de prix en vigueur. Configurez-le dans Inventaire.",
       "precioNoConsultado": "Impossible de vérifier le prix de « {producto} ». Vérifiez la connexion et réessayez.",
       "errorAgregar": "Impossible d’ajouter « {producto} » au panier."
+    }
+  },
+  "inventarioStock": {
+    "titulo": "Stock",
+    "subtitulo": "{n} {count, plural, one {produit} other {produits}} en stock dans {sucursales, plural, one {# succursale} other {# succursales}}",
+    "subtituloMovil": "{productos} produits · {sucursales, plural, one {# succursale} other {# succursales}}",
+    "migas": {
+      "inventario": "Inventaire",
+      "existencias": "Existences"
+    },
+    "actualizar": "Actualiser",
+    "exportar": {
+      "boton": "Exporter",
+      "sinDatos": "Aucun produit à exporter.",
+      "listo": "{count, plural, one {# produit exporté} other {# produits exportés}}.",
+      "error": "Impossible d'exporter le stock."
+    },
+    "csv": {
+      "producto": "Produit",
+      "sku": "SKU",
+      "variante": "Variante",
+      "categoria": "Catégorie",
+      "porSucursal": "Par succursale",
+      "existencia": "Existence",
+      "reservado": "Réservé",
+      "disponible": "Disponible",
+      "minimo": "Minimum",
+      "costo": "Coût moyen",
+      "valor": "Valeur",
+      "estado": "Statut"
+    },
+    "estados": {
+      "disponible": "Disponible",
+      "bajo_minimo": "Sous le minimum",
+      "agotado": "En rupture",
+      "negativo": "Négatif"
+    },
+    "acciones": {
+      "kardex": "Voir le kardex du produit",
+      "lotes": "Voir les lots ({n} {count, plural, one {en cours} other {en cours}})",
+      "producto": "Voir le produit",
+      "entrada": "Enregistrer une entrée",
+      "salida": "Enregistrer une sortie",
+      "trasladar": "Transférer vers une autre succursale",
+      "minimo": "Définir le stock minimum",
+      "soloVariantes": "Le stock est porté par les variantes : choisissez une variante.",
+      "unaSucursal": "Il n'y a qu'une seule succursale."
+    },
+    "chips": {
+      "estado": "Statut : {estados}",
+      "categoria": "Catégorie : {nombre}",
+      "proveedor": "Fournisseur : {nombre}",
+      "producto": "Produit : {nombre}",
+      "sinAgrupar": "Variantes séparées"
+    },
+    "filtros": {
+      "nota": "La succursale se choisit dans le sélecteur ci-dessus ; ici, on filtre seulement la liste.",
+      "verN": "Voir {n} {count, plural, one {produit} other {produits}}",
+      "estado": "État des existences",
+      "categoria": "Catégorie",
+      "todasCategorias": "Toutes les catégories",
+      "seguimientoTitulo": "Suivi",
+      "seguimientoAyuda": "« Sans suivi » = produits dont le contrôle du stock est désactivé : ils ne sont pas décomptés.",
+      "seguimiento": {
+        "todos": "Tous",
+        "lotes": "Avec lots",
+        "seriales": "Avec numéros de série",
+        "sin": "Sans suivi"
+      },
+      "proveedor": "Fournisseur",
+      "todosProveedores": "Tous les fournisseurs",
+      "agrupar": "Regrouper les variantes sous leur produit"
+    },
+    "columnas": {
+      "producto": "Produit",
+      "categoria": "Catégorie",
+      "porSucursal": "Par succursale",
+      "disponible": "Disponible",
+      "minimo": "Minimum",
+      "costo": "Coût moy.",
+      "estado": "Statut",
+      "sku": "SKU {sku}",
+      "variantes": "{n} {count, plural, one {variante} other {variantes}}",
+      "conLotes": "avec lots",
+      "conSeriales": "avec numéros de série",
+      "sinAsignarFila": "non affecté à une variante",
+      "uds": "{n} unités",
+      "reservadas": "{n} {count, plural, one {réservée} other {réservées}}",
+      "sinAsignar": "{n} unités non affectées à une variante",
+      "sinAsignarAyuda": "Existences enregistrées sur le produit parent. Elles ne sont pas additionnées : répartissez-les entre ses variantes avec un ajustement."
+    },
+    "sustantivo": {
+      "singular": "produit",
+      "plural": "produits"
+    },
+    "kpis": {
+      "etiqueta": "Résumé du stock",
+      "conExistencias": "Produits en stock",
+      "deSeguimiento": "sur {n} avec suivi du stock",
+      "valor": "Valeur de l'inventaire",
+      "valorDetalle": "au coût moyen de chaque succursale",
+      "valorSinPermiso": "Vous avez besoin de l'autorisation sur les coûts",
+      "bajoMinimo": "Sous le minimum",
+      "reponer": "réapprovisionner · voir la suggestion d'achat",
+      "ningunoBajo": "aucun sous le minimum",
+      "agotadosNegativos": "En rupture ou négatifs",
+      "agotadosDetalle": "{agotados} en rupture · {negativos} négatifs"
+    },
+    "avisoNegativos": {
+      "titulo": "{n} {count, plural, one {produit a des existences négatives} other {produits ont des existences négatives}}",
+      "descripcion": "Plus d'unités ont été vendues que celles enregistrées. Il manque souvent une réception d'achat ou un transfert. Vérifiez-les avant le prochain comptage.",
+      "ver": "Voir seulement les négatifs"
+    },
+    "avisoSinAsignar": "{n} {count, plural, one {produit avec variantes a} other {produits avec variantes ont}} des existences sur le produit parent, non affectées à une variante. Elles ne s'ajoutent pas au disponible.",
+    "verSinAgrupar": "Voir les variantes séparément",
+    "buscar": {
+      "placeholder": "Rechercher par produit, SKU, code-barres ou lot",
+      "etiqueta": "Rechercher dans le stock"
+    },
+    "etiquetaFila": "Stock de {producto}",
+    "movil": {
+      "disponibles": "{n} disponibles",
+      "minimo": "min. {n}"
+    },
+    "vacio": {
+      "titulo": "Aucune existence pour l'instant",
+      "descripcion": "Lorsque vous enregistrerez une entrée, recevrez un achat ou créerez des produits avec un stock initial, ils apparaîtront ici.",
+      "accion": "Enregistrer une entrée",
+      "productos": "Aller aux produits"
+    },
+    "sinResultados": "Aucun produit ne correspond à la recherche ou aux filtres.",
+    "errorCarga": "Impossible de charger le stock.",
+    "errorSeleccionar": "Impossible de sélectionner tous les produits.",
+    "masivas": {
+      "trasladar": "Transférer",
+      "unProducto": "Choisissez un seul produit (une variante).",
+      "conteo": "Ajustement par comptage",
+      "minimo": "Définir le minimum",
+      "exportar": "Exporter"
+    },
+    "nuevoMovimiento": {
+      "boton": "Nouveau mouvement",
+      "entrada": "Entrée de marchandise",
+      "entradaDetalle": "Achat sans commande, retour, don",
+      "salida": "Sortie de marchandise",
+      "salidaDetalle": "Démarque, consommation interne, dommage",
+      "conteo": "Ajustement par comptage",
+      "conteoDetalle": "Aligne le système sur le comptage",
+      "traslado": "Transfert entre succursales",
+      "trasladoDetalle": "Sort de l'une, entre dans l'autre à la réception",
+      "recibirOc": "Recevoir un bon de commande",
+      "recibirOcDetalle": "Ouvre Bons de commande"
+    },
+    "selectorProducto": {
+      "sku": "SKU {sku}",
+      "conLotes": "avec lots",
+      "disponible": "{n} disp.",
+      "padreConVariantes": "Le stock est porté par les variantes : choisissez une variante.",
+      "placeholder": "Choisir un produit",
+      "buscar": "Rechercher par nom, SKU ou code-barres",
+      "titulo": "Produit",
+      "vacio": "Saisissez du texte pour rechercher un produit.",
+      "sinResultados": "Aucun produit ne correspond.",
+      "error": "La recherche a échoué.",
+      "cambiar": "Changer de produit"
+    },
+    "registrar": {
+      "tituloEntrada": "Enregistrer une entrée",
+      "tituloSalida": "Enregistrer une sortie",
+      "descripcionEntrada": "Ajoute des unités à une succursale. Figure dans le kardex comme « Ajustement · entrée » avec son document.",
+      "descripcionSalida": "Retire des unités avec un motif. Figure dans le kardex comme « Ajustement · sortie » avec son document.",
+      "confirmarEntrada": "Enregistrer l'entrée",
+      "confirmarSalida": "Enregistrer la sortie",
+      "producto": "Produit",
+      "conSeriales": "Ce produit utilise des numéros de série : enregistrez-le depuis Ajustements, où l'on choisit les numéros.",
+      "sucursal": "Succursale",
+      "sucursalAyuda": "Celle du sélecteur ci-dessus",
+      "elegirSucursal": "Choisir une succursale",
+      "cantidad": "Quantité",
+      "uds": "unités",
+      "disponibleLote": "Disponible dans le lot : {n}",
+      "disponibleSucursal": "Disponible dans la succursale : {n}",
+      "hoyHay": "Actuellement {n}",
+      "costoUnitario": "Coût unitaire",
+      "costoAyuda": "Recalcule le coût moyen",
+      "motivo": "Motif",
+      "motivoOtro": "Quel motif ?",
+      "lote": "Lot",
+      "loteAyudaEntrada": "Ce produit utilise des lots : choisissez-en un ou créez le lot ici même",
+      "elegirLote": "Choisir un lot",
+      "sinLotes": "Aucun lot en stock",
+      "loteVence": "expire le {fecha}",
+      "loteVencio": "a expiré le {fecha}",
+      "opcionLote": "{codigo} · {vence} · {n} unités",
+      "crearLote": "+ Créer un nouveau lot",
+      "codigoLote": "Code du lot",
+      "codigoLoteAyuda": "Si vous le laissez vide, un code basé sur la date est proposé",
+      "venceLote": "Date d'expiration",
+      "venceLoteAyuda": "Facultatif. Sans date, le lot n'expire jamais",
+      "nota": "Note",
+      "notaPlaceholder": "Facture du fournisseur, responsable, observation…",
+      "avisoEntrada": "Elle est enregistrée comme un ajustement appliqué et le kardex y renvoie. Si la marchandise provient d'un bon de commande, recevez-la depuis le bon pour ne pas dupliquer l'entrée.",
+      "avisoSalida": "La sortie est valorisée au coût moyen de la succursale ({costo} × {n} = {total}), jamais au prix de vente.",
+      "listoEntrada": "Entrée enregistrée",
+      "listoSalida": "Sortie enregistrée",
+      "listoDocumento": "Ajustement {numero} appliqué.",
+      "errorEntrada": "Impossible d'enregistrer l'entrée",
+      "errorSalida": "Impossible d'enregistrer la sortie",
+      "errores": {
+        "requerido": "Ce champ est obligatoire.",
+        "mayorQueCero": "Doit être supérieur à zéro.",
+        "noNegativo": "Ne peut pas être négatif.",
+        "superaDisponible": "Dépasse le disponible ({n}).",
+        "conSeriales": "Les produits avec numéros de série s'enregistrent depuis Ajustements."
+      }
+    },
+    "motivos": {
+      "entrada": {
+        "compra_sin_orden": "Achat sans commande",
+        "devolucion_cliente": "Retour client",
+        "donacion": "Don",
+        "sobrante": "Excédent trouvé",
+        "produccion_propia": "Production propre",
+        "otro": "Autre"
+      },
+      "salida": {
+        "merma_vencido": "Démarque · produit expiré",
+        "merma_rotura": "Démarque pour casse",
+        "consumo_interno": "Consommation interne",
+        "danio": "Dommage",
+        "perdida": "Perte ou vol",
+        "muestra": "Échantillon ou dégustation",
+        "otro": "Autre"
+      }
+    },
+    "minimo": {
+      "titulo": "Stock minimum · {nombre}",
+      "descripcion": "Lorsque le disponible passe sous ce nombre, le produit apparaît dans « Sous le minimum » et dans la suggestion d'achat.",
+      "hoyHay": "Actuellement {n}",
+      "uds": "unités",
+      "aviso": "Vous ne voyez que les succursales auxquelles vous appartenez. Un minimum à 0 désactive l'alerte.",
+      "guardar": "Enregistrer les minimums",
+      "listo": "Minimums enregistrés.",
+      "error": "Impossible d'enregistrer les minimums"
+    },
+    "errores": {
+      "motivo_requerido": "Indiquez le motif.",
+      "razon_requerida": "Indiquez le motif (60 caractères maximum).",
+      "costo_invalido": "Le coût unitaire ne peut pas être négatif.",
+      "costo_requerido": "Indiquez le coût unitaire : le produit n'a pas encore de coût.",
+      "producto_con_variantes": "Le stock est porté par les variantes : choisissez une variante, pas le produit parent.",
+      "producto_sin_seguimiento": "Ce produit n'a pas de contrôle du stock.",
+      "producto_sin_control_stock": "Ce produit n'a pas de contrôle du stock.",
+      "producto_con_seriales": "Ce produit utilise des numéros de série : enregistrez-le depuis Ajustements.",
+      "producto_eliminado": "Le produit a été supprimé.",
+      "lote_requerido": "Ce produit utilise des lots : choisissez le lot.",
+      "lote_repetido": "Un lot avec ce code existe déjà pour ce produit.",
+      "lote_con_existencias": "Le lot a encore des existences ou des réservations : impossible de le supprimer.",
+      "lote_con_movimientos": "Le lot a des mouvements dans le kardex : impossible de le supprimer.",
+      "proveedor_invalido": "Le fournisseur n'appartient pas à l'organisation.",
+      "sucursal_requerida": "Choisissez la succursale où entre la quantité initiale.",
+      "fecha_invalida": "La date n'est pas valide.",
+      "items_invalidos": "Les données envoyées ne sont pas valides."
+    }
+  },
+  "inventarioMovimientos": {
+    "titulo": "Mouvements",
+    "subtitulo": "{n} {count, plural, one {mouvement} other {mouvements}} · tout ce qui entre et sort, avec son document",
+    "subtituloMovil": "{n} sur {rango}",
+    "todoElHistorial": "tout l'historique",
+    "migas": {
+      "inventario": "Inventaire",
+      "existencias": "Existences"
+    },
+    "actualizar": "Actualiser",
+    "exportar": {
+      "boton": "Exporter",
+      "sinDatos": "Aucun mouvement à exporter.",
+      "listo": "{count, plural, one {# mouvement exporté} other {# mouvements exportés}}.",
+      "error": "Impossible d'exporter les mouvements."
+    },
+    "csv": {
+      "fecha": "Date",
+      "hora": "Heure",
+      "producto": "Produit",
+      "sku": "SKU",
+      "tipo": "Type",
+      "documento": "Document",
+      "sucursal": "Succursale",
+      "lote": "Lot",
+      "entrada": "Entrée",
+      "salida": "Sortie",
+      "costo": "Coût unitaire",
+      "usuario": "Enregistré par",
+      "nota": "Note"
+    },
+    "chips": {
+      "periodo": "Période : {rango}",
+      "tipo": "Type : {tipos}",
+      "producto": "Produit : {nombre}",
+      "lote": "Lot : {codigo}",
+      "usuario": "Enregistré par : {nombre}",
+      "sinDocumento": "Sans document"
+    },
+    "filtros": {
+      "nota": "La succursale se choisit dans le sélecteur ci-dessus.",
+      "verN": "Voir {n} {count, plural, one {mouvement} other {mouvements}}",
+      "periodo": "Période",
+      "periodoAyuda": "Dans le fuseau horaire de l'organisation, pas en UTC.",
+      "direccion": "Sens",
+      "todas": "Tous",
+      "entradas": "Entrées",
+      "salidas": "Sorties",
+      "tipo": "Type de mouvement",
+      "tipoAyuda": "Vente, vente en ligne, réception d'achat, transfert, ajustement, retour…",
+      "todosTipos": "Tous les types ({n})",
+      "ingredientes": "Consommation d'ingrédients uniquement",
+      "ingredientesAyuda": "Sorties de produits qui sont l'ingrédient d'une recette."
+    },
+    "columnas": {
+      "fecha": "Date",
+      "producto": "Produit",
+      "tipo": "Type",
+      "documento": "Document",
+      "sucursalLote": "Succursale · lot",
+      "entrada": "Entrée",
+      "salida": "Sortie",
+      "costo": "Coût unit."
+    },
+    "sku": "SKU {sku}",
+    "sinLote": "sans lot",
+    "sinCosto": "sans coût",
+    "uds": "{n} unités",
+    "por": "par {nombre}",
+    "loteCorto": "lot {codigo}",
+    "porUnidad": "{costo} l'unité",
+    "sinDocumento": "Sans document",
+    "cargaInicial": "chargement initial",
+    "edicionDirecta": "modification directe",
+    "sustantivo": {
+      "singular": "mouvement",
+      "plural": "mouvements"
+    },
+    "kpis": {
+      "etiqueta": "Résumé de la période",
+      "entradas": "Entrées de la période",
+      "entradasDetalle": "achats, transferts et ajustements",
+      "salidas": "Sorties de la période",
+      "salidasDetalle": "ventes, démarque et transferts",
+      "valorSalidas": "Valeur des sorties",
+      "valorSalidasDetalle": "au coût moyen, pas au prix",
+      "sinPermisoCostos": "Vous avez besoin de l'autorisation sur les coûts",
+      "sinDocumento": "Sans document",
+      "sinDocumentoDetalle": "chargements initiaux et modifications directes"
+    },
+    "avisoHistorico": {
+      "titulo": "Avant le {fecha}, le kardex n'enregistrait ni les réceptions d'achat, ni les transferts, ni les retours",
+      "descripcion": "La base les rejetait silencieusement alors que les existences changeaient bien. Depuis, ils sont enregistrés ; l'historique antérieur ne peut pas être reconstitué avec certitude.",
+      "verDescuadres": "Voir les écarts"
+    },
+    "buscar": {
+      "placeholder": "Rechercher par produit, SKU, document ou lot",
+      "etiqueta": "Rechercher des mouvements"
+    },
+    "etiquetaFila": "Mouvement de {producto} du {fecha}",
+    "vacio": {
+      "titulo": "Aucun mouvement pour l'instant",
+      "descripcion": "Les ventes, achats, ajustements et transferts apparaîtront ici avec leur document."
+    },
+    "sinResultados": "Aucun mouvement ne correspond à la recherche ou aux filtres.",
+    "errorCarga": "Impossible de charger les mouvements.",
+    "acciones": {
+      "abrir": "Ouvrir {documento}",
+      "kardex": "Voir le kardex du produit",
+      "lote": "Voir le lot {codigo}",
+      "producto": "Voir le produit",
+      "copiar": "Copier le numéro du document",
+      "copiado": "{numero} copié.",
+      "soloUsuario": "Seulement ceux de {nombre}",
+      "corregir": "Corriger avec un ajustement"
+    }
+  },
+  "inventarioKardex": {
+    "titulo": "Kardex",
+    "actualizar": "Actualiser",
+    "sku": "SKU {sku}",
+    "nMovimientos": "{n} {count, plural, one {mouvement} other {mouvements}}",
+    "saldoPorSucursal": "solde cumulé par succursale",
+    "subtituloMovil": "{nombre} · {n} mouvements",
+    "migas": {
+      "inventario": "Inventaire",
+      "movimientos": "Mouvements"
+    },
+    "menu": {
+      "descuadres": "Voir les écarts avec les existences",
+      "movimientos": "Aller aux mouvements",
+      "producto": "Voir le produit"
+    },
+    "exportar": {
+      "boton": "Exporter",
+      "titulo": "Exporter le kardex",
+      "descripcion": "Choisissez la portée : tout ce qu'affichent les filtres, seulement cette page ou tout l'historique du produit.",
+      "confirmar": "Exporter",
+      "alcance": {
+        "filtros": "Tout ce qu'affichent les filtres ({n} mouvements)",
+        "pagina": "Seulement cette page ({n} mouvements)",
+        "historico": "Tout l'historique du produit, sans filtres"
+      },
+      "historicoSinProducto": "Choisissez un produit dans les filtres pour exporter son historique.",
+      "formato": "Format CSV. Les dates sont dans le fuseau horaire de l'organisation, pas en UTC.",
+      "sinDatos": "Aucun mouvement à exporter.",
+      "listo": "{count, plural, one {# mouvement exporté} other {# mouvements exportés}}.",
+      "error": "Impossible d'exporter le kardex."
+    },
+    "csv": {
+      "fecha": "Date",
+      "hora": "Heure",
+      "producto": "Produit",
+      "sku": "SKU",
+      "tipo": "Type",
+      "documento": "Document",
+      "sucursal": "Succursale",
+      "lote": "Lot",
+      "entrada": "Entrée",
+      "salida": "Sortie",
+      "saldo": "Solde",
+      "costo": "Coût unitaire",
+      "costoPromedio": "Coût moyen après le mouvement",
+      "usuario": "Enregistré par",
+      "nota": "Note"
+    },
+    "acciones": {
+      "exportarProducto": "Exporter seulement ce produit"
+    },
+    "chips": {
+      "producto": "Produit : {nombre}",
+      "lote": "Lot : {codigo}",
+      "periodo": "Période : {rango}",
+      "tipo": "Type : {tipos}",
+      "usuario": "Enregistré par : {nombre}"
+    },
+    "columnas": {
+      "fecha": "Date",
+      "tipo": "Type",
+      "documento": "Document",
+      "producto": "Produit",
+      "sucursal": "Succursale",
+      "lote": "Lot",
+      "entrada": "Entrée",
+      "salida": "Sortie",
+      "saldo": "Solde",
+      "costo": "Coût unit."
+    },
+    "saldoNegativo": "Solde négatif",
+    "saldoCorto": "Solde {n}",
+    "sustantivo": {
+      "singular": "mouvement",
+      "plural": "mouvements"
+    },
+    "kpis": {
+      "etiqueta": "Résumé du kardex",
+      "entradas": "Entrées de la période",
+      "entradasDetalle": "achats, ajustements et transferts",
+      "salidas": "Sorties de la période",
+      "salidasDetalle": "ventes, démarque et transferts",
+      "saldoCierre": "Solde de clôture",
+      "contraExistencias": "contre {n} en existences",
+      "valor": "Valeur du solde",
+      "valorDetalle": "au coût moyen pondéré",
+      "sinPermisoCostos": "Vous avez besoin de l'autorisation sur les coûts"
+    },
+    "cuadre": {
+      "cuadra": "Le kardex concorde avec les existences",
+      "noCuadra": "Le kardex ne concorde pas avec les existences",
+      "detalle": "{kardex} unités de solde contre {existencias} en existences.",
+      "faltan": "Il manque {n} unités dans le kardex.",
+      "sobran": "Il y a {n} unités en trop dans le kardex.",
+      "causa": "Ce sont presque toujours des transferts envoyés que personne n'a reçus, des chargements sans mouvement ou des entrées que la base a rejetées auparavant.",
+      "verDetalle": "Voir le détail du rapprochement",
+      "verN": "Voir {count, plural, one {l'écart} other {les {n} écarts}}"
+    },
+    "buscar": {
+      "placeholder": "Rechercher par produit, SKU, document ou lot",
+      "etiqueta": "Rechercher dans le kardex"
+    },
+    "filtros": {
+      "nota": "La succursale ne se filtre pas ici : c'est le sélecteur ci-dessus qui la définit.",
+      "verN": "Voir {n} {count, plural, one {mouvement} other {mouvements}}",
+      "producto": "Produit",
+      "productoAyuda": "Saisissez un nom, un SKU ou un code-barres",
+      "tipo": "Type de mouvement",
+      "tipoAyuda": "Vente, achat, transfert, ajustement, démarque…",
+      "periodo": "Plage de dates",
+      "periodoAyuda": "Dans le fuseau horaire de l'organisation, pas en UTC.",
+      "lote": "Lot",
+      "loteAyuda": "Seulement si le produit utilise des lots",
+      "todosLotes": "Tous"
+    },
+    "vacio": {
+      "titulo": "Aucun mouvement pour l'instant",
+      "descripcion": "Chaque vente, achat, ajustement ou transfert inscrit ici son entrée ou sa sortie avec le solde."
+    },
+    "sinResultados": "Aucun mouvement ne correspond à la recherche ou aux filtres.",
+    "errorCarga": "Impossible de charger le kardex.",
+    "descuadres": {
+      "titulo": "Écarts entre le kardex et les existences",
+      "descripcion": "Produits et succursales où la somme des entrées et sorties ne donne pas l'existence enregistrée. Ils sont seulement affichés ici, pas corrigés.",
+      "cerrar": "Fermer",
+      "resumen": "{n} {count, plural, one {paire produit-succursale ne concorde pas} other {paires produit-succursale ne concordent pas}} : {kardex} unités dans le kardex contre {existencias} en existences.",
+      "sinHistoria": "De plus, {n} {count, plural, one {ligne de stock n'a} other {lignes de stock n'ont}} aucun mouvement qui l'explique.",
+      "cuadraTitulo": "Tout concorde",
+      "cuadraDescripcion": "Le solde du kardex coïncide avec les existences dans cette portée.",
+      "producto": "Produit",
+      "sucursal": "Succursale",
+      "kardex": "Kardex",
+      "existencias": "Existences",
+      "diferencia": "Écart",
+      "ultimo": "Dernier mouvement",
+      "mostrando": "{n} sur {total} affichés, ceux avec le plus grand écart.",
+      "nota": "L'écart correspond aux existences moins le kardex. Il sera corrigé par un mouvement d'ouverture qui explique le solde, sans modifier les quantités."
+    }
+  },
+  "inventarioLotes": {
+    "titulo": "Lots",
+    "subtitulo": "{n} {count, plural, one {lot} other {lots}} · {uds} unités avec traçabilité et date d'expiration",
+    "subtituloMovil": "{n} lots · {porVencer} bientôt expirés",
+    "migas": {
+      "inventario": "Inventaire",
+      "existencias": "Existences"
+    },
+    "actualizar": "Actualiser",
+    "nuevo": "Nouveau lot",
+    "exportar": {
+      "boton": "Exporter",
+      "sinDatos": "Aucun lot à exporter.",
+      "listo": "{count, plural, one {# lot exporté} other {# lots exportés}}.",
+      "error": "Impossible d'exporter les lots."
+    },
+    "csv": {
+      "lote": "Lot",
+      "producto": "Produit",
+      "sku": "SKU",
+      "sucursal": "Succursale",
+      "vence": "Expire le",
+      "dias": "Jours avant expiration",
+      "cantidad": "Quantité",
+      "reservado": "Réservé",
+      "costo": "Coût moyen",
+      "proveedor": "Fournisseur",
+      "estado": "Statut",
+      "creado": "Créé le"
+    },
+    "acciones": {
+      "movimientos": "Voir les mouvements du lot",
+      "editar": "Modifier le lot",
+      "ajustar": "Ajuster la quantité",
+      "baja": "Sortir en démarque",
+      "sinExistencias": "Le lot n'a pas d'existences dans cette succursale.",
+      "rastrear": "Tracer le lot",
+      "eliminar": "Supprimer le lot",
+      "conExistencias": "Seul un lot sans existences peut être supprimé.",
+      "conHistoria": "Le lot a des mouvements dans le kardex."
+    },
+    "sinCaducidad": "sans expiration",
+    "chips": {
+      "producto": "Produit : {nombre}",
+      "proveedor": "Fournisseur : {nombre}",
+      "conExistencias": "Avec existences",
+      "umbral": "Expire sous : {dias} jours"
+    },
+    "columnas": {
+      "lote": "Lot",
+      "producto": "Produit",
+      "sucursal": "Succursale",
+      "vence": "Expire le",
+      "cantidad": "Quantité",
+      "proveedor": "Fournisseur",
+      "estado": "Statut"
+    },
+    "creado": "créé le {fecha}",
+    "sku": "SKU {sku}",
+    "uds": "{n} unités",
+    "sustantivo": {
+      "singular": "lot",
+      "plural": "lots"
+    },
+    "menu": {
+      "umbral": "Alerter {dias} jours avant l'expiration",
+      "actual": "Utilisé",
+      "rastrear": "Tracer un lot",
+      "rastrearDetalle": "Ouvre Traçabilité"
+    },
+    "kpis": {
+      "etiqueta": "Résumé des lots",
+      "vigentes": "Lots en cours",
+      "udsDisponibles": "{n} unités disponibles",
+      "porVencer": "Bientôt expirés",
+      "porVencerDetalle": "dans {dias} jours ou moins · {n} unités",
+      "vencidos": "Expirés",
+      "vencidosDetalle": "{n} unités que le POS ne vend pas pour cause d'expiration",
+      "riesgo": "Valeur à risque",
+      "riesgoDetalle": "expirés et bientôt expirés, au coût",
+      "sinPermisoCostos": "Vous avez besoin de l'autorisation sur les coûts"
+    },
+    "avisoVencidos": {
+      "titulo": "{n} {count, plural, one {lot expiré compte encore} other {lots expirés comptent encore}} dans les existences",
+      "descripcionValor": "{n} unités pour {valor}. Décidez s'ils sortent en démarque ou s'ils sont remis en vente.",
+      "descripcion": "{n} unités. Décidez s'ils sortent en démarque ou s'ils sont remis en vente.",
+      "ver": "Voir seulement les expirés"
+    },
+    "buscar": {
+      "placeholder": "Rechercher par code de lot, produit ou SKU",
+      "etiqueta": "Rechercher des lots"
+    },
+    "filtros": {
+      "nota": "La succursale se choisit dans le sélecteur ci-dessus.",
+      "verN": "Voir {n} {count, plural, one {lot} other {lots}}",
+      "estado": "Statut",
+      "proveedor": "Fournisseur",
+      "todosProveedores": "Tous les fournisseurs",
+      "conExistencias": "Seulement avec existences"
+    },
+    "etiquetaFila": "Lot {codigo} de {producto}",
+    "movil": {
+      "vence": "Expire le {fecha} · {texto}"
+    },
+    "vacio": {
+      "titulo": "Aucun lot pour l'instant",
+      "descripcion": "Un lot regroupe les unités entrées ensemble qui partagent la même date d'expiration. Créez le premier ou recevez-le lors d'un achat."
+    },
+    "sinResultados": "Aucun lot ne correspond à la recherche ou aux filtres.",
+    "errorCarga": "Impossible de charger les lots.",
+    "masivas": {
+      "exportar": "Exporter"
+    },
+    "dialogo": {
+      "tituloNuevo": "Nouveau lot",
+      "tituloEditar": "Modifier le lot {codigo}",
+      "descripcionNuevo": "Un lot regroupe les unités entrées ensemble qui partagent la même date d'expiration. À l'enregistrement, les existences de cette succursale augmentent et son mouvement d'entrée figure dans le kardex.",
+      "descripcionEditar": "Modifiez le code, la date d'expiration ou le fournisseur. La quantité se modifie avec « Ajuster la quantité ».",
+      "guardar": "Enregistrer les modifications",
+      "crear": "Créer le lot",
+      "producto": "Produit",
+      "sinManejoLotes": "La gestion des lots n'est pas activée pour ce produit : la vente ne décomptera pas ce lot selon l'expiration.",
+      "codigo": "Code du lot",
+      "codigoAyuda": "Unique par produit. Si vous le laissez vide, un code basé sur la date est proposé.",
+      "codigoPlaceholder": "L-2026-015",
+      "sucursal": "Succursale",
+      "sucursalAyuda": "Reprend la succursale active.",
+      "elegirSucursal": "Choisir une succursale",
+      "cantidadInicial": "Quantité initiale",
+      "cantidadAyuda": "Génère l'entrée dans le kardex.",
+      "cantidadSinPermiso": "Vous avez besoin de l'autorisation d'ajuster les existences.",
+      "uds": "unités",
+      "vence": "Date d'expiration",
+      "venceAyuda": "Facultatif. Sans date, le lot n'expire jamais.",
+      "costo": "Coût unitaire",
+      "costoAyuda": "Entre dans le coût moyen pondéré du produit.",
+      "proveedor": "Fournisseur",
+      "notas": "Notes",
+      "motivoEntrada": "Nouveau lot {codigo}",
+      "listoNuevo": "Lot {codigo} créé",
+      "listoEdicion": "Lot {codigo} enregistré",
+      "listoDocumento": "Entrée enregistrée avec l'ajustement {numero}.",
+      "error": "Impossible d'enregistrer le lot",
+      "errores": {
+        "producto": "Choisissez le produit.",
+        "sucursal": "Choisissez la succursale où entre la quantité initiale.",
+        "cantidad": "La quantité ne peut pas être négative.",
+        "costo": "Indiquez le coût unitaire (0 ou plus)."
+      }
+    },
+    "ajustar": {
+      "titulo": "Ajuster la quantité du lot {codigo}",
+      "tituloBaja": "Sortir le lot {codigo}",
+      "descripcion": "L'ajustement figure dans le kardex avec l'origine « Ajustement » et ce lot. Un lot ne peut pas être ajusté à une quantité négative.",
+      "descripcionBaja": "Tout ce qui reste du lot dans la succursale sort en démarque, au coût moyen.",
+      "confirmar": "Enregistrer l'ajustement",
+      "confirmarBaja": "Sortir",
+      "sucursal": "Succursale",
+      "elegirSucursal": "Choisir une succursale",
+      "opcionSucursal": "{sucursal} · {n} unités aujourd'hui",
+      "nuevaCantidad": "Nouvelle quantité",
+      "diferencia": "Écart : {signo}{n} unités",
+      "uds": "unités",
+      "motivo": "Motif",
+      "motivoAyuda": "Obligatoire : il est repris dans la note du mouvement.",
+      "motivoConteo": "Écart de comptage",
+      "motivoOtro": "Quel motif ?",
+      "listo": "Lot {codigo} ajusté",
+      "listoDocumento": "Ajustement {numero} appliqué.",
+      "error": "Impossible d'ajuster le lot",
+      "errores": {
+        "cantidad": "Indiquez la nouvelle quantité.",
+        "negativa": "La quantité ne peut pas être négative.",
+        "sinCambio": "La quantité est la même qu'aujourd'hui.",
+        "motivo": "Indiquez le motif."
+      }
+    },
+    "eliminar": {
+      "titulo": "Supprimer le lot {codigo} ?",
+      "descripcion": "Le lot {codigo} de « {producto} » n'a ni existences ni mouvements. Il sera supprimé définitivement.",
+      "conExistencias": "Le lot {codigo} de « {producto} » a {n} unités en existences dans {sucursal}. Seul un lot sans existences et sans mouvements de kardex peut être supprimé.",
+      "conHistoria": "Le lot {codigo} a des mouvements dans le kardex : il ne peut pas être supprimé, afin de préserver la traçabilité.",
+      "confirmar": "Supprimer",
+      "bloqueado": "Seul un lot sans existences ni mouvements peut être supprimé.",
+      "listo": "Lot {codigo} supprimé",
+      "error": "Impossible de supprimer le lot"
     }
   }
 }

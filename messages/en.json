@@ -17087,6 +17087,418 @@
       "eligeUno": "Choose at least one product"
     }
   },
+  "inventarioAjustes": {
+    "inventario": "Inventory",
+    "existencias": "Stock",
+    "nAjustes": "{count, plural, =1 {# adjustment} other {{n} adjustments}}",
+    "sustantivo": {
+      "singular": "adjustment",
+      "plural": "adjustments"
+    },
+    "estados": {
+      "draft": "Draft",
+      "posted": "Applied",
+      "cancelled": "Discarded"
+    },
+    "tipos": {
+      "entrada": "In",
+      "salida": "Out"
+    },
+    "razones": {
+      "physical_count": "Physical count",
+      "discrepancy": "Discrepancy found",
+      "damaged": "Damaged",
+      "expired": "Expired",
+      "theft": "Theft or loss",
+      "production_waste": "Production waste",
+      "production_input": "Production input",
+      "initial_setup": "Opening stock",
+      "purchase_return": "Purchase return",
+      "audit": "Audit",
+      "system_error": "Error correction",
+      "other": "Other"
+    },
+    "listado": {
+      "titulo": "Inventory adjustments",
+      "tituloMovil": "Adjustments",
+      "subtituloMovil": "{total} · {borradores, plural, =0 {no drafts} =1 {1 draft} other {{n} drafts}}",
+      "lema": "counts, shrinkage and corrections",
+      "actualizar": "Refresh",
+      "nuevo": "New adjustment",
+      "uds": "units",
+      "nProductos": "{count, plural, =1 {1 product} other {{n} products}}",
+      "etiquetaFila": "Adjustment {codigo} at {sucursal}",
+      "errorCarga": "Could not load the adjustments",
+      "errorSeleccionarTodo": "Could not select all adjustments",
+      "sinResultados": "Try another number, product or note, or remove filters.",
+      "vacio": {
+        "titulo": "No adjustments yet",
+        "descripcion": "Record a physical count, shrinkage or a correction: the adjustment leaves its movement in the stock ledger."
+      },
+      "sinPermiso": {
+        "titulo": "You do not have access to adjustments",
+        "descripcion": "Ask an administrator for the inventory permission to see adjustments."
+      },
+      "buscar": {
+        "placeholder": "Search by number, product or note",
+        "etiqueta": "Search adjustments"
+      },
+      "kpis": {
+        "etiqueta": "Adjustments summary",
+        "mes": "Adjustments this month",
+        "enSucursales": "{count, plural, =0 {none this month} =1 {at 1 branch} other {at {n} branches}}",
+        "borradores": "Drafts",
+        "sinAplicar": "not applied: they do not move stock",
+        "ningunBorrador": "none pending",
+        "aplicados": "Applied",
+        "conKardex": "with their stock ledger movement",
+        "impactoMes": "Net impact this month",
+        "impactoDetalle": "shortages minus surpluses, at cost",
+        "sinCostos": "no permission to see costs"
+      },
+      "aviso": {
+        "titulo": "{count, plural, =1 {1 draft not applied} other {{n} drafts not applied}}, the oldest from {dias, plural, =1 {1 day} other {# days}} ago",
+        "tituloHoy": "{count, plural, =1 {1 draft not applied} other {{n} drafts not applied}}",
+        "descripcion": "While they are drafts, stock does not change. Applying them freezes the stock at count time and writes the stock ledger.",
+        "verBorradores": "See drafts"
+      },
+      "filtros": {
+        "estado": "Status",
+        "tipo": "Type",
+        "todos": "All",
+        "razon": "Reason",
+        "todas": "All",
+        "desde": "From",
+        "hasta": "To",
+        "verN": "{count, plural, =1 {See 1 adjustment} other {See {n} adjustments}}"
+      },
+      "chips": {
+        "estado": "Status: {estados}",
+        "desde": "From {dia}",
+        "hasta": "To {dia}"
+      },
+      "columnas": {
+        "ajuste": "Adjustment",
+        "sucursal": "Branch",
+        "tipo": "Type",
+        "razon": "Reason",
+        "productos": "Products",
+        "diferencia": "Difference",
+        "impacto": "Impact",
+        "estado": "Status"
+      },
+      "exportar": {
+        "boton": "Export",
+        "sinDatos": "No adjustments to export",
+        "listo": "{count, plural, =1 {1 adjustment exported} other {# adjustments exported}}",
+        "error": "Could not export"
+      },
+      "csv": {
+        "ajuste": "Adjustment",
+        "fecha": "Date",
+        "sucursal": "Branch",
+        "tipo": "Type",
+        "razon": "Reason",
+        "productos": "Products",
+        "diferencia": "Difference",
+        "unidad": "Unit",
+        "impacto": "Impact",
+        "estado": "Status",
+        "autor": "Recorded by",
+        "nota": "Note"
+      },
+      "masivas": {
+        "aplicar": "Apply",
+        "exportar": "Export",
+        "imprimir": "Print",
+        "imprimirUno": "Choose a single adjustment to print",
+        "descartar": "{count, plural, =1 {Discard 1 draft} other {Discard # drafts}}",
+        "sinPermiso": "You do not have permission to adjust inventory",
+        "soloBorradores": "Only drafts can be applied"
+      }
+    },
+    "acciones": {
+      "ver": "See details",
+      "editar": "Edit draft",
+      "duplicar": "Duplicate as new count",
+      "verKardex": "See in stock ledger",
+      "kardexAlAplicar": "The stock ledger is written when applying",
+      "sinPermiso": "You do not have permission to adjust inventory",
+      "aplicar": {
+        "accion": "Apply adjustment",
+        "titulo": "Apply adjustment {codigo}",
+        "tituloVarios": "{count, plural, =1 {Apply 1 adjustment} other {Apply # adjustments}}",
+        "descripcion": "It is done in a single operation: either everything is applied or nothing is.",
+        "punto1": "The current stock is frozen as «system at count» and the difference is recalculated.",
+        "punto2": "One stock ledger movement is written for each product with a difference.",
+        "punto3": "A single journal entry is posted for the net value at average cost.",
+        "confirmar": "Apply",
+        "listo": "{codigo} applied · {count, plural, =0 {no movements} =1 {1 stock ledger movement} other {# stock ledger movements}}",
+        "listoVarios": "{count, plural, =1 {1 adjustment applied} other {# adjustments applied}}",
+        "yaAplicado": "{codigo} was already applied: nothing moved again",
+        "recalculadoTitulo": "Stock changed since the count of {codigo}",
+        "recalculadoDescripcion": "{count, plural, =1 {For 1 product the difference was recalculated} other {For # products the difference was recalculated}} against the stock when applying.",
+        "fallos": "{count, plural, =1 {1 adjustment was not applied} other {# adjustments were not applied}}"
+      },
+      "descartar": {
+        "accion": "Discard draft",
+        "titulo": "Discard draft {codigo}",
+        "tituloVarios": "{count, plural, =1 {Discard 1 draft} other {Discard # drafts}}",
+        "descripcion": "The draft is discarded with its reason; it is not deleted and does not move stock.",
+        "confirmar": "Discard",
+        "consecuencia1": "Nothing is written to the stock ledger or to accounting.",
+        "consecuencia2": "It can no longer be edited or applied; you can duplicate it as a new count.",
+        "rapido1": "Wrong count",
+        "rapido2": "Duplicate draft",
+        "rapido3": "No longer needed",
+        "listo": "{count, plural, =1 {Draft discarded} other {# drafts discarded}}",
+        "fallos": "{count, plural, =1 {1 draft was not discarded} other {# drafts were not discarded}}"
+      }
+    },
+    "detalle": {
+      "titulo": "Adjustment {codigo}",
+      "tituloVacio": "Adjustment",
+      "cargando": "Loading the adjustment",
+      "error": "Could not load the adjustment",
+      "volver": "Back to adjustments",
+      "noEncontrado": {
+        "titulo": "Adjustment not found",
+        "descripcion": "It does not exist or belongs to another organization."
+      },
+      "sinPermiso": {
+        "titulo": "You do not have access to this adjustment",
+        "descripcion": "Ask an administrator for the inventory permission."
+      },
+      "contadoEl": "counted on {fecha}",
+      "registradoEl": "recorded on {fecha}",
+      "aplicadoEl": "applied on {fecha}",
+      "por": "by {nombre}",
+      "imprimir": "Print",
+      "editar": "Edit",
+      "aplicar": "Apply adjustment",
+      "uds": "units",
+      "sku": "SKU {sku}",
+      "seriales": "serials {lista}",
+      "hoy": "today: {n}",
+      "kpis": {
+        "etiqueta": "Adjustment summary",
+        "productos": "Products counted",
+        "faltantes": "Shortages",
+        "sobrantes": "Surpluses",
+        "enProductos": "{count, plural, =0 {no products} =1 {in 1 product} other {in {n} products}}",
+        "impacto": "Impact at cost",
+        "alCosto": "at the branch average cost",
+        "sinCostos": "no permission to see costs"
+      },
+      "avisoBorrador": {
+        "titulo": "Draft: it does not move stock yet",
+        "descripcion": "When applied, the stock at count time is frozen, {count, plural, =0 {no movement is written} =1 {1 stock ledger movement is written} other {{n} stock ledger movements are written}} and the difference is valued at average cost. If someone sold since the count, the difference is recalculated and we let you know.",
+        "cambiados": "{count, plural, =1 {Stock changed for 1 product since the count} other {Stock changed for {n} products since the count}}: its difference is recalculated when applying."
+      },
+      "avisoAplicado": {
+        "titulo": "Applied · {count, plural, =0 {no stock ledger movements} =1 {1 stock ledger movement} other {{n} stock ledger movements}}",
+        "descripcion": "The «System at count» figures are the ones at apply time and do not change afterwards. This detail does not recalculate them against current stock.",
+        "recalculados": "{count, plural, =1 {The difference of 1 product was recalculated} other {The difference of # products was recalculated}} because stock changed since the count: {productos}.",
+        "asiento": "Journal entry #{id}",
+        "sinAsiento": "No journal entry: the organization has no active adjustment rule or the value is zero."
+      },
+      "avisoDescartado": {
+        "titulo": "Discarded on {fecha} by {nombre}",
+        "motivo": "Reason: {motivo}"
+      },
+      "columnas": {
+        "producto": "Product",
+        "lote": "Lot",
+        "sistema": "System at count",
+        "sistemaAntes": "Stock before",
+        "contado": "Counted",
+        "entra": "In",
+        "sale": "Out",
+        "diferencia": "Difference",
+        "costo": "Avg. cost",
+        "impacto": "Impact"
+      },
+      "renglones": {
+        "etiqueta": "Adjustment lines",
+        "tituloConteo": "Count lines · {count, plural, =1 {1 product} other {{n} products}} ({sin} without difference)",
+        "titulo": "Lines · {count, plural, =1 {1 product} other {{n} products}}",
+        "vacio": "This adjustment has no lines"
+      },
+      "movil": {
+        "lote": "Lot {lote}",
+        "sinLote": "No lot",
+        "sistema": "system {n}"
+      },
+      "movimientos": {
+        "titulo": "Stock ledger movements generated · {n}",
+        "etiqueta": "Stock ledger movements generated by the adjustment",
+        "fecha": "Date",
+        "producto": "Product",
+        "tipo": "Type",
+        "sucursalLote": "Branch · lot",
+        "cantidad": "Quantity",
+        "costo": "Unit cost",
+        "enKardex": "In the stock ledger",
+        "verKardex": "See in stock ledger",
+        "saldoTras": "balance after the adjustment: {n}"
+      }
+    },
+    "formulario": {
+      "titulo": "New inventory adjustment",
+      "tituloEditar": "Edit adjustment draft",
+      "tituloMovil": "New adjustment",
+      "tituloEditarMovil": "Edit draft",
+      "subtitulo": "Count what is there and the system calculates the difference against what there was at count time",
+      "migaNuevo": "New adjustment",
+      "migaEditar": "Edit draft",
+      "cancelar": "Cancel",
+      "guardarBorrador": "Save draft",
+      "guardarYAplicar": "Save and apply",
+      "aplicar": "Apply adjustment",
+      "volver": "Back to adjustments",
+      "cargando": "Loading products",
+      "errorCarga": "Could not prepare the adjustment",
+      "noEncontrado": "The adjustment does not exist or belongs to another organization",
+      "revisa": "Check the highlighted fields",
+      "borradorGuardado": "Draft saved: it does not move stock yet",
+      "yaEsta": "{nombre} is already in the adjustment",
+      "uds": "units",
+      "sku": "SKU {sku}",
+      "conSeriales": "with serials",
+      "sinLote": "No lot",
+      "loteVence": "{lote} · expires {fecha}",
+      "loteVencido": "{lote} · expired",
+      "loteDe": "Lot of {nombre}",
+      "cantidadDe": "{etiqueta} of {nombre}",
+      "costoDe": "Unit cost of {nombre}",
+      "quitar": "Remove {nombre}",
+      "alContar": "at count: {n}",
+      "sinPermiso": {
+        "titulo": "You cannot adjust inventory",
+        "descripcion": "Ask an administrator for the «Adjust inventory» permission."
+      },
+      "cerrado": {
+        "titulo": "This adjustment can no longer be edited",
+        "descripcion": "An applied or discarded adjustment does not change. To correct something, create a new adjustment or duplicate this one as a new count.",
+        "verAjuste": "See the adjustment"
+      },
+      "modos": {
+        "entrada": "In",
+        "salida": "Out",
+        "conteo": "Count"
+      },
+      "ayudaModo": {
+        "entrada": "Enter how much of each product comes in.",
+        "salida": "Enter how much of each product goes out. It cannot leave stock negative.",
+        "conteo": "Enter what you counted; the system calculates the difference against what there was."
+      },
+      "datos": {
+        "titulo": "Adjustment details",
+        "sucursal": "Branch",
+        "sucursalAyuda": "The one in the selector above",
+        "elegirSucursal": "Choose a branch",
+        "razon": "Reason",
+        "fechaConteo": "Count date",
+        "fecha": "Date",
+        "fechaAyuda": "Time in {zona}",
+        "modo": "Adjustment type",
+        "nota": "Note",
+        "notaPlaceholder": "For example: warehouse count after closing"
+      },
+      "productos": {
+        "titulo": "Products · {n}",
+        "tituloConteo": "Products counted · {n}",
+        "descripcion": "Scan or search; the system takes the stock of the branch and the lot.",
+        "descripcionConteo": "Scan or search; the system takes the stock of the branch and the lot at count time.",
+        "buscar": "Search a product to add…",
+        "escanear": "Scan code",
+        "agregar": "Add products",
+        "vacioTitulo": "No products yet",
+        "vacioDescripcion": "Scan a code or search by name or SKU.",
+        "tabla": "Adjustment products",
+        "dialogoTitulo": "Add products to the adjustment",
+        "dialogoDescripcion": "Average cost · stock at {sucursal}"
+      },
+      "columnas": {
+        "producto": "Product",
+        "lote": "Lot",
+        "sistema": "System",
+        "existencia": "Stock",
+        "contado": "Counted",
+        "entra": "In",
+        "sale": "Out",
+        "diferencia": "Difference",
+        "queda": "Remains",
+        "costo": "Avg. cost",
+        "acciones": "Actions"
+      },
+      "movil": {
+        "sistema": "System: {n}",
+        "sinCantidad": "Quantity missing",
+        "sinDiferencia": "No difference",
+        "diferencia": "Difference {n}"
+      },
+      "seriales": {
+        "salen": "{count, plural, =1 {Serial going out:} other {Serials going out (#):}}",
+        "entran": "{count, plural, =1 {Serial coming in:} other {Serials coming in (#):}}",
+        "quitar": "Remove serial {serial}",
+        "elegir": "Choose serial of {nombre}",
+        "elegirPlaceholder": "Choose serial",
+        "ninguno": "No serials at this branch",
+        "escribir": "Type or scan and press Enter",
+        "escribirDe": "New serial of {nombre}",
+        "notaSalida": "The serial becomes «Damaged» with the adjustment",
+        "notaEntrada": "It is registered as a new serial at the branch"
+      },
+      "errores": {
+        "sucursal": "Choose the branch",
+        "razon": "Choose the reason",
+        "fecha": "Enter the date and time",
+        "sinRenglones": "Add at least one product",
+        "cantidad": "Enter a valid quantity",
+        "negativo": "The outflow leaves stock negative",
+        "costo": "This surplus has no average cost: enter the unit cost",
+        "seriales": "Serials missing: enter {n}"
+      },
+      "resumen": {
+        "productos": "Products",
+        "faltantes": "Shortages",
+        "sobrantes": "Surpluses",
+        "impacto": "Impact at cost",
+        "nota": "Saving a draft does not move stock. «Save and apply» writes the stock ledger in a single transaction.",
+        "movil": "{productos, plural, =1 {1 product} other {{n} products}} · difference {diferencia} · impact {impacto}"
+      },
+      "confirmar": {
+        "titulo": "Save and apply the adjustment",
+        "descripcion": "{count, plural, =0 {No product has a difference} =1 {1 product has a difference} other {{n} products have a difference}}. It is saved and applied in a single transaction.",
+        "faltantes": "Shortages: {n} ({productos, plural, =1 {1 product} other {# products}})",
+        "sobrantes": "Surpluses: {n} ({productos, plural, =1 {1 product} other {# products}})",
+        "impacto": "Impact at cost: {importe}",
+        "nota": "If stock changed since the count, the difference is recalculated when applying and we let you know.",
+        "aplicar": "Apply"
+      }
+    },
+    "errores": {
+      "ajuste_no_encontrado": "The adjustment does not exist or belongs to another organization.",
+      "ajuste_cerrado": "The adjustment is already applied or discarded: it cannot change.",
+      "ajuste_descartado": "The adjustment is discarded: it cannot be applied.",
+      "ajuste_aplicado": "The adjustment is already applied: it cannot be discarded.",
+      "modo_invalido": "Invalid adjustment type.",
+      "razon_requerida": "Choose the adjustment reason.",
+      "nota_muy_larga": "The note is too long (1,000 characters maximum).",
+      "sin_renglones": "Add at least one product.",
+      "demasiados_renglones": "An adjustment allows up to 500 products.",
+      "renglon_repetido": "The same product and lot appears twice.",
+      "fecha_invalida": "The date is not valid.",
+      "fecha_futura": "The count date cannot be in the future.",
+      "costo_requerido": "There are surpluses without cost: enter their unit cost.",
+      "costo_requerido_productos": "These surpluses have no cost: {productos}. Enter their unit cost.",
+      "producto_sin_control_stock": "A product does not track stock and cannot be adjusted.",
+      "motivo_requerido": "Enter the reason (at least 3 characters).",
+      "motivo_muy_largo": "The reason is too long.",
+      "desconocido": "The operation could not be completed."
+    }
+  },
   "inventarioSeriales": {
     "comun": {
       "titulo": "Serial numbers",
@@ -17827,6 +18239,714 @@
       "sinPrecio": "“{producto}” has no current price. Set it in Inventory.",
       "precioNoConsultado": "The price of “{producto}” could not be checked. Check your connection and try again.",
       "errorAgregar": "“{producto}” could not be added to the cart."
+    }
+  },
+  "inventarioStock": {
+    "titulo": "Stock",
+    "subtitulo": "{n} {count, plural, one {product} other {products}} in stock across {sucursales, plural, one {# branch} other {# branches}}",
+    "subtituloMovil": "{productos} products · {sucursales, plural, one {# branch} other {# branches}}",
+    "migas": {
+      "inventario": "Inventory",
+      "existencias": "Stock on hand"
+    },
+    "actualizar": "Refresh",
+    "exportar": {
+      "boton": "Export",
+      "sinDatos": "There are no products to export.",
+      "listo": "{count, plural, one {Exported # product} other {Exported # products}}.",
+      "error": "Could not export the stock."
+    },
+    "csv": {
+      "producto": "Product",
+      "sku": "SKU",
+      "variante": "Variant",
+      "categoria": "Category",
+      "porSucursal": "By branch",
+      "existencia": "On hand",
+      "reservado": "Reserved",
+      "disponible": "Available",
+      "minimo": "Minimum",
+      "costo": "Average cost",
+      "valor": "Value",
+      "estado": "Status"
+    },
+    "estados": {
+      "disponible": "Available",
+      "bajo_minimo": "Below minimum",
+      "agotado": "Out of stock",
+      "negativo": "Negative"
+    },
+    "acciones": {
+      "kardex": "View product stock ledger",
+      "lotes": "View lots ({n} {count, plural, one {active} other {active}})",
+      "producto": "View product",
+      "entrada": "Record stock in",
+      "salida": "Record stock out",
+      "trasladar": "Transfer to another branch",
+      "minimo": "Set minimum stock",
+      "soloVariantes": "Stock is held by the variants: choose a variant.",
+      "unaSucursal": "There is only one branch."
+    },
+    "chips": {
+      "estado": "Status: {estados}",
+      "categoria": "Category: {nombre}",
+      "proveedor": "Supplier: {nombre}",
+      "producto": "Product: {nombre}",
+      "sinAgrupar": "Variants listed separately"
+    },
+    "filtros": {
+      "nota": "The branch is chosen in the selector above; here you only filter the list.",
+      "verN": "View {n} {count, plural, one {product} other {products}}",
+      "estado": "Stock status",
+      "categoria": "Category",
+      "todasCategorias": "All categories",
+      "seguimientoTitulo": "Tracking",
+      "seguimientoAyuda": "“Untracked” = products with stock control turned off: they are not deducted.",
+      "seguimiento": {
+        "todos": "All",
+        "lotes": "With lots",
+        "seriales": "With serials",
+        "sin": "Untracked"
+      },
+      "proveedor": "Supplier",
+      "todosProveedores": "All suppliers",
+      "agrupar": "Group variants under their product"
+    },
+    "columnas": {
+      "producto": "Product",
+      "categoria": "Category",
+      "porSucursal": "By branch",
+      "disponible": "Available",
+      "minimo": "Minimum",
+      "costo": "Avg. cost",
+      "estado": "Status",
+      "sku": "SKU {sku}",
+      "variantes": "{n} {count, plural, one {variant} other {variants}}",
+      "conLotes": "with lots",
+      "conSeriales": "with serials",
+      "sinAsignarFila": "not assigned to a variant",
+      "uds": "{n} units",
+      "reservadas": "{n} {count, plural, one {reserved} other {reserved}}",
+      "sinAsignar": "{n} units not assigned to a variant",
+      "sinAsignarAyuda": "Stock recorded on the parent product. It is not added up: distribute it among its variants with an adjustment."
+    },
+    "sustantivo": {
+      "singular": "product",
+      "plural": "products"
+    },
+    "kpis": {
+      "etiqueta": "Stock summary",
+      "conExistencias": "Products in stock",
+      "deSeguimiento": "of {n} with stock tracking",
+      "valor": "Inventory value",
+      "valorDetalle": "at each branch's average cost",
+      "valorSinPermiso": "You need the costs permission",
+      "bajoMinimo": "Below minimum",
+      "reponer": "restock · see purchase suggestion",
+      "ningunoBajo": "none below minimum",
+      "agotadosNegativos": "Out of stock or negative",
+      "agotadosDetalle": "{agotados} out of stock · {negativos} negative"
+    },
+    "avisoNegativos": {
+      "titulo": "{n} {count, plural, one {product has negative stock} other {products have negative stock}}",
+      "descripcion": "More units were sold than were recorded. Usually a purchase receipt or a transfer is missing. Review them before the next count.",
+      "ver": "Show negatives only"
+    },
+    "avisoSinAsignar": "{n} {count, plural, one {product with variants has} other {products with variants have}} stock on the parent product, not assigned to a variant. It is not added to available stock.",
+    "verSinAgrupar": "View variants separately",
+    "buscar": {
+      "placeholder": "Search by product, SKU, barcode or lot",
+      "etiqueta": "Search stock"
+    },
+    "etiquetaFila": "Stock of {producto}",
+    "movil": {
+      "disponibles": "{n} available",
+      "minimo": "min. {n}"
+    },
+    "vacio": {
+      "titulo": "No stock yet",
+      "descripcion": "When you record stock in, receive a purchase or create products with opening stock, they will appear here.",
+      "accion": "Record stock in",
+      "productos": "Go to products"
+    },
+    "sinResultados": "No product matches the search or filters.",
+    "errorCarga": "Could not load the stock.",
+    "errorSeleccionar": "Could not select all products.",
+    "masivas": {
+      "trasladar": "Transfer",
+      "unProducto": "Choose a single product (one variant).",
+      "conteo": "Count adjustment",
+      "minimo": "Set minimum",
+      "exportar": "Export"
+    },
+    "nuevoMovimiento": {
+      "boton": "New movement",
+      "entrada": "Goods in",
+      "entradaDetalle": "Purchase without order, return, donation",
+      "salida": "Goods out",
+      "salidaDetalle": "Shrinkage, internal use, damage",
+      "conteo": "Count adjustment",
+      "conteoDetalle": "Matches the system to what was counted",
+      "traslado": "Transfer between branches",
+      "trasladoDetalle": "Leaves one, enters the other on receipt",
+      "recibirOc": "Receive a purchase order",
+      "recibirOcDetalle": "Opens Purchase orders"
+    },
+    "selectorProducto": {
+      "sku": "SKU {sku}",
+      "conLotes": "with lots",
+      "disponible": "{n} avail.",
+      "padreConVariantes": "Stock is held by the variants: choose a variant.",
+      "placeholder": "Choose product",
+      "buscar": "Search by name, SKU or barcode",
+      "titulo": "Product",
+      "vacio": "Type to search for a product.",
+      "sinResultados": "No product matches.",
+      "error": "Could not search.",
+      "cambiar": "Change product"
+    },
+    "registrar": {
+      "tituloEntrada": "Record stock in",
+      "tituloSalida": "Record stock out",
+      "descripcionEntrada": "Adds units to a branch. It is recorded in the stock ledger as “Adjustment · in” with its document.",
+      "descripcionSalida": "Removes units with a reason. It is recorded in the stock ledger as “Adjustment · out” with its document.",
+      "confirmarEntrada": "Record stock in",
+      "confirmarSalida": "Record stock out",
+      "producto": "Product",
+      "conSeriales": "This product uses serials: record it from Adjustments, where serials are selected.",
+      "sucursal": "Branch",
+      "sucursalAyuda": "The one in the selector above",
+      "elegirSucursal": "Choose branch",
+      "cantidad": "Quantity",
+      "uds": "units",
+      "disponibleLote": "Available in lot: {n}",
+      "disponibleSucursal": "Available in branch: {n}",
+      "hoyHay": "Currently {n}",
+      "costoUnitario": "Unit cost",
+      "costoAyuda": "Recalculates the average cost",
+      "motivo": "Reason",
+      "motivoOtro": "What reason?",
+      "lote": "Lot",
+      "loteAyudaEntrada": "This product uses lots: choose one or create the lot right here",
+      "elegirLote": "Choose lot",
+      "sinLotes": "No lots with stock",
+      "loteVence": "expires {fecha}",
+      "loteVencio": "expired on {fecha}",
+      "opcionLote": "{codigo} · {vence} · {n} units",
+      "crearLote": "+ Create new lot",
+      "codigoLote": "Lot code",
+      "codigoLoteAyuda": "If left empty, one based on the date is suggested",
+      "venceLote": "Expiry date",
+      "venceLoteAyuda": "Optional. Without a date, the lot never expires",
+      "nota": "Note",
+      "notaPlaceholder": "Supplier invoice, person in charge, remark…",
+      "avisoEntrada": "It is saved as an applied adjustment and the stock ledger links to it. If the goods come from a purchase order, receive them from the order to avoid a duplicate entry.",
+      "avisoSalida": "The stock out is valued at the branch's average cost ({costo} × {n} = {total}), never at the sale price.",
+      "listoEntrada": "Stock in recorded",
+      "listoSalida": "Stock out recorded",
+      "listoDocumento": "Adjustment {numero} applied.",
+      "errorEntrada": "Could not record the stock in",
+      "errorSalida": "Could not record the stock out",
+      "errores": {
+        "requerido": "This field is required.",
+        "mayorQueCero": "Must be greater than zero.",
+        "noNegativo": "Cannot be negative.",
+        "superaDisponible": "Exceeds what is available ({n}).",
+        "conSeriales": "Products with serials are recorded from Adjustments."
+      }
+    },
+    "motivos": {
+      "entrada": {
+        "compra_sin_orden": "Purchase without order",
+        "devolucion_cliente": "Customer return",
+        "donacion": "Donation",
+        "sobrante": "Surplus found",
+        "produccion_propia": "In-house production",
+        "otro": "Other"
+      },
+      "salida": {
+        "merma_vencido": "Shrinkage · expired product",
+        "merma_rotura": "Shrinkage from breakage",
+        "consumo_interno": "Internal use",
+        "danio": "Damage",
+        "perdida": "Loss or theft",
+        "muestra": "Sample or tasting",
+        "otro": "Other"
+      }
+    },
+    "minimo": {
+      "titulo": "Minimum stock · {nombre}",
+      "descripcion": "When available stock drops below this number, the product appears under “Below minimum” and in the purchase suggestion.",
+      "hoyHay": "Currently {n}",
+      "uds": "units",
+      "aviso": "You only see the branches you belong to. A minimum of 0 turns off the alert.",
+      "guardar": "Save minimums",
+      "listo": "Minimums saved.",
+      "error": "Could not save the minimums"
+    },
+    "errores": {
+      "motivo_requerido": "Enter the reason.",
+      "razon_requerida": "Enter the reason (60 characters max).",
+      "costo_invalido": "The unit cost cannot be negative.",
+      "costo_requerido": "Enter the unit cost: the product has no cost yet.",
+      "producto_con_variantes": "Stock is held by the variants: choose a variant, not the parent product.",
+      "producto_sin_seguimiento": "This product does not have stock control.",
+      "producto_sin_control_stock": "This product does not have stock control.",
+      "producto_con_seriales": "This product uses serials: record it from Adjustments.",
+      "producto_eliminado": "The product has been deleted.",
+      "lote_requerido": "This product uses lots: choose the lot.",
+      "lote_repetido": "A lot with that code already exists for this product.",
+      "lote_con_existencias": "The lot still has stock or reservations: it cannot be deleted.",
+      "lote_con_movimientos": "The lot has movements in the stock ledger: it cannot be deleted.",
+      "proveedor_invalido": "The supplier does not belong to the organization.",
+      "sucursal_requerida": "Choose the branch that receives the opening quantity.",
+      "fecha_invalida": "The date is not valid.",
+      "items_invalidos": "The submitted data is not valid."
+    }
+  },
+  "inventarioMovimientos": {
+    "titulo": "Movements",
+    "subtitulo": "{n} {count, plural, one {movement} other {movements}} · everything that comes in and goes out, with its document",
+    "subtituloMovil": "{n} in {rango}",
+    "todoElHistorial": "all history",
+    "migas": {
+      "inventario": "Inventory",
+      "existencias": "Stock on hand"
+    },
+    "actualizar": "Refresh",
+    "exportar": {
+      "boton": "Export",
+      "sinDatos": "There are no movements to export.",
+      "listo": "{count, plural, one {Exported # movement} other {Exported # movements}}.",
+      "error": "Could not export the movements."
+    },
+    "csv": {
+      "fecha": "Date",
+      "hora": "Time",
+      "producto": "Product",
+      "sku": "SKU",
+      "tipo": "Type",
+      "documento": "Document",
+      "sucursal": "Branch",
+      "lote": "Lot",
+      "entrada": "In",
+      "salida": "Out",
+      "costo": "Unit cost",
+      "usuario": "Recorded by",
+      "nota": "Note"
+    },
+    "chips": {
+      "periodo": "Period: {rango}",
+      "tipo": "Type: {tipos}",
+      "producto": "Product: {nombre}",
+      "lote": "Lot: {codigo}",
+      "usuario": "Recorded by: {nombre}",
+      "sinDocumento": "No document"
+    },
+    "filtros": {
+      "nota": "The branch is chosen in the selector above.",
+      "verN": "View {n} {count, plural, one {movement} other {movements}}",
+      "periodo": "Period",
+      "periodoAyuda": "In the organization's time zone, not in UTC.",
+      "direccion": "Direction",
+      "todas": "All",
+      "entradas": "Stock in",
+      "salidas": "Stock out",
+      "tipo": "Movement type",
+      "tipoAyuda": "Sale, online sale, purchase receipt, transfer, adjustment, return…",
+      "todosTipos": "All types ({n})",
+      "ingredientes": "Ingredient consumption only",
+      "ingredientesAyuda": "Stock out of products that are an ingredient in a recipe."
+    },
+    "columnas": {
+      "fecha": "Date",
+      "producto": "Product",
+      "tipo": "Type",
+      "documento": "Document",
+      "sucursalLote": "Branch · lot",
+      "entrada": "In",
+      "salida": "Out",
+      "costo": "Unit cost"
+    },
+    "sku": "SKU {sku}",
+    "sinLote": "no lot",
+    "sinCosto": "no cost",
+    "uds": "{n} units",
+    "por": "by {nombre}",
+    "loteCorto": "lot {codigo}",
+    "porUnidad": "{costo} each",
+    "sinDocumento": "No document",
+    "cargaInicial": "opening load",
+    "edicionDirecta": "direct edit",
+    "sustantivo": {
+      "singular": "movement",
+      "plural": "movements"
+    },
+    "kpis": {
+      "etiqueta": "Period summary",
+      "entradas": "Stock in for the period",
+      "entradasDetalle": "purchases, transfers and adjustments",
+      "salidas": "Stock out for the period",
+      "salidasDetalle": "sales, shrinkage and transfers",
+      "valorSalidas": "Value of stock out",
+      "valorSalidasDetalle": "at average cost, not at price",
+      "sinPermisoCostos": "You need the costs permission",
+      "sinDocumento": "No document",
+      "sinDocumentoDetalle": "opening loads and direct edits"
+    },
+    "avisoHistorico": {
+      "titulo": "Before {fecha} the stock ledger did not record purchase receipts, transfers or returns",
+      "descripcion": "The database silently rejected them while stock levels did change. They have been recorded since then; earlier data cannot be reliably reconstructed.",
+      "verDescuadres": "View discrepancies"
+    },
+    "buscar": {
+      "placeholder": "Search by product, SKU, document or lot",
+      "etiqueta": "Search movements"
+    },
+    "etiquetaFila": "Movement of {producto} on {fecha}",
+    "vacio": {
+      "titulo": "No movements yet",
+      "descripcion": "Sales, purchases, adjustments and transfers will appear here with their document."
+    },
+    "sinResultados": "No movement matches the search or filters.",
+    "errorCarga": "Could not load the movements.",
+    "acciones": {
+      "abrir": "Open {documento}",
+      "kardex": "View product stock ledger",
+      "lote": "View lot {codigo}",
+      "producto": "View product",
+      "copiar": "Copy the document number",
+      "copiado": "Copied {numero}.",
+      "soloUsuario": "Only those by {nombre}",
+      "corregir": "Correct with an adjustment"
+    }
+  },
+  "inventarioKardex": {
+    "titulo": "Kardex",
+    "actualizar": "Refresh",
+    "sku": "SKU {sku}",
+    "nMovimientos": "{n} {count, plural, one {movement} other {movements}}",
+    "saldoPorSucursal": "running balance by branch",
+    "subtituloMovil": "{nombre} · {n} movements",
+    "migas": {
+      "inventario": "Inventory",
+      "movimientos": "Movements"
+    },
+    "menu": {
+      "descuadres": "View discrepancies with stock on hand",
+      "movimientos": "Go to movements",
+      "producto": "View product"
+    },
+    "exportar": {
+      "boton": "Export",
+      "titulo": "Export the stock ledger",
+      "descripcion": "Choose the scope: everything the filters show, this page only, or the product's full history.",
+      "confirmar": "Export",
+      "alcance": {
+        "filtros": "Everything the filters show ({n} movements)",
+        "pagina": "This page only ({n} movements)",
+        "historico": "The product's full history, unfiltered"
+      },
+      "historicoSinProducto": "Choose a product in the filters to export its history.",
+      "formato": "CSV format. Dates are in the organization's time zone, not in UTC.",
+      "sinDatos": "There are no movements to export.",
+      "listo": "{count, plural, one {Exported # movement} other {Exported # movements}}.",
+      "error": "Could not export the stock ledger."
+    },
+    "csv": {
+      "fecha": "Date",
+      "hora": "Time",
+      "producto": "Product",
+      "sku": "SKU",
+      "tipo": "Type",
+      "documento": "Document",
+      "sucursal": "Branch",
+      "lote": "Lot",
+      "entrada": "In",
+      "salida": "Out",
+      "saldo": "Balance",
+      "costo": "Unit cost",
+      "costoPromedio": "Average cost after the movement",
+      "usuario": "Recorded by",
+      "nota": "Note"
+    },
+    "acciones": {
+      "exportarProducto": "Export this product only"
+    },
+    "chips": {
+      "producto": "Product: {nombre}",
+      "lote": "Lot: {codigo}",
+      "periodo": "Period: {rango}",
+      "tipo": "Type: {tipos}",
+      "usuario": "Recorded by: {nombre}"
+    },
+    "columnas": {
+      "fecha": "Date",
+      "tipo": "Type",
+      "documento": "Document",
+      "producto": "Product",
+      "sucursal": "Branch",
+      "lote": "Lot",
+      "entrada": "In",
+      "salida": "Out",
+      "saldo": "Balance",
+      "costo": "Unit cost"
+    },
+    "saldoNegativo": "Negative balance",
+    "saldoCorto": "Balance {n}",
+    "sustantivo": {
+      "singular": "movement",
+      "plural": "movements"
+    },
+    "kpis": {
+      "etiqueta": "Stock ledger summary",
+      "entradas": "Stock in for the period",
+      "entradasDetalle": "purchases, adjustments and transfers",
+      "salidas": "Stock out for the period",
+      "salidasDetalle": "sales, shrinkage and transfers",
+      "saldoCierre": "Closing balance",
+      "contraExistencias": "vs. {n} on hand",
+      "valor": "Balance value",
+      "valorDetalle": "at moving average cost",
+      "sinPermisoCostos": "You need the costs permission"
+    },
+    "cuadre": {
+      "cuadra": "The stock ledger matches stock on hand",
+      "noCuadra": "The stock ledger does not match stock on hand",
+      "detalle": "{kardex} units of balance vs. {existencias} on hand.",
+      "faltan": "{n} units missing from the stock ledger.",
+      "sobran": "{n} extra units in the stock ledger.",
+      "causa": "It is almost always transfers sent that nobody received, loads without a movement, or stock in the database rejected earlier.",
+      "verDetalle": "View reconciliation details",
+      "verN": "View {count, plural, one {the discrepancy} other {the {n} discrepancies}}"
+    },
+    "buscar": {
+      "placeholder": "Search by product, SKU, document or lot",
+      "etiqueta": "Search the stock ledger"
+    },
+    "filtros": {
+      "nota": "The branch is not filtered here: the selector above controls it.",
+      "verN": "View {n} {count, plural, one {movement} other {movements}}",
+      "producto": "Product",
+      "productoAyuda": "Type a name, SKU or barcode",
+      "tipo": "Movement type",
+      "tipoAyuda": "Sale, purchase, transfer, adjustment, shrinkage…",
+      "periodo": "Date range",
+      "periodoAyuda": "In the organization's time zone, not in UTC.",
+      "lote": "Lot",
+      "loteAyuda": "Only if the product uses lots",
+      "todosLotes": "All"
+    },
+    "vacio": {
+      "titulo": "No movements yet",
+      "descripcion": "Every sale, purchase, adjustment or transfer records its stock in or out here, with the balance."
+    },
+    "sinResultados": "No movement matches the search or filters.",
+    "errorCarga": "Could not load the stock ledger.",
+    "descuadres": {
+      "titulo": "Discrepancies between stock ledger and stock on hand",
+      "descripcion": "Products and branches where the sum of stock in and out does not equal the recorded stock on hand. They are only shown here, not corrected.",
+      "cerrar": "Close",
+      "resumen": "{n} {count, plural, one {product-branch pair does not match} other {product-branch pairs do not match}}: {kardex} units in the stock ledger vs. {existencias} on hand.",
+      "sinHistoria": "In addition, {n} {count, plural, one {stock row has} other {stock rows have}} no movement to explain it.",
+      "cuadraTitulo": "Everything matches",
+      "cuadraDescripcion": "The stock ledger balance matches stock on hand in this scope.",
+      "producto": "Product",
+      "sucursal": "Branch",
+      "kardex": "Ledger",
+      "existencias": "On hand",
+      "diferencia": "Difference",
+      "ultimo": "Last movement",
+      "mostrando": "Showing {n} of {total}, those with the largest difference.",
+      "nota": "The difference is stock on hand minus the stock ledger. It will be corrected with an opening movement that explains the balance, without changing quantities."
+    }
+  },
+  "inventarioLotes": {
+    "titulo": "Lots",
+    "subtitulo": "{n} {count, plural, one {lot} other {lots}} · {uds} units with traceability and expiry",
+    "subtituloMovil": "{n} lots · {porVencer} expiring soon",
+    "migas": {
+      "inventario": "Inventory",
+      "existencias": "Stock on hand"
+    },
+    "actualizar": "Refresh",
+    "nuevo": "New lot",
+    "exportar": {
+      "boton": "Export",
+      "sinDatos": "There are no lots to export.",
+      "listo": "{count, plural, one {Exported # lot} other {Exported # lots}}.",
+      "error": "Could not export the lots."
+    },
+    "csv": {
+      "lote": "Lot",
+      "producto": "Product",
+      "sku": "SKU",
+      "sucursal": "Branch",
+      "vence": "Expires",
+      "dias": "Days to expiry",
+      "cantidad": "Quantity",
+      "reservado": "Reserved",
+      "costo": "Average cost",
+      "proveedor": "Supplier",
+      "estado": "Status",
+      "creado": "Created"
+    },
+    "acciones": {
+      "movimientos": "View lot movements",
+      "editar": "Edit lot",
+      "ajustar": "Adjust quantity",
+      "baja": "Write off as shrinkage",
+      "sinExistencias": "The lot has no stock in this branch.",
+      "rastrear": "Trace the lot",
+      "eliminar": "Delete lot",
+      "conExistencias": "Only a lot without stock can be deleted.",
+      "conHistoria": "The lot has movements in the stock ledger."
+    },
+    "sinCaducidad": "no expiry",
+    "chips": {
+      "producto": "Product: {nombre}",
+      "proveedor": "Supplier: {nombre}",
+      "conExistencias": "In stock",
+      "umbral": "Expiring within: {dias} days"
+    },
+    "columnas": {
+      "lote": "Lot",
+      "producto": "Product",
+      "sucursal": "Branch",
+      "vence": "Expires",
+      "cantidad": "Quantity",
+      "proveedor": "Supplier",
+      "estado": "Status"
+    },
+    "creado": "created {fecha}",
+    "sku": "SKU {sku}",
+    "uds": "{n} units",
+    "sustantivo": {
+      "singular": "lot",
+      "plural": "lots"
+    },
+    "menu": {
+      "umbral": "Alert {dias} days before expiry",
+      "actual": "In use",
+      "rastrear": "Trace a lot",
+      "rastrearDetalle": "Opens Traceability"
+    },
+    "kpis": {
+      "etiqueta": "Lots summary",
+      "vigentes": "Active lots",
+      "udsDisponibles": "{n} units available",
+      "porVencer": "Expiring soon",
+      "porVencerDetalle": "in {dias} days or less · {n} units",
+      "vencidos": "Expired",
+      "vencidosDetalle": "{n} units the POS will not sell due to expiry",
+      "riesgo": "Value at risk",
+      "riesgoDetalle": "expired and expiring soon, at cost",
+      "sinPermisoCostos": "You need the costs permission"
+    },
+    "avisoVencidos": {
+      "titulo": "{n} {count, plural, one {expired lot still counts} other {expired lots still count}} as stock on hand",
+      "descripcionValor": "{n} units worth {valor}. Decide whether to write them off as shrinkage or release them for sale.",
+      "descripcion": "{n} units. Decide whether to write them off as shrinkage or release them for sale.",
+      "ver": "Show expired only"
+    },
+    "buscar": {
+      "placeholder": "Search by lot code, product or SKU",
+      "etiqueta": "Search lots"
+    },
+    "filtros": {
+      "nota": "The branch is chosen in the selector above.",
+      "verN": "View {n} {count, plural, one {lot} other {lots}}",
+      "estado": "Status",
+      "proveedor": "Supplier",
+      "todosProveedores": "All suppliers",
+      "conExistencias": "In stock only"
+    },
+    "etiquetaFila": "Lot {codigo} of {producto}",
+    "movil": {
+      "vence": "Expires {fecha} · {texto}"
+    },
+    "vacio": {
+      "titulo": "No lots yet",
+      "descripcion": "A lot groups units that came in together and share an expiry date. Create the first one or receive it in a purchase."
+    },
+    "sinResultados": "No lot matches the search or filters.",
+    "errorCarga": "Could not load the lots.",
+    "masivas": {
+      "exportar": "Export"
+    },
+    "dialogo": {
+      "tituloNuevo": "New lot",
+      "tituloEditar": "Edit lot {codigo}",
+      "descripcionNuevo": "A lot groups units that came in together and share an expiry date. Saving it adds to that branch's stock and records its stock-in movement in the stock ledger.",
+      "descripcionEditar": "Change the code, expiry date or supplier. The quantity is changed with “Adjust quantity”.",
+      "guardar": "Save changes",
+      "crear": "Create lot",
+      "producto": "Product",
+      "sinManejoLotes": "This product does not have lot tracking enabled: sales will not deduct this lot by expiry.",
+      "codigo": "Lot code",
+      "codigoAyuda": "Unique per product. If left empty, one based on the date is suggested.",
+      "codigoPlaceholder": "L-2026-015",
+      "sucursal": "Branch",
+      "sucursalAyuda": "Inherits the active branch.",
+      "elegirSucursal": "Choose branch",
+      "cantidadInicial": "Opening quantity",
+      "cantidadAyuda": "Creates the stock-in entry in the stock ledger.",
+      "cantidadSinPermiso": "You need the permission to adjust stock.",
+      "uds": "units",
+      "vence": "Expiry date",
+      "venceAyuda": "Optional. Without a date, the lot never expires.",
+      "costo": "Unit cost",
+      "costoAyuda": "Feeds into the product's moving average cost.",
+      "proveedor": "Supplier",
+      "notas": "Notes",
+      "motivoEntrada": "New lot {codigo}",
+      "listoNuevo": "Lot {codigo} created",
+      "listoEdicion": "Lot {codigo} saved",
+      "listoDocumento": "Stock in recorded with adjustment {numero}.",
+      "error": "Could not save the lot",
+      "errores": {
+        "producto": "Choose the product.",
+        "sucursal": "Choose the branch that receives the opening quantity.",
+        "cantidad": "The quantity cannot be negative.",
+        "costo": "Enter the unit cost (0 or more)."
+      }
+    },
+    "ajustar": {
+      "titulo": "Adjust quantity of lot {codigo}",
+      "tituloBaja": "Write off lot {codigo}",
+      "descripcion": "The adjustment is recorded in the stock ledger with source “Adjustment” and this lot. A lot cannot be adjusted to a negative quantity.",
+      "descripcionBaja": "Everything left of the lot in the branch goes out as shrinkage, at average cost.",
+      "confirmar": "Record adjustment",
+      "confirmarBaja": "Write off",
+      "sucursal": "Branch",
+      "elegirSucursal": "Choose branch",
+      "opcionSucursal": "{sucursal} · {n} units today",
+      "nuevaCantidad": "New quantity",
+      "diferencia": "Difference: {signo}{n} units",
+      "uds": "units",
+      "motivo": "Reason",
+      "motivoAyuda": "Required: it goes into the movement's note.",
+      "motivoConteo": "Count difference",
+      "motivoOtro": "What reason?",
+      "listo": "Lot {codigo} adjusted",
+      "listoDocumento": "Adjustment {numero} applied.",
+      "error": "Could not adjust the lot",
+      "errores": {
+        "cantidad": "Enter the new quantity.",
+        "negativa": "The quantity cannot be negative.",
+        "sinCambio": "The quantity is the same as today.",
+        "motivo": "Enter the reason."
+      }
+    },
+    "eliminar": {
+      "titulo": "Delete lot {codigo}?",
+      "descripcion": "Lot {codigo} of “{producto}” has no stock or movements. It will be permanently deleted.",
+      "conExistencias": "Lot {codigo} of “{producto}” has {n} units in stock at {sucursal}. Only a lot without stock and without stock ledger movements can be deleted.",
+      "conHistoria": "Lot {codigo} has movements in the stock ledger: it cannot be deleted, to preserve traceability.",
+      "confirmar": "Delete",
+      "bloqueado": "Only a lot without stock or movements can be deleted.",
+      "listo": "Lot {codigo} deleted",
+      "error": "Could not delete the lot"
     }
   }
 }

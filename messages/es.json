@@ -17087,6 +17087,418 @@
       "eligeUno": "Elige al menos un producto"
     }
   },
+  "inventarioAjustes": {
+    "inventario": "Inventario",
+    "existencias": "Existencias",
+    "nAjustes": "{count, plural, =1 {# ajuste} other {{n} ajustes}}",
+    "sustantivo": {
+      "singular": "ajuste",
+      "plural": "ajustes"
+    },
+    "estados": {
+      "draft": "Borrador",
+      "posted": "Aplicado",
+      "cancelled": "Descartado"
+    },
+    "tipos": {
+      "entrada": "Entrada",
+      "salida": "Salida"
+    },
+    "razones": {
+      "physical_count": "Conteo físico",
+      "discrepancy": "Diferencia detectada",
+      "damaged": "Dañado",
+      "expired": "Vencido",
+      "theft": "Robo o pérdida",
+      "production_waste": "Desperdicio de producción",
+      "production_input": "Ingreso por producción",
+      "initial_setup": "Carga inicial",
+      "purchase_return": "Devolución de compra",
+      "audit": "Auditoría",
+      "system_error": "Corrección de error",
+      "other": "Otra"
+    },
+    "listado": {
+      "titulo": "Ajustes de inventario",
+      "tituloMovil": "Ajustes",
+      "subtituloMovil": "{total} · {borradores, plural, =0 {sin borradores} =1 {1 borrador} other {{n} borradores}}",
+      "lema": "conteos, mermas y correcciones",
+      "actualizar": "Actualizar",
+      "nuevo": "Nuevo ajuste",
+      "uds": "uds",
+      "nProductos": "{count, plural, =1 {1 producto} other {{n} productos}}",
+      "etiquetaFila": "Ajuste {codigo} de {sucursal}",
+      "errorCarga": "No se pudieron cargar los ajustes",
+      "errorSeleccionarTodo": "No se pudieron seleccionar todos los ajustes",
+      "sinResultados": "Prueba con otro número, producto o nota, o quita filtros.",
+      "vacio": {
+        "titulo": "Todavía no hay ajustes",
+        "descripcion": "Registra un conteo físico, una merma o una corrección: el ajuste deja su movimiento en el kardex."
+      },
+      "sinPermiso": {
+        "titulo": "No tienes acceso a los ajustes",
+        "descripcion": "Pide a un administrador el permiso de inventario para ver los ajustes."
+      },
+      "buscar": {
+        "placeholder": "Buscar por número, producto o nota",
+        "etiqueta": "Buscar ajustes"
+      },
+      "kpis": {
+        "etiqueta": "Resumen de ajustes",
+        "mes": "Ajustes del mes",
+        "enSucursales": "{count, plural, =0 {sin ajustes este mes} =1 {en 1 sucursal} other {en {n} sucursales}}",
+        "borradores": "Borradores",
+        "sinAplicar": "sin aplicar: no mueven existencias",
+        "ningunBorrador": "ninguno pendiente",
+        "aplicados": "Aplicados",
+        "conKardex": "con su movimiento en el kardex",
+        "impactoMes": "Impacto neto del mes",
+        "impactoDetalle": "faltantes menos sobrantes, al costo",
+        "sinCostos": "sin permiso para ver costos"
+      },
+      "aviso": {
+        "titulo": "{count, plural, =1 {1 borrador sin aplicar} other {{n} borradores sin aplicar}}, el más antiguo desde hace {dias, plural, =1 {1 día} other {# días}}",
+        "tituloHoy": "{count, plural, =1 {1 borrador sin aplicar} other {{n} borradores sin aplicar}}",
+        "descripcion": "Mientras sean borradores no cambian las existencias. Al aplicarlos se congela el stock que había al contar y se escribe el kardex.",
+        "verBorradores": "Ver borradores"
+      },
+      "filtros": {
+        "estado": "Estado",
+        "tipo": "Tipo",
+        "todos": "Todos",
+        "razon": "Razón",
+        "todas": "Todas",
+        "desde": "Desde",
+        "hasta": "Hasta",
+        "verN": "{count, plural, =1 {Ver 1 ajuste} other {Ver {n} ajustes}}"
+      },
+      "chips": {
+        "estado": "Estado: {estados}",
+        "desde": "Desde {dia}",
+        "hasta": "Hasta {dia}"
+      },
+      "columnas": {
+        "ajuste": "Ajuste",
+        "sucursal": "Sucursal",
+        "tipo": "Tipo",
+        "razon": "Razón",
+        "productos": "Productos",
+        "diferencia": "Diferencia",
+        "impacto": "Impacto",
+        "estado": "Estado"
+      },
+      "exportar": {
+        "boton": "Exportar",
+        "sinDatos": "No hay ajustes para exportar",
+        "listo": "{count, plural, =1 {Se exportó 1 ajuste} other {Se exportaron # ajustes}}",
+        "error": "No se pudo exportar"
+      },
+      "csv": {
+        "ajuste": "Ajuste",
+        "fecha": "Fecha",
+        "sucursal": "Sucursal",
+        "tipo": "Tipo",
+        "razon": "Razón",
+        "productos": "Productos",
+        "diferencia": "Diferencia",
+        "unidad": "Unidad",
+        "impacto": "Impacto",
+        "estado": "Estado",
+        "autor": "Registró",
+        "nota": "Nota"
+      },
+      "masivas": {
+        "aplicar": "Aplicar",
+        "exportar": "Exportar",
+        "imprimir": "Imprimir",
+        "imprimirUno": "Elige un solo ajuste para imprimir",
+        "descartar": "{count, plural, =1 {Descartar 1 borrador} other {Descartar # borradores}}",
+        "sinPermiso": "No tienes permiso para ajustar inventario",
+        "soloBorradores": "Solo se aplican borradores"
+      }
+    },
+    "acciones": {
+      "ver": "Ver detalle",
+      "editar": "Editar el borrador",
+      "duplicar": "Duplicar como nuevo conteo",
+      "verKardex": "Ver en el kardex",
+      "kardexAlAplicar": "El kardex se escribe al aplicar",
+      "sinPermiso": "No tienes permiso para ajustar inventario",
+      "aplicar": {
+        "accion": "Aplicar ajuste",
+        "titulo": "Aplicar el ajuste {codigo}",
+        "tituloVarios": "{count, plural, =1 {Aplicar 1 ajuste} other {Aplicar # ajustes}}",
+        "descripcion": "Se hace en una sola operación: o se aplica todo o no se aplica nada.",
+        "punto1": "Se congela el stock que hay ahora como «sistema al contar» y se recalcula la diferencia.",
+        "punto2": "Se escribe un movimiento en el kardex por cada producto con diferencia.",
+        "punto3": "Se registra un solo asiento contable por el valor neto al costo promedio.",
+        "confirmar": "Aplicar",
+        "listo": "{codigo} aplicado · {count, plural, =0 {sin movimientos} =1 {1 movimiento en el kardex} other {# movimientos en el kardex}}",
+        "listoVarios": "{count, plural, =1 {Se aplicó 1 ajuste} other {Se aplicaron # ajustes}}",
+        "yaAplicado": "{codigo} ya estaba aplicado: no se movió nada otra vez",
+        "recalculadoTitulo": "El stock cambió desde el conteo de {codigo}",
+        "recalculadoDescripcion": "{count, plural, =1 {En 1 producto la diferencia se recalculó} other {En # productos la diferencia se recalculó}} contra el stock al aplicar.",
+        "fallos": "{count, plural, =1 {1 ajuste no se aplicó} other {# ajustes no se aplicaron}}"
+      },
+      "descartar": {
+        "accion": "Descartar borrador",
+        "titulo": "Descartar el borrador {codigo}",
+        "tituloVarios": "{count, plural, =1 {Descartar 1 borrador} other {Descartar # borradores}}",
+        "descripcion": "El borrador queda descartado con su motivo; no se borra y no mueve existencias.",
+        "confirmar": "Descartar",
+        "consecuencia1": "No se escribe nada en el kardex ni en la contabilidad.",
+        "consecuencia2": "Ya no se podrá editar ni aplicar; puedes duplicarlo como nuevo conteo.",
+        "rapido1": "Conteo mal hecho",
+        "rapido2": "Borrador duplicado",
+        "rapido3": "Ya no aplica",
+        "listo": "{count, plural, =1 {Borrador descartado} other {# borradores descartados}}",
+        "fallos": "{count, plural, =1 {1 borrador no se descartó} other {# borradores no se descartaron}}"
+      }
+    },
+    "detalle": {
+      "titulo": "Ajuste {codigo}",
+      "tituloVacio": "Ajuste",
+      "cargando": "Cargando el ajuste",
+      "error": "No se pudo cargar el ajuste",
+      "volver": "Volver a ajustes",
+      "noEncontrado": {
+        "titulo": "Ajuste no encontrado",
+        "descripcion": "No existe o es de otra organización."
+      },
+      "sinPermiso": {
+        "titulo": "No tienes acceso a este ajuste",
+        "descripcion": "Pide a un administrador el permiso de inventario."
+      },
+      "contadoEl": "contado el {fecha}",
+      "registradoEl": "registrado el {fecha}",
+      "aplicadoEl": "aplicado el {fecha}",
+      "por": "por {nombre}",
+      "imprimir": "Imprimir",
+      "editar": "Editar",
+      "aplicar": "Aplicar ajuste",
+      "uds": "uds",
+      "sku": "SKU {sku}",
+      "seriales": "seriales {lista}",
+      "hoy": "hoy: {n}",
+      "kpis": {
+        "etiqueta": "Resumen del ajuste",
+        "productos": "Productos contados",
+        "faltantes": "Faltantes",
+        "sobrantes": "Sobrantes",
+        "enProductos": "{count, plural, =0 {ningún producto} =1 {en 1 producto} other {en {n} productos}}",
+        "impacto": "Impacto al costo",
+        "alCosto": "al costo promedio de la sucursal",
+        "sinCostos": "sin permiso para ver costos"
+      },
+      "avisoBorrador": {
+        "titulo": "Borrador: todavía no mueve existencias",
+        "descripcion": "Al aplicarlo se congela el stock que había al contar, {count, plural, =0 {no se escribe ningún movimiento} =1 {se escribe 1 movimiento en el kardex} other {se escriben {n} movimientos en el kardex}} y la diferencia queda valorada al costo promedio. Si alguien vendió desde el conteo, la diferencia se recalcula y te avisamos.",
+        "cambiados": "{count, plural, =1 {En 1 producto el stock cambió desde el conteo} other {En {n} productos el stock cambió desde el conteo}}: al aplicar se recalcula su diferencia."
+      },
+      "avisoAplicado": {
+        "titulo": "Aplicado · {count, plural, =0 {sin movimientos en el kardex} =1 {1 movimiento en el kardex} other {{n} movimientos en el kardex}}",
+        "descripcion": "Las cifras de «Sistema al contar» son las que había al aplicar y no cambian después. Hoy el detalle no las recalcula contra el stock actual.",
+        "recalculados": "{count, plural, =1 {Se recalculó la diferencia de 1 producto} other {Se recalculó la diferencia de # productos}} porque el stock cambió desde el conteo: {productos}.",
+        "asiento": "Asiento contable #{id}",
+        "sinAsiento": "Sin asiento contable: la organización no tiene una regla de ajuste activa o el valor es cero."
+      },
+      "avisoDescartado": {
+        "titulo": "Descartado el {fecha} por {nombre}",
+        "motivo": "Motivo: {motivo}"
+      },
+      "columnas": {
+        "producto": "Producto",
+        "lote": "Lote",
+        "sistema": "Sistema al contar",
+        "sistemaAntes": "Existencia antes",
+        "contado": "Contado",
+        "entra": "Entra",
+        "sale": "Sale",
+        "diferencia": "Diferencia",
+        "costo": "Costo prom.",
+        "impacto": "Impacto"
+      },
+      "renglones": {
+        "etiqueta": "Renglones del ajuste",
+        "tituloConteo": "Renglones del conteo · {count, plural, =1 {1 producto} other {{n} productos}} ({sin} sin diferencia)",
+        "titulo": "Renglones · {count, plural, =1 {1 producto} other {{n} productos}}",
+        "vacio": "Este ajuste no tiene renglones"
+      },
+      "movil": {
+        "lote": "Lote {lote}",
+        "sinLote": "Sin lote",
+        "sistema": "sistema {n}"
+      },
+      "movimientos": {
+        "titulo": "Movimientos generados en el kardex · {n}",
+        "etiqueta": "Movimientos del kardex generados por el ajuste",
+        "fecha": "Fecha",
+        "producto": "Producto",
+        "tipo": "Tipo",
+        "sucursalLote": "Sucursal · lote",
+        "cantidad": "Cantidad",
+        "costo": "Costo unit.",
+        "enKardex": "En el kardex",
+        "verKardex": "Ver en el kardex",
+        "saldoTras": "saldo tras el ajuste: {n}"
+      }
+    },
+    "formulario": {
+      "titulo": "Nuevo ajuste de inventario",
+      "tituloEditar": "Editar borrador de ajuste",
+      "tituloMovil": "Nuevo ajuste",
+      "tituloEditarMovil": "Editar borrador",
+      "subtitulo": "Cuenta lo que hay y el sistema calcula la diferencia contra lo que había al contar",
+      "migaNuevo": "Nuevo ajuste",
+      "migaEditar": "Editar borrador",
+      "cancelar": "Cancelar",
+      "guardarBorrador": "Guardar borrador",
+      "guardarYAplicar": "Guardar y aplicar",
+      "aplicar": "Aplicar ajuste",
+      "volver": "Volver a ajustes",
+      "cargando": "Cargando los productos",
+      "errorCarga": "No se pudo preparar el ajuste",
+      "noEncontrado": "El ajuste no existe o es de otra organización",
+      "revisa": "Revisa los campos marcados",
+      "borradorGuardado": "Borrador guardado: todavía no mueve existencias",
+      "yaEsta": "{nombre} ya está en el ajuste",
+      "uds": "uds",
+      "sku": "SKU {sku}",
+      "conSeriales": "con seriales",
+      "sinLote": "Sin lote",
+      "loteVence": "{lote} · vence {fecha}",
+      "loteVencido": "{lote} · vencido",
+      "loteDe": "Lote de {nombre}",
+      "cantidadDe": "{etiqueta} de {nombre}",
+      "costoDe": "Costo unitario de {nombre}",
+      "quitar": "Quitar {nombre}",
+      "alContar": "al contar: {n}",
+      "sinPermiso": {
+        "titulo": "No puedes ajustar inventario",
+        "descripcion": "Pide a un administrador el permiso «Ajustar inventario»."
+      },
+      "cerrado": {
+        "titulo": "Este ajuste ya no se puede editar",
+        "descripcion": "Un ajuste aplicado o descartado no cambia. Si hay que corregir algo, haz un ajuste nuevo o duplica este como nuevo conteo.",
+        "verAjuste": "Ver el ajuste"
+      },
+      "modos": {
+        "entrada": "Entrada",
+        "salida": "Salida",
+        "conteo": "Conteo"
+      },
+      "ayudaModo": {
+        "entrada": "Escribe cuánto entra de cada producto.",
+        "salida": "Escribe cuánto sale de cada producto. No puede dejar el stock en negativo.",
+        "conteo": "Escribe lo que contaste; el sistema calcula la diferencia contra lo que había."
+      },
+      "datos": {
+        "titulo": "Datos del ajuste",
+        "sucursal": "Sucursal",
+        "sucursalAyuda": "La del selector de arriba",
+        "elegirSucursal": "Elige una sucursal",
+        "razon": "Razón",
+        "fechaConteo": "Fecha del conteo",
+        "fecha": "Fecha",
+        "fechaAyuda": "Hora de {zona}",
+        "modo": "Tipo de ajuste",
+        "nota": "Nota",
+        "notaPlaceholder": "Por ejemplo: conteo de bodega después del cierre"
+      },
+      "productos": {
+        "titulo": "Productos · {n}",
+        "tituloConteo": "Productos contados · {n}",
+        "descripcion": "Escanea o busca; el sistema toma el stock de la sucursal y del lote.",
+        "descripcionConteo": "Escanea o busca; el sistema toma el stock de la sucursal y del lote en el momento de contar.",
+        "buscar": "Buscar producto para agregar…",
+        "escanear": "Escanear código",
+        "agregar": "Agregar productos",
+        "vacioTitulo": "Aún no hay productos",
+        "vacioDescripcion": "Escanea un código o busca por nombre o SKU.",
+        "tabla": "Productos del ajuste",
+        "dialogoTitulo": "Agregar productos al ajuste",
+        "dialogoDescripcion": "Costo promedio · existencias de {sucursal}"
+      },
+      "columnas": {
+        "producto": "Producto",
+        "lote": "Lote",
+        "sistema": "Sistema",
+        "existencia": "Existencia",
+        "contado": "Contado",
+        "entra": "Entra",
+        "sale": "Sale",
+        "diferencia": "Diferencia",
+        "queda": "Queda",
+        "costo": "Costo prom.",
+        "acciones": "Acciones"
+      },
+      "movil": {
+        "sistema": "Sistema: {n}",
+        "sinCantidad": "Falta la cantidad",
+        "sinDiferencia": "Sin diferencia",
+        "diferencia": "Diferencia {n}"
+      },
+      "seriales": {
+        "salen": "{count, plural, =1 {Serial que sale:} other {Seriales que salen (#):}}",
+        "entran": "{count, plural, =1 {Serial que entra:} other {Seriales que entran (#):}}",
+        "quitar": "Quitar el serial {serial}",
+        "elegir": "Elegir serial de {nombre}",
+        "elegirPlaceholder": "Elegir serial",
+        "ninguno": "No hay seriales en esta sucursal",
+        "escribir": "Escribe o escanea y Enter",
+        "escribirDe": "Serial nuevo de {nombre}",
+        "notaSalida": "El serial pasa a «Dañado» con el ajuste",
+        "notaEntrada": "Se registra como serial nuevo en la sucursal"
+      },
+      "errores": {
+        "sucursal": "Elige la sucursal",
+        "razon": "Elige la razón",
+        "fecha": "Indica la fecha y la hora",
+        "sinRenglones": "Agrega al menos un producto",
+        "cantidad": "Escribe una cantidad válida",
+        "negativo": "La salida deja el stock en negativo",
+        "costo": "Este sobrante no tiene costo promedio: escribe el costo unitario",
+        "seriales": "Faltan seriales: indica {n}"
+      },
+      "resumen": {
+        "productos": "Productos",
+        "faltantes": "Faltantes",
+        "sobrantes": "Sobrantes",
+        "impacto": "Impacto al costo",
+        "nota": "Guardar borrador no mueve existencias. «Guardar y aplicar» escribe el kardex en una sola transacción.",
+        "movil": "{productos, plural, =1 {1 producto} other {{n} productos}} · diferencia {diferencia} · impacto {impacto}"
+      },
+      "confirmar": {
+        "titulo": "Guardar y aplicar el ajuste",
+        "descripcion": "{count, plural, =0 {Ningún producto tiene diferencia} =1 {1 producto tiene diferencia} other {{n} productos tienen diferencia}}. Se guarda y se aplica en una sola transacción.",
+        "faltantes": "Faltantes: {n} ({productos, plural, =1 {1 producto} other {# productos}})",
+        "sobrantes": "Sobrantes: {n} ({productos, plural, =1 {1 producto} other {# productos}})",
+        "impacto": "Impacto al costo: {importe}",
+        "nota": "Si el stock cambió desde el conteo, la diferencia se recalcula al aplicar y te avisamos.",
+        "aplicar": "Aplicar"
+      }
+    },
+    "errores": {
+      "ajuste_no_encontrado": "El ajuste no existe o es de otra organización.",
+      "ajuste_cerrado": "El ajuste ya está aplicado o descartado: no se puede cambiar.",
+      "ajuste_descartado": "El ajuste está descartado: no se puede aplicar.",
+      "ajuste_aplicado": "El ajuste ya está aplicado: no se puede descartar.",
+      "modo_invalido": "Tipo de ajuste no válido.",
+      "razon_requerida": "Elige la razón del ajuste.",
+      "nota_muy_larga": "La nota es demasiado larga (máximo 1.000 caracteres).",
+      "sin_renglones": "Agrega al menos un producto.",
+      "demasiados_renglones": "Un ajuste admite como máximo 500 productos.",
+      "renglon_repetido": "El mismo producto y lote está dos veces.",
+      "fecha_invalida": "La fecha no es válida.",
+      "fecha_futura": "La fecha del conteo no puede ser futura.",
+      "costo_requerido": "Hay sobrantes sin costo: escribe su costo unitario.",
+      "costo_requerido_productos": "Estos sobrantes no tienen costo: {productos}. Escribe su costo unitario.",
+      "producto_sin_control_stock": "Un producto no controla existencias y no se puede ajustar.",
+      "motivo_requerido": "Escribe el motivo (al menos 3 caracteres).",
+      "motivo_muy_largo": "El motivo es demasiado largo.",
+      "desconocido": "No se pudo completar la operación."
+    }
+  },
   "inventarioSeriales": {
     "comun": {
       "titulo": "Seriales",
@@ -17827,6 +18239,714 @@
       "sinPrecio": "«{producto}» no tiene un precio vigente. Configúralo en Inventario.",
       "precioNoConsultado": "No se pudo consultar el precio de «{producto}». Revisa la conexión e intenta de nuevo.",
       "errorAgregar": "No se pudo agregar «{producto}» al carrito."
+    }
+  },
+  "inventarioStock": {
+    "titulo": "Stock",
+    "subtitulo": "{n} {count, plural, one {producto} other {productos}} con existencias en {sucursales, plural, one {# sucursal} other {# sucursales}}",
+    "subtituloMovil": "{productos} productos · {sucursales, plural, one {# sucursal} other {# sucursales}}",
+    "migas": {
+      "inventario": "Inventario",
+      "existencias": "Existencias"
+    },
+    "actualizar": "Actualizar",
+    "exportar": {
+      "boton": "Exportar",
+      "sinDatos": "No hay productos para exportar.",
+      "listo": "{count, plural, one {Se exportó # producto} other {Se exportaron # productos}}.",
+      "error": "No se pudo exportar el stock."
+    },
+    "csv": {
+      "producto": "Producto",
+      "sku": "SKU",
+      "variante": "Variante",
+      "categoria": "Categoría",
+      "porSucursal": "Por sucursal",
+      "existencia": "Existencia",
+      "reservado": "Reservado",
+      "disponible": "Disponible",
+      "minimo": "Mínimo",
+      "costo": "Costo promedio",
+      "valor": "Valor",
+      "estado": "Estado"
+    },
+    "estados": {
+      "disponible": "Disponible",
+      "bajo_minimo": "Bajo el mínimo",
+      "agotado": "Agotado",
+      "negativo": "Negativo"
+    },
+    "acciones": {
+      "kardex": "Ver kardex del producto",
+      "lotes": "Ver lotes ({n} {count, plural, one {vigente} other {vigentes}})",
+      "producto": "Ver producto",
+      "entrada": "Registrar entrada",
+      "salida": "Registrar salida",
+      "trasladar": "Trasladar a otra sucursal",
+      "minimo": "Definir stock mínimo",
+      "soloVariantes": "El stock vive en las variantes: elige una variante.",
+      "unaSucursal": "Solo hay una sucursal."
+    },
+    "chips": {
+      "estado": "Estado: {estados}",
+      "categoria": "Categoría: {nombre}",
+      "proveedor": "Proveedor: {nombre}",
+      "producto": "Producto: {nombre}",
+      "sinAgrupar": "Variantes por separado"
+    },
+    "filtros": {
+      "nota": "La sucursal se elige en el selector de arriba; aquí solo se filtra el listado.",
+      "verN": "Ver {n} {count, plural, one {producto} other {productos}}",
+      "estado": "Estado de las existencias",
+      "categoria": "Categoría",
+      "todasCategorias": "Todas las categorías",
+      "seguimientoTitulo": "Seguimiento",
+      "seguimientoAyuda": "«Sin seguimiento» = productos con el control de stock apagado: no se descuentan.",
+      "seguimiento": {
+        "todos": "Todos",
+        "lotes": "Con lotes",
+        "seriales": "Con seriales",
+        "sin": "Sin seguimiento"
+      },
+      "proveedor": "Proveedor",
+      "todosProveedores": "Todos los proveedores",
+      "agrupar": "Agrupar las variantes bajo su producto"
+    },
+    "columnas": {
+      "producto": "Producto",
+      "categoria": "Categoría",
+      "porSucursal": "Por sucursal",
+      "disponible": "Disponible",
+      "minimo": "Mínimo",
+      "costo": "Costo prom.",
+      "estado": "Estado",
+      "sku": "SKU {sku}",
+      "variantes": "{n} {count, plural, one {variante} other {variantes}}",
+      "conLotes": "con lotes",
+      "conSeriales": "con seriales",
+      "sinAsignarFila": "sin asignar a variante",
+      "uds": "{n} uds",
+      "reservadas": "{n} {count, plural, one {reservada} other {reservadas}}",
+      "sinAsignar": "{n} uds sin asignar a variante",
+      "sinAsignarAyuda": "Existencias registradas en el producto padre. No se suman: repártelas entre sus variantes con un ajuste."
+    },
+    "sustantivo": {
+      "singular": "producto",
+      "plural": "productos"
+    },
+    "kpis": {
+      "etiqueta": "Resumen del stock",
+      "conExistencias": "Productos con existencias",
+      "deSeguimiento": "de {n} con seguimiento de stock",
+      "valor": "Valor del inventario",
+      "valorDetalle": "al costo promedio de cada sucursal",
+      "valorSinPermiso": "Necesitas el permiso de costos",
+      "bajoMinimo": "Bajo el mínimo",
+      "reponer": "reponer · ver sugerido de compra",
+      "ningunoBajo": "ninguno por debajo del mínimo",
+      "agotadosNegativos": "Agotados o en negativo",
+      "agotadosDetalle": "{agotados} agotados · {negativos} en negativo"
+    },
+    "avisoNegativos": {
+      "titulo": "{n} {count, plural, one {producto tiene existencias negativas} other {productos tienen existencias negativas}}",
+      "descripcion": "Se vendieron más unidades de las registradas. Suele faltar una recepción de compra o un traslado. Revísalos antes del próximo conteo.",
+      "ver": "Ver solo negativos"
+    },
+    "avisoSinAsignar": "{n} {count, plural, one {producto con variantes tiene} other {productos con variantes tienen}} existencias en el producto padre, sin asignar a una variante. No se suman al disponible.",
+    "verSinAgrupar": "Ver las variantes por separado",
+    "buscar": {
+      "placeholder": "Buscar por producto, SKU, código de barras o lote",
+      "etiqueta": "Buscar en el stock"
+    },
+    "etiquetaFila": "Stock de {producto}",
+    "movil": {
+      "disponibles": "{n} disponibles",
+      "minimo": "mín. {n}"
+    },
+    "vacio": {
+      "titulo": "Aún no hay existencias",
+      "descripcion": "Cuando registres una entrada, recibas una compra o crees productos con stock inicial, aparecerán aquí.",
+      "accion": "Registrar entrada",
+      "productos": "Ir a productos"
+    },
+    "sinResultados": "Ningún producto coincide con la búsqueda o los filtros.",
+    "errorCarga": "No se pudo cargar el stock.",
+    "errorSeleccionar": "No se pudieron seleccionar todos los productos.",
+    "masivas": {
+      "trasladar": "Trasladar",
+      "unProducto": "Elige un solo producto (una variante).",
+      "conteo": "Ajuste por conteo",
+      "minimo": "Definir mínimo",
+      "exportar": "Exportar"
+    },
+    "nuevoMovimiento": {
+      "boton": "Nuevo movimiento",
+      "entrada": "Entrada de mercancía",
+      "entradaDetalle": "Compra sin orden, devolución, donación",
+      "salida": "Salida de mercancía",
+      "salidaDetalle": "Merma, consumo interno, daño",
+      "conteo": "Ajuste por conteo",
+      "conteoDetalle": "Cuadra el sistema con lo contado",
+      "traslado": "Traslado entre sucursales",
+      "trasladoDetalle": "Sale de una, entra en otra al recibir",
+      "recibirOc": "Recibir una orden de compra",
+      "recibirOcDetalle": "Abre Órdenes de compra"
+    },
+    "selectorProducto": {
+      "sku": "SKU {sku}",
+      "conLotes": "con lotes",
+      "disponible": "{n} disp.",
+      "padreConVariantes": "El stock vive en las variantes: elige una variante.",
+      "placeholder": "Elegir producto",
+      "buscar": "Buscar por nombre, SKU o código de barras",
+      "titulo": "Producto",
+      "vacio": "Escribe para buscar un producto.",
+      "sinResultados": "Ningún producto coincide.",
+      "error": "No se pudo buscar.",
+      "cambiar": "Cambiar producto"
+    },
+    "registrar": {
+      "tituloEntrada": "Registrar entrada",
+      "tituloSalida": "Registrar salida",
+      "descripcionEntrada": "Suma unidades a una sucursal. Queda en el kardex como «Ajuste · entrada» con su documento.",
+      "descripcionSalida": "Resta unidades con un motivo. Queda en el kardex como «Ajuste · salida» con su documento.",
+      "confirmarEntrada": "Registrar entrada",
+      "confirmarSalida": "Registrar salida",
+      "producto": "Producto",
+      "conSeriales": "Este producto maneja seriales: regístralo desde Ajustes, donde se eligen los seriales.",
+      "sucursal": "Sucursal",
+      "sucursalAyuda": "La del selector de arriba",
+      "elegirSucursal": "Elegir sucursal",
+      "cantidad": "Cantidad",
+      "uds": "uds",
+      "disponibleLote": "Disponible en el lote: {n}",
+      "disponibleSucursal": "Disponible en la sucursal: {n}",
+      "hoyHay": "Hoy hay {n}",
+      "costoUnitario": "Costo unitario",
+      "costoAyuda": "Recalcula el costo promedio",
+      "motivo": "Motivo",
+      "motivoOtro": "¿Cuál motivo?",
+      "lote": "Lote",
+      "loteAyudaEntrada": "Este producto maneja lotes: elige uno o crea el lote aquí mismo",
+      "elegirLote": "Elegir lote",
+      "sinLotes": "Sin lotes con existencias",
+      "loteVence": "vence {fecha}",
+      "loteVencio": "venció el {fecha}",
+      "opcionLote": "{codigo} · {vence} · {n} uds",
+      "crearLote": "+ Crear lote nuevo",
+      "codigoLote": "Código del lote",
+      "codigoLoteAyuda": "Si lo dejas vacío se propone uno con la fecha",
+      "venceLote": "Fecha de vencimiento",
+      "venceLoteAyuda": "Opcional. Sin fecha, el lote nunca vence",
+      "nota": "Nota",
+      "notaPlaceholder": "Factura del proveedor, responsable, observación…",
+      "avisoEntrada": "Se guarda como un ajuste aplicado y el kardex lo enlaza. Si la mercancía viene de una orden de compra, recíbela desde la orden para no duplicar la entrada.",
+      "avisoSalida": "La salida se valora al costo promedio de la sucursal ({costo} × {n} = {total}), nunca al precio de venta.",
+      "listoEntrada": "Entrada registrada",
+      "listoSalida": "Salida registrada",
+      "listoDocumento": "Ajuste {numero} aplicado.",
+      "errorEntrada": "No se pudo registrar la entrada",
+      "errorSalida": "No se pudo registrar la salida",
+      "errores": {
+        "requerido": "Este campo es obligatorio.",
+        "mayorQueCero": "Debe ser mayor que cero.",
+        "noNegativo": "No puede ser negativo.",
+        "superaDisponible": "Supera lo disponible ({n}).",
+        "conSeriales": "Los productos con seriales se registran desde Ajustes."
+      }
+    },
+    "motivos": {
+      "entrada": {
+        "compra_sin_orden": "Compra sin orden",
+        "devolucion_cliente": "Devolución de cliente",
+        "donacion": "Donación",
+        "sobrante": "Sobrante encontrado",
+        "produccion_propia": "Producción propia",
+        "otro": "Otro"
+      },
+      "salida": {
+        "merma_vencido": "Merma · producto vencido",
+        "merma_rotura": "Merma por rotura",
+        "consumo_interno": "Consumo interno",
+        "danio": "Daño",
+        "perdida": "Pérdida o robo",
+        "muestra": "Muestra o degustación",
+        "otro": "Otro"
+      }
+    },
+    "minimo": {
+      "titulo": "Stock mínimo · {nombre}",
+      "descripcion": "Cuando lo disponible baje de este número, el producto aparece en «Bajo el mínimo» y en el sugerido de compra.",
+      "hoyHay": "Hoy hay {n}",
+      "uds": "uds",
+      "aviso": "Solo ves las sucursales a las que perteneces. Un mínimo en 0 apaga el aviso.",
+      "guardar": "Guardar mínimos",
+      "listo": "Mínimos guardados.",
+      "error": "No se pudieron guardar los mínimos"
+    },
+    "errores": {
+      "motivo_requerido": "Indica el motivo.",
+      "razon_requerida": "Indica el motivo (máximo 60 caracteres).",
+      "costo_invalido": "El costo unitario no puede ser negativo.",
+      "costo_requerido": "Indica el costo unitario: el producto aún no tiene costo.",
+      "producto_con_variantes": "El stock vive en las variantes: elige una variante, no el producto padre.",
+      "producto_sin_seguimiento": "Este producto no lleva control de stock.",
+      "producto_sin_control_stock": "Este producto no lleva control de stock.",
+      "producto_con_seriales": "Este producto maneja seriales: regístralo desde Ajustes.",
+      "producto_eliminado": "El producto está eliminado.",
+      "lote_requerido": "Este producto maneja lotes: elige el lote.",
+      "lote_repetido": "Ya existe un lote con ese código para este producto.",
+      "lote_con_existencias": "El lote todavía tiene existencias o reservas: no se puede eliminar.",
+      "lote_con_movimientos": "El lote tiene movimientos en el kardex: no se puede eliminar.",
+      "proveedor_invalido": "El proveedor no pertenece a la organización.",
+      "sucursal_requerida": "Elige la sucursal donde entra la cantidad inicial.",
+      "fecha_invalida": "La fecha no es válida.",
+      "items_invalidos": "Los datos enviados no son válidos."
+    }
+  },
+  "inventarioMovimientos": {
+    "titulo": "Movimientos",
+    "subtitulo": "{n} {count, plural, one {movimiento} other {movimientos}} · todo lo que entra y sale, con su documento",
+    "subtituloMovil": "{n} en {rango}",
+    "todoElHistorial": "todo el historial",
+    "migas": {
+      "inventario": "Inventario",
+      "existencias": "Existencias"
+    },
+    "actualizar": "Actualizar",
+    "exportar": {
+      "boton": "Exportar",
+      "sinDatos": "No hay movimientos para exportar.",
+      "listo": "{count, plural, one {Se exportó # movimiento} other {Se exportaron # movimientos}}.",
+      "error": "No se pudieron exportar los movimientos."
+    },
+    "csv": {
+      "fecha": "Fecha",
+      "hora": "Hora",
+      "producto": "Producto",
+      "sku": "SKU",
+      "tipo": "Tipo",
+      "documento": "Documento",
+      "sucursal": "Sucursal",
+      "lote": "Lote",
+      "entrada": "Entrada",
+      "salida": "Salida",
+      "costo": "Costo unitario",
+      "usuario": "Registrado por",
+      "nota": "Nota"
+    },
+    "chips": {
+      "periodo": "Periodo: {rango}",
+      "tipo": "Tipo: {tipos}",
+      "producto": "Producto: {nombre}",
+      "lote": "Lote: {codigo}",
+      "usuario": "Registró: {nombre}",
+      "sinDocumento": "Sin documento"
+    },
+    "filtros": {
+      "nota": "La sucursal se elige en el selector de arriba.",
+      "verN": "Ver {n} {count, plural, one {movimiento} other {movimientos}}",
+      "periodo": "Periodo",
+      "periodoAyuda": "En la zona horaria de la organización, no en UTC.",
+      "direccion": "Dirección",
+      "todas": "Todas",
+      "entradas": "Entradas",
+      "salidas": "Salidas",
+      "tipo": "Tipo de movimiento",
+      "tipoAyuda": "Venta, venta web, recepción de compra, traslado, ajuste, devolución…",
+      "todosTipos": "Todos los tipos ({n})",
+      "ingredientes": "Solo consumo de ingredientes",
+      "ingredientesAyuda": "Salidas de productos que son ingrediente de una receta."
+    },
+    "columnas": {
+      "fecha": "Fecha",
+      "producto": "Producto",
+      "tipo": "Tipo",
+      "documento": "Documento",
+      "sucursalLote": "Sucursal · lote",
+      "entrada": "Entrada",
+      "salida": "Salida",
+      "costo": "Costo unit."
+    },
+    "sku": "SKU {sku}",
+    "sinLote": "sin lote",
+    "sinCosto": "sin costo",
+    "uds": "{n} uds",
+    "por": "por {nombre}",
+    "loteCorto": "lote {codigo}",
+    "porUnidad": "{costo} c/u",
+    "sinDocumento": "Sin documento",
+    "cargaInicial": "carga inicial",
+    "edicionDirecta": "edición directa",
+    "sustantivo": {
+      "singular": "movimiento",
+      "plural": "movimientos"
+    },
+    "kpis": {
+      "etiqueta": "Resumen del periodo",
+      "entradas": "Entradas del periodo",
+      "entradasDetalle": "compras, traslados y ajustes",
+      "salidas": "Salidas del periodo",
+      "salidasDetalle": "ventas, mermas y traslados",
+      "valorSalidas": "Valor de las salidas",
+      "valorSalidasDetalle": "al costo promedio, no al precio",
+      "sinPermisoCostos": "Necesitas el permiso de costos",
+      "sinDocumento": "Sin documento",
+      "sinDocumentoDetalle": "cargas iniciales y ediciones directas"
+    },
+    "avisoHistorico": {
+      "titulo": "Antes del {fecha} el kardex no guardaba recepciones de compra, traslados ni devoluciones",
+      "descripcion": "La base los rechazaba en silencio y las existencias sí cambiaban. Desde entonces se registran; lo anterior no se puede reconstruir con certeza.",
+      "verDescuadres": "Ver descuadres"
+    },
+    "buscar": {
+      "placeholder": "Buscar por producto, SKU, documento o lote",
+      "etiqueta": "Buscar movimientos"
+    },
+    "etiquetaFila": "Movimiento de {producto} del {fecha}",
+    "vacio": {
+      "titulo": "Aún no hay movimientos",
+      "descripcion": "Las ventas, compras, ajustes y traslados aparecerán aquí con su documento."
+    },
+    "sinResultados": "Ningún movimiento coincide con la búsqueda o los filtros.",
+    "errorCarga": "No se pudieron cargar los movimientos.",
+    "acciones": {
+      "abrir": "Abrir {documento}",
+      "kardex": "Ver kardex del producto",
+      "lote": "Ver lote {codigo}",
+      "producto": "Ver producto",
+      "copiar": "Copiar el número del documento",
+      "copiado": "Se copió {numero}.",
+      "soloUsuario": "Solo los de {nombre}",
+      "corregir": "Corregir con un ajuste"
+    }
+  },
+  "inventarioKardex": {
+    "titulo": "Kardex",
+    "actualizar": "Actualizar",
+    "sku": "SKU {sku}",
+    "nMovimientos": "{n} {count, plural, one {movimiento} other {movimientos}}",
+    "saldoPorSucursal": "saldo corrido por sucursal",
+    "subtituloMovil": "{nombre} · {n} movimientos",
+    "migas": {
+      "inventario": "Inventario",
+      "movimientos": "Movimientos"
+    },
+    "menu": {
+      "descuadres": "Ver descuadres con las existencias",
+      "movimientos": "Ir a movimientos",
+      "producto": "Ver producto"
+    },
+    "exportar": {
+      "boton": "Exportar",
+      "titulo": "Exportar el kardex",
+      "descripcion": "Elige el alcance: todo lo que muestran los filtros, solo esta página o todo el histórico del producto.",
+      "confirmar": "Exportar",
+      "alcance": {
+        "filtros": "Todo lo que muestran los filtros ({n} movimientos)",
+        "pagina": "Solo esta página ({n} movimientos)",
+        "historico": "Todo el histórico del producto, sin filtros"
+      },
+      "historicoSinProducto": "Elige un producto en los filtros para exportar su histórico.",
+      "formato": "Formato CSV. Las fechas salen en la zona horaria de la organización, no en UTC.",
+      "sinDatos": "No hay movimientos para exportar.",
+      "listo": "{count, plural, one {Se exportó # movimiento} other {Se exportaron # movimientos}}.",
+      "error": "No se pudo exportar el kardex."
+    },
+    "csv": {
+      "fecha": "Fecha",
+      "hora": "Hora",
+      "producto": "Producto",
+      "sku": "SKU",
+      "tipo": "Tipo",
+      "documento": "Documento",
+      "sucursal": "Sucursal",
+      "lote": "Lote",
+      "entrada": "Entrada",
+      "salida": "Salida",
+      "saldo": "Saldo",
+      "costo": "Costo unitario",
+      "costoPromedio": "Costo promedio tras el movimiento",
+      "usuario": "Registrado por",
+      "nota": "Nota"
+    },
+    "acciones": {
+      "exportarProducto": "Exportar solo este producto"
+    },
+    "chips": {
+      "producto": "Producto: {nombre}",
+      "lote": "Lote: {codigo}",
+      "periodo": "Periodo: {rango}",
+      "tipo": "Tipo: {tipos}",
+      "usuario": "Registró: {nombre}"
+    },
+    "columnas": {
+      "fecha": "Fecha",
+      "tipo": "Tipo",
+      "documento": "Documento",
+      "producto": "Producto",
+      "sucursal": "Sucursal",
+      "lote": "Lote",
+      "entrada": "Entrada",
+      "salida": "Salida",
+      "saldo": "Saldo",
+      "costo": "Costo unit."
+    },
+    "saldoNegativo": "Saldo negativo",
+    "saldoCorto": "Saldo {n}",
+    "sustantivo": {
+      "singular": "movimiento",
+      "plural": "movimientos"
+    },
+    "kpis": {
+      "etiqueta": "Resumen del kardex",
+      "entradas": "Entradas del periodo",
+      "entradasDetalle": "compras, ajustes y traslados",
+      "salidas": "Salidas del periodo",
+      "salidasDetalle": "ventas, mermas y traslados",
+      "saldoCierre": "Saldo al cierre",
+      "contraExistencias": "contra {n} en existencias",
+      "valor": "Valor del saldo",
+      "valorDetalle": "al costo promedio móvil",
+      "sinPermisoCostos": "Necesitas el permiso de costos"
+    },
+    "cuadre": {
+      "cuadra": "El kardex cuadra con las existencias",
+      "noCuadra": "El kardex no cuadra con las existencias",
+      "detalle": "{kardex} uds de saldo contra {existencias} en existencias.",
+      "faltan": "Faltan {n} uds en el kardex.",
+      "sobran": "Sobran {n} uds en el kardex.",
+      "causa": "Casi siempre son traslados enviados que nadie recibió, cargas sin movimiento o entradas que la base rechazó antes.",
+      "verDetalle": "Ver detalle del cuadre",
+      "verN": "Ver {count, plural, one {el descuadre} other {los {n} descuadres}}"
+    },
+    "buscar": {
+      "placeholder": "Buscar por producto, SKU, documento o lote",
+      "etiqueta": "Buscar en el kardex"
+    },
+    "filtros": {
+      "nota": "La sucursal no se filtra aquí: manda el selector de arriba.",
+      "verN": "Ver {n} {count, plural, one {movimiento} other {movimientos}}",
+      "producto": "Producto",
+      "productoAyuda": "Escribe nombre, SKU o código de barras",
+      "tipo": "Tipo de movimiento",
+      "tipoAyuda": "Venta, compra, traslado, ajuste, merma…",
+      "periodo": "Rango de fechas",
+      "periodoAyuda": "En la zona horaria de la organización, no en UTC.",
+      "lote": "Lote",
+      "loteAyuda": "Solo si el producto maneja lotes",
+      "todosLotes": "Todos"
+    },
+    "vacio": {
+      "titulo": "Aún no hay movimientos",
+      "descripcion": "Cada venta, compra, ajuste o traslado deja aquí su entrada o salida con el saldo."
+    },
+    "sinResultados": "Ningún movimiento coincide con la búsqueda o los filtros.",
+    "errorCarga": "No se pudo cargar el kardex.",
+    "descuadres": {
+      "titulo": "Descuadres entre kardex y existencias",
+      "descripcion": "Productos y sucursales donde la suma de entradas y salidas no da la existencia registrada. Aquí solo se muestran: no se corrigen.",
+      "cerrar": "Cerrar",
+      "resumen": "{n} {count, plural, one {par producto-sucursal no cuadra} other {pares producto-sucursal no cuadran}}: {kardex} uds en el kardex contra {existencias} en existencias.",
+      "sinHistoria": "Además, {n} {count, plural, one {fila de stock no tiene} other {filas de stock no tienen}} ningún movimiento que la explique.",
+      "cuadraTitulo": "Todo cuadra",
+      "cuadraDescripcion": "El saldo del kardex coincide con las existencias en este alcance.",
+      "producto": "Producto",
+      "sucursal": "Sucursal",
+      "kardex": "Kardex",
+      "existencias": "Existencias",
+      "diferencia": "Diferencia",
+      "ultimo": "Último movimiento",
+      "mostrando": "Se muestran {n} de {total}, los de mayor diferencia.",
+      "nota": "La diferencia es existencias menos kardex. Se corregirá con un movimiento de apertura que explique el saldo, sin tocar las cantidades."
+    }
+  },
+  "inventarioLotes": {
+    "titulo": "Lotes",
+    "subtitulo": "{n} {count, plural, one {lote} other {lotes}} · {uds} uds con trazabilidad y vencimiento",
+    "subtituloMovil": "{n} lotes · {porVencer} por vencer",
+    "migas": {
+      "inventario": "Inventario",
+      "existencias": "Existencias"
+    },
+    "actualizar": "Actualizar",
+    "nuevo": "Nuevo lote",
+    "exportar": {
+      "boton": "Exportar",
+      "sinDatos": "No hay lotes para exportar.",
+      "listo": "{count, plural, one {Se exportó # lote} other {Se exportaron # lotes}}.",
+      "error": "No se pudieron exportar los lotes."
+    },
+    "csv": {
+      "lote": "Lote",
+      "producto": "Producto",
+      "sku": "SKU",
+      "sucursal": "Sucursal",
+      "vence": "Vence",
+      "dias": "Días para vencer",
+      "cantidad": "Cantidad",
+      "reservado": "Reservado",
+      "costo": "Costo promedio",
+      "proveedor": "Proveedor",
+      "estado": "Estado",
+      "creado": "Creado"
+    },
+    "acciones": {
+      "movimientos": "Ver movimientos del lote",
+      "editar": "Editar lote",
+      "ajustar": "Ajustar cantidad",
+      "baja": "Dar de baja por merma",
+      "sinExistencias": "El lote no tiene existencias en esta sucursal.",
+      "rastrear": "Rastrear el lote",
+      "eliminar": "Eliminar lote",
+      "conExistencias": "Solo se puede eliminar un lote sin existencias.",
+      "conHistoria": "El lote tiene movimientos en el kardex."
+    },
+    "sinCaducidad": "sin caducidad",
+    "chips": {
+      "producto": "Producto: {nombre}",
+      "proveedor": "Proveedor: {nombre}",
+      "conExistencias": "Con existencias",
+      "umbral": "Por vencer: {dias} días"
+    },
+    "columnas": {
+      "lote": "Lote",
+      "producto": "Producto",
+      "sucursal": "Sucursal",
+      "vence": "Vence",
+      "cantidad": "Cantidad",
+      "proveedor": "Proveedor",
+      "estado": "Estado"
+    },
+    "creado": "creado {fecha}",
+    "sku": "SKU {sku}",
+    "uds": "{n} uds",
+    "sustantivo": {
+      "singular": "lote",
+      "plural": "lotes"
+    },
+    "menu": {
+      "umbral": "Avisar {dias} días antes de vencer",
+      "actual": "En uso",
+      "rastrear": "Rastrear un lote",
+      "rastrearDetalle": "Abre Trazabilidad"
+    },
+    "kpis": {
+      "etiqueta": "Resumen de lotes",
+      "vigentes": "Lotes vigentes",
+      "udsDisponibles": "{n} uds disponibles",
+      "porVencer": "Por vencer",
+      "porVencerDetalle": "en {dias} días o menos · {n} uds",
+      "vencidos": "Vencidos",
+      "vencidosDetalle": "{n} uds que el POS no vende por vencimiento",
+      "riesgo": "Valor en riesgo",
+      "riesgoDetalle": "vencidos y por vencer, al costo",
+      "sinPermisoCostos": "Necesitas el permiso de costos"
+    },
+    "avisoVencidos": {
+      "titulo": "{n} {count, plural, one {lote vencido sigue} other {lotes vencidos siguen}} contando como existencias",
+      "descripcionValor": "{n} uds por {valor}. Decide si se dan de baja por merma o se liberan para la venta.",
+      "descripcion": "{n} uds. Decide si se dan de baja por merma o se liberan para la venta.",
+      "ver": "Ver solo vencidos"
+    },
+    "buscar": {
+      "placeholder": "Buscar por código de lote, producto o SKU",
+      "etiqueta": "Buscar lotes"
+    },
+    "filtros": {
+      "nota": "La sucursal se elige en el selector de arriba.",
+      "verN": "Ver {n} {count, plural, one {lote} other {lotes}}",
+      "estado": "Estado",
+      "proveedor": "Proveedor",
+      "todosProveedores": "Todos los proveedores",
+      "conExistencias": "Solo con existencias"
+    },
+    "etiquetaFila": "Lote {codigo} de {producto}",
+    "movil": {
+      "vence": "Vence {fecha} · {texto}"
+    },
+    "vacio": {
+      "titulo": "Aún no hay lotes",
+      "descripcion": "Un lote agrupa las unidades que entraron juntas y comparten vencimiento. Crea el primero o recíbelo en una compra."
+    },
+    "sinResultados": "Ningún lote coincide con la búsqueda o los filtros.",
+    "errorCarga": "No se pudieron cargar los lotes.",
+    "masivas": {
+      "exportar": "Exportar"
+    },
+    "dialogo": {
+      "tituloNuevo": "Nuevo lote",
+      "tituloEditar": "Editar lote {codigo}",
+      "descripcionNuevo": "Un lote agrupa las unidades que entraron juntas y comparten vencimiento. Al guardarlo se suman las existencias de esa sucursal y queda su movimiento de entrada en el kardex.",
+      "descripcionEditar": "Cambia el código, el vencimiento o el proveedor. La cantidad se cambia con «Ajustar cantidad».",
+      "guardar": "Guardar cambios",
+      "crear": "Crear lote",
+      "producto": "Producto",
+      "sinManejoLotes": "Este producto no tiene activado el manejo de lotes: la venta no descontará este lote por vencimiento.",
+      "codigo": "Código de lote",
+      "codigoAyuda": "Único por producto. Si lo dejas vacío se propone uno con la fecha.",
+      "codigoPlaceholder": "L-2026-015",
+      "sucursal": "Sucursal",
+      "sucursalAyuda": "Hereda la sucursal activa.",
+      "elegirSucursal": "Elegir sucursal",
+      "cantidadInicial": "Cantidad inicial",
+      "cantidadAyuda": "Genera la entrada en el kardex.",
+      "cantidadSinPermiso": "Necesitas el permiso de ajustar existencias.",
+      "uds": "uds",
+      "vence": "Fecha de vencimiento",
+      "venceAyuda": "Opcional. Sin fecha, el lote nunca vence.",
+      "costo": "Costo unitario",
+      "costoAyuda": "Entra al costo promedio móvil del producto.",
+      "proveedor": "Proveedor",
+      "notas": "Notas",
+      "motivoEntrada": "Lote nuevo {codigo}",
+      "listoNuevo": "Lote {codigo} creado",
+      "listoEdicion": "Lote {codigo} guardado",
+      "listoDocumento": "Entrada registrada con el ajuste {numero}.",
+      "error": "No se pudo guardar el lote",
+      "errores": {
+        "producto": "Elige el producto.",
+        "sucursal": "Elige la sucursal donde entra la cantidad inicial.",
+        "cantidad": "La cantidad no puede ser negativa.",
+        "costo": "Indica el costo unitario (0 o más)."
+      }
+    },
+    "ajustar": {
+      "titulo": "Ajustar cantidad del lote {codigo}",
+      "tituloBaja": "Dar de baja el lote {codigo}",
+      "descripcion": "El ajuste queda en el kardex con origen «Ajuste» y este lote. No se puede ajustar un lote a una cantidad negativa.",
+      "descripcionBaja": "Sale todo lo que queda del lote en la sucursal, al costo promedio, como merma.",
+      "confirmar": "Registrar ajuste",
+      "confirmarBaja": "Dar de baja",
+      "sucursal": "Sucursal",
+      "elegirSucursal": "Elegir sucursal",
+      "opcionSucursal": "{sucursal} · {n} uds hoy",
+      "nuevaCantidad": "Nueva cantidad",
+      "diferencia": "Diferencia: {signo}{n} uds",
+      "uds": "uds",
+      "motivo": "Motivo",
+      "motivoAyuda": "Obligatorio: viaja a la nota del movimiento.",
+      "motivoConteo": "Diferencia de conteo",
+      "motivoOtro": "¿Cuál motivo?",
+      "listo": "Lote {codigo} ajustado",
+      "listoDocumento": "Ajuste {numero} aplicado.",
+      "error": "No se pudo ajustar el lote",
+      "errores": {
+        "cantidad": "Indica la nueva cantidad.",
+        "negativa": "La cantidad no puede ser negativa.",
+        "sinCambio": "La cantidad es la misma de hoy.",
+        "motivo": "Indica el motivo."
+      }
+    },
+    "eliminar": {
+      "titulo": "¿Eliminar el lote {codigo}?",
+      "descripcion": "El lote {codigo} de «{producto}» no tiene existencias ni movimientos. Se elimina de forma definitiva.",
+      "conExistencias": "El lote {codigo} de «{producto}» tiene {n} uds en existencias en {sucursal}. Solo se puede eliminar un lote sin existencias y sin movimientos de kardex.",
+      "conHistoria": "El lote {codigo} tiene movimientos en el kardex: no se puede eliminar para no perder la trazabilidad.",
+      "confirmar": "Eliminar",
+      "bloqueado": "Solo se puede eliminar un lote sin existencias ni movimientos.",
+      "listo": "Lote {codigo} eliminado",
+      "error": "No se pudo eliminar el lote"
     }
   }
 }

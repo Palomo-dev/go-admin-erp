@@ -82,6 +82,26 @@ export const lineaFacturaSchema = z
     total_line: numeroOpcional,
     discount_amount: numeroOpcional.min(0).nullable().optional(),
     serial_ids: z.array(z.number().int().positive()).max(1000).optional(),
+    /** Nota de la línea: sale en el PDF (formulario v2). */
+    note: z.string().trim().max(500).nullable().optional(),
+    /**
+     * Impuestos de la línea cuando lleva más de uno (decisión 5): el detalle
+     * queda en `invoice_items.impuestos_linea`; `tax_rate` es la suma y
+     * `tax_code` el del primero.
+     */
+    taxes: z
+      .array(
+        z
+          .object({
+            id: z.string().max(60),
+            codigo: z.string().max(40).nullable(),
+            nombre: z.string().max(120),
+            tarifa: numeroOpcional.min(0).max(100),
+          })
+          .strip(),
+      )
+      .max(10)
+      .optional(),
   })
   .strip();
 
@@ -107,6 +127,8 @@ export const guardarFacturaSchema = z
     commission_type: z.enum(['salesperson', 'intermediation_sale', 'none']).nullable().optional(),
     commission_method: z.enum(['percentage', 'fixed_amount']).nullable().optional(),
     include_in_cash_register: z.boolean().optional(),
+    /** Términos y condiciones (van al PDF, aparte de las notas para el cliente). */
+    terms_conditions: z.string().max(20000).nullable().optional(),
     applied_taxes: z.array(z.object({ tax_code: z.string().trim().min(1).max(40), tax_rate: numeroOpcional.min(0).max(100).optional() }).strip()).max(50).optional(),
     items: z.array(lineaFacturaSchema).min(1).max(500),
   })

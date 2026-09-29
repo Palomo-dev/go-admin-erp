@@ -3849,6 +3849,20 @@
         "elegirClienteAtajo": "Elegir cliente",
         "elegirProveedor": "Elegir proveedor",
         "elegirProveedorAtajo": "Elegir proveedor"
+      },
+      "errores": {
+        "revisa": "{n, plural, one {Revisa # campo} other {Revisa # campos}}"
+      },
+      "salir": {
+        "titulo": "¿Salir sin guardar?",
+        "descripcion": "Tienes cambios sin guardar en este documento.",
+        "seguir": "Seguir editando",
+        "salirSinGuardar": "Salir sin guardar",
+        "guardarYSalir": "Guardar borrador y salir",
+        "cancelar": "Cancelar"
+      },
+      "atajos": {
+        "titulo": "Atajos"
       }
     },
     "selectorVariantes": {
@@ -12598,7 +12612,13 @@
       "con_pagos": "La factura tiene pagos: usa una nota crédito.",
       "fe_aceptada": "La DIAN ya aceptó la factura: usa una nota crédito.",
       "datos_invalidos": "Revisa los datos.",
-      "error_desconocido": "No se pudo completar. Inténtalo de nuevo."
+      "error_desconocido": "No se pudo completar. Inténtalo de nuevo.",
+      "numero_duplicado": "Ya existe una factura con ese número.",
+      "sucursal_invalida": "La sucursal no es de la organización.",
+      "cliente_invalido": "El cliente no es de la organización.",
+      "linea_invalida": "Revisa las líneas: descripción, cantidad y precio.",
+      "producto_invalido": "Un producto de la factura no es de la organización.",
+      "vendedor_invalido": "El vendedor no es miembro de la organización."
     },
     "listado": {
       "sustantivo": {
@@ -13097,6 +13117,151 @@
       "noAplica": "N/A",
       "preciosIncluyen": "* Los precios incluyen impuestos",
       "impuestosSobreSubtotal": "* Los impuestos se calculan sobre el subtotal"
+    },
+    "v2": {
+      "tituloNueva": "Nueva factura de venta",
+      "tituloEditar": "Editar factura · borrador",
+      "tituloFactura": "Factura {numero}",
+      "migaFinanzas": "Finanzas",
+      "migaListado": "Facturas de venta",
+      "borrador": "Borrador",
+      "borradorSinGuardar": "Borrador sin guardar",
+      "emitidaEl": "Emitida el {fecha}",
+      "usuario": "Usuario",
+      "guardarBorrador": "Guardar borrador",
+      "guardarCambios": "Guardar cambios",
+      "emitir": "Emitir factura",
+      "motivoEmitir": "Elige un cliente y agrega una línea",
+      "buscarProducto": "Buscar producto",
+      "itemManual": "Agregar ítem manual",
+      "total": "Total",
+      "volverListado": "Volver a facturas de venta",
+      "copiaDe": "Copia de la factura {numero}: revisa cliente, fechas y cantidades antes de emitir.",
+      "guardado": "Borrador guardado",
+      "emitida": "Factura {numero} emitida",
+      "faltantesAviso": "{n, plural, one {Un producto no tiene existencias suficientes: al emitir se pedirá ajustar.} other {# productos no tienen existencias suficientes: al emitir se pedirá ajustar.}}",
+      "feError": "La factura se emitió, pero la DIAN respondió con un error: {error}",
+      "feNoEnviada": "La factura se emitió, pero no se pudo enviar a la DIAN. Reintenta desde el detalle.",
+      "errorCarga": "No se pudo cargar la factura.",
+      "sinImpuestoAviso": "{n, plural, one {Una línea se facturará al 0 %.} other {# líneas se facturarán al 0 %.}}",
+      "configurarImpuestos": "Configurar impuestos",
+      "secciones": {
+        "documento": "Datos del documento",
+        "cliente": "Cliente",
+        "lineas": "Líneas de la factura ({n})",
+        "lineasEtiqueta": "Líneas de la factura",
+        "notas": "Notas y términos",
+        "comision": "Comisión del vendedor",
+        "impuestos": "Impuestos de la organización"
+      },
+      "campos": {
+        "numeracion": "Numeración",
+        "numeroAlEmitir": "Se asigna al emitir con la resolución de la sucursal.",
+        "numeroManual": "Número manual",
+        "numeroAutomatico": "Usar numeración",
+        "numeroManualAyuda": "Solo para contingencia o migración. No puede repetirse.",
+        "numeroEjemplo": "Ej.: FV-1043",
+        "emision": "Fecha de emisión",
+        "terminos": "Términos de pago",
+        "venceEl": "Emisión + {dias, plural, =0 {0 días} one {# día} other {# días}} = {fecha}",
+        "contado": "Contado",
+        "dias": "{n, plural, one {# día} other {# días}}",
+        "personalizado": "Personalizado",
+        "diasPersonalizados": "Días de plazo",
+        "diasUnidad": "días",
+        "vence": "Fecha de vencimiento",
+        "sucursal": "Sucursal",
+        "elegir": "Elegir…",
+        "moneda": "Moneda",
+        "formaPago": "Forma de pago",
+        "sinMetodos": "Sin métodos de pago",
+        "oportunidad": "Oportunidad del CRM",
+        "oportunidadAyuda": "Se cargaron los productos y el cliente de la oportunidad.",
+        "sinOportunidad": "Sin oportunidad asociada",
+        "fe": "Factura electrónica al emitir",
+        "feGlobal": "Global",
+        "feAyuda": "Se envía a la DIAN cuando emitas; el borrador nunca se envía.",
+        "arqueo": "Incluir en el arqueo de caja",
+        "arqueoAyuda": "Los pagos de esta factura cuentan en el cierre de caja.",
+        "notasCliente": "Notas para el cliente",
+        "notasClienteAyuda": "Salen en el PDF de la factura.",
+        "terminosCondiciones": "Términos y condiciones",
+        "terminosCondicionesAyuda": "Salen en el PDF, aparte de las notas.",
+        "preciosIncluidos": "Precios con impuestos incluidos",
+        "preciosIncluidosAyuda": "Aplica a todas las líneas. Cada línea elige sus impuestos de la lista de la organización."
+      },
+      "cliente": {
+        "cartera": "Cartera",
+        "plazo": "Plazo de crédito"
+      },
+      "lineas": {
+        "vacio": "La factura no tiene líneas",
+        "vacioDescripcion": "Busca un producto (F3) o agrega un ítem manual (Alt+M).",
+        "stock": "Stock {n}",
+        "faltan": "Faltan {n}",
+        "seriales": "Serial {n}/{total}",
+        "promocion": "Promoción −{importe}",
+        "avisoStock": "Solo hay {stock} en {sucursal}. El borrador se guarda; para emitir, ajusta la cantidad o repón (faltan {faltan}).",
+        "impuesto": "Impuestos {importe}",
+        "impuestoIncluido": "Imp. incl. {importe}",
+        "nota": "Nota de la línea",
+        "notaAyuda": "Sale en el PDF de la factura.",
+        "elegirSeriales": "Elegir seriales",
+        "duplicar": "Duplicar línea"
+      },
+      "comision": {
+        "vendedor": "Vendedor",
+        "elegirVendedor": "Sin asignar",
+        "buscarVendedor": "Buscar vendedor…",
+        "sinAsignar": "Sin asignar",
+        "comision": "Comisión",
+        "sugerida": "Tasa sugerida por la configuración de comisiones.",
+        "porcentajeExcede": "El porcentaje no puede superar 100 %.",
+        "montoExcede": "El monto supera el total de la factura.",
+        "metodo": "Tipo de comisión",
+        "porcentaje": "Porcentaje",
+        "montoFijo": "Monto fijo",
+        "estimada": "Comisión estimada: {importe}"
+      },
+      "atajos": {
+        "cliente": "Elegir cliente",
+        "productos": "Buscar producto",
+        "manual": "Ítem manual",
+        "guardar": "Guardar borrador",
+        "emitir": "Emitir factura"
+      },
+      "errores": {
+        "cliente": "Elige el cliente.",
+        "sucursal": "Elige la sucursal.",
+        "emision": "Escribe la fecha de emisión.",
+        "vence": "El vencimiento no puede ser antes de la emisión.",
+        "lineas": "Agrega al menos una línea.",
+        "descripcion": "Escribe la descripción del ítem.",
+        "cantidad": "La cantidad debe ser mayor que 0.",
+        "precio": "El precio no puede ser negativo.",
+        "descuento": "El descuento no puede superar el valor de la línea.",
+        "seriales": "Elige los seriales de esta línea antes de emitir.",
+        "comisionPorcentaje": "El porcentaje de comisión no puede superar 100 %.",
+        "comisionMonto": "La comisión supera el total de la factura."
+      },
+      "faltantes": {
+        "titulo": "Falta inventario para emitir",
+        "descripcion": "La factura quedó guardada como borrador. Puedes ajustar las cantidades a lo disponible y emitir.",
+        "linea": "Pides {requerido} · hay {disponible}",
+        "cambios": "Al ajustar:",
+        "cambio": "{producto}: {antes} → {despues}",
+        "quita": "{producto}: se quita (no hay existencias)",
+        "ajustarYEmitir": "Ajustar y emitir",
+        "seguirBorrador": "Seguir como borrador",
+        "verExistencias": "Ver existencias"
+      },
+      "noEditable": {
+        "ver": "Ver factura",
+        "duplicar": "Duplicar como nueva",
+        "notaCredito": "Crear nota crédito",
+        "motivoAnulada": "Esta factura está anulada: no se puede editar. Puedes duplicarla como nueva.",
+        "motivoEmitida": "Esta factura está {estado}: no se puede editar. Para corregirla, crea una nota crédito o duplícala como nueva."
+      }
     }
   },
   "posVenta": {

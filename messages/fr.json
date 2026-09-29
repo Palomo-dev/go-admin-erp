@@ -3744,6 +3744,20 @@
         "elegirClienteAtajo": "Choisir le client",
         "elegirProveedor": "Choisir le fournisseur",
         "elegirProveedorAtajo": "Choisir le fournisseur"
+      },
+      "errores": {
+        "revisa": "{n, plural, one {Vérifiez # champ} other {Vérifiez # champs}}"
+      },
+      "salir": {
+        "titulo": "Quitter sans enregistrer ?",
+        "descripcion": "Ce document contient des modifications non enregistrées.",
+        "seguir": "Continuer",
+        "salirSinGuardar": "Quitter sans enregistrer",
+        "guardarYSalir": "Enregistrer le brouillon et quitter",
+        "cancelar": "Annuler"
+      },
+      "atajos": {
+        "titulo": "Raccourcis"
       }
     },
     "selectorVariantes": {
@@ -12493,7 +12507,13 @@
       "con_pagos": "La facture a des paiements : utilisez un avoir.",
       "fe_aceptada": "La DIAN a déjà accepté la facture : utilisez un avoir.",
       "datos_invalidos": "Vérifiez les données.",
-      "error_desconocido": "L'opération n'a pas abouti. Réessayez."
+      "error_desconocido": "L'opération n'a pas abouti. Réessayez.",
+      "numero_duplicado": "Une facture avec ce numéro existe déjà.",
+      "sucursal_invalida": "La succursale n’appartient pas à l’organisation.",
+      "cliente_invalido": "Le client n’appartient pas à l’organisation.",
+      "linea_invalida": "Vérifiez les lignes : description, quantité et prix.",
+      "producto_invalido": "Un produit de la facture n’appartient pas à l’organisation.",
+      "vendedor_invalido": "Le vendeur n’est pas membre de l’organisation."
     },
     "listado": {
       "sustantivo": {
@@ -12992,6 +13012,151 @@
       "noAplica": "N/A",
       "preciosIncluyen": "* Les prix incluent les taxes",
       "impuestosSobreSubtotal": "* Les taxes sont calculées sur le sous-total"
+    },
+    "v2": {
+      "tituloNueva": "Nouvelle facture de vente",
+      "tituloEditar": "Modifier la facture · brouillon",
+      "tituloFactura": "Facture {numero}",
+      "migaFinanzas": "Finances",
+      "migaListado": "Factures de vente",
+      "borrador": "Brouillon",
+      "borradorSinGuardar": "Brouillon non enregistré",
+      "emitidaEl": "Émise le {fecha}",
+      "usuario": "Utilisateur",
+      "guardarBorrador": "Enregistrer le brouillon",
+      "guardarCambios": "Enregistrer",
+      "emitir": "Émettre la facture",
+      "motivoEmitir": "Choisissez un client et ajoutez une ligne",
+      "buscarProducto": "Rechercher un produit",
+      "itemManual": "Ajouter un article manuel",
+      "total": "Total",
+      "volverListado": "Retour aux factures de vente",
+      "copiaDe": "Copie de la facture {numero} : vérifiez le client, les dates et les quantités avant d’émettre.",
+      "guardado": "Brouillon enregistré",
+      "emitida": "Facture {numero} émise",
+      "faltantesAviso": "{n, plural, one {Un produit manque de stock : un ajustement sera proposé à l’émission.} other {# produits manquent de stock : un ajustement sera proposé à l’émission.}}",
+      "feError": "La facture a été émise, mais l’administration fiscale a renvoyé une erreur : {error}",
+      "feNoEnviada": "La facture a été émise, mais n’a pas pu être envoyée. Réessayez depuis le détail.",
+      "errorCarga": "Impossible de charger la facture.",
+      "sinImpuestoAviso": "{n, plural, one {Une ligne sera facturée à 0 %.} other {# lignes seront facturées à 0 %.}}",
+      "configurarImpuestos": "Configurer les taxes",
+      "secciones": {
+        "documento": "Données du document",
+        "cliente": "Client",
+        "lineas": "Lignes de la facture ({n})",
+        "lineasEtiqueta": "Lignes de la facture",
+        "notas": "Notes et conditions",
+        "comision": "Commission du vendeur",
+        "impuestos": "Taxes de l’organisation"
+      },
+      "campos": {
+        "numeracion": "Numérotation",
+        "numeroAlEmitir": "Attribuée à l’émission avec la résolution de la succursale.",
+        "numeroManual": "Numéro manuel",
+        "numeroAutomatico": "Utiliser la numérotation",
+        "numeroManualAyuda": "Uniquement pour contingence ou migration. Doit être unique.",
+        "numeroEjemplo": "Ex. : FV-1043",
+        "emision": "Date d’émission",
+        "terminos": "Conditions de paiement",
+        "venceEl": "Émission + {dias, plural, =0 {0 jour} one {# jour} other {# jours}} = {fecha}",
+        "contado": "Comptant",
+        "dias": "{n, plural, one {# jour} other {# jours}}",
+        "personalizado": "Personnalisé",
+        "diasPersonalizados": "Jours de délai",
+        "diasUnidad": "jours",
+        "vence": "Date d’échéance",
+        "sucursal": "Succursale",
+        "elegir": "Choisir…",
+        "moneda": "Devise",
+        "formaPago": "Mode de paiement",
+        "sinMetodos": "Aucun mode de paiement",
+        "oportunidad": "Opportunité CRM",
+        "oportunidadAyuda": "Les produits et le client de l’opportunité ont été chargés.",
+        "sinOportunidad": "Aucune opportunité associée",
+        "fe": "Facture électronique à l’émission",
+        "feGlobal": "Global",
+        "feAyuda": "Envoyée à l’émission ; un brouillon n’est jamais envoyé.",
+        "arqueo": "Inclure dans l’arrêté de caisse",
+        "arqueoAyuda": "Les paiements de cette facture comptent dans la clôture de caisse.",
+        "notasCliente": "Notes pour le client",
+        "notasClienteAyuda": "Figurent sur le PDF de la facture.",
+        "terminosCondiciones": "Conditions générales",
+        "terminosCondicionesAyuda": "Figurent sur le PDF, à part des notes.",
+        "preciosIncluidos": "Prix taxes comprises",
+        "preciosIncluidosAyuda": "S’applique à toutes les lignes. Chaque ligne choisit ses taxes dans la liste de l’organisation."
+      },
+      "cliente": {
+        "cartera": "Créances",
+        "plazo": "Délai de crédit"
+      },
+      "lineas": {
+        "vacio": "La facture n’a aucune ligne",
+        "vacioDescripcion": "Recherchez un produit (F3) ou ajoutez un article manuel (Alt+M).",
+        "stock": "Stock {n}",
+        "faltan": "Manque {n}",
+        "seriales": "Série {n}/{total}",
+        "promocion": "Promotion −{importe}",
+        "avisoStock": "Seulement {stock} à {sucursal}. Le brouillon s’enregistre ; pour émettre, ajustez la quantité ou réapprovisionnez (manque {faltan}).",
+        "impuesto": "Taxes {importe}",
+        "impuestoIncluido": "Taxes incl. {importe}",
+        "nota": "Note de la ligne",
+        "notaAyuda": "Figure sur le PDF de la facture.",
+        "elegirSeriales": "Choisir les numéros de série",
+        "duplicar": "Dupliquer la ligne"
+      },
+      "comision": {
+        "vendedor": "Vendeur",
+        "elegirVendedor": "Non attribué",
+        "buscarVendedor": "Rechercher un vendeur…",
+        "sinAsignar": "Non attribué",
+        "comision": "Commission",
+        "sugerida": "Taux suggéré par la configuration des commissions.",
+        "porcentajeExcede": "Le pourcentage ne peut pas dépasser 100 %.",
+        "montoExcede": "Le montant dépasse le total de la facture.",
+        "metodo": "Type de commission",
+        "porcentaje": "Pourcentage",
+        "montoFijo": "Montant fixe",
+        "estimada": "Commission estimée : {importe}"
+      },
+      "atajos": {
+        "cliente": "Choisir le client",
+        "productos": "Rechercher un produit",
+        "manual": "Article manuel",
+        "guardar": "Enregistrer le brouillon",
+        "emitir": "Émettre la facture"
+      },
+      "errores": {
+        "cliente": "Choisissez le client.",
+        "sucursal": "Choisissez la succursale.",
+        "emision": "Saisissez la date d’émission.",
+        "vence": "L’échéance ne peut pas précéder l’émission.",
+        "lineas": "Ajoutez au moins une ligne.",
+        "descripcion": "Saisissez la description de l’article.",
+        "cantidad": "La quantité doit être supérieure à 0.",
+        "precio": "Le prix ne peut pas être négatif.",
+        "descuento": "La remise ne peut pas dépasser la valeur de la ligne.",
+        "seriales": "Choisissez les numéros de série de cette ligne avant d’émettre.",
+        "comisionPorcentaje": "Le pourcentage de commission ne peut pas dépasser 100 %.",
+        "comisionMonto": "La commission dépasse le total de la facture."
+      },
+      "faltantes": {
+        "titulo": "Stock insuffisant pour émettre",
+        "descripcion": "La facture a été enregistrée comme brouillon. Vous pouvez ajuster les quantités au disponible et émettre.",
+        "linea": "Demandé {requerido} · disponible {disponible}",
+        "cambios": "En ajustant :",
+        "cambio": "{producto} : {antes} → {despues}",
+        "quita": "{producto} : retiré (pas de stock)",
+        "ajustarYEmitir": "Ajuster et émettre",
+        "seguirBorrador": "Garder en brouillon",
+        "verExistencias": "Voir le stock"
+      },
+      "noEditable": {
+        "ver": "Voir la facture",
+        "duplicar": "Dupliquer comme nouvelle",
+        "notaCredito": "Créer un avoir",
+        "motivoAnulada": "Cette facture est annulée : elle ne peut pas être modifiée. Vous pouvez la dupliquer.",
+        "motivoEmitida": "Cette facture est {estado} : elle ne peut pas être modifiée. Pour la corriger, créez un avoir ou dupliquez-la."
+      }
     }
   },
   "posVenta": {

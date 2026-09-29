@@ -3849,6 +3849,20 @@
         "elegirClienteAtajo": "Choose customer",
         "elegirProveedor": "Choose supplier",
         "elegirProveedorAtajo": "Choose supplier"
+      },
+      "errores": {
+        "revisa": "{n, plural, one {Check # field} other {Check # fields}}"
+      },
+      "salir": {
+        "titulo": "Leave without saving?",
+        "descripcion": "You have unsaved changes in this document.",
+        "seguir": "Keep editing",
+        "salirSinGuardar": "Leave without saving",
+        "guardarYSalir": "Save draft and leave",
+        "cancelar": "Cancel"
+      },
+      "atajos": {
+        "titulo": "Shortcuts"
       }
     },
     "selectorVariantes": {
@@ -12598,7 +12612,13 @@
       "con_pagos": "The invoice has payments: use a credit note.",
       "fe_aceptada": "DIAN already accepted the invoice: use a credit note.",
       "datos_invalidos": "Check the data.",
-      "error_desconocido": "It could not be completed. Try again."
+      "error_desconocido": "It could not be completed. Try again.",
+      "numero_duplicado": "An invoice with that number already exists.",
+      "sucursal_invalida": "The branch does not belong to the organization.",
+      "cliente_invalido": "The customer does not belong to the organization.",
+      "linea_invalida": "Check the lines: description, quantity and price.",
+      "producto_invalido": "A product on the invoice does not belong to the organization.",
+      "vendedor_invalido": "The salesperson is not a member of the organization."
     },
     "listado": {
       "sustantivo": {
@@ -13097,6 +13117,151 @@
       "noAplica": "N/A",
       "preciosIncluyen": "* Prices include taxes",
       "impuestosSobreSubtotal": "* Taxes are calculated on the subtotal"
+    },
+    "v2": {
+      "tituloNueva": "New sales invoice",
+      "tituloEditar": "Edit invoice · draft",
+      "tituloFactura": "Invoice {numero}",
+      "migaFinanzas": "Finance",
+      "migaListado": "Sales invoices",
+      "borrador": "Draft",
+      "borradorSinGuardar": "Unsaved draft",
+      "emitidaEl": "Issued on {fecha}",
+      "usuario": "User",
+      "guardarBorrador": "Save draft",
+      "guardarCambios": "Save changes",
+      "emitir": "Issue invoice",
+      "motivoEmitir": "Choose a customer and add a line",
+      "buscarProducto": "Search product",
+      "itemManual": "Add manual item",
+      "total": "Total",
+      "volverListado": "Back to sales invoices",
+      "copiaDe": "Copy of invoice {numero}: check customer, dates and quantities before issuing.",
+      "guardado": "Draft saved",
+      "emitida": "Invoice {numero} issued",
+      "faltantesAviso": "{n, plural, one {One product is short on stock: you will be asked to adjust when issuing.} other {# products are short on stock: you will be asked to adjust when issuing.}}",
+      "feError": "The invoice was issued, but the tax authority returned an error: {error}",
+      "feNoEnviada": "The invoice was issued, but it could not be sent to the tax authority. Retry from the detail.",
+      "errorCarga": "The invoice could not be loaded.",
+      "sinImpuestoAviso": "{n, plural, one {One line will be invoiced at 0%.} other {# lines will be invoiced at 0%.}}",
+      "configurarImpuestos": "Set up taxes",
+      "secciones": {
+        "documento": "Document details",
+        "cliente": "Customer",
+        "lineas": "Invoice lines ({n})",
+        "lineasEtiqueta": "Invoice lines",
+        "notas": "Notes and terms",
+        "comision": "Salesperson commission",
+        "impuestos": "Organization taxes"
+      },
+      "campos": {
+        "numeracion": "Numbering",
+        "numeroAlEmitir": "Assigned on issue with the branch’s numbering resolution.",
+        "numeroManual": "Manual number",
+        "numeroAutomatico": "Use numbering",
+        "numeroManualAyuda": "Only for contingency or migration. It must be unique.",
+        "numeroEjemplo": "E.g. FV-1043",
+        "emision": "Issue date",
+        "terminos": "Payment terms",
+        "venceEl": "Issue + {dias, plural, =0 {0 days} one {# day} other {# days}} = {fecha}",
+        "contado": "Cash",
+        "dias": "{n, plural, one {# day} other {# days}}",
+        "personalizado": "Custom",
+        "diasPersonalizados": "Term days",
+        "diasUnidad": "days",
+        "vence": "Due date",
+        "sucursal": "Branch",
+        "elegir": "Choose…",
+        "moneda": "Currency",
+        "formaPago": "Payment method",
+        "sinMetodos": "No payment methods",
+        "oportunidad": "CRM opportunity",
+        "oportunidadAyuda": "The opportunity’s products and customer were loaded.",
+        "sinOportunidad": "No linked opportunity",
+        "fe": "E-invoice on issue",
+        "feGlobal": "Global",
+        "feAyuda": "Sent to the tax authority when you issue; a draft is never sent.",
+        "arqueo": "Include in cash count",
+        "arqueoAyuda": "Payments on this invoice count in the cash register close.",
+        "notasCliente": "Notes for the customer",
+        "notasClienteAyuda": "Printed on the invoice PDF.",
+        "terminosCondiciones": "Terms and conditions",
+        "terminosCondicionesAyuda": "Printed on the PDF, apart from the notes.",
+        "preciosIncluidos": "Prices include taxes",
+        "preciosIncluidosAyuda": "Applies to all lines. Each line picks its taxes from the organization’s list."
+      },
+      "cliente": {
+        "cartera": "Receivables",
+        "plazo": "Credit term"
+      },
+      "lineas": {
+        "vacio": "The invoice has no lines",
+        "vacioDescripcion": "Search a product (F3) or add a manual item (Alt+M).",
+        "stock": "Stock {n}",
+        "faltan": "{n} short",
+        "seriales": "Serial {n}/{total}",
+        "promocion": "Promotion −{importe}",
+        "avisoStock": "Only {stock} at {sucursal}. The draft saves; to issue, adjust the quantity or restock ({faltan} short).",
+        "impuesto": "Taxes {importe}",
+        "impuestoIncluido": "Tax incl. {importe}",
+        "nota": "Line note",
+        "notaAyuda": "Printed on the invoice PDF.",
+        "elegirSeriales": "Choose serials",
+        "duplicar": "Duplicate line"
+      },
+      "comision": {
+        "vendedor": "Salesperson",
+        "elegirVendedor": "Unassigned",
+        "buscarVendedor": "Search salesperson…",
+        "sinAsignar": "Unassigned",
+        "comision": "Commission",
+        "sugerida": "Rate suggested by the commission settings.",
+        "porcentajeExcede": "The percentage cannot exceed 100%.",
+        "montoExcede": "The amount exceeds the invoice total.",
+        "metodo": "Commission type",
+        "porcentaje": "Percentage",
+        "montoFijo": "Fixed amount",
+        "estimada": "Estimated commission: {importe}"
+      },
+      "atajos": {
+        "cliente": "Choose customer",
+        "productos": "Search product",
+        "manual": "Manual item",
+        "guardar": "Save draft",
+        "emitir": "Issue invoice"
+      },
+      "errores": {
+        "cliente": "Choose the customer.",
+        "sucursal": "Choose the branch.",
+        "emision": "Enter the issue date.",
+        "vence": "The due date cannot be before the issue date.",
+        "lineas": "Add at least one line.",
+        "descripcion": "Enter the item description.",
+        "cantidad": "Quantity must be greater than 0.",
+        "precio": "Price cannot be negative.",
+        "descuento": "The discount cannot exceed the line value.",
+        "seriales": "Choose this line’s serials before issuing.",
+        "comisionPorcentaje": "The commission percentage cannot exceed 100%.",
+        "comisionMonto": "The commission exceeds the invoice total."
+      },
+      "faltantes": {
+        "titulo": "Not enough stock to issue",
+        "descripcion": "The invoice was saved as a draft. You can adjust quantities to what is available and issue.",
+        "linea": "You ask {requerido} · {disponible} available",
+        "cambios": "When adjusting:",
+        "cambio": "{producto}: {antes} → {despues}",
+        "quita": "{producto}: removed (no stock)",
+        "ajustarYEmitir": "Adjust and issue",
+        "seguirBorrador": "Keep as draft",
+        "verExistencias": "View stock"
+      },
+      "noEditable": {
+        "ver": "View invoice",
+        "duplicar": "Duplicate as new",
+        "notaCredito": "Create credit note",
+        "motivoAnulada": "This invoice is voided: it cannot be edited. You can duplicate it as new.",
+        "motivoEmitida": "This invoice is {estado}: it cannot be edited. To correct it, create a credit note or duplicate it as new."
+      }
     }
   },
   "posVenta": {

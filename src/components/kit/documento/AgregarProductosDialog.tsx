@@ -220,7 +220,8 @@ export function AgregarProductosDialog({
         onClick={() => agregar(p)}
         className={cn(
           'flex cursor-pointer gap-3 rounded-lg border p-2.5',
-          vista === 'tarjetas' ? 'flex-col' : 'items-center',
+          // Móvil (hoja): el nombre ocupa su renglón completo; stock, precio y «Agregar» van debajo.
+          vista === 'tarjetas' ? 'flex-col' : 'flex-wrap items-center sm:flex-nowrap',
           i === activo ? 'border-line-brand bg-hover' : 'border-line bg-surface',
         )}
       >
@@ -228,12 +229,12 @@ export function AgregarProductosDialog({
           {/* eslint-disable-next-line @next/next/no-img-element -- miniatura de 40 px ya servida por el almacenamiento */}
           {p.imagen ? <img src={p.imagen} alt="" className="size-full object-cover" /> : <ImageIcon className="size-4" strokeWidth={1.5} />}
         </span>
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className={cn('truncate text-sm font-medium', sinStock ? 'text-fg-secondary' : 'text-fg')}>{p.nombre}</span>
+        <span className="flex min-w-0 flex-1 basis-[calc(100%-52px)] flex-col sm:basis-auto">
+          <span className={cn('line-clamp-2 text-sm font-medium sm:truncate', sinStock ? 'text-fg-secondary' : 'text-fg')}>{p.nombre}</span>
           {meta(p) && <span className="truncate text-xs text-fg-secondary">{meta(p)}</span>}
           {descripcionPlana && <span className="truncate text-xs text-fg-muted">{descripcionPlana}</span>}
         </span>
-        <span className={cn('flex shrink-0 items-center gap-3', vista === 'tarjetas' && 'justify-between')}>
+        <span className={cn('flex shrink-0 items-center gap-3', vista === 'tarjetas' ? 'justify-between' : 'w-full justify-end sm:w-auto')}>
           {stockTexto(p)}
           <span className={cn('text-sm font-semibold tabular-nums', sinStock ? 'text-fg-secondary' : 'text-fg')}>{formatear(p.precio)}</span>
           <span

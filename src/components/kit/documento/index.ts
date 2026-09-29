@@ -101,3 +101,13 @@ export {
   type ItemManual,
   type DatosProductoRapido,
 } from './edicionDocumentoLogica';
+export {
+  FormularioDocumentoLayout,
+  ResumenErrores,
+  DialogoSalirConCambios,
+  TarjetaAtajos,
+  useAvisoSalida,
+  useAutoguardado,
+  type FormularioDocumentoLayoutProps,
+  type ErrorFormulario,
+} from './FormularioDocumento';

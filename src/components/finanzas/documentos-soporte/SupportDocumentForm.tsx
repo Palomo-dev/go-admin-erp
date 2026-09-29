@@ -34,7 +34,7 @@ import { ProviderSelector, type ProviderData } from './ProviderSelector';
 import { ItemsFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ItemsFactura';
 import { ImpuestosFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ImpuestosFactura';
 import { FormaPagoSelector } from '@/components/finanzas/facturas-venta/nueva-factura/FormaPagoSelector';
-import type { InvoiceItem } from '@/components/finanzas/facturas-venta/nueva-factura/NuevaFacturaForm';
+import type { InvoiceItem } from '@/components/finanzas/facturas-venta/nueva-factura/tipos';
 
 // Re-exportar InvoiceItem para compatibilidad
 export type { InvoiceItem };

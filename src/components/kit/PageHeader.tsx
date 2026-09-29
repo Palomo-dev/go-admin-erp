@@ -47,6 +47,11 @@ export interface PageHeaderProps {
   variante?: 'list' | 'detail' | 'form';
   /** `form`: a dónde vuelve «←». */
   volverA?: string;
+  /**
+   * `form`: «←» pregunta antes de salir (formulario con cambios). Si se pasa,
+   * el clic no navega solo: la pantalla decide (diálogo «Salir con cambios»).
+   */
+  onVolver?: () => void;
   cargando?: boolean;
   /**
    * Barra fina de avance bajo el subtítulo (carga por lotes: «1.000 de 4.368»).
@@ -75,6 +80,7 @@ export function PageHeader({
   badge,
   variante = 'list',
   volverA,
+  onVolver,
   cargando,
   progreso,
   debajo,
@@ -103,6 +109,14 @@ export function PageHeader({
             {variante === 'form' && volverA ? (
               <Link
                 href={volverA}
+                onClick={
+                  onVolver
+                    ? (e) => {
+                        e.preventDefault();
+                        onVolver();
+                      }
+                    : undefined
+                }
                 aria-label={t('cabecera.volver')}
                 className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-line-strong bg-surface text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >

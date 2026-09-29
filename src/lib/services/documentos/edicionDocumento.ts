@@ -24,8 +24,7 @@
  */
 import { supabase } from '@/lib/supabase/config';
 import { listarClientes, type FilaCliente } from '@/lib/services/clientesListadoService';
-import { supplierService, type ProveedorListadoItem, type Supplier } from '@/lib/services/supplierService';
-import { productoService } from '@/lib/services/productoService';
+import type { ProveedorListadoItem, Supplier } from '@/lib/services/supplierService';
 import { buildCustomerInsert, emptyCustomerValues } from '@/lib/services/customers/customerPayload';
 import { esRetencion } from '@/lib/services/taxResolverCore';
 import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
@@ -161,24 +160,32 @@ export async function buscarProductosDocumento(org: number, c: CriteriosProducto
   }
   if (ids && ids.length === 0) return [];
 
-  let q = supabase
-    .from('products')
-    .select(
-      'id, name, sku, barcode, description, track_stock, track_serial, product_prices(price, effective_from, effective_to), product_costs(cost, effective_from, effective_to), product_tax_relations(organization_taxes(id, name, rate, is_default, is_active, kind, tax_templates(code))), product_images(storage_path, is_primary, display_order)',
-    )
-    .eq('organization_id', org)
-    .eq('status', 'active')
-    .not('is_parent', 'is', true)
-    .order('name')
-    .limit(limite);
-  const filtroTexto = ilikeAnyOf(['name', 'sku', 'barcode', 'reference'], c.texto);
+  const productos = await consultarProductos(org, { texto: c.texto, ids, limite }, senal);
+  return mapearProductos(productos, c, delProveedor, senal);
+}
+
+const SELECT_PRODUCTO_DOCUMENTO =
+  'id, name, sku, barcode, description, track_stock, track_serial, product_prices(price, effective_from, effective_to), product_costs(cost, effective_from, effective_to), product_tax_relations(organization_taxes(id, name, rate, is_default, is_active, kind, tax_templates(code))), product_images(storage_path, is_primary, display_order)';
+
+async function consultarProductos(org: number, f: { texto?: string; ids: number[] | null; limite: number; conPadres?: boolean }, senal?: AbortSignal): Promise<FilaProducto[]> {
+  let q = supabase.from('products').select(SELECT_PRODUCTO_DOCUMENTO).eq('organization_id', org);
+  if (!f.conPadres) q = q.eq('status', 'active').not('is_parent', 'is', true);
+  q = q.order('name').limit(f.limite);
+  const filtroTexto = ilikeAnyOf(['name', 'sku', 'barcode', 'reference'], f.texto ?? '');
   if (filtroTexto) q = q.or(filtroTexto);
-  if (ids) q = q.in('id', ids.slice(0, 1000));
+  if (f.ids) q = q.in('id', f.ids.slice(0, 1000));
   if (senal) q = q.abortSignal(senal);
   const { data, error } = await q;
   if (error) throw error;
-  const productos = (data ?? []) as unknown as FilaProducto[];
+  return (data ?? []) as unknown as FilaProducto[];
+}
 
+async function mapearProductos(
+  productos: FilaProducto[],
+  c: Pick<CriteriosProductosDocumento, 'variante' | 'sucursal'>,
+  delProveedor: Map<number, { cost: number; lead: number | null; sku: string | null; min: number | null }>,
+  senal?: AbortSignal,
+): Promise<ProductoParaDocumento[]> {
   // Stock de la sucursal de los productos encontrados (una consulta).
   const stock = new Map<number, { qty: number; lotes: number }>();
   if (c.sucursal && productos.length > 0) {
@@ -227,6 +234,19 @@ export async function buscarProductosDocumento(org: number, c: CriteriosProducto
   });
 }
 
+/**
+ * Productos por id con su precio, stock e impuestos (líneas que llegan de una
+ * oportunidad, de un duplicado o de un borrador): así la línea se resuelve con
+ * el impuesto del producto al CARGAR (hallazgo H9), no solo al guardar.
+ */
+export async function productosPorId(org: number, ids: readonly number[], c: Pick<CriteriosProductosDocumento, 'variante' | 'sucursal'>): Promise<Map<number, ProductoParaDocumento>> {
+  const unicos = [...new Set(ids.filter((x) => Number.isInteger(x) && x > 0))];
+  if (unicos.length === 0) return new Map();
+  const filas = await consultarProductos(org, { ids: unicos, limite: Math.min(unicos.length, 500), conPadres: true });
+  const lista = await mapearProductos(filas, c, new Map());
+  return new Map(lista.map((p) => [p.id, p]));
+}
+
 // ─── Terceros ────────────────────────────────────────────────────────────
 
 /** Filtros de «Elegir cliente» (ids de los chips). */
@@ -260,6 +280,8 @@ export async function buscarClientesDocumento(org: number, texto: string, filtro
 
 export async function buscarProveedoresDocumento(org: number, texto: string, filtros: readonly string[]): Promise<ProveedorListadoItem[]> {
   const tipo = tipoDeFiltros(filtros);
+  // Import diferido: supplierService arrastra jsPDF y xlsx (exportes) y no deben ir en el paquete del formulario.
+  const { supplierService } = await import('@/lib/services/supplierService');
   const { items } = await supplierService.listarProveedores(org, {
     busqueda: texto,
     estado: filtros.includes('activos') ? 'activo' : null,
@@ -350,6 +372,7 @@ export async function crearClienteRapido(org: number, sucursal: number | null, d
 export async function crearProveedorRapido(org: number, d: DatosTerceroDocumento): Promise<Supplier> {
   const empresa = d.tipo === 'empresa';
   const numero = d.numeroDocumento.replace(/[.\s-]/g, '');
+  const { supplierService } = await import('@/lib/services/supplierService');
   const { data, error } = await supplierService.createSupplier(org, {
     name: empresa ? d.razonSocial.trim() : `${d.nombres} ${d.apellidos}`.trim(),
     supplier_type: empresa ? 'company' : 'person',
@@ -386,6 +409,7 @@ export async function crearProductoRapido(
   impuestos: readonly ImpuestoDocumento[],
 ): Promise<ProductoParaDocumento> {
   const precio = Number(d.precio) || 0;
+  const { productoService } = await import('@/lib/services/productoService');
   const r = await productoService.guardar(org, {
     modo: 'crear',
     producto: {

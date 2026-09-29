@@ -3744,6 +3744,20 @@
         "elegirClienteAtajo": "Escolher cliente",
         "elegirProveedor": "Escolher fornecedor",
         "elegirProveedorAtajo": "Escolher fornecedor"
+      },
+      "errores": {
+        "revisa": "{n, plural, one {Revise # campo} other {Revise # campos}}"
+      },
+      "salir": {
+        "titulo": "Sair sem salvar?",
+        "descripcion": "Há alterações não salvas neste documento.",
+        "seguir": "Continuar editando",
+        "salirSinGuardar": "Sair sem salvar",
+        "guardarYSalir": "Salvar rascunho e sair",
+        "cancelar": "Cancelar"
+      },
+      "atajos": {
+        "titulo": "Atalhos"
       }
     },
     "selectorVariantes": {
@@ -12493,7 +12507,13 @@
       "con_pagos": "A fatura tem pagamentos: use uma nota de crédito.",
       "fe_aceptada": "A DIAN já aceitou a fatura: use uma nota de crédito.",
       "datos_invalidos": "Revise os dados.",
-      "error_desconocido": "Não foi possível concluir. Tente novamente."
+      "error_desconocido": "Não foi possível concluir. Tente novamente.",
+      "numero_duplicado": "Já existe uma fatura com esse número.",
+      "sucursal_invalida": "A filial não pertence à organização.",
+      "cliente_invalido": "O cliente não pertence à organização.",
+      "linea_invalida": "Revise as linhas: descrição, quantidade e preço.",
+      "producto_invalido": "Um produto da fatura não pertence à organização.",
+      "vendedor_invalido": "O vendedor não é membro da organização."
     },
     "listado": {
       "sustantivo": {
@@ -12992,6 +13012,151 @@
       "noAplica": "N/A",
       "preciosIncluyen": "* Os preços incluem impostos",
       "impuestosSobreSubtotal": "* Os impostos são calculados sobre o subtotal"
+    },
+    "v2": {
+      "tituloNueva": "Nova fatura de venda",
+      "tituloEditar": "Editar fatura · rascunho",
+      "tituloFactura": "Fatura {numero}",
+      "migaFinanzas": "Finanças",
+      "migaListado": "Faturas de venda",
+      "borrador": "Rascunho",
+      "borradorSinGuardar": "Rascunho não salvo",
+      "emitidaEl": "Emitida em {fecha}",
+      "usuario": "Usuário",
+      "guardarBorrador": "Salvar rascunho",
+      "guardarCambios": "Salvar alterações",
+      "emitir": "Emitir fatura",
+      "motivoEmitir": "Escolha um cliente e adicione uma linha",
+      "buscarProducto": "Buscar produto",
+      "itemManual": "Adicionar item manual",
+      "total": "Total",
+      "volverListado": "Voltar às faturas de venda",
+      "copiaDe": "Cópia da fatura {numero}: revise cliente, datas e quantidades antes de emitir.",
+      "guardado": "Rascunho salvo",
+      "emitida": "Fatura {numero} emitida",
+      "faltantesAviso": "{n, plural, one {Um produto não tem estoque suficiente: ao emitir será pedido o ajuste.} other {# produtos não têm estoque suficiente: ao emitir será pedido o ajuste.}}",
+      "feError": "A fatura foi emitida, mas o fisco respondeu com um erro: {error}",
+      "feNoEnviada": "A fatura foi emitida, mas não pôde ser enviada ao fisco. Tente de novo no detalhe.",
+      "errorCarga": "Não foi possível carregar a fatura.",
+      "sinImpuestoAviso": "{n, plural, one {Uma linha será faturada a 0%.} other {# linhas serão faturadas a 0%.}}",
+      "configurarImpuestos": "Configurar impostos",
+      "secciones": {
+        "documento": "Dados do documento",
+        "cliente": "Cliente",
+        "lineas": "Linhas da fatura ({n})",
+        "lineasEtiqueta": "Linhas da fatura",
+        "notas": "Notas e termos",
+        "comision": "Comissão do vendedor",
+        "impuestos": "Impostos da organização"
+      },
+      "campos": {
+        "numeracion": "Numeração",
+        "numeroAlEmitir": "Atribuída ao emitir com a resolução da filial.",
+        "numeroManual": "Número manual",
+        "numeroAutomatico": "Usar numeração",
+        "numeroManualAyuda": "Somente para contingência ou migração. Não pode se repetir.",
+        "numeroEjemplo": "Ex.: FV-1043",
+        "emision": "Data de emissão",
+        "terminos": "Condições de pagamento",
+        "venceEl": "Emissão + {dias, plural, =0 {0 dias} one {# dia} other {# dias}} = {fecha}",
+        "contado": "À vista",
+        "dias": "{n, plural, one {# dia} other {# dias}}",
+        "personalizado": "Personalizado",
+        "diasPersonalizados": "Dias de prazo",
+        "diasUnidad": "dias",
+        "vence": "Data de vencimento",
+        "sucursal": "Filial",
+        "elegir": "Escolher…",
+        "moneda": "Moeda",
+        "formaPago": "Forma de pagamento",
+        "sinMetodos": "Sem formas de pagamento",
+        "oportunidad": "Oportunidade do CRM",
+        "oportunidadAyuda": "Os produtos e o cliente da oportunidade foram carregados.",
+        "sinOportunidad": "Sem oportunidade associada",
+        "fe": "Fatura eletrônica ao emitir",
+        "feGlobal": "Global",
+        "feAyuda": "Enviada ao fisco quando você emitir; o rascunho nunca é enviado.",
+        "arqueo": "Incluir no fechamento de caixa",
+        "arqueoAyuda": "Os pagamentos desta fatura contam no fechamento de caixa.",
+        "notasCliente": "Notas para o cliente",
+        "notasClienteAyuda": "Saem no PDF da fatura.",
+        "terminosCondiciones": "Termos e condições",
+        "terminosCondicionesAyuda": "Saem no PDF, separados das notas.",
+        "preciosIncluidos": "Preços com impostos incluídos",
+        "preciosIncluidosAyuda": "Vale para todas as linhas. Cada linha escolhe seus impostos na lista da organização."
+      },
+      "cliente": {
+        "cartera": "Contas a receber",
+        "plazo": "Prazo de crédito"
+      },
+      "lineas": {
+        "vacio": "A fatura não tem linhas",
+        "vacioDescripcion": "Busque um produto (F3) ou adicione um item manual (Alt+M).",
+        "stock": "Estoque {n}",
+        "faltan": "Faltam {n}",
+        "seriales": "Série {n}/{total}",
+        "promocion": "Promoção −{importe}",
+        "avisoStock": "Só há {stock} em {sucursal}. O rascunho é salvo; para emitir, ajuste a quantidade ou reponha (faltam {faltan}).",
+        "impuesto": "Impostos {importe}",
+        "impuestoIncluido": "Imp. incl. {importe}",
+        "nota": "Nota da linha",
+        "notaAyuda": "Sai no PDF da fatura.",
+        "elegirSeriales": "Escolher números de série",
+        "duplicar": "Duplicar linha"
+      },
+      "comision": {
+        "vendedor": "Vendedor",
+        "elegirVendedor": "Sem atribuição",
+        "buscarVendedor": "Buscar vendedor…",
+        "sinAsignar": "Sem atribuição",
+        "comision": "Comissão",
+        "sugerida": "Taxa sugerida pela configuração de comissões.",
+        "porcentajeExcede": "A porcentagem não pode passar de 100%.",
+        "montoExcede": "O valor supera o total da fatura.",
+        "metodo": "Tipo de comissão",
+        "porcentaje": "Porcentagem",
+        "montoFijo": "Valor fixo",
+        "estimada": "Comissão estimada: {importe}"
+      },
+      "atajos": {
+        "cliente": "Escolher cliente",
+        "productos": "Buscar produto",
+        "manual": "Item manual",
+        "guardar": "Salvar rascunho",
+        "emitir": "Emitir fatura"
+      },
+      "errores": {
+        "cliente": "Escolha o cliente.",
+        "sucursal": "Escolha a filial.",
+        "emision": "Informe a data de emissão.",
+        "vence": "O vencimento não pode ser antes da emissão.",
+        "lineas": "Adicione pelo menos uma linha.",
+        "descripcion": "Escreva a descrição do item.",
+        "cantidad": "A quantidade deve ser maior que 0.",
+        "precio": "O preço não pode ser negativo.",
+        "descuento": "O desconto não pode superar o valor da linha.",
+        "seriales": "Escolha os números de série desta linha antes de emitir.",
+        "comisionPorcentaje": "A porcentagem de comissão não pode passar de 100%.",
+        "comisionMonto": "A comissão supera o total da fatura."
+      },
+      "faltantes": {
+        "titulo": "Falta estoque para emitir",
+        "descripcion": "A fatura ficou salva como rascunho. Você pode ajustar as quantidades ao disponível e emitir.",
+        "linea": "Pede {requerido} · há {disponible}",
+        "cambios": "Ao ajustar:",
+        "cambio": "{producto}: {antes} → {despues}",
+        "quita": "{producto}: removido (sem estoque)",
+        "ajustarYEmitir": "Ajustar e emitir",
+        "seguirBorrador": "Manter como rascunho",
+        "verExistencias": "Ver estoque"
+      },
+      "noEditable": {
+        "ver": "Ver fatura",
+        "duplicar": "Duplicar como nova",
+        "notaCredito": "Criar nota de crédito",
+        "motivoAnulada": "Esta fatura está anulada: não pode ser editada. Você pode duplicá-la como nova.",
+        "motivoEmitida": "Esta fatura está {estado}: não pode ser editada. Para corrigi-la, crie uma nota de crédito ou duplique-a como nova."
+      }
     }
   },
   "posVenta": {

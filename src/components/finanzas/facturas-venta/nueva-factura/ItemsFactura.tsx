@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { InvoiceItem } from './NuevaFacturaForm';
+import type { InvoiceItem } from './tipos';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { SerialSelectorDialog } from '@/components/pos/SerialSelectorDialog';

@@ -35,6 +35,8 @@ export interface DocumentoCabeceraProps {
   acciones?: ReactNode;
   /** Formulario: a dónde vuelve «←». */
   volverA?: string;
+  /** Formulario: «←» pasa por la pantalla (confirmar si hay cambios). */
+  onVolver?: () => void;
   cargando?: boolean;
   /** Cadena del documento, `TabBar` o `BranchBadgeActiva`. */
   debajo?: ReactNode;
@@ -53,6 +55,7 @@ export function DocumentoCabecera({
   insignias,
   acciones,
   volverA,
+  onVolver,
   cargando,
   debajo,
   movil,
@@ -76,6 +79,7 @@ export function DocumentoCabecera({
       badge={badge}
       acciones={acciones}
       volverA={volverA}
+      onVolver={onVolver}
       cargando={cargando}
       debajo={debajo}
       movil={movil}

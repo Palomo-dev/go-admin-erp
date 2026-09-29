@@ -21,6 +21,7 @@ import { AvisoAcceso } from '@/components/kit/acceso';
 import { crearOrganizacionInicial, type OrganizacionCreada } from '@/lib/services/altaOrganizacionService';
 import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { paisDesdeNavegador, senalesDelNavegador } from '@/lib/utils/paisNavegador';
+import { readAttribution } from '@/lib/attribution/cookie';
 import { PasoOrganizacion } from './PasoOrganizacion';
 import { PasoSucursal } from './PasoSucursal';
 import { ORGANIZACION_INICIAL, PLAN_INICIAL, SUCURSAL_INICIAL, datosParaAlta, type PlanAlta } from './tipos';
@@ -66,9 +67,21 @@ export function AsistenteAltaOrganizacion({ modo, correo, nombre, apellido, refe
       const senales = senalesDelNavegador();
       const pais = org.ubicacion.paisCodigo;
       const zonaHoraria = paisDesdeNavegador([pais], senales) === pais ? senales.zonaHoraria ?? null : null;
+      
+      // Leer atribución de marketing (tarea 02)
+      const attribution = readAttribution();
+      const atribucion = attribution ? {
+        ...attribution,
+        how_heard: org.howHeard || undefined,
+        city: org.ubicacion.ciudad || undefined,
+        seller_ref: referido || undefined,
+        marketing_consent: org.marketingConsent,
+        consent_ts: org.marketingConsent ? new Date().toISOString() : undefined,
+      } : null;
+      
       const creada = await crearOrganizacionInicial(
         supabase,
-        datosParaAlta(org, suc, plan, { zonaHoraria, referido, nombreCliente: `${nombre} ${apellido}`.trim() }),
+        datosParaAlta(org, suc, plan, { zonaHoraria, referido, nombreCliente: `${nombre} ${apellido}`.trim(), atribucion }),
       );
       guardarOrganizacionActiva({ id: creada.id, name: creada.nombre, logo_url: org.logoUrl ?? undefined });
       onCreada(creada);

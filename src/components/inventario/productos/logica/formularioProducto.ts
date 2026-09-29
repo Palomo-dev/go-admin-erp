@@ -177,10 +177,6 @@ export interface FilaStockForm {
   unit_cost: number | null;
   /** Existencia actual (solo lectura en editar). */
   qty_actual: number;
-  /** Con lotes: código del lote de la entrada inicial (vacío = el servidor propone L-AAAAMMDD). */
-  lot_code: string;
-  /** Con lotes: vencimiento del lote (día calendario `yyyy-MM-dd`), opcional. */
-  expiry_date: string | null;
 }
 
 export interface StockVarianteForm {
@@ -277,8 +273,6 @@ export interface EstadoFormularioProducto {
   auto_generate_serial: boolean;
   serial_pattern: string;
   warranty_months: number | null;
-  /** Maneja lotes (products.track_lots): la venta descuenta por FEFO y cada entrada lleva lote. */
-  track_lots: boolean;
   // Variantes
   tiene_variantes: boolean;
   variantes: VarianteForm[];
@@ -393,8 +387,6 @@ export function filasStockIniciales(sucursales: readonly SucursalBasica[]): Fila
     min_level: null,
     unit_cost: null,
     qty_actual: 0,
-    lot_code: '',
-    expiry_date: null,
   }));
 }
 
@@ -419,7 +411,6 @@ export function estadoInicial(sucursales: readonly SucursalBasica[] = []): Estad
     auto_generate_serial: false,
     serial_pattern: '',
     warranty_months: null,
-    track_lots: false,
     tiene_variantes: false,
     variantes: [],
     modificadores: [],
@@ -494,14 +485,11 @@ export function estadoDesdeDatos(
       min_level: f.min_level ? Number(f.min_level) : null,
       unit_cost: null,
       qty_actual: dup ? 0 : Number(f.qty_on_hand) || 0,
-      lot_code: '',
-      expiry_date: null,
     })),
     track_serial: Boolean(p.track_serial),
     auto_generate_serial: Boolean(p.auto_generate_serial),
     serial_pattern: s(p.serial_pattern),
     warranty_months: n(p.warranty_months),
-    track_lots: Boolean(p.track_lots),
     tiene_variantes: (dup ? copiar.variantes : true) && (Boolean(p.is_parent) || datos.variantes.length > 0),
     variantes:
       dup && !copiar.variantes
@@ -933,7 +921,6 @@ export function construirPayload(
       serial_pattern: limpio(e.serial_pattern),
       auto_generate_serial: e.track_serial && e.auto_generate_serial,
       warranty_months: e.track_serial ? e.warranty_months : null,
-      track_lots: rastrea && e.track_lots,
       weight_kg: e.product_type === 'service' ? null : e.weight_kg,
       length_cm: e.product_type === 'service' ? null : e.length_cm,
       width_cm: e.product_type === 'service' ? null : e.width_cm,
@@ -1001,9 +988,6 @@ export function construirPayload(
     payload.stock = e.stock.map((f) => ({
       branch_id: f.branch_id,
       ...(modo !== 'editar' && (f.qty ?? 0) > 0 ? { qty: f.qty ?? 0, unit_cost: f.unit_cost ?? e.cost ?? 0 } : {}),
-      ...(modo !== 'editar' && (f.qty ?? 0) > 0 && e.track_lots
-        ? { lot_code: f.lot_code.trim(), expiry_date: f.expiry_date || null }
-        : {}),
       min_level: f.min_level ?? 0,
     }));
   }

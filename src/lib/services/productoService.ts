@@ -613,11 +613,6 @@ export interface ProductoCampos {
   serial_pattern?: string | null;
   auto_generate_serial: boolean;
   warranty_months?: number | null;
-  /**
-   * Maneja lotes (FEFO en la venta, lote en cada entrada). Sin la clave se conserva
-   * el valor guardado; sin control de existencias queda en false (inv_b7_3/4).
-   */
-  track_lots?: boolean;
   weight_kg?: number | null;
   length_cm?: number | null;
   width_cm?: number | null;
@@ -681,8 +676,7 @@ export interface PayloadGuardarProducto {
   etiquetas?: number[];
   proveedores?: ProveedorEntrada[];
   proveedores_quitar_preferido?: boolean;
-  /** Con `track_lots`, la entrada inicial va al lote `lot_code` (se crea si no existe; vacío = L-AAAAMMDD). */
-  stock?: { branch_id: number; qty?: number; min_level?: number; unit_cost?: number; lot_code?: string; expiry_date?: string | null }[];
+  stock?: { branch_id: number; qty?: number; min_level?: number; unit_cost?: number }[];
   tiene_variantes: boolean;
   variantes?: VarianteEntrada[];
   modificadores?: GrupoModificadorEntrada[];

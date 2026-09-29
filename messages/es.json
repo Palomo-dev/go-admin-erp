@@ -9501,9 +9501,7 @@
         "costoUnitario": "Costo unitario",
         "costo": "Costo",
         "total": "Total",
-        "acciones": "Acciones",
-        "lote": "Lote",
-        "vence": "Vence"
+        "acciones": "Acciones"
       },
       "cantidadEn": "Cantidad inicial en {sucursal}",
       "minimoEn": "Stock mínimo en {sucursal}",
@@ -9514,12 +9512,7 @@
       "totalExistencia": "Total {unidades} uds",
       "notaKardex": "{count, plural, one {# sucursal activa} other {# sucursales activas}}. La entrada inicial queda registrada en el kardex al guardar. Costo unitario vacío = costo del producto.",
       "notaEditar": "La existencia se cambia con un ajuste de inventario: «Ajustar» lo abre en otra pestaña para que no pierdas los cambios sin guardar. El mínimo sí se edita aquí.",
-      "avisoSinCosto": "Hay cantidades sin costo: escribe el costo unitario o el costo del producto en «Precios y costos».",
-      "loteEn": "Lote de la entrada inicial en {sucursal}",
-      "venceEn": "Vencimiento del lote en {sucursal}",
-      "lotePlaceholder": "Automático",
-      "vencePlaceholder": "Sin vencimiento",
-      "notaLotes": "Cada cantidad entra al lote indicado; sin código se crea uno con la fecha de hoy."
+      "avisoSinCosto": "Hay cantidades sin costo: escribe el costo unitario o el costo del producto en «Precios y costos»."
     },
     "trazabilidad": {
       "titulo": "Trazabilidad",
@@ -9557,13 +9550,6 @@
           "n3": "Consecutivo (3 dígitos)",
           "n2": "Consecutivo (2 dígitos)"
         }
-      },
-      "lotes": {
-        "etiqueta": "Maneja lotes y vencimientos",
-        "ayuda": "Cada entrada queda en un lote con su vencimiento y la venta descuenta primero el que vence antes.",
-        "sinInventario": "Activa «Rastrear inventario» para manejar lotes.",
-        "notaEditar": "Las existencias que ya tiene quedan sin lote: pásalas a un lote desde Inventario › Lotes o con un ajuste.",
-        "notaVariantes": "Las variantes también manejan lotes; cada lote pertenece a una variante."
       }
     },
     "variantes": {
@@ -19626,6 +19612,66 @@
       "crear": "{count, plural, one {Crear 1 traslado} other {Crear {n} traslados}}",
       "creando": "Creando…",
       "listo": "{count, plural, one {Se creó 1 traslado} other {Se crearon {n} traslados}}"
+    }
+  },
+  "inventarioRecepcionOC": {
+    "falloTitulo": "No se registró la recepción",
+    "nada": "No hay cantidades nuevas para recibir.",
+    "lotesPendientes": "Indica el lote de «{producto}»: la suma de los lotes debe ser igual a lo que llega.",
+    "yaProcesada": "Esta recepción ya estaba registrada ({codigo}).",
+    "exitoCompleta": "Recepción {codigo} registrada: {orden} quedó recibida completa",
+    "facturaCreada": "Se creó la factura de compra {factura} con su cuenta por pagar.",
+    "exito": "Recepción {codigo} registrada",
+    "pendientes": "{n, plural, one {Queda # línea pendiente de la orden.} other {Quedan # líneas pendientes de la orden.}}",
+    "saltadasTitulo": "{n, plural, one {# producto no movió inventario} other {# productos no movieron inventario}} (no controlan existencias)",
+    "lotes": {
+      "titulo": "Lote y vencimiento",
+      "elegirExistente": "Elegir lote existente",
+      "agregar": "Agregar lote",
+      "requerido": "Este producto maneja lotes: indica en qué lote llega y cuándo vence.",
+      "opcional": "Sin lote.",
+      "codigoPlaceholder": "Código (vacío: L-AAAAMMDD)",
+      "codigo": "Código del lote",
+      "vence": "Vence",
+      "cantidad": "Cantidad del lote {codigo}",
+      "quitar": "Quitar el lote {codigo}",
+      "asignado": "Asignado {asignado} de {total}",
+      "noCuadra": "la suma de los lotes debe ser igual a lo que llega",
+      "errorCarga": "No se pudieron cargar los lotes del producto.",
+      "cargando": "Cargando lotes…",
+      "dialogoDescripcion": "Lotes de {producto}"
+    },
+    "errores": {
+      "sin_sesion": "Tu sesión terminó. Vuelve a iniciar sesión.",
+      "sin_permiso": "No tienes permiso para recibir mercancía (inventario: crear).",
+      "organizacion_no_permitida": "La orden no es de tu organización.",
+      "sucursal_sin_acceso": "No tienes acceso a la sucursal que recibe esta orden.",
+      "orden_no_encontrada": "No encontramos la orden de compra.",
+      "orden_no_recibible": "Esta orden no se puede recibir: debe estar enviada o recibida en parte, con cantidades pendientes.",
+      "datos_invalidos": "Revisa las cantidades, los lotes y los seriales.",
+      "clave_invalida": "No se pudo identificar la recepción. Inténtalo de nuevo.",
+      "clave_reutilizada": "Esta recepción ya se usó en otra orden. Vuelve a abrir el diálogo.",
+      "sin_lineas": "No hay cantidades para recibir.",
+      "demasiadas_lineas": "Demasiadas líneas en una sola recepción (máximo 500).",
+      "linea_invalida": "Una línea de la recepción no es válida.",
+      "linea_repetida": "Una línea aparece dos veces en la recepción.",
+      "linea_no_es_de_la_orden": "Una línea no pertenece a esta orden. Recarga la página.",
+      "producto_no_coincide": "El producto de una línea cambió. Recarga la página.",
+      "producto_con_variantes": "Un producto con variantes no se recibe directamente: la orden debe pedir la variante.",
+      "cantidad_invalida": "Las cantidades deben ser mayores que cero.",
+      "sobre_recepcion": "«{producto}»: llegan {solicitado} y solo quedan {pendiente} por recibir.",
+      "cantidad_serial_entera": "Un producto con seriales se recibe en unidades enteras.",
+      "seriales_no_cuadran": "«{producto}»: llegan {cantidad} unidades y hay {seriales} seriales.",
+      "serial_repetido": "Hay un serial repetido o que ya existe.",
+      "serial_repetido_cual": "El serial {serial} está repetido o ya existe en tu organización.",
+      "producto_sin_control_de_stock": "Un producto sin control de existencias no admite seriales.",
+      "lote_requerido": "Un producto que maneja lotes llega sin lote.",
+      "lotes_no_cuadran": "Los lotes suman {lotes} y llegan {cantidad}.",
+      "lote_invalido": "El lote elegido no es de este producto.",
+      "lote_repetido": "Ese código de lote ya existe para el producto.",
+      "lote_vencimiento_distinto": "El lote {lote} ya existe y vence el {vence}: usa ese vencimiento u otro código.",
+      "fecha_invalida": "La fecha de vencimiento no es válida.",
+      "error_desconocido": "No se pudo registrar la recepción. No se recibió nada; inténtalo de nuevo."
     }
   }
 }

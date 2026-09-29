@@ -3,10 +3,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { toastSuccess, toastError } from '@/components/ui/use-toast';
+import { toastSuccess, toastError, toastWarning } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { purchaseOrderService, type PurchaseOrderWithItems } from '@/lib/services/purchaseOrderService';
-import { describeSkippedItems } from '@/lib/services/stockMovementService';
+import {
+  construirLineasRecepcion,
+  nuevaClaveRecepcion,
+  recepcionarOrdenCompra,
+  type LoteCapturado,
+} from '@/lib/services/inventario/recepcionOrdenCompra';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,6 +60,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
+import { LotesRecepcion, lotesIncompletos, useMensajeErrorRecepcionOC } from './LotesRecepcion';
 
 interface OrdenCompraDetalleProps {
   orderUuid: string;
@@ -63,7 +70,7 @@ interface OrdenCompraDetalleProps {
 interface ItemConSeriales {
   serials_received?: string[] | null;
   requires_serial?: boolean | null;
-  products?: { track_serial?: boolean | null } | null;
+  products?: { track_serial?: boolean | null; track_lots?: boolean | null } | null;
 }
 
 /** Factura de compra vinculada a la orden; su moneda es la del documento. */
@@ -91,7 +98,9 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 
 export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
   const router = useRouter();
-  const { formatDate } = useFormatDate();
+  const { formatDate, getToday } = useFormatDate();
+  const tRec = useTranslations('inventarioRecepcionOC');
+  const mensajeErrorRecepcion = useMensajeErrorRecepcionOC();
   const { formatear, paraDocumento } = useMonedaOrganizacion();
 
   // Estados
@@ -102,6 +111,10 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [itemSerials, setItemSerials] = useState<Record<number, string[]>>({});
   const [productsWithSerial, setProductsWithSerial] = useState<Set<number>>(new Set());
+  // B8: lotes por línea (lo que llega ahora) y clave de idempotencia de esta recepción.
+  const [itemLotes, setItemLotes] = useState<Record<number, LoteCapturado[]>>({});
+  const [productsWithLots, setProductsWithLots] = useState<Set<number>>(new Set());
+  const [claveRecepcion, setClaveRecepcion] = useState<string>(() => nuevaClaveRecepcion());
 
   // Estados para factura y cuenta por pagar vinculadas
   const [linkedInvoice, setLinkedInvoice] = useState<FacturaVinculada | null>(null);
@@ -128,6 +141,7 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
       const quantities: Record<number, number> = {};
       const serialsMap: Record<number, string[]> = {};
       const serialProducts = new Set<number>();
+      const lotProducts = new Set<number>();
       data.items.forEach(item => {
         quantities[item.id] = item.received_quantity || 0;
         const conSeriales = item as unknown as ItemConSeriales;
@@ -135,10 +149,15 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
         if (conSeriales.requires_serial || conSeriales.products?.track_serial) {
           serialProducts.add(item.id);
         }
+        if (conSeriales.products?.track_lots) {
+          lotProducts.add(item.id);
+        }
       });
       setReceivedQuantities(quantities);
       setItemSerials(serialsMap);
       setProductsWithSerial(serialProducts);
+      setProductsWithLots(lotProducts);
+      setItemLotes({});
 
       // Buscar factura vinculada y cuenta por pagar
       if (data.id) {
@@ -222,43 +241,47 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
   const handleReceiveItems = async () => {
     if (!order) return;
 
+    // B8: una sola RPC (fn_oc_recepcionar) con lo que llega AHORA por línea,
+    // sus lotes y sus seriales nuevos. Si algo falla no queda nada recibido.
+    const lineas = construirLineasRecepcion(order.items, receivedQuantities, itemSerials, itemLotes);
+    if (lineas.length === 0) {
+      toastError(tRec('falloTitulo'), tRec('nada'));
+      return;
+    }
+    const sinLote = order.items.find((item) => {
+      const ahora = (receivedQuantities[item.id] ?? 0) - (item.received_quantity || 0);
+      return lotesIncompletos(productsWithLots.has(item.id), Math.round(ahora * 1000) / 1000, itemLotes[item.id] ?? []);
+    });
+    if (sinLote) {
+      toastError(tRec('falloTitulo'), tRec('lotesPendientes', { producto: sinLote.products?.name ?? '' }));
+      return;
+    }
+
     try {
       setIsProcessing(true);
-      const organizationId = getOrganizationId();
+      const r = await recepcionarOrdenCompra(order.uuid, { lineas, clave: claveRecepcion });
 
-      const itemsToReceive = Object.entries(receivedQuantities).map(([itemId, quantity]) => ({
-        itemId: parseInt(itemId),
-        quantity,
-        serials: itemSerials[parseInt(itemId)] || []
-      }));
-
-      // Usar metodo con seriales si hay productos que lo requieren, sino el normal
-      const hasSerialItems = itemsToReceive.some(i => i.serials && i.serials.length > 0);
-      const { error, stock } = hasSerialItems
-        ? await purchaseOrderService.receiveItemsWithSerials(order.uuid, organizationId, itemsToReceive)
-        : await purchaseOrderService.receiveItems(order.uuid, organizationId, itemsToReceive.map(({ itemId, quantity }) => ({ itemId, quantity })));
-
-      if (error) throw error;
-
-      toastSuccess('Recepción registrada', 'Las cantidades recibidas han sido actualizadas y sumadas al stock');
-
-      // Recibir sin mover inventario es el fallo silencioso que mas confunde:
-      // la orden queda "recibida" pero el stock no cambia. Hay que decirlo.
-      if (stock?.skippedItems.length) {
-        toastError(
-          `${stock.skippedItems.length} item(s) no afectaron el inventario`,
-          describeSkippedItems(stock.skippedItems)
+      if (r.ya_procesada) {
+        toastSuccess(tRec('yaProcesada', { codigo: r.codigo }));
+      } else if (r.orden.completa) {
+        toastSuccess(
+          tRec('exitoCompleta', { codigo: r.codigo, orden: r.orden.codigo }),
+          r.factura?.number_ext ? tRec('facturaCreada', { factura: r.factura.number_ext }) : undefined,
         );
+      } else {
+        toastSuccess(tRec('exito', { codigo: r.codigo }), tRec('pendientes', { n: r.pendientes.length }));
       }
 
-      if (stock?.errors.length) {
-        toastError('Errores al sumar stock', stock.errors.join('; '));
+      // Lo que no movió inventario (producto sin control de stock) se dice, no se esconde.
+      if (r.saltadas.length > 0) {
+        toastWarning(tRec('saltadasTitulo', { n: r.saltadas.length }), r.saltadas.map((x) => x.product_name ?? `#${x.product_id}`).join(', '));
       }
 
+      setClaveRecepcion(nuevaClaveRecepcion());
       setShowReceiveDialog(false);
       loadData();
     } catch (error: unknown) {
-      toastError('Error', (error as { message?: string } | null)?.message || 'No se pudo registrar la recepción');
+      toastError(tRec('falloTitulo'), mensajeErrorRecepcion(error));
     } finally {
       setIsProcessing(false);
     }
@@ -646,7 +669,7 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Recibido</p>
                         <Input
                           type="number"
-                          min="0"
+                          min={item.received_quantity || 0}
                           max={item.quantity}
                           value={received}
                           onChange={(e) => setReceivedQuantities({
@@ -705,6 +728,23 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
                       />
                     </div>
                   )}
+
+                  {/* B8: lote y vencimiento de lo que llega ahora (productos con lotes) */}
+                  {productsWithLots.has(item.id) && received > (item.received_quantity || 0) && (
+                    <div className="mt-3">
+                      <LotesRecepcion
+                        organizacionId={getOrganizationId()}
+                        sucursalId={order.branch_id}
+                        productoId={item.product_id}
+                        productoNombre={item.products?.name || ''}
+                        cantidad={Math.round((received - (item.received_quantity || 0)) * 1000) / 1000}
+                        requerido
+                        valor={itemLotes[item.id] ?? []}
+                        onChange={(v) => setItemLotes((prev) => ({ ...prev, [item.id]: v }))}
+                        hoy={getToday()}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -713,7 +753,11 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
           <AlertDialogFooter className="border-t dark:border-gray-700 pt-4">
             <AlertDialogCancel className="dark:border-gray-700">Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleReceiveItems}
+              onClick={(e) => {
+                // Con error la recepción no se registra y el diálogo sigue abierto con lo capturado.
+                e.preventDefault();
+                void handleReceiveItems();
+              }}
               disabled={isProcessing}
               className="bg-blue-600 hover:bg-blue-700"
             >

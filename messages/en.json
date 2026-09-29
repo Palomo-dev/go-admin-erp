@@ -9501,9 +9501,7 @@
         "costoUnitario": "Unit cost",
         "costo": "Cost",
         "total": "Total",
-        "acciones": "Actions",
-        "lote": "Lot",
-        "vence": "Expires"
+        "acciones": "Actions"
       },
       "cantidadEn": "Opening quantity at {sucursal}",
       "minimoEn": "Minimum stock at {sucursal}",
@@ -9514,12 +9512,7 @@
       "totalExistencia": "Total {unidades} units",
       "notaKardex": "{count, plural, one {# active branch} other {# active branches}}. The opening entry is recorded in the stock ledger when you save. Empty unit cost = product cost.",
       "notaEditar": "On-hand stock is changed with an inventory adjustment: “Adjust” opens it in a new tab so you don’t lose unsaved changes. The minimum can be edited here.",
-      "avisoSinCosto": "Some quantities have no cost: enter the unit cost or the product cost in “Prices and costs”.",
-      "loteEn": "Lot of the opening stock at {sucursal}",
-      "venceEn": "Lot expiry date at {sucursal}",
-      "lotePlaceholder": "Automatic",
-      "vencePlaceholder": "No expiry",
-      "notaLotes": "Each quantity goes into the given lot; without a code, one is created with today's date."
+      "avisoSinCosto": "Some quantities have no cost: enter the unit cost or the product cost in “Prices and costs”."
     },
     "trazabilidad": {
       "titulo": "Traceability",
@@ -9557,13 +9550,6 @@
           "n3": "Sequence (3 digits)",
           "n2": "Sequence (2 digits)"
         }
-      },
-      "lotes": {
-        "etiqueta": "Track lots and expiry dates",
-        "ayuda": "Each receipt goes into a lot with its expiry date, and sales take the one that expires first.",
-        "sinInventario": "Turn on “Track inventory” to manage lots.",
-        "notaEditar": "Existing stock stays without a lot: move it to a lot from Inventory › Lots or with an adjustment.",
-        "notaVariantes": "Variants also track lots; each lot belongs to one variant."
       }
     },
     "variantes": {
@@ -19626,6 +19612,66 @@
       "crear": "{count, plural, one {Create 1 transfer} other {Create {n} transfers}}",
       "creando": "Creating…",
       "listo": "{count, plural, one {1 transfer created} other {{n} transfers created}}"
+    }
+  },
+  "inventarioRecepcionOC": {
+    "falloTitulo": "The receipt was not recorded",
+    "nada": "There are no new quantities to receive.",
+    "lotesPendientes": "Enter the lot for “{producto}”: the lots must add up to what arrives.",
+    "yaProcesada": "This receipt was already recorded ({codigo}).",
+    "exitoCompleta": "Receipt {codigo} recorded: {orden} is fully received",
+    "facturaCreada": "Purchase invoice {factura} was created with its account payable.",
+    "exito": "Receipt {codigo} recorded",
+    "pendientes": "{n, plural, one {# order line is still pending.} other {# order lines are still pending.}}",
+    "saltadasTitulo": "{n, plural, one {# product did not move inventory} other {# products did not move inventory}} (stock not tracked)",
+    "lotes": {
+      "titulo": "Lot and expiry",
+      "elegirExistente": "Choose existing lot",
+      "agregar": "Add lot",
+      "requerido": "This product is tracked by lot: enter the lot it arrives in and when it expires.",
+      "opcional": "No lot.",
+      "codigoPlaceholder": "Code (empty: L-YYYYMMDD)",
+      "codigo": "Lot code",
+      "vence": "Expires",
+      "cantidad": "Quantity for lot {codigo}",
+      "quitar": "Remove lot {codigo}",
+      "asignado": "Assigned {asignado} of {total}",
+      "noCuadra": "the lots must add up to what arrives",
+      "errorCarga": "The product lots could not be loaded.",
+      "cargando": "Loading lots…",
+      "dialogoDescripcion": "Lots of {producto}"
+    },
+    "errores": {
+      "sin_sesion": "Your session ended. Please sign in again.",
+      "sin_permiso": "You don't have permission to receive goods (inventory: create).",
+      "organizacion_no_permitida": "This order does not belong to your organization.",
+      "sucursal_sin_acceso": "You don't have access to the branch receiving this order.",
+      "orden_no_encontrada": "We couldn't find the purchase order.",
+      "orden_no_recibible": "This order can't be received: it must be sent or partially received, with pending quantities.",
+      "datos_invalidos": "Check the quantities, lots and serial numbers.",
+      "clave_invalida": "The receipt couldn't be identified. Please try again.",
+      "clave_reutilizada": "This receipt was already used on another order. Reopen the dialog.",
+      "sin_lineas": "There are no quantities to receive.",
+      "demasiadas_lineas": "Too many lines in a single receipt (maximum 500).",
+      "linea_invalida": "A receipt line is not valid.",
+      "linea_repetida": "A line appears twice in the receipt.",
+      "linea_no_es_de_la_orden": "A line does not belong to this order. Reload the page.",
+      "producto_no_coincide": "A line's product changed. Reload the page.",
+      "producto_con_variantes": "A product with variants can't be received directly: the order must request the variant.",
+      "cantidad_invalida": "Quantities must be greater than zero.",
+      "sobre_recepcion": "“{producto}”: {solicitado} arriving but only {pendiente} left to receive.",
+      "cantidad_serial_entera": "A serialized product is received in whole units.",
+      "seriales_no_cuadran": "“{producto}”: {cantidad} units arriving and {seriales} serial numbers entered.",
+      "serial_repetido": "A serial number is repeated or already exists.",
+      "serial_repetido_cual": "Serial number {serial} is repeated or already exists in your organization.",
+      "producto_sin_control_de_stock": "A product without stock tracking can't take serial numbers.",
+      "lote_requerido": "A lot-tracked product is arriving without a lot.",
+      "lotes_no_cuadran": "The lots add up to {lotes} and {cantidad} are arriving.",
+      "lote_invalido": "The selected lot doesn't belong to this product.",
+      "lote_repetido": "That lot code already exists for the product.",
+      "lote_vencimiento_distinto": "Lot {lote} already exists and expires on {vence}: use that expiry or another code.",
+      "fecha_invalida": "The expiry date is not valid.",
+      "error_desconocido": "The receipt couldn't be recorded. Nothing was received; please try again."
     }
   }
 }

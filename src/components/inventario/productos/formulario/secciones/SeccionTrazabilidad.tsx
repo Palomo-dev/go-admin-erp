@@ -2,7 +2,7 @@
 
 import { useId } from 'react';
 import { useTranslations } from 'next-intl';
-import { Barcode, CalendarClock, Info, ShieldCheck, Sparkles, TriangleAlert } from 'lucide-react';
+import { Barcode, Info, ShieldCheck, Sparkles, TriangleAlert } from 'lucide-react';
 import { CampoNumero } from '@/components/kit/CampoNumero';
 import { FormField } from '@/components/kit/FormField';
 import { Switch } from '@/components/ui/switch';
@@ -14,9 +14,6 @@ import { ConstructorPatronSerial } from './ConstructorPatronSerial';
  * dentro de «Inventario por sucursal»; sheet «Trazabilidad de Seriales y
  * Garantía» del detalle). Solo el contenido: el marco lo pone `ProductoForm`.
  *
- * - «Maneja lotes y vencimientos» (track_lots, B7): la venta descuenta por FEFO
- *   y cada entrada lleva lote; el stock inicial pide el lote. Sin control de
- *   existencias no se puede activar. Las variantes lo heredan en el servidor.
  * - «Requiere número de serial» (track_serial).
  * - «Meses de garantía» (entero ≥ 0): cada serial nuevo recibe su garantía desde el día de alta.
  * - «Auto-generar seriales» + patrón con el constructor de tokens. El patrón
@@ -32,8 +29,6 @@ export function SeccionTrazabilidad({ estado, cambiar, errores, hoy, modo }: Pro
   const base = useId();
   const idSerial = `${base}-serial`;
   const idAuto = `${base}-auto`;
-  const idLotes = `${base}-lotes`;
-  const tl = useTranslations('productoForm.trazabilidad.lotes');
 
   const errorGarantia = errores.warranty_months ? tErr(errores.warranty_months) : null;
   const errorPatron = errores.serial_pattern ? tErr(errores.serial_pattern) : null;
@@ -44,33 +39,6 @@ export function SeccionTrazabilidad({ estado, cambiar, errores, hoy, modo }: Pro
       <div className="flex items-center gap-2">
         <Barcode aria-hidden="true" className="size-4 text-fg-secondary" />
         <h3 className="text-sm font-semibold text-fg">{t('titulo')}</h3>
-      </div>
-
-      <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <label htmlFor={idLotes} className="flex items-center gap-1.5 text-sm font-medium text-fg">
-              <CalendarClock aria-hidden="true" className="size-4 text-fg-secondary" />
-              {tl('etiqueta')}
-            </label>
-            <p id={`${idLotes}-ayuda`} className="text-xs text-fg-secondary">
-              {sinInventario ? tl('sinInventario') : tl('ayuda')}
-            </p>
-          </div>
-          <Switch
-            id={idLotes}
-            checked={estado.track_lots && !sinInventario}
-            disabled={sinInventario}
-            onCheckedChange={(v) => cambiar('track_lots', v)}
-            aria-describedby={`${idLotes}-ayuda`}
-          />
-        </div>
-        {estado.track_lots && !sinInventario && (modo === 'editar' || estado.tiene_variantes) && (
-          <p className="flex items-start gap-2 text-xs text-fg-muted">
-            <Info aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-            {modo === 'editar' ? tl('notaEditar') : tl('notaVariantes')}
-          </p>
-        )}
       </div>
 
       <div className="flex items-start justify-between gap-4 rounded-lg border border-line bg-surface p-3">

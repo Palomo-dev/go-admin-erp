@@ -9396,9 +9396,7 @@
         "costoUnitario": "Coût unitaire",
         "costo": "Coût",
         "total": "Total",
-        "acciones": "Actions",
-        "lote": "Lot",
-        "vence": "Péremption"
+        "acciones": "Actions"
       },
       "cantidadEn": "Quantité initiale à {sucursal}",
       "minimoEn": "Stock minimum à {sucursal}",
@@ -9409,12 +9407,7 @@
       "totalExistencia": "Total {unidades} unités",
       "notaKardex": "{count, plural, one {# succursale active} other {# succursales actives}}. L’entrée initiale est enregistrée dans la fiche de stock à l’enregistrement. Coût unitaire vide = coût du produit.",
       "notaEditar": "Le stock se modifie par un ajustement d’inventaire : « Ajuster » l’ouvre dans un nouvel onglet pour ne pas perdre les modifications non enregistrées. Le minimum se modifie ici.",
-      "avisoSinCosto": "Certaines quantités n’ont pas de coût : saisissez le coût unitaire ou le coût du produit dans « Prix et coûts ».",
-      "loteEn": "Lot du stock initial à {sucursal}",
-      "venceEn": "Date de péremption du lot à {sucursal}",
-      "lotePlaceholder": "Automatique",
-      "vencePlaceholder": "Sans péremption",
-      "notaLotes": "Chaque quantité entre dans le lot indiqué ; sans code, un lot est créé avec la date du jour."
+      "avisoSinCosto": "Certaines quantités n’ont pas de coût : saisissez le coût unitaire ou le coût du produit dans « Prix et coûts »."
     },
     "trazabilidad": {
       "titulo": "Traçabilité",
@@ -9452,13 +9445,6 @@
           "n3": "Compteur (3 chiffres)",
           "n2": "Compteur (2 chiffres)"
         }
-      },
-      "lotes": {
-        "etiqueta": "Gérer les lots et les dates de péremption",
-        "ayuda": "Chaque entrée va dans un lot avec sa date de péremption et la vente sort d'abord celui qui expire le plus tôt.",
-        "sinInventario": "Activez « Suivre le stock » pour gérer les lots.",
-        "notaEditar": "Le stock existant reste sans lot : placez-le dans un lot depuis Inventaire › Lots ou avec un ajustement.",
-        "notaVariantes": "Les variantes gèrent aussi les lots ; chaque lot appartient à une variante."
       }
     },
     "variantes": {
@@ -19521,6 +19507,66 @@
       "crear": "{count, plural, one {Créer 1 transfert} other {Créer {n} transferts}}",
       "creando": "Création…",
       "listo": "{count, plural, one {1 transfert créé} other {{n} transferts créés}}"
+    }
+  },
+  "inventarioRecepcionOC": {
+    "falloTitulo": "La réception n'a pas été enregistrée",
+    "nada": "Aucune nouvelle quantité à recevoir.",
+    "lotesPendientes": "Indiquez le lot de « {producto} » : la somme des lots doit être égale à ce qui arrive.",
+    "yaProcesada": "Cette réception était déjà enregistrée ({codigo}).",
+    "exitoCompleta": "Réception {codigo} enregistrée : {orden} est entièrement reçue",
+    "facturaCreada": "La facture d'achat {factura} a été créée avec son compte fournisseur.",
+    "exito": "Réception {codigo} enregistrée",
+    "pendientes": "{n, plural, one {# ligne de la commande reste en attente.} other {# lignes de la commande restent en attente.}}",
+    "saltadasTitulo": "{n, plural, one {# produit n'a pas mouvementé le stock} other {# produits n'ont pas mouvementé le stock}} (stock non suivi)",
+    "lotes": {
+      "titulo": "Lot et péremption",
+      "elegirExistente": "Choisir un lot existant",
+      "agregar": "Ajouter un lot",
+      "requerido": "Ce produit est suivi par lot : indiquez le lot reçu et sa date de péremption.",
+      "opcional": "Sans lot.",
+      "codigoPlaceholder": "Code (vide : L-AAAAMMJJ)",
+      "codigo": "Code du lot",
+      "vence": "Péremption",
+      "cantidad": "Quantité du lot {codigo}",
+      "quitar": "Retirer le lot {codigo}",
+      "asignado": "Attribué {asignado} sur {total}",
+      "noCuadra": "la somme des lots doit être égale à ce qui arrive",
+      "errorCarga": "Impossible de charger les lots du produit.",
+      "cargando": "Chargement des lots…",
+      "dialogoDescripcion": "Lots de {producto}"
+    },
+    "errores": {
+      "sin_sesion": "Votre session a expiré. Reconnectez-vous.",
+      "sin_permiso": "Vous n'avez pas l'autorisation de réceptionner des marchandises (inventaire : créer).",
+      "organizacion_no_permitida": "Cette commande n'appartient pas à votre organisation.",
+      "sucursal_sin_acceso": "Vous n'avez pas accès à l'agence qui reçoit cette commande.",
+      "orden_no_encontrada": "Bon de commande introuvable.",
+      "orden_no_recibible": "Cette commande ne peut pas être reçue : elle doit être envoyée ou partiellement reçue, avec des quantités en attente.",
+      "datos_invalidos": "Vérifiez les quantités, les lots et les numéros de série.",
+      "clave_invalida": "Impossible d'identifier la réception. Réessayez.",
+      "clave_reutilizada": "Cette réception a déjà servi pour une autre commande. Rouvrez la fenêtre.",
+      "sin_lineas": "Aucune quantité à recevoir.",
+      "demasiadas_lineas": "Trop de lignes dans une seule réception (500 maximum).",
+      "linea_invalida": "Une ligne de la réception n'est pas valide.",
+      "linea_repetida": "Une ligne apparaît deux fois dans la réception.",
+      "linea_no_es_de_la_orden": "Une ligne n'appartient pas à cette commande. Rechargez la page.",
+      "producto_no_coincide": "Le produit d'une ligne a changé. Rechargez la page.",
+      "producto_con_variantes": "Un produit avec variantes ne se reçoit pas directement : la commande doit demander la variante.",
+      "cantidad_invalida": "Les quantités doivent être supérieures à zéro.",
+      "sobre_recepcion": "« {producto} » : {solicitado} arrivent mais il ne reste que {pendiente} à recevoir.",
+      "cantidad_serial_entera": "Un produit avec numéros de série se reçoit en unités entières.",
+      "seriales_no_cuadran": "« {producto} » : {cantidad} unités arrivent et {seriales} numéros de série sont saisis.",
+      "serial_repetido": "Un numéro de série est répété ou existe déjà.",
+      "serial_repetido_cual": "Le numéro de série {serial} est répété ou existe déjà dans votre organisation.",
+      "producto_sin_control_de_stock": "Un produit sans suivi de stock n'accepte pas de numéros de série.",
+      "lote_requerido": "Un produit suivi par lot arrive sans lot.",
+      "lotes_no_cuadran": "Les lots totalisent {lotes} et {cantidad} arrivent.",
+      "lote_invalido": "Le lot choisi n'appartient pas à ce produit.",
+      "lote_repetido": "Ce code de lot existe déjà pour le produit.",
+      "lote_vencimiento_distinto": "Le lot {lote} existe déjà et expire le {vence} : utilisez cette date ou un autre code.",
+      "fecha_invalida": "La date de péremption n'est pas valide.",
+      "error_desconocido": "La réception n'a pas pu être enregistrée. Rien n'a été reçu ; réessayez."
     }
   }
 }

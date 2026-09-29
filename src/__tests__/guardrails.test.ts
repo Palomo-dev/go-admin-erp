@@ -1685,9 +1685,11 @@ describe('23. stock_movements.source: CHECK, lista de TS y código coinciden', (
     // que los escritores TS pasan a RPC (§3.2): B3 (2026-09-29) retiró
     // TransferenciasService, el último que escribía transfer_out/transfer_in
     // desde TS (ahora fn_traslado_* por fn_inv_int_mover), así que transfer_in
-    // ya no se exige aquí.
+    // ya no se exige aquí. B8 (2026-09-29) retiró la recepción de OC del
+    // navegador (purchase_order ahora solo lo escribe fn_oc_recepcionar por
+    // fn_kardex_entrada_compra_int): se exige purchase_invoice, que sigue en TS.
     expect(escritos.size).toBeGreaterThanOrEqual(5);
-    expect([...escritos.keys()]).toEqual(expect.arrayContaining(['purchase_order']));
+    expect([...escritos.keys()]).toEqual(expect.arrayContaining(['purchase_invoice']));
 
     const rechazados = [...escritos.entries()]
       .filter(([valor]) => !admitidos.has(valor))
@@ -1967,9 +1969,18 @@ describe('26b. Compras y CxP: una sola RPC para registrar la compra y nada escri
   });
 
   test('el generador desde OC llama a la RPC única y no arma la factura a mano', () => {
+    // Inventario B8 (2026-09-29): la factura de una OC recibida ya no la pide el
+    // navegador después de recibir (clienteCompras.desdeOrden, que podía fallar
+    // en silencio con la OC ya «recibida»). La genera fn_oc_recepcionar al
+    // completar la orden, en la misma transacción, con fn_fc_int_desde_oc: el
+    // mismo cuerpo que fn_factura_compra_desde_oc (que ahora solo exige permiso y
+    // la llama). purchaseOrderService solo recibe por esa RPC.
     const src = readFile(path.join(SRC_ROOT, 'lib/services/purchaseOrderService.ts'));
-    expect(src).toMatch(/clienteCompras\.desdeOrden\(/);
+    expect(src).toMatch(/recepcionarOrdenCompra\(/);
     expect(src).not.toMatch(escritura('invoice_items'));
+    const migracion = readFile(path.join(SRC_ROOT, '..', 'supabase', 'migrations', '20260929170100_inv_b8_2_recepcionar.sql'));
+    expect(migracion).toMatch(/v_factura\s*:=\s*public\.fn_fc_int_desde_oc\(/);
+    expect(migracion).toMatch(/function public\.fn_factura_compra_desde_oc[\s\S]*?return public\.fn_fc_int_desde_oc\(p_po_uuid\)/);
   });
 
   test('las páginas de compras y CxP montan las pantallas nuevas (las URL no cambian)', () => {
@@ -3081,6 +3092,27 @@ describe('33. Existencias: nada fuera del núcleo escribe las tablas de stock', 
     for (const rpc of ['decrement_stock_with_recipe', 'fn_stock_reservar', 'fn_stock_liberar_reserva', 'fn_kardex_entrada_compra', 'fn_inv_reversion_entrada']) {
       expect(src).toContain(`'${rpc}'`);
     }
+  });
+
+  test('B8: la recepción de una OC solo va por fn_oc_recepcionar (sin copia en TS)', () => {
+    // Antes purchaseOrderService.receiveItems/receiveItemsWithSerials calculaban en
+    // el navegador lo recibido, escribían received_quantity línea por línea, el
+    // stock en otra llamada que «no bloqueaba la recepción» y los seriales uno a
+    // uno con los errores en la consola. Hoy todo es una RPC transaccional.
+    const oc = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'services', 'purchaseOrderService.ts')));
+    expect(oc).not.toMatch(/incrementOnPurchase|serialTrackingService|receiveItems(WithSerials)?\s*\(/);
+    expect(oc).not.toMatch(/from\(\s*['"]purchase_order_items['"]\s*\)[\s\S]{0,200}?\.update\(\s*\{[\s\S]{0,80}received_quantity/);
+    const fachada = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'services', 'stockMovementService.ts')));
+    expect(fachada).toMatch(/ORIGENES_COMPRA = new Set\(\['purchase', 'purchase_invoice'\]\)/);
+    const llamanConOC = walkDir(SRC_ROOT)
+      .filter((f) => !esPrueba33(f))
+      .filter((f) => /incrementOnPurchase\([\s\S]{0,400}?['"]purchase_order['"]/.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(llamanConOC).toEqual([]);
+    const ruta = readFile(path.join(SRC_ROOT, 'app', 'api', 'inventario', 'ordenes-compra', '[id]', 'recepcionar', 'route.ts'));
+    expect(ruta).toMatch(/withOrg\(/);
+    expect(ruta).toMatch(/'fn_oc_recepcionar'/);
+    expect(ruta).toMatch(/p_org:\s*ctx\.organizationId/);
   });
 
   test('nadie llama a la primitiva ni a sus internas desde src/', () => {

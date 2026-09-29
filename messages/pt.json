@@ -9396,9 +9396,7 @@
         "costoUnitario": "Custo unitário",
         "costo": "Custo",
         "total": "Total",
-        "acciones": "Ações",
-        "lote": "Lote",
-        "vence": "Validade"
+        "acciones": "Ações"
       },
       "cantidadEn": "Quantidade inicial em {sucursal}",
       "minimoEn": "Estoque mínimo em {sucursal}",
@@ -9409,12 +9407,7 @@
       "totalExistencia": "Total {unidades} un.",
       "notaKardex": "{count, plural, one {# filial ativa} other {# filiais ativas}}. A entrada inicial fica registrada no kardex ao salvar. Custo unitário vazio = custo do produto.",
       "notaEditar": "A quantidade em estoque muda com um ajuste de estoque: “Ajustar” abre em outra aba para você não perder as alterações não salvas. O mínimo pode ser editado aqui.",
-      "avisoSinCosto": "Há quantidades sem custo: informe o custo unitário ou o custo do produto em “Preços e custos”.",
-      "loteEn": "Lote do estoque inicial em {sucursal}",
-      "venceEn": "Validade do lote em {sucursal}",
-      "lotePlaceholder": "Automático",
-      "vencePlaceholder": "Sem validade",
-      "notaLotes": "Cada quantidade entra no lote indicado; sem código, cria-se um com a data de hoje."
+      "avisoSinCosto": "Há quantidades sem custo: informe o custo unitário ou o custo do produto em “Preços e custos”."
     },
     "trazabilidad": {
       "titulo": "Rastreabilidade",
@@ -9452,13 +9445,6 @@
           "n3": "Sequencial (3 dígitos)",
           "n2": "Sequencial (2 dígitos)"
         }
-      },
-      "lotes": {
-        "etiqueta": "Controla lotes e validades",
-        "ayuda": "Cada entrada fica em um lote com sua validade e a venda baixa primeiro o que vence antes.",
-        "sinInventario": "Ative “Controlar estoque” para controlar lotes.",
-        "notaEditar": "O estoque atual fica sem lote: passe-o para um lote em Estoque › Lotes ou com um ajuste.",
-        "notaVariantes": "As variantes também controlam lotes; cada lote pertence a uma variante."
       }
     },
     "variantes": {
@@ -19521,6 +19507,66 @@
       "crear": "{count, plural, one {Criar 1 transferência} other {Criar {n} transferências}}",
       "creando": "Criando…",
       "listo": "{count, plural, one {1 transferência criada} other {{n} transferências criadas}}"
+    }
+  },
+  "inventarioRecepcionOC": {
+    "falloTitulo": "O recebimento não foi registrado",
+    "nada": "Não há novas quantidades para receber.",
+    "lotesPendientes": "Informe o lote de “{producto}”: a soma dos lotes deve ser igual ao que chega.",
+    "yaProcesada": "Este recebimento já estava registrado ({codigo}).",
+    "exitoCompleta": "Recebimento {codigo} registrado: {orden} foi recebida por completo",
+    "facturaCreada": "A fatura de compra {factura} foi criada com a sua conta a pagar.",
+    "exito": "Recebimento {codigo} registrado",
+    "pendientes": "{n, plural, one {Resta # linha pendente da ordem.} other {Restam # linhas pendentes da ordem.}}",
+    "saltadasTitulo": "{n, plural, one {# produto não movimentou o estoque} other {# produtos não movimentaram o estoque}} (sem controle de estoque)",
+    "lotes": {
+      "titulo": "Lote e validade",
+      "elegirExistente": "Escolher lote existente",
+      "agregar": "Adicionar lote",
+      "requerido": "Este produto é controlado por lote: informe o lote em que chega e quando vence.",
+      "opcional": "Sem lote.",
+      "codigoPlaceholder": "Código (vazio: L-AAAAMMDD)",
+      "codigo": "Código do lote",
+      "vence": "Validade",
+      "cantidad": "Quantidade do lote {codigo}",
+      "quitar": "Remover o lote {codigo}",
+      "asignado": "Atribuído {asignado} de {total}",
+      "noCuadra": "a soma dos lotes deve ser igual ao que chega",
+      "errorCarga": "Não foi possível carregar os lotes do produto.",
+      "cargando": "Carregando lotes…",
+      "dialogoDescripcion": "Lotes de {producto}"
+    },
+    "errores": {
+      "sin_sesion": "Sua sessão terminou. Entre novamente.",
+      "sin_permiso": "Você não tem permissão para receber mercadorias (estoque: criar).",
+      "organizacion_no_permitida": "Esta ordem não pertence à sua organização.",
+      "sucursal_sin_acceso": "Você não tem acesso à filial que recebe esta ordem.",
+      "orden_no_encontrada": "Não encontramos a ordem de compra.",
+      "orden_no_recibible": "Esta ordem não pode ser recebida: deve estar enviada ou recebida em parte, com quantidades pendentes.",
+      "datos_invalidos": "Revise as quantidades, os lotes e os números de série.",
+      "clave_invalida": "Não foi possível identificar o recebimento. Tente novamente.",
+      "clave_reutilizada": "Este recebimento já foi usado em outra ordem. Abra o diálogo novamente.",
+      "sin_lineas": "Não há quantidades para receber.",
+      "demasiadas_lineas": "Linhas demais em um único recebimento (máximo 500).",
+      "linea_invalida": "Uma linha do recebimento não é válida.",
+      "linea_repetida": "Uma linha aparece duas vezes no recebimento.",
+      "linea_no_es_de_la_orden": "Uma linha não pertence a esta ordem. Recarregue a página.",
+      "producto_no_coincide": "O produto de uma linha mudou. Recarregue a página.",
+      "producto_con_variantes": "Um produto com variantes não é recebido diretamente: a ordem deve pedir a variante.",
+      "cantidad_invalida": "As quantidades devem ser maiores que zero.",
+      "sobre_recepcion": "“{producto}”: chegam {solicitado} e só restam {pendiente} para receber.",
+      "cantidad_serial_entera": "Um produto com números de série é recebido em unidades inteiras.",
+      "seriales_no_cuadran": "“{producto}”: chegam {cantidad} unidades e há {seriales} números de série.",
+      "serial_repetido": "Há um número de série repetido ou que já existe.",
+      "serial_repetido_cual": "O número de série {serial} está repetido ou já existe na sua organização.",
+      "producto_sin_control_de_stock": "Um produto sem controle de estoque não aceita números de série.",
+      "lote_requerido": "Um produto controlado por lote chega sem lote.",
+      "lotes_no_cuadran": "Os lotes somam {lotes} e chegam {cantidad}.",
+      "lote_invalido": "O lote escolhido não é deste produto.",
+      "lote_repetido": "Esse código de lote já existe para o produto.",
+      "lote_vencimiento_distinto": "O lote {lote} já existe e vence em {vence}: use essa validade ou outro código.",
+      "fecha_invalida": "A data de validade não é válida.",
+      "error_desconocido": "Não foi possível registrar o recebimento. Nada foi recebido; tente novamente."
     }
   }
 }

@@ -80,8 +80,13 @@ export interface StockDecrementResult {
   errors: string[];
 }
 
-/** Orígenes que admite `fn_kardex_entrada_compra`. */
-const ORIGENES_COMPRA = new Set(['purchase', 'purchase_order', 'purchase_invoice']);
+/**
+ * Orígenes de compra que entran por aquí (`fn_kardex_entrada_compra`). La
+ * recepción de una orden de compra (`purchase_order`) ya no: va entera por
+ * `fn_oc_recepcionar` (inventario B8: cantidades, lotes, seriales, estado de la
+ * OC y factura en una transacción; `lib/services/inventario/recepcionOrdenCompra.ts`).
+ */
+const ORIGENES_COMPRA = new Set(['purchase', 'purchase_invoice']);
 
 /** Separa los ítems sin producto o sin cantidad (motivo) de los válidos. */
 function clasificar(items: SaleItemForStock[]): {
@@ -209,22 +214,22 @@ export const stockMovementService = {
   },
 
   /**
-   * Entrada de mercancía por compra (recepción de OC o de factura de compra) con
-   * `fn_kardex_entrada_compra`: una sola transacción, bloqueo, promedio
-   * ponderado y costo con vigencia en `product_costs`. No es idempotente por
-   * documento porque una OC se recibe por partes con el mismo id.
+   * Entrada de mercancía por factura de compra con `fn_kardex_entrada_compra`:
+   * una sola transacción, bloqueo, promedio ponderado y costo con vigencia en
+   * `product_costs`. La recepción de una OC NO pasa por aquí: es
+   * `fn_oc_recepcionar` (B8), con lotes, seriales y estado de la orden.
    *
    * `folio_item_reversal` (borrar un consumo del folio del PMS) entra por
    * `fn_inv_reversion_entrada` al costo con que salió. B9 lo moverá al PMS.
    *
-   * @param source - 'purchase_order' | 'purchase_invoice' | 'purchase' | 'folio_item_reversal'
+   * @param source - 'purchase_invoice' | 'purchase' | 'folio_item_reversal'
    */
   async incrementOnPurchase(
     organizationId: number,
     branchId: number,
     orderId: string | number,
     items: SaleItemForStock[],
-    source: string = 'purchase_order',
+    source: string = 'purchase_invoice',
     updatedBy?: string
   ): Promise<StockDecrementResult> {
     const { validos, saltados } = clasificar(items);

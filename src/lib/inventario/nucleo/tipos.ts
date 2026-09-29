@@ -292,17 +292,24 @@ export interface ParamsCompletarProduccion {
   p_updated_by?: string | null;
 }
 
-/** B8 · `fn_oc_recepcionar` (recepción de OC en una transacción). Permiso: `recibir` (P6). */
+/**
+ * B8 · `fn_oc_recepcionar` (recepción de OC en una transacción). Permiso: `recibir` (P6).
+ * `qty` es lo que llega AHORA. Contrato completo, respuesta y errores en
+ * `@/lib/services/inventario/recepcionOrdenCompra`.
+ */
 export interface ParamsRecepcionOC {
+  p_org: number;
   p_po_uuid: string;
   p_lineas: {
     po_item_id: number;
-    product_id: number;
+    product_id?: number;
     qty: number;
-    lotes?: { lot_code: string; expiry_date?: string | null; qty: number }[];
+    /** Lote existente (`lot_id`) o nuevo (`lot_code` + `expiry_date`); la suma debe ser `qty`. */
+    lotes?: { lot_id?: number; lot_code?: string | null; expiry_date?: string | null; qty: number }[];
     seriales?: string[];
   }[];
   p_clave_idempotencia: string;
+  p_notas?: string | null;
 }
 
 /** B9 · `fn_pedido_web_confirmar_stock` (descuenta con receta, libera la reserva exacta, vende seriales). */

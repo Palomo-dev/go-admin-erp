@@ -349,7 +349,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
           {botonGuardar()}
         </>
       }
-      movil={{ subtitulo: datos.name || undefined, accion: botonGuardar(true), ocultarBarra: true }}
+      movil={{ subtitulo: datos.name || undefined, accion: botonGuardar(true) }}
     />
   );
 

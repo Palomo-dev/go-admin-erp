@@ -361,7 +361,7 @@ export function ImportarProveedores() {
             />
           </>
         }
-        movil={{ subtitulo: t('pasoMovil', { n: pasos.findIndex((p) => p.valor === paso) + 1, filas: n(filas.length || Math.max(0, matriz.length - 1)) }), ocultarBarra: true }}
+        movil={{ subtitulo: t('pasoMovil', { n: pasos.findIndex((p) => p.valor === paso) + 1, filas: n(filas.length || Math.max(0, matriz.length - 1)) }) }}
         debajo={
           <Stepper
             pasos={pasos}

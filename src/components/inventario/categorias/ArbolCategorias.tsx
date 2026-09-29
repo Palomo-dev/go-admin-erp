@@ -453,7 +453,6 @@ export function ArbolCategorias() {
               )}
             </div>
           ),
-          ocultarBarra: a.seleccion.size > 0,
         }}
       />
 

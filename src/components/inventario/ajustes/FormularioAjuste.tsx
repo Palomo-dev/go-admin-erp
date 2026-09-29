@@ -401,7 +401,7 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
         volverA={volverA}
         debajo={<BranchBadgeActiva />}
         acciones={accionesCabecera}
-        movil={{ titulo: editando ? t('tituloEditarMovil') : t('tituloMovil'), subtitulo: nombreSucursal || undefined, ocultarBarra: true }}
+        movil={{ titulo: editando ? t('tituloEditarMovil') : t('tituloMovil'), subtitulo: nombreSucursal || undefined }}
       />
 
       {/* ── Datos del ajuste ─────────────────────────────────────────── */}

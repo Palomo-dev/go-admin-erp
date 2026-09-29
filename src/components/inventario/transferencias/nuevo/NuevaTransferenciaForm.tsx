@@ -291,7 +291,6 @@ export function NuevaTransferenciaForm({ trasladoId }: { trasladoId?: number }) 
       movil={{
         titulo,
         subtitulo: origen && destino ? tc('rutaDe', { origen: nombreDe(origen), destino: nombreDe(destino) }) : undefined,
-        ocultarBarra: true,
       }}
     />
   );

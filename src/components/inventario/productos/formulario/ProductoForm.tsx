@@ -350,7 +350,6 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
         titulo,
         subtitulo: conStepper && listo ? tp('pasoDe', { n: indicePaso, total: PASOS_MOVIL.length }) : subtitulo,
         accion: listo ? botonGuardarMovil : undefined,
-        ocultarBarra: true,
       }}
     />
   );

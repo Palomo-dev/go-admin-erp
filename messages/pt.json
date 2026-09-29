@@ -4088,7 +4088,8 @@
         "colorPersonalizado": "Cor personalizada",
         "vistaPrevia": "Prévia:",
         "vistaPreviaTexto": "Tag",
-        "guardar": "Salvar"
+        "guardar": "Salvar",
+        "sinPermiso": "Você não tem permissão para alterar etiquetas"
       },
       "fusion": {
         "titulo": "Mesclar {n, plural, one {# tag} other {# tags}}",
@@ -4112,6 +4113,10 @@
         "errorEliminar": "Não foi possível excluir as tags",
         "fusionadas": "{n, plural, other {# tags mescladas}}",
         "errorFusionar": "Não foi possível mesclar as tags"
+      },
+      "sinPermiso": {
+        "titulo": "Você não tem acesso às etiquetas",
+        "descripcion": "Peça a um administrador da organização que lhe dê acesso ao estoque."
       }
     }
   },

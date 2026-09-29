@@ -4193,7 +4193,8 @@
         "colorPersonalizado": "Custom color",
         "vistaPrevia": "Preview:",
         "vistaPreviaTexto": "Tag",
-        "guardar": "Save"
+        "guardar": "Save",
+        "sinPermiso": "You don't have permission to change tags"
       },
       "fusion": {
         "titulo": "Merge {n, plural, one {# tag} other {# tags}}",
@@ -4217,6 +4218,10 @@
         "errorEliminar": "We couldn't delete the tags",
         "fusionadas": "{n, plural, other {# tags merged}}",
         "errorFusionar": "We couldn't merge the tags"
+      },
+      "sinPermiso": {
+        "titulo": "You don't have access to tags",
+        "descripcion": "Ask an administrator of the organization to give you inventory access."
       }
     }
   },

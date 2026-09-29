@@ -4193,7 +4193,8 @@
         "colorPersonalizado": "Color personalizado",
         "vistaPrevia": "Vista previa:",
         "vistaPreviaTexto": "Etiqueta",
-        "guardar": "Guardar"
+        "guardar": "Guardar",
+        "sinPermiso": "No tienes permiso para cambiar etiquetas"
       },
       "fusion": {
         "titulo": "Fusionar {n, plural, one {# etiqueta} other {# etiquetas}}",
@@ -4217,6 +4218,10 @@
         "errorEliminar": "No pudimos eliminar las etiquetas",
         "fusionadas": "{n, plural, other {# etiquetas fusionadas}}",
         "errorFusionar": "No pudimos fusionar las etiquetas"
+      },
+      "sinPermiso": {
+        "titulo": "No tienes acceso a las etiquetas",
+        "descripcion": "Pide a un administrador de la organización que te dé acceso al inventario."
       }
     }
   },

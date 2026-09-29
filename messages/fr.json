@@ -4088,7 +4088,8 @@
         "colorPersonalizado": "Couleur personnalisée",
         "vistaPrevia": "Aperçu :",
         "vistaPreviaTexto": "Libellé",
-        "guardar": "Enregistrer"
+        "guardar": "Enregistrer",
+        "sinPermiso": "Vous n'avez pas l'autorisation de modifier les étiquettes"
       },
       "fusion": {
         "titulo": "Fusionner {n, plural, one {# libellé} other {# libellés}}",
@@ -4112,6 +4113,10 @@
         "errorEliminar": "Impossible de supprimer les libellés",
         "fusionadas": "{n, plural, other {# libellés fusionnés}}",
         "errorFusionar": "Impossible de fusionner les libellés"
+      },
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès aux étiquettes",
+        "descripcion": "Demandez à un administrateur de l'organisation de vous donner accès à l'inventaire."
       }
     }
   },

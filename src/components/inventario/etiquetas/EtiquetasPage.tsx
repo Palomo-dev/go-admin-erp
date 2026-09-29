@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { usePermisosCatalogo } from '@/components/inventario/categorias/usePermisosCatalogo';
 import { EtiquetasService } from './EtiquetasService';
 import { ProductTag } from './types';
 
@@ -39,6 +40,10 @@ const COLORES_PREDEFINIDOS = [
 ];
 
 type Uso = 'todas' | 'enUso' | 'sinUsar';
+
+/** Código de un error de Supabase (`42501` sin permiso, `23505` nombre repetido). */
+const codigoError = (e: unknown): string | undefined =>
+  e && typeof e === 'object' && 'code' in e ? String((e as { code: unknown }).code) : undefined;
 
 /** Nombre comparable: sin tildes ni mayúsculas (la misma regla del buscador del kit). */
 const clave = (nombre: string) => normalizarBusqueda(nombre);
@@ -69,6 +74,7 @@ export function EtiquetasPage() {
   const { toast } = useToast();
   const { formatDate } = useFormatDate();
   const fmtN = useCallback((n: number) => n.toLocaleString(locale), [locale]);
+  const permisos = usePermisosCatalogo();
 
   const listado = useListadoServidor({
     filtros: ['uso'],
@@ -79,7 +85,7 @@ export function EtiquetasPage() {
 
   const [etiquetas, setEtiquetas] = useState<ProductTag[]>([]);
   const [resumen, setResumen] = useState<{ etiquetados: number; total: number } | null>(null);
-  const [estado, setEstado] = useState<'cargando' | 'listo' | 'error'>('cargando');
+  const [estado, setEstado] = useState<'cargando' | 'listo' | 'error' | 'sinPermiso'>('cargando');
   const [seleccion, setSeleccion] = useState<Set<string>>(() => new Set());
   const [editando, setEditando] = useState<ProductTag | 'nueva' | null>(null);
   const [formNombre, setFormNombre] = useState('');
@@ -100,7 +106,7 @@ export function EtiquetasPage() {
       setEstado('listo');
     } catch (error) {
       console.error('Error cargando etiquetas:', error);
-      setEstado('error');
+      setEstado(codigoError(error) === '42501' ? 'sinPermiso' : 'error');
     }
   }, []);
 
@@ -161,7 +167,7 @@ export function EtiquetasPage() {
       return;
     }
     const mismoNombre = etiquetas.find((e) => e.name.trim().toLowerCase() === nombre.toLowerCase() && (editando === 'nueva' || e.id !== editando?.id));
-    if (mismoNombre && mismoNombre.name.trim() === nombre) {
+    if (mismoNombre) {
       setErrorNombre(t('form.nombreExiste'));
       return;
     }
@@ -178,7 +184,8 @@ export function EtiquetasPage() {
       void cargar();
     } catch (error) {
       console.error('Error guardando etiqueta:', error);
-      setErrorNombre(t('form.errorGuardar'));
+      const codigo = codigoError(error);
+      setErrorNombre(codigo === '23505' ? t('form.nombreExiste') : codigo === '42501' ? t('form.sinPermiso') : t('form.errorGuardar'));
     } finally {
       setGuardando(false);
     }
@@ -189,8 +196,12 @@ export function EtiquetasPage() {
       await EtiquetasService.duplicarEtiqueta(e.id, t('sufijoCopia'));
       toast({ title: t('toast.duplicada') });
       void cargar();
-    } catch {
-      toast({ variant: 'destructive', title: t('toast.errorDuplicar') });
+    } catch (error) {
+      const codigo = codigoError(error);
+      toast({
+        variant: 'destructive',
+        title: codigo === '23505' ? t('form.nombreExiste') : codigo === '42501' ? t('form.sinPermiso') : t('toast.errorDuplicar'),
+      });
     }
   };
 
@@ -205,7 +216,8 @@ export function EtiquetasPage() {
       void cargar();
     } catch (error) {
       const enReglas = error instanceof Object && 'message' in error && String((error as { message: unknown }).message).includes('etiqueta_en_reglas');
-      toast({ variant: 'destructive', title: enReglas ? t('toast.enReglas') : t('toast.errorEliminar') });
+      const titulo = enReglas ? t('toast.enReglas') : codigoError(error) === '42501' ? t('form.sinPermiso') : t('toast.errorEliminar');
+      toast({ variant: 'destructive', title: titulo });
     } finally {
       setProcesando(false);
     }
@@ -229,16 +241,16 @@ export function EtiquetasPage() {
       setFusionar(null);
       setSeleccion(new Set());
       void cargar();
-    } catch {
-      toast({ variant: 'destructive', title: t('toast.errorFusionar') });
+    } catch (error) {
+      toast({ variant: 'destructive', title: codigoError(error) === '42501' ? t('form.sinPermiso') : t('toast.errorFusionar') });
     } finally {
       setProcesando(false);
     }
   };
 
   const accionesDe = (e: ProductTag): AccionFila[] => [
-    { id: 'editar', etiqueta: t('acciones.editar'), icono: Pencil, onSelect: () => abrirEditar(e) },
-    { id: 'duplicar', etiqueta: t('acciones.duplicar'), icono: Copy, onSelect: () => void duplicar(e) },
+    { id: 'editar', etiqueta: t('acciones.editar'), icono: Pencil, onSelect: () => abrirEditar(e), oculta: !permisos.editar },
+    { id: 'duplicar', etiqueta: t('acciones.duplicar'), icono: Copy, onSelect: () => void duplicar(e), oculta: !permisos.crear },
     {
       id: 'eliminar',
       etiqueta: t('acciones.eliminar'),
@@ -247,6 +259,7 @@ export function EtiquetasPage() {
       onSelect: () => setAEliminar([e]),
       deshabilitada: (e.rule_count ?? 0) > 0,
       motivo: t('acciones.motivoEnReglas'),
+      oculta: !permisos.eliminar,
     },
   ];
 
@@ -290,6 +303,7 @@ export function EtiquetasPage() {
       onSelect: () => setAEliminar(sinUsar),
       deshabilitada: sinUsar.length === 0,
       motivo: t('acciones.motivoNadaSinUsar'),
+      oculta: !permisos.eliminar,
     },
     { id: 'actualizar', etiqueta: t('acciones.actualizar'), icono: RefreshCw, onSelect: () => void cargar() },
   ];
@@ -307,10 +321,12 @@ export function EtiquetasPage() {
         cargando={estado === 'cargando'}
         acciones={
           <>
-            <Button className="h-10 gap-2" onClick={abrirNueva}>
-              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {t('nueva')}
-            </Button>
+            {permisos.crear && (
+              <Button className="h-10 gap-2" onClick={abrirNueva}>
+                <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('nueva')}
+              </Button>
+            )}
             <RowActionsMenu acciones={masAcciones} orientacion="horizontal" tamano="md" titulo={t('titulo')} />
           </>
         }
@@ -318,14 +334,16 @@ export function EtiquetasPage() {
           subtitulo: estado === 'cargando' ? t('cargando') : t('subtituloMovil', { total: (etiquetas.length) }),
           accion: (
             <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={abrirNueva}
-                aria-label={t('nueva')}
-                className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
-              </button>
+              {permisos.crear && (
+                <button
+                  type="button"
+                  onClick={abrirNueva}
+                  aria-label={t('nueva')}
+                  className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
+                </button>
+              )}
               <RowActionsMenu acciones={masAcciones} orientacion="horizontal" tamano="sm" titulo={t('titulo')} className="size-10" />
             </div>
           ),
@@ -406,15 +424,25 @@ export function EtiquetasPage() {
         columnas={columnas}
         filas={pagina}
         obtenerId={(e) => String(e.id)}
-        estado={estado === 'cargando' ? 'cargando' : estado === 'error' ? 'error' : filtradas.length === 0 && listado.hayCriterios ? 'sinResultados' : 'listo'}
+        estado={
+          estado === 'cargando'
+            ? 'cargando'
+            : estado === 'error'
+              ? 'error'
+              : estado === 'sinPermiso'
+                ? 'sinPermiso'
+                : filtradas.length === 0 && listado.hayCriterios
+                  ? 'sinResultados'
+                  : 'listo'
+        }
         orden={listado.orden}
         onOrdenar={listado.ordenarPor}
-        seleccion={seleccion}
-        onSeleccionChange={setSeleccion}
+        seleccion={permisos.editar || permisos.eliminar ? seleccion : undefined}
+        onSeleccionChange={permisos.editar || permisos.eliminar ? setSeleccion : undefined}
         etiquetaFila={(e) => e.name}
         acciones={accionesDe}
         tonoFila={(e) => (idsRepetidos.has(e.id) ? 'advertencia' : undefined)}
-        onFilaClick={abrirEditar}
+        onFilaClick={permisos.editar ? abrirEditar : undefined}
         tarjetaMovil={(e, ctx) => (
           <ListCard
             icono={Tag}
@@ -425,11 +453,16 @@ export function EtiquetasPage() {
             seleccionable={ctx.modoSeleccion}
             seleccionado={ctx.seleccionado}
             onSeleccionChange={ctx.alternar}
-            onMantenerPulsado={() => ctx.alternar(true)}
-            onClick={() => abrirEditar(e)}
+            onMantenerPulsado={permisos.editar || permisos.eliminar ? () => ctx.alternar(true) : undefined}
+            onClick={permisos.editar ? () => abrirEditar(e) : undefined}
           />
         )}
-        vacio={{ titulo: t('vacio.titulo'), descripcion: t('vacio.descripcion'), accion: { etiqueta: t('nueva'), onClick: abrirNueva, icono: Plus } }}
+        vacio={{
+          titulo: t('vacio.titulo'),
+          descripcion: t('vacio.descripcion'),
+          accion: permisos.crear ? { etiqueta: t('nueva'), onClick: abrirNueva, icono: Plus } : undefined,
+        }}
+        sinPermiso={{ titulo: t('sinPermiso.titulo'), descripcion: t('sinPermiso.descripcion') }}
         error={{ titulo: t('errorCarga') }}
         onReintentar={() => void cargar()}
         onLimpiarFiltros={listado.limpiarTodo}
@@ -453,21 +486,29 @@ export function EtiquetasPage() {
         onSeleccionarTodos={() => setSeleccion(new Set(filtradas.map((e) => String(e.id))))}
         sustantivo={{ singular: t('sustantivo.singular'), plural: t('sustantivo.plural') }}
         acciones={[
-          {
-            id: 'fusionar',
-            etiqueta: t('acciones.fusionar'),
-            icono: Merge,
-            onClick: () => abrirFusion(seleccionadas),
-            deshabilitada: seleccionadas.length < 2,
-            motivo: t('acciones.motivoFusionar'),
-          },
-          {
-            id: 'eliminar',
-            etiqueta: t('acciones.eliminar'),
-            icono: Trash2,
-            destructiva: true,
-            onClick: () => setAEliminar(seleccionadas),
-          },
+          ...(permisos.editar
+            ? [
+                {
+                  id: 'fusionar',
+                  etiqueta: t('acciones.fusionar'),
+                  icono: Merge,
+                  onClick: () => abrirFusion(seleccionadas),
+                  deshabilitada: seleccionadas.length < 2,
+                  motivo: t('acciones.motivoFusionar'),
+                },
+              ]
+            : []),
+          ...(permisos.eliminar
+            ? [
+                {
+                  id: 'eliminar',
+                  etiqueta: t('acciones.eliminar'),
+                  icono: Trash2,
+                  destructiva: true,
+                  onClick: () => setAEliminar(seleccionadas),
+                },
+              ]
+            : []),
         ]}
         onLimpiar={() => setSeleccion(new Set())}
       />

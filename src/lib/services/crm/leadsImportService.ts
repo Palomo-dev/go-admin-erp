@@ -57,7 +57,7 @@ export type { PoliticaMoneda } from '@/lib/crm/importacionLeads/tipos';
  * `hasOrgAdminOrPermission` (`check_user_permission` con usuario y organización
  * DE LA SESIÓN; super admin y roles 1/2 pasan sin consulta).
  */
-export const LEADS_CREATE_PERMISSION = 'crm.leads.create';
+export { LEADS_CREATE_PERMISSION } from './leadCreateService';
 
 export interface LeadsImportContext {
   organizationId: number;

@@ -26,6 +26,13 @@ export type { LeadCustomerExtras, NewCustomerInput } from './leadCustomer';
 /** Origen por defecto de un lead creado a mano desde el ERP. */
 export const MANUAL_LEAD_SOURCE = 'manual_erp';
 
+/**
+ * Permiso de crear leads (`permissions.code`). Lo exigen POST /api/crm/leads y la
+ * importación, resuelto en el servidor con `hasOrgAdminOrPermission` (super admin
+ * y roles 1/2 pasan; el resto, por rol o cargo con `check_user_permission`).
+ */
+export const LEADS_CREATE_PERMISSION = 'crm.leads.create';
+
 export const OPPORTUNITY_DEAL_TYPES = ['new', 'renewal', 'expansion', 'referral', 'partner'] as const;
 export type OpportunityDealType = (typeof OPPORTUNITY_DEAL_TYPES)[number];
 

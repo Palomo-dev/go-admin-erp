@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { getServerOrgContext, hasOrgAdminOrPermission, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
-import { createLeadWithCustomer, type CreateLeadBody } from '@/lib/services/crm/leadCreateService';
+import { createLeadWithCustomer, LEADS_CREATE_PERMISSION, type CreateLeadBody } from '@/lib/services/crm/leadCreateService';
 
 /**
  * GET /api/crm/leads — Lista las opportunities con record_type='lead' de la organización.
@@ -122,6 +122,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Cuerpo JSON inválido' }, { status: 400 });
     }
     readOrgBody(ctx, body, { request });
+
+    // Mismo permiso que la importación, resuelto en el servidor con la sesión.
+    if (!(await hasOrgAdminOrPermission(ctx, LEADS_CREATE_PERMISSION))) {
+      console.warn('[CRM Leads] POST sin permiso %s (org %s, usuario %s)', LEADS_CREATE_PERMISSION, ctx.organizationId, ctx.userId);
+      return NextResponse.json({ success: false, error: 'No tienes permiso para crear leads', code: 'FORBIDDEN' }, { status: 403 });
+    }
 
     const result = await createLeadWithCustomer(
       { organizationId: ctx.organizationId, userId: ctx.userId, supabase: ctx.supabase },

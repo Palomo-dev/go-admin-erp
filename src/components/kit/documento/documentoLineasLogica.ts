@@ -35,10 +35,39 @@ export interface LineaDocumento {
   cantidadPendiente?: number | null;
   /** Error del servidor en esta línea («El precio cambió»). */
   error?: string | null;
+  /**
+   * Aviso de la línea (Figma `LineaDocumentoEdicion` Estado=aviso): «Solo hay
+   * 3 en Sucursal Principal…», «La orden pedía 12 y llegaron 10». La fila se
+   * tiñe de advertencia; no bloquea.
+   */
+  aviso?: string | null;
+  /** Chips bajo el producto: «Stock 14», «Faltan 2», «Ítem manual», «Recibido 12/12». */
+  insignias?: readonly InsigniaLinea[];
+  /** Edición: la descripción se escribe en la línea (ítem manual). */
+  descripcionEditable?: boolean;
+  /** Edición: impuestos elegidos de la organización (`ImpuestosLinea`). */
+  impuestosSeleccion?: { ids: readonly string[]; incluido: boolean } | null;
+  /** Texto pequeño bajo el total («IVA incl. $ 102.185»), ya formateado. */
+  detalleTotal?: string | null;
+}
+
+export interface InsigniaLinea {
+  texto: string;
+  tono?: 'neutro' | 'exito' | 'advertencia' | 'peligro' | 'informacion';
 }
 
 /** Campos que una línea puede cambiar desde la tabla. */
-export type CambioLinea = Partial<Pick<LineaDocumento, 'cantidad' | 'precioUnitario' | 'descuento' | 'cantidadRecibida'>>;
+export type CambioLinea = Partial<Pick<LineaDocumento, 'cantidad' | 'precioUnitario' | 'descuento' | 'cantidadRecibida' | 'descripcion'>> & {
+  /** Impuestos elegidos en `ImpuestosLinea` (ids de `organization_taxes`). */
+  impuestos?: { ids: string[]; incluido: boolean };
+};
+
+/** Tono de la fila: el error manda sobre el aviso. */
+export function tonoLinea(l: Pick<LineaDocumento, 'error' | 'aviso'>): 'peligro' | 'advertencia' | undefined {
+  if (l.error) return 'peligro';
+  if (l.aviso) return 'advertencia';
+  return undefined;
+}
 
 /**
  * Símbolo de la moneda para el prefijo de `CampoNumero` («$», «US$», «€»),

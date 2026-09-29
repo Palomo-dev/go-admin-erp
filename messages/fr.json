@@ -3609,6 +3609,142 @@
         "opcional": "Facultatif",
         "sinIngredientes": "Cette recette n’a aucun ingrédient défini."
       }
+    },
+    "documentoEdicion": {
+      "aplicar": "Appliquer",
+      "lineas": {
+        "describe": "Décrivez l’article",
+        "descripcionDe": "Description de l’article",
+        "itemSinNombre": "Article sans description",
+        "itemManual": "Article manuel"
+      },
+      "impuestos": {
+        "sinAsignar": "Aucune taxe attribuée",
+        "titulo": "Taxes de cette ligne",
+        "sinConfigurar": "L’organisation n’a aucune taxe configurée.",
+        "predeterminado": "Par défaut",
+        "incluido": "Incluse dans le prix",
+        "excluir": "Sans taxe (exclure cette ligne)",
+        "ayuda": "Uniquement les taxes de l’organisation (Trésorerie › Taxes). Les retenues vont dans le récapitulatif.",
+        "de": "Taxes de {producto}",
+        "seFacturaCero": "Sera facturé à 0 %",
+        "seCompraCero": "Sera enregistré à 0 %"
+      },
+      "manual": {
+        "titulo": "Ajouter un article manuel",
+        "descripcion": "Pour ce qui n’est pas au catalogue : services, frais ou transport.",
+        "agregar": "Ajouter l’article",
+        "concepto": "Description de l’article",
+        "cantidad": "Quantité",
+        "precio": "Prix unitaire",
+        "costo": "Coût unitaire",
+        "impuesto": "Taxe",
+        "nota": "Note de la ligne",
+        "notaVenta": "Figure sur le PDF de la facture",
+        "notaCompra": "Note interne de la ligne",
+        "vistaPrevia": "Aperçu de la ligne",
+        "errores": {
+          "obligatorio": "Saisissez la description de l’article.",
+          "mayorQueCero": "La quantité doit être supérieure à 0.",
+          "noNegativo": "Saisissez 0 ou plus."
+        }
+      },
+      "productos": {
+        "titulo": "Ajouter des produits à la facture",
+        "tituloOrden": "Ajouter des produits à la commande",
+        "stock": "Stock {n}",
+        "lotes": "{n, plural, one {# lot} other {# lots}}",
+        "serial": "n° de série : choisi à l’ajout",
+        "referencia": "réf. {ref}",
+        "minimo": "min. {n}",
+        "entrega": "livraison {n, plural, one {# jour} other {# jours}}",
+        "otroProveedor": "autre fournisseur",
+        "agregadoVeces": "{n, plural, one {Ajouté} other {Ajouté ×#}}",
+        "agregar": "Ajouter",
+        "error": "Impossible de rechercher les produits. Vérifiez votre connexion.",
+        "sinResultados": "Aucun produit pour cette recherche",
+        "vacio": "Aucun produit à afficher",
+        "crearTexto": "Créer « {texto} »",
+        "crearTitulo": "Créer un produit",
+        "buscar": "Rechercher par nom, SKU ou code-barres",
+        "escaner": "Lecteur de code-barres",
+        "vista": "Affichage des produits",
+        "conStock": "En stock",
+        "soloProveedor": "Du fournisseur uniquement",
+        "ayuda": "{n, plural, =0 {Aucun résultat} one {# résultat} other {# résultats}} · Entrée ajoute le premier · ↑↓ pour naviguer",
+        "agregados": "{n, plural, =0 {Rien d’ajouté pour l’instant} one {# ajouté à la facture} other {# ajoutés à la facture}}",
+        "agregadosOrden": "{n, plural, =0 {Rien d’ajouté pour l’instant} one {# ajouté à la commande} other {# ajoutés à la commande}}",
+        "crear": "Créer un produit",
+        "listo": "Terminé ({n, plural, one {# ajouté} other {# ajoutés}})",
+        "subtituloVenta": "Prix de vente · stock de {sucursal}",
+        "subtituloCompra": "Coût de {proveedor} · stock de {sucursal}",
+        "subtituloCompraSinProveedor": "Dernier coût · stock de {sucursal}"
+      },
+      "crearProducto": {
+        "nombre": "Nom du produit",
+        "sku": "SKU ou code",
+        "precio": "Prix de vente",
+        "costo": "Coût fournisseur",
+        "impuesto": "Taxe",
+        "controlaStock": "Suivre le stock",
+        "crear": "Créer et ajouter",
+        "errorCrear": "Le produit n’a pas pu être créé. Vérifiez le SKU (il doit être unique) et réessayez.",
+        "errores": {
+          "obligatorio": "Ce champ est obligatoire.",
+          "noNegativo": "Saisissez 0 ou plus.",
+          "sku": "Utilisez des lettres, chiffres, point, tiret ou barre oblique."
+        }
+      },
+      "tercero": {
+        "tipo": "Type de personne",
+        "persona": "Personne",
+        "empresa": "Entreprise",
+        "tipoDocumento": "Document",
+        "documentos": {
+          "cc": "Pièce d’identité",
+          "nit": "NIF",
+          "ce": "Titre d’étranger",
+          "passport": "Passeport"
+        },
+        "numero": "Numéro",
+        "dv": "Clé",
+        "razonSocial": "Raison sociale",
+        "nombres": "Prénoms",
+        "apellidos": "Noms",
+        "contacto": "Personne de contact",
+        "correo": "E-mail",
+        "telefono": "Téléphone",
+        "diasCredito": "Jours de crédit",
+        "dias": "jours",
+        "masDatos": "Plus de détails",
+        "crear": "Créer et choisir",
+        "errorCrear": "La création a échoué. Vérifiez les données et réessayez.",
+        "errores": {
+          "obligatorio": "Ce champ est obligatoire.",
+          "correo": "Saisissez un e-mail valide.",
+          "documento": "Chiffres uniquement (3 à 15).",
+          "dv": "La clé est un seul chiffre.",
+          "dias": "Entre 0 et 365 jours.",
+          "duplicadoCliente": "Un client avec ce document existe déjà : {nombre}. Recherchez-le et choisissez-le."
+        }
+      },
+      "terceros": {
+        "sinNombre": "Sans nom",
+        "persona": "Personne",
+        "empresa": "Entreprise",
+        "porCobrar": "À encaisser {saldo}",
+        "porPagar": "À payer {saldo}",
+        "alDia": "À jour",
+        "soloActivos": "Actifs uniquement",
+        "conSaldoCobrar": "Avec solde à encaisser",
+        "conSaldoPagar": "Avec solde à payer",
+        "crearCliente": "Créer un client",
+        "crearProveedor": "Créer un fournisseur",
+        "elegirCliente": "Choisir le client",
+        "elegirClienteAtajo": "Choisir le client",
+        "elegirProveedor": "Choisir le fournisseur",
+        "elegirProveedorAtajo": "Choisir le fournisseur"
+      }
     }
   },
   "inventarioEtiquetas": {

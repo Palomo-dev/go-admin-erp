@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, type ReactNode } from 'react';
-import { CircleAlert, Package, Trash2 } from 'lucide-react';
+import { CircleAlert, Package, Trash2, TriangleAlert } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { CampoNumero } from '../CampoNumero';
@@ -10,12 +10,16 @@ import type { EmptyStateProps } from '../EmptyState';
 import type { AccionFila } from '../acciones';
 import { formatearTarifa } from '../resumenTotalesLogica';
 import { useKitT, useLocaleIntl } from '../useIdiomaKit';
+import type { OpcionImpuesto } from './edicionDocumentoLogica';
+import { ImpuestosLinea } from './ImpuestosLinea';
 import {
   decimalesCantidad,
+  tonoLinea,
   limitesRecepcion,
   simboloMoneda,
   textoImpuestosLinea,
   type CambioLinea,
+  type InsigniaLinea,
   type LineaDocumento,
   type ModoLineas,
 } from './documentoLineasLogica';
@@ -33,7 +37,22 @@ import {
  * - `recepcion`: pedida, pendiente y «Recibida» (0 … pendiente).
  *
  * Sobre `DataTable`: tabla en escritorio, tarjetas por debajo de `lg`.
+ *
+ * Estados de la línea en edición (Figma `LineaDocumentoEdicion` 1032:33591,
+ * decisión 1 del dueño: son estados de ESTA tabla, una sola para venta y
+ * compra): `aviso` (fila en advertencia, no bloquea), `error` (fila en
+ * peligro), `insignias` («Stock 14», «Faltan 2», «Ítem manual»),
+ * `descripcionEditable` (ítem manual) e impuestos por línea con
+ * `ImpuestosLinea` cuando la pantalla pasa `impuestosDisponibles`.
  */
+const TONO_INSIGNIA: Record<NonNullable<InsigniaLinea['tono']>, string> = {
+  neutro: 'border-line bg-subtle text-fg-secondary',
+  exito: 'border-line-success bg-success-subtle text-success-text',
+  advertencia: 'border-line-warning bg-warning-subtle text-warning-text',
+  peligro: 'border-line-danger bg-danger-subtle text-danger-text',
+  informacion: 'border-line-brand bg-brand-tint text-brand-deep',
+};
+
 export interface DocumentoLineasProps {
   lineas: readonly LineaDocumento[];
   modo?: ModoLineas;
@@ -51,6 +70,14 @@ export interface DocumentoLineasProps {
   pie?: ReactNode;
   /** Decimales de la cantidad; por defecto, los que traigan las líneas. */
   decimalesCant?: number;
+  /** Edición: impuestos de la organización para elegir por línea (`ImpuestosLinea`). */
+  impuestosDisponibles?: readonly OpcionImpuesto[];
+  /** Varios impuestos por línea (venta) o uno (compra). */
+  impuestosMultiples?: boolean;
+  /** Oculta «Incluido en el precio» por línea (lo decide el documento). */
+  sinIncluidoPorLinea?: boolean;
+  /** «Se facturará al 0 %» bajo el selector de una línea sin impuesto. */
+  avisoSinImpuesto?: string;
   className?: string;
 }
 
@@ -67,6 +94,10 @@ export function DocumentoLineas({
   vacio,
   pie,
   decimalesCant,
+  impuestosDisponibles,
+  impuestosMultiples = true,
+  sinIncluidoPorLinea,
+  avisoSinImpuesto,
   className,
 }: DocumentoLineasProps) {
   const t = useKitT();
@@ -83,7 +114,23 @@ export function DocumentoLineas({
 
   const producto = (l: LineaDocumento) => (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="truncate font-medium text-fg">{l.descripcion}</span>
+      {editable && l.descripcionEditable ? (
+        <input
+          type="text"
+          value={l.descripcion}
+          maxLength={1000}
+          placeholder={t('documentoEdicion.lineas.describe')}
+          aria-label={t('documentoEdicion.lineas.descripcionDe')}
+          aria-invalid={l.error ? true : undefined}
+          onChange={(e) => onCambiar?.(l.id, { descripcion: e.target.value })}
+          className={cn(
+            'h-9 w-full min-w-0 rounded-md border bg-surface px-3 text-sm text-fg placeholder:text-fg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+            l.error ? 'border-line-danger' : 'border-line-strong',
+          )}
+        />
+      ) : (
+        <span className="truncate font-medium text-fg">{l.descripcion}</span>
+      )}
       {(l.variante || (!oculta('sku') && l.sku)) && (
         <span className="truncate text-xs text-fg-muted">
           {[l.variante, !oculta('sku') && l.sku ? `${t('documento.lineas.sku')} ${l.sku}` : null].filter(Boolean).join(' · ')}
@@ -102,8 +149,40 @@ export function DocumentoLineas({
           {l.error}
         </span>
       )}
+      {l.aviso && (
+        <span className="flex items-start gap-1 text-xs text-warning-text">
+          <TriangleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0" strokeWidth={1.5} />
+          <span className="whitespace-normal">{l.aviso}</span>
+        </span>
+      )}
+      {l.insignias && l.insignias.length > 0 && (
+        <span className="flex flex-wrap gap-1 pt-0.5">
+          {l.insignias.map((i) => (
+            <span key={i.texto} className={cn('inline-flex h-5 items-center rounded-full border px-2 text-[11px] font-medium', TONO_INSIGNIA[i.tono ?? 'neutro'])}>
+              {i.texto}
+            </span>
+          ))}
+        </span>
+      )}
     </div>
   );
+
+  const selectorImpuestos = editable && !!impuestosDisponibles;
+  const celdaImpuestos = (l: LineaDocumento) =>
+    selectorImpuestos && l.impuestosSeleccion ? (
+      <ImpuestosLinea
+        opciones={impuestosDisponibles ?? []}
+        valor={l.impuestosSeleccion}
+        multiple={impuestosMultiples}
+        sinIncluido={sinIncluidoPorLinea}
+        avisoSinImpuesto={avisoSinImpuesto}
+        etiqueta={t('documentoEdicion.impuestos.de', { producto: l.descripcion || t('documentoEdicion.lineas.itemSinNombre') })}
+        onValorChange={(v) => onCambiar?.(l.id, { impuestos: { ids: [...v.ids], incluido: v.incluido } })}
+        className="w-full min-w-[160px]"
+      />
+    ) : (
+      impuestos(l)
+    );
 
   const impuestos = (l: LineaDocumento) => {
     const r = textoImpuestosLinea(l.impuestos, tarifa);
@@ -205,9 +284,25 @@ export function DocumentoLineas({
       columnas.push({ id: 'descuento', encabezado: t('documento.lineas.descuento'), variante: 'importe', celda: campoDescuento, ocultarDebajo: 'xl', ancho: editable ? 132 : 112 });
     }
     if (!oculta('impuestos')) {
-      columnas.push({ id: 'impuestos', encabezado: t('documento.lineas.impuestos'), celda: impuestos, ocultarDebajo: 'xl' });
+      columnas.push({
+        id: 'impuestos',
+        encabezado: t('documento.lineas.impuestos'),
+        celda: celdaImpuestos,
+        ...(selectorImpuestos ? { ancho: 200 } : { ocultarDebajo: 'xl' as const }),
+      });
     }
-    columnas.push({ id: 'total', encabezado: t('documento.lineas.total'), variante: 'importe', celda: (l) => <span className="font-medium">{formatear(l.total)}</span>, ancho: 128 });
+    columnas.push({
+      id: 'total',
+      encabezado: t('documento.lineas.total'),
+      variante: 'importe',
+      celda: (l) => (
+        <span className="flex flex-col items-end">
+          <span className="font-medium">{formatear(l.total)}</span>
+          {l.detalleTotal && <span className="text-xs font-normal text-fg-muted">{l.detalleTotal}</span>}
+        </span>
+      ),
+      ancho: 128,
+    });
     if (editable && onQuitar) {
       columnas.push({
         id: 'quitar',
@@ -229,7 +324,7 @@ export function DocumentoLineas({
   }
 
   const tarjeta = (l: LineaDocumento) => (
-    <div className={cn('flex flex-col gap-3 rounded-xl border bg-surface p-4', l.error ? 'border-line-danger' : 'border-line')}>
+    <div className={cn('flex flex-col gap-3 rounded-xl border p-4', l.error ? 'border-line-danger bg-surface' : l.aviso ? 'border-line-warning bg-warning-subtle' : 'border-line bg-surface')}>
       <div className="flex items-start justify-between gap-3">
         {producto(l)}
         {modo !== 'recepcion' && <span className="shrink-0 font-semibold tabular-nums text-fg">{formatear(l.total)}</span>}
@@ -256,6 +351,12 @@ export function DocumentoLineas({
               {t('documento.lineas.descuento')}
               {campoDescuento(l)}
             </label>
+          )}
+          {selectorImpuestos && l.impuestosSeleccion && (
+            <div className="col-span-2 flex flex-col gap-1 text-xs text-fg-secondary">
+              {t('documento.lineas.impuestos')}
+              {celdaImpuestos(l)}
+            </div>
           )}
           {onQuitar && (
             <button
@@ -292,7 +393,7 @@ export function DocumentoLineas({
         estado={estado}
         densidad="compacta"
         acciones={accionesLinea}
-        tonoFila={(l) => (l.error ? 'peligro' : undefined)}
+        tonoFila={tonoLinea}
         tarjetaMovil={(l) => tarjeta(l)}
         vacio={{ icono: Package, titulo: t('documento.lineas.vacio'), descripcion: t('documento.lineas.vacioDescripcion'), compacto: true, ...vacio }}
       />

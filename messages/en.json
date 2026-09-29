@@ -3714,6 +3714,142 @@
         "opcional": "Optional",
         "sinIngredientes": "This recipe has no ingredients defined."
       }
+    },
+    "documentoEdicion": {
+      "aplicar": "Apply",
+      "lineas": {
+        "describe": "Describe the item",
+        "descripcionDe": "Item description",
+        "itemSinNombre": "Item without description",
+        "itemManual": "Manual item"
+      },
+      "impuestos": {
+        "sinAsignar": "No tax assigned",
+        "titulo": "Taxes on this line",
+        "sinConfigurar": "The organization has no taxes set up.",
+        "predeterminado": "Default",
+        "incluido": "Included in the price",
+        "excluir": "No tax (exclude this line)",
+        "ayuda": "Organization taxes only (Treasury › Taxes). Withholdings go in the summary.",
+        "de": "Taxes of {producto}",
+        "seFacturaCero": "Will be invoiced at 0%",
+        "seCompraCero": "Will be recorded at 0%"
+      },
+      "manual": {
+        "titulo": "Add manual item",
+        "descripcion": "For what is not in the catalog: services, charges or freight.",
+        "agregar": "Add item",
+        "concepto": "Item description",
+        "cantidad": "Quantity",
+        "precio": "Unit price",
+        "costo": "Unit cost",
+        "impuesto": "Tax",
+        "nota": "Line note",
+        "notaVenta": "Printed on the invoice PDF",
+        "notaCompra": "Internal line note",
+        "vistaPrevia": "Line preview",
+        "errores": {
+          "obligatorio": "Enter the item description.",
+          "mayorQueCero": "Quantity must be greater than 0.",
+          "noNegativo": "Enter 0 or more."
+        }
+      },
+      "productos": {
+        "titulo": "Add products to the invoice",
+        "tituloOrden": "Add products to the order",
+        "stock": "Stock {n}",
+        "lotes": "{n, plural, one {# lot} other {# lots}}",
+        "serial": "serial: chosen when added",
+        "referencia": "ref. {ref}",
+        "minimo": "min. {n}",
+        "entrega": "delivery {n, plural, one {# day} other {# days}}",
+        "otroProveedor": "other supplier",
+        "agregadoVeces": "{n, plural, one {Added} other {Added ×#}}",
+        "agregar": "Add",
+        "error": "We could not search products. Check your connection.",
+        "sinResultados": "No products match that search",
+        "vacio": "No products to show",
+        "crearTexto": "Create “{texto}”",
+        "crearTitulo": "Create product",
+        "buscar": "Search by name, SKU or barcode",
+        "escaner": "Barcode scanner",
+        "vista": "Product view",
+        "conStock": "In stock",
+        "soloProveedor": "Supplier’s only",
+        "ayuda": "{n, plural, =0 {No results} one {# result} other {# results}} · Enter adds the first · ↑↓ to move",
+        "agregados": "{n, plural, =0 {Nothing added yet} one {# added to the invoice} other {# added to the invoice}}",
+        "agregadosOrden": "{n, plural, =0 {Nothing added yet} one {# added to the order} other {# added to the order}}",
+        "crear": "Create product",
+        "listo": "Done ({n} added)",
+        "subtituloVenta": "Sale price · stock at {sucursal}",
+        "subtituloCompra": "Cost from {proveedor} · stock at {sucursal}",
+        "subtituloCompraSinProveedor": "Last cost · stock at {sucursal}"
+      },
+      "crearProducto": {
+        "nombre": "Product name",
+        "sku": "SKU or code",
+        "precio": "Sale price",
+        "costo": "Supplier cost",
+        "impuesto": "Tax",
+        "controlaStock": "Track inventory",
+        "crear": "Create and add",
+        "errorCrear": "The product could not be created. Check the SKU (it must be unique) and try again.",
+        "errores": {
+          "obligatorio": "This field is required.",
+          "noNegativo": "Enter 0 or more.",
+          "sku": "Use letters, numbers, dot, hyphen or slash."
+        }
+      },
+      "tercero": {
+        "tipo": "Person type",
+        "persona": "Person",
+        "empresa": "Company",
+        "tipoDocumento": "Document",
+        "documentos": {
+          "cc": "ID",
+          "nit": "Tax ID",
+          "ce": "Foreign ID",
+          "passport": "Passport"
+        },
+        "numero": "Number",
+        "dv": "Check digit",
+        "razonSocial": "Legal name",
+        "nombres": "First names",
+        "apellidos": "Last names",
+        "contacto": "Contact person",
+        "correo": "Email",
+        "telefono": "Phone",
+        "diasCredito": "Credit days",
+        "dias": "days",
+        "masDatos": "More details",
+        "crear": "Create and select",
+        "errorCrear": "It could not be created. Check the details and try again.",
+        "errores": {
+          "obligatorio": "This field is required.",
+          "correo": "Enter a valid email.",
+          "documento": "Numbers only (3 to 15 digits).",
+          "dv": "The check digit is a single digit.",
+          "dias": "Between 0 and 365 days.",
+          "duplicadoCliente": "A customer with that document already exists: {nombre}. Search for it and select it."
+        }
+      },
+      "terceros": {
+        "sinNombre": "No name",
+        "persona": "Person",
+        "empresa": "Company",
+        "porCobrar": "Receivable {saldo}",
+        "porPagar": "Payable {saldo}",
+        "alDia": "Up to date",
+        "soloActivos": "Active only",
+        "conSaldoCobrar": "With receivable balance",
+        "conSaldoPagar": "With payable balance",
+        "crearCliente": "Create customer",
+        "crearProveedor": "Create supplier",
+        "elegirCliente": "Choose customer",
+        "elegirClienteAtajo": "Choose customer",
+        "elegirProveedor": "Choose supplier",
+        "elegirProveedorAtajo": "Choose supplier"
+      }
     }
   },
   "inventarioEtiquetas": {

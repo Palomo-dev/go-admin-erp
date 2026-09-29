@@ -3609,6 +3609,142 @@
         "opcional": "Opcional",
         "sinIngredientes": "Esta receita não tem ingredientes definidos."
       }
+    },
+    "documentoEdicion": {
+      "aplicar": "Aplicar",
+      "lineas": {
+        "describe": "Descreva o item",
+        "descripcionDe": "Descrição do item",
+        "itemSinNombre": "Item sem descrição",
+        "itemManual": "Item manual"
+      },
+      "impuestos": {
+        "sinAsignar": "Sem imposto atribuído",
+        "titulo": "Impostos desta linha",
+        "sinConfigurar": "A organização não tem impostos configurados.",
+        "predeterminado": "Padrão",
+        "incluido": "Incluído no preço",
+        "excluir": "Sem imposto (excluir esta linha)",
+        "ayuda": "Somente impostos da organização (Tesouraria › Impostos). As retenções vão no resumo.",
+        "de": "Impostos de {producto}",
+        "seFacturaCero": "Será faturado a 0%",
+        "seCompraCero": "Será registrado a 0%"
+      },
+      "manual": {
+        "titulo": "Adicionar item manual",
+        "descripcion": "Para o que não está no catálogo: serviços, encargos ou fretes.",
+        "agregar": "Adicionar item",
+        "concepto": "Descrição do item",
+        "cantidad": "Quantidade",
+        "precio": "Preço unitário",
+        "costo": "Custo unitário",
+        "impuesto": "Imposto",
+        "nota": "Nota da linha",
+        "notaVenta": "Sai no PDF da fatura",
+        "notaCompra": "Nota interna da linha",
+        "vistaPrevia": "Pré-visualização da linha",
+        "errores": {
+          "obligatorio": "Escreva a descrição do item.",
+          "mayorQueCero": "A quantidade deve ser maior que 0.",
+          "noNegativo": "Informe 0 ou mais."
+        }
+      },
+      "productos": {
+        "titulo": "Adicionar produtos à fatura",
+        "tituloOrden": "Adicionar produtos ao pedido",
+        "stock": "Estoque {n}",
+        "lotes": "{n, plural, one {# lote} other {# lotes}}",
+        "serial": "série: escolhida ao adicionar",
+        "referencia": "ref. {ref}",
+        "minimo": "mín. {n}",
+        "entrega": "entrega {n, plural, one {# dia} other {# dias}}",
+        "otroProveedor": "outro fornecedor",
+        "agregadoVeces": "{n, plural, one {Adicionado} other {Adicionado ×#}}",
+        "agregar": "Adicionar",
+        "error": "Não foi possível buscar os produtos. Verifique sua conexão.",
+        "sinResultados": "Nenhum produto com essa busca",
+        "vacio": "Não há produtos para mostrar",
+        "crearTexto": "Criar “{texto}”",
+        "crearTitulo": "Criar produto",
+        "buscar": "Buscar por nome, SKU ou código de barras",
+        "escaner": "Leitor de código de barras",
+        "vista": "Visualização dos produtos",
+        "conStock": "Com estoque",
+        "soloProveedor": "Só do fornecedor",
+        "ayuda": "{n, plural, =0 {Sem resultados} one {# resultado} other {# resultados}} · Enter adiciona o primeiro · ↑↓ para mover",
+        "agregados": "{n, plural, =0 {Nada adicionado ainda} one {# adicionado à fatura} other {# adicionados à fatura}}",
+        "agregadosOrden": "{n, plural, =0 {Nada adicionado ainda} one {# adicionado ao pedido} other {# adicionados ao pedido}}",
+        "crear": "Criar produto",
+        "listo": "Pronto ({n, plural, one {# adicionado} other {# adicionados}})",
+        "subtituloVenta": "Preço de venda · estoque de {sucursal}",
+        "subtituloCompra": "Custo de {proveedor} · estoque de {sucursal}",
+        "subtituloCompraSinProveedor": "Último custo · estoque de {sucursal}"
+      },
+      "crearProducto": {
+        "nombre": "Nome do produto",
+        "sku": "SKU ou código",
+        "precio": "Preço de venda",
+        "costo": "Custo do fornecedor",
+        "impuesto": "Imposto",
+        "controlaStock": "Controla estoque",
+        "crear": "Criar e adicionar",
+        "errorCrear": "Não foi possível criar o produto. Verifique o SKU (não pode se repetir) e tente de novo.",
+        "errores": {
+          "obligatorio": "Este campo é obrigatório.",
+          "noNegativo": "Informe 0 ou mais.",
+          "sku": "Use letras, números, ponto, hífen ou barra."
+        }
+      },
+      "tercero": {
+        "tipo": "Tipo de pessoa",
+        "persona": "Pessoa",
+        "empresa": "Empresa",
+        "tipoDocumento": "Documento",
+        "documentos": {
+          "cc": "Identidade",
+          "nit": "NIT",
+          "ce": "Documento estrangeiro",
+          "passport": "Passaporte"
+        },
+        "numero": "Número",
+        "dv": "DV",
+        "razonSocial": "Razão social",
+        "nombres": "Nomes",
+        "apellidos": "Sobrenomes",
+        "contacto": "Pessoa de contato",
+        "correo": "E-mail",
+        "telefono": "Telefone",
+        "diasCredito": "Dias de crédito",
+        "dias": "dias",
+        "masDatos": "Mais dados",
+        "crear": "Criar e escolher",
+        "errorCrear": "Não foi possível criar. Verifique os dados e tente de novo.",
+        "errores": {
+          "obligatorio": "Este campo é obrigatório.",
+          "correo": "Informe um e-mail válido.",
+          "documento": "Somente números (3 a 15 dígitos).",
+          "dv": "O DV é um único dígito.",
+          "dias": "Entre 0 e 365 dias.",
+          "duplicadoCliente": "Já existe um cliente com esse documento: {nombre}. Busque-o e escolha-o."
+        }
+      },
+      "terceros": {
+        "sinNombre": "Sem nome",
+        "persona": "Pessoa",
+        "empresa": "Empresa",
+        "porCobrar": "A receber {saldo}",
+        "porPagar": "A pagar {saldo}",
+        "alDia": "Em dia",
+        "soloActivos": "Somente ativos",
+        "conSaldoCobrar": "Com saldo a receber",
+        "conSaldoPagar": "Com saldo a pagar",
+        "crearCliente": "Criar cliente",
+        "crearProveedor": "Criar fornecedor",
+        "elegirCliente": "Escolher cliente",
+        "elegirClienteAtajo": "Escolher cliente",
+        "elegirProveedor": "Escolher fornecedor",
+        "elegirProveedorAtajo": "Escolher fornecedor"
+      }
     }
   },
   "inventarioEtiquetas": {

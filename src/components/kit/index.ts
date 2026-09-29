@@ -159,7 +159,7 @@ export * from './documento';
 export { SeccionPlegable, type SeccionPlegableProps } from './SeccionPlegable';
 export { ViewToggle, otraVista, type ViewToggleProps, type OpcionVista } from './ViewToggle';
 export { ResultadoOperacion, type ResultadoOperacionProps, type AccionResultado, type TonoResultado } from './ResultadoOperacion';
-export { SelectorEntidad, type SelectorEntidadProps, type TextosSelectorEntidad } from './SelectorEntidad';
+export { SelectorEntidad, type SelectorEntidadProps, type TextosSelectorEntidad, type FiltroEntidad, type ContextoCrearEntidad } from './SelectorEntidad';
 export { CustomerPicker, type CustomerPickerProps } from './CustomerPicker';
 export { SupplierPicker, type SupplierPickerProps } from './SupplierPicker';
 export {

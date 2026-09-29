@@ -32,14 +32,17 @@ jest.mock('@/lib/context/BranchContext', () => ({
 jest.mock('@/lib/hooks/useOrgCurrency', () => ({
   useMonedaOrganizacion: () => ({ code: 'COP', resuelta: true, decimals: 0, locale: 'es-CO', paraDocumento: (c?: string | null) => ({ code: c || 'COP', decimals: 0, locale: 'es-CO' }) }),
 }));
-jest.mock('@/lib/context/OrganizationTimezoneContext', () => ({
+jest.mock('@/lib/context/OrganizationTimezoneContext', () => {
+  const { toPlainDate } = jest.requireActual('@/lib/utils/dateDisplay');
+  return {
   useFormatDate: () => ({
     getToday: () => '2026-09-28',
-    toDate: (d: Date) => d.toISOString().slice(0, 10),
+    toDate: (d: Date) => toPlainDate(d, 'America/Bogota'),
     formatPlain: (d: string) => d,
     formatDate: (d: string) => d,
   }),
-}));
+  };
+});
 
 const guardar = jest.fn();
 const confirmar = jest.fn();

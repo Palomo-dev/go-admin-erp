@@ -16,6 +16,10 @@ export interface OpcionEntidad {
   pendienteSync?: boolean;
   deshabilitada?: boolean;
   motivo?: string;
+  /** Insignia junto al nombre: «Persona», «Empresa». */
+  etiqueta?: string | null;
+  /** Insignia a la derecha: «Por cobrar $ 1.200.000» (advertencia) · «Al día» (éxito). */
+  insignia?: { texto: string; tono?: 'advertencia' | 'exito' | 'neutro' | 'informacion' } | null;
 }
 
 export type EstadoListaEntidad = 'cargando' | 'error' | 'inicial' | 'sinResultados' | 'resultados';
@@ -62,6 +66,16 @@ export interface ClientePicker {
   telefono?: string | null;
   /** Creado sin conexión (Desktop), aún sin subir. */
   pendienteSync?: boolean;
+  /** Documento: «Persona» / «Empresa» ya traducido. */
+  tipo?: string | null;
+  /** Contacto principal de una empresa («Ana Ruiz (Compras)»). */
+  contacto?: string | null;
+  /** Saldo por cobrar ya formateado; `null` o vacío = al día. */
+  saldoPorCobrar?: string | null;
+  /** Texto de «Al día» (traducido) cuando no debe nada; sin él, no se muestra insignia. */
+  alDia?: string | null;
+  /** Plazo de crédito del cliente en días (sugiere el vencimiento). */
+  plazoDias?: number | null;
 }
 
 export function opcionCliente(c: ClientePicker): OpcionEntidad {
@@ -69,8 +83,15 @@ export function opcionCliente(c: ClientePicker): OpcionEntidad {
     id: c.id,
     titulo: c.nombre,
     subtitulo: c.documento ?? null,
-    meta: lineaSecundaria(c.correo, c.telefono) || null,
+    meta: lineaSecundaria(c.contacto, c.correo, c.telefono) || null,
     pendienteSync: c.pendienteSync,
+    // Solo en el diálogo del documento (con `tipo` o `alDia`): el resto de selectores no cambia.
+    ...(c.tipo !== undefined || c.alDia !== undefined || c.saldoPorCobrar !== undefined
+      ? {
+          etiqueta: c.tipo ?? null,
+          insignia: c.saldoPorCobrar ? { texto: c.saldoPorCobrar, tono: 'advertencia' as const } : c.alDia ? { texto: c.alDia, tono: 'exito' as const } : null,
+        }
+      : {}),
   };
 }
 
@@ -85,13 +106,27 @@ export interface ProveedorPicker {
   telefono?: string | null;
   /** Saldo por pagar, ya formateado en la moneda de la organización. */
   saldoPorPagar?: string | null;
+  /** Documento: «Persona» / «Empresa» ya traducido. */
+  tipo?: string | null;
+  /** Texto de «Al día» (traducido) cuando no se le debe; con él, el saldo va como insignia. */
+  alDia?: string | null;
+  /** Días de crédito del proveedor (sugieren el plazo). */
+  creditDays?: number | null;
 }
 
 export function opcionProveedor(p: ProveedorPicker): OpcionEntidad {
+  // Con `tipo` o `alDia` (diálogo del documento) el saldo va como insignia; si no, en la línea secundaria como siempre.
+  const conInsignia = p.tipo !== undefined || p.alDia !== undefined;
   return {
     id: p.id,
     titulo: p.nombre,
     subtitulo: p.nit ?? null,
-    meta: lineaSecundaria(p.contacto, p.telefono, p.saldoPorPagar) || null,
+    meta: (conInsignia ? lineaSecundaria(p.contacto, p.telefono) : lineaSecundaria(p.contacto, p.telefono, p.saldoPorPagar)) || null,
+    ...(conInsignia
+      ? {
+          etiqueta: p.tipo ?? null,
+          insignia: p.saldoPorPagar ? { texto: p.saldoPorPagar, tono: 'advertencia' as const } : p.alDia ? { texto: p.alDia, tono: 'exito' as const } : null,
+        }
+      : {}),
   };
 }

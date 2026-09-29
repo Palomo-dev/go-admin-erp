@@ -1,81 +1,78 @@
 /**
- * /api/modules — módulos de LA organización de la sesión.
+ * /api/modules — módulos de una organización.
  *
- * Antes (F-76): el `POST` tomaba `organizationId` del **body** y el `GET` del
- * **query string**, y las dos consultaban con un cliente `service_role` creado
- * aquí mismo. No había ninguna comprobación de sesión, de pertenencia ni de
- * permiso: cualquier usuario autenticado de cualquier organización podía
- * encender o apagar los módulos de otra empresa pasando su id. Infringía de
- * frente las reglas duras 5 y 6 de `CLAUDE.md`.
+ * F-76 (docs/hallazgos/F-76.md). Antes, el `POST` tomaba `organizationId` del
+ * **body** y el `GET` del **query string**, y los dos consultaban con un
+ * cliente `service_role` creado aquí mismo, sin comprobar sesión, pertenencia
+ * ni permiso: cualquier usuario autenticado podía encender o apagar los
+ * módulos de otra empresa pasando su id. Infringía las reglas duras 5 y 6.
  *
- * Ahora:
- * - La organización sale de la sesión (`withOrg` → `getServerOrgContext`).
- *   Si el body o la query declaran OTRA organización: 403
- *   `FOREIGN_ORGANIZATION` y se registra, en el punto único `readOrgBody`.
- *   La pantalla de módulos sigue enviando su `organizationId` en el body y
- *   sigue funcionando: la misma organización no es un error.
- * - `GET` (leer el estado de módulos del plan): basta **pertenencia**. Es el
- *   mismo dato que cualquier miembro ya lee con su propia sesión desde el
- *   navegador (`useActiveModules` → `moduleManagementService`), porque la RLS
- *   de `organization_modules` lo permite a todo miembro activo. Exigir admin
- *   aquí no cerraría nada y rompería lectores legítimos.
- * - `POST` (activar / desactivar un módulo): exige **administrador de la
- *   organización** (`withOrg(..., { admin: true })` →
- *   `requireOrgAdminOrPermission`: `is_super_admin`, rol 1/2 por id —nunca por
- *   nombre— o el permiso `admin.full_access` resuelto en la base con
- *   `check_user_permission`). Cambia lo que ve todo el ERP de la organización y
- *   consume el límite de módulos del plan: es acción de administrador.
- * - **Sin `service_role`.** Se usa el cliente de la sesión (`ctx.supabase`,
- *   con RLS). Comprobado contra la base el 2026-09-24: todo lo que estas dos
- *   operaciones necesitan está permitido a un miembro activo —`organizations`
- *   (select if member), `modules` (select for authenticated), `plans` (lectura
- *   pública), `subscriptions` y `organization_modules` (aislamiento por
- *   organización), `pipelines`/`stages` (insert if member)— y `get_current_plan`
- *   es `SECURITY DEFINER` con grant a `authenticated`. Los dos disparadores de
- *   siembra del CRM (`trg_crm_module_activated_seed`,
- *   `trg_seed_crm_pipeline_on_module`) también son `SECURITY DEFINER`, así que
- *   no dependen de los privilegios de quien inserta.
+ * Ahora quién opera y sobre qué organización lo decide
+ * `resolverObjetivoModulos` (src/lib/security/modulosObjetivo.ts), que empieza
+ * por `getServerOrgContext`:
+ * - **Miembro**: la organización es la de la sesión. Si el body o la query
+ *   nombran otra: 403 `FOREIGN_ORGANIZATION` registrado. La pantalla de
+ *   módulos sigue enviando su `organizationId`: la misma no es un error.
+ *   `GET` (estado de módulos del plan) basta con pertenencia —es el mismo dato
+ *   que cualquier miembro ya lee desde el navegador—. `POST` exige
+ *   administrador (`requireOrgAdminOrPermission`: super admin miembro, rol 1/2
+ *   por id o `admin.full_access` vía `check_user_permission`; nunca por nombre).
+ * - **Plataforma**: administrador activo de GO Admin (`fn_is_platform_admin`)
+ *   operando sobre una organización cliente de la que no es miembro. Nombra la
+ *   organización en la petición, tiene que existir, y el acceso se registra.
+ *
+ * `service_role` llega al servicio SOLO con la organización ya validada. El
+ * primer arreglo de F-76 lo quitó del todo: `get_current_plan` empieza por
+ * `fn_assert_acceso_org`, que rechaza a quien no es miembro activo ni dueño,
+ * así que operando como plataforma el plan llegaba `null` y solo quedaban los
+ * cuatro módulos del núcleo.
  */
 
 import { NextResponse } from 'next/server';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { createPipelineFromTemplate } from '@/lib/services/crm/pipelineTemplates';
-import { withOrg } from '@/lib/utils/orgContext';
-import { readOrgBody } from '@/lib/security/organizationBody';
+import { resolverObjetivoModulos, respuestaDeErrorOrg } from '@/lib/security/modulosObjetivo';
 
 const RUTA = '/api/modules';
 
-// GET /api/modules — estado de módulos de la organización de la sesión.
-export const GET = withOrg(async (ctx, request) => {
-  // Fuera del try: una organización ajena en la query (`?organizationId=999`)
-  // debe salir como 403 `FOREIGN_ORGANIZATION` por `withOrg`, no convertirse
-  // en el 500 genérico de abajo.
-  await readOrgBody(ctx, request, { route: RUTA });
+interface CuerpoPost {
+  moduleCode?: string;
+  action?: string;
+  modulePages?: Array<{ name: string; href: string }>;
+}
+
+// GET /api/modules — estado de módulos de la organización validada.
+export async function GET(request: Request) {
+  let objetivo;
+  try {
+    objetivo = await resolverObjetivoModulos(request, { route: RUTA, escritura: false });
+  } catch (err) {
+    return respuestaDeErrorOrg(err);
+  }
 
   try {
     const status = await moduleManagementService.getOrganizationModuleStatus(
-      ctx.organizationId,
-      ctx.supabase
+      objetivo.organizationId,
+      objetivo.service
     );
-
     return NextResponse.json({ success: true, data: status });
   } catch (error) {
     console.error('Error fetching modules:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-});
+}
 
-// POST /api/modules — activar o desactivar un módulo (solo administradores).
-export const POST = withOrg(async (ctx, request) => {
-  // Fuera del try, por lo mismo que en el GET: el 403 no se convierte en 500.
-  const body = await readOrgBody<{
-    moduleCode?: string;
-    action?: string;
-    modulePages?: Array<{ name: string; href: string }>;
-  }>(ctx, request, { route: RUTA });
+// POST /api/modules — activar o desactivar un módulo (administrador o plataforma).
+export async function POST(request: Request) {
+  let objetivo;
+  try {
+    objetivo = await resolverObjetivoModulos(request, { route: RUTA, escritura: true });
+  } catch (err) {
+    return respuestaDeErrorOrg(err);
+  }
 
   try {
-    const { moduleCode, action, modulePages } = body ?? {};
+    const { moduleCode, action, modulePages } = (objetivo.body ?? {}) as CuerpoPost;
 
     if (!moduleCode || !action) {
       return NextResponse.json(
@@ -84,31 +81,40 @@ export const POST = withOrg(async (ctx, request) => {
       );
     }
 
-    // La organización NO sale del body: es la de la sesión, ya validada.
-    const orgId = ctx.organizationId;
+    // La organización NO sale del body: es la que validó el resolutor.
+    const orgId = objetivo.organizationId;
 
     let result;
     if (action === 'activate') {
-      result = await moduleManagementService.activateModule(orgId, moduleCode, ctx.supabase, modulePages);
+      result = await moduleManagementService.activateModule(orgId, moduleCode, objetivo.service, modulePages);
 
-      // Al activar el módulo CRM, provisionar los pipelines de Onboarding y Renovación
-      // para que aparezcan en el selector del PipelineHeader desde el inicio.
+      // Al activar el CRM se provisionan los embudos de Onboarding y Renovación.
+      // El de ventas ya lo siembra la base (fn_seed_crm_pipeline_on_module).
       if (result.success && moduleCode === 'crm') {
         try {
-          await createPipelineFromTemplate(ctx.supabase, orgId, 'onboarding');
-          await createPipelineFromTemplate(ctx.supabase, orgId, 'renewal');
+          await createPipelineFromTemplate(objetivo.service, orgId, 'onboarding');
+          await createPipelineFromTemplate(objetivo.service, orgId, 'renewal');
         } catch (provisionErr) {
           // No fallar la activación del módulo si la provisión de pipelines falla
           console.warn('POST /api/modules - Advertencia provisionando pipelines CRM:', provisionErr);
         }
       }
     } else if (action === 'deactivate') {
-      result = await moduleManagementService.deactivateModule(orgId, moduleCode, ctx.supabase);
+      result = await moduleManagementService.deactivateModule(orgId, moduleCode, objetivo.service);
     } else {
       return NextResponse.json(
         { error: 'Invalid action. Use "activate" or "deactivate"' },
         { status: 400 }
       );
+    }
+
+    if (objetivo.via === 'plataforma') {
+      console.info(`[${RUTA}] módulo ${action} por la plataforma`, {
+        adminUserId: objetivo.userId,
+        organizacion: orgId,
+        moduleCode,
+        ok: result.success,
+      });
     }
 
     return NextResponse.json({
@@ -122,4 +128,4 @@ export const POST = withOrg(async (ctx, request) => {
     console.error('Error managing module:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}, { admin: true });
+}

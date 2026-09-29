@@ -2725,7 +2725,12 @@ describe('30. Cola de facturación electrónica: nada fuera del servidor la escr
 describe('31. Toda ruta de src/app/api pasa por una puerta del servidor', () => {
   const API = path.join(SRC_ROOT, 'app', 'api');
   const INTEGRACIONES = path.join(API, 'integrations');
-  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|contextoDeFacturacion|requireSessionUser|withWhatsAppRoute|withPlatformAdmin|requirePlatformAdmin|withCron|verifyCronSecret|verifyWebOrdersSecret|constructEvent|constructWebhookEvent|verifyTwilioWebhook|verifyTwilioRequest|verifyTwilioUrlSignature|verifyMetaSignature|verifyResendWebhook|safeEqual|authenticateDisplayRequest|resolveDisplayActor|requireDisplayToken|validateFeedToken)\s*\(/;
+  // `resolverObjetivoModulos` (F-76, src/lib/security/modulosObjetivo.ts) es una
+  // puerta, no una excepción: resuelve la sesión con `getServerOrgContext` y la
+  // plataforma con `isPlatformAdmin` (fn_is_platform_admin). Que no se pueda
+  // vaciar por dentro lo vigila src/app/api/modules/__tests__/
+  // guardarrailServiceRoleModulos.test.ts («el resolutor: sesión primero…»).
+  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|contextoDeFacturacion|requireSessionUser|withWhatsAppRoute|withPlatformAdmin|requirePlatformAdmin|resolverObjetivoModulos|withCron|verifyCronSecret|verifyWebOrdersSecret|constructEvent|constructWebhookEvent|verifyTwilioWebhook|verifyTwilioRequest|verifyTwilioUrlSignature|verifyMetaSignature|verifyResendWebhook|safeEqual|authenticateDisplayRequest|resolveDisplayActor|requireDisplayToken|validateFeedToken)\s*\(/;
   const SESION_USUARIO_RE = /\bgetServerUserClient\s*\(\s*\)[\s\S]*?\.auth\.getUser\s*\(/;
   const CERRADO_SIN_ENTRADA_RE = /^export\s+(?:async\s+)?function\s+(?:GET|POST|PUT|PATCH|DELETE)\s*\(\s*\)[\s\S]*status:\s*401\b/;
   const HANDLER_RE = /^export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE)\b/;

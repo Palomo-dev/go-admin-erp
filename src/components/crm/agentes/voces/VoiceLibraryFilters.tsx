@@ -11,11 +11,10 @@
 
 import React, { useState } from "react";
 import { flushSync } from "react-dom";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal, X } from "lucide-react";
 import {
   GENDER_LABELS,
   LANGUAGE_LABELS,
@@ -23,6 +22,7 @@ import {
   USE_CASE_LABELS,
 } from "@/lib/services/crm/voiceLibrary";
 import { DEFAULT_LIBRARY_FILTERS, type LibraryUiFilters } from "./useVoiceLibrary";
+import { SearchInput } from "@/components/kit/SearchInput";
 
 const ALL = "__all__";
 
@@ -78,21 +78,16 @@ export function VoiceLibraryFilters({ filters, onChange, onClear, resultCount, t
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <div className="relative min-w-0 flex-1">
-          <Label htmlFor="lib-search" className="sr-only">
-            Buscar voz por nombre o descripción
-          </Label>
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
-          <Input
-            id="lib-search"
-            type="search"
-            value={filters.search}
-            onChange={(e) => onChange("search", e.target.value)}
-            placeholder="Buscar por nombre, acento o estilo…"
-            className="pl-9"
-            autoComplete="off"
-          />
-        </div>
+        {/* El hook `useVoiceLibrary` ya aplica su propio retardo antes de consultar. */}
+        <SearchInput
+          id="lib-search"
+          value={filters.search}
+          onChange={(v) => onChange("search", v)}
+          onValueChange={(v) => onChange("search", v)}
+          placeholder="Buscar por nombre, acento o estilo…"
+          etiqueta="Buscar voz por nombre o descripción"
+          className="min-w-0 flex-1"
+        />
         <Button
           type="button"
           variant="outline"

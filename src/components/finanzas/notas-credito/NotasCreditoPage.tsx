@@ -7,7 +7,6 @@ import { useTranslations } from 'next-intl';
 import {
   Plus,
   Download,
-  Search,
   RefreshCw,
   ArrowLeft,
   FileText,
@@ -24,7 +23,6 @@ import {
   CardListSkeleton,
 } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -34,7 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ChipDocumento, DialogoMotivo, RowActionsMenu, StatusBadge } from '@/components/kit';
+import { ChipDocumento, DialogoMotivo, RowActionsMenu, StatusBadge, SearchInput } from '@/components/kit';
 import {
   Select,
   SelectContent,
@@ -272,15 +270,12 @@ export function NotasCreditoPage() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder={t('listado.buscar')}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-          />
-        </div>
+        <SearchInput
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder={t('listado.buscar')}
+          className="flex-1"
+        />
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
             <Filter className="h-4 w-4 mr-2" />

@@ -51,6 +51,16 @@ import {
 
 const abrirBuscador = () => window.dispatchEvent(new Event(ABRIR_BUSCADOR_EVENT));
 
+/** «⌘K» en Mac y iPad, «Ctrl+K» en el resto (tras montar: el servidor no sabe el sistema). */
+function useAtajoBuscador(): string {
+  const [atajo, setAtajo] = useState('Ctrl+K');
+  useEffect(() => {
+    const plataforma = typeof navigator !== 'undefined' ? navigator.platform || navigator.userAgent : '';
+    if (/Mac|iPhone|iPad/i.test(plataforma)) setAtajo('Meta+K');
+  }, []);
+  return atajo;
+}
+
 interface AppHeaderProps {
   organizacionId: string | null;
   organizacionNombre: string;
@@ -82,6 +92,7 @@ export function AppHeader({
   const barrasPropias = useBarrasInferioresPropias();
   const barraVisible = barraInferiorVisible({ pathname, pagina, barrasPropias: barrasPropias.cantidad, teclado });
   const espacio = espacioInferior(barraVisible, barrasPropias.alto);
+  const atajoBuscador = useAtajoBuscador();
 
   // El contenido (AppLayout) y los avisos flotantes dejan abajo el sitio de la
   // barra que se vea: la de la app o la propia de la pieza (BulkActionBar…).
@@ -102,14 +113,17 @@ export function AppHeader({
         <div className="hidden h-16 items-center gap-2 px-6 lg:flex">
           <OrgSwitcher variante="escritorio" organizacionId={orgNum} organizacionNombre={organizacionNombre} />
           <div className="flex-1" />
+          {/* SearchTrigger Variant=button (Figma 54:2970): abre la paleta; también Ctrl K / ⌘ K y «/». */}
           <button
             type="button"
             onClick={abrirBuscador}
+            aria-haspopup="dialog"
+            aria-keyshortcuts="Control+K Meta+K /"
             className="flex h-10 items-center gap-2 rounded-lg border border-line bg-surface pl-3 pr-2 text-sm font-medium text-fg-secondary outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-brand"
           >
-            <Search className="h-4 w-4" aria-hidden="true" />
+            <Search className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
             {t('search')}
-            <Kbd tecla="Ctrl+K" tamano="md" />
+            <Kbd tecla={atajoBuscador} tamano="md" />
           </button>
           <FeedbackButton />
           <NotificationsBell datos={notificaciones} />
@@ -141,7 +155,7 @@ export function AppHeader({
         <EmailVerificationBanner />
       </header>
 
-      <GlobalSearch sinDisparador paginas={paginasBuscables} />
+      <GlobalSearch paginas={paginasBuscables} organizacionId={organizacionId} />
       <ReportarProblemaDialog organizacionId={orgNum} organizacionNombre={organizacionNombre} correo={correo} />
       <MobileTabBar
         visible={barraVisible}
@@ -191,14 +205,16 @@ function MobileHeader({
     </button>
   );
 
+  // SearchTrigger Variant=icon-outline (Figma 54:2978) → SearchCommand móvil a pantalla completa.
   const buscar = (
     <button
       type="button"
       onClick={abrirBuscador}
       aria-label={t('search')}
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-fg-secondary hover:bg-hover"
+      aria-haspopup="dialog"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-fg-secondary outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-brand"
     >
-      <Search className="h-5 w-5" aria-hidden="true" />
+      <Search className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
     </button>
   );
 

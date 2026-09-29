@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -16,10 +15,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Search, Filter, X, CalendarIcon } from 'lucide-react';
+import { X, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { type ReservationFilters } from '@/lib/services/reservationListService';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface ReservationsFiltersProps {
   filters: ReservationFilters;
@@ -65,16 +65,13 @@ export function ReservationsFilters({
   return (
     <div className="space-y-4">
       {/* Búsqueda */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
-        <Input
-          placeholder="Buscar por código, huésped, email..."
-          aria-label="Buscar reservas por código, huésped o email"
-          value={filters.searchTerm || ''}
-          onChange={(e) => onFiltersChange({ ...filters, searchTerm: e.target.value })}
-          className="pl-10"
-        />
-      </div>
+      <SearchInput
+        value={filters.searchTerm || ''}
+        onChange={(v) => onFiltersChange({ ...filters, searchTerm: v })}
+        onValueChange={(v) => onFiltersChange({ ...filters, searchTerm: v })}
+        placeholder="Buscar por código, huésped, email..."
+        etiqueta="Buscar reservas por código, huésped o email"
+      />
 
       {/* Filtros avanzados */}
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">

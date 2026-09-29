@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -10,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search } from 'lucide-react';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface MaintenanceFiltersProps {
   selectedStatus: string;
@@ -35,16 +34,13 @@ export function MaintenanceFilters({
         {/* Búsqueda */}
         <div className="space-y-2">
           <Label htmlFor="search">Buscar</Label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
-            <Input
-              id="search"
-              placeholder="Buscar por descripción o espacio..."
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-10 dark:bg-gray-900"
-            />
-          </div>
+          <SearchInput
+            value={searchTerm}
+            onChange={onSearchChange}
+            onValueChange={onSearchChange}
+            placeholder="Buscar por descripción o espacio..."
+            id="search"
+          />
         </div>
 
         {/* Filtro por estado */}

@@ -11,8 +11,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { RefreshCcw, Search, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { RefreshCcw, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase/config';
@@ -29,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface TaxesTableProps {
   /** Impuestos de venta y compra (sin retenciones: ver useImpuestosOrganizacion). */
@@ -164,15 +164,13 @@ const TaxesTable = ({ taxes, loading, organizationId, onRefresh }: TaxesTablePro
         </CardHeader>
         <CardContent className="px-3 sm:px-6">
           <div className="flex items-center mb-4 gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground dark:text-gray-500" />
-              <Input
-                placeholder="Buscar impuestos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 text-sm dark:bg-gray-900/50 dark:border-gray-700 dark:text-gray-200 dark:placeholder:text-gray-500"
-              />
-            </div>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              onValueChange={setSearchTerm}
+              placeholder="Buscar impuestos..."
+              className="flex-1"
+            />
             <Button 
               variant="outline" 
               size="icon"

@@ -1,6 +1,5 @@
 'use client';
 
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -9,7 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, X, Filter } from 'lucide-react';
+import { X } from 'lucide-react';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 export interface DepartmentFilters {
   search: string;
@@ -61,16 +61,13 @@ export function DepartmentFiltersComponent({
   return (
     <div className="flex flex-col sm:flex-row gap-3 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
       {/* Search */}
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <Input
-          placeholder="Buscar por nombre o código..."
-          value={filters.search}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          className="pl-9 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
-          disabled={isLoading}
-        />
-      </div>
+      <SearchInput
+        value={filters.search}
+        onChange={handleSearchChange}
+        placeholder="Buscar por nombre o código..."
+        cargando={isLoading}
+        className="flex-1"
+      />
 
       {/* Status Filter */}
       <Select

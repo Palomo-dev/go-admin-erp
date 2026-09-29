@@ -5,7 +5,6 @@ import { Card } from '@/components/ui/card';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +27,7 @@ import {
 import { CHANNEL_PROVIDERS } from '@/lib/services/channelManagerService';
 import type { SpaceChannelSummary } from '@/lib/services/channelManagerService';
 import type { ChannelConnection } from '@/lib/services/icalService';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface SpaceConnectionsListProps {
   summaries: SpaceChannelSummary[];
@@ -210,10 +210,11 @@ export function SpaceConnectionsList({
   return (
     <div className="space-y-4">
       {/* Búsqueda */}
-      <Input
-        placeholder="Buscar espacio o canal..."
+      <SearchInput
         value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+        onChange={setSearchTerm}
+        onValueChange={setSearchTerm}
+        placeholder="Buscar espacio o canal..."
         className="max-w-sm"
       />
 

@@ -1,7 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -10,7 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, X, Filter } from 'lucide-react';
+import { X, Filter } from 'lucide-react';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 export interface JobPositionFilters {
   search: string;
@@ -37,19 +36,12 @@ export function JobPositionFiltersComponent({
   departments,
   levels,
 }: JobPositionFiltersProps) {
-  const [localSearch, setLocalSearch] = useState(filters.search);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (localSearch !== filters.search) {
-        onFiltersChange({ ...filters, search: localSearch });
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [localSearch, filters, onFiltersChange]);
+  // El debounce (300 ms, el de siempre) lo pone `SearchInput`.
+  const handleSearchChange = (texto: string) => {
+    if (texto !== filters.search) onFiltersChange({ ...filters, search: texto });
+  };
 
   const handleClearFilters = () => {
-    setLocalSearch('');
     onFiltersChange({
       search: '',
       isActive: 'all',
@@ -84,15 +76,12 @@ export function JobPositionFiltersComponent({
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Búsqueda */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Buscar por nombre o código..."
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            className="pl-9 bg-white dark:bg-gray-900"
-          />
-        </div>
+        <SearchInput
+          value={filters.search}
+          onChange={handleSearchChange}
+          debounceMs={300}
+          placeholder="Buscar por nombre o código..."
+        />
 
         {/* Departamento */}
         <Select

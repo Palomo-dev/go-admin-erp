@@ -10,7 +10,6 @@ import type { CompensationPackage, CreatePackageDTO, UpdatePackageDTO } from '@/
 import { PackagesTable, PackageForm } from '@/components/hrm/compensacion/paquetes';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -32,12 +31,12 @@ import {
   RefreshCw,
   DollarSign,
   Plus,
-  Search,
   Package,
   CheckCircle,
   XCircle,
   ArrowLeft,
 } from 'lucide-react';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 export default function PaquetesCompensacionPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
@@ -282,15 +281,11 @@ export default function PaquetesCompensacionPage() {
       {/* Search */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="pt-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Buscar por nombre o código..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
-            />
-          </div>
+          <SearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Buscar por nombre o código..."
+          />
         </CardContent>
       </Card>
 

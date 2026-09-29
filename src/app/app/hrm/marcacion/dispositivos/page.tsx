@@ -9,7 +9,6 @@ import type { TimeClock } from '@/lib/services/timeClocksService';
 import { DeviceTable, QRCodeDialog } from '@/components/hrm/marcacion/dispositivos';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -31,7 +30,6 @@ import { useToast } from '@/components/ui/use-toast';
 import {
   Plus,
   RefreshCw,
-  Search,
   Cpu,
   CheckCircle,
   XCircle,
@@ -40,6 +38,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import Link from 'next/link';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 export default function DispositivosPage() {
   const router = useRouter();
@@ -133,10 +132,10 @@ export default function DispositivosPage() {
       await service.duplicate(id);
       toast({ title: 'Dispositivo duplicado' });
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo duplicar',
+        description: (error as { message?: string } | null)?.message || 'No se pudo duplicar',
         variant: 'destructive',
       });
     }
@@ -152,10 +151,10 @@ export default function DispositivosPage() {
         title: updated.is_active ? 'Dispositivo activado' : 'Dispositivo desactivado',
       });
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo cambiar el estado',
+        description: (error as { message?: string } | null)?.message || 'No se pudo cambiar el estado',
         variant: 'destructive',
       });
     }
@@ -172,10 +171,10 @@ export default function DispositivosPage() {
       toast({ title: 'Dispositivo eliminado' });
       setDeleteId(null);
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo eliminar',
+        description: (error as { message?: string } | null)?.message || 'No se pudo eliminar',
         variant: 'destructive',
       });
     }
@@ -202,10 +201,10 @@ export default function DispositivosPage() {
       toast({ title: 'Token QR regenerado' });
       await loadData();
       return updated;
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo regenerar el QR',
+        description: (error as { message?: string } | null)?.message || 'No se pudo regenerar el QR',
         variant: 'destructive',
       });
       throw error;
@@ -342,15 +341,13 @@ export default function DispositivosPage() {
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="pt-4">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar por nombre o código..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 bg-white dark:bg-gray-900"
-              />
-            </div>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              onValueChange={setSearchTerm}
+              placeholder="Buscar por nombre o código..."
+              className="flex-1 min-w-[200px]"
+            />
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-[150px] bg-white dark:bg-gray-900">
                 <SelectValue placeholder="Tipo" />

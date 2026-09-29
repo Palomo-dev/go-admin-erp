@@ -6,12 +6,12 @@
  * que el lector de pantalla anuncia si están activos.
  */
 
-import { Search, X } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/utils/Utils';
 import { TRIGGER_OPTIONS } from '@/lib/services/crm/automation/ruleCatalog';
 import { countActiveFilters, EMPTY_FILTERS, type RuleFilters } from '@/lib/services/crm/automation/ruleEditorModel';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface Props {
   filters: RuleFilters;
@@ -49,18 +49,15 @@ export function RulesToolbar({ filters, onChange, total, shown }: Props) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[220px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-          <label htmlFor="rules-search" className="sr-only">Buscar reglas por nombre</label>
-          <Input
-            id="rules-search"
-            type="search"
-            placeholder="Buscar por nombre o descripción…"
-            className="pl-9"
-            value={filters.query}
-            onChange={(e) => onChange({ ...filters, query: e.target.value })}
-          />
-        </div>
+        <SearchInput
+          id="rules-search"
+          value={filters.query}
+          onChange={(v) => onChange({ ...filters, query: v })}
+          onValueChange={(v) => onChange({ ...filters, query: v })}
+          placeholder="Buscar por nombre o descripción…"
+          etiqueta="Buscar reglas por nombre"
+          className="min-w-[220px] flex-1"
+        />
         <div role="group" aria-label="Filtrar por estado" className="flex gap-1">
           {STATUS.map((s) => (
             <button

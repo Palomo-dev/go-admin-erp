@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -11,6 +10,7 @@ import {
 } from '@/components/ui/select';
 import type { SpaceStatus, SpaceType } from '@/lib/services/spacesService';
 import type { OrgServiceView } from '@/lib/services/spaceServicesService';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface EspaciosFiltersProps {
   searchTerm: string;
@@ -45,14 +45,15 @@ export function EspaciosFilters({
 }: EspaciosFiltersProps) {
   return (
     <div className="flex flex-wrap gap-3">
-      <Input
-        placeholder="Buscar por etiqueta o tipo..."
+      <SearchInput
         value={searchTerm}
-        onChange={(e) => onSearchChange(e.target.value)}
+        onChange={onSearchChange}
+        onValueChange={onSearchChange}
+        placeholder="Buscar por etiqueta o tipo..."
         className="w-full sm:w-64"
       />
 
-      <Select value={statusFilter} onValueChange={(v: any) => onStatusChange(v)}>
+      <Select value={statusFilter} onValueChange={(v) => onStatusChange(v as SpaceStatus | 'all')}>
         <SelectTrigger className="w-full sm:w-[180px]">
           <SelectValue placeholder="Estado" />
         </SelectTrigger>

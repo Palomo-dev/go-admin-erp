@@ -1,17 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { 
-  Plus, 
-  Upload, 
-  Download, 
-  Search, 
-  Filter,
+import {
+  Plus,
   Tag,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -21,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { PromotionFilters, PROMOTION_TYPE_LABELS } from './types';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface PromotionsHeaderProps {
   filters: PromotionFilters;
@@ -53,7 +49,7 @@ export function PromotionsHeader({
   const handleTypeChange = (value: string) => {
     const newFilter = value === 'all'
       ? { ...filters, promotion_type: undefined }
-      : { ...filters, promotion_type: value as any };
+      : { ...filters, promotion_type: value as PromotionFilters['promotion_type'] };
     onFiltersChange(newFilter);
   };
 
@@ -139,15 +135,12 @@ export function PromotionsHeader({
             {/* En móvil: buscador a lo ancho, los dos selects en dos columnas
                 y el botón de refrescar al lado, en vez de cuatro filas apiladas. */}
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-              <div className="relative col-span-2 sm:flex-1 sm:min-w-[180px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  value={filters.search || ''}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  placeholder="Buscar promociones..."
-                  className="pl-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                />
-              </div>
+              <SearchInput
+                value={filters.search || ''}
+                onChange={handleSearchChange}
+                placeholder="Buscar promociones..."
+                className="col-span-2 sm:flex-1 sm:min-w-[180px]"
+              />
               <Select 
                 value={filters.is_active === undefined ? 'all' : filters.is_active ? 'active' : 'inactive'}
                 onValueChange={handleStatusChange}

@@ -898,7 +898,7 @@ export const AppLayout = ({
         s.modulos.flatMap((m) =>
           m.paginas
             .filter((p) => p.enMenu !== false)
-            .map((p) => ({ id: p.href, name: nombresNav.pagina(p), url: p.href, description: tNav(m.modulo.etiqueta) }))
+            .map((p) => ({ id: p.href, name: nombresNav.pagina(p), url: p.href, description: tNav(m.modulo.etiqueta), icono: p.icono }))
         )
       ),
     [seccionesNav, tNav, nombresNav]

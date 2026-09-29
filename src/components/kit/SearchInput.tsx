@@ -15,6 +15,13 @@ import { useKitT } from './useIdiomaKit';
  * `onChange` llega con debounce (400 ms por defecto); Enter lo dispara ya y
  * Escape borra. El atajo «/» enfoca el buscador desde cualquier parte de la
  * página salvo que se esté escribiendo en otro campo.
+ *
+ * Prioridad de «/» con el buscador global del header (Ctrl K): este listener
+ * va en `document` y hace `preventDefault()`; el global escucha en `window`
+ * (después, en burbuja) y respeta `defaultPrevented`. Con un buscador de
+ * página montado, «/» es suyo; sin él, abre la paleta. No lo muevas a
+ * `window` ni quites el `preventDefault()`: ver `accionAtajo` en
+ * `src/lib/busquedaGlobal/logica.ts`.
  */
 export interface SearchInputProps {
   /** Valor confirmado (normalmente el de la URL). Si cambia desde fuera, el campo se sincroniza. */

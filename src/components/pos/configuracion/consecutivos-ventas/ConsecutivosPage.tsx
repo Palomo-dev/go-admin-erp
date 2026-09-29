@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,7 +46,6 @@ import {
   Plus,
   RefreshCw,
   ArrowLeft,
-  Search,
   Edit,
   Trash2,
   Copy,
@@ -67,6 +66,7 @@ import {
   SEQUENCE_TYPES,
   RESET_PERIODS,
 } from './consecutivosService';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
   const { toast } = useToast();
@@ -189,10 +189,10 @@ export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
       }
       setShowModal(false);
       loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo guardar',
+        description: (error as { message?: string } | null)?.message || 'No se pudo guardar',
         variant: 'destructive',
       });
     } finally {
@@ -205,10 +205,10 @@ export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
       await ConsecutivosService.duplicateSequence(id);
       toast({ title: 'Consecutivo duplicado' });
       loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo duplicar',
+        description: (error as { message?: string } | null)?.message || 'No se pudo duplicar',
         variant: 'destructive',
       });
     }
@@ -221,10 +221,10 @@ export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
       await ConsecutivosService.deleteSequence(selectedId);
       toast({ title: 'Consecutivo eliminado' });
       loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo eliminar',
+        description: (error as { message?: string } | null)?.message || 'No se pudo eliminar',
         variant: 'destructive',
       });
     } finally {
@@ -240,10 +240,10 @@ export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
       await ConsecutivosService.resetSequence(selectedId);
       toast({ title: 'Consecutivo reseteado a 0' });
       loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo resetear',
+        description: (error as { message?: string } | null)?.message || 'No se pudo resetear',
         variant: 'destructive',
       });
     } finally {
@@ -270,10 +270,10 @@ export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
       setShowImportDialog(false);
       setImportData('');
       loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'Error en la importación',
+        description: (error as { message?: string } | null)?.message || 'Error en la importación',
         variant: 'destructive',
       });
     }
@@ -432,15 +432,13 @@ export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
             <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
               Lista de Consecutivos
             </CardTitle>
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar consecutivos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 dark:bg-gray-900 dark:border-gray-600"
-              />
-            </div>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              onValueChange={setSearchTerm}
+              placeholder="Buscar consecutivos..."
+              className="w-full max-w-sm"
+            />
           </div>
         </CardHeader>
         <CardContent>

@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl';
 import { History, Calendar, CheckCircle2, DollarSign, Filter, RefreshCw, Eye, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,7 +17,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { toast } from 'sonner';
 import { CampoFecha } from '@/components/kit/CampoFecha';
-import { KpiStrip, StatCard, StatusBadge } from '@/components/kit';
+import { KpiStrip, SearchInput, StatCard, StatusBadge } from '@/components/kit';
 import { filasACsv } from '@/lib/utils/csv';
 import { guardarArchivo } from '@/lib/documents/cliente';
 
@@ -67,12 +66,6 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
 
   const handleSearch = () => {
     cargarHistorial();
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
   };
 
   const verDetalles = (returnItem: Return) => {
@@ -128,12 +121,16 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
             <div>
-              <Input
+              {/* Los filtros se aplican con «Filtrar» o con Enter: el texto solo se guarda al escribir. */}
+              <SearchInput
+                value={filters.search ?? ''}
+                onChange={(v) => setFilters(prev => ({ ...prev, search: v }))}
+                onValueChange={(v) => setFilters(prev => ({ ...prev, search: v }))}
+                onEnter={() => {
+                  handleSearch();
+                  return true;
+                }}
                 placeholder={t('buscarPlaceholder')}
-                value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                onKeyPress={handleKeyPress}
-                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               />
             </div>
             <div>

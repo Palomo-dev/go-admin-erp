@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -10,7 +9,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Search, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface SpaceType {
   id: string;
@@ -64,15 +64,13 @@ export function RatesFilters({
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
       <div className="flex flex-wrap items-center gap-4">
         {/* Búsqueda */}
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
-          <Input
-            placeholder="Buscar por tipo de espacio..."
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+        <SearchInput
+          value={searchTerm}
+          onChange={onSearchChange}
+          onValueChange={onSearchChange}
+          placeholder="Buscar por tipo de espacio..."
+          className="flex-1 min-w-[200px]"
+        />
 
         {/* Filtro por tipo de espacio */}
         <Select value={spaceTypeFilter} onValueChange={onSpaceTypeChange}>

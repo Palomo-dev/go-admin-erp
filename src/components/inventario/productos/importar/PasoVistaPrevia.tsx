@@ -94,7 +94,7 @@ export function PasoVistaPrevia({ a, moneda }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <SearchInput value={busqueda} onChange={(v) => { setBusqueda(v); setPagina(1); }} placeholder={t('buscar')} atajo={false} className="lg:flex-1" />
+        <SearchInput value={busqueda} onChange={(v) => { setBusqueda(v); setPagina(1); }} placeholder={t('buscar')} className="lg:flex-1" />
         <SegmentedControl
           etiqueta={t('filtrar')}
           valor={filtro}

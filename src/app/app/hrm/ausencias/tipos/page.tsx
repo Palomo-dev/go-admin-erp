@@ -2,14 +2,12 @@
 
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import LeaveTypesService from '@/lib/services/leaveTypesService';
 import type { LeaveType, CreateLeaveTypeDTO, UpdateLeaveTypeDTO } from '@/lib/services/leaveTypesService';
 import { LeaveTypesTable, LeaveTypeForm } from '@/components/hrm/ausencias/tipos';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -31,16 +29,15 @@ import {
   RefreshCw,
   Settings,
   Plus,
-  Search,
   ArrowLeft,
   CheckCircle,
   XCircle,
   DollarSign,
 } from 'lucide-react';
 import Link from 'next/link';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 export default function TiposAusenciaPage() {
-  const router = useRouter();
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
 
@@ -109,7 +106,7 @@ export default function TiposAusenciaPage() {
       toast({ title: 'Tipo de ausencia creado' });
       setIsFormOpen(false);
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       throw error;
     }
   };
@@ -124,7 +121,7 @@ export default function TiposAusenciaPage() {
       toast({ title: 'Tipo de ausencia actualizado' });
       setEditingType(null);
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       throw error;
     }
   };
@@ -136,7 +133,7 @@ export default function TiposAusenciaPage() {
     try {
       const type = await service.getById(id);
       setEditingType(type);
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo cargar el tipo de ausencia',
@@ -153,10 +150,10 @@ export default function TiposAusenciaPage() {
       await service.duplicate(id);
       toast({ title: 'Tipo de ausencia duplicado' });
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo duplicar',
+        description: (error as { message?: string } | null)?.message || 'No se pudo duplicar',
         variant: 'destructive',
       });
     }
@@ -172,10 +169,10 @@ export default function TiposAusenciaPage() {
       toast({ title: 'Tipo de ausencia eliminado' });
       setDeleteId(null);
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo eliminar',
+        description: (error as { message?: string } | null)?.message || 'No se pudo eliminar',
         variant: 'destructive',
       });
     }
@@ -189,10 +186,10 @@ export default function TiposAusenciaPage() {
       await service.toggleActive(id, isActive);
       toast({ title: isActive ? 'Tipo activado' : 'Tipo desactivado' });
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo actualizar',
+        description: (error as { message?: string } | null)?.message || 'No se pudo actualizar',
         variant: 'destructive',
       });
     }
@@ -322,15 +319,12 @@ export default function TiposAusenciaPage() {
       {/* Search */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="pt-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Buscar por código o nombre..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 bg-white dark:bg-gray-900"
-            />
-          </div>
+          <SearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Buscar por código o nombre..."
+            className="w-full max-w-md"
+          />
         </CardContent>
       </Card>
 

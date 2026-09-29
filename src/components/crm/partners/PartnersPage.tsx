@@ -9,11 +9,10 @@
  */
 
 import { useMemo, useRef, useState } from 'react';
-import { Award, Plus, Search } from 'lucide-react';
+import { Award, Plus } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
@@ -28,6 +27,7 @@ import { PartnerEditor } from './PartnerEditor';
 import { PartnerList } from './PartnerList';
 import { TierEditor } from './TierEditor';
 import { usePartners } from './usePartners';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 export function PartnersPage() {
   const { partners, tiers, canManage, loading, loaded, error, reload, savePartner, deletePartner, saveTier, deleteTier, loadDeals, registerDeal, transitionDeal } = usePartners();
@@ -106,10 +106,13 @@ export function PartnersPage() {
           <div className="flex flex-wrap items-end gap-4">
             <div className="w-full max-w-md">
               <Label htmlFor="partners-search" className="text-xs text-gray-700 dark:text-gray-300">Buscar</Label>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" aria-hidden="true" />
-                <Input id="partners-search" type="search" autoComplete="off" className="pl-9" placeholder="Nombre, empresa, correo o tier" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} />
-              </div>
+              <SearchInput
+                value={filters.q}
+                onChange={(v) => setFilters({ ...filters, q: v })}
+                onValueChange={(v) => setFilters({ ...filters, q: v })}
+                placeholder="Nombre, empresa, correo o tier"
+                id="partners-search"
+              />
             </div>
             <div className="flex items-center gap-2 pb-2">
               <Switch id="partners-only-active" checked={filters.onlyActive} onCheckedChange={(v) => setFilters({ ...filters, onlyActive: v })} />

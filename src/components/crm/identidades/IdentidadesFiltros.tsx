@@ -1,8 +1,7 @@
 'use client';
 
-import { Search, Filter, X } from 'lucide-react';
+import { Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -13,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { IdentityFilters } from './types';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface IdentidadesFiltrosProps {
   filters: IdentityFilters;
@@ -56,15 +56,11 @@ export function IdentidadesFiltros({
         {/* Búsqueda */}
         <div className="space-y-2">
           <Label className="text-sm text-gray-600 dark:text-gray-400">Buscar</Label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Teléfono, email..."
-              value={filters.search}
-              onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
-              className="pl-9 bg-white dark:bg-gray-800"
-            />
-          </div>
+          <SearchInput
+            value={filters.search}
+            onChange={(v) => onFiltersChange({ ...filters, search: v })}
+            placeholder="Teléfono, email..."
+          />
         </div>
 
         {/* Tipo de identidad */}

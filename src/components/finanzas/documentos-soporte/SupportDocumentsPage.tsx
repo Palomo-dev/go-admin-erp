@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -18,7 +17,6 @@ import {
   Plus,
   RefreshCw,
   ArrowLeft,
-  Search,
   FileCheck2,
   Clock,
   XCircle,
@@ -27,6 +25,7 @@ import {
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { SupportDocumentsTable, type SupportDocumentRow } from './SupportDocumentsTable';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 /** Estados de `support_documents.status` (claves técnicas; la etiqueta sale de `documentosSoporte.estados`). */
 const STATUS_OPTIONS = ['draft', 'pending', 'processing', 'sent', 'accepted', 'rejected', 'failed', 'cancelled'] as const;
@@ -205,15 +204,13 @@ export function SupportDocumentsPage() {
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="pt-4">
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder={t('listado.buscar')}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              onValueChange={setSearchTerm}
+              placeholder={t('listado.buscar')}
+              className="flex-1"
+            />
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
               <SelectTrigger className="w-full sm:w-56">
                 <SelectValue placeholder={t('listado.estadoPlaceholder')} />

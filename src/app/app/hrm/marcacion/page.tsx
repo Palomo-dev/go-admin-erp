@@ -27,13 +27,13 @@ import {
   AlertTriangle,
   Clock,
   Cpu,
-  Search,
   Calendar,
   Building2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useMobileNative } from '@/hooks/useMobileNative';
 import { useBranch } from '@/lib/context/BranchContext';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface BranchOption {
   id: number;
@@ -49,7 +49,7 @@ interface EmployeeOption {
 export default function MarcacionPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
-  const { isMobileApp, isAndroidApp, startNfcScan, stopNfcScan } = useMobileNative();
+  const { isAndroidApp, startNfcScan, stopNfcScan } = useMobileNative();
   const [nfcScanning, setNfcScanning] = useState(false);
 
   // Estados
@@ -404,15 +404,13 @@ export default function MarcacionPage() {
                 <SelectItem value="break_start">Descansos</SelectItem>
               </SelectContent>
             </Select>
-            <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar empleado..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 bg-white dark:bg-gray-900"
-              />
-            </div>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              onValueChange={setSearchTerm}
+              placeholder="Buscar empleado..."
+              className="w-full sm:flex-1 sm:min-w-[200px]"
+            />
           </div>
         </CardContent>
       </Card>

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { FileText, Plus, Loader2, Trash2, Copy, Check, ArrowLeft, Search, Eye } from 'lucide-react';
+import { FileText, Plus, Loader2, Trash2, Copy, Check, ArrowLeft, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,7 @@ import { CopyableId } from '@/components/common/CopyableId';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface JournalLineInput {
   account_code: string;
@@ -76,6 +77,8 @@ export function AsientosPage() {
     if (searchParams?.get('action') === 'new') {
       setShowDialog(true);
     }
+    // Solo se recarga al cambiar de sucursal; `?action=new` se mira una vez al entrar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchFilter]);
 
   const loadData = async () => {
@@ -301,15 +304,13 @@ export function AsientosPage() {
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardContent className="py-4">
           <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar por ID o memo..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 dark:bg-gray-900 dark:border-gray-600"
-              />
-            </div>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              onValueChange={setSearchTerm}
+              placeholder="Buscar por ID o memo..."
+              className="flex-1"
+            />
             <Select value={filterPosted} onValueChange={setFilterPosted}>
               <SelectTrigger className="w-[150px] dark:bg-gray-900 dark:border-gray-600">
                 <SelectValue placeholder="Estado" />

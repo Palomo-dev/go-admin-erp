@@ -7,13 +7,14 @@
  * zona horaria de la organización.
  */
 
-import { Search, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { OrgMemberOption } from '@/lib/hooks/useOrgMembers';
 import { activeFilterCount, emptyFilters, type ComisionesFiltersState } from './comisionesModel';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface Props {
   filters: ComisionesFiltersState;
@@ -36,10 +37,12 @@ export function ComisionesFilters({ filters, onChange, members, canManage }: Pro
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <div className="lg:col-span-2">
           <Label htmlFor="com-search" className={label}>Buscar</Label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" aria-hidden="true" />
-            <Input id="com-search" placeholder="Nombre o notas" value={filters.search} onChange={(e) => set({ search: e.target.value })} className={`pl-9 ${field}`} />
-          </div>
+          <SearchInput
+            value={filters.search}
+            onChange={(v) => set({ search: v })}
+            placeholder="Nombre o notas"
+            id="com-search"
+          />
         </div>
 
         {canManage && (

@@ -3,8 +3,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { usePipeline } from "./hooks/usePipeline";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from "@/components/common/PageSkeletons";
 
 // Componentes modulares
@@ -15,6 +13,7 @@ import CustomerHistoryModal from "./modals/CustomerHistoryModal";
 import CustomerStats from "./components/CustomerStats";
 import CustomersTable from "./components/CustomersTable";
 import ClientsPagination from "./components/ClientsPagination";
+import { SearchInput } from "@/components/kit/SearchInput";
 
 interface ClientsViewProps {
   pipelineId: string;
@@ -122,15 +121,13 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
 
       {/* Barra de búsqueda */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-500 dark:text-gray-400" />
-          <Input
-            placeholder="Buscar clientes..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 sm:pl-10 h-11 sm:h-12 text-sm sm:text-base bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
-          />
-        </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          onValueChange={setSearchQuery}
+          placeholder="Buscar clientes..."
+          className="flex-1"
+        />
         <Button
           variant="outline"
           onClick={() => setSearchQuery("")}

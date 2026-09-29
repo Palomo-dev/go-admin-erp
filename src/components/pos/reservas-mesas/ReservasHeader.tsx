@@ -100,7 +100,7 @@ export function ReservasHeader({
       {/* Filtros */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="w-full sm:w-72">
-          <SearchInput value={search} onChange={onSearchChange} placeholder={t('buscar')} atajo={false} />
+          <SearchInput value={search} onChange={onSearchChange} placeholder={t('buscar')} />
         </div>
 
         <Select value={statusFilter} onValueChange={onStatusFilterChange}>

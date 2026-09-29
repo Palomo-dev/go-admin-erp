@@ -32,13 +32,13 @@ import {
   RefreshCw,
   Users,
   Plus,
-  Search,
   CheckCircle,
   Clock,
   XCircle,
   ArrowLeft,
   UserPlus,
 } from 'lucide-react';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 export default function AsignacionesCompensacionPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
@@ -98,7 +98,7 @@ export default function AsignacionesCompensacionPage() {
       setEmployees(empData);
       setPackages(pkgData);
       setStatuses(service.getStatuses());
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading data:', error);
       toast({
         title: 'Error',
@@ -126,7 +126,7 @@ export default function AsignacionesCompensacionPage() {
       toast({ title: 'Asignación creada correctamente' });
       setIsFormOpen(false);
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       throw error;
     }
   };
@@ -141,7 +141,7 @@ export default function AsignacionesCompensacionPage() {
       toast({ title: 'Asignación actualizada correctamente' });
       setEditingAssignment(null);
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       throw error;
     }
   };
@@ -156,7 +156,7 @@ export default function AsignacionesCompensacionPage() {
       toast({ title: 'Asignación eliminada' });
       setDeleteId(null);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo eliminar la asignación',
@@ -176,7 +176,7 @@ export default function AsignacionesCompensacionPage() {
       setEndAssignmentId(null);
       setEndDate(getToday());
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo finalizar la vigencia',
@@ -288,15 +288,11 @@ export default function AsignacionesCompensacionPage() {
       {/* Search */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="pt-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Buscar por empleado o paquete..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
-            />
-          </div>
+          <SearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Buscar por empleado o paquete..."
+          />
         </CardContent>
       </Card>
 

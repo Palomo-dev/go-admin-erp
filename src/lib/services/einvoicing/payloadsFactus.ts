@@ -49,6 +49,30 @@ function fijo(n: number): string {
   return redondear2(n).toFixed(2);
 }
 
+/**
+ * Cantidad de la línea para Factus/DIAN: hasta 3 decimales, que es lo que
+ * guardan `sale_items.quantity` e `invoice_items.qty` (`numeric(12,3)`). Una
+ * venta por peso de 0,735 kg viaja como «0.735», nunca como «0.74». Las
+ * cantidades con 2 decimales o menos conservan el formato de siempre («1.00»).
+ */
+export function cantidadFactus(n: number): string {
+  const milesimas = Math.round((Math.abs(n) + Number.EPSILON) * 1000);
+  return milesimas % 10 === 0 ? (milesimas / 1000).toFixed(2) : (milesimas / 1000).toFixed(3);
+}
+
+/**
+ * Código de unidad de medida DIAN de la línea. La fuente es la base:
+ * `units.dian_unit_measure_id` (unidad del producto) → `invoice_items.unit_measure_id`
+ * → `dian_unit_measures.code` (94 Unidad, KGM, LBR, LTR, MTR…), que el envío
+ * carga en `unit_measure_code`. `mapUnitMeasure` solo cubre filas viejas sin código.
+ * Verificación pendiente con Factus: que v2 acepte KGM/LBR/GRM en `unit_measure_code`
+ * (docs/design/PRODUCTOS-POR-PESO-BASCULA.md, pregunta 8).
+ */
+export function unidadFactus(linea: Pick<LineaDocumento, 'unit_measure_code' | 'unit_measure_id'>): string {
+  const codigo = (linea.unit_measure_code ?? '').trim();
+  return codigo || mapUnitMeasure(linea.unit_measure_id ?? null);
+}
+
 /** Error por datos del documento que hay que corregir antes de enviarlo (no se reintenta solo). */
 export class DatosIncompletosError extends Error {
   readonly faltantes: string[];
@@ -82,6 +106,8 @@ export interface LineaDocumento {
   discount_amount?: number | string | null;
   discount_rate?: number | string | null;
   unit_measure_id?: number | null;
+  /** `dian_unit_measures.code` de `unit_measure_id`, cargado por el envío (ver `unidadFactus`). */
+  unit_measure_code?: string | null;
   standard_code_id?: number | null;
   is_excluded?: number | null;
   withholding_taxes?: Array<{ code?: string; rate?: number | string; withholding_tax_rate?: number | string }> | null;
@@ -108,7 +134,7 @@ function codigoTributo<T>(fn: () => T, indice: number): T {
 }
 
 export function mapearLinea(linea: LineaDocumento, indice: number): LineaFactus {
-  const cantidad = Math.abs(num(linea.qty));
+  const cantidad = Math.round(Math.abs(num(linea.qty)) * 1000) / 1000;
   const tasa = Math.max(0, num(linea.tax_rate));
   // Excluido de IVA: la marca de la línea (invoice_items.is_excluded, que pone
   // la base desde el impuesto del producto) o el código de plantilla IVA_EXCLUIDO.
@@ -128,9 +154,9 @@ export function mapearLinea(linea: LineaDocumento, indice: number): LineaFactus 
   const item: FactusItem = {
     code_reference: (linea.code_reference || (linea.product_id ? `PROD-${linea.product_id}` : `ITEM-${indice + 1}`)).slice(0, 100),
     name: (linea.description || 'Producto').substring(0, 250),
-    quantity: fijo(cantidad),
+    quantity: cantidadFactus(cantidad),
     price: fijo(precio),
-    unit_measure_code: mapUnitMeasure(linea.unit_measure_id ?? null),
+    unit_measure_code: unidadFactus(linea),
     standard_code: mapStandardCode(linea.standard_code_id ?? null),
     taxes: [{ code: codigoTributo(() => mapTaxCode(linea.tax_code), indice), rate: fijo(tasa), is_excluded: excluido }],
     withholding_taxes: (linea.withholding_taxes || [])

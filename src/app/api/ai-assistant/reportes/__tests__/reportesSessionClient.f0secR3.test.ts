@@ -52,6 +52,11 @@ jest.mock('openai', () => ({
   default: class { chat = { completions: { create: chatCreate } }; },
 }));
 
+// Alcance de sucursal con acceso total: los casos restringidos están en alcanceSucursal.test.ts.
+jest.mock('@/lib/security/alcanceSucursal', () => ({
+  ...jest.requireActual('@/lib/security/alcanceSucursal'),
+  resolverAlcanceSucursal: async () => ({ esAdmin: true, todas: [1], permitidas: [1], accesoTotal: true }),
+}));
 import { POST } from '../route';
 import { crmReports } from '@/lib/services/reportes/modulos/crmReports';
 import { ejecutarReporte } from '@/lib/services/reportes/reportesEngine';

@@ -4,8 +4,14 @@
  * (`zona` en cada respuesta); los días calendario, como YYYY-MM-DD.
  */
 import type { EstadoMembresia, EstadoVisual, UnidadDuracion } from './vigencia';
+import type { RenovacionPendiente } from './renovacion';
 
 export type { EstadoMembresia, EstadoVisual, UnidadDuracion } from './vigencia';
+export type { RenovacionPendiente } from './renovacion';
+export type { EstadoEnlacePago, MotivoEnlaceNoDisponible } from './enlacePago';
+
+/** Listados que se exportan a CSV desde el servidor (§12.3). */
+export type TipoExportacion = 'membresias' | 'miembros' | 'pagos';
 
 export const PERMISOS_MEMBRESIAS = {
   ver: 'memberships.view',
@@ -53,6 +59,10 @@ export interface MembresiaFila {
   saleId: string | null;
   invoiceId: string | null;
   branchId: number | null;
+  /** Solo en el listado de membresías (§12.4): nombre de la sede donde se vendió. */
+  sucursal?: string | null;
+  /** Solo en el listado de membresías (§12.4): última entrada permitida con esta membresía (ISO). */
+  ultimaEntrada?: string | null;
 }
 
 export interface ConteoEstados {
@@ -76,7 +86,17 @@ export interface ListadoMembresias {
   planes: PlanResumen[];
 }
 
-export type FiltroEstado = 'todas' | 'activa' | 'en_gracia' | 'congelada' | 'pendiente' | 'vencida' | 'cancelada' | 'por_vencer';
+export type FiltroEstado =
+  | 'todas'
+  | 'activa'
+  | 'en_gracia'
+  | 'congelada'
+  | 'pendiente'
+  | 'vencida'
+  | 'cancelada'
+  | 'por_vencer'
+  /** Con renovación pendiente de cobro del periodo actual (renovación automática, §12). */
+  | 'renovacion_pendiente';
 
 export interface EventoMembresia {
   id: string;
@@ -119,6 +139,8 @@ export interface ReglasPlan {
   durationUnit: UnidadDuracion;
   durationValue: number;
   billingMode: BillingMode;
+  /** `automatic`: renovación pendiente 7 días antes del vencimiento, se cobra con un clic (§12). */
+  renewalMode?: 'manual' | 'automatic';
   graceDays: number;
   requiresActivation: boolean;
   activationWindowDays: number | null;
@@ -147,6 +169,8 @@ export interface DetalleMembresia {
   /** Días de congelamiento ya usados y veces (para el diálogo «Congelar»). */
   congelamientoUsado: { dias: number; veces: number };
   precioRenovacion: number | null;
+  /** Renovación pendiente del periodo actual (renovación automática, §12); null si no hay. */
+  renovacionPendiente?: RenovacionPendiente | null;
   permisos: PermisosMembresias;
 }
 
@@ -239,6 +263,27 @@ export interface ResultadoCheckin {
   diasGracia: number | null;
   checkinId: number;
   membresia: { id: number; estado: EstadoMembresia; plan: string | null; desde: string; hasta: string; graceUntil: string | null; codigo: string | null } | null;
+  /** Solo con reserva: la entrada ya estaba registrada con esa reserva (segundo clic, idempotente). */
+  repetida?: boolean;
+  /** Solo con reserva: estado en que quedó (`checked_in` si se permitió; si no, el que tenía). */
+  reserva?: { id: number; estado: string } | null;
+}
+
+/** Resultado de `fn_membresias_importar_clases` / `_reservas` (todo o nada, §13). */
+export interface ResultadoImportacion {
+  ok: boolean;
+  importadas: number;
+  validas: number;
+  conError: number;
+  soloValidar: boolean;
+  filas: Array<{
+    fila: number;
+    errores: string[];
+    /** Inicio de la clase (instante ISO) que calculó la base en la zona de la sede. */
+    inicio: string | null;
+    miembro?: string | null;
+    clase?: string | null;
+  }>;
 }
 
 /** Códigos de error de las RPC que la interfaz traduce (namespace membresias.errores). */
@@ -258,6 +303,14 @@ export const ERRORES_MEMBRESIAS = [
   'cliente_no_encontrado',
   'sucursal_invalida',
   'membresia_sin_cliente',
+  // Check-in desde una reserva (§13, fn_membresia_registrar_checkin con p_class_reservation_id).
+  'reserva_no_encontrada',
+  'reserva_de_otro_miembro',
+  'reserva_cancelada',
+  'clase_cancelada',
+  // Importación CSV (§13).
+  'importacion_sin_filas',
+  'importacion_demasiadas_filas',
 ] as const;
 
 export type ErrorMembresias = (typeof ERRORES_MEMBRESIAS)[number] | 'error_interno' | 'datos_invalidos';

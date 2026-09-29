@@ -9,7 +9,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { CalendarClock, CalendarDays, List, PackagePlus, PauseCircle, ScanLine, ShoppingCart, TriangleAlert, UserCheck } from 'lucide-react';
+import { CalendarClock, CalendarDays, Download, List, PackagePlus, PauseCircle, ScanLine, ShoppingCart, TriangleAlert, UserCheck } from 'lucide-react';
 import {
   DataTable,
   FilterChips,
@@ -37,6 +37,7 @@ import { BadgeEstadoMembresia } from '../comun/BadgeEstadoMembresia';
 import { EstadoPantalla } from '../comun/EstadoPantalla';
 import { rangoVigencia, useLineaVigencia } from '../comun/LineaVigencia';
 import { esSinPermiso, useCargaMembresias } from '../comun/useCargaMembresias';
+import { useExportarMembresias } from '../comun/useExportarMembresias';
 import { useFormatoMembresias } from '../comun/useFormatoMembresias';
 import {
   FILTROS_ESTADO,
@@ -57,6 +58,8 @@ export default function ListadoMembresias() {
   const tc = useTranslations('membresias.comun');
   const to = useTranslations('membresias.origen');
   const tp = useTranslations('membresias.pantalla');
+  const te = useTranslations('membresias.exportar');
+  const exportacion = useExportarMembresias('membresias');
 
   const l = useListadoServidor({ filtros: ['estado', 'plan', 'cliente'], tamanoPorDefecto: 20 });
   const estado = leerFiltroEstado(l.filtros.estado);
@@ -131,6 +134,20 @@ export default function ListadoMembresias() {
       celda: (m) => <BadgeEstadoMembresia estado={m.estadoVisual} dias={m.dias} />,
     },
     {
+      id: 'sede',
+      encabezado: t('columnas.sede'),
+      ocultarDebajo: 'xl',
+      celda: (m) => <span className="whitespace-nowrap text-fg-secondary">{m.sucursal ?? '—'}</span>,
+    },
+    {
+      id: 'ultimaEntrada',
+      encabezado: t('columnas.ultimaEntrada'),
+      ocultarDebajo: 'lg',
+      celda: (m) => (
+        <span className="whitespace-nowrap text-fg-secondary tabular-nums">{m.ultimaEntrada ? f.fechaHora(m.ultimaEntrada) : '—'}</span>
+      ),
+    },
+    {
       id: 'origen',
       encabezado: t('columnas.origen'),
       ocultarDebajo: 'xl',
@@ -157,6 +174,15 @@ export default function ListadoMembresias() {
   const accionesCabecera: AccionFila[] = [
     { id: 'planes', etiqueta: tc('accesos.planes'), icono: PackagePlus, onSelect: () => router.push(`${RUTA_MEMBRESIAS}/planes`) },
     { id: 'checkin', etiqueta: tc('accesos.checkin'), icono: ScanLine, onSelect: () => router.push(`${RUTA_MEMBRESIAS}/check-in`) },
+    {
+      id: 'exportar',
+      etiqueta: exportacion.exportando ? te('exportando') : te('accion'),
+      descripcion: te('descripcionFiltros'),
+      icono: Download,
+      separadorAntes: true,
+      deshabilitada: exportacion.exportando || !datos || datos.total === 0,
+      onSelect: () => void exportacion.exportar({ q: l.busqueda, estado, plan, cliente }),
+    },
   ];
 
   const abrir = (m: MembresiaFila) => router.push(rutaDetalle(m.id));

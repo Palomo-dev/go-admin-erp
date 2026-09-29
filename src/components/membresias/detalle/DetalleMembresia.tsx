@@ -201,6 +201,28 @@ export default function DetalleMembresia({ id }: { id: number }) {
 
       <TarjetaMovil d={d} f={f} acciones={accionesMas} botonCongelar={botonCongelar} botonRenovar={botonRenovar} />
 
+      {d.renovacionPendiente && puedeRenovar && (
+        <section
+          aria-label={t('renovacionPendiente.titulo')}
+          className="flex flex-col gap-3 rounded-xl border border-line-warning bg-warning-subtle p-4 sm:flex-row sm:items-center"
+        >
+          <CalendarClock aria-hidden="true" className="size-5 shrink-0 text-warning-text" strokeWidth={1.5} />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <p className="text-sm font-semibold text-fg">{t('renovacionPendiente.titulo')}</p>
+            <p className="text-sm text-fg-secondary">
+              {t('renovacionPendiente.descripcion', { fecha: f.fecha(d.renovacionPendiente.generada) })}
+              {d.renovacionPendiente.precio !== null && (
+                <> · {t('renovacionPendiente.precio', { precio: f.moneda(d.precioRenovacion ?? d.renovacionPendiente.precio) })}</>
+              )}
+            </p>
+          </div>
+          <button type="button" className={CLASE_SECUNDARIO} onClick={() => setDialogo('renovar')}>
+            <RefreshCw aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {t('renovacionPendiente.accion')}
+          </button>
+        </section>
+      )}
+
       <div role="tabpanel" id={idPanel('membresia', pestana)} aria-labelledby={idPestana('membresia', pestana)} className="flex flex-col gap-4">
         {pestana === 'resumen' && <PanelResumen d={d} f={f} />}
         {pestana === 'entradas' && <PanelEntradas d={d} f={f} />}

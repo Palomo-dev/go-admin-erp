@@ -73,7 +73,8 @@ export function DetallePlan({ id }: { id: number }) {
   const uuidEditable = datos?.permisos.planes === true ? uuid : undefined;
   const puedeVender = estado === 'activo';
   const r = plan.reglas;
-  const subtitulo = [plan.sku, textos.duracion(r), t('subtituloRenovacion'), plan.productId ? textos.cobroCorto(r).toLowerCase() : null]
+  const renovacion = r.renewalMode === 'automatic' ? t('subtituloRenovacionAutomatica') : t('subtituloRenovacion');
+  const subtitulo = [plan.sku, textos.duracion(r), renovacion, plan.productId ? textos.cobroCorto(r).toLowerCase() : null]
     .filter(Boolean)
     .join(' · ');
 
@@ -198,7 +199,10 @@ export function DetallePlan({ id }: { id: number }) {
           >
             <ListaDatos etiqueta={t('reglas.titulo')}>
               <FilaDato etiqueta={t('reglas.duracion')} valor={textos.duracion(r)} />
-              <FilaDato etiqueta={t('reglas.renovacion')} valor={t('reglas.renovacionValor')} />
+              <FilaDato
+                etiqueta={t('reglas.renovacion')}
+                valor={r.renewalMode === 'automatic' ? t('reglas.renovacionValorAutomatica') : t('reglas.renovacionValor')}
+              />
               <FilaDato etiqueta={t('reglas.cobro')} valor={t(`reglas.cobroValor.${r.billingMode}`)} />
               <FilaDato etiqueta={t('reglas.gracia')} valor={textos.gracia(r)} />
               <FilaDato etiqueta={t('reglas.activacion')} valor={textos.activacion(r)} />

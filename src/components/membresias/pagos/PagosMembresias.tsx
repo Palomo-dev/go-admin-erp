@@ -9,7 +9,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { CircleDollarSign, FileText, Receipt, ShoppingCart, UserCheck } from 'lucide-react';
+import { CircleDollarSign, Download, FileText, Receipt, ShoppingCart, UserCheck } from 'lucide-react';
 import {
   DataTable,
   DateRangeButton,
@@ -29,6 +29,7 @@ import { apiMembresias } from '@/lib/services/membresias/clienteMembresias';
 import type { PagoFila } from '@/lib/services/membresias/tipos';
 import { EstadoPantalla } from '../comun/EstadoPantalla';
 import { esSinPermiso, useCargaMembresias } from '../comun/useCargaMembresias';
+import { useExportarMembresias } from '../comun/useExportarMembresias';
 import { useFormatoMembresias } from '../comun/useFormatoMembresias';
 import { RUTA_MEMBRESIAS, leerRangoPagos, rutaDetalle } from '../logica';
 
@@ -39,6 +40,8 @@ export default function PagosMembresias() {
   const t = useTranslations('membresias.pagos');
   const tc = useTranslations('membresias.comun');
   const tp = useTranslations('membresias.pantalla');
+  const te = useTranslations('membresias.exportar');
+  const exportacion = useExportarMembresias('pagos');
   const { getToday } = useFormatDate();
   const hoy = getToday();
 
@@ -133,13 +136,25 @@ export default function PagosMembresias() {
         cargando={carga.cargando}
         migas={[{ etiqueta: tc('modulo'), href: RUTA_MEMBRESIAS }, { etiqueta: t('titulo') }]}
         acciones={
-          <Link
-            href="/app/pos"
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-          >
-            <ShoppingCart aria-hidden="true" className="size-4" strokeWidth={1.5} />
-            {tc('venderMembresia')}
-          </Link>
+          <>
+            <button
+              type="button"
+              onClick={() => void exportacion.exportar({ desde: rango.desde, hasta: rango.hasta })}
+              disabled={exportacion.exportando || !datos || datos.total === 0}
+              title={te('descripcionFiltros')}
+              className="hidden h-10 items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50 sm:inline-flex"
+            >
+              <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {exportacion.exportando ? te('exportando') : te('accion')}
+            </button>
+            <Link
+              href="/app/pos"
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+            >
+              <ShoppingCart aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {tc('venderMembresia')}
+            </Link>
+          </>
         }
       />
 

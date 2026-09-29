@@ -12,6 +12,8 @@ import { isOrgAdminLike } from '@/lib/utils/orgAdmin';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { plainDateToInstant, toPlainDate } from '@/lib/utils/dateCore';
 import { estadoVisual, vencePronto, type EstadoMembresia, type UnidadDuracion } from './vigencia';
+import { EVENTO_RENOVACION_PENDIENTE, renovacionPendiente } from './renovacion';
+import { preciosVigentesPorProducto, type FilaPrecio } from './mrr';
 import {
   ERRORES_MEMBRESIAS,
   PERMISOS_MEMBRESIAS,
@@ -105,6 +107,7 @@ function reglas(fuente: Fila | null): ReglasPlan {
     durationUnit: (texto(f.duration_unit) ?? 'month') as UnidadDuracion,
     durationValue: numero(f.duration_value) || 1,
     billingMode: (texto(f.billing_mode) ?? 'prepaid') as BillingMode,
+    renewalMode: texto(f.renewal_mode) === 'automatic' ? 'automatic' : 'manual',
     graceDays: numero(f.grace_days),
     requiresActivation: f.requires_activation === true,
     activationWindowDays: numeroONulo(f.activation_window_days),
@@ -116,6 +119,16 @@ function reglas(fuente: Fila | null): ReglasPlan {
     dailyCheckinLimit: numeroONulo(f.daily_checkin_limit),
   };
 }
+
+/**
+ * Columnas del plan que se leen. Sin `price` (P9): el precio es el del producto en `product_prices`;
+ * `membership_plans.price` solo es una copia para master y goadmin-websites y se retira
+ * (docs/design/MEMBRESIAS-FASE-1-2.md §11.1). El guardarraíl `precioPlanGuardrail.test.ts` lo exige.
+ */
+const COLUMNAS_PLAN =
+  'id, name, description, product_id, is_active, created_at, duration_unit, duration_value, billing_mode, renewal_mode, ' +
+  'grace_days, requires_activation, activation_window_days, freeze_allowed, freeze_max_times, freeze_max_days, ' +
+  'allowed_branch_ids, access_schedule, daily_checkin_limit';
 
 const SELECT_MEMBRESIA =
   'id, status, start_date, end_date, grace_until, access_code, source, sale_id, invoice_id, branch_id, ' +
@@ -246,6 +259,72 @@ export interface FiltrosMembresias {
   clienteId?: string;
   pagina?: number;
   porPagina?: number;
+  /** Exportación (§12.3): solo las filas, sin conteo por estado ni lista de planes. */
+  soloFilas?: boolean;
+}
+
+/**
+ * Membresías con renovación pendiente del periodo ACTUAL (§12): eventos `renewal_due` recientes
+ * cuya clave coincide con el `end_date` vigente (si ya se renovó, el vencimiento cambió).
+ */
+async function idsConRenovacionPendiente(ctx: ServerOrgContext): Promise<number[]> {
+  const desde = new Date(Date.now() - 180 * 86_400_000).toISOString();
+  const { data: eventos } = await ctx.supabase
+    .from('membership_events')
+    .select('membership_id, created_at, metadata')
+    .eq('organization_id', ctx.organizationId)
+    .eq('event_type', EVENTO_RENOVACION_PENDIENTE)
+    .gte('created_at', desde)
+    .limit(5000);
+  const evs = (eventos ?? []) as Fila[];
+  const ids = Array.from(new Set(evs.map((e) => numero(e.membership_id)).filter((n) => n > 0)));
+  if (ids.length === 0) return [];
+  const { data: membresias } = await ctx.supabase
+    .from('memberships')
+    .select('id, status, end_date')
+    .eq('organization_id', ctx.organizationId)
+    .in('id', ids.slice(0, 1000));
+  const porMembresia = new Map<number, Array<{ tipo: string; fecha: string; metadata: Record<string, unknown> }>>();
+  for (const e of evs) {
+    const k = numero(e.membership_id);
+    const lista = porMembresia.get(k) ?? [];
+    lista.push({ tipo: EVENTO_RENOVACION_PENDIENTE, fecha: String(e.created_at), metadata: (e.metadata as Record<string, unknown>) ?? {} });
+    porMembresia.set(k, lista);
+  }
+  return ((membresias ?? []) as Fila[])
+    .filter((m) => renovacionPendiente({ estado: String(m.status), hasta: String(m.end_date) }, porMembresia.get(numero(m.id)) ?? []) !== null)
+    .map((m) => numero(m.id));
+}
+
+/** Sede (nombre) y última entrada permitida de cada membresía de la página (§12.4). */
+async function sedesYUltimasEntradas(ctx: ServerOrgContext, filas: MembresiaFila[]): Promise<void> {
+  if (filas.length === 0) return;
+  const sedes = Array.from(new Set(filas.map((f) => f.branchId).filter((v): v is number => v !== null)));
+  const ids = filas.map((f) => f.id);
+  const [{ data: branches }, { data: entradas }] = await Promise.all([
+    sedes.length
+      ? ctx.supabase.from('branches').select('id, name').eq('organization_id', ctx.organizationId).in('id', sedes)
+      : Promise.resolve({ data: [] as Fila[] }),
+    ctx.supabase
+      .from('member_checkins')
+      .select('membership_id, checkin_at')
+      .eq('organization_id', ctx.organizationId)
+      .in('membership_id', ids)
+      .is('denied_reason', null)
+      .order('checkin_at', { ascending: false })
+      .limit(2000),
+  ]);
+  const nombre = new Map<number, string>();
+  for (const b of (branches ?? []) as Fila[]) nombre.set(numero(b.id), String(b.name));
+  const ultima = new Map<number, string>();
+  for (const e of (entradas ?? []) as Fila[]) {
+    const k = numero(e.membership_id);
+    if (!ultima.has(k)) ultima.set(k, String(e.checkin_at));
+  }
+  for (const f of filas) {
+    f.sucursal = f.branchId !== null ? nombre.get(f.branchId) ?? null : null;
+    f.ultimaEntrada = ultima.get(f.id) ?? null;
+  }
 }
 
 /** Hasta 300 clientes que coinciden (búsqueda única de clientes, por relevancia). */
@@ -309,25 +388,34 @@ export async function listarMembresias(ctx: ServerOrgContext, filtros: FiltrosMe
     case 'cancelada':
       query = query.eq('status', 'cancelled');
       break;
+    case 'renovacion_pendiente': {
+      const ids = await idsConRenovacionPendiente(ctx);
+      query = query.in('id', ids.length > 0 ? ids : [0]);
+      break;
+    }
     default:
       break;
   }
 
   const [{ data, error, count }, conteo, { data: planes }] = await Promise.all([
     query.order('end_date', { ascending: true }).range(desde, hasta),
-    conteoEstados(ctx, tz, ahora),
-    ctx.supabase
-      .from('membership_plans')
-      .select('id, name, product_id')
-      .eq('organization_id', ctx.organizationId)
-      .order('name'),
+    filtros.soloFilas ? Promise.resolve(conteoVacio()) : conteoEstados(ctx, tz, ahora),
+    filtros.soloFilas
+      ? Promise.resolve({ data: [] as Fila[] })
+      : ctx.supabase
+          .from('membership_plans')
+          .select('id, name, product_id')
+          .eq('organization_id', ctx.organizationId)
+          .order('name'),
   ]);
   if (error) throw new ErrorMembresiasServidor('error_interno', 500, error.message);
   const filas = (data ?? []) as unknown as Fila[];
   const pagadas = await ventasPagadas(ctx, filas);
+  const filasVista = filas.map((r) => fila(r, tz, ahora, pagadas));
+  await sedesYUltimasEntradas(ctx, filasVista);
   return {
     zona: tz,
-    filas: filas.map((r) => fila(r, tz, ahora, pagadas)),
+    filas: filasVista,
     total: count ?? filas.length,
     pagina,
     porPagina,
@@ -375,7 +463,7 @@ export async function detalleMembresia(ctx: ServerOrgContext, id: number): Promi
     ventasPagadas(ctx, [r]),
     ctx.supabase
       .from('membership_plans')
-      .select('*')
+      .select(COLUMNAS_PLAN)
       .eq('organization_id', ctx.organizationId)
       .eq('id', numero(r.membership_plan_id))
       .maybeSingle(),
@@ -476,6 +564,7 @@ export async function detalleMembresia(ctx: ServerOrgContext, id: number): Promi
     pagos,
     congelamientoUsado: usado,
     precioRenovacion: precio,
+    renovacionPendiente: renovacionPendiente({ estado: String(r.status), hasta: String(r.end_date) }, evs),
     permisos,
   };
 }
@@ -483,29 +572,20 @@ export async function detalleMembresia(ctx: ServerOrgContext, id: number): Promi
 // ─── Planes ─────────────────────────────────────────────────────────────────
 
 async function preciosVigentes(ctx: ServerOrgContext, productIds: number[]): Promise<Map<number, number>> {
-  const res = new Map<number, number>();
-  if (productIds.length === 0) return res;
+  if (productIds.length === 0) return new Map();
   const ahora = new Date().toISOString();
   const { data } = await ctx.supabase
     .from('product_prices')
-    .select('product_id, price, effective_from, effective_to')
+    .select('id, product_id, price, effective_from, effective_to')
     .in('product_id', productIds)
-    .lte('effective_from', ahora)
-    .order('effective_from', { ascending: false });
-  for (const p of (data ?? []) as Fila[]) {
-    const pid = numero(p.product_id);
-    if (res.has(pid)) continue;
-    const hasta = texto(p.effective_to);
-    if (hasta && hasta <= ahora) continue;
-    res.set(pid, numero(p.price));
-  }
-  return res;
+    .lte('effective_from', ahora);
+  return preciosVigentesPorProducto((data ?? []) as unknown as FilaPrecio[], new Date(ahora));
 }
 
 async function planesConDatos(ctx: ServerOrgContext, soloId?: number): Promise<Array<PlanFila & { categoria: string | null; creado: string | null }>> {
   let q = ctx.supabase
     .from('membership_plans')
-    .select('*, products(id, uuid, sku, name, status, description, categories(name))')
+    .select(`${COLUMNAS_PLAN}, products(id, uuid, sku, name, status, description, categories(name))`)
     .eq('organization_id', ctx.organizationId)
     .order('name');
   if (soloId) q = q.eq('id', soloId);
@@ -544,8 +624,8 @@ async function planesConDatos(ctx: ServerOrgContext, soloId?: number): Promise<A
       sku: texto(prod?.sku),
       estadoProducto: texto(prod?.status),
       activo: p.is_active !== false && (texto(prod?.status) ?? 'active') === 'active',
-      // P9: el precio es el del producto; membership_plans.price solo si el plan no tiene producto.
-      precio: pid ? precios.get(pid) ?? null : numeroONulo(p.price),
+      // P9: el precio es SOLO el del producto (product_prices vigente). Un plan sin producto no tiene precio.
+      precio: pid ? precios.get(pid) ?? null : null,
       reglas: reglas(p),
       membresiasVivas: c.vivas,
       membresiasActivas: c.activas,
@@ -679,7 +759,7 @@ export async function listarMiembros(
 
 export async function listarPagos(
   ctx: ServerOrgContext,
-  filtros: { pagina?: number; porPagina?: number; desde?: string; hasta?: string },
+  filtros: { pagina?: number; porPagina?: number; desde?: string; hasta?: string; soloFilas?: boolean },
 ): Promise<ListadoPagos> {
   const tz = await zonaDe(ctx);
   const { pagina, porPagina, desde, hasta } = paginacion(filtros.pagina, filtros.porPagina);
@@ -742,7 +822,8 @@ export async function listarPagos(
     .limit(10000);
   if (filtros.desde) qTotal = qTotal.gte('sales.sale_date', plainDateToInstant(filtros.desde, tz, '00:00'));
   if (filtros.hasta) qTotal = qTotal.lte('sales.sale_date', plainDateToInstant(filtros.hasta, tz, '23:59:59'));
-  const { data: todos } = await qTotal;
+  // Exportación (§12.3): el total del periodo no se usa; se ahorra la consulta en cada página.
+  const { data: todos } = filtros.soloFilas ? { data: [] as Fila[] } : await qTotal;
   const totalImporte = ((todos ?? []) as Fila[]).reduce((suma, i) => suma + numero(i.total), 0);
   const filas: PagoFila[] = items.map((i) => {
     const venta = uno(i.sales as Fila | Fila[] | null);
@@ -808,7 +889,7 @@ export async function resumenMembresias(ctx: ServerOrgContext): Promise<ResumenM
       .from('membership_events')
       .select('id, event_type, description, created_at, metadata, membership_id, memberships(customers(full_name, first_name, last_name))')
       .eq('organization_id', ctx.organizationId)
-      .in('event_type', ['created', 'activated', 'renewed', 'reactivated', 'frozen', 'unfrozen', 'cancelled', 'expired', 'trimmed', 'grace_started'])
+      .in('event_type', ['created', 'activated', 'renewed', 'reactivated', 'frozen', 'unfrozen', 'cancelled', 'expired', 'trimmed', 'grace_started', EVENTO_RENOVACION_PENDIENTE])
       .order('created_at', { ascending: false })
       .limit(10),
     planesConDatos(ctx),

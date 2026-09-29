@@ -5,6 +5,8 @@
  * se cobra nada, solo se elige por dónde (POS o factura de venta) y se muestra la vigencia nueva
  * con `previsualizarRenovacion` (P3: suma desde el vencimiento; si ya venció, desde hoy). La
  * membresía se extiende dentro de la transacción de la venta (`fn_membresias_activar_venta`).
+ * «Enviar enlace de pago» pregunta al servidor (`/enlace-pago`) y se muestra deshabilitada con su
+ * motivo: sin pasarela, o con pasarela cuyo cobro aún no activa la membresía (§12.2).
  */
 import { useEffect, useId, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -12,7 +14,8 @@ import { useTranslations } from 'next-intl';
 import { FileText, Globe, Info, RefreshCw, ShoppingCart, type LucideIcon } from 'lucide-react';
 import { Dialogo, FilaDato, ListaDatos } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
-import type { DetalleMembresia } from '@/lib/services/membresias/tipos';
+import { apiMembresias } from '@/lib/services/membresias/clienteMembresias';
+import type { DetalleMembresia, EstadoEnlacePago } from '@/lib/services/membresias/tipos';
 import { previsualizarRenovacion } from '@/lib/services/membresias/vigencia';
 import { cn } from '@/utils/Utils';
 import { useFormatoMembresias } from '../comun/useFormatoMembresias';
@@ -33,10 +36,37 @@ export function DialogoRenovar({ abierto, onAbiertoChange, detalle }: DialogoRen
   const { membresia: m, zona, precioRenovacion } = detalle;
   const f = useFormatoMembresias(zona);
   const [via, setVia] = useState<Via>('pos');
+  const [enlace, setEnlace] = useState<EstadoEnlacePago | 'cargando' | 'error'>('cargando');
 
   useEffect(() => {
     if (abierto) setVia('pos');
   }, [abierto]);
+
+  // C5: el servidor dice si la organización tiene pasarela y si su cobro activaría la membresía.
+  useEffect(() => {
+    if (!abierto) return;
+    let vivo = true;
+    setEnlace('cargando');
+    apiMembresias
+      .enlacePago(m.id)
+      .then((e) => vivo && setEnlace(e))
+      .catch(() => vivo && setEnlace('error'));
+    return () => {
+      vivo = false;
+    };
+  }, [abierto, m.id]);
+
+  const enlaceDisponible = typeof enlace === 'object' && enlace.disponible;
+  const motivoEnlace =
+    enlace === 'cargando'
+      ? t('enlace.comprobando')
+      : enlace === 'error'
+        ? t('enlace.motivos.error')
+        : enlace.motivo
+          ? t(`enlace.motivos.${enlace.motivo}`, { pasarelas: enlace.pasarelas.map((p) => t(`enlace.pasarelas.${p}`)).join(', ') })
+          : t('opciones.enlace.descripcion');
+  const insigniaEnlace =
+    typeof enlace === 'object' && enlace.motivo ? t(`enlace.insignias.${enlace.motivo}`) : enlace === 'cargando' ? t('enlace.insignias.comprobando') : null;
 
   const productId = m.plan.productId;
   const clienteId = m.cliente.id || null;
@@ -46,7 +76,8 @@ export function DialogoRenovar({ abierto, onAbiertoChange, detalle }: DialogoRen
   const bloqueo = !productId ? t('bloqueo.sinProducto') : !clienteId ? t('bloqueo.sinCliente') : undefined;
 
   const ir = () => {
-    if (bloqueo) return;
+    // «Enlace» no tiene creación todavía (§12.2): aunque el servidor la ofreciera, no se navega.
+    if (bloqueo || via === 'enlace') return;
     onAbiertoChange(false);
     router.push(via === 'factura' ? rutaNuevaFactura(clienteId) : rutaCobrarEnPos(clienteId, productId));
   };
@@ -68,8 +99,9 @@ export function DialogoRenovar({ abierto, onAbiertoChange, detalle }: DialogoRen
       valor: 'enlace',
       icono: Globe,
       titulo: t('opciones.enlace.titulo'),
-      descripcion: t('opciones.enlace.descripcion'),
-      deshabilitada: true,
+      descripcion: motivoEnlace,
+      // Hoy el servidor nunca la ofrece: no hay riel cuyo cobro active la membresía (§12.2).
+      deshabilitada: !enlaceDisponible,
     },
   ];
 
@@ -116,9 +148,9 @@ export function DialogoRenovar({ abierto, onAbiertoChange, detalle }: DialogoRen
                   <Icono className="size-4" strokeWidth={1.5} />
                 </span>
                 <span className="flex-1 text-sm font-medium text-fg">{o.titulo}</span>
-                {o.deshabilitada && (
+                {o.deshabilitada && o.valor === 'enlace' && insigniaEnlace && (
                   <Badge tono="neutro" apariencia="contorno" tamano="sm">
-                    {t('fasePosterior')}
+                    {insigniaEnlace}
                   </Badge>
                 )}
                 <span

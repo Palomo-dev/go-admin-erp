@@ -4,8 +4,10 @@
  * Membresías › Reservas (antes /app/gym/reservaciones). «Hoy» y «Semana»
  * filtran por la fecha de la CLASE en la zona de la organización (antes
  * filtraba por `booked_at`). La asistencia se escribe con los estados que
- * acepta la base (checked_in | no_show); la entrada a la clase se valida con
- * la membresía por `apiMembresias.registrarEntrada` en la sede de la clase.
+ * acepta la base (checked_in | no_show); la entrada a la clase se registra
+ * desde la reserva (`apiMembresias.entradaReserva`, §13): la base valida la
+ * reserva y la membresía, marca la asistencia y no duplica con un segundo clic.
+ * «Importar CSV» (memberships.classes.manage) carga reservas desde un archivo.
  *
  * Permisos: ver = memberships.view; gestionar = memberships.classes.manage;
  * registrar entrada = memberships.checkin.
@@ -14,7 +16,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { CalendarCheck, CalendarDays, Copy, LogIn, Pencil, Plus, RefreshCw, UserCheck, UserX, Users, XCircle } from 'lucide-react';
+import { CalendarCheck, CalendarDays, Copy, LogIn, Pencil, Plus, RefreshCw, Upload, UserCheck, UserX, Users, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -42,6 +44,9 @@ import {
 import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { apiMembresias, usePermisosMembresias } from '@/lib/services/membresias/clienteMembresias';
+import { avisoEntradaReserva, puedeRegistrarEntradaReserva } from '@/lib/services/membresias/checkinReserva';
+import { useMensajeError } from '@/components/membresias/comun/useMensajeError';
+import { DialogoImportarCsv } from '@/components/membresias/operacion/importar/DialogoImportarCsv';
 import {
   cancelReservation,
   createReservation,
@@ -63,6 +68,7 @@ import {
   esAvisoConocido,
   esMotivoConocido,
   esTipoSugerido,
+  estadoClase,
   estadoReserva,
   instanteEnZona,
   rangoFiltroReservas,
@@ -101,6 +107,7 @@ function Reservas() {
   const permisos = usePermisosMembresias();
   const fechas = useFechasOrg();
   const entero = useFormatoEntero();
+  const mensajeError = useMensajeError();
 
   const [reservas, setReservas] = useState<ClassReservation[]>([]);
   const [clases, setClases] = useState<GymClass[]>([]);
@@ -117,6 +124,7 @@ function Reservas() {
   const [cancelar, setCancelar] = useState<ClassReservation | null>(null);
   const [duplicar, setDuplicar] = useState<{ reserva: ClassReservation; claseId: string } | null>(null);
   const [ocupado, setOcupado] = useState<number | 'dialogo' | null>(null);
+  const [importar, setImportar] = useState(false);
 
   const cargar = useCallback(async () => {
     if (!orgId || !permisos.ver) return;
@@ -212,27 +220,45 @@ function Reservas() {
     }
   };
 
-  /** Entrada a la clase: la base valida la membresía en la sede de la clase y registra la entrada o el rechazo. */
-  const registrarEntrada = (r: ClassReservation) =>
-    correr(r.id, async () => {
-      const sede = r.gym_classes?.branch_id ?? r.branch_id;
-      if (!sede) throw new Error('sin_sede');
-      const res = await apiMembresias.registrarEntrada({ clienteId: r.customer_id, sucursalId: sede, metodo: 'manual', membresiaId: r.membership_id ?? null });
-      if (!res.permitido) {
+  /**
+   * Entrada a la clase desde la reserva (§13): la base valida la reserva (organización, miembro,
+   * sede de la clase) y la membresía con las reglas del check-in, registra la entrada o el
+   * rechazo y, si se permite, deja la reserva `checked_in`. Idempotente: un segundo clic no
+   * duplica la entrada (`repetida`).
+   */
+  const registrarEntrada = async (r: ClassReservation) => {
+    setOcupado(r.id);
+    try {
+      const res = await apiMembresias.entradaReserva(r.id);
+      const tipo = avisoEntradaReserva(res);
+      if (tipo === 'rechazada') {
         toast.error(t('toasts.entradaRechazada', { motivo: esMotivoConocido(res.motivo) ? tk(`motivos.${res.motivo}`) : res.motivo ?? '' }));
-        return;
+      } else if (tipo === 'repetida') {
+        toast.info(t('toasts.entradaRepetida'));
+      } else {
+        const aviso = esAvisoConocido(res.aviso) ? tk(`avisos.${res.aviso}`, { dias: res.diasGracia ?? 0 }) : null;
+        toast.success(aviso ? `${t('toasts.entrada')} · ${aviso}` : t('toasts.entrada'));
       }
-      await markAttendance(r.id, true, orgId);
-      const aviso = esAvisoConocido(res.aviso) ? tk(`avisos.${res.aviso}`, { dias: res.diasGracia ?? 0 }) : null;
-      toast.success(aviso ? `${t('toasts.entrada')} · ${aviso}` : t('toasts.entrada'));
-    });
+      await cargar();
+    } catch (e) {
+      toast.error(mensajeError(e));
+    } finally {
+      setOcupado(null);
+    }
+  };
 
   const gestiona = permisos.clases;
   const accionesDe = (r: ClassReservation): AccionFila[] => {
     const e = estadoReserva(r.status);
     const abierta = e === 'booked';
     return [
-      { id: 'entrada', etiqueta: t('acciones.entrada'), icono: LogIn, onSelect: () => void registrarEntrada(r), oculta: !abierta || !permisos.checkin },
+      {
+        id: 'entrada',
+        etiqueta: t('acciones.entrada'),
+        icono: LogIn,
+        onSelect: () => void registrarEntrada(r),
+        oculta: !puedeRegistrarEntradaReserva(e, estadoClase(r.gym_classes?.status) === 'cancelled') || !permisos.checkin,
+      },
       { id: 'asistio', etiqueta: t('acciones.asistio'), icono: UserCheck, onSelect: () => void correr(r.id, () => markAttendance(r.id, true, orgId), t('toasts.asistio')), oculta: !gestiona || e === 'checked_in' || e === 'cancelled' },
       { id: 'noAsistio', etiqueta: t('acciones.noAsistio'), icono: UserX, onSelect: () => void correr(r.id, () => markAttendance(r.id, false, orgId), t('toasts.noAsistio')), oculta: !gestiona || e === 'no_show' || e === 'cancelled' },
       { id: 'clase', etiqueta: t('acciones.verClase'), icono: CalendarDays, onSelect: () => router.push('/app/membresias/clases'), separadorAntes: true },
@@ -336,6 +362,12 @@ function Reservas() {
               <RefreshCw aria-hidden="true" className={cargando ? 'size-4 animate-spin' : 'size-4'} />
             </Button>
             {gestiona && (
+              <Button variant="outline" className="h-10" onClick={() => setImportar(true)}>
+                <Upload aria-hidden="true" className="mr-2 size-4" />
+                {tm('importar.boton')}
+              </Button>
+            )}
+            {gestiona && (
               <Button className="h-10" onClick={() => setDialogo({ reserva: null })}>
                 <Plus aria-hidden="true" className="mr-2 size-4" />
                 {t('cabecera.nueva')}
@@ -396,7 +428,7 @@ function Reservas() {
         etiquetaFila={nombreCliente}
         acciones={accionesDe}
         accionesRapidas={(r) =>
-          estadoReserva(r.status) === 'booked' && (permisos.checkin || gestiona) ? (
+          estadoReserva(r.status) === 'booked' && estadoClase(r.gym_classes?.status) !== 'cancelled' && (permisos.checkin || gestiona) ? (
             <Button
               variant="ghost"
               size="icon"
@@ -456,6 +488,10 @@ function Reservas() {
         fechas={fechas}
         onGuardar={guardar}
       />
+
+      {gestiona && (
+        <DialogoImportarCsv tipo="reservas" abierto={importar} onAbiertoChange={setImportar} fechas={fechas} onImportado={() => void cargar()} />
+      )}
 
       <DialogoMotivo
         abierto={!!cancelar}

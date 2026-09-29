@@ -11,7 +11,17 @@ import type { FiltroEstado } from '@/lib/services/membresias/tipos';
 
 export const dynamic = 'force-dynamic';
 
-const ESTADOS: FiltroEstado[] = ['todas', 'activa', 'en_gracia', 'congelada', 'pendiente', 'vencida', 'cancelada', 'por_vencer'];
+const ESTADOS: FiltroEstado[] = [
+  'todas',
+  'activa',
+  'en_gracia',
+  'congelada',
+  'pendiente',
+  'vencida',
+  'cancelada',
+  'por_vencer',
+  'renovacion_pendiente',
+];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const GET = withOrg(async (ctx, req) => {

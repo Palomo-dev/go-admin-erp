@@ -561,3 +561,489 @@ formulario de membresía, planes, operación y valores que acepta la base) y
   pasada. Si esa persona compra de nuevo el mismo plan, la venta la reactiva (evento `reactivated`).
 - La activación de pedidos web confirmados a mano no bloquea la confirmación: si falla (p. ej. sin
   cliente) queda en el log y se puede reintentar (la base es idempotente).
+
+---
+
+## 11. Fase 3 — limpieza (2026-09-29): precio del plan, asiento viejo y MRR
+
+Cierra tres pendientes del §10.5: P9 (precio del plan), R4 (asiento contable viejo) y el reporte
+`gymReports`. Base: producción (`jgmgphmzusbluqhuqihj`); master sigue con el código viejo, así que
+nada de esto borra columnas ni rompe lo que master lee.
+
+### 11.1 Precio del plan (P9)
+
+**Quién leía o escribía `membership_plans.price`** (búsqueda en `src/**` y en `pg_proc`):
+
+| Dónde | Qué hacía | Ahora |
+|---|---|---|
+| `gymService.ts` | 4 selects embebidos `membership_plans (id, name, duration_days, price)`, `membership_plans (*)`, `getPlans`/`getPlanById` con `select('*')`; `createPlan`/`updatePlan`/`togglePlanStatus` (sin llamadores) escribían el plan desde el navegador | columnas explícitas sin `price` (`COLUMNAS_PLAN`); las tres funciones de escritura se retiraron (el plan se guarda con el producto, `fn_producto_guardar`) |
+| `membresias/membresias.server.ts` | `planesConDatos` y `detalleMembresia` con `select('*')`; `precio` caía a `membership_plans.price` si el plan no tenía producto | `COLUMNAS_PLAN` sin `price`; el precio es **solo** `product_prices` vigente (plan sin producto → sin precio; hoy 0 planes sin producto). `preciosVigentes` usa la función pura `preciosVigentesPorProducto` (`mrr.ts`) |
+| `reportes/modulos/gymReports.ts` | `membership_plans(name, price)` para el MRR | ver §11.3 |
+| `fn_auto_journal_membership` (SQL) | `SELECT name, price … FROM membership_plans` | precio vigente del producto (`fn_membresias_int_precio_vigente`); ver §11.2 |
+| `fn_producto_guardar` (SQL) | sus dos `insert into membership_plans (…, price, …) values (…, null, …)` | ya no nombra la columna |
+
+Ninguna otra función viva lee la columna (`fn_membresias_activar_venta`, `_revertir_linea`,
+`_int_snapshot`, `fn_producto_para_formulario` solo usan otras columnas del plan).
+
+**Por qué la columna se queda (y sincronizada).** Además de master, **goadmin-websites** en su rama
+de producción (`main`) la lee para cobrar y mostrar: `app/api/checkout/init/route.ts:587` (total del
+pago = `plan.price`), `app/api/memberships/purchase/route.ts` (subtotal) y
+`lib/memberships/payment-handler.ts` (correo). Su rama `claude/vercel-image-optimization-jpkpyn`
+(commit `5484245`, sin desplegar) ya pasa a `product_prices`; hasta que se despliegue, la columna
+sigue alimentando al sitio. Un plan creado desde el producto
+nacía con `price = NULL` y un cambio de precio en el producto no llegaba al plan: el sitio habría
+mostrado 0 o un precio viejo. Por eso la columna pasa a ser una **copia de solo lectura** del precio
+vigente del producto, mantenida por la base:
+
+| Migración | Qué hace |
+|---|---|
+| `20260929235000_membresias_f3_precio_plan_legado` | `fn_membresias_int_precio_vigente(product_id)` (misma regla que el POS); `fn_membresias_sincronizar_precio_legado(product_id\|null)`; `trg_membresias_precio_legado` (AFTER INSERT/UPDATE/DELETE en `product_prices`: copia al plan ligado); `trg_membership_plans_precio_legado` (BEFORE en `membership_plans`: un plan con producto siempre lleva el precio del producto, aunque master escriba otro); pg_cron `membresias-precio-legado` (minuto 17 de cada hora: un precio programado entra en vigencia sin que nadie escriba); `fn_producto_guardar` sin `price` (definición viva + reemplazo verificado: 2 apariciones exactas); comentario de la columna actualizado. Todas las funciones `SECURITY DEFINER` con `revoke … from public, anon, authenticated` (el disparador no necesita EXECUTE del usuario: probado como `authenticated`) |
+
+Datos: 4 planes (org 106), los 4 con producto y con `price` igual al vigente → la copia inicial cambió
+0 filas.
+
+Prueba en seco (`DO … RAISE`, revertida), sesión simulada del dueño de la org 106:
+
+| Caso | Resultado |
+|---|---|
+| Precio nuevo vigente del producto del plan 1 (138 000 → 150 000) | plan 1 = 150 000 |
+| Precio programado para mañana del plan 2 | plan 2 sigue en 295 000; al entrar en vigencia (simulado) → 999 999 |
+| Master escribe `update membership_plans set price = 1` (plan 3) | la fila se actualiza pero `price` queda en 416 000 |
+| Borrar el precio vigente nuevo del plan 1 | vuelve a 138 000 |
+| `fn_producto_guardar` crea una membresía trimestral de 270 000 | plan nuevo con `duration_unit='month'`, `duration_value=3`, `price=270 000` (antes: `NULL`) |
+| Rollback de la migración en transacción | `fn_producto_guardar` vuelve a nombrar `price` (2 veces), 0 disparadores, 0 tareas |
+
+Guardarraíl: `src/__tests__/membresias/precioPlanGuardrail.test.ts` falla si código de `src/` (fuera
+de pruebas) vuelve a pedir `price` o `*` en un select embebido `membership_plans(...)`, selecciona `*`,
+`price` o nada en `.from('membership_plans')`, escribe `price` en ese `insert/update/upsert`, o si un
+archivo del dominio membresías lee `.price` de un plan. Incluye una autoprueba con las formas viejas.
+
+**Propuesta de retiro (NO aplicada).** Va en una migración posterior, cuando se cumplan las tres
+condiciones: (1) main desplegado en master; (2) goadmin-websites desplegado leyendo el precio del
+producto (`membership_plans.product_id` → `product_prices` vigente) en las rutas citadas (commit
+`5484245` o posterior, en su propio PR);
+(3) `go-admin-super` sin lecturas de la columna. Antes de aplicarla, comprobar por MCP que ninguna
+función viva la nombra (`pg_get_functiondef … ilike '%membership_plans%'` con `price`) y que ninguna
+vista depende de ella (`pg_depend`). Es un `DROP` sobre una tabla con datos de clientes: requiere
+aprobación del dueño (la columna es una copia derivable de `product_prices`, así que el rollback sí
+reconstruye los valores).
+
+```sql
+-- <ts>_membresias_retirar_precio_plan.sql (PROPUESTA)
+do $$ begin
+  if exists (select 1 from cron.job where jobname = 'membresias-precio-legado') then
+    perform cron.unschedule('membresias-precio-legado');
+  end if;
+end $$;
+drop trigger if exists trg_membership_plans_precio_legado on public.membership_plans;
+drop trigger if exists trg_membresias_precio_legado on public.product_prices;
+drop function if exists public.fn_membresias_tg_plan_precio_legado();
+drop function if exists public.fn_membresias_tg_precio_producto();
+drop function if exists public.fn_membresias_sincronizar_precio_legado(integer);
+-- Asiento viejo (desactivado en §11.2): se retira con la columna.
+drop trigger if exists trg_auto_journal_membership on public.memberships;
+drop trigger if exists trg_auto_journal_membership_payment on public.payments;
+drop function if exists public.fn_auto_journal_membership();
+drop function if exists public.fn_auto_journal_membership_payment();
+alter table public.membership_plans drop column if exists price;
+-- Rollback: add column price numeric; recrear las funciones y disparadores de 20260929235000 y
+-- 20260929235100 (sus archivos); select public.fn_membresias_sincronizar_precio_legado();
+```
+
+### 11.2 Asiento contable viejo (R4)
+
+**Qué hacían.** `trg_auto_journal_membership` (AFTER INSERT/UPDATE OF status en `memberships`) creaba
+un asiento `source='membership'` con el precio del plan en el alta (`created`), la renovación
+(`renewed`, de `expired/cancelled` a `active`) y la cancelación (`cancelled`), si la membresía no
+traía `sale_id`; desde `20260929001000` además salía si traía `source` o `sale_item_id`. Unía
+`member_branches.organization_member_id = NEW.id` (id de la membresía: siempre sucursal 0).
+`trg_auto_journal_membership_payment` (AFTER INSERT en `payments` con `source='membership'`) creaba un
+asiento `membership_payment` con la regla `paid` si el pago estaba `completed`, sin venta ni factura.
+
+**Evidencia (conteos, 2026-09-29):**
+
+| Dato | Valor |
+|---|---|
+| `memberships` | 1 (`source='manual_legacy'`, `expired`); sin `source` ni `sale_item_id`: **0** |
+| `payments` con `source='membership'` (historia completa) | **0** |
+| `membership_payments` | 0 |
+| `journal_entries` con `source` `membership` o `membership_payment` (historia completa) | **0** |
+| `accounting_rules` `source_type='membership'` | 94 en 89 organizaciones; `created` de 88 debita **1105 Caja** / acredita 4250 |
+| goadmin-websites | su alta usa `status='pending_payment'` (la CHECK la rechaza) y sus pagos entran con `status='paid'` (el disparador de pagos solo mira `completed`): no dispara ninguno |
+
+**¿El modelo nuevo ya queda contabilizado?** Sí, por la venta: `trg_auto_journal_sale_pos` (`sales`,
+venta POS), `trg_auto_journal_sale` (`invoice_sales`, factura emitida por `fn_factura_venta_emitir`) y
+`trg_auto_journal_payment` (`payments` con `source` `invoice_sales`/`sale`, cobros de
+`fn_registrar_pago`); todos activos. Las membresías del modelo nuevo siempre llevan `source` y
+`sale_item_id`, así que el disparador viejo no las tocaba (no había duplicado).
+
+**Decisión: desactivar ambos.** Lo único que aún podían contabilizar era un alta **sin cobro** del
+módulo gym de master: un asiento Caja/ingreso sin dinero en ningún turno de caja, y doble ingreso si
+esa membresía también se cobraba por el POS. No hay pagos ni membresías legadas que los necesiten.
+Desactivar no lanza errores en master (sus insert siguen funcionando, solo sin ese asiento).
+
+| Migración | Qué hace |
+|---|---|
+| `20260929235100_membresias_f3_asiento_legado` | `ALTER TABLE … DISABLE TRIGGER` de `trg_auto_journal_membership` y `trg_auto_journal_membership_payment` (reversible); `fn_auto_journal_membership` redefinida sobre la versión viva: precio vigente del producto (no `membership_plans.price`) y sucursal `memberships.branch_id` (no el join erróneo), para que reactivarla no reintroduzca los errores; comentarios en funciones y disparadores. El rollback reactiva ambos y reinstala la función anterior |
+
+Prueba en seco (revertida): alta legada sin `source` (como master) → 0 asientos; pago
+`source='membership'` `completed` → 0 asientos `membership_payment`; con el disparador reactivado solo
+dentro de la prueba, el alta legada genera 138 000 débito / 138 000 crédito en la **sucursal 79** (antes
+habría sido la 0) con el precio del producto; rollback en transacción → ambos `O` (activos),
+`proconfig` y comentarios como estaban.
+
+### 11.3 Reporte de membresías y MRR (`gymReports`)
+
+Antes: `MRR = Σ membership_plans.price` de las membresías con `status='active'` (un plan anual sumaba
+el año entero como si fuera un mes; una `active` ya vencida seguía sumando), sin filtro de sucursal, y
+días con `split('T')[0]` (día UTC).
+
+Ahora (`src/lib/services/reportes/modulos/gymReports.ts`, informe `gym-membresias`):
+
+- Precio = **precio vigente del producto** del plan en `product_prices` (una consulta con `in`), nunca
+  `membership_plans.price`.
+- Normalizado a mes con `duration_unit`/`duration_value` del plan (respaldo `duration_days`):
+  mes → `precio / valor`; año → `precio / (12·valor)`; día → `precio · (365/12) / valor`;
+  semana → `precio · (365/12) / (7·valor)`. Mes promedio de 30,42 días para que 12 cuotas sumen el año.
+- Suman solo las membresías **activas o en gracia** (`estadoVisual` de `vigencia.ts`, la misma regla
+  que los badges y el check-in: una `active` vencida sin gracia ya no suma aunque la tarea horaria no
+  haya pasado). Pendientes, congeladas, vencidas y canceladas no.
+- Por organización (`organization_id`) y, si el informe filtra sucursal, por `memberships.branch_id`
+  (las legadas sin sucursal quedan fuera de ese filtro).
+- Fechas en la zona de la organización (`getOrganizationTimezone` + `toPlainDate`): «Nuevas» por día
+  de inicio; la columna «Cuota mensual» es la cuota normalizada. En el mismo archivo, «Actividad de
+  membresías» usa `getOrgDateRange` (antes límites UTC `T00:00:00Z`) y agrupa por día de la
+  organización, y «Retención» compara el día de vencimiento en esa zona.
+
+La normalización vive en funciones puras en `src/lib/services/membresias/mrr.ts`
+(`duracionDelPlan`, `periodosPorMes`, `cuotaMensual`, `preciosVigentesPorProducto`, `sumaAlMrr`,
+`cuotaMensualDeMembresia`, `calcularMrr`), con pruebas en `src/__tests__/membresias/mrr.test.ts`:
+planes de 1 mes (138 000 → 138 000), 3 meses (270 000 → 90 000), 1 año (1 200 000 → 100 000),
+15 días (50 000 → 101 388,89) y 1 semana (20 000 → 86 904,76); los cinco juntos dan 516 293,65
+(el cálculo viejo daba 1 678 000); en gracia suma y vencida/congelada/pendiente/cancelada no; sin
+precio vigente no suma; vence a las 23:59:59 de Bogotá.
+
+### 11.4 Archivos y verificación
+
+- Migraciones (aplicadas por MCP, con rollback): `20260929235000_membresias_f3_precio_plan_legado`,
+  `20260929235100_membresias_f3_asiento_legado`.
+- Código: `src/lib/services/gymService.ts`, `src/lib/services/membresias/membresias.server.ts`,
+  `src/lib/services/membresias/mrr.ts` (nuevo), `src/lib/services/reportes/modulos/gymReports.ts`.
+- Pruebas: `src/__tests__/membresias/mrr.test.ts` y `precioPlanGuardrail.test.ts` (nuevas).
+- `npx jest src/__tests__/membresias src/__tests__/guardrails.test.ts`: 18 suites, 430 pruebas en
+  verde (incluye suites que otras sesiones añadieron en paralelo); `mrr.test.ts` también con `TZ=UTC` y `TZ=America/Bogota`. `tsc --noEmit` sin errores en
+  los archivos tocados; `eslint` limpio en ellos.
+
+Del §10.5 quedan cerrados: P9 en el código de main (falta el DROP, propuesto arriba), R4 y el MRR de
+`gymReports`. Siguen abiertos el alias `gym` y la migración de goadmin-websites (R5), que además es
+condición del DROP de la columna.
+
+---
+
+## 13. Check-in desde reserva e importación CSV (fase 3, 2026-09-29)
+
+Cierra dos puntos del §10.5: «check-in desde una reserva» e «importación CSV de clases y reservas».
+Los otros dos del mismo renglón (ocurrencias de clases recurrentes y QR de los dispositivos) quedan
+documentados en §13.4 y **no** se hicieron.
+
+### 13.1 Base de datos (aplicada por MCP, cada migración con su rollback)
+
+| Migración | Qué hace |
+|---|---|
+| `20260929235200_membresias_checkin_desde_reserva` | `fn_membresia_registrar_checkin` gana `p_class_reservation_id integer default null` sobre la definición **viva** (md5 `9e57bfed…`): las llamadas de 5 argumentos (check-in normal, kiosco) no cambian. Se quita la firma de 5 argumentos en la misma transacción (si quedaran las dos, una llamada de 5 sería ambigua). Índice único parcial `member_checkins_reserva_permitida_uq (class_reservation_id) where denied_reason is null`. La columna `member_checkins.class_reservation_id` (FK a `class_reservations`, `ON DELETE SET NULL`) ya existía y estaba vacía |
+| `20260929235300_membresias_importar_clases_reservas` | `fn_membresias_importar_clases` y `fn_membresias_importar_reservas (p_organization_id, p_filas jsonb, p_solo_validar boolean default false)`: `SECURITY DEFINER`, `fn_membresias_int_exigir` (pertenencia + `memberships.classes.manage`), `revoke … from public, anon` |
+
+Los archivos se renombraron de `…235000`/`…235100` a `…235200`/`…235300` después de aplicarlos para no
+chocar de versión con §11; los marcadores «20260929235000» dentro del cuerpo de la función son los
+del texto aplicado.
+
+Con reserva, la función:
+- busca la reserva **con la organización del parámetro** y la bloquea (`for update`): otra
+  organización o id inexistente → `reserva_no_encontrada`; de otro cliente → `reserva_de_otro_miembro`;
+  la sede debe ser la de la clase (`sucursal_invalida`); reserva o clase canceladas → `reserva_cancelada`
+  / `clase_cancelada`, sin registrar nada;
+- aplica **las mismas reglas** del check-in (vencida, congelada, pendiente, gracia con aviso, sede del
+  plan, horario, tope diario). La reserva **no elige** la membresía: se usa la que mejor da acceso
+  (una reserva ligada a una membresía vieja no debe dejar fuera a quien renovó);
+- permitida: inserta la entrada con `class_reservation_id` y deja la reserva `checked_in`
+  (`checkin_time`, y `membership_id` si no tenía). Rechazada: registra el rechazo con la reserva y la
+  reserva queda como estaba (`booked`);
+- **idempotente**: si ya hay una entrada permitida con esa reserva devuelve la misma (`repetida: true`,
+  mismo `checkin_id`) sin insertar otra; el candado serializa dos clics simultáneos y el índice único
+  lo garantiza en la tabla. Una reserva marcada «asistió» a mano (sin entrada) sí registra la entrada;
+- una reserva `no_show` admite la entrada (llegó tarde).
+
+Consecuencia documentada: la entrada a una clase **cuenta** para `daily_checkin_limit` como cualquier
+otra entrada. Con un plan de «1 entrada al día», quien entró por la puerta ya no puede registrar la
+clase ese día (`limite_diario`). Si el dueño quiere que la clase no consuma el tope, es un cambio de
+regla en la función, no en la pantalla.
+
+Importación — decisión: **todo o nada**. La RPC valida todas las filas; si alguna tiene un error no
+escribe nada y devuelve el reporte por fila (`filas: [{fila, errores[], inicio, miembro, clase}]`).
+Con `p_solo_validar` solo valida: es la vista previa del diálogo, y al importar se valida otra vez
+(si algo cambió entre la vista previa y el clic —p. ej. otra persona tomó el último cupo— no se
+guarda nada y el diálogo muestra los errores nuevos). Motivo: un archivo a medias obliga a saber qué
+filas entraron para no duplicarlas al reintentar; con todo o nada se corrige el archivo y se sube
+entero. Máximo **500 filas** por archivo (también en la ruta y en el navegador).
+
+| Validación en la base | Clases | Reservas |
+|---|---|---|
+| Organización y permiso | `fn_membresias_int_exigir(org, memberships.classes.manage)` | igual |
+| Sede | id, nombre o código; opcional si la organización tiene una sola sede activa | opcional (desempata clases iguales en dos sedes); debe pasar `app_branch_access` (la política restrictiva de `class_reservations`) |
+| Personas | instructor = correo de un miembro **activo** de la organización (`instructor_id` es NOT NULL) | miembro por `identification_number` (exacto por el índice único; si no, normalizado: «1.020.304» = «1020304») o correo (exacto; si no, sin mayúsculas). Los mapas normalizados se arman una vez por llamada, no por fila. Documento y correo de personas distintas → `miembro_no_coincide` |
+| Fecha y hora | de pared, en la zona de la sede (`fn_timezone_for`) | clase por título (sin mayúsculas) + `start_at` = fecha y hora en la zona de SU sede |
+| Valores | duración 5–480 min (60 por defecto), capacidad 1–1000 (10), nivel y estado (`active`/`completed`) de las CHECK | estado (`booked` por defecto, `checked_in`, `no_show`, `cancelled`) y origen (`staff` por defecto) de las CHECK |
+| Duplicadas | en el archivo y en la base (misma sede, título e inicio, no canceladas) | en el archivo y en la base (UNIQUE clase-cliente) |
+| Otras | — | clase cancelada; `booked` en clase no programada; cupo (reservas no canceladas de la base + las del archivo) |
+
+Reservas importadas como `checked_in` son **histórico**: no crean filas en `member_checkins` ni validan
+membresía (la entrada con reglas es la de arriba). `checkin_time` = inicio de la clase.
+
+Pruebas en seco (MCP, `DO … RAISE`, todo revertido; org 106, sede 79, America/Bogota, sesión simulada
+del dueño con `request.jwt.claims` + `set local role authenticated`):
+
+| Caso | Resultado |
+|---|---|
+| Entrada desde reserva con membresía activa | permitida, reserva `checked_in`, `membership_id` completado |
+| Segundo clic sobre la misma reserva | `repetida=true`, mismo `checkin_id`, **1** fila en `member_checkins` |
+| Reserva del cliente con membresía vencida | rechazada `vencida`, la reserva sigue `booked`, rechazo registrado con la reserva |
+| Reserva de otro miembro / cancelada / inexistente | `reserva_de_otro_miembro` / `reserva_cancelada` / `reserva_no_encontrada` |
+| Llamada de 5 argumentos (posicional y con nombres) | igual que antes |
+| Clases: vista previa con 4 filas | fila buena sin errores; duplicada en el archivo; título, instructor y fecha (30 feb) inválidos; sede inexistente, hora «7:00» sin normalizar, duración, nivel y estado inválidos |
+| Clases: importar la fila buena | 1 clase; «2026-10-05 07:00» Bogotá = `12:00Z`; reimportar → `clase_ya_existe` |
+| Reservas: vista previa (clase con cupo 2) | documento normalizado y correo en mayúsculas encuentran al miembro; duplicada en el archivo; `clase_sin_cupo` en la 3.ª; miembro y clase inexistentes, estado inválido; documento y correo de personas distintas; sin miembro y fecha DD/MM sin normalizar |
+| Reservas: importar | 2 reservas (`booked/staff` y `checked_in/web` con `checkin_time`); reintento → `clase_sin_cupo` y `reserva_ya_existe`, nada guardado |
+| 0 filas / 501 filas / usuario de otra organización | `importacion_sin_filas` / `importacion_demasiadas_filas` / `42501 Acceso denegado a la organización` |
+
+### 13.2 Backend y pantallas
+
+- Rutas (todas `withOrg`, organización de la sesión, `readOrgBody` → organización ajena en body o
+  query = 403, permisos en el servidor con `exigir`):
+  - `POST /api/membresias/reservas/[id]/entrada` (`memberships.checkin`): lee la reserva con la
+    organización de la sesión y el cliente de la sesión (RLS + `app_branch_access`; si no la ve: 404)
+    y llama la función con el miembro, la sede de la clase y `p_class_reservation_id`.
+  - `POST /api/membresias/importar/clases` y `/reservas` (`memberships.classes.manage`):
+    `{ filas, soloValidar }`, esquema `zod` estricto (`esquemasImportacion.ts`, sin campos de más).
+- Servicio `src/lib/services/membresias/operacionClases.server.ts`; lógica pura
+  `checkinReserva.ts` (cuándo ofrecer el botón, respuesta → contrato, tipo de aviso, errores → HTTP:
+  `reserva_no_encontrada` 404, reglas 422, permiso 403) e `importacionCsv.ts` (columnas con alias
+  es/en/fr/pt, fechas `AAAA-MM-DD` o `DD/MM/AAAA` sin pasar por la zona del navegador, horas 24 h,
+  am/pm y «19h30», niveles/estados/orígenes a los valores de las CHECK, duplicadas en el archivo,
+  tope de filas, reporte combinado navegador + base, plantilla). El archivo se lee con el lector del
+  importador de productos (`lib/inventario/importacion/lector.ts`: UTF-8 o Windows-1252, «,» «;» o
+  tabulador) y la plantilla con `lib/utils/csv.ts` (BOM, «;», celdas protegidas contra fórmulas): no
+  se añadió ninguna dependencia.
+- Reservas (y la lista de asistentes de una clase, `?clase=<id>`): «Registrar entrada» llama la ruta
+  nueva; toasts de permitida, en gracia, rechazada con motivo y «ya estaba registrada». Se ofrece para
+  reservas `booked` y `no_show` de clases no canceladas. Ya no se escribe la asistencia desde el
+  navegador después del check-in (lo hace la función en la misma transacción).
+- Clases y Reservas: botón «Importar CSV» (solo con `memberships.classes.manage`) →
+  `DialogoImportarCsv` (kit: `PanelAdaptable`, `DataTable` con tarjeta móvil, `StatusBadge`):
+  plantilla descargable, archivo (.csv, 2 MB), vista previa por fila con errores en español (y en/fr/pt,
+  `membresias.importar.*`), inicio en la zona de la organización y «Importar N filas» solo sin
+  errores.
+
+### 13.3 Pruebas automáticas
+
+- `src/__tests__/membresias/importacionCsv.test.ts`: normalizadores (fechas reales e inválidas, horas,
+  alias → CHECK), cabecera con alias y columnas faltantes, filas buenas/malas de clases y reservas,
+  duplicadas (documento escrito distinto), tope de 500, instantes en la zona (Bogotá/Madrid, 23:30 que
+  no se corre de día), reporte combinado, plantilla que se relee sin errores y CSV Windows-1252 con «;».
+- `src/__tests__/membresias/checkinReserva.test.ts`: cuándo ofrecer el botón, respuesta de la base
+  (permitida, repetida, rechazada, gracia, sin membresía, respuesta vacía ≠ permitida), errores → HTTP.
+- `src/__tests__/membresias/rutasOperacionClasesPermisos.test.ts`: 401 sin sesión, 403 sin permiso
+  (aplicación y 42501 de la base), 404 reserva de otra organización e id no numérico, 403 organización
+  ajena en body y query, argumentos de las RPC con la organización de la sesión, 400 por cuerpo inválido.
+
+### 13.4 No hecho (y por qué)
+
+- **Ocurrencias de clases recurrentes.** `gym_classes.recurrence` guarda `{type, days, until}` desde el
+  diálogo pero ninguna fila la usa (0 clases con recurrencia). Materializar ocurrencias exige decidir
+  cómo se identifica la serie (no hay `series_id`), qué pasa al editar o cancelar «esta y las
+  siguientes», el horizonte (¿hasta `until` o N semanas?) y quién las genera (al guardar o una tarea
+  como `membresias-vencer`). No es barato ni está claro: queda para una decisión del dueño. Mientras,
+  la importación CSV sirve para cargar un calendario de varias semanas.
+- **Validar en el servidor el QR de los dispositivos.** El QR del dispositivo
+  (`gym-checkin:<deviceId>:<token>`, `current_qr_token` + `qr_token_expires_at`) no lo lee nada en este
+  repo: la validación depende de quién lo escanea (¿la app del miembro? ¿goadmin-websites?) y de cómo
+  se identifica al miembro en esa petición (hoy no hay sesión de cliente final en el ERP).
+  `gym_access_devices` además no tiene `organization_id` (se llega por `branch_id`). Hace falta
+  definir el consumidor antes de escribir la RPC (`fn_membresia_checkin_qr(device_id, token, …)` con
+  comparación en tiempo constante, caducidad y organización desde la sede, nunca del payload).
+
+### 13.5 Archivos
+
+`supabase/migrations/20260929235200_membresias_checkin_desde_reserva.sql`,
+`supabase/migrations/20260929235300_membresias_importar_clases_reservas.sql` (+ sus rollbacks en
+`supabase/rollbacks/`), `src/lib/services/membresias/{checkinReserva.ts, importacionCsv.ts,
+esquemasImportacion.ts, operacionClases.server.ts}`, `tipos.ts` y `clienteMembresias.ts` (añadidos),
+`src/app/api/membresias/reservas/[id]/entrada/route.ts`, `src/app/api/membresias/importar/{clases,reservas}/route.ts`,
+`src/components/membresias/operacion/importar/DialogoImportarCsv.tsx`, páginas
+`src/app/app/membresias/{clases,reservas}/page.tsx`, `messages/{es,en,fr,pt}.json`
+(`membresias.importar`, `membresias.errores`, `membresias.reservas.toasts.entradaRepetida`).
+
+---
+
+## 12. Renovación automática, enlace de pago y exportar (fase 3, 2026-09-29)
+
+Cierra del §10.5 el renglón «renovación automática (`renewal_mode='automatic'`), enlace de pago (C5),
+exportar listados, “última entrada” y sede en el listado de membresías». (Va después del §13 porque
+este documento solo se amplía; la numeración es la del encargo.)
+
+### 12.1 Renovación automática: qué hace y qué NO hace
+
+Regla del encargo: **nunca mover dinero sin intervención ni emitir factura electrónica sola**. Con esa
+regla, «automática» significa **aviso y cobro asistido**, no cobro recurrente:
+
+| Momento | Qué pasa | Dónde |
+|---|---|---|
+| Faltan **7 días** o menos para `end_date` (plan con `renewal_mode='automatic'` y producto) | Se deja una **renovación pendiente**: evento `renewal_due` en `membership_events` con `periodo_hasta`, `periodo_hasta_epoch`, `vence_dia` (zona de la organización), `plan_id`, `product_id`, `precio` vigente de `product_prices` y `dias_aviso` | `fn_membresias_generar_renovaciones(org)`, llamada por la tarea horaria existente (`membresias-vencer` → `fn_membresias_vencer_todas`), antes de vencer |
+| Alguien la cobra | Renovar = vender el producto del plan (POS, factura o enlace de pago cuando exista); la base extiende la **misma** membresía desde el vencimiento (P3) dentro de la venta o del pago (`fn_membresias_activar_venta`, sin lógica nueva) | camino de siempre (§4) |
+| Vence sin pago | `fn_membresias_vencer` la pasa a `past_due` con gracia (si el plan tiene `grace_days`) o a `expired`, igual que a una manual. La pendiente sigue visible: cobrarla la reactiva (`reactivated`) | sin cambios |
+| Ya renovada | `end_date` cambió, así que la pendiente del periodo anterior deja de aplicar sola (la interfaz compara la clave con el `end_date` actual) | `renovacion.ts` |
+
+- **Idempotente:** índice único parcial `membership_events_renewal_due_uq (membership_id,
+  (metadata->>'periodo_hasta_epoch')) where event_type='renewal_due'`; la tarea corre cada hora y deja
+  **un** evento por periodo. `fn_membresias_vencer_todas` genera y vence en bloques separados: un fallo
+  de la generación se reporta (`error_renovaciones`) y no frena el vencimiento.
+- **Qué membresías:** `active`, o `past_due` con gracia vigente; no congeladas (su vencimiento se mueve
+  al descongelar), ni pendientes, ni la fila cancelada con `renovacion_aplicada`; plan con producto
+  (sin producto no hay qué vender). `renewal_mode` se lee del **plan vivo** (si el dueño apaga la
+  automática, dejan de generarse), no de la copia `plan_snapshot`.
+- **Por qué 7 días fijos:** es la ventana de «Vencen en 7 días» del listado y del Resumen. Está en un
+  solo sitio en la base y su espejo `DIAS_AVISO_RENOVACION` (`renovacion.ts`); la prueba
+  `renovacionAutomatica.test.ts` falla si divergen. Hacerla configurable por plan es la decisión D2.
+- **Seguridad:** `SECURITY DEFINER`, `fn_assert_acceso_org`, `revoke all … from public, anon,
+  authenticated` (solo la tarea programada / service role). No inserta en `sales`, `sale_items`,
+  `invoice_*`, `payments` ni `accounts_receivable`, no llama pasarelas ni la DIAN (lo verifica la prueba
+  sobre el texto de la migración).
+- **Formulario del producto:** la opción «Renovación automática» (que decía «cobro recurrente a la
+  tarjeta… más adelante» y estaba bloqueada) queda habilitada con el texto real: «7 días antes del
+  vencimiento la renovación queda pendiente de cobro… Nunca se cobra ni se factura sola».
+  `fn_producto_guardar` ya guardaba `renewal_mode`; el formulario mandaba siempre `manual`. El detalle
+  del plan (B2) dice «renovación automática».
+- **Pantallas:** detalle de la membresía con el aviso «Renovación pendiente de cobro» (fecha y precio
+  vigente) y «Cobrar renovación» → diálogo Renovar (C5); filtro «Renovación pendiente» en el listado;
+  el evento aparece en el historial y en la actividad del Resumen.
+
+Hoy (2026-09-29) los 4 planes existentes (org 106) son `manual`: la migración no cambia nada para nadie
+hasta que el dueño de un plan elija «automática».
+
+#### Por qué NO se genera un borrador de factura / cuenta por cobrar automático
+
+Era la propuesta inicial. Evidencia en la base:
+1. `fn_factura_venta_guardar` exige `auth.uid()` (`no_autenticado`): la tarea programada no tiene
+   usuario. Hacerlo exigiría un «usuario sistema» o una segunda implementación de la factura
+   (regla 7).
+2. Aun en borrador, el alta inserta `sales` (`pending`) y `sale_items`: el borrador ya cuenta en
+   reportes de ventas y en «Ingresos del mes» del Resumen, y los disparadores de `sale_items` corren.
+   Un borrador por cada renovación automática inflaría las ventas de organizaciones que no lo pidieron.
+3. Un borrador **emitido** es una factura (y electrónica si la organización factura a la DIAN):
+   emitirla es siempre un clic de una persona.
+
+### 12.2 Enlace de pago (C5)
+
+Encargo: «Renovar» y la renovación pendiente ofrecen un enlace para que el cliente pague en línea,
+**reutilizando** la infraestructura existente; al pagarse, la membresía se activa por el camino de
+siempre. Hallazgo: **ningún enlace de pago existente termina en ese camino.**
+
+| Infraestructura | Qué hace al cobrar | ¿Activa la membresía? |
+|---|---|---|
+| ERP · Stripe Payment Link (`stripePaymentLinkService`, `/api/crm/payments/link`) | Solo para cotizaciones del CRM (`quotation_id` obligatorio en la metadata); el webhook registra con `registerCrmPayment` → `fn_register_crm_payment` | **No**: `fn_register_crm_payment` no llama `fn_membresias_activar_venta` (verificado en la definición viva) |
+| ERP · Bold link / QR (`cobroQrServidor`, `/api/integrations/bold/create-link`) | Solo POS y folio; `confirmQrPayment` inserta un `payments` suelto (sin factura) y la venta del POS la crea el navegador después | **No** |
+| Sitio web · «Pagar factura» (`/api/checkout/init` con `source=invoice`, `mi-cuenta/facturas/[id]`) | El webhook (`handleInvoicePayment`) actualiza `invoice_sales` y `accounts_receivable` a mano, sin `fn_registrar_pago` | **No**, y además busca la factura por número **sin filtrar la organización** (ver D5) |
+
+Por eso se implementó la parte inequívoca:
+- `GET /api/membresias/membresias/[id]/enlace-pago` → `{ disponible, motivo, pasarelas }`
+  (`memberships.view`; otra organización → 404; conexiones `connected` de la organización leídas con
+  RLS, solo el código del conector, nunca credenciales).
+- En el diálogo Renovar, «Enviar enlace de pago» se muestra **deshabilitada con su motivo**:
+  «sin pasarela» (la organización no tiene Wompi, Stripe, Bold link, Mercado Pago, PayU ni PayPal
+  conectados; hoy 5 conexiones Wompi y 2 Stripe en toda la base) o «tu pasarela todavía no registra el
+  pago de la factura por el camino que activa la membresía».
+- Cuando exista el riel (D4), basta con `RIEL_ENLACE_QUE_ACTIVA_MEMBRESIA` en `enlacePago.ts` y la
+  creación del enlace en el servidor sobre la factura de la renovación.
+
+### 12.3 Exportar listados
+
+- `GET /api/membresias/exportar?tipo=membresias|miembros|pagos&idioma=…&<filtros>`: CSV generado en
+  el servidor con la organización de la sesión y `memberships.view`, con los **mismos filtros** que la
+  pantalla (membresías: búsqueda, estado —incluida «renovación pendiente»—, plan, cliente; miembros:
+  búsqueda y vigencia; pagos: rango de días) porque reutiliza `listarMembresias`, `listarMiembros` y
+  `listarPagos` (con `soloFilas`: sin conteos ni total del periodo en cada página). Tope 5 000 filas
+  (`X-Exportacion-Truncado` + aviso).
+- Formato: la utilidad única de CSV del repo (`filasACsv` de `lib/utils/csv.ts`: BOM, «;», fórmulas
+  neutralizadas — los nombres son datos de terceros). Fechas en la zona de la organización;
+  importes con los separadores de su moneda y sin símbolo (`formatNumeroMoneda`, «1.250.000»), como
+  Finanzas; estados y columnas en el idioma de la pantalla (`membresias.exportar.*`, estados del kit).
+  **Excel (.xlsx): no** — el repo no tiene utilidad de exportación a Excel (solo `XLSX` suelto en dos
+  servicios); el CSV con BOM y «;» abre directo en Excel en español.
+- Botón «Exportar CSV» en Membresías (menú de la cabecera), Miembros y Pagos.
+
+### 12.4 «Última entrada» y sede en el listado de membresías
+
+`listarMembresias` completa, para la página visible, `sucursal` (nombre de `memberships.branch_id`,
+donde se vendió) y `ultimaEntrada` (última entrada **permitida** con esa membresía en
+`member_checkins`): dos consultas por página, sin N+1. Columnas «Sede» (≥ xl) y «Última entrada»
+(≥ lg), y en el CSV.
+
+### 12.5 Base de datos (aplicada por MCP)
+
+| Migración | Qué hace |
+|---|---|
+| `20260929235400_membresias_renovacion_automatica` (versión aplicada `20260929211718`) | CHECK de `membership_events.event_type` + `renewal_due` (amplía, no invalida filas); índice único parcial de idempotencia; `fn_membresias_generar_renovaciones`; `fn_membresias_vencer_todas` genera antes de vencer. Rollback en `supabase/rollbacks/` (restaura la función anterior; **borra** los eventos `renewal_due`, que son avisos sin dinero ni documentos) |
+
+Pruebas en seco (MCP, `DO … RAISE`, todo revertido; org 106, plan 2 pasado a automático y la
+membresía 1 puesta activa en la prueba):
+
+| Caso | Resultado |
+|---|---|
+| Vence en 3 días: generar dos veces | 1 evento, luego 0 (idempotente); metadata con precio 295 000 y `vence_dia` en Bogotá |
+| Tarea horaria completa después | sin cambios (`[]`) |
+| Renovada (vencimiento a 5 días, periodo nuevo) | 1 evento nuevo |
+| Vencimiento a 20 días | 0 |
+| Vence en esta hora sin pago (gracia 0) | la tarea genera la pendiente del periodo **y** la vence: `expired` |
+| Usuario autenticado llama `fn_membresias_generar_renovaciones` o `fn_membresias_vencer_todas` | `42501 permission denied` |
+| Rollback en transacción | función e índice fuera |
+
+### 12.6 Pruebas automáticas
+
+- `src/__tests__/membresias/renovacionAutomatica.test.ts`: cuándo se genera (ventana, plan manual, sin
+  producto, estados, gracia, `renovacion_aplicada`), idempotencia simulada (dos pasadas, cada hora
+  durante 7 días, periodo nuevo), clave igual a la de la base (microsegundos), pendiente vigente,
+  formulario del producto (ida y vuelta de `automatic`) y contrato con la migración (7 días, índice,
+  sin dinero ni documentos, sin grant).
+- `src/__tests__/membresias/exportarCsv.test.ts`: columnas en 4 idiomas, fechas en la zona (23:30 de
+  Bogotá), importes «1.250.000» sin símbolo, comillas y «;», inyección de fórmulas, celdas vacías,
+  nombre del archivo.
+- `src/__tests__/membresias/rutasFase3Permisos.test.ts`: exportar y enlace de pago — 401 sin sesión,
+  403 sin permiso, 403 organización ajena en la query, 404 membresía de otra organización e id no
+  numérico, filtros y páginas con la organización de la sesión, pasarela de otra organización no
+  cuenta.
+- `src/__tests__/membresias/enlacePago.test.ts`: motivos del enlace.
+
+### 12.7 Decisiones pendientes del dueño
+
+| # | Decisión | Recomendación |
+|---|---|---|
+| D1 | ¿La renovación automática debe crear además un documento (borrador de factura o cuenta por cobrar)? | **No por ahora**: el borrador ya cuenta como venta pendiente (§12.1). Si se quiere, crearlo **al hacer clic** en «Cobrar renovación» (con el usuario), no en la tarea |
+| D2 | ¿Ventana de aviso configurable por plan? | 7 días fijos mientras nadie lo pida; si sí: columna `membership_plans.renewal_notice_days` (nullable, default 7) |
+| D3 | ¿Avisar al cliente final (correo / WhatsApp) cuando queda pendiente? | Sí, pero con la plantilla y el consentimiento de comunicaciones del CRM; no se hizo aquí |
+| D4 | Riel del enlace de pago | Generalizar el Payment Link del ERP a facturas (hoy solo cotizaciones) **y** que `fn_register_crm_payment` active membresías como `fn_registrar_pago` (mismo enganche del §10.1); o migrar el «Pagar factura» del sitio a `fn_registrar_pago`. Cualquiera toca el camino del dinero: PR propio |
+| D5 | goadmin-websites `handleInvoicePayment` busca la factura por número **sin organización** y actualiza saldos a mano | Corregir antes de usarlo para membresías (tarea sugerida aparte) |
+| D6 | Cobro recurrente real (tarjeta guardada) | Solo con una pasarela que tokenice tarjetas y consentimiento explícito del cliente; sería otro `renewal_mode` |
+
+### 12.8 Archivos
+
+`supabase/migrations/20260929235400_membresias_renovacion_automatica.sql` (+ rollback),
+`src/lib/services/membresias/{renovacion.ts, enlacePago.ts, enlacePago.server.ts, exportarCsv.ts,
+exportar.server.ts}` (nuevos), `membresias.server.ts`, `tipos.ts`, `clienteMembresias.ts` (añadidos),
+`src/app/api/membresias/exportar/route.ts`, `src/app/api/membresias/membresias/[id]/enlace-pago/route.ts`
+(nuevas), `src/app/api/membresias/membresias/route.ts` (filtro nuevo),
+`src/components/membresias/{listado/ListadoMembresias.tsx, miembros/ListadoMiembros.tsx,
+pagos/PagosMembresias.tsx, detalle/DetalleMembresia.tsx, dialogos/DialogoRenovar.tsx,
+planes/DetallePlan.tsx, logica.ts, comun/useExportarMembresias.ts}`, formulario del producto
+(`SeccionMembresia.tsx`, `logica/membresiaProducto.ts`, tipo en `productoService.ts`),
+`messages/{es,en,fr,pt}.json` (`membresias.exportar`, `membresias.renovar.enlace`,
+`membresias.detalle.renovacionPendiente`, columnas, filtro y evento nuevos, textos de la renovación
+automática).

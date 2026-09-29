@@ -11,6 +11,30 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
+import { getOrgDateRange, toPlainDate } from '@/lib/utils/timezone';
+import {
+  calcularMrr,
+  cuotaMensualDeMembresia,
+  preciosVigentesPorProducto,
+  sumaAlMrr,
+  type FilaPrecio,
+  type MembresiaMrr,
+} from '@/lib/services/membresias/mrr';
+
+/** Membresía tal como la lee el informe (el plan sin `price`: el precio sale de product_prices, P9). */
+interface FilaMembresiaInforme {
+  id: number;
+  status: string;
+  start_date: string | null;
+  end_date: string;
+  grace_until: string | null;
+  branch_id: number | null;
+  product_id: number | null;
+  membership_plans:
+    | { name: string | null; product_id: number | null; duration_unit: string | null; duration_value: number | null; duration_days: number | null }
+    | null;
+}
 
 function buildReportData(
   id: string, titulo: string, modulo: string, periodo: PeriodoCierre,
@@ -25,44 +49,78 @@ export const gymReports: ReportDefinition[] = [
     id: 'gym-membresias',
     modulo: 'gym',
     titulo: 'Membresías',
-    descripcion: 'Membresías activas, nuevas, churn y MRR',
+    descripcion: 'Membresías activas y en gracia, nuevas del periodo e ingreso recurrente mensual (MRR)',
     categoria: 'comercial',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { data, error } = await db
+      const ahora = new Date();
+      let consulta = db
         .from('memberships')
-        .select('id, status, start_date, end_date, membership_plans(name, price)')
+        .select(
+          'id, status, start_date, end_date, grace_until, branch_id, product_id, ' +
+            'membership_plans(name, product_id, duration_unit, duration_value, duration_days)',
+        )
         .eq('organization_id', orgId);
-
+      // Con sucursal elegida, solo las membresías vendidas en ella (las legadas sin sucursal quedan fuera).
+      if (branchId != null) consulta = consulta.eq('branch_id', branchId);
+      const [tz, { data, error }] = await Promise.all([getOrganizationTimezone(orgId, db), consulta]);
       if (error) throw error;
 
-      const membresias = (data ?? []).map((m: Record<string, unknown>) => {
-        const plan = m.membership_plans as Record<string, unknown> | null;
-        return {
-          ...m,
-          plan_name: plan?.name ?? 'Sin plan',
-          monthly_fee: Number(plan?.price ?? 0),
-        };
+      const filas = (data ?? []) as unknown as FilaMembresiaInforme[];
+      const aMrr = (m: FilaMembresiaInforme): MembresiaMrr => ({
+        status: m.status,
+        start_date: m.start_date,
+        end_date: m.end_date,
+        grace_until: m.grace_until,
+        product_id: m.product_id,
+        plan: m.membership_plans,
       });
-      const activas = membresias.filter((m: Record<string, unknown>) => m.status === 'active');
-      const nuevas = membresias.filter((m: Record<string, unknown>) => {
-        const start = String(m.start_date ?? '').split('T')[0];
-        return start >= periodo.fechaInicio && start <= periodo.fechaFin;
-      });
-      const mrr = activas.reduce((s: number, m: Record<string, unknown>) => s + Number(m.monthly_fee ?? 0), 0);
+
+      // Precio VIGENTE del producto de cada plan (P9), no membership_plans.price.
+      const productIds = Array.from(
+        new Set(
+          filas
+            .map((m) => Number(m.membership_plans?.product_id ?? m.product_id))
+            .filter((v) => Number.isFinite(v) && v > 0),
+        ),
+      );
+      let precios = new Map<number, number>();
+      if (productIds.length > 0) {
+        const { data: filasPrecio, error: errorPrecio } = await db
+          .from('product_prices')
+          .select('id, product_id, price, effective_from, effective_to')
+          .in('product_id', productIds)
+          .lte('effective_from', ahora.toISOString());
+        if (errorPrecio) throw errorPrecio;
+        precios = preciosVigentesPorProducto((filasPrecio ?? []) as unknown as FilaPrecio[], ahora);
+      }
+
+      const membresias = filas.map((m) => ({
+        id: m.id,
+        plan_name: m.membership_plans?.name ?? 'Sin plan',
+        status: m.status,
+        monthly_fee: cuotaMensualDeMembresia(aMrr(m), precios),
+        // Día calendario de la organización (start_date es timestamptz).
+        start_date: m.start_date ? toPlainDate(new Date(m.start_date), tz) : null,
+      }));
+      const activas = filas.filter((m) => sumaAlMrr(aMrr(m), ahora, tz));
+      const nuevas = membresias.filter(
+        (m) => m.start_date !== null && m.start_date >= periodo.fechaInicio && m.start_date <= periodo.fechaFin,
+      );
+      const mrr = calcularMrr(filas.map(aMrr), precios, ahora, tz);
 
       return buildReportData(
         'gym-membresias', 'Membresías', 'gym', periodo,
         [
-          { titulo: 'Activas', valor: activas.length, formato: 'numero' },
+          { titulo: 'Activas y en gracia', valor: activas.length, formato: 'numero' },
           { titulo: 'Nuevas', valor: nuevas.length, formato: 'numero' },
           { titulo: 'MRR', valor: mrr, formato: 'moneda' },
         ],
         [
           { key: 'plan_name', titulo: 'Plan', tipo: 'texto' },
           { key: 'status', titulo: 'Estado', tipo: 'texto' },
-          { key: 'monthly_fee', titulo: 'Cuota', tipo: 'moneda', alinear: 'right' },
+          { key: 'monthly_fee', titulo: 'Cuota mensual', tipo: 'moneda', alinear: 'right' },
           { key: 'start_date', titulo: 'Inicio', tipo: 'fecha' },
         ],
         membresias,
@@ -78,19 +136,21 @@ export const gymReports: ReportDefinition[] = [
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      // Límites del periodo en la zona de la organización (no en UTC).
+      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin);
       const { data, error } = await db
         .from('membership_events')
         .select('id, membership_id, event_type, created_at')
         .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('created_at', start)
+        .lte('created_at', end);
 
       if (error) throw error;
 
       const eventos = data ?? [];
       const porDia: Record<string, number> = {};
       eventos.forEach((c: Record<string, unknown>) => {
-        const dia = String(c.created_at ?? '').split('T')[0];
+        const dia = toPlainDate(new Date(String(c.created_at)), timezone);
         porDia[dia] = (porDia[dia] ?? 0) + 1;
       });
 
@@ -119,17 +179,18 @@ export const gymReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { data, error } = await db
-        .from('memberships')
-        .select('id, status, start_date, end_date')
-        .eq('organization_id', orgId);
+      const [tz, { data, error }] = await Promise.all([
+        getOrganizationTimezone(orgId, db),
+        db.from('memberships').select('id, status, start_date, end_date').eq('organization_id', orgId),
+      ]);
 
       if (error) throw error;
 
       const membresias = data ?? [];
       const activas = membresias.filter((m: Record<string, unknown>) => m.status === 'active').length;
       const canceladas = membresias.filter((m: Record<string, unknown>) => {
-        const end = String(m.end_date ?? '');
+        // end_date es timestamptz: se compara su día en la zona de la organización.
+        const end = m.end_date ? toPlainDate(new Date(String(m.end_date)), tz) : '';
         return m.status !== 'active' && end >= periodo.fechaInicio && end <= periodo.fechaFin;
       }).length;
       const total = activas + canceladas;

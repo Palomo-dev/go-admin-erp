@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useRef } from 'react';
-import { Check, Info, Lock, RefreshCw, Sparkles } from 'lucide-react';
+import { CalendarClock, Check, Info, Lock, RefreshCw, Sparkles } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { CampoNumero, FormField, SegmentedControl, etiquetaDiaTrigger } from '@/components/kit';
 import { MultiSelect } from '@/components/kit/MultiSelect';
@@ -187,8 +187,8 @@ export function SeccionMembresia({ estado, actualizar, errores, catalogos, moned
           <TarjetasOpcion
             aria-labelledby={`${base}-renovacion`}
             columnas={2}
-            valor="manual"
-            onValorChange={() => undefined}
+            valor={m.renewal_mode}
+            onValorChange={(v) => cambiarM({ renewal_mode: v === 'automatic' ? 'automatic' : 'manual' })}
             opciones={[
               {
                 valor: 'manual',
@@ -200,13 +200,7 @@ export function SeccionMembresia({ estado, actualizar, errores, catalogos, moned
                 valor: 'automatic',
                 titulo: t('renovacionAutomatica'),
                 descripcion: t('renovacionAutomaticaAyuda'),
-                icono: Lock,
-                deshabilitada: true,
-                insignia: (
-                  <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[11px] font-medium text-fg-secondary">
-                    {t('fasePosterior')}
-                  </span>
-                ),
+                icono: CalendarClock,
               },
             ]}
           />

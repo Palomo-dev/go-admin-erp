@@ -228,6 +228,7 @@ describe('carga desde fn_producto_para_formulario', () => {
       duration_unit: 'year',
       duration_value: 1,
       billing_mode: 'on_credit',
+      renewal_mode: 'manual',
       grace_days: 5,
       requires_activation: true,
       activation_window_days: 15,

@@ -11,7 +11,9 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import type {
   DetalleMembresia,
   DetallePlan,
+  EstadoEnlacePago,
   FiltroEstado,
+  TipoExportacion,
   ListadoMembresias,
   ListadoMiembros,
   ListadoPagos,
@@ -20,6 +22,7 @@ import type {
   ClienteResumen,
   PermisosMembresias,
   ResultadoCheckin,
+  ResultadoImportacion,
   ResumenMembresias,
 } from './tipos';
 
@@ -82,6 +85,23 @@ async function post<T>(ruta: string, cuerpo: unknown = {}): Promise<T> {
   return leer<T>(r);
 }
 
+/** Archivo del servidor (`Content-Disposition`); los errores llegan como JSON con `codigo`. */
+async function descargar(
+  tipo: TipoExportacion,
+  filtros: Record<string, string | number | null | undefined>,
+  idioma: string,
+): Promise<{ blob: Blob; nombre: string; truncado: boolean }> {
+  const r = await fetch(`/api/membresias/exportar${consulta({ ...filtros, tipo, idioma })}`, {
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: cabeceras(),
+  });
+  if (!r.ok) await leer<never>(r);
+  const disposicion = r.headers.get('Content-Disposition') ?? '';
+  const nombre = /filename="([^"]+)"/.exec(disposicion)?.[1] ?? `${tipo}.csv`;
+  return { blob: await r.blob(), nombre, truncado: r.headers.get('X-Exportacion-Truncado') === '1' };
+}
+
 export const apiMembresias = {
   resumen: () => get<ResumenMembresias>('resumen'),
   permisos: () => get<PermisosMembresias>('permisos'),
@@ -97,9 +117,18 @@ export const apiMembresias = {
   planes: () => get<ListadoPlanes>('planes'),
   plan: (id: number) => get<DetallePlan>(`planes/${id}`),
   pagos: (f: { desde?: string; hasta?: string; pagina?: number; porPagina?: number }) => get<ListadoPagos>('pagos', f),
+  enlacePago: (id: number) => get<EstadoEnlacePago>(`membresias/${id}/enlace-pago`),
+  /** CSV generado en el servidor con los filtros de la pantalla (§12.3). */
+  exportar: (tipo: TipoExportacion, filtros: Record<string, string | number | null | undefined>, idioma: string) =>
+    descargar(tipo, filtros, idioma),
   buscarEntrada: (q: string) => get<Array<{ cliente: ClienteResumen; vigente: MembresiaFila | null }>>('checkin', { q }),
   registrarEntrada: (datos: { clienteId: string; sucursalId: number; metodo?: string; membresiaId?: number | null }) =>
     post<ResultadoCheckin>('checkin', datos),
+  /** Entrada desde una reserva de clase (§13): marca la asistencia; idempotente (`repetida`). */
+  entradaReserva: (reservaId: number) => post<ResultadoCheckin>(`reservas/${reservaId}/entrada`, {}),
+  /** Importación CSV (§13): `soloValidar` = vista previa con el reporte por fila de la base. */
+  importar: (tipo: 'clases' | 'reservas', filas: ReadonlyArray<object>, soloValidar: boolean) =>
+    post<ResultadoImportacion>(`importar/${tipo}`, { filas, soloValidar }),
 };
 
 export const PERMISOS_VACIOS: PermisosMembresias = {

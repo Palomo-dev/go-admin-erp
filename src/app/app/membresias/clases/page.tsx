@@ -7,7 +7,7 @@
  * los estados que acepta la base (active | completed | cancelled).
  *
  * Permisos (servidor): ver = memberships.view; crear, editar, mover, duplicar,
- * cancelar y eliminar = memberships.classes.manage.
+ * cancelar, eliminar e importar CSV (§13) = memberships.classes.manage.
  */
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -24,6 +24,7 @@ import {
   RefreshCw,
   Rows3,
   Trash2,
+  Upload,
   Users,
   XCircle,
 } from 'lucide-react';
@@ -71,6 +72,7 @@ import {
 } from '@/lib/services/gymService';
 import { DialogoClase, type DatosNuevaClase } from '@/components/membresias/operacion/clases/DialogoClase';
 import { CalendarioSemanal } from '@/components/membresias/operacion/clases/CalendarioSemanal';
+import { DialogoImportarCsv } from '@/components/membresias/operacion/importar/DialogoImportarCsv';
 import {
   ESTADOS_CLASE,
   TONO_ESTADO_CLASE,
@@ -133,6 +135,7 @@ function Clases() {
   const [notificar, setNotificar] = useState(false);
   const [eliminar, setEliminar] = useState<GymClass | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [importar, setImportar] = useState(false);
 
   // La sede del selector global de la barra es el filtro inicial.
   useEffect(() => {
@@ -430,6 +433,12 @@ function Clases() {
               <RefreshCw aria-hidden="true" className={cargando ? 'size-4 animate-spin' : 'size-4'} />
             </Button>
             {puedeGestionar && (
+              <Button variant="outline" className="h-10" onClick={() => setImportar(true)}>
+                <Upload aria-hidden="true" className="mr-2 size-4" />
+                {tm('importar.boton')}
+              </Button>
+            )}
+            {puedeGestionar && (
               <Button className="h-10" onClick={() => nueva()}>
                 <Plus aria-hidden="true" className="mr-2 size-4" />
                 {t('cabecera.nueva')}
@@ -572,6 +581,10 @@ function Clases() {
         fechas={fechas}
         onGuardar={guardar}
       />
+
+      {puedeGestionar && (
+        <DialogoImportarCsv tipo="clases" abierto={importar} onAbiertoChange={setImportar} fechas={fechas} onImportado={() => void cargar()} />
+      )}
 
       <Dialogo
         abierto={!!duplicar}

@@ -28,6 +28,12 @@ export const esTipoServicio = (v: unknown): v is TipoServicio =>
 
 export type CobroMembresia = 'prepaid' | 'on_credit';
 
+/**
+ * `automatic`: 7 días antes del vencimiento la tarea horaria deja la renovación pendiente para
+ * cobrarla con un clic; nunca cobra ni factura sola (docs/design/MEMBRESIAS-FASE-1-2.md §12).
+ */
+export type RenovacionMembresia = 'manual' | 'automatic';
+
 export const UNIDADES_DURACION: readonly UnidadDuracion[] = ['day', 'week', 'month', 'year'];
 
 /** Días ISO (1 = lunes … 7 = domingo), como los compara el check-in (`extract(isodow …)`). */
@@ -37,6 +43,7 @@ export interface MembresiaForm {
   duration_unit: UnidadDuracion;
   duration_value: number | null;
   billing_mode: CobroMembresia;
+  renewal_mode: RenovacionMembresia;
   grace_days: number | null;
   requires_activation: boolean;
   /** Días para entrar por primera vez; si no entra, se activa sola. Vacío = sin ventana. */
@@ -61,6 +68,7 @@ export function membresiaFormInicial(): MembresiaForm {
     duration_unit: 'month',
     duration_value: 1,
     billing_mode: 'prepaid',
+    renewal_mode: 'manual',
     grace_days: 0,
     requires_activation: false,
     activation_window_days: null,
@@ -104,6 +112,7 @@ export function membresiaDesdeServidor(m: MembresiaFormularioServidor | null | u
     duration_unit: unidad,
     duration_value: entero(m.duration_value) ?? 1,
     billing_mode: m.billing_mode === 'on_credit' ? 'on_credit' : 'prepaid',
+    renewal_mode: m.renewal_mode === 'automatic' ? 'automatic' : 'manual',
     grace_days: entero(m.grace_days) ?? 0,
     requires_activation: m.requires_activation === true,
     activation_window_days: entero(m.activation_window_days),
@@ -187,7 +196,7 @@ export function payloadMembresia(m: MembresiaForm): PayloadMembresia {
     duration_unit: m.duration_unit,
     duration_value: Math.max(1, Math.trunc(m.duration_value ?? 1)),
     billing_mode: m.billing_mode,
-    renewal_mode: 'manual',
+    renewal_mode: m.renewal_mode === 'automatic' ? 'automatic' : 'manual',
     grace_days: Math.max(0, Math.trunc(m.grace_days ?? 0)),
     requires_activation: m.requires_activation,
     activation_window_days: m.requires_activation ? m.activation_window_days : null,

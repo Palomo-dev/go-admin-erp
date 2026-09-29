@@ -175,7 +175,6 @@ export interface MembershipPlan {
   name: string;
   description?: string;
   duration_days: number;
-  price: number;
   access_rules?: {
     branches?: number[];
     schedule?: { start: string; end: string }[];
@@ -288,12 +287,20 @@ export interface GymStats {
 
 // ==================== PLANES ====================
 
+/**
+ * Columnas del plan que lee el ERP. Sin `price`: el precio de una membresía es el de su producto
+ * (`product_prices` vigente, P9); `membership_plans.price` es una copia para master y goadmin-websites
+ * que se retira (docs/design/MEMBRESIAS-FASE-1-2.md §11.1).
+ */
+const COLUMNAS_PLAN =
+  'id, organization_id, name, description, duration_days, access_rules, frequency, is_active, created_at, updated_at';
+
 export async function getPlans(organizationId?: number): Promise<MembershipPlan[]> {
   const orgId = organizationId || getOrganizationId();
   
   const { data, error } = await supabase
     .from('membership_plans')
-    .select('*')
+    .select(COLUMNAS_PLAN)
     .eq('organization_id', orgId)
     .order('name');
 
@@ -308,7 +315,7 @@ export async function getPlans(organizationId?: number): Promise<MembershipPlan[
 export async function getPlanById(planId: number): Promise<MembershipPlan | null> {
   const { data, error } = await supabase
     .from('membership_plans')
-    .select('*')
+    .select(COLUMNAS_PLAN)
     .eq('id', planId)
     .single();
 
@@ -320,57 +327,8 @@ export async function getPlanById(planId: number): Promise<MembershipPlan | null
   return data;
 }
 
-export async function createPlan(plan: Partial<MembershipPlan>): Promise<MembershipPlan> {
-  const orgId = getOrganizationId();
-  
-  const { data, error } = await supabase
-    .from('membership_plans')
-    .insert({
-      ...plan,
-      organization_id: orgId,
-      is_active: plan.is_active ?? true
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error creando plan:', error);
-    throw error;
-  }
-
-  return data;
-}
-
-export async function updatePlan(planId: number, updates: Partial<MembershipPlan>): Promise<MembershipPlan> {
-  const { data, error } = await supabase
-    .from('membership_plans')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', planId)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error actualizando plan:', error);
-    throw error;
-  }
-
-  return data;
-}
-
-export async function togglePlanStatus(planId: number, isActive: boolean): Promise<void> {
-  const { error } = await supabase
-    .from('membership_plans')
-    .update({ is_active: isActive, updated_at: new Date().toISOString() })
-    .eq('id', planId);
-
-  if (error) {
-    console.error('Error cambiando estado del plan:', error);
-    throw error;
-  }
-}
+// Los planes se crean y editan desde el producto (fn_producto_guardar, «Configuración de membresía»):
+// aquí ya no hay alta ni edición desde el navegador.
 
 // ==================== MEMBRESÍAS ====================
 
@@ -389,7 +347,7 @@ export async function getMemberships(
     .select(`
       *,
       customers (id, first_name, last_name, email, phone, identification_number),
-      membership_plans (id, name, duration_days, price)
+      membership_plans (id, name, duration_days)
     `)
     .eq('organization_id', orgId)
     .order('end_date', { ascending: true });
@@ -436,7 +394,7 @@ export async function getMembershipById(membershipId: number): Promise<Membershi
     .select(`
       *,
       customers (id, first_name, last_name, email, phone, identification_number),
-      membership_plans (*)
+      membership_plans (id, name, duration_days, frequency, is_active)
     `)
     .eq('id', membershipId)
     .single();
@@ -475,7 +433,7 @@ export async function createMembership(membership: Partial<Membership>): Promise
     .select(`
       *,
       customers (id, first_name, last_name, email, phone),
-      membership_plans (id, name, duration_days, price)
+      membership_plans (id, name, duration_days)
     `)
     .single();
 
@@ -502,7 +460,7 @@ export async function updateMembership(membershipId: number, updates: Partial<Me
     .select(`
       *,
       customers (id, first_name, last_name, email, phone),
-      membership_plans (id, name, duration_days, price)
+      membership_plans (id, name, duration_days)
     `)
     .single();
 
@@ -658,7 +616,7 @@ export async function renewMembership(membershipId: number, planId?: number): Pr
     .select(`
       *,
       customers (id, first_name, last_name, email, phone),
-      membership_plans (id, name, duration_days, price)
+      membership_plans (id, name, duration_days)
     `)
     .single();
 
@@ -1641,9 +1599,6 @@ export async function saveInstructorAvailability(
 const gymService = {
   getPlans,
   getPlanById,
-  createPlan,
-  updatePlan,
-  togglePlanStatus,
   getMemberships,
   getMembershipById,
   createMembership,

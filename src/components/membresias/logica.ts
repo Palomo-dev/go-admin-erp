@@ -44,6 +44,7 @@ export const FILTROS_ESTADO: readonly FiltroEstado[] = [
   'pendiente',
   'vencida',
   'cancelada',
+  'renovacion_pendiente',
 ];
 
 export function leerFiltroEstado(valor: string | null | undefined): FiltroEstado {
@@ -249,6 +250,7 @@ export const TIPOS_EVENTO = [
   'payment_failed',
   'plan_changed',
   'notes_updated',
+  'renewal_due',
 ] as const;
 
 export type TipoEvento = (typeof TIPOS_EVENTO)[number] | 'otro';

@@ -1305,3 +1305,128 @@ al `cartId` del carrito del POS.
   estabilizar; regla apagada → Enter). Las de la mesa del frente del POS
   (`mesasPantallaPesoRender.test.tsx`) y `pesarUnPaso.test.tsx` pasan sin cambios.
 - Con esto queda resuelto el último punto de 11.6 («Mesas usa “Pesar” sin báscula»).
+
+## 13. Figma — pantallas con peso en POS, finanzas e inventario (2026-09-29)
+
+Pedido del dueño tras aprobar la propuesta: ver cómo quedan con el peso las pantallas del POS (grilla,
+carrito, cobro, tiquete, mesas, comanda, pantalla del cliente y lectura en vivo dentro de «Pesar»), de
+Finanzas (factura de venta —formulario y detalle—, factura de compra) y de Inventario (orden de compra,
+recetas, insumos, stock y kardex). Todo parte de **copias de los frames aprobados** de cada pantalla y cambia
+solo lo que toca el peso; cada frame lleva encima su anotación. Datos de ejemplo genéricos («Mi empresa
+S.A.S.», «Distribuidora del Norte», «Queso campesino», «Carne molida de res», «Tomate chonto»).
+
+### 13.1 Secciones nuevas
+
+| Página | Sección | Id | Enlace |
+|---|---|---|---|
+| 07 Finanzas | «Productos por peso — facturas de venta y de compra (propuesta 2026-09-29)» (x = 0, y = 85.000) | `1190:112737` | https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1190-112737 |
+| 04 Inventario | «Productos por peso — órdenes de compra, recetas, insumos y existencias (propuesta 2026-09-29)» (x = 88.000, y = 4.600) | `1199:187967` | https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1199-187967 |
+| 05 POS y ventas | «Productos por peso — POS: grilla, carrito, cobro, tiquete, mesas y pantalla del cliente (propuesta 2026-09-29)» (x = 0, y = 178.500) | `1217:158735` | https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1217-158735 |
+
+Enlazadas desde los índices: 07 Finanzas `264:98924` (entrada 18; las siguientes se renumeraron),
+04 Inventario `264:98918` (entrada 52) y 05 POS y ventas `264:98920` (entrada 34; las siguientes se
+renumeraron). Cada entrada es un hipervínculo a su sección.
+
+### 13.2 Componentes (02 Componentes, dentro de su familia, marcados «(Nuevo)»)
+
+| Componente | Variantes nuevas | Id | Uso |
+|---|---|---|---|
+| `LineaDocumentoEdicion` (familia «Finanzas — Formulario de documento: venta y compra (Nuevo)», set `1032:33591`) | Documento=venta, Estado=por-peso · por-peso-error; Documento=compra, Estado=por-peso · por-peso-error | `1183:36109` · `1183:36197` · `1183:36281` · `1183:36362` | Cantidad con sufijo «kg» y 3 decimales; detalle «0,735 kg × $ 18.900 / kg»; el error dice «Máximo 3 decimales: usa 0,735 kg.» (FP1, FP2, FP4, FP5) |
+| `DocumentLinesTable` (familia «Finanzas», set `415:12083`) | Mode=lectura-unidad · recepción-unidad · edición-unidad (Layout=table) | `1186:36293` · `1186:744420` · `1186:744515` | La misma tabla con la columna «Unidad» (FP3, IP1, IP2). Van en una segunda columna del set para no invadir la sección de abajo |
+
+Reutilizados sin variante nueva: `ProductCard` y `ProductCardMovil` «State=por-peso», `CartLine`
+«State=por-peso» (desktop y mobile), `DialogoPesar` (escritorio y hoja) con `LecturaBascula` (estable y
+manual), `CartLine v3` (la línea de mesa «en cocina» con «0,500 kg»), `ComandaKDS v2`/`ComandaItemKDS`,
+`RecipeIngredientRow`, `NumberInput` (State=error), `Button` (State=disabled), `Badge`, `CobrarButton`.
+Arreglo menor en `CartLine` «State=por-peso» (`1088:174139`): «inc. $ 7.185 impuestos» desbordaba su caja;
+ahora dice «inc. $ 7.185 IVA».
+
+### 13.3 Frames
+
+**07 Finanzas** (`1190:112737`)
+
+| Frame | Base aprobada | Id |
+|---|---|---|
+| FP1 · Escritorio / Factura de venta · nueva — con líneas por peso | `1034:97035` | `1190:112747` |
+| FP2 · Escritorio / Factura de venta · nueva — error: cantidad con más de 3 decimales | FP1 | `1191:745296` |
+| FP3 · Escritorio / Detalle factura de venta — líneas por peso con columna «Unidad» | `421:174342` | `1193:114597` |
+| FP4 · Escritorio / Factura de compra · nueva — compra por kg (25,000 kg × $ 16.500 / kg) | `1066:105475` | `1193:744600` |
+| FP5 · Escritorio / Factura de compra · nueva — error: cantidad con más de 3 decimales | FP4 | `1193:745794` |
+| FP6 · Móvil 390 / Factura de venta · nueva — líneas por peso | `1037:104577` | `1193:746863` |
+| FP7 · Móvil 390 / Factura de compra · nueva — compra por kg | `1069:666353` | `1193:747065` |
+| FP8 · Móvil 390 / Detalle factura de venta — con líneas por peso | `421:176509` | `1193:747245` |
+
+**04 Inventario** (`1199:187967`)
+
+| Frame | Base aprobada | Id |
+|---|---|---|
+| IP1 · Escritorio / Nueva orden de compra — compra por kg | `460:48845` | `1199:187977` |
+| IP2 · Escritorio / Detalle de orden de compra — recibida en parte, en kg («recibido 12,500 de 25,000 kg») | `454:46897` | `1207:750155` |
+| IP3 · Diálogo / Registrar recepción parcial en kg — error: más de 3 decimales (12,5004) | `457:48661` | `1207:750977` |
+| IP4 · Móvil 390 / Detalle de orden de compra — recibida en parte, en kg | `458:237026` | `1207:751985` |
+| IP5 · Escritorio / Receta — insumo por peso usado en gramos, costo por kg (350 GR = 0,350 kg × $ 12.600 / kg) | `599:147018` | `1207:751845` |
+| IP6 · Escritorio / Receta — error: cantidad en KG con más de 3 decimales (0,3504) | `599:147018` | `1207:751915` |
+| IP13 · Móvil 390 / Receta — insumo por peso en gramos | `972:178990` | `1207:754033` |
+| IP7 · Escritorio / Catálogo — insumo por kg con existencias en kg («12,400 kg») | `117:8746` | `1207:753588` |
+| IP8 · Escritorio / Stock — productos por peso en kg con 3 decimales | `582:277572` | `1207:753609` |
+| IP9 · Escritorio / Kardex — producto por peso en kg con 3 decimales | `516:270498` | `1207:753716` |
+| IP10 · Móvil 390 / Stock — en kg | `585:284626` | `1207:753909` |
+| IP11 · Móvil 390 / Kardex — en kg | `517:58204` | `1207:753957` |
+| IP12 · Móvil 390 / Catálogo — insumo por kg | `121:14530` | `1207:754016` |
+
+**05 POS y ventas** (`1217:158735`)
+
+| Frame | Base aprobada | Id |
+|---|---|---|
+| W1 · Escritorio / POS — grilla con productos por kg y carrito con tres pesadas | `244:63910` | `1217:158745` |
+| W2 · Escritorio / POS — «Pesar» con lectura en vivo de la báscula (estable) | W1 + `DialogoPesar` | `1223:758721` |
+| W3 · Escritorio / POS — Cobro con líneas por peso (total redondeado, exacto a la vista) | `247:69830` | `1217:158852` |
+| W4 · Escritorio / POS — Venta completada: recibo con líneas por peso | `247:74846` | `1217:159086` |
+| W4b · Tiquete 80 mm de esta venta — líneas por peso | D1 `1092:7631` | `1233:761938` |
+| W5 · Escritorio / Mesa 4 — agregar un producto por peso: «Pesar» con lectura en vivo | D3 `1073:668900` | `1217:159221` |
+| W6 · Escritorio / Mesa 4 — ronda con «0,500 kg» enviada a cocina | D5 `1073:669441` | `1217:159274` |
+| W6b · Comanda en cocina con «0,500 kg» | `1073:669687` | `1217:159327` |
+| W7 · Pantalla del cliente — «Pesando: Queso campesino · 0,735 kg × $ 18.900 / kg = $ 13.892» (1280 × 800) | `881:113592` | `1217:159331` |
+| W8 · Escritorio / POS — «Pesar» a mano: error por más de 3 decimales (0,7354) | W1 + `DialogoPesar` | `1223:758828` |
+| WM1 · Móvil 390 / POS — carrito con tres pesadas | `250:81432` | `1233:765003` |
+| WM2 · Móvil 390 / POS — Cobro con líneas por peso | `250:82123` | `1233:765074` |
+| WM3 · Móvil 390 / POS — Venta completada | `250:83088` | `1233:765176` |
+| WM4 · Móvil 390 / Mesa 4 — «Pesar» en hoja al agregar | M2 `1080:162972` | `1233:765210` |
+| WM5 · Móvil 390 / POS — «Pesar» a mano: error por más de 3 decimales | `250:81342` | `1233:765232` |
+
+Estados: normal en todas las pantallas; error típico «cantidad con más de 3 decimales» en factura de
+venta (FP2), factura de compra (FP5), recepción de la orden (IP3), receta (IP6) y «Pesar» del POS (W8,
+WM5). Cifras recalculadas en cada copia (subtotal, bases, impuestos, retenciones, comisión, cambio); el
+importe exacto se muestra donde importa (cobro: $ 70.473,50 → se cobra $ 70.474).
+
+### 13.4 Chequeo por script (use_figma, 2026-09-29)
+
+| Comprobación | 07 (`1190:112737`) | 04 (`1199:187967`) | 05 (`1217:158735`) | 02 (variantes nuevas) |
+|---|---|---|---|---|
+| Nodos sueltos al primer nivel de la página | 0 | 0 | 0 | 0 |
+| Solapes entre nodos de primer nivel de la sección | 0 | 0 | 0 | 0 en «Finanzas — Formulario de documento» |
+| Sección nueva contra el resto de la página | 0 | 0 | 0 | 0 (la sección «Finanzas» volvió a su alto original) |
+| Instancias rotas | 0 de 1.010 | 0 de 1.117 | 0 de 1.776 | 0 |
+| Textos desbordados (caja del padre + medición de textos de ancho fijo o truncados) | 0 de 1.187 | 0 de 1.139 | 0 de 1.477 | 0 |
+| Índice de la página: solapes / fuera de la sección | 0 / 0 | 0 / 0 | 0 / 0 | — |
+| Nombres de organizaciones cliente (búsqueda en `organizations.name`/`legal_name` de los nombres propios usados) | 0 | 0 | 0 | 0 |
+
+Para llegar a 0 textos desbordados se acortaron textos que venían truncados **desde los frames base**
+(correo del cliente en la cabecera del carrito ×5, teléfono en el carrito móvil, «2 impuestos
+seleccionados», etiqueta del botón de cobro móvil, «Descontinuado» del catálogo, tres tarjetas de la
+factura móvil) y los propios («inc. $ X impuestos» → «inc. $ X IVA», base de la retención en IP1).
+La única coincidencia de «Mi empresa» en `organizations` es el nombre de ejemplo que pidió el dueño.
+
+Fuera del alcance y sin tocar: en 02 Componentes, sección «Finanzas» (`405:156742`), los textos
+`415:160076` y `513:262593` ya se solapaban antes de esta entrega.
+
+### 13.5 Qué no se verificó y límites
+
+- No se vio en el navegador: son frames de Figma; el código de estas pantallas sigue §8 y §9–§12.
+- En la grilla del POS de escritorio, las tarjetas de `PosProductSearch` en las posiciones 2, 3, 5 y 6 no
+  traen el nodo de la insignia (estructura del componente anidado); por eso los productos por peso de la
+  grilla van en las posiciones 1 y 4, que sí muestran «Por kg». Tomate chonto entra al carrito por el
+  buscador.
+- En el formulario de la factura, la unidad va dentro del campo de cantidad («0,735 | kg») para no romper
+  la alineación de las columnas de `LineaDocumentoEdicion`; la columna «Unidad» propiamente dicha está en
+  las tablas de lectura, recepción y edición de `DocumentLinesTable`.

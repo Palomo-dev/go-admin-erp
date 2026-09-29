@@ -1204,3 +1204,72 @@ existe en la app (se muestra el estado sin botón); los enlaces a documentos usa
 `kit/inventario/EnlaceDocumento` («Venta FACT-0019 ↗») en lugar de icono + número; tableta sin
 frames. Los 2 seriales vendidos de la org 133 conservan la garantía fijada al recibir (P9: los
 vendidos no se tocan).
+
+---
+
+## Anexo B2 — Ajustes y ajuste por conteo (2026-09-29)
+
+Bloque B2 aplicado con las decisiones P3 (el conteo físico es «ajuste por conteo»; `cycle_counts`
+queda sin usar), P4 (un solo asiento por ajuste) y P5 (el ajuste de salida bloquea si deja stock
+negativo). Solo archivos de B2 (§5.3) y el namespace `inventarioAjustes` en es/en/fr/pt.
+
+### B2.1 Migraciones (`supabase/migrations/` + `supabase/rollbacks/`)
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929130000_inv_b2_1_esquema` | `inventory_adjustments`: `code` (AJ-0001, único por organización), `mode` (`conteo` · `entrada` · `salida`), `counted_at`, `posted_at`/`posted_by`, `cancelled_at`/`cancelled_by`/`cancel_reason`, `apply_key`; `status` admite `cancelled` (descartar ya no borra). `adjustment_items`: `system_qty` («sistema al contar»), `difference`, `applied_cost`. Relleno de los 137 aplicados desde su kardex; los 140 históricos quedan en modo `conteo` (la pantalla vieja guardaba lo contado). Disparadores: código y modo por defecto; un ajuste aplicado o descartado (y sus renglones) no se modifica ni se borra (salvo cascada de organización o sucursal). Índices del listado y de los movimientos de un ajuste |
+| `20260929130100_inv_b2_2_guardar_aplicar_descartar` | `fn_ajuste_guardar` (borrador, no mueve stock), `fn_ajuste_aplicar` (una transacción: bloquea el documento y cada fila en orden, congela «sistema al contar», recalcula la diferencia del conteo y avisa qué cambió, mueve SOLO por `fn_inv_int_mover` con `source = 'adjustment'` y `source_id` = id, seriales de salida a `damaged` y de entrada creados o reingresados, costo de la entrada = el del renglón → promedio → costo vigente o `costo_requerido`; idempotente: el segundo intento responde `ya_aplicado`), `fn_ajuste_descartar` (con motivo). `fn_auto_journal_inventory_adjustment` reescrita: un asiento por el neto real Σ(± qty × costo del movimiento), sin el respaldo que tomaba el costo de cualquier producto de la sucursal; la anterior queda en `private.respaldo_funciones` |
+| `20260929130200_inv_b2_3_lectura` | `fn_ajustes_listado` (paginado en el servidor, filtros, KPI del mes en la zona de la organización, permisos), `fn_ajuste_detalle` (renglones, movimientos del kardex con saldo tras el ajuste, asiento), `fn_ajuste_productos` (existencia por lote en la sucursal, lotes, seriales en stock, costo vigente). Importes solo con el permiso `costos`. `fn_inv_documentos` numera el ajuste con su `code` (parche por marcador; B4 ya la había parcheado) |
+| `20260929130300_inv_b2_4_borradores_heredados` | Los 3 borradores heredados reciben «sistema» y diferencia estimados con la existencia de hoy (se recalculan al aplicar) |
+
+Todas SECURITY DEFINER con `fn_assert_acceso_org` + `fn_inventario_exigir_permiso` (`ajustar`
+para escribir, `ver` para leer) y `REVOKE … FROM public, anon`. `get_advisors`: ningún aviso nuevo
+en `anon_security_definer_function_executable` ni en `function_search_path_mutable` (la función de
+asiento de ajustes sale de esa lista); las 6 RPC nuevas aparecen en
+`authenticated_security_definer_function_executable`, como todas las del repositorio.
+
+### B2.2 Verificación en la base (transacción deshecha, org 2, dueño)
+
+- Conteo de 4 renglones (uno con lote, uno con 2 seriales): 3 movimientos, promedio ponderado en la
+  entrada (4 × 1.000 + 2 × 1.300 → 1.100), seriales a `damaged`, 1 asiento del documento y 0 por
+  movimiento; `fn_inv_documentos` → `AJ-0150`. Aplicar otra vez → `ya_aplicado`, siguen 3.
+- Salida de 100 sobre 7 → `stock_insuficiente` (23514), nada se mueve, sigue en borrador (P5).
+- Entrada 5 × 800 sobre 7 × 500 → 12 × 625.
+- Conteo guardado con sistema 12; se venden 2; al aplicar la diferencia se recalcula contra 10 y la
+  respuesta lo informa en `recalculados`.
+- Descartar sin motivo → `motivo_requerido`; con motivo → `cancelled`; aplicar un descartado →
+  `ajuste_descartado`; editarlo por SQL → `ajuste_cerrado`; descartar un aplicado → `ajuste_aplicado`.
+- Otra organización → 42501 al guardar y al aplicar; producto de otra organización → 42501;
+  renglón repetido → `renglon_repetido`; producto con seriales sin seriales → `seriales_no_cuadran`.
+
+### B2.3 Pantallas (Figma `586:303290`, `586:312944`, `975:186644`)
+
+- Listado `/app/inventario/ajustes`: KPI (del mes, borradores, aplicados, impacto neto), aviso de
+  borradores antiguos, búsqueda por número, producto o nota, filtros (estado, tipo, razón, fechas),
+  orden, paginación real, menú ⋯ por estado, selección (aplicar, exportar, imprimir, descartar),
+  CSV, móvil con tarjetas, estados cargando/vacío/sin resultados/error/sin permiso/sin sucursal.
+- Detalle `/app/inventario/ajustes/[id]`: borrador (avisa si la existencia cambió desde el conteo),
+  aplicado («sistema al contar» congelado, movimientos del kardex con saldo tras el ajuste y enlace
+  al kardex, enlace al asiento contable), descartado (quién, cuándo y motivo), imprimir, duplicar
+  como nuevo conteo, móvil con acciones al pie.
+- Nuevo `/app/inventario/ajustes/nuevo` y editar `/app/inventario/ajustes/[id]/editar` (ruta nueva):
+  Entrada · Salida · Conteo, sucursal, razón, fecha del conteo en la zona de la organización, nota,
+  productos con «Agregar productos» del kit (`kit/documento`, escáner incluido), lote por renglón,
+  seriales (salida: de los que están en la sucursal; entrada: nuevos), costo obligatorio solo en
+  sobrantes sin costo, validación P5 en pantalla, resumen al pie, «Guardar borrador» y «Guardar y
+  aplicar» (guarda y aplica con clave de idempotencia; si falla, el borrador queda y el reintento lo
+  actualiza, no crea otro). Acepta `?producto_id`, `?type`/`?modo`, `?branchId` y `?desde`.
+- `adjustmentService.ts` es fachada de RPC (sale de la lista del guardarraíl 33).
+
+### B2.4 Pendiente (fuera de B2 o con dueño)
+
+- **B9 · `assistant_create_adjustment`** sigue escribiendo `stock_movements`/`stock_levels` sin la
+  primitiva (invocador, sin costo en el movimiento). Sus ajustes nacen aplicados y, desde B0-7, ni el
+  movimiento ni el documento los asientan (el documento se crea antes que sus movimientos). Debe
+  delegar en `fn_ajuste_guardar` + `fn_ajuste_aplicar`. Los disparadores de B2 le dejan insertar sus
+  renglones en la misma transacción.
+- **B10 · RLS**: `inventory_adjustments` y `adjustment_items` siguen `FOR ALL` por pertenencia; se
+  pueden cerrar a solo lectura cuando B9 cambie el GO Assistant (la pantalla ya no escribe tablas).
+- Un conteo con sobrantes y faltantes asienta el **neto** (una regla `gain` o `loss`), como pide P4;
+  si el contador prefiere separar ganancia y pérdida, hace falta un asiento de varias líneas.
+- Tableta sin frames en Figma (se usa la vista de escritorio desde 640 px).

@@ -28,6 +28,7 @@ export const organizacionReports: ReportDefinition[] = [
     titulo: 'Miembros de la Organización',
     descripcion: 'Usuarios, roles y estado de membresía',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -67,6 +68,7 @@ export const organizacionReports: ReportDefinition[] = [
     titulo: 'Comparativa de Sucursales',
     descripcion: 'Métricas comparativas por sucursal',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -123,6 +125,7 @@ export const organizacionReports: ReportDefinition[] = [
     titulo: 'Uso del Sistema',
     descripcion: 'Métricas de uso: sesiones, módulos activos, storage',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

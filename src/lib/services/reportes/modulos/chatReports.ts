@@ -10,6 +10,7 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
+import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
@@ -28,16 +29,20 @@ export const chatReports: ReportDefinition[] = [
     titulo: 'Volumen de Conversaciones',
     descripcion: 'Conversaciones por canal y período',
     categoria: 'sistema',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       const { start, end } = await rangoDelPeriodo(orgId, periodo);
-      const { data, error } = await db
-        .from('conversations')
-        .select('id, status, channel_id, created_at')
-        .eq('organization_id', orgId)
-        .gte('created_at', start)
-        .lte('created_at', end);
+      const { data, error } = await applyBranchFilter(
+        db
+          .from('conversations')
+          .select('id, status, channel_id, created_at')
+          .eq('organization_id', orgId)
+          .gte('created_at', start)
+          .lte('created_at', end),
+        branchId,
+      );
 
       if (error) throw error;
 
@@ -70,6 +75,7 @@ export const chatReports: ReportDefinition[] = [
     titulo: 'SLA y Tiempos',
     descripcion: 'Primera respuesta, resolución y volumen por canal',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -104,17 +110,21 @@ export const chatReports: ReportDefinition[] = [
     titulo: 'Performance de Agentes',
     descripcion: 'Conversaciones atendidas, satisfacción y tiempos',
     categoria: 'sistema',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       const { start, end } = await rangoDelPeriodo(orgId, periodo);
-      const { data, error } = await db
-        .from('conversations')
-        .select('id, assigned_member_id, status, message_count, first_response_time_seconds')
-        .eq('organization_id', orgId)
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .not('assigned_member_id', 'is', null);
+      const { data, error } = await applyBranchFilter(
+        db
+          .from('conversations')
+          .select('id, assigned_member_id, status, message_count, first_response_time_seconds')
+          .eq('organization_id', orgId)
+          .gte('created_at', start)
+          .lte('created_at', end)
+          .not('assigned_member_id', 'is', null),
+        branchId,
+      );
 
       if (error) throw error;
 
@@ -157,6 +167,7 @@ export const chatReports: ReportDefinition[] = [
     titulo: 'Tags y Categorización',
     descripcion: 'Distribución de conversaciones por tag',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

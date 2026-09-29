@@ -59,6 +59,7 @@ export const inventarioReports: ReportDefinition[] = [
     titulo: 'Stock Crítico',
     descripcion: 'Productos bajo el mínimo de stock',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['diario'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -248,6 +249,7 @@ export const inventarioReports: ReportDefinition[] = [
     titulo: 'Movimientos de Inventario',
     descripcion: 'Entradas, salidas y ajustes del período',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['diario', 'semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -342,6 +344,7 @@ export const inventarioReports: ReportDefinition[] = [
     titulo: 'Rotación de Inventario',
     descripcion: 'Top vendidos, dead stock y días promedio de inventario',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -378,6 +381,7 @@ export const inventarioReports: ReportDefinition[] = [
     titulo: 'Rentabilidad por Producto',
     descripcion: 'Margen de ganancia por producto',
     categoria: 'comercial',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

@@ -28,6 +28,7 @@ export const integracionesReports: ReportDefinition[] = [
     titulo: 'Estado de Conexiones',
     descripcion: 'Conexiones activas, pausadas y errores',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -61,6 +62,7 @@ export const integracionesReports: ReportDefinition[] = [
     titulo: 'Eventos y Jobs',
     descripcion: 'Volumen de eventos, jobs ejecutados y tasa de error',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

@@ -44,6 +44,7 @@ export const ventasReports: ReportDefinition[] = [
     titulo: 'Cierre de Caja (Zeta)',
     descripcion: 'Totales por método de pago, sesiones, descuentos y propinas del día',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['diario'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -168,6 +169,7 @@ export const ventasReports: ReportDefinition[] = [
     titulo: 'Ventas del Período',
     descripcion: 'Ventas por día, sucursal y vendedor',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['diario', 'semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -276,6 +278,7 @@ export const ventasReports: ReportDefinition[] = [
     titulo: 'Ventas por Hora',
     descripcion: 'Heatmap de volumen de ventas por hora del día',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -337,6 +340,7 @@ export const ventasReports: ReportDefinition[] = [
     titulo: 'Ventas por Vendedor',
     descripcion: 'Ranking de vendedores por monto y número de ventas',
     categoria: 'comercial',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -421,6 +425,7 @@ export const ventasReports: ReportDefinition[] = [
     titulo: 'Devoluciones y Descuentos',
     descripcion: 'Resumen de devoluciones y descuentos aplicados',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -548,6 +553,7 @@ export const ventasReports: ReportDefinition[] = [
     titulo: 'Pedidos Online',
     descripcion: 'Pedidos web: estado, tiempo de entrega, conversión',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

@@ -29,6 +29,7 @@ export const parkingReports: ReportDefinition[] = [
     titulo: 'Ocupación de Parking',
     descripcion: 'Sesiones, tiempo promedio y tasa de ocupación',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -74,6 +75,7 @@ export const parkingReports: ReportDefinition[] = [
     titulo: 'Ingresos de Parking',
     descripcion: 'Ingresos por tarifas, abonados y pagos',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -115,6 +117,7 @@ export const parkingReports: ReportDefinition[] = [
     titulo: 'Rotación de Espacios',
     descripcion: 'Uso por espacio, rotación y tiempo promedio',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

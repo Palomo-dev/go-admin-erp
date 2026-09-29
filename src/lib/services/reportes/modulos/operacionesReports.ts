@@ -28,6 +28,7 @@ export const operacionesReports: ReportDefinition[] = [
     titulo: 'Actividad del Sistema',
     descripcion: 'Eventos de auditoría y timeline del período',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -60,6 +61,7 @@ export const operacionesReports: ReportDefinition[] = [
     titulo: 'Auditoría General',
     descripcion: 'Logs de auditoría por usuario y módulo',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

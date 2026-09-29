@@ -10,6 +10,7 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
+import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
@@ -28,16 +29,20 @@ export const transporteReports: ReportDefinition[] = [
     titulo: 'Envíos por Estado',
     descripcion: 'Volumen de envíos por estado y transportadora',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       const { start, end } = await rangoDelPeriodo(orgId, periodo);
-      const { data, error } = await db
-        .from('shipments')
-        .select('id, status, carrier_id, created_at')
-        .eq('organization_id', orgId)
-        .gte('created_at', start)
-        .lte('created_at', end);
+      const { data, error } = await applyBranchFilter(
+        db
+          .from('shipments')
+          .select('id, status, carrier_id, created_at')
+          .eq('organization_id', orgId)
+          .gte('created_at', start)
+          .lte('created_at', end),
+        branchId,
+      );
 
       if (error) throw error;
 
@@ -70,17 +75,21 @@ export const transporteReports: ReportDefinition[] = [
     titulo: 'Performance de Conductores',
     descripcion: 'Entregas a tiempo, incidentes y eficiencia',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       const { start, end } = await rangoDelPeriodo(orgId, periodo);
-      const { data, error } = await db
-        .from('shipments')
-        .select('id, created_by, status, delivered_at, created_at')
-        .eq('organization_id', orgId)
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .not('created_by', 'is', null);
+      const { data, error } = await applyBranchFilter(
+        db
+          .from('shipments')
+          .select('id, created_by, status, delivered_at, created_at')
+          .eq('organization_id', orgId)
+          .gte('created_at', start)
+          .lte('created_at', end)
+          .not('created_by', 'is', null),
+        branchId,
+      );
 
       if (error) throw error;
 
@@ -122,17 +131,21 @@ export const transporteReports: ReportDefinition[] = [
     titulo: 'Volumen por Ruta',
     descripcion: 'Envíos y costos por ruta',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       const { start, end } = await rangoDelPeriodo(orgId, periodo);
-      const { data, error } = await db
-        .from('shipments')
-        .select('id, delivery_city, total_cost, created_at')
-        .eq('organization_id', orgId)
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .not('delivery_city', 'is', null);
+      const { data, error } = await applyBranchFilter(
+        db
+          .from('shipments')
+          .select('id, delivery_city, total_cost, created_at')
+          .eq('organization_id', orgId)
+          .gte('created_at', start)
+          .lte('created_at', end)
+          .not('delivery_city', 'is', null),
+        branchId,
+      );
 
       if (error) throw error;
 

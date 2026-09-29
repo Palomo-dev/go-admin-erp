@@ -52,6 +52,7 @@ export const gymReports: ReportDefinition[] = [
     titulo: 'Membresías',
     descripcion: 'Membresías activas y en gracia, nuevas del periodo e ingreso recurrente mensual (MRR)',
     categoria: 'comercial',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -134,6 +135,7 @@ export const gymReports: ReportDefinition[] = [
     titulo: 'Actividad de Membresías',
     descripcion: 'Eventos de membresías por día (altas, renovaciones, cancelaciones)',
     categoria: 'operativo',
+    alcance: 'organizacion',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -177,6 +179,7 @@ export const gymReports: ReportDefinition[] = [
     titulo: 'Retención',
     descripcion: 'Tasa de retención y churn por cohorte',
     categoria: 'comercial',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

@@ -28,6 +28,7 @@ export const rolesReports: ReportDefinition[] = [
     titulo: 'Usuarios por Rol',
     descripcion: 'Distribución de usuarios por rol y permisos',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -69,6 +70,7 @@ export const rolesReports: ReportDefinition[] = [
     titulo: 'Auditoría de Permisos',
     descripcion: 'Cambios de permisos y roles en el período',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

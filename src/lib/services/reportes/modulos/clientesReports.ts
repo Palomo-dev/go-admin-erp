@@ -30,6 +30,7 @@ export const clientesReports: ReportDefinition[] = [
     titulo: 'Crecimiento de Clientes',
     descripcion: 'Nuevos clientes, total acumulado y crecimiento',
     categoria: 'comercial',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -151,6 +152,7 @@ export const clientesReports: ReportDefinition[] = [
     titulo: 'Clientes por Tipo',
     descripcion: 'Distribución por tipo (persona/empresa), ciudad, segmento',
     categoria: 'comercial',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -198,6 +200,7 @@ export const clientesReports: ReportDefinition[] = [
     titulo: 'Top Clientes',
     descripcion: 'Clientes por volumen de compras y valor',
     categoria: 'comercial',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

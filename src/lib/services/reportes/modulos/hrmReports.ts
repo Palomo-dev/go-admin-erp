@@ -10,6 +10,7 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
+import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
@@ -70,6 +71,7 @@ export const hrmReports: ReportDefinition[] = [
     titulo: 'Nómina Quincenal',
     descripcion: 'Pagos, deducciones y costos employer del período',
     categoria: 'personas',
+    alcance: 'organizacion',
     periodosSugeridos: ['quincenal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -111,15 +113,19 @@ export const hrmReports: ReportDefinition[] = [
     titulo: 'Productividad de Personal',
     descripcion: 'Horas trabajadas, ausencias y productividad por departamento',
     categoria: 'personas',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { data, error } = await db
-        .from('shift_assignments')
-        .select('id, employment_id, work_date, status, actual_start_time, actual_end_time')
-        .eq('organization_id', orgId)
-        .gte('work_date', periodo.fechaInicio)
-        .lte('work_date', periodo.fechaFin);
+      const { data, error } = await applyBranchFilter(
+        db
+          .from('shift_assignments')
+          .select('id, employment_id, work_date, status, actual_start_time, actual_end_time')
+          .eq('organization_id', orgId)
+          .gte('work_date', periodo.fechaInicio)
+          .lte('work_date', periodo.fechaFin),
+        branchId,
+      );
 
       if (error) throw error;
 
@@ -162,6 +168,7 @@ export const hrmReports: ReportDefinition[] = [
     titulo: 'Comisiones',
     descripcion: 'Comisiones devengadas por vendedor (pagadas y pendientes)',
     categoria: 'personas',
+    alcance: 'sucursal',
     periodosSugeridos: ['quincenal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

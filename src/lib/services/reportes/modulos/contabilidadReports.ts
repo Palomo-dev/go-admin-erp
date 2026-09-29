@@ -28,6 +28,7 @@ export const contabilidadReports: ReportDefinition[] = [
     titulo: 'Estado de Resultados',
     descripcion: 'Ingresos, costos y gastos → utilidad neta del período',
     categoria: 'contable',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual', 'trimestral', 'anual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -66,6 +67,7 @@ export const contabilidadReports: ReportDefinition[] = [
     titulo: 'Balance General',
     descripcion: 'Activo, pasivo y patrimonio a la fecha de corte',
     categoria: 'contable',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual', 'trimestral', 'anual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -101,6 +103,7 @@ export const contabilidadReports: ReportDefinition[] = [
     titulo: 'Presupuesto vs Real',
     descripcion: 'Comparativo de presupuestos contra ejecución real',
     categoria: 'contable',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

@@ -28,6 +28,7 @@ export const pmReports: ReportDefinition[] = [
     titulo: 'Tareas por Estado',
     descripcion: 'Distribución de tareas por estado y proyecto',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -70,6 +71,7 @@ export const pmReports: ReportDefinition[] = [
     titulo: 'Performance por Proyecto',
     descripcion: 'Horas estimadas vs reales, hitos completados',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

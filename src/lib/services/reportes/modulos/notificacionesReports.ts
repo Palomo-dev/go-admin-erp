@@ -28,6 +28,7 @@ export const notificacionesReports: ReportDefinition[] = [
     titulo: 'Enviadas por Canal',
     descripcion: 'Volumen de notificaciones por canal y estado',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -61,6 +62,7 @@ export const notificacionesReports: ReportDefinition[] = [
     titulo: 'Tasa de Lectura',
     descripcion: 'Apertura y CTR por canal y tipo',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -112,6 +114,7 @@ export const notificacionesReports: ReportDefinition[] = [
     titulo: 'Por Módulo',
     descripcion: 'Notificaciones agrupadas por módulo origen',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

@@ -20,6 +20,12 @@ import { OrgContextError } from '@/lib/utils/orgContextError';
 import factusService, { FactusApiError, type FactusCredentials } from '@/lib/services/factusService';
 import { getCredentials, obtenerTokenPara, invalidarTokenPara } from '@/lib/services/factusTokenManager';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+  COLUMNAS_DATOS_EMPRESA,
+  datosEmpresaFaltantes,
+  type DatoEmpresa,
+  type OrganizacionDatosEmpresa,
+} from '@/lib/organizacion/datosEmpresa';
 
 export type AmbienteFactus = 'sandbox' | 'production';
 
@@ -143,6 +149,8 @@ export interface ResultadoVerificacion {
   mensaje: string;
   nitFactus: string | null;
   empresaFactus: string | null;
+  /** Datos de la empresa que faltan para activar (acceso v3, fase 7). */
+  datosFaltantes?: DatoEmpresa[];
 }
 
 /**
@@ -194,8 +202,27 @@ export async function verificarYActivar(organizationId: number, actor: string | 
     return { ok: false, activado: false, mensaje, nitFactus: null, empresaFactus: null };
   }
 
-  const { data: org } = await db.from('organizations').select('nit, tax_id').eq('id', organizationId).maybeSingle();
-  const nitOrg = (org as { nit?: string | null; tax_id?: string | null } | null)?.nit ?? (org as { tax_id?: string | null } | null)?.tax_id ?? null;
+  const { data: org } = await db.from('organizations').select(COLUMNAS_DATOS_EMPRESA).eq('id', organizationId).maybeSingle();
+  const datosOrg = org as OrganizacionDatosEmpresa | null;
+
+  // Acceso v3, fase 7: NIT, ciudad y dirección son obligatorios para activar
+  // (salen en cada factura). Sin ellos no se activa; tampoco se registra como
+  // fallo de credenciales, porque las credenciales no son el problema.
+  const faltan = datosEmpresaFaltantes(datosOrg);
+  if (faltan.length > 0) {
+    const nombres: Record<DatoEmpresa, string> = { nit: 'el NIT', ciudad: 'la ciudad', direccion: 'la dirección' };
+    const lista = new Intl.ListFormat('es', { type: 'conjunction' }).format(faltan.map((f) => nombres[f]));
+    return {
+      ok: false,
+      activado: false,
+      mensaje: `Para activar la facturación electrónica completa en Organización › Información ${lista} de la empresa.`,
+      nitFactus: soloDigitos(empresa.nit),
+      empresaFactus: empresa.name || null,
+      datosFaltantes: faltan,
+    };
+  }
+
+  const nitOrg = datosOrg?.nit ?? datosOrg?.tax_id ?? null;
   if (!nitCoincide(nitOrg, empresa.nit)) {
     const mensaje = `La cuenta de Factus es de otro NIT (${soloDigitos(empresa.nit)}); no coincide con el de la organización.`;
     await registrar(false, mensaje, null, false);

@@ -936,3 +936,21 @@ cuando cambia `organizations.country_code`, y esa función BORRA y rehace `organ
 durante su actualización; se comprobó en transacción deshecha que impuestos, métodos de pago y monedas
 de las 12 organizaciones quedaron iguales. El disparador sigue activo para las pantallas: un admin que
 cambie el país de su organización pierde su configuración de impuestos y pagos.
+
+### 13.8 Fase 7 (Inicio y FE) — hecha el 2026-09-29
+
+- **Tarjeta «Completa los datos de tu empresa»** (Figma 1170:744210):
+  `components/inicio/TarjetaDatosEmpresa.tsx`, montada en Inicio bajo la cabecera. Solo a quien
+  administra (super admin o rol 1/2), mientras falte el NIT (`nit` o `tax_id`), la ciudad o la
+  dirección; nombra lo que falta y lleva a Organización › Información. Textos en `home.datosEmpresa`
+  (es/en/fr/pt, singular y plural).
+- **La activación de la facturación electrónica los exige**: `verificarYActivar` no activa si falta
+  alguno y responde qué falta (`datosFaltantes`), sin registrarlo como fallo de credenciales.
+- Regla única en `lib/organizacion/datosEmpresa.ts` (`datosEmpresaFaltantes`) para la tarjeta y el
+  servidor. Pruebas: `components/inicio/__tests__/tarjetaDatosEmpresa.test.tsx` (10, en los 4
+  idiomas) y dos casos nuevos en `__tests__/einvoicing/accesoFactus.test.ts`. No se revisó en el
+  navegador.
+
+Con esto quedan hechas las fases 5 a 8 de acceso v3. Pendientes del dueño: revisar en el navegador,
+«Leaked password protection» y mínimo 10 en Supabase Auth, y confirmar las dos sucursales «México»
+de la org 2.

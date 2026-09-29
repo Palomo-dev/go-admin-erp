@@ -86,6 +86,8 @@ const MODULOS: Record<string, string[]> = {
   inventarioSeriales: SERIALES_B4,
   inventarioGarantias: SERIALES_B4,
   inventarioTrazabilidad: SERIALES_B4,
+  // Inventario B2 (2026-09-29): ajustes y ajuste por conteo.
+  inventarioAjustes: ['src/components/inventario/ajustes', 'src/app/app/inventario/ajustes'],
 };
 
 type Arbol = { [clave: string]: string | Arbol };

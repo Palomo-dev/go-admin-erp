@@ -3053,7 +3053,6 @@ describe('33. Existencias: nada fuera del núcleo escribe las tablas de stock', 
     'app/api/web-orders/[id]/refund/route.ts': 'B9 · reembolso web → fn_stock_entrada',
     'components/inventario/productos/bulk/bulkService.ts': 'B7 · costo y precio masivos por fn_producto_fijar_costo/precio',
     'lib/ai/assistant/undoService.ts': 'B9 · deshacer por fn_producto_int_ajustar_stock',
-    'lib/services/adjustmentService.ts': 'B2 · fn_ajuste_aplicar',
     'lib/services/aiActionsService.ts': 'B9 · actualizar stock por fn_producto_int_ajustar_stock',
     'lib/services/webOrderServerConfirmation.ts': 'B9 · fn_pedido_web_confirmar_stock',
   };

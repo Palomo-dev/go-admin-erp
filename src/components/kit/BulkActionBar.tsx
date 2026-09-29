@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, Loader2, X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useBarraInferiorPropia } from '@/components/shell/header/cabeceraMovil';
 import { RowActionsMenu } from './RowActionsMenu';
 import type { AccionFila } from './acciones';
 import { sustantivoPara, type Sustantivo } from './paginacion';
@@ -21,8 +22,10 @@ export { aAccionFila, aplanarMenuMasivo, type AccionMasiva, type GrupoMenuMasivo
  * - Escritorio: 50 px de alto, 24 px sobre el borde inferior, centrada sobre
  *   la columna de contenido (se mide dónde se renderiza, así sigue al sidebar
  *   plegado o desplegado). Contador · acciones · «⋯» · «×».
- * - Móvil: ancho completo, **tapa el MobileTabBar** mientras hay selección.
- *   Contador, la primera acción, el resto en «⋯» (hoja) y «×».
+ * - Móvil: ancho completo, **sustituye al MobileTabBar** mientras hay
+ *   selección (se registra con `useBarraInferiorPropia`: el shell oculta su
+ *   barra y el contenido deja abajo el alto de esta, así la paginación no
+ *   queda tapada). Contador, la primera acción, el resto en «⋯» (hoja) y «×».
  *
  * Las acciones son las del dominio y solo las que existen (en facturas,
  * «Anular», no «Eliminar»). Lo destructivo pasa por ConfirmDialog.
@@ -162,6 +165,7 @@ export function BulkActionBar({
   const [columna, setColumna] = React.useState<{ centro: number; ancho: number } | null>(null);
   const [montado, setMontado] = React.useState(false);
   const visible = seleccionados > 0;
+  const refBarraMovil = useBarraInferiorPropia(visible);
 
   React.useEffect(() => setMontado(true), []);
 
@@ -237,6 +241,7 @@ export function BulkActionBar({
             </div>
 
             <div
+              ref={refBarraMovil}
               role="region"
               aria-label={t('masivas.region')}
               className="fixed inset-x-0 bottom-0 z-50 flex min-h-[calc(4.625rem+env(safe-area-inset-bottom))] items-center gap-2 border-t border-line bg-surface px-3 pb-[env(safe-area-inset-bottom)] text-fg shadow-[0_-4px_12px_rgb(15_23_42/0.08)] lg:hidden"

@@ -132,7 +132,8 @@ export default function POSPage() {
   };
   // Shell móvil (Figma MobileHeader Mode=pos y MobileTabBar): la cabecera
   // muestra el estado de la caja y «⋯ Caja y dispositivo». La barra inferior
-  // de la app NO se muestra en el POS (Figma B.12 · D3c móvil): abajo mandan el
+  // de la app NO se muestra en el POS (Figma B.12 · D3c móvil; regla central en
+  // cabeceraMovil.tsx: el POS es un flujo a pantalla completa): abajo mandan el
   // total y «Cobrar» fijos, y para salir está la flecha «←» de la cabecera.
   useCabeceraMovil({
     modo: 'pos',
@@ -148,7 +149,6 @@ export default function POSPage() {
         <MoreHorizontal aria-hidden="true" className="size-5" strokeWidth={1.5} />
       </button>
     ),
-    ocultarBarra: true,
   });
   // Atajos de la pantalla (mapa canónico, src/lib/pos/venta/atajos.ts). Con el
   // cobro abierto manda el cobro. El resto de atajos los registra cada pieza.

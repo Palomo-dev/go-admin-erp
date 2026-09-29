@@ -380,7 +380,7 @@ export function TransferenciaDetalle({ transferenciaId }: { transferenciaId: num
 
       {/* Móvil: la acción principal al pie (Figma 589:326053). */}
       {botonPrincipal && (
-        <div className="fixed inset-x-0 bottom-16 z-20 px-4 md:hidden">
+        <div className="fixed inset-x-0 bottom-[calc(var(--shell-barra-inferior,0px)+1rem)] z-20 mb-[env(safe-area-inset-bottom)] px-4 md:hidden">
           <Button className="h-11 w-full gap-2" onClick={() => (a.recibir ? acciones.recibir(tr.id) : acciones.despachar(tr.id))}>
             {a.recibir ? <PackageCheck aria-hidden="true" className="size-4" strokeWidth={1.5} /> : <Send aria-hidden="true" className="size-4" strokeWidth={1.5} />}
             {a.recibir ? t('recibirEn', { destino }) : t('despachar')}

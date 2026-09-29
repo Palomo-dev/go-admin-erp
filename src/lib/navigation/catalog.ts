@@ -134,6 +134,12 @@ export interface PaginaNav {
    * cargo, pero que no sale en el menú (se llega desde otra página).
    */
   enMenu?: boolean;
+  /**
+   * Flujo a pantalla completa (POS, mesas, check-in): aunque sale en el menú,
+   * en móvil no lleva la barra inferior de la app (regla del 2026-09-29,
+   * `shell/header/cabeceraMovil.tsx`).
+   */
+  pantallaCompleta?: boolean;
 }
 
 export interface ModuloNav {
@@ -188,13 +194,13 @@ export const CATALOGO_NAV: ModuloNav[] = [
     seccion: 'ventas',
     rutas: ['/app/pos'],
     paginas: [
-      { href: '/app/pos', nombre: 'POS', icono: ShoppingCart, grupo: 'Venta' },
+      { href: '/app/pos', nombre: 'POS', icono: ShoppingCart, grupo: 'Venta', pantallaCompleta: true },
       { href: '/app/pos/pedidos-online', nombre: 'Pedidos online', icono: ShoppingBag, grupo: 'Venta' },
       { href: '/app/pos/ventas', nombre: 'Ventas', icono: Receipt, grupo: 'Venta' },
       { href: '/app/pos/cajas', nombre: 'Cajas', icono: Banknote, grupo: 'Venta' },
       { href: '/app/pos/devoluciones', nombre: 'Devoluciones', icono: Undo2, grupo: 'Venta' },
       { href: '/app/pos/cuentas-por-cobrar', nombre: 'Cuentas por cobrar', icono: Wallet, grupo: 'Venta' },
-      { href: '/app/pos/mesas', nombre: 'Mesas', icono: UtensilsCrossed, grupo: 'Restaurante' },
+      { href: '/app/pos/mesas', nombre: 'Mesas', icono: UtensilsCrossed, grupo: 'Restaurante', pantallaCompleta: true },
       { href: '/app/pos/reservas-mesas', nombre: 'Reservas de mesas', icono: CalendarClock, grupo: 'Restaurante' },
       { href: '/app/pos/comandas', nombre: 'Comandas', icono: ChefHat, grupo: 'Restaurante' },
       { href: '/app/pos/propinas', nombre: 'Propinas', icono: Gift, grupo: 'Restaurante' },
@@ -287,7 +293,7 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/membresias/planes', nombre: 'Planes', icono: Layers },
       { href: '/app/membresias/clases', nombre: 'Clases', icono: Calendar },
       { href: '/app/membresias/reservas', nombre: 'Reservas', icono: CalendarCheck },
-      { href: '/app/membresias/check-in', nombre: 'Check-in', icono: LogIn },
+      { href: '/app/membresias/check-in', nombre: 'Check-in', icono: LogIn, pantallaCompleta: true },
       { href: '/app/membresias/instructores', nombre: 'Instructores', icono: User },
       { href: '/app/membresias/control-de-acceso', nombre: 'Control de acceso', icono: QrCode },
       { href: '/app/membresias/pagos', nombre: 'Pagos', icono: Wallet },

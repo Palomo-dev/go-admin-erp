@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { CircleAlert, Keyboard } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useBarraInferiorPropia } from '@/components/shell/header/cabeceraMovil';
 import { Dialogo } from '../Dialogo';
 import { Kbd } from '../Kbd';
 import { Tarjeta } from '../Tarjeta';
@@ -23,7 +24,8 @@ import { useKitT } from '../useIdiomaKit';
  *    impuestos, atajos).
  *
  * Tableta y móvil: una columna con el tercero primero; en móvil el `pie`
- * (total y primario) queda fijo abajo.
+ * (total y primario) queda fijo abajo como barra inferior propia: el shell
+ * oculta la suya y el contenido deja abajo el alto del pie.
  */
 export interface FormularioDocumentoLayoutProps {
   cabecera: ReactNode;
@@ -41,8 +43,9 @@ export interface FormularioDocumentoLayoutProps {
 }
 
 export function FormularioDocumentoLayout({ cabecera, avisos, datos, tercero, lineas, complementos, resumen, pieMovil, dialogos, className }: FormularioDocumentoLayoutProps) {
+  const refPie = useBarraInferiorPropia(!!pieMovil);
   return (
-    <div className={cn('flex flex-col gap-4 pb-24 lg:gap-5 lg:pb-8', className)}>
+    <div className={cn('flex flex-col gap-4 pb-6 lg:gap-5 lg:pb-8', className)}>
       {cabecera}
       {avisos}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-5">
@@ -55,7 +58,7 @@ export function FormularioDocumentoLayout({ cabecera, avisos, datos, tercero, li
         <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:self-start">{resumen}</div>
       </div>
       {pieMovil && (
-        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-line bg-surface px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg lg:hidden">
+        <div ref={refPie} className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-line bg-surface px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg lg:hidden">
           {pieMovil}
         </div>
       )}

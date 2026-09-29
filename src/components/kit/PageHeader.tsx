@@ -28,7 +28,12 @@ export interface PageHeaderMovil {
   /** Por defecto, el título y el subtítulo (si es texto) de la cabecera. */
   titulo?: string;
   subtitulo?: string;
-  /** Oculta el MobileTabBar (formularios largos, selección múltiple). */
+  /**
+   * Override explícito del MobileTabBar (`true` lo oculta, `false` lo
+   * muestra). Casi nunca hace falta: la regla central de
+   * `shell/header/cabeceraMovil.tsx` ya lo quita en detalles, formularios,
+   * flujos y mientras se ve una barra inferior propia (BulkActionBar…).
+   */
   ocultarBarra?: boolean;
 }
 

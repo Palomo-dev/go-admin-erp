@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { BotonImporte } from '@/components/kit';
 import { clasesBadgeTono } from '@/components/ui/badge';
 import { cn } from '@/utils/Utils';
+import { useBarraInferiorPropia } from '@/components/shell/header/cabeceraMovil';
 import { teclaAtajo } from '@/lib/pos/venta/atajos';
 import type { EstadoBotonCobrar } from '@/lib/pos/venta/requisitosCarrito';
 
@@ -31,11 +32,14 @@ export function BarraCobroMovil({ unidades, total, estado, onVerCarrito, onCobra
   const t = useTranslations('posVenta.barraMovil');
   const tMembresias = useTranslations('membresias.pos');
   const sinCaja = estado === 'sin-caja';
+  // Barra inferior propia: el shell oculta la suya y deja abajo este alto.
+  const refBarra = useBarraInferiorPropia();
   return (
     <div
+      ref={refBarra}
       role="region"
       aria-label={t('etiqueta')}
-      className="fixed inset-x-0 bottom-[var(--shell-barra-inferior,0px)] z-40 flex items-center gap-3 border-t border-line bg-surface px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-line bg-surface px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] lg:hidden"
     >
       <button
         type="button"

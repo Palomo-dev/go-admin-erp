@@ -794,3 +794,43 @@ listados, altas rápidas con los servicios de siempre, formas de pago en una con
 
 Pruebas: `kit/__tests__/edicionDocumento.test.ts` (lógica), `kit/__tests__/renderEdicionDocumento.test.tsx`
 (render), `src/__tests__/finanzas/documentos/edicionDocumentoServicio.test.ts` (servicio).
+
+## Adenda 2026-09-29 — barra inferior móvil (MobileTabBar): una sola regla
+
+Decisión aprobada por el dueño el 2026-09-29. Figma: nota de uso junto a `MobileTabBar` `57:3101`
+(`02 Componentes` › Navegación, nodo `1153:36194`) y 83 frames de 390 sin la barra.
+
+**Regla.** La barra inferior (Inicio · Ventas · Asistente · Alertas · Menú) se ve SOLO en Inicio y en
+las páginas principales del menú (las raíces del catálogo `CATALOGO_NAV`, sin cablear rutas). No se ve en:
+
+- detalles: manda la flecha «←» del `MobileHeader Mode=page`;
+- formularios (`…/nuevo`, `…/[id]/editar`);
+- flujos de pantalla completa: el POS (y el cobro, «Pesar» y demás, que viven dentro) y las páginas del
+  catálogo con `pantallaCompleta: true` (hoy Mesas y Check-in de membresías);
+- mientras una pieza pone su propia barra inferior fija: `BulkActionBar` en móvil, el pie del
+  `FormularioDocumentoLayout` (total y primario), `BarraCobroMovil` del POS («Cobrar»);
+- con el teclado abierto.
+
+| Pieza | Dónde | Contrato |
+|---|---|---|
+| Regla | `shell/header/cabeceraMovil.tsx` | `barraInferiorVisible({ pathname, pagina, barrasPropias, teclado })`: teclado o barra propia → oculta; `pagina.ocultarBarra` definido → manda (override explícito, `true` oculta y `false` muestra); `pagina.modo === 'pos'` → oculta; si no, `esRaizConBarra(pathname)` |
+| Raíces | `esRaizConBarra` + `PaginaNav.pantallaCompleta` (`lib/navigation/catalog.ts`) | Inicio y toda página del catálogo en modo raíz, menos los formularios y las marcadas `pantallaCompleta` |
+| Barras propias | `useBarraInferiorPropia(activa)` | Devuelve la ref del elemento fijo; mientras `activa`, cuenta como barra propia y registra su alto medido (ResizeObserver). Fuera del shell no hace nada |
+| Shell | `AppHeader.tsx` | Lee `useBarrasInferioresPropias()` y fija `--shell-barra-inferior` con `espacioInferior()`: la barra de la app (`calc(4rem + env(safe-area-inset-bottom))`), si no la propia más alta en px, si no `0px` |
+
+**Paginación tapada en móvil — causa y arreglo (una vez, en el shell).** El contenedor con scroll de
+`AppLayout` tenía `max-lg:pb-[var(--shell-barra-inferior)]`, pero las páginas iban dentro de un envoltorio
+`h-full`: el contenido que lo desborda no recibe el padding del contenedor, así que el final del listado
+(la `Pagination`) quedaba debajo de la barra fija. Ahora las páginas son hijas directas del contenedor con
+scroll; una página `h-full` mide el alto visible ya sin la barra. Con la `BulkActionBar` abierta el espacio
+inferior es el alto de esa barra, no el de la de la app. Vale para todos los listados (productos, facturas
+de venta y compra, clientes, cajas, ventas del POS, CxC, CxP, stock, movimientos, ajustes, traslados).
+
+**Qué no hacer.** No volver a poner `ocultarBarra` a mano en formularios, detalles ni selección múltiple:
+lo resuelve la regla. Una pieza nueva con barra fija abajo usa `useBarraInferiorPropia` y `bottom-0`, no
+`bottom-[var(--shell-barra-inferior)]`. Los flotantes que deben quedar por encima de cualquier barra
+(toasts, softphone, botón de acción de un detalle) sí usan `--shell-barra-inferior`.
+
+Pruebas: `src/components/shell/header/__tests__/barraInferior.test.tsx` (inicio y raíz visibles; detalle,
+formulario, POS, flujos, BulkActionBar abierta y teclado ocultan; override; espacio inferior; AppLayout sin
+envoltorio `h-full`).

@@ -13,45 +13,6 @@
  *  - Edge cases de conversión y formato (Ronda 2 del loop de mejora)
  */
 
-// Mock del módulo facebookCatalogExport para evitar el side-effect de crear
-// un cliente Supabase al importar @/lib/supabase/config (que requiere env vars).
-// Solo proveemos FACEBOOK_CATALOG_HEADERS, que es lo único que usa facebookFeedService.
-jest.mock('@/components/inventario/productos/facebookCatalogExport', () => ({
-  FACEBOOK_CATALOG_HEADERS: [
-    'id',
-    'title',
-    'description',
-    'availability',
-    'condition',
-    'price',
-    'link',
-    'image_link',
-    'brand',
-    'google_product_category',
-    'fb_product_category',
-    'quantity_to_sell_on_facebook',
-    'sale_price',
-    'sale_price_effective_date',
-    'item_group_id',
-    'gender',
-    'color',
-    'size',
-    'age_group',
-    'material',
-    'pattern',
-    'shipping',
-    'shipping_weight',
-    'offer_disclaimer',
-    'offer_disclaimer_url',
-    'video[0].url',
-    'video[0].tag[0]',
-    'gtin',
-    'product_tags[0]',
-    'product_tags[1]',
-    'style[0]',
-  ],
-}));
-
 import {
   formatPriceWithDecimals,
   InvalidCurrencyError,
@@ -61,7 +22,7 @@ import * as FacebookFeedService from '@/lib/services/facebookFeedService';
 // `RateUnavailableError` la está añadiendo otro builder en paralelo.
 // Accedemos de forma defensiva para no romper los tests existentes si la
 // clase aún no está exportada (en ese caso los tests se skip-an).
-const RateUnavailableError = (FacebookFeedService as any)
+const RateUnavailableError = (FacebookFeedService as unknown as Record<string, unknown>)
   .RateUnavailableError as (new (currency: string) => Error) | undefined;
 
 // ─── Tests de formatPriceWithDecimals ───────────────────────────────────────
@@ -321,13 +282,13 @@ describe('RateUnavailableError', () => {
   it('tiene code = "RATE_UNAVAILABLE"', () => {
     if (!ctor) return;
     const err = new ctor('JPY');
-    expect((err as any).code).toBe('RATE_UNAVAILABLE');
+    expect((err as Error & { code?: string }).code).toBe('RATE_UNAVAILABLE');
   });
 
   it('guarda el currency que causó el error', () => {
     if (!ctor) return;
     const err = new ctor('COP');
-    expect((err as any).currency).toBe('COP');
+    expect((err as Error & { currency?: string }).currency).toBe('COP');
   });
 
   it('tiene el nombre correcto', () => {

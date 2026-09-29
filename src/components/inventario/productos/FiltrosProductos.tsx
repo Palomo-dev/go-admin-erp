@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { LayoutGrid, Table2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import {
@@ -10,6 +11,7 @@ import {
   ListToolbar,
   SearchInput,
   SegmentedControl,
+  ViewToggle,
   useEsEscritorio,
   type ListadoServidor,
 } from '@/components/kit';
@@ -46,11 +48,26 @@ export interface FiltrosProductosProps {
   buscando?: boolean;
   /** Resultados con los filtros actuales, para «Ver N productos» (móvil). */
   totalResultados: number;
+  /** Nombres de `?etiqueta=` y `?proveedor=` para sus chips (llegan de Etiquetas y Proveedores). */
+  nombresRelacion?: { etiqueta?: string | null; proveedor?: string | null };
+  /** Vista del catálogo en escritorio (Figma `ViewToggle`: Tabla | Tarjetas). */
+  vista?: VistaCatalogo;
+  onVistaChange?: (vista: VistaCatalogo) => void;
 }
+
+export type VistaCatalogo = 'lista' | 'tarjetas';
 
 const TODOS = 'todos';
 
-const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ listado, onBusquedaRapida, buscando, totalResultados }) => {
+const FiltrosProductos: React.FC<FiltrosProductosProps> = ({
+  listado,
+  onBusquedaRapida,
+  buscando,
+  totalResultados,
+  nombresRelacion,
+  vista = 'lista',
+  onVistaChange,
+}) => {
   const t = useTranslations('productos.filtros');
   const entero = useFormatoEntero();
   const { organization } = useOrganization();
@@ -81,8 +98,8 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ listado, onBusqueda
   );
 
   const chips = useMemo(
-    () => chipsFiltros(f, (id) => categorias.find((c) => String(c.id) === id)?.name, t),
-    [f, categorias, t],
+    () => chipsFiltros(f, (id) => categorias.find((c) => String(c.id) === id)?.name, t, nombresRelacion),
+    [f, categorias, t, nombresRelacion],
   );
 
   const setFiltro = (clave: string, valor: string | null) => listado.setFiltro(clave, valor && valor !== TODOS ? valor : null);
@@ -103,132 +120,167 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ listado, onBusqueda
         />
       }
       filtros={
-        <FilterPanel
-          conteo={listado.filtrosActivos}
-          onLimpiar={listado.limpiarFiltros}
-          textoVerResultados={t('verResultados', { count: totalResultados, n: entero(totalResultados) })}
-          nota={t('nota')}
-        >
-          {!escritorio && (
-            <FormField etiqueta={t('ordenarPor')}>
+        <div className="flex items-center gap-2">
+          <FilterPanel
+            conteo={listado.filtrosActivos}
+            onLimpiar={listado.limpiarFiltros}
+            textoVerResultados={t('verResultados', { count: totalResultados, n: entero(totalResultados) })}
+            nota={t('nota')}
+          >
+            {!escritorio && (
+              <FormField etiqueta={t('ordenarPor')}>
+                {(campo) => (
+                  <Select
+                    value={ordenActual >= 0 ? String(ordenActual) : '0'}
+                    onValueChange={(v) => {
+                      const o = OPCIONES_ORDEN[Number(v)];
+                      if (o) listado.setOrden({ campo: o.campo, direccion: o.direccion });
+                    }}
+                  >
+                    <SelectTrigger id={campo.id} className="h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {OPCIONES_ORDEN.map((o, i) => (
+                        <SelectItem key={`${o.campo}-${o.direccion}`} value={String(i)}>
+                          {t(`orden.${o.campo}_${o.direccion}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </FormField>
+            )}
+
+            <FormField etiqueta={t('categoria')}>
+              {() => (
+                <SearchSelect
+                  options={opcionesCategoria}
+                  value={f.categoria ?? TODOS}
+                  onValueChange={(v) => setFiltro('categoria', v)}
+                  placeholder={t('todas')}
+                  searchPlaceholder={t('buscarCategoria')}
+                  emptyText={t('sinCategorias')}
+                  noneLabel={t('todas')}
+                  noneValue={TODOS}
+                  className="h-10"
+                />
+              )}
+            </FormField>
+
+            <FormField etiqueta={t('estado')} ayuda={f.estado ? undefined : t('estadoAyuda')}>
               {(campo) => (
-                <Select
-                  value={ordenActual >= 0 ? String(ordenActual) : '0'}
-                  onValueChange={(v) => {
-                    const o = OPCIONES_ORDEN[Number(v)];
-                    if (o) listado.setOrden({ campo: o.campo, direccion: o.direccion });
-                  }}
-                >
-                  <SelectTrigger id={campo.id} className="h-10">
+                <Select value={f.estado ?? TODOS} onValueChange={(v) => setFiltro('estado', v)}>
+                  <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']} className="h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {OPCIONES_ORDEN.map((o, i) => (
-                      <SelectItem key={`${o.campo}-${o.direccion}`} value={String(i)}>
-                        {t(`orden.${o.campo}_${o.direccion}`)}
+                    <SelectItem value={TODOS}>{t('todos')}</SelectItem>
+                    {ESTADOS_PRODUCTO.map((e) => (
+                      <SelectItem key={e.valor} value={e.valor}>
+                        {t(`estados.${e.valor}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               )}
             </FormField>
+
+            <FormField etiqueta={t('imagen.etiqueta')}>
+              {(campo) => (
+                <SegmentedControl
+                  aria-labelledby={campo.idEtiqueta}
+                  anchoCompleto
+                  valor={f.imagen ?? TODOS}
+                  onValorChange={(v) => setFiltro('imagen', v)}
+                  opciones={[{ valor: TODOS, etiqueta: t('todas') }, ...OPCIONES_IMAGEN.map((o) => ({ valor: o.valor, etiqueta: t(`imagen.${o.valor}`) }))]}
+                />
+              )}
+            </FormField>
+
+            <FormField etiqueta={t('tipo.etiqueta')}>
+              {(campo) => (
+                <SegmentedControl
+                  aria-labelledby={campo.idEtiqueta}
+                  anchoCompleto
+                  valor={f.tipo ?? TODOS}
+                  onValorChange={(v) => setFiltro('tipo', v)}
+                  opciones={[{ valor: TODOS, etiqueta: t('todos') }, ...OPCIONES_TIPO.map((o) => ({ valor: o.valor, etiqueta: t(`tipo.${o.valor}`) }))]}
+                />
+              )}
+            </FormField>
+
+            <FormField etiqueta={t('stock.etiqueta')} ayuda={t('stockAyuda')}>
+              {(campo) => (
+                <Select value={f.stock ?? TODOS} onValueChange={(v) => setFiltro('stock', v)}>
+                  <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']} className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={TODOS}>{t('todos')}</SelectItem>
+                    {OPCIONES_STOCK.map((o) => (
+                      <SelectItem key={o.valor} value={o.valor}>
+                        {t(`stock.${o.valor}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+
+            <div className="flex flex-col gap-3">
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
+                <Checkbox
+                  checked={!!f.variantes}
+                  onCheckedChange={(v) => setFiltro('variantes', v === true ? 'si' : null)}
+                  className="size-[18px] rounded"
+                />
+                {t('chips.variantes')}
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
+                <Checkbox
+                  checked={!!f.modificadores}
+                  onCheckedChange={(v) => setFiltro('modificadores', v === true ? 'si' : null)}
+                  className="size-[18px] rounded"
+                />
+                {t('chips.modificadores')}
+              </label>
+            </div>
+          </FilterPanel>
+          {/* Escritorio (Figma 120:13625): con tarjetas no hay cabeceras, así que el orden va aquí. */}
+          {escritorio && onVistaChange && vista === 'tarjetas' && (
+            <Select
+              value={ordenActual >= 0 ? String(ordenActual) : '0'}
+              onValueChange={(v) => {
+                const o = OPCIONES_ORDEN[Number(v)];
+                if (o) listado.setOrden({ campo: o.campo, direccion: o.direccion });
+              }}
+            >
+              <SelectTrigger aria-label={t('ordenarPor')} className="h-10 w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {OPCIONES_ORDEN.map((o, i) => (
+                  <SelectItem key={`${o.campo}-${o.direccion}`} value={String(i)}>
+                    {t(`orden.${o.campo}_${o.direccion}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
-
-          <FormField etiqueta={t('categoria')}>
-            {() => (
-              <SearchSelect
-                options={opcionesCategoria}
-                value={f.categoria ?? TODOS}
-                onValueChange={(v) => setFiltro('categoria', v)}
-                placeholder={t('todas')}
-                searchPlaceholder={t('buscarCategoria')}
-                emptyText={t('sinCategorias')}
-                noneLabel={t('todas')}
-                noneValue={TODOS}
-                className="h-10"
-              />
-            )}
-          </FormField>
-
-          <FormField etiqueta={t('estado')} ayuda={f.estado ? undefined : t('estadoAyuda')}>
-            {(campo) => (
-              <Select value={f.estado ?? TODOS} onValueChange={(v) => setFiltro('estado', v)}>
-                <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']} className="h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={TODOS}>{t('todos')}</SelectItem>
-                  {ESTADOS_PRODUCTO.map((e) => (
-                    <SelectItem key={e.valor} value={e.valor}>
-                      {t(`estados.${e.valor}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </FormField>
-
-          <FormField etiqueta={t('imagen.etiqueta')}>
-            {(campo) => (
-              <SegmentedControl
-                aria-labelledby={campo.idEtiqueta}
-                anchoCompleto
-                valor={f.imagen ?? TODOS}
-                onValorChange={(v) => setFiltro('imagen', v)}
-                opciones={[{ valor: TODOS, etiqueta: t('todas') }, ...OPCIONES_IMAGEN.map((o) => ({ valor: o.valor, etiqueta: t(`imagen.${o.valor}`) }))]}
-              />
-            )}
-          </FormField>
-
-          <FormField etiqueta={t('tipo.etiqueta')}>
-            {(campo) => (
-              <SegmentedControl
-                aria-labelledby={campo.idEtiqueta}
-                anchoCompleto
-                valor={f.tipo ?? TODOS}
-                onValorChange={(v) => setFiltro('tipo', v)}
-                opciones={[{ valor: TODOS, etiqueta: t('todos') }, ...OPCIONES_TIPO.map((o) => ({ valor: o.valor, etiqueta: t(`tipo.${o.valor}`) }))]}
-              />
-            )}
-          </FormField>
-
-          <FormField etiqueta={t('stock.etiqueta')} ayuda={t('stockAyuda')}>
-            {(campo) => (
-              <Select value={f.stock ?? TODOS} onValueChange={(v) => setFiltro('stock', v)}>
-                <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']} className="h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={TODOS}>{t('todos')}</SelectItem>
-                  {OPCIONES_STOCK.map((o) => (
-                    <SelectItem key={o.valor} value={o.valor}>
-                      {t(`stock.${o.valor}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </FormField>
-
-          <div className="flex flex-col gap-3">
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
-              <Checkbox
-                checked={!!f.variantes}
-                onCheckedChange={(v) => setFiltro('variantes', v === true ? 'si' : null)}
-                className="size-[18px] rounded"
-              />
-              {t('chips.variantes')}
-            </label>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
-              <Checkbox
-                checked={!!f.modificadores}
-                onCheckedChange={(v) => setFiltro('modificadores', v === true ? 'si' : null)}
-                className="size-[18px] rounded"
-              />
-              {t('chips.modificadores')}
-            </label>
-          </div>
-        </FilterPanel>
+          {escritorio && onVistaChange && (
+            <ViewToggle<VistaCatalogo>
+              valor={vista}
+              onValorChange={onVistaChange}
+              etiqueta={t('vista.etiqueta')}
+              modoMovil="segmentos"
+              opciones={[
+                { valor: 'lista', etiqueta: t('vista.lista'), icono: Table2 },
+                { valor: 'tarjetas', etiqueta: t('vista.tarjetas'), icono: LayoutGrid },
+              ]}
+            />
+          )}
+        </div>
       }
       chips={
         <FilterChips

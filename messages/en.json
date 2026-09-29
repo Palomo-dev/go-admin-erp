@@ -6935,7 +6935,14 @@
         "estado": "Status: {valor}",
         "tipo": "Type: {valor}",
         "variantes": "With variants",
-        "modificadores": "With modifiers"
+        "modificadores": "With modifiers",
+        "etiqueta": "Tag: {nombre}",
+        "proveedor": "Supplier: {nombre}"
+      },
+      "vista": {
+        "etiqueta": "Catalog view",
+        "lista": "Table",
+        "tarjetas": "Cards"
       }
     },
     "cabecera": {
@@ -7131,7 +7138,9 @@
       "error": {
         "titulo": "Couldn't load the catalog",
         "descripcion": "Check your connection and try again."
-      }
+      },
+      "seleccionar": "Select {nombre}",
+      "sinPrecio": "No price"
     },
     "catalogo": {
       "errorTitulo": "Error",

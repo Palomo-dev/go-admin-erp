@@ -40,7 +40,7 @@ export function nivelStock(p: Producto, branchFilter: number | null): NivelStock
 // ─── Filtros del listado (claves de la URL) ─────────────────────────────────
 
 /** Claves de filtro admitidas en la URL (lista blanca de `useListadoServidor`). */
-export const CLAVES_FILTRO = ['categoria', 'estado', 'imagen', 'tipo', 'stock', 'variantes', 'modificadores'] as const;
+export const CLAVES_FILTRO = ['categoria', 'estado', 'imagen', 'tipo', 'stock', 'variantes', 'modificadores', 'etiqueta', 'proveedor'] as const;
 export type ClaveFiltro = (typeof CLAVES_FILTRO)[number];
 
 /** Estados que se mandan a la RPC. Sin estado = todo menos eliminados. */
@@ -82,6 +82,12 @@ export function categoriaParaRpc(valor: string | undefined): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
+/**
+ * `?etiqueta=<id>` y `?proveedor=<id>` (enlaces de Etiquetas y Proveedores):
+ * se resuelven a ids de producto (`resolverFiltroRelacion`) y viajan a la RPC.
+ */
+export const idRelacionParaRpc = categoriaParaRpc;
+
 export interface ChipCatalogo {
   clave: ClaveFiltro;
   etiqueta: string;
@@ -100,6 +106,7 @@ export function chipsFiltros(
   filtros: Readonly<Record<string, string>>,
   nombreCategoria: (id: string) => string | undefined,
   t?: TraductorCatalogo,
+  nombres: { etiqueta?: string | null; proveedor?: string | null } = {},
 ): ChipCatalogo[] {
   // Traducción si hay `t` y la clave existe (valor conocido); si no, el español de siempre.
   const texto = (clave: string, espanol: string, valores?: Record<string, string>, existe = true) =>
@@ -137,6 +144,14 @@ export function chipsFiltros(
   }
   if (f.variantes) chips.push({ clave: 'variantes', etiqueta: texto('chips.variantes', 'Con variantes') });
   if (f.modificadores) chips.push({ clave: 'modificadores', etiqueta: texto('chips.modificadores', 'Con modificadores') });
+  if (f.etiqueta) {
+    const nombre = nombres.etiqueta ?? `#${f.etiqueta}`;
+    chips.push({ clave: 'etiqueta', etiqueta: texto('chips.etiqueta', `Etiqueta: ${nombre}`, { nombre }) });
+  }
+  if (f.proveedor) {
+    const nombre = nombres.proveedor ?? `#${f.proveedor}`;
+    chips.push({ clave: 'proveedor', etiqueta: texto('chips.proveedor', `Proveedor: ${nombre}`, { nombre }) });
+  }
   return chips;
 }
 

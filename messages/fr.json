@@ -6830,7 +6830,14 @@
         "estado": "Statut : {valor}",
         "tipo": "Type : {valor}",
         "variantes": "Avec variantes",
-        "modificadores": "Avec options"
+        "modificadores": "Avec options",
+        "etiqueta": "Étiquette : {nombre}",
+        "proveedor": "Fournisseur : {nombre}"
+      },
+      "vista": {
+        "etiqueta": "Vue du catalogue",
+        "lista": "Tableau",
+        "tarjetas": "Cartes"
       }
     },
     "cabecera": {
@@ -7026,7 +7033,9 @@
       "error": {
         "titulo": "Impossible de charger le catalogue",
         "descripcion": "Vérifiez la connexion et réessayez."
-      }
+      },
+      "seleccionar": "Sélectionner {nombre}",
+      "sinPrecio": "Sans prix"
     },
     "catalogo": {
       "errorTitulo": "Erreur",

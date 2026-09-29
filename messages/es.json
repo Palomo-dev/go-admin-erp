@@ -6935,7 +6935,14 @@
         "estado": "Estado: {valor}",
         "tipo": "Tipo: {valor}",
         "variantes": "Con variantes",
-        "modificadores": "Con modificadores"
+        "modificadores": "Con modificadores",
+        "etiqueta": "Etiqueta: {nombre}",
+        "proveedor": "Proveedor: {nombre}"
+      },
+      "vista": {
+        "etiqueta": "Vista del catálogo",
+        "lista": "Tabla",
+        "tarjetas": "Tarjetas"
       }
     },
     "cabecera": {
@@ -7131,7 +7138,9 @@
       "error": {
         "titulo": "No se pudo cargar el catálogo",
         "descripcion": "Revisa la conexión e inténtalo de nuevo."
-      }
+      },
+      "seleccionar": "Seleccionar {nombre}",
+      "sinPrecio": "Sin precio"
     },
     "catalogo": {
       "errorTitulo": "Error",

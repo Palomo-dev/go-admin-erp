@@ -1,28 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Pencil, Trash2 } from 'lucide-react';
-import { Card } from '@/components/ui/card';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Layers, Pencil, Trash2 } from 'lucide-react';
+import { Dialogo, EmptyState, FormField, PanelAdaptable } from '@/components/kit';
 
 interface ZonasManagerProps {
   open: boolean;
@@ -39,6 +23,7 @@ export function ZonasManager({
   onEditarZona,
   onEliminarZona,
 }: ZonasManagerProps) {
+  const t = useTranslations('posMesas.zonas');
   const [zonaEditar, setZonaEditar] = useState<string | null>(null);
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [zonaEliminar, setZonaEliminar] = useState<string | null>(null);
@@ -75,111 +60,92 @@ export function ZonasManager({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Gestionar Zonas</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-            {zonas.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                No hay zonas creadas
-              </div>
-            ) : (
-              zonas.map((zona) => (
-                <Card key={zona} className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900 dark:text-gray-100">
-                        {zona}
-                      </h3>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setZonaEditar(zona);
-                          setNuevoNombre(zona);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setZonaEliminar(zona)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cerrar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Editar Zona */}
-      <Dialog open={!!zonaEditar} onOpenChange={() => setZonaEditar(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Zona</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nuevo nombre</Label>
-              <Input
-                value={nuevoNombre}
-                onChange={(e) => setNuevoNombre(e.target.value)}
-                placeholder="Nombre de la zona"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setZonaEditar(null)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleEditar} disabled={isProcessing}>
-              {isProcessing ? 'Guardando...' : 'Guardar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Alert Dialog Eliminar */}
-      <AlertDialog
-        open={!!zonaEliminar}
-        onOpenChange={() => setZonaEliminar(null)}
+      <PanelAdaptable
+        abierto={open}
+        onAbiertoChange={onOpenChange}
+        titulo={t('titulo')}
+        icono={Layers}
+        ancho={560}
+        pie={
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {t('cerrar')}
+          </Button>
+        }
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar zona?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción quitará la zona de todas las mesas asociadas. Las
-              mesas no serán eliminadas, solo quedarán sin zona asignada.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleEliminar}
-              disabled={isProcessing}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {isProcessing ? 'Eliminando...' : 'Eliminar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {zonas.length === 0 ? (
+          <EmptyState compacto variante="empty" icono={Layers} titulo={t('vacioTitulo')} descripcion={t('vacioDescripcion')} />
+        ) : (
+          <ul className="flex flex-col divide-y divide-line rounded-lg border border-line">
+            {zonas.map((zona) => (
+              <li key={zona} className="flex items-center justify-between gap-3 px-4 py-3">
+                <span className="min-w-0 truncate font-medium text-fg">{zona}</span>
+                <div className="flex shrink-0 gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={t('editarZona', { zona })}
+                    title={t('editarZona', { zona })}
+                    onClick={() => {
+                      setZonaEditar(zona);
+                      setNuevoNombre(zona);
+                    }}
+                  >
+                    <Pencil aria-hidden="true" className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={t('eliminarZona', { zona })}
+                    title={t('eliminarZona', { zona })}
+                    onClick={() => setZonaEliminar(zona)}
+                  >
+                    <Trash2 aria-hidden="true" className="h-4 w-4 text-danger-text" />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </PanelAdaptable>
+
+      {/* Editar zona */}
+      <Dialogo
+        abierto={!!zonaEditar}
+        onAbiertoChange={(o) => !o && setZonaEditar(null)}
+        titulo={t('editarTitulo')}
+        icono={Pencil}
+        ancho={440}
+        primario={{
+          etiqueta: t('guardar'),
+          onClick: handleEditar,
+          cargando: isProcessing,
+          deshabilitada: !nuevoNombre.trim(),
+        }}
+      >
+        <FormField etiqueta={t('nuevoNombre')}>
+          <Input
+            value={nuevoNombre}
+            onChange={(e) => setNuevoNombre(e.target.value)}
+            placeholder={t('placeholder')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleEditar();
+            }}
+          />
+        </FormField>
+      </Dialogo>
+
+      {/* Eliminar zona */}
+      <ConfirmDialog
+        open={!!zonaEliminar}
+        onOpenChange={(o) => !o && setZonaEliminar(null)}
+        title={t('eliminarTitulo')}
+        description={t('eliminarDescripcion')}
+        confirmLabel={t('eliminar')}
+        cancelLabel={t('cancelar')}
+        variant="destructive"
+        loading={isProcessing}
+        onConfirm={handleEliminar}
+      />
     </>
   );
 }

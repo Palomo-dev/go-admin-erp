@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Clock, CheckCircle, ChefHat, AlertCircle, User, Check, Hash, Printer, Loader2, AlertTriangle, RefreshCcw } from 'lucide-react';
+import { Clock, CheckCircle, ChefHat, AlertCircle, User, Check, Hash, Printer, Loader2, AlertTriangle, RefreshCcw, Flame, StickyNote } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -161,7 +161,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
   const timeUrgencyClasses: Record<typeof timeUrgency, string> = {
     ok: 'text-gray-600 dark:text-gray-400',
     warning: 'text-orange-600 dark:text-orange-400 font-semibold',
-    critical: 'text-red-600 dark:text-red-400 font-bold animate-pulse',
+    critical: 'text-red-600 dark:text-red-400 font-bold',
   };
 
   const cardUrgencyBorder: Record<typeof timeUrgency, string> = {
@@ -213,7 +213,12 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
               <div className={`flex items-center gap-1 ${timeUrgencyClasses[timeUrgency]}`}>
                 <Clock className="h-4 w-4" />
                 <span>{t('tarjeta.minutos', { n: timeElapsed })}</span>
-                {timeUrgency === 'critical' && <span title={t('tarjeta.esperaElevada')}>🔥</span>}
+                {timeUrgency === 'critical' && (
+                  <span title={t('tarjeta.esperaElevada')} className="inline-flex">
+                    <Flame aria-hidden="true" className="h-4 w-4 shrink-0" />
+                    <span className="sr-only">{t('tarjeta.esperaElevada')}</span>
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 <Hash className="h-4 w-4" />
@@ -346,7 +351,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                       <Check className="h-3 w-3 text-white" />
                     </div>
                   ) : item.status === 'in_progress' ? (
-                    <div className="h-5 w-5 rounded-full bg-orange-500 flex items-center justify-center animate-pulse">
+                    <div className="h-5 w-5 rounded-full bg-orange-500 flex items-center justify-center">
                       <ChefHat className="h-3 w-3 text-white" />
                     </div>
                   ) : (
@@ -424,7 +429,11 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                     <p className={item.is_allergy
                       ? 'mt-2 text-sm font-bold text-red-700 dark:text-red-400 flex items-start gap-1'
                       : 'mt-2 text-sm text-gray-600 dark:text-gray-400 italic'}>
-                      {item.is_allergy ? <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" /> : '📝 '}
+                      {item.is_allergy ? (
+                        <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0 mt-0.5" />
+                      ) : (
+                        <StickyNote aria-hidden="true" className="mr-1 inline h-4 w-4 align-text-bottom" />
+                      )}
                       {item.is_allergy && <span className="uppercase">{t('alergia')}:</span>}
                       {typeof item.notes === 'object' ? (item.notes as { extra?: string } | null)?.extra : item.notes}
                     </p>

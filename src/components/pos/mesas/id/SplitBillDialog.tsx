@@ -13,7 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTranslations } from 'next-intl';
+import { SegmentedControl } from '@/components/kit';
 import { 
   Users, 
   Split, 
@@ -58,6 +59,7 @@ export function SplitBillDialog({
   // vuelve a asignar. Memorizada: el efecto de totales depende de la lista.
   const items = useMemo(() => lineasDeLaCuenta.filter((l) => !l.paid_at), [lineasDeLaCuenta]);
   const [splitMode, setSplitMode] = useState<'items' | 'equal' | 'custom'>('items');
+  const tDividir = useTranslations('posMesas.dividir');
   const [splits, setSplits] = useState<BillSplit[]>([]);
   const [currentSplit, setCurrentSplit] = useState(0);
   const [selectedItems, setSelectedItems] = useState<{[key: string]: {[splitId: string]: number}}>({});
@@ -197,24 +199,22 @@ export function SplitBillDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={splitMode} onValueChange={(v) => setSplitMode(v as 'items' | 'equal' | 'custom')}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="items">
-              <Split className="h-4 w-4 mr-2" />
-              Por Items
-            </TabsTrigger>
-            <TabsTrigger value="equal">
-              <Users className="h-4 w-4 mr-2" />
-              Equitativo
-            </TabsTrigger>
-            <TabsTrigger value="custom">
-              <Calculator className="h-4 w-4 mr-2" />
-              Personalizado
-            </TabsTrigger>
-          </TabsList>
+        <div className="space-y-4">
+          <SegmentedControl
+            anchoCompleto
+            etiqueta={tDividir('modo')}
+            valor={splitMode}
+            onValorChange={setSplitMode}
+            opciones={[
+              { valor: 'items', etiqueta: tDividir('porItems'), icono: Split },
+              { valor: 'equal', etiqueta: tDividir('equitativo'), icono: Users },
+              { valor: 'custom', etiqueta: tDividir('personalizado'), icono: Calculator },
+            ]}
+          />
 
           {/* MODO: Por Items */}
-          <TabsContent value="items" className="space-y-4">
+          {splitMode === 'items' && (
+          <div className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Lista de Items */}
               <div className="lg:col-span-2 space-y-3">
@@ -355,10 +355,12 @@ export function SplitBillDialog({
                 </Card>
               </div>
             </div>
-          </TabsContent>
+          </div>
+          )}
 
           {/* MODO: Equitativo */}
-          <TabsContent value="equal" className="space-y-4">
+          {splitMode === 'equal' && (
+          <div className="space-y-4">
             <div className="text-center py-8">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-4">
                 <Users className="h-8 w-8 text-blue-600" />
@@ -395,10 +397,12 @@ export function SplitBillDialog({
                 Aplicar División Equitativa
               </Button>
             </div>
-          </TabsContent>
+          </div>
+          )}
 
           {/* MODO: Personalizado */}
-          <TabsContent value="custom" className="space-y-4">
+          {splitMode === 'custom' && (
+          <div className="space-y-4">
             <div className="text-center pt-4 pb-2">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 mb-4">
                 <Calculator className="h-8 w-8 text-purple-600" />
@@ -473,8 +477,9 @@ export function SplitBillDialog({
                 Distribuir equitativamente como base
               </Button>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+          )}
+        </div>
 
         <Separator />
 

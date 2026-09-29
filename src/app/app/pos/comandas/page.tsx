@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { PageHeader } from '@/components/pos/comandas/PageHeader';
+import { RefreshCw, ChefHat, Volume2, VolumeX } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { PageHeader, EmptyState, BranchBadgeActiva, RowActionsMenu } from '@/components/kit';
 import { FilterBar } from '@/components/pos/comandas/FilterBar';
 import { LoadingState } from '@/components/pos/comandas/LoadingState';
-import { EmptyState } from '@/components/pos/comandas/EmptyState';
 import { TicketsGrid } from '@/components/pos/comandas/TicketsGrid';
 import { ComandasPagination } from '@/components/pos/comandas/ComandasPagination';
 import { Card } from '@/components/ui/card';
@@ -14,7 +15,6 @@ import { PrintJobsService } from '@/lib/services/printJobsService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { playNotificationBeep } from '@/lib/utils/sound';
-import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { useTranslations } from 'next-intl';
 import { alergiaPendiente } from '@/components/pos/comandas/TicketCard';
 import { confirmarAlergia } from '@/components/pos/cocina/cocinaCliente';
@@ -349,19 +349,61 @@ export default function ComandasPage() {
   }, [zoneFilter, statusFilter, stationFilter, pageSize]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <PageHeader
-        onRefresh={loadTickets}
-        isLoading={isLoading}
-        soundEnabled={soundEnabled}
-        onToggleSound={() => setSoundEnabled((prev) => !prev)}
-      />
-
-      <BranchBadge className="px-3 sm:px-6 py-2" />
+    <div className="min-h-screen bg-canvas">
+      {/* Cabecera del kit (sustituye a la local, que además tapaba el nombre del kit) */}
+      <div className="px-3 pb-4 pt-4 sm:px-6 sm:pt-6">
+        <PageHeader
+          titulo={tComandas('cabecera.titulo')}
+          subtitulo={tComandas('cabecera.subtitulo')}
+          icono={ChefHat}
+          cargando={isLoading}
+          debajo={<BranchBadgeActiva />}
+          acciones={
+            <>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10"
+                onClick={() => setSoundEnabled((prev) => !prev)}
+                aria-label={soundEnabled ? tComandas('cabecera.desactivarSonido') : tComandas('cabecera.activarSonido')}
+                aria-pressed={soundEnabled}
+                title={soundEnabled ? tComandas('cabecera.desactivarSonido') : tComandas('cabecera.activarSonido')}
+              >
+                {soundEnabled ? (
+                  <Volume2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                ) : (
+                  <VolumeX aria-hidden="true" className="size-4 text-fg-muted" strokeWidth={1.5} />
+                )}
+              </Button>
+              <Button variant="outline" className="h-10 gap-2" onClick={loadTickets} disabled={isLoading}>
+                <RefreshCw aria-hidden="true" className={isLoading ? 'size-4 animate-spin' : 'size-4'} strokeWidth={1.5} />
+                {tComandas('cabecera.actualizar')}
+              </Button>
+            </>
+          }
+          movil={{
+            accion: (
+              <RowActionsMenu
+                orientacion="horizontal"
+                tamano="md"
+                titulo={tComandas('cabecera.titulo')}
+                acciones={[
+                  { id: 'actualizar', etiqueta: tComandas('cabecera.actualizar'), icono: RefreshCw, onSelect: loadTickets, deshabilitada: isLoading },
+                  {
+                    id: 'sonido',
+                    etiqueta: soundEnabled ? tComandas('cabecera.desactivarSonido') : tComandas('cabecera.activarSonido'),
+                    icono: soundEnabled ? VolumeX : Volume2,
+                    onSelect: () => setSoundEnabled((prev) => !prev),
+                  },
+                ]}
+              />
+            ),
+          }}
+        />
+      </div>
 
       {/* Filtros */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+      <div className="border-y border-line bg-surface">
         <div className="px-3 sm:px-6">
           <FilterBar
             zoneFilter={zoneFilter}
@@ -386,7 +428,17 @@ export default function ComandasPage() {
         {isLoading ? (
           <LoadingState />
         ) : stationTickets.length === 0 ? (
-          <EmptyState />
+          <EmptyState
+            variante={zoneFilter !== 'all' || stationFilter !== 'all' || statusFilter !== 'all' ? 'search' : 'empty'}
+            titulo={tComandas('vacio.titulo')}
+            descripcion={tComandas('vacio.descripcion')}
+            icono={ChefHat}
+            onLimpiarFiltros={() => {
+              setZoneFilter('all');
+              setStationFilter('all');
+              setStatusFilter('all');
+            }}
+          />
         ) : (
           <>
             <TicketsGrid

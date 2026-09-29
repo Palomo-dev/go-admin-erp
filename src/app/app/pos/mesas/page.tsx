@@ -2,20 +2,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, MoreVertical, LogOut, Users, ArrowLeft, UtensilsCrossed, CheckCircle, Clock, Hash, List, Map, Search, X, Receipt, History } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, LogOut, Users, UtensilsCrossed, LayoutGrid, Map as MapIcon, Receipt, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -23,36 +13,44 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+  PageHeader,
+  BranchBadgeActiva,
+  KpiCompacto,
+  ListToolbar,
+  SearchInput,
+  FilterPanel,
+  FilterChips,
+  SegmentedControl,
+  RowActionsMenu,
+  EmptyState,
+  Dialogo,
+  FormField,
+  CampoNumero,
+  Tarjeta,
+  type AccionFila,
+  type ChipFiltro,
+} from '@/components/kit';
 import { MesaCard } from '@/components/pos/mesas/MesaCard';
+import { ZonaHeader } from '@/components/pos/mesas/ZonaHeader';
 import { MesaFormDialog } from '@/components/pos/mesas/MesaFormDialog';
 import { ZonasManager } from '@/components/pos/mesas/ZonasManager';
 import { CombinarMesasDialog } from '@/components/pos/mesas/CombinarMesasDialog';
 import { MoverPedidoDialog } from '@/components/pos/mesas/MoverPedidoDialog';
-import { MesasPagination } from '@/components/pos/mesas/MesasPagination';
 import { MesasService } from '@/components/pos/mesas/mesasService';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { MesasFloorMap } from '@/components/pos/mesas/MesasFloorMap';
 import { HistorialMesasDialog } from '@/components/pos/mesas/HistorialMesasDialog';
 import { useBranch } from '@/lib/context/BranchContext';
-import { BranchBadge } from '@/components/inventario/BranchBadge';
 import type { TableWithSession, MesaFormData, RestaurantTable } from '@/components/pos/mesas/types';
 import { LiberarMesaDialog, useAvisoLiberacion } from '@/components/pos/mesas/LiberarMesaDialog';
 import type { ResultadoLiberacion } from '@/components/pos/mesas/liberacionMesaCliente';
 
 export default function MesasPage() {
   const avisoLiberacion = useAvisoLiberacion();
+  const t = useTranslations('posMesas');
   const router = useRouter();
   const { toast } = useToast();
   const { branchFilter, isLoading: branchLoading } = useBranch();
@@ -66,10 +64,6 @@ export default function MesasPage() {
   const isFirstLoadRef = useRef(true);
   const [zoneLayouts, setZoneLayouts] = useState<Record<string, { x: number; y: number; w: number; h: number }>>({});
 
-  // Paginación
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-
   // Estados de modales
   const [showMesaForm, setShowMesaForm] = useState(false);
   const [showZonasManager, setShowZonasManager] = useState(false);
@@ -77,15 +71,15 @@ export default function MesasPage() {
   const [showMover, setShowMover] = useState(false);
   const [mesaEditar, setMesaEditar] = useState<RestaurantTable | null>(null);
   const [mesaEliminar, setMesaEliminar] = useState<RestaurantTable | null>(null);
-  const [mesaSeleccionada, setMesaSeleccionada] = useState<string | null>(null);
   const [mesaParaComensales, setMesaParaComensales] = useState<TableWithSession | null>(null);
   const [mesaParaLiberar, setMesaParaLiberar] = useState<TableWithSession | null>(null);
   const [showHistorial, setShowHistorial] = useState(false);
-  const [comensales, setComensales] = useState(2);
-  
+  // `null` mientras el campo está vacío: el diálogo no deja guardar.
+  const [comensales, setComensales] = useState<number | null>(2);
+
   // Estados para abrir sesión
   const [mesaParaAbrirSesion, setMesaParaAbrirSesion] = useState<TableWithSession | null>(null);
-  const [comensalesNuevaSesion, setComensalesNuevaSesion] = useState(2);
+  const [comensalesNuevaSesion, setComensalesNuevaSesion] = useState<number | null>(2);
   
   // Modo de combinación rápida
   const [modoCombinar, setModoCombinar] = useState(false);
@@ -147,16 +141,7 @@ export default function MesasPage() {
       busqueda.trim() === '' ? true : m.name.toLowerCase().includes(busqueda.trim().toLowerCase())
     );
 
-  // Calcular paginación
-  const totalPages = Math.ceil(mesasFiltradas.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const mesasPaginadas = mesasFiltradas.slice(startIndex, endIndex);
-
-  // Resetear página cuando cambia el filtro
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [zonaFiltro, estadoFiltro, busqueda, pageSize]);
+  // Sin paginación (POS-MESAS-VISTAS §3.2): el salón se ve entero, por zonas.
 
   // Handlers
   const handleCrearMesa = async (data: MesaFormData) => {
@@ -332,7 +317,7 @@ export default function MesasPage() {
   };
 
   const handleActualizarComensales = async () => {
-    if (!mesaParaComensales?.session?.id) return;
+    if (!mesaParaComensales?.session?.id || comensales === null) return;
 
     try {
       await MesasService.actualizarComensales(mesaParaComensales.session.id, comensales);
@@ -353,7 +338,7 @@ export default function MesasPage() {
   };
 
   const handleAbrirSesion = async () => {
-    if (!mesaParaAbrirSesion) return;
+    if (!mesaParaAbrirSesion || comensalesNuevaSesion === null) return;
 
     const mesaId = mesaParaAbrirSesion.id;
     const mesaName = mesaParaAbrirSesion.name;
@@ -429,7 +414,7 @@ export default function MesasPage() {
       await handleCombinarMesas(mesaPrincipal, mesasACombinar);
       setModoCombinar(false);
       setMesasParaCombinar([]);
-    } catch (error) {
+    } catch {
       // El error ya se maneja en handleCombinarMesas
     }
   };
@@ -472,68 +457,231 @@ export default function MesasPage() {
 
   if (branchLoading || (isLoading && mesas.length === 0)) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="min-h-screen space-y-4 bg-canvas p-4 sm:space-y-6 sm:p-6 lg:p-8">
         <PageHeaderSkeleton />
         <CardListSkeleton cards={6} columns="1" />
       </div>
     );
   }
 
-  return (
-    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 p-6 space-y-6 ${isRefreshing ? 'opacity-60 pointer-events-none' : ''}`}>
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/app/pos">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <UtensilsCrossed className="h-6 w-6 text-blue-600" />
-              </div>
-              Plano de Mesas
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              POS / Mesas
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Toggle Lista / Mapa */}
-          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-              className={viewMode === 'list' ? 'bg-blue-600 dark:bg-blue-600 text-white dark:text-white shadow-sm' : ''}
-            >
-              <List className="h-4 w-4 mr-1" />
-              Lista
-            </Button>
-            <Button
-              variant={viewMode === 'map' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('map')}
-              className={viewMode === 'map' ? 'bg-blue-600 dark:bg-blue-600 text-white dark:text-white shadow-sm' : ''}
-            >
-              <Map className="h-4 w-4 mr-1" />
-              Mapa
-            </Button>
-          </div>
-          <Button variant="outline" size="icon" onClick={cargarDatos} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </Button>
-          <Button onClick={() => setShowMesaForm(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Mesa
-          </Button>
-        </div>
-      </div>
+  // Conteos de la leyenda-filtro (interina hasta `LeyendaEstadosMesa`).
+  const nLibres = mesas.filter((m) => m.state === 'free').length;
+  const nOcupadas = mesas.filter((m) => m.state === 'occupied').length;
+  const nCuenta = mesas.filter((m) => m.session?.status === 'bill_requested').length;
+  const nReservadas = mesas.filter((m) => m.state === 'reserved').length;
 
-      <BranchBadge className="mb-3" />
+  const hayFiltros = busqueda.trim() !== '' || zonaFiltro !== 'todas' || estadoFiltro !== 'todos';
+  const limpiarFiltros = () => {
+    setBusqueda('');
+    setZonaFiltro('todas');
+    setEstadoFiltro('todos');
+  };
+  const chips: ChipFiltro[] = [];
+  if (zonaFiltro !== 'todas') {
+    chips.push({ clave: 'zona', etiqueta: t('filtros.chipZona', { zona: zonaFiltro === 'sin-zona' ? t('zona.sinZona') : zonaFiltro }) });
+  }
+  if (estadoFiltro !== 'todos') {
+    chips.push({ clave: 'estado', etiqueta: t('filtros.chipEstado', { estado: t(`estados.${estadoFiltro}`) }) });
+  }
+
+  const accionesMas: AccionFila[] = [
+    { id: 'zonas', etiqueta: t('acciones.gestionarZonas'), icono: Layers, onSelect: () => setShowZonasManager(true) },
+    { id: 'mover', etiqueta: t('acciones.moverPedido'), icono: MoveRight, onSelect: () => setShowMover(true) },
+    {
+      id: 'combinar',
+      etiqueta: modoCombinar ? t('acciones.cancelarCombinacion') : t('acciones.combinar'),
+      icono: GitMerge,
+      onSelect: handleToggleModoCombinar,
+    },
+    { id: 'historial', etiqueta: t('acciones.historial'), icono: History, onSelect: () => setShowHistorial(true), separadorAntes: true },
+  ];
+
+  const tarjetasDe = (lista: TableWithSession[]) =>
+    lista.map((mesa) => (
+      <MesaCardWithMenu
+        key={mesa.id}
+        mesa={mesa}
+        onEdit={() => {
+          setMesaEditar(mesa);
+          setShowMesaForm(true);
+        }}
+        onLiberar={() => handleLiberarMesa(mesa)}
+        onSolicitarCuenta={() => handleSolicitarCuenta(mesa)}
+        onEditarComensales={() => {
+          setMesaParaComensales(mesa);
+          setComensales(mesa.session?.customers || 2);
+        }}
+        onClick={() => handleMesaClick(mesa)}
+        modoCombinar={modoCombinar}
+        isSelected={mesasParaCombinar.includes(mesa.id)}
+        selectionIndex={mesasParaCombinar.indexOf(mesa.id)}
+        onToggleSelect={() => handleToggleMesaCombinar(mesa.id)}
+      />
+    ));
+
+  const CLASES_GRILLA = 'grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5';
+
+  return (
+    <div className="min-h-screen space-y-6 bg-canvas p-4 sm:p-6">
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={t('subtitulo', { n: mesas.length })}
+        icono={UtensilsCrossed}
+        cargando={isRefreshing}
+        debajo={<BranchBadgeActiva />}
+        acciones={
+          <>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10"
+              onClick={cargarDatos}
+              disabled={isRefreshing}
+              aria-label={t('acciones.actualizar')}
+              title={t('acciones.actualizar')}
+            >
+              <RefreshCw aria-hidden="true" className={isRefreshing ? 'size-4 animate-spin' : 'size-4'} strokeWidth={1.5} />
+            </Button>
+            <RowActionsMenu orientacion="horizontal" tamano="md" acciones={accionesMas} />
+            <Button className="h-10 gap-2" onClick={() => setShowMesaForm(true)}>
+              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('acciones.nuevaMesa')}
+            </Button>
+          </>
+        }
+        movil={{
+          accion: (
+            <RowActionsMenu
+              orientacion="horizontal"
+              tamano="md"
+              titulo={t('titulo')}
+              acciones={[
+                { id: 'nueva', etiqueta: t('acciones.nuevaMesa'), icono: Plus, onSelect: () => setShowMesaForm(true) },
+                { id: 'actualizar', etiqueta: t('acciones.actualizar'), icono: RefreshCw, onSelect: cargarDatos },
+                ...accionesMas.map((a, i) => (i === 0 ? { ...a, separadorAntes: true } : a)),
+              ]}
+            />
+          ),
+        }}
+      />
+
+      {/* Leyenda-filtro por estado (interina: `LeyendaEstadosMesa` es GRANDE) */}
+      <KpiCompacto
+        etiqueta={t('leyenda.etiqueta')}
+        cifras={[
+          { id: 'todos', etiqueta: t('leyenda.todas'), valor: mesas.length, onClick: () => setEstadoFiltro('todos') },
+          { id: 'free', etiqueta: t('leyenda.libres'), valor: nLibres, tono: 'exito', onClick: () => setEstadoFiltro('free') },
+          { id: 'occupied', etiqueta: t('leyenda.ocupadas'), valor: nOcupadas, tono: 'peligro', onClick: () => setEstadoFiltro('occupied') },
+          { id: 'bill', etiqueta: t('leyenda.porCobrar'), valor: nCuenta, tono: 'advertencia', onClick: () => setEstadoFiltro('bill_requested') },
+          { id: 'reserved', etiqueta: t('leyenda.reservadas'), valor: nReservadas, tono: 'informacion', onClick: () => setEstadoFiltro('reserved') },
+        ]}
+      />
+
+      {/* Barra: buscador, filtros y vista (común a cuadrícula y plano: el plano también filtra) */}
+      <ListToolbar
+        busqueda={
+          <SearchInput
+            value={busqueda}
+            onChange={setBusqueda}
+            onValueChange={setBusqueda}
+            placeholder={t('filtros.buscar')}
+            atajo={false}
+          />
+        }
+        filtros={
+          <>
+            <FilterPanel conteo={chips.length} onLimpiar={() => { setZonaFiltro('todas'); setEstadoFiltro('todos'); }}>
+              <FormField etiqueta={t('filtros.zona')}>
+                {(c) => (
+                  <Select value={zonaFiltro} onValueChange={setZonaFiltro}>
+                    <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todas">{t('filtros.todasZonas')}</SelectItem>
+                      <SelectItem value="sin-zona">{t('zona.sinZona')}</SelectItem>
+                      {zonas.map((zona) => (
+                        <SelectItem key={zona} value={zona}>
+                          {zona}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </FormField>
+              <FormField etiqueta={t('filtros.estado')}>
+                {(c) => (
+                  <Select value={estadoFiltro} onValueChange={(v) => setEstadoFiltro(v as typeof estadoFiltro)}>
+                    <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">{t('filtros.todosEstados')}</SelectItem>
+                      <SelectItem value="free">{t('estados.free')}</SelectItem>
+                      <SelectItem value="occupied">{t('estados.occupied')}</SelectItem>
+                      <SelectItem value="bill_requested">{t('estados.bill_requested')}</SelectItem>
+                      <SelectItem value="reserved">{t('estados.reserved')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </FormField>
+            </FilterPanel>
+            {/* SelectorVista (Figma `868:31799`): con texto en escritorio, solo icono en móvil */}
+            <SegmentedControl
+              etiqueta={t('vista.etiqueta')}
+              tamano="md"
+              valor={viewMode}
+              onValorChange={setViewMode}
+              className="hidden shrink-0 sm:inline-flex"
+              opciones={[
+                { valor: 'list', etiqueta: t('vista.cuadricula'), icono: LayoutGrid },
+                { valor: 'map', etiqueta: t('vista.plano'), icono: MapIcon },
+              ]}
+            />
+            <SegmentedControl
+              etiqueta={t('vista.etiqueta')}
+              tamano="md"
+              valor={viewMode}
+              onValorChange={setViewMode}
+              className="shrink-0 sm:hidden"
+              opciones={[
+                { valor: 'list', etiqueta: t('vista.cuadricula'), icono: LayoutGrid, soloIcono: true },
+                { valor: 'map', etiqueta: t('vista.plano'), icono: MapIcon, soloIcono: true },
+              ]}
+            />
+          </>
+        }
+        chips={
+          <FilterChips
+            chips={chips}
+            onQuitar={(c) => (c === 'zona' ? setZonaFiltro('todas') : setEstadoFiltro('todos'))}
+            onLimpiarTodo={limpiarFiltros}
+          />
+        }
+      />
+
+      {/* Modo combinar: instrucciones y confirmación (antes dentro de «Acciones rápidas») */}
+      {modoCombinar && (
+        <Tarjeta
+          tono="informacion"
+          icono={GitMerge}
+          titulo={t('combinar.titulo')}
+          descripcion={t('combinar.instrucciones')}
+          accion={
+            <>
+              {mesasParaCombinar.length > 0 && (
+                <span className="text-sm font-medium text-fg">{t('combinar.seleccionadas', { n: mesasParaCombinar.length })}</span>
+              )}
+              <Button variant="outline" size="sm" onClick={handleToggleModoCombinar}>
+                {t('acciones.cancelarCombinacion')}
+              </Button>
+              <Button size="sm" onClick={handleCombinarRapido} disabled={mesasParaCombinar.length < 2}>
+                {t('combinar.combinarAhora')}
+              </Button>
+            </>
+          }
+        />
+      )}
 
       {/* === VISTA MAPA === */}
       {viewMode === 'map' && (
@@ -546,330 +694,50 @@ export default function MesasPage() {
         />
       )}
 
-      {/* === VISTA LISTA === */}
-      {viewMode === 'list' && (
-      <>
-      {/* Acciones rápidas */}
-      <Card className="p-4">
-        <div className="flex flex-wrap gap-2 items-center justify-between">
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setShowZonasManager(true)}>
-              <Layers className="h-4 w-4 mr-2" />
-              Gestionar Zonas
-            </Button>
-            <Button 
-              variant={modoCombinar ? "default" : "outline"}
-              onClick={handleToggleModoCombinar}
-              className={modoCombinar ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}
-            >
-              <GitMerge className="h-4 w-4 mr-2" />
-              {modoCombinar ? 'Cancelar Combinación' : 'Combinar Mesas'}
-            </Button>
-            <Button variant="outline" onClick={() => setShowMover(true)}>
-              <MoveRight className="h-4 w-4 mr-2" />
-              Mover Pedido
-            </Button>
-            <Button variant="outline" onClick={() => setShowHistorial(true)}>
-              <History className="h-4 w-4 mr-2" />
-              Historial
-            </Button>
-          </div>
-
-          {/* Barra de acción cuando está en modo combinar */}
-          {modoCombinar && mesasParaCombinar.length > 0 && (
-            <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800">
-              <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                {mesasParaCombinar.length} {mesasParaCombinar.length === 1 ? 'mesa seleccionada' : 'mesas seleccionadas'}
-              </span>
-              <Button
-                size="sm"
-                onClick={handleCombinarRapido}
-                disabled={mesasParaCombinar.length < 2}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Combinar Ahora
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Instrucciones cuando está en modo combinar */}
-        {modoCombinar && (
-          <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-md">
-            <p className="text-sm text-blue-900 dark:text-blue-100">
-              <strong>Modo Combinar:</strong> Selecciona las mesas haciendo clic en los checkboxes. 
-              La primera mesa seleccionada será la principal (recibirá todos los pedidos).
-            </p>
-          </div>
-        )}
-      </Card>
-
-      {/* Filtros: búsqueda, zona y estado */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar mesa por nombre..."
-            className="pl-8 pr-8"
-          />
-          {busqueda && (
-            <button
-              type="button"
-              onClick={() => setBusqueda('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-
-        <Select value={zonaFiltro} onValueChange={setZonaFiltro}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todas">Todas las zonas</SelectItem>
-            <SelectItem value="sin-zona">Sin zona</SelectItem>
-            {zonas.map((zona) => (
-              <SelectItem key={zona} value={zona}>
-                {zona}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={estadoFiltro} onValueChange={(v) => setEstadoFiltro(v as typeof estadoFiltro)}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos los estados</SelectItem>
-            <SelectItem value="free">🟢 Libre</SelectItem>
-            <SelectItem value="occupied">🔴 Ocupada</SelectItem>
-            <SelectItem value="bill_requested">🟠 Cuenta solicitada</SelectItem>
-            <SelectItem value="reserved">🟡 Reservada</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {(busqueda || zonaFiltro !== 'todas' || estadoFiltro !== 'todos') && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setBusqueda('');
-              setZonaFiltro('todas');
-              setEstadoFiltro('todos');
-            }}
-          >
-            <X className="h-3.5 w-3.5 mr-1" />
-            Limpiar filtros
-          </Button>
-        )}
-      </div>
-
-      {/* Grid de Mesas Organizado por Zonas */}
-      {mesasFiltradas.length === 0 ? (
-        <Card className="p-12 text-center">
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
-            No hay mesas para mostrar
-          </p>
-          <Button onClick={() => setShowMesaForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Crear Primera Mesa
-          </Button>
-        </Card>
-      ) : (
-        <>
+      {/* === VISTA CUADRÍCULA === */}
+      {viewMode === 'list' &&
+        (mesasFiltradas.length === 0 ? (
+          hayFiltros ? (
+            <EmptyState variante="search" termino={busqueda.trim() || undefined} onLimpiarFiltros={limpiarFiltros} />
+          ) : (
+            <EmptyState
+              variante="empty"
+              titulo={t('vacio.titulo')}
+              descripcion={t('vacio.descripcion')}
+              icono={UtensilsCrossed}
+              accion={{ etiqueta: t('acciones.nuevaMesa'), icono: Plus, onClick: () => setShowMesaForm(true) }}
+            />
+          )
+        ) : (
           <div className="space-y-6">
-            {/* Organizar mesas por zona */}
             {zonaFiltro === 'todas' ? (
-              // Mostrar todas las zonas
               <>
                 {/* Mesas sin zona */}
-                {mesasPaginadas.filter(m => !m.zone).length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                    <Layers className="h-5 w-5 text-gray-500" />
-                    Sin zona
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {mesasPaginadas.filter(m => !m.zone).map((mesa) => (
-                      <MesaCardWithMenu
-                        key={mesa.id}
-                        mesa={mesa}
-                        onEdit={() => {
-                          setMesaEditar(mesa);
-                          setShowMesaForm(true);
-                        }}
-                        onLiberar={() => handleLiberarMesa(mesa)}
-                        onSolicitarCuenta={() => handleSolicitarCuenta(mesa)}
-                        onEditarComensales={() => {
-                          setMesaParaComensales(mesa);
-                          setComensales(mesa.session?.customers || 2);
-                        }}
-                        onClick={() => handleMesaClick(mesa)}
-                        modoCombinar={modoCombinar}
-                        isSelected={mesasParaCombinar.includes(mesa.id)}
-                        selectionIndex={mesasParaCombinar.indexOf(mesa.id)}
-                        onToggleSelect={() => handleToggleMesaCombinar(mesa.id)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
+                {mesasFiltradas.some((m) => !m.zone) && (
+                  <section>
+                    <ZonaHeader zona={null} mesas={mesasFiltradas.filter((m) => !m.zone)} />
+                    <div className={CLASES_GRILLA}>{tarjetasDe(mesasFiltradas.filter((m) => !m.zone))}</div>
+                  </section>
+                )}
 
                 {/* Mesas agrupadas por zona */}
-                {zonas.map(zona => {
-                  const mesasZona = mesasPaginadas.filter(m => m.zone === zona);
+                {zonas.map((zona) => {
+                  const mesasZona = mesasFiltradas.filter((m) => m.zone === zona);
                   if (mesasZona.length === 0) return null;
-
-                return (
-                  <div key={zona}>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                      <Layers className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                      {zona}
-                      <Badge variant="secondary" className="ml-2">
-                        {mesasZona.length} {mesasZona.length === 1 ? 'mesa' : 'mesas'}
-                      </Badge>
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                      {mesasZona.map((mesa) => (
-                        <MesaCardWithMenu
-                          key={mesa.id}
-                          mesa={mesa}
-                          onEdit={() => {
-                            setMesaEditar(mesa);
-                            setShowMesaForm(true);
-                          }}
-                          onLiberar={() => handleLiberarMesa(mesa)}
-                          onSolicitarCuenta={() => handleSolicitarCuenta(mesa)}
-                          onEditarComensales={() => {
-                            setMesaParaComensales(mesa);
-                            setComensales(mesa.session?.customers || 2);
-                          }}
-                          onClick={() => handleMesaClick(mesa)}
-                          modoCombinar={modoCombinar}
-                          isSelected={mesasParaCombinar.includes(mesa.id)}
-                          selectionIndex={mesasParaCombinar.indexOf(mesa.id)}
-                          onToggleSelect={() => handleToggleMesaCombinar(mesa.id)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </>
-          ) : (
-            // Mostrar zona específica
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {mesasPaginadas.map((mesa) => (
-                <MesaCardWithMenu
-                  key={mesa.id}
-                  mesa={mesa}
-                  onEdit={() => {
-                    setMesaEditar(mesa);
-                    setShowMesaForm(true);
-                  }}
-                  onLiberar={() => handleLiberarMesa(mesa)}
-                  onSolicitarCuenta={() => handleSolicitarCuenta(mesa)}
-                  onEditarComensales={() => {
-                    setMesaParaComensales(mesa);
-                    setComensales(mesa.session?.customers || 2);
-                  }}
-                  onClick={() => handleMesaClick(mesa)}
-                  modoCombinar={modoCombinar}
-                  isSelected={mesasParaCombinar.includes(mesa.id)}
-                  selectionIndex={mesasParaCombinar.indexOf(mesa.id)}
-                  onToggleSelect={() => handleToggleMesaCombinar(mesa.id)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Paginación */}
-        {mesasFiltradas.length > 0 && (
-          <Card className="p-4">
-            <MesasPagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              pageSize={pageSize}
-              totalItems={mesasFiltradas.length}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={setPageSize}
-            />
-          </Card>
-        )}
-      </>
-      )}
-      </>
-      )}
-
-      {/* Stats - al final de la página */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <div className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {mesas.filter((m) => m.state === 'free').length}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Libres</p>
-              </div>
-            </div>
+                  return (
+                    <section key={zona}>
+                      <ZonaHeader zona={zona} mesas={mesasZona} />
+                      <div className={CLASES_GRILLA}>{tarjetasDe(mesasZona)}</div>
+                    </section>
+                  );
+                })}
+              </>
+            ) : (
+              // Zona específica
+              <div className={CLASES_GRILLA}>{tarjetasDe(mesasFiltradas)}</div>
+            )}
           </div>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <div className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                <Users className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {mesas.filter((m) => m.state === 'occupied').length}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Ocupadas</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <div className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                <Clock className="h-5 w-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {mesas.filter((m) => m.session?.status === 'bill_requested').length}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Con Cuenta</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <div className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Hash className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {mesas.length}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
+        ))}
 
       {/* Modales */}
       <MesaFormDialog
@@ -914,29 +782,16 @@ export default function MesasPage() {
         onMover={handleMoverPedido}
       />
 
-      <AlertDialog
+      <ConfirmDialog
         open={!!mesaEliminar}
-        onOpenChange={() => setMesaEliminar(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar mesa?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. La mesa {mesaEliminar?.name}{' '}
-              será eliminada permanentemente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleEliminarMesa}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onOpenChange={(open) => !open && setMesaEliminar(null)}
+        title={t('eliminar.titulo')}
+        description={t('eliminar.descripcion', { mesa: mesaEliminar?.name ?? '' })}
+        confirmLabel={t('eliminar.confirmar')}
+        cancelLabel={t('comun.cancelar')}
+        variant="destructive"
+        onConfirm={handleEliminarMesa}
+      />
 
       <HistorialMesasDialog
         open={showHistorial}
@@ -958,80 +813,55 @@ export default function MesasPage() {
         onLiberada={handleMesaLiberada}
       />
 
-      {/* Dialog para editar comensales */}
-      <Dialog open={!!mesaParaComensales} onOpenChange={(open) => !open && setMesaParaComensales(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Comensales - {mesaParaComensales?.name}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="comensales">Número de comensales</Label>
-              <Input
-                id="comensales"
-                type="number"
-                min={1}
-                max={mesaParaComensales?.capacity || 20}
-                value={comensales}
-                onChange={(e) => setComensales(parseInt(e.target.value) || 1)}
-                className="text-lg"
-              />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Capacidad máxima: {mesaParaComensales?.capacity} personas
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMesaParaComensales(null)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleActualizarComensales}>
-              Guardar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Editar comensales */}
+      <Dialogo
+        abierto={!!mesaParaComensales}
+        onAbiertoChange={(open) => !open && setMesaParaComensales(null)}
+        titulo={t('comensales.tituloEditar', { mesa: mesaParaComensales?.name ?? '' })}
+        icono={Users}
+        ancho={440}
+        primario={{ etiqueta: t('comun.guardar'), onClick: handleActualizarComensales, deshabilitada: comensales === null }}
+      >
+        <FormField
+          etiqueta={t('comensales.numero')}
+          ayuda={t('comensales.capacidad', { n: mesaParaComensales?.capacity ?? 0 })}
+        >
+          <CampoNumero
+            valor={comensales}
+            onValorChange={setComensales}
+            minimo={1}
+            maximo={mesaParaComensales?.capacity || 20}
+            decimales={0}
+            alinear="izquierda"
+          />
+        </FormField>
+      </Dialogo>
 
-      {/* Dialog para abrir sesión de mesa */}
-      <Dialog open={!!mesaParaAbrirSesion} onOpenChange={(open) => !open && setMesaParaAbrirSesion(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Abrir Mesa - {mesaParaAbrirSesion?.name}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="comensalesNuevaSesion">Número de comensales</Label>
-              <Input
-                id="comensalesNuevaSesion"
-                type="number"
-                min={1}
-                max={mesaParaAbrirSesion?.capacity || 20}
-                value={comensalesNuevaSesion}
-                onChange={(e) => setComensalesNuevaSesion(parseInt(e.target.value) || 1)}
-                className="text-lg"
-              />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Capacidad máxima: {mesaParaAbrirSesion?.capacity} personas
-              </p>
-            </div>
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                Se creará una nueva sesión y la mesa pasará a estado <strong>ocupada</strong>.
-                Después podrás agregar productos desde el detalle de la mesa.
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMesaParaAbrirSesion(null)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleAbrirSesion} className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Abrir Mesa
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Abrir sesión de mesa */}
+      <Dialogo
+        abierto={!!mesaParaAbrirSesion}
+        onAbiertoChange={(open) => !open && setMesaParaAbrirSesion(null)}
+        titulo={t('abrir.titulo', { mesa: mesaParaAbrirSesion?.name ?? '' })}
+        descripcion={t('abrir.descripcion')}
+        icono={UtensilsCrossed}
+        ancho={440}
+        primario={{ etiqueta: t('abrir.confirmar'), onClick: handleAbrirSesion, deshabilitada: comensalesNuevaSesion === null }}
+      >
+        <FormField
+          etiqueta={t('comensales.numero')}
+          ayuda={t('comensales.capacidad', { n: mesaParaAbrirSesion?.capacity ?? 0 })}
+        >
+          <CampoNumero
+            valor={comensalesNuevaSesion}
+            onValorChange={setComensalesNuevaSesion}
+            minimo={1}
+            maximo={mesaParaAbrirSesion?.capacity || 20}
+            decimales={0}
+            alinear="izquierda"
+            autoFocus
+          />
+        </FormField>
+      </Dialogo>
     </div>
   );
 }
@@ -1050,11 +880,11 @@ interface MesaCardWithMenuProps {
   onToggleSelect?: () => void;
 }
 
-function MesaCardWithMenu({ 
-  mesa, 
-  onClick, 
-  onEdit, 
-  onLiberar, 
+function MesaCardWithMenu({
+  mesa,
+  onClick,
+  onEdit,
+  onLiberar,
   onSolicitarCuenta,
   onEditarComensales,
   modoCombinar = false,
@@ -1062,6 +892,7 @@ function MesaCardWithMenu({
   selectionIndex,
   onToggleSelect
 }: MesaCardWithMenuProps) {
+  const t = useTranslations('posMesas');
   const handleClick = (e: React.MouseEvent) => {
     if (modoCombinar && mesa.session) {
       e.stopPropagation();
@@ -1071,23 +902,49 @@ function MesaCardWithMenu({
     }
   };
 
+  // Menú ⋯ siempre visible (antes solo con hover: inalcanzable en táctil).
+  const acciones: AccionFila[] = [
+    { id: 'editar', etiqueta: t('acciones.editarMesa'), icono: Settings, onSelect: onEdit },
+    ...(mesa.session
+      ? [
+          ...(onSolicitarCuenta
+            ? [
+                {
+                  id: 'cuenta',
+                  etiqueta: t('acciones.solicitarCuenta'),
+                  icono: Receipt,
+                  onSelect: onSolicitarCuenta,
+                  deshabilitada: mesa.session.status !== 'active',
+                },
+              ]
+            : []),
+          { id: 'comensales', etiqueta: t('acciones.editarComensales'), icono: Users, onSelect: onEditarComensales },
+          { id: 'liberar', etiqueta: t('acciones.liberarMesa'), icono: LogOut, onSelect: onLiberar, destructiva: true, separadorAntes: true },
+        ]
+      : []),
+  ];
+
   return (
-    <div 
-      className={`relative group ${modoCombinar && mesa.session ? 'cursor-pointer' : ''} ${isSelected ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
+    <div
+      className={`relative ${modoCombinar && mesa.session ? 'cursor-pointer' : ''} ${isSelected ? 'rounded-lg ring-2 ring-brand ring-offset-2' : ''}`}
       onClick={handleClick}
     >
       <MesaCard mesa={mesa} onClick={!modoCombinar ? onClick : undefined} />
-      
-      {/* Checkbox en modo combinar */}
+
+      {/* Casilla en modo combinar */}
       {modoCombinar && mesa.session && (
-        <div className="absolute top-2 left-2 z-20 flex flex-col items-center gap-1">
-          <div 
-            className={`flex items-center justify-center h-8 w-8 rounded-md border-2 transition-all shadow-lg ${
-              isSelected 
+        <div className="absolute left-2 top-2 z-20 flex flex-col items-center gap-1">
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={isSelected}
+            aria-label={t('combinar.seleccionar', { mesa: mesa.name })}
+            className={`flex h-8 w-8 items-center justify-center rounded-md border-2 shadow-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+              isSelected
                 ? selectionIndex === 0
-                  ? 'bg-green-600 border-green-600'
-                  : 'bg-blue-600 border-blue-600'
-                : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:border-blue-400'
+                  ? 'border-transparent bg-solid-success text-on-solid'
+                  : 'border-transparent bg-brand-action text-fg-on-brand'
+                : 'border-line-strong bg-surface hover:border-line-brand'
             }`}
             onClick={(e) => {
               e.stopPropagation();
@@ -1095,91 +952,25 @@ function MesaCardWithMenu({
             }}
           >
             {isSelected ? (
-              <span className="text-white font-bold text-sm">
+              <span className="text-sm font-bold">
                 {selectionIndex !== undefined ? selectionIndex + 1 : '✓'}
               </span>
             ) : (
-              <div className="h-3 w-3 rounded border border-gray-400" />
+              <span aria-hidden="true" className="h-3 w-3 rounded border border-line-strong" />
             )}
-          </div>
+          </button>
           {isSelected && selectionIndex === 0 && (
-            <Badge className="bg-green-600 text-white text-[10px] px-1 py-0">
-              Principal
+            <Badge tono="exito" apariencia="solido" tamano="sm">
+              {t('combinar.principal')}
             </Badge>
           )}
         </div>
       )}
-      
-      {/* Acción rápida: solicitar cuenta (visible al pasar el mouse) */}
-      {!modoCombinar && mesa.session && mesa.session.status === 'active' && onSolicitarCuenta && (
-        <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-          <Button
-            size="sm"
-            variant="secondary"
-            className="h-8 px-2 bg-white dark:bg-gray-800 shadow-md text-orange-600 dark:text-orange-400"
-            title="Solicitar cuenta"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSolicitarCuenta();
-            }}
-          >
-            <Receipt className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
 
-      {/* Menú contextual (solo si no está en modo combinar) */}
+      {/* Menú ⋯ de la tarjeta (fuera del modo combinar); abajo a la derecha para no tapar el estado */}
       {!modoCombinar && (
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button
-                size="sm"
-                variant="secondary"
-                className="h-8 w-8 p-0 bg-white dark:bg-gray-800 shadow-md"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit();
-                }}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Editar Mesa
-              </DropdownMenuItem>
-
-              {mesa.session && (
-                <>
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEditarComensales();
-                    }}
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    Editar Comensales
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator />
-
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onLiberar();
-                    }}
-                    className="text-red-600 dark:text-red-400"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Liberar Mesa
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="absolute bottom-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
+          <RowActionsMenu orientacion="vertical" tamano="sm" titulo={mesa.name} acciones={acciones} />
         </div>
       )}
     </div>

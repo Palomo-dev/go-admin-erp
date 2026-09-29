@@ -1,9 +1,13 @@
 'use client';
 
 import React from 'react';
-import { Users, Clock, DollarSign, ChefHat, AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { Users, Clock, DollarSign, ChefHat, AlertTriangle, CircleCheck, Receipt, CalendarClock } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge, type TonoBadge } from '@/components/kit';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { cn } from '@/utils/Utils';
 import type { TableWithSession } from './types';
 
@@ -13,22 +17,33 @@ interface MesaCardProps {
   isSelected?: boolean;
 }
 
-export function MesaCard({ mesa, onClick, isSelected = false }: MesaCardProps) {
-  // Determinar estado visual
-  const getEstadoBadge = () => {
-    if (mesa.session) {
-      if (mesa.session.status === 'bill_requested') {
-        return { label: 'Cuenta', variant: 'warning' as const, icon: '⏳' };
-      }
-      return { label: 'Ocupada', variant: 'destructive' as const, icon: '🔴' };
-    }
-    if (mesa.state === 'reserved') {
-      return { label: 'Reservada', variant: 'secondary' as const, icon: '🟡' };
-    }
-    return { label: 'Libre', variant: 'default' as const, icon: '🟢' };
-  };
+type EstadoMesa = 'free' | 'occupied' | 'reserved' | 'bill_requested';
 
-  const estado = getEstadoBadge();
+/**
+ * Tono por estado de mesa (POS-MESAS-VISTAS §3.4). Interino: `estadoTono` del
+ * kit aún no conoce `free/occupied/reserved/bill_requested`, así que se pasa
+ * el tono explícito hasta que se añadan a su tabla.
+ */
+const APARIENCIA_ESTADO: Record<EstadoMesa, { tono: TonoBadge; icono: LucideIcon; tarjeta: string }> = {
+  free: { tono: 'exito', icono: CircleCheck, tarjeta: 'border-line-success bg-success-subtle' },
+  occupied: { tono: 'peligro', icono: Users, tarjeta: 'border-line-danger bg-danger-subtle' },
+  reserved: { tono: 'informacion', icono: CalendarClock, tarjeta: 'border-line-info bg-info-subtle' },
+  bill_requested: { tono: 'advertencia', icono: Receipt, tarjeta: 'border-line-warning bg-warning-subtle' },
+};
+
+export function MesaCard({ mesa, onClick, isSelected = false }: MesaCardProps) {
+  const t = useTranslations('posMesas');
+  const { formatear } = useMonedaOrganizacion();
+
+  // Estado visual: la cuenta solicitada manda sobre «ocupada».
+  const estado: EstadoMesa = mesa.session
+    ? mesa.session.status === 'bill_requested'
+      ? 'bill_requested'
+      : 'occupied'
+    : mesa.state === 'reserved'
+      ? 'reserved'
+      : 'free';
+  const apariencia = APARIENCIA_ESTADO[estado];
 
   // Minutos transcurridos desde que se abrió la sesión
   const minutosAbierta = mesa.session?.opened_at
@@ -38,10 +53,8 @@ export function MesaCard({ mesa, onClick, isSelected = false }: MesaCardProps) {
   // Calcular tiempo de sesión
   const getTiempoSesion = () => {
     if (minutosAbierta === null) return null;
-    if (minutosAbierta < 60) return `${minutosAbierta} min`;
-    const horas = Math.floor(minutosAbierta / 60);
-    const minutos = minutosAbierta % 60;
-    return `${horas}h ${minutos}m`;
+    if (minutosAbierta < 60) return t('tiempo.minutos', { m: minutosAbierta });
+    return t('tiempo.horasMinutos', { h: Math.floor(minutosAbierta / 60), m: minutosAbierta % 60 });
   };
 
   // Mesa "olvidada": lleva mucho tiempo abierta sin solicitar la cuenta
@@ -56,78 +69,68 @@ export function MesaCard({ mesa, onClick, isSelected = false }: MesaCardProps) {
   return (
     <Card
       className={cn(
-        'relative cursor-pointer transition-all hover:shadow-lg',
-        'border-2 p-4 min-h-32',
-        isSelected && 'ring-2 ring-blue-500 ring-offset-2',
-        mesa.state === 'free' && 'border-green-500 bg-green-50 dark:bg-green-950/20',
-        mesa.state === 'occupied' && 'border-red-500 bg-red-50 dark:bg-red-950/20',
-        mesa.state === 'reserved' && 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20',
-        mesa.session?.status === 'bill_requested' && 'border-orange-500 bg-orange-50 dark:bg-orange-950/20',
-        esMesaOlvidada && 'ring-2 ring-red-400 dark:ring-red-600'
+        'relative min-h-32 cursor-pointer border-2 p-4 transition-shadow hover:shadow-lg',
+        apariencia.tarjeta,
+        isSelected && 'ring-2 ring-brand ring-offset-2',
+        esMesaOlvidada && 'ring-2 ring-line-danger'
       )}
       onClick={onClick}
     >
-      {/* Estado Badge */}
-      <div className="absolute top-2 right-2">
-        <Badge variant={estado.variant} className="text-xs">
-          {estado.icon} {estado.label}
-        </Badge>
+      {/* Estado */}
+      <div className="absolute right-2 top-2">
+        <StatusBadge
+          estado={estado}
+          etiqueta={t(`estadosCorto.${estado}`)}
+          tono={apariencia.tono}
+          icono={apariencia.icono}
+          tamano="sm"
+        />
       </div>
 
       {/* Nombre de Mesa */}
       <div className="mb-2">
-        <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">
-          {mesa.name}
-        </h3>
-        {mesa.zone && (
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {mesa.zone}
-          </p>
-        )}
+        <h3 className="text-lg font-bold text-fg">{mesa.name}</h3>
+        {mesa.zone && <p className="text-xs text-fg-secondary">{mesa.zone}</p>}
       </div>
 
       {/* Información adicional */}
       <div className="space-y-1">
         {/* Capacidad */}
-        <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-          <Users className="h-3 w-3" />
-          <span>
-            {mesa.session?.customers || 0} / {mesa.capacity} personas
-          </span>
+        <div className="flex items-center gap-1 text-xs text-fg-secondary">
+          <Users aria-hidden="true" className="h-3 w-3" />
+          <span>{t('tarjeta.personas', { n: mesa.session?.customers || 0, capacidad: mesa.capacity })}</span>
         </div>
 
         {/* Tiempo de sesión */}
         {mesa.session && (
-          <div className={cn('flex items-center gap-1 text-xs', esMesaOlvidada ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-600 dark:text-gray-400')}>
-            <Clock className="h-3 w-3" />
+          <div className={cn('flex items-center gap-1 text-xs', esMesaOlvidada ? 'font-semibold text-danger-text' : 'text-fg-secondary')}>
+            <Clock aria-hidden="true" className="h-3 w-3" />
             <span>{getTiempoSesion()}</span>
-            {esMesaOlvidada && <AlertTriangle className="h-3 w-3" />}
+            {esMesaOlvidada && <AlertTriangle aria-hidden="true" className="h-3 w-3" />}
           </div>
         )}
 
         {/* Total (si existe) */}
         {mesa.totalAmount ? (
-          <div className="flex items-center gap-1 text-xs font-semibold text-gray-900 dark:text-gray-100">
-            <DollarSign className="h-3 w-3" />
-            <span>${mesa.totalAmount.toLocaleString()}</span>
+          <div className="flex items-center gap-1 text-xs font-semibold text-fg">
+            <DollarSign aria-hidden="true" className="h-3 w-3" />
+            <span className="tabular-nums">{formatear(mesa.totalAmount)}</span>
           </div>
         ) : null}
 
         {/* Items pendientes en cocina */}
         {pendientesCocina > 0 && (
-          <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 text-xs inline-flex items-center gap-1">
-            <ChefHat className="h-3 w-3" />
-            {pendientesCocina} en cocina
+          <Badge tono="advertencia" apariencia="suave" tamano="sm" icono={ChefHat}>
+            {t('tarjeta.enCocina', { n: pendientesCocina })}
           </Badge>
         )}
       </div>
 
       {/* Aviso de mesa olvidada */}
       {esMesaOlvidada && (
-        <div className="absolute -top-2 -left-2">
-          <Badge className="bg-red-600 text-white text-[10px] px-1.5 py-0 shadow flex items-center gap-1">
-            <AlertTriangle className="h-2.5 w-2.5" />
-            Revisar
+        <div className="absolute -left-2 -top-2">
+          <Badge tono="peligro" apariencia="solido" tamano="sm" icono={AlertTriangle}>
+            {t('tarjeta.revisar')}
           </Badge>
         </div>
       )}

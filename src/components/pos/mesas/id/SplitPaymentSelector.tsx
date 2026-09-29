@@ -19,6 +19,8 @@ import {
   DollarSign
 } from 'lucide-react';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useTranslations } from 'next-intl';
+import { EmptyState } from '@/components/kit';
 import type { BillSplit } from './SplitBillDialog';
 
 interface SplitPaymentSelectorProps {
@@ -39,6 +41,7 @@ export function SplitPaymentSelector({
   onFinishAndClose
 }: SplitPaymentSelectorProps) {
   const { formatear } = useMonedaOrganizacion();
+  const tAvisos = useTranslations('posMesas.avisos');
   // Filtrar splits válidos (permite división equitativa con items vacíos)
   const validSplits = splits.filter(s => s.total > 0);
   
@@ -110,12 +113,13 @@ export function SplitPaymentSelector({
           </h3>
           
           {pendingSplits.length === 0 ? (
-            <div className="text-center py-8">
-              <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-2" />
-              <p className="text-gray-600 dark:text-gray-400">
-                ¡Todos los pagos completados!
-              </p>
-            </div>
+            <EmptyState
+              compacto
+              variante="empty"
+              icono={CheckCircle}
+              titulo={tAvisos('pagosCompletos')}
+              descripcion={tAvisos('pagosCompletosDescripcion')}
+            />
           ) : (
             pendingSplits.map((split) => (
               <Card 

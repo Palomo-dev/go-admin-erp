@@ -9846,7 +9846,11 @@
     "confirmarCambio": "Confirmer la modification",
     "motivo": "Motif",
     "motivoPlaceholder": "Ex. : le client a changé d’avis",
-    "motivoAyuda": "Obligatoire : il figure sur le bon d’ajustement et dans l’historique de la table."
+    "motivoAyuda": "Obligatoire : il figure sur le bon d’ajustement et dans l’historique de la table.",
+    "eliminarTitulo": "Retirer le produit de la commande ?",
+    "eliminarDescripcion": "« {producto} » sera retiré de la commande.",
+    "eliminar": "Retirer",
+    "esteItem": "ce produit"
   },
   "posNotasRapidas": {
     "titulo": "Notes rapides",
@@ -14649,6 +14653,245 @@
     "permisos": {
       "sinPermisoTitulo": "Vous n’avez pas accès à l’inventaire",
       "sinPermisoDescripcion": "Demandez à un administrateur de votre organisation l’autorisation d’inventaire nécessaire."
+    }
+  },
+  "posMesas": {
+    "titulo": "Tables",
+    "subtitulo": "{n, plural, one {# table} other {# tables}}",
+    "estados": {
+      "free": "Libre",
+      "occupied": "Occupée",
+      "bill_requested": "Addition demandée",
+      "reserved": "Réservée"
+    },
+    "estadosCorto": {
+      "free": "Libre",
+      "occupied": "Occupée",
+      "bill_requested": "Addition",
+      "reserved": "Réservée"
+    },
+    "tiempo": {
+      "minutos": "{m} min",
+      "horasMinutos": "{h} h {m} min"
+    },
+    "tarjeta": {
+      "personas": "{n} / {capacidad} couverts",
+      "enCocina": "{n} en cuisine",
+      "revisar": "À vérifier"
+    },
+    "zona": {
+      "sinZona": "Sans zone",
+      "mesas": "{n, plural, one {# table} other {# tables}}",
+      "libres": "{n, plural, one {# libre} other {# libres}}",
+      "porCobrar": "{n} à encaisser"
+    },
+    "acciones": {
+      "actualizar": "Actualiser",
+      "nuevaMesa": "Nouvelle table",
+      "gestionarZonas": "Gérer les zones",
+      "moverPedido": "Déplacer l'addition",
+      "combinar": "Combiner des tables",
+      "cancelarCombinacion": "Annuler la combinaison",
+      "historial": "Historique",
+      "editarMesa": "Modifier la table",
+      "solicitarCuenta": "Demander l'addition",
+      "editarComensales": "Modifier les couverts",
+      "liberarMesa": "Libérer la table"
+    },
+    "leyenda": {
+      "etiqueta": "État des tables",
+      "todas": "Toutes",
+      "libres": "Libres",
+      "ocupadas": "Occupées",
+      "porCobrar": "À encaisser",
+      "reservadas": "Réservées"
+    },
+    "filtros": {
+      "buscar": "Rechercher une table…",
+      "zona": "Zone",
+      "estado": "État",
+      "todasZonas": "Toutes les zones",
+      "todosEstados": "Tous les états",
+      "chipZona": "Zone : {zona}",
+      "chipEstado": "État : {estado}"
+    },
+    "vista": {
+      "etiqueta": "Vue des tables",
+      "cuadricula": "Grille",
+      "plano": "Plan de salle"
+    },
+    "combinar": {
+      "titulo": "Mode combinaison",
+      "instrucciones": "Sélectionnez les tables avec la case. La première choisie est la principale et reçoit toutes les commandes.",
+      "seleccionadas": "{n, plural, one {# table sélectionnée} other {# tables sélectionnées}}",
+      "combinarAhora": "Combiner",
+      "seleccionar": "Sélectionner {mesa}",
+      "principal": "Principale"
+    },
+    "vacio": {
+      "titulo": "Préparez votre salle",
+      "descripcion": "Créez une zone et ajoutez des tables."
+    },
+    "eliminar": {
+      "titulo": "Supprimer la table ?",
+      "descripcion": "Cette action est irréversible. La table {mesa} sera supprimée.",
+      "confirmar": "Supprimer"
+    },
+    "comun": {
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer"
+    },
+    "comensales": {
+      "tituloEditar": "Couverts de {mesa}",
+      "numero": "Nombre de couverts",
+      "capacidad": "Capacité maximale : {n} couverts",
+      "titulo": "Modifier les couverts",
+      "cantidad": "Nombre de couverts",
+      "ayuda": "Indiquez le nombre de personnes à la table.",
+      "atajos": "Raccourcis de couverts"
+    },
+    "abrir": {
+      "titulo": "Ouvrir {mesa}",
+      "descripcion": "La table passe en occupée et vous pourrez ajouter des produits depuis son détail.",
+      "confirmar": "Ouvrir la table"
+    },
+    "detalle": {
+      "activa": "Active",
+      "disponible": "Disponible",
+      "combinarMesa": "Combiner la table",
+      "agregarProducto": "Ajouter un produit"
+    },
+    "cifras": {
+      "etiqueta": "Résumé de la table",
+      "comensales": "Couverts",
+      "tiempo": "Durée",
+      "items": "Articles",
+      "total": "Total",
+      "mesero": "Serveur",
+      "sinAsignar": "Non assigné"
+    },
+    "pedido": {
+      "titulo": "Commande en cours",
+      "resumen": "{n, plural, one {# article en attente} other {# articles en attente}}",
+      "resumenConPagados": "{n, plural, one {# article en attente} other {# articles en attente}} · {pagados, plural, one {# payé} other {# payés}} ({importe})",
+      "agregar": "Ajouter",
+      "vacioTitulo": "Aucun produit dans la commande",
+      "vacioDescripcion": "Ajoutez des produits pour les envoyer en cuisine.",
+      "agregarPrimero": "Ajouter le premier produit",
+      "pagadosTitulo": "Articles payés ({n})",
+      "producto": "Produit"
+    },
+    "mesero": {
+      "titulo": "Assigner un serveur",
+      "etiqueta": "Serveur",
+      "cargando": "Chargement des membres…",
+      "placeholder": "Choisissez un serveur",
+      "buscar": "Rechercher par nom ou e-mail…"
+    },
+    "cuenta": {
+      "cliente": "Client",
+      "resumen": "Résumé de l'addition",
+      "subtotal": "Sous-total",
+      "total": "Total",
+      "enviarCocina": "Envoyer en cuisine",
+      "verPreCuenta": "Voir la pré-addition",
+      "solicitarCuenta": "Demander l'addition",
+      "dividir": "Diviser l'addition ({n} couverts)",
+      "divididaEn": "Addition divisée en {n} parts",
+      "cancelarDivision": "Annuler la division",
+      "sinAsignar": "{n, plural, one {# produit non attribué} other {# produits non attribués}}",
+      "sinAsignarDescripcion": "Total : {total}. Divisez à nouveau l'addition pour les inclure.",
+      "dividirDeNuevo": "Diviser à nouveau (requis)",
+      "modificarDivision": "Modifier la division",
+      "cobrar": {
+        "divideDeNuevo": "Divisez à nouveau pour continuer",
+        "pagosDivididos": "Traiter les paiements divisés",
+        "procesar": "Traiter le paiement",
+        "sinCaja": "Ouvrez une caisse pour encaisser"
+      },
+      "liberarMesa": "Libérer la table"
+    },
+    "agregar": {
+      "cerrar": "Fermer",
+      "buscar": "Rechercher par nom, SKU, code-barres, variantes ou modificateurs…",
+      "vacioTitulo": "Aucun produit",
+      "vacioDescripcion": "Aucun produit disponible à ajouter."
+    },
+    "zonas": {
+      "titulo": "Gérer les zones",
+      "cerrar": "Fermer",
+      "vacioTitulo": "Aucune zone",
+      "vacioDescripcion": "Attribuez une zone à une table pour la voir ici.",
+      "editarZona": "Modifier {zona}",
+      "eliminarZona": "Supprimer {zona}",
+      "editarTitulo": "Modifier la zone",
+      "guardar": "Enregistrer",
+      "nuevoNombre": "Nouveau nom",
+      "placeholder": "Nom de la zone",
+      "eliminarTitulo": "Supprimer la zone ?",
+      "eliminarDescripcion": "La zone sera retirée de toutes ses tables. Les tables ne sont pas supprimées : elles restent sans zone.",
+      "eliminar": "Supprimer",
+      "cancelar": "Annuler"
+    },
+    "historial": {
+      "titulo": "Historique des tables",
+      "vacioTitulo": "Aucune session",
+      "vacioDescripcion": "Aucune session de table pour la période et les filtres choisis."
+    },
+    "avisos": {
+      "combinarMinimo": "Il faut au moins 2 tables occupées pour combiner.",
+      "transferenciaParcial": "{cantidad} sur {total} unités seront transférées",
+      "transferenciaParcialDescripcion": "Le reste demeure sur cette table.",
+      "comensal": "Couvert {n}",
+      "pagosCompletos": "Tous les paiements sont effectués",
+      "pagosCompletosDescripcion": "Il ne reste aucune part à encaisser."
+    },
+    "dividir": {
+      "modo": "Mode de division",
+      "porItems": "Par articles",
+      "equitativo": "Égal",
+      "personalizado": "Personnalisé"
+    }
+  },
+  "posReservasMesas": {
+    "titulo": "Réservations de tables",
+    "subtitulo": "Gérez les réservations du restaurant",
+    "actualizar": "Actualiser",
+    "nueva": "Nouvelle réservation",
+    "buscar": "Rechercher par nom, téléphone ou e-mail…",
+    "estado": "État",
+    "origen": "Origine",
+    "todosEstados": "Tous les états",
+    "todosOrigenes": "Toutes les origines",
+    "desde": "Du",
+    "hasta": "Au",
+    "cifras": {
+      "etiqueta": "Résumé des réservations",
+      "hoy": "Aujourd'hui",
+      "pendientes": "En attente",
+      "confirmadas": "Confirmées",
+      "sentadas": "Installées",
+      "canceladas": "Annulées",
+      "noShow": "Absents"
+    },
+    "vacio": {
+      "titulo": "Aucune réservation à afficher",
+      "descripcion": "Créez une réservation ou ajustez les filtres."
+    },
+    "acciones": {
+      "editar": "Modifier",
+      "confirmar": "Confirmer",
+      "sentar": "Marquer comme installée",
+      "completar": "Terminer",
+      "cancelar": "Annuler la réservation",
+      "noShow": "Absent",
+      "eliminar": "Supprimer"
+    },
+    "eliminar": {
+      "titulo": "Supprimer la réservation ?",
+      "descripcion": "Cette action est irréversible. La réservation sera supprimée.",
+      "confirmar": "Supprimer",
+      "cancelar": "Annuler"
     }
   }
 }

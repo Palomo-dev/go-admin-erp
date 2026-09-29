@@ -1,15 +1,11 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CampoFecha } from '@/components/kit/CampoFecha';
+import { EmptyState, PanelAdaptable } from '@/components/kit';
+import { useTranslations } from 'next-intl';
 import {
   Select,
   SelectContent,
@@ -113,6 +109,7 @@ function rangeFromQuick(key: QuickRange): { from: Date; to: Date } {
 
 export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialogProps) {
   const { formatear } = useMonedaOrganizacion();
+  const tHist = useTranslations('posMesas.historial');
   const [quickRange, setQuickRange] = useState<QuickRange>('today');
   const [dateFrom, setDateFrom] = useState<Date>(() => rangeFromQuick('today').from);
   const [dateTo, setDateTo] = useState<Date>(() => rangeFromQuick('today').to);
@@ -186,14 +183,7 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
   const stats = useMemo(() => MesasHistorialService.computeStats(sesiones), [sesiones]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-none sm:w-[90vw] sm:max-w-5xl md:max-w-6xl lg:max-w-7xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <History className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            Historial de Mesas
-          </DialogTitle>
-        </DialogHeader>
+    <PanelAdaptable abierto={open} onAbiertoChange={onOpenChange} titulo={tHist('titulo')} icono={History} ancho={1120}>
 
         {/* Filtros */}
         <div className="space-y-3">
@@ -313,13 +303,11 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
           )}
 
           {!loading && error && (
-            <p className="text-sm text-red-600 dark:text-red-400 py-6 text-center">{error}</p>
+            <EmptyState compacto variante="error" descripcion={error} onReintentar={cargarHistorial} />
           )}
 
           {!loading && !error && sesiones.length === 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">
-              No hay sesiones de mesa en el rango y filtros seleccionados.
-            </p>
+            <EmptyState compacto variante="search" titulo={tHist('vacioTitulo')} descripcion={tHist('vacioDescripcion')} />
           )}
 
           {!loading && !error && sesiones.length > 0 && (
@@ -438,7 +426,6 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
             </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+    </PanelAdaptable>
   );
 }

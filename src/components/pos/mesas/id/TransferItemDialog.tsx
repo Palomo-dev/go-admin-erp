@@ -19,7 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MoveRight } from 'lucide-react';
+import { MoveRight, AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { Tarjeta } from '@/components/kit';
 import { MesasService } from '../mesasService';
 import type { TableWithSession } from '../types';
 import type { SaleItem } from './types';
@@ -39,6 +41,7 @@ export function TransferItemDialog({
   currentTableId,
   onTransfer,
 }: TransferItemDialogProps) {
+  const tAvisos = useTranslations('posMesas.avisos');
   const [mesas, setMesas] = useState<TableWithSession[]>([]);
   const [mesaDestino, setMesaDestino] = useState<string | null>(null);
   const [cantidad, setCantidad] = useState(1);
@@ -162,12 +165,12 @@ export function TransferItemDialog({
 
           {/* Advertencia si es transferencia parcial */}
           {cantidad < item.quantity && (
-            <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-md">
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                ⚠️ Se transferirán {cantidad} de {item.quantity} unidades. Las
-                restantes permanecerán en esta mesa.
-              </p>
-            </div>
+            <Tarjeta
+              tono="advertencia"
+              icono={AlertTriangle}
+              titulo={tAvisos('transferenciaParcial', { cantidad, total: item.quantity })}
+              descripcion={tAvisos('transferenciaParcialDescripcion')}
+            />
           )}
         </div>
 

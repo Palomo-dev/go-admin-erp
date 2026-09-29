@@ -4,29 +4,27 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   Plus,
-  Receipt,
-  RefreshCw,
   Users,
-  Clock,
   ChefHat,
-  CheckCircle,
   UserCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { Separator } from '@/components/ui/separator';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { SearchSelect } from '@/components/ui/search-select';
+import {
+  StatusBadge,
+  Tarjeta,
+  EmptyState,
+  ListaDatos,
+  FilaDato,
+  Dialogo,
+  FormField,
+  CampoNumero,
+  KpiStrip,
+  StatCard,
+} from '@/components/kit';
+import { PageHeaderSkeleton } from '@/components/common/PageSkeletons';
 import { formatCurrency } from '@/utils/Utils';
 import { AddProductDialog } from '@/components/pos/mesas/id/AddProductDialog';
 import { OrderItemCard } from '@/components/pos/mesas/id/OrderItemCard';
@@ -67,6 +65,7 @@ import { abonadoPendiente, esDivisionPorMonto, saldoDeLineas } from '@/lib/pos/m
 export default function MesaDetallePage() {
   const tLiberar = useTranslations('posMesaLiberar');
   const tCocina = useTranslations('posCocina');
+  const tMesas = useTranslations('posMesas');
   const avisoLiberacion = useAvisoLiberacion();
   const { timezone } = useOrgTimezone();
   const params = useParams();
@@ -1533,11 +1532,12 @@ export default function MesaDetallePage() {
 
   const getEstadoBadge = () => {
     if (!session) return null;
-    
+
+    // Interino: `estadoTono` del kit aún no conoce `bill_requested`; se pasa el tono.
     if (session.status === 'bill_requested') {
-      return <Badge variant="warning">Cuenta Solicitada</Badge>;
+      return <StatusBadge estado="bill_requested" etiqueta={tMesas('estados.bill_requested')} tono="advertencia" tamano="md" />;
     }
-    return <Badge variant="default">Activa</Badge>;
+    return <StatusBadge estado="active" etiqueta={tMesas('detalle.activa')} tamano="md" />;
   };
 
   // Estado para totales calculados por MesaTaxBreakdown (hook useMesaTaxes)
@@ -1555,43 +1555,31 @@ export default function MesaDetallePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-3 sm:p-4 md:p-6">
+      <div className="min-h-screen bg-canvas p-3 sm:p-4 md:p-6">
         <div className="space-y-6">
-          {/* Skeleton header */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <div className="h-7 w-40 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-              <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-            </div>
-            <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-          </div>
-
-          {/* Skeleton stats cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-                <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                <div className="h-6 w-16 bg-blue-100 dark:bg-blue-900/30 rounded animate-pulse" />
-              </div>
+          <PageHeaderSkeleton />
+          <KpiStrip columnas={5}>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <StatCard key={i} etiqueta="" valor="" cargando />
             ))}
-          </div>
-
-          {/* Skeleton items */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
-            <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-700/50 last:border-0">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-                  <div className="space-y-2">
-                    <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                    <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          </KpiStrip>
+          <Tarjeta>
+            <div className="flex flex-col gap-4">
+              <Skeleton className="h-5 w-32" />
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="size-10 rounded-lg" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
                   </div>
+                  <Skeleton className="h-5 w-16" />
                 </div>
-                <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </Tarjeta>
         </div>
       </div>
     );
@@ -1621,26 +1609,24 @@ export default function MesaDetallePage() {
   const totalPaid = paidItems.reduce((sum, item) => sum + Number(item.total), 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header Fijo */}
-      <MesaDetailHeader
-        mesaNombre={mesaNombre}
-        session={session}
-        onRefresh={cargarDatos}
-        onCombinar={cargarMesasParaCombinar}
-        onAddProduct={() => setShowAddProduct(true)}
-        onVerHistorial={() => setShowHistorial(true)}
-        getEstadoBadge={getEstadoBadge}
-      />
-
+    <div className="min-h-screen bg-canvas">
       <SessionTimelineDialog
         open={showHistorial}
         onOpenChange={setShowHistorial}
         tableId={tableId}
       />
 
-      {/* Main Content - 2 Columnas */}
-      <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6">
+      {/* Cabecera + contenido en 2 columnas */}
+      <div className="space-y-4 px-3 py-4 sm:space-y-6 sm:px-4 sm:py-6 md:px-6">
+        <MesaDetailHeader
+          mesaNombre={mesaNombre}
+          session={session}
+          onRefresh={cargarDatos}
+          onCombinar={cargarMesasParaCombinar}
+          onAddProduct={() => setShowAddProduct(true)}
+          onVerHistorial={() => setShowHistorial(true)}
+          getEstadoBadge={getEstadoBadge}
+        />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           
           {/* Columna Principal - Pedidos */}
@@ -1657,40 +1643,36 @@ export default function MesaDetallePage() {
             />
 
             {/* Lista de Productos */}
-            <Card className="overflow-hidden">
-              <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-750 px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                  Pedido Actual
-                </h2>
-                <div className="flex items-center gap-4 text-sm">
-                  <p className="text-gray-500 dark:text-gray-400">
-                    {items.length} {items.length === 1 ? 'producto' : 'productos'} pendiente{items.length !== 1 && 's'}
-                  </p>
-                  {paidItems.length > 0 && (
-                    <p className="text-green-600 dark:text-green-400 font-medium">
-                      • {paidItems.length} pagado{paidItems.length !== 1 && 's'} ({formatCurrency(totalPaid)})
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="p-3 sm:p-4">
+            <Tarjeta
+              titulo={tMesas('pedido.titulo')}
+              descripcion={
+                paidItems.length > 0
+                  ? tMesas('pedido.resumenConPagados', {
+                      n: items.length,
+                      pagados: paidItems.length,
+                      importe: formatCurrency(totalPaid),
+                    })
+                  : tMesas('pedido.resumen', { n: items.length })
+              }
+              accion={
+                // En móvil la cabecera se muda a la barra del shell: la acción frecuente queda a mano aquí.
+                items.length > 0 ? (
+                  <Button size="sm" className="gap-1.5 lg:hidden" onClick={() => setShowAddProduct(true)}>
+                    <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                    {tMesas('pedido.agregar')}
+                  </Button>
+                ) : undefined
+              }
+            >
+              <div>
                 {items.length === 0 ? (
-                  <div className="py-16 text-center">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full mb-4">
-                      <ChefHat className="h-8 w-8 text-gray-400" />
-                    </div>
-                    <p className="text-gray-500 dark:text-gray-400 mb-4 font-medium">
-                      No hay productos en el pedido
-                    </p>
-                    <Button 
-                      onClick={() => setShowAddProduct(true)}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Agregar Primer Producto
-                    </Button>
-                  </div>
+                  <EmptyState
+                    compacto
+                    icono={ChefHat}
+                    titulo={tMesas('pedido.vacioTitulo')}
+                    descripcion={tMesas('pedido.vacioDescripcion')}
+                    accion={{ etiqueta: tMesas('pedido.agregarPrimero'), icono: Plus, onClick: () => setShowAddProduct(true) }}
+                  />
                 ) : (
                   <>
                     <div className="space-y-3">
@@ -1710,45 +1692,27 @@ export default function MesaDetallePage() {
 
                     {/* Items Pagados */}
                     {paidItems.length > 0 && (
-                      <>
-                        <Separator className="my-4" />
-                        <div className="space-y-2">
-                          <h3 className="text-sm font-semibold text-green-600 dark:text-green-400 flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4" />
-                            Items Pagados ({paidItems.length})
-                          </h3>
-                          <div className="space-y-2 opacity-60">
-                            {paidItems.map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg"
-                              >
-                                <div className="flex-1">
-                                  <p className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                                    {item.product?.name || 'Producto'}
-                                  </p>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    {item.quantity} × {formatCurrency(Number(item.unit_price))}
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="font-semibold text-green-600 dark:text-green-400">
-                                    {formatCurrency(Number(item.total))}
-                                  </p>
-                                  <p className="text-xs text-green-600 dark:text-green-400">
-                                    ✓ Pagado
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </>
+                      <div className="mt-4 border-t border-line pt-4">
+                        <h3 className="mb-1 text-sm font-semibold text-fg">
+                          {tMesas('pedido.pagadosTitulo', { n: paidItems.length })}
+                        </h3>
+                        <ListaDatos etiqueta={tMesas('pedido.pagadosTitulo', { n: paidItems.length })} divisores>
+                          {paidItems.map((item) => (
+                            <FilaDato
+                              key={item.id}
+                              etiqueta={item.product?.name || tMesas('pedido.producto')}
+                              descripcion={`${item.quantity} × ${formatCurrency(Number(item.unit_price))}`}
+                              valor={formatCurrency(Number(item.total))}
+                              accesorio={<StatusBadge estado="pagado" tamano="sm" />}
+                            />
+                          ))}
+                        </ListaDatos>
+                      </div>
                     )}
                   </>
                 )}
               </div>
-            </Card>
+            </Tarjeta>
           </div>
 
           {/* Sidebar Derecho - Resumen y Acciones */}
@@ -1900,124 +1864,71 @@ export default function MesaDetallePage() {
       )}
 
       {/* Editar Comensales Dialog */}
-      <Dialog open={showEditarComensales} onOpenChange={setShowEditarComensales}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-600" />
-              Editar Comensales
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="comensales">Cantidad de comensales</Label>
-              <Input
-                id="comensales"
-                type="number"
-                min="1"
-                max="99"
-                value={comensalesInput}
-                onChange={(e) => setComensalesInput(parseInt(e.target.value) || 1)}
-                className="text-lg font-semibold"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleGuardarComensales();
-                  }
-                }}
-              />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Ingresa la cantidad de personas en la mesa
-              </p>
-            </div>
+      <Dialogo
+        abierto={showEditarComensales}
+        onAbiertoChange={setShowEditarComensales}
+        titulo={tMesas('comensales.titulo')}
+        icono={Users}
+        ancho={440}
+        primario={{ etiqueta: tMesas('comun.guardar'), onClick: handleGuardarComensales, deshabilitada: comensalesInput < 1 }}
+      >
+        <FormField etiqueta={tMesas('comensales.cantidad')} ayuda={tMesas('comensales.ayuda')}>
+          <CampoNumero
+            valor={comensalesInput}
+            // Vacío = 0: «Guardar» queda deshabilitado hasta que haya al menos 1.
+            onValorChange={(v) => setComensalesInput(v ?? 0)}
+            minimo={1}
+            maximo={99}
+            decimales={0}
+            alinear="izquierda"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && comensalesInput >= 1) {
+                handleGuardarComensales();
+              }
+            }}
+          />
+        </FormField>
 
-            {/* Botones rápidos */}
-            <div className="grid grid-cols-5 gap-2">
-              {[1, 2, 3, 4, 5].map((num) => (
-                <Button
-                  key={num}
-                  variant={comensalesInput === num ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setComensalesInput(num)}
-                  className="font-semibold"
-                >
-                  {num}
-                </Button>
-              ))}
-            </div>
-            <div className="grid grid-cols-5 gap-2">
-              {[6, 7, 8, 9, 10].map((num) => (
-                <Button
-                  key={num}
-                  variant={comensalesInput === num ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setComensalesInput(num)}
-                  className="font-semibold"
-                >
-                  {num}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <DialogFooter className="flex gap-2">
+        {/* Atajos 1–10 */}
+        <div role="group" aria-label={tMesas('comensales.atajos')} className="grid grid-cols-5 gap-2">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
             <Button
-              variant="outline"
-              onClick={() => setShowEditarComensales(false)}
+              key={num}
+              type="button"
+              variant={comensalesInput === num ? 'default' : 'outline'}
+              size="sm"
+              aria-pressed={comensalesInput === num}
+              onClick={() => setComensalesInput(num)}
+              className="font-semibold tabular-nums"
             >
-              Cancelar
+              {num}
             </Button>
-            <Button
-              onClick={handleGuardarComensales}
-              disabled={comensalesInput < 1}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Guardar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          ))}
+        </div>
+      </Dialogo>
 
-      {/* Editar Mesero Dialog */}
-      <Dialog open={showEditarMesero} onOpenChange={setShowEditarMesero}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <UserCircle className="h-5 w-5 text-purple-600" />
-              Asignar Mesero
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-2 py-4">
-            <Label>Mesero</Label>
+      <Dialogo
+        abierto={showEditarMesero}
+        onAbiertoChange={setShowEditarMesero}
+        titulo={tMesas('mesero.titulo')}
+        icono={UserCircle}
+        ancho={440}
+        primario={{ etiqueta: tMesas('comun.guardar'), onClick: handleGuardarMesero, deshabilitada: !meseroSeleccionado }}
+      >
+        <FormField etiqueta={tMesas('mesero.etiqueta')}>
+          {() => (
             <SearchSelect
               options={orgMembers}
               value={meseroSeleccionado}
               onValueChange={setMeseroSeleccionado}
-              placeholder={loadingMembers ? 'Cargando miembros...' : 'Selecciona un mesero'}
-              searchPlaceholder="Buscar por nombre o correo..."
+              placeholder={loadingMembers ? tMesas('mesero.cargando') : tMesas('mesero.placeholder')}
+              searchPlaceholder={tMesas('mesero.buscar')}
               disabled={loadingMembers}
             />
-          </div>
-
-          <DialogFooter className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowEditarMesero(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleGuardarMesero}
-              disabled={!meseroSeleccionado}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
-            >
-              Guardar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          )}
+        </FormField>
+      </Dialogo>
 
       {/* Liberar mesa: con saldo pide resolverlo (cobrar, cartera o anular) */}
       <LiberarMesaDialog

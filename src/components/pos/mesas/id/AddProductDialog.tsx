@@ -6,17 +6,16 @@ import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Minus, Search, X, ShoppingCart, Package, Image as ImageIcon, Check, Star, Flame, ChefHat } from 'lucide-react';
+import { Plus, Minus, X, ShoppingCart, Package, Image as ImageIcon, Check, Star, Flame, ChefHat } from 'lucide-react';
+import { SearchInput, EmptyState } from '@/components/kit';
+import { useBranch } from '@/lib/context/BranchContext';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import type { Product, ProductToAdd, SelectedProductModifier } from './types';
 import { POSService } from '@/lib/services/posService';
 import { estacionEfectiva } from '@/lib/pos/estacionEfectiva';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { VariantSelectorDialog } from '@/components/pos/VariantSelectorDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CategoryFilterBar } from '@/components/pos/CategoryFilterBar';
@@ -59,6 +58,9 @@ export function AddProductDialog({
   includedProductIds,
 }: AddProductDialogProps) {
   const tNotas = useTranslations('posNotasLinea');
+  const tAgregar = useTranslations('posMesas.agregar');
+  const { branchFilter, branches } = useBranch();
+  const nombreSucursal = branchFilter === null ? null : branches?.find((b) => b.id === branchFilter)?.name ?? undefined;
   const [searchTerm, setSearchTerm] = useState('');
   const [chargeType, setChargeType] = useState<'room_charge' | 'direct_payment'>('room_charge');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -235,7 +237,7 @@ export function AddProductDialog({
           : 'El producto ya no se priorizará.',
         duration: 1800,
       });
-    } catch (error) {
+    } catch {
       setProducts(prev => prev.map((p: any) =>
         p.id === productId ? { ...p, is_favorite: wasFavorite } : p
       ));
@@ -418,7 +420,8 @@ export function AddProductDialog({
   useEffect(() => {
     if (!open) return;
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !showVariantDialog && !variantDialogOpeningRef.current) {
+      // `defaultPrevented`: el buscador ya usó el Esc para borrar el texto.
+      if (e.key === 'Escape' && !e.defaultPrevented && !showVariantDialog && !variantDialogOpeningRef.current) {
         handleClose(false);
       }
     };
@@ -437,23 +440,26 @@ export function AddProductDialog({
             {/* Panel izquierdo - Productos */}
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
               <div className="px-3 sm:px-6 py-3 border-b shrink-0 space-y-3 relative">
-                <button className="absolute top-2 right-2 p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700 z-10" onClick={() => handleClose(false)}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                <button
+                  type="button"
+                  aria-label={tAgregar('cerrar')}
+                  className="absolute right-2 top-2 z-10 flex size-9 items-center justify-center rounded-lg text-fg-secondary transition-colors hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  onClick={() => handleClose(false)}
+                >
+                  <X aria-hidden="true" className="size-5" strokeWidth={1.5} />
                 </button>
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-base sm:text-xl shrink-0 font-semibold text-gray-900 dark:text-gray-50">{title}</h2>
+                <div className="flex items-center justify-between gap-2 pr-10">
+                  <h2 className="text-base sm:text-xl shrink-0 font-semibold text-fg">{title}</h2>
                   {subtitle && (
-                    <p className="text-sm text-gray-500 hidden sm:block dark:text-gray-400">{subtitle}</p>
+                    <p className="hidden text-sm text-fg-secondary sm:block">{subtitle}</p>
                   )}
-                <div className="relative w-full sm:w-80">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Buscar por nombre, SKU, código de barras, variantes o modificadores..."
+                <div className="w-full sm:w-80">
+                  <SearchInput
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 h-10"
+                    onChange={setSearchTerm}
+                    onValueChange={setSearchTerm}
+                    placeholder={tAgregar('buscar')}
+                    atajo={false}
                   />
                 </div>
               </div>
@@ -488,12 +494,20 @@ export function AddProductDialog({
                   ))}
                 </div>
               ) : filteredProducts.length === 0 ? (
-                <div className="flex items-center justify-center py-20">
-                  <div className="text-center">
-                    <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No se encontraron productos</p>
-                  </div>
-                </div>
+                searchTerm.trim() || selectedCategory !== 'all' ? (
+                  <EmptyState
+                    compacto
+                    variante="search"
+                    termino={searchTerm.trim() || undefined}
+                    icono={Package}
+                    onLimpiarFiltros={() => {
+                      setSearchTerm('');
+                      setSelectedCategory('all');
+                    }}
+                  />
+                ) : (
+                  <EmptyState compacto variante="empty" icono={Package} titulo={tAgregar('vacioTitulo')} descripcion={tAgregar('vacioDescripcion')} />
+                )
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                   {filteredProducts.map((product: any) => {
@@ -918,6 +932,9 @@ export function AddProductDialog({
         }}
         product={selectedParentProduct}
         onSelectVariant={handleVariantSelect}
+        // Stock por variante en la sucursal que vende (misma regla que la tarjeta del POS).
+        // Sin `conCantidad`: `addToCart` suma de a una unidad y la cantidad se ajusta en el carrito.
+        sucursal={{ filtro: branchFilter, nombre: nombreSucursal }}
       />
     )}
 

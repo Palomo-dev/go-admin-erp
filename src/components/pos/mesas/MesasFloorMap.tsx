@@ -1,9 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Users, Clock, Save, Lock, Unlock, ZoomIn, ZoomOut, Maximize2, Crosshair, User as UserIcon, DollarSign, ChefHat, RotateCw } from 'lucide-react';
 import { cn } from '@/utils/Utils';
@@ -82,7 +80,7 @@ function getChairPositions(capacity: number, w: number, h: number, shape: MesaSh
     const perimeter = 2 * (w + h);
     const step = perimeter / capacity;
     for (let i = 0; i < capacity; i++) {
-      let dist = i * step + step / 2;
+      const dist = i * step + step / 2;
       let x: number, y: number;
       if (dist < w) {
         x = dist - CHAIR_SIZE / 2;
@@ -563,14 +561,7 @@ export function MesasFloorMap({ mesas, onSavePositions, onSaveZoneLayouts, onMes
             Centrar mesas
           </Button>
         </div>
-
-        {/* Leyenda */}
-        <div className="flex items-center gap-3 text-xs">
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500" /> Libre</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500" /> Ocupada</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-orange-500" /> Cuenta</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-yellow-500" /> Reservada</span>
-        </div>
+        {/* La leyenda de estados vive arriba, común a cuadrícula y plano (KpiCompacto en mesas/page.tsx). */}
       </div>
 
       {/* Canvas */}

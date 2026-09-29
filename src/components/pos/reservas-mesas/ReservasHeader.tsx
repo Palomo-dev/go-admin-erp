@@ -1,8 +1,8 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { RefreshCw, Plus, CalendarRange } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -10,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/utils/Utils';
 import {
   RESERVATION_STATUS_LABELS,
   RESERVATION_SOURCE_LABELS,
@@ -18,6 +17,7 @@ import {
   type ReservationSource,
 } from './reservasMesasService';
 import { CampoFecha } from '@/components/kit/CampoFecha';
+import { PageHeader, SearchInput, BranchBadgeActiva, RowActionsMenu } from '@/components/kit';
 
 interface ReservasHeaderProps {
   search: string;
@@ -35,6 +35,10 @@ interface ReservasHeaderProps {
   isLoading: boolean;
 }
 
+/**
+ * Cabecera y filtros de reservas de mesas con el kit (sin Figma aprobado:
+ * regla del kit). La agenda y las llegadas quedan para cuando exista el diseño.
+ */
 export function ReservasHeader({
   search,
   onSearchChange,
@@ -50,60 +54,61 @@ export function ReservasHeader({
   onNewReservation,
   isLoading,
 }: ReservasHeaderProps) {
+  const t = useTranslations('posReservasMesas');
   return (
     <div className="space-y-4">
-      {/* Título + acciones */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-            <CalendarRange className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-              Reservas de Mesas
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Gestiona las reservas del restaurante
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRefresh}
-            disabled={isLoading}
-            className="border-gray-300 dark:border-gray-700"
-          >
-            <RefreshCw className={cn('h-4 w-4 mr-2', isLoading && 'animate-spin')} />
-            Actualizar
-          </Button>
-          <Button
-            size="sm"
-            onClick={onNewReservation}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Reserva
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={t('subtitulo')}
+        icono={CalendarRange}
+        cargando={isLoading}
+        debajo={<BranchBadgeActiva />}
+        acciones={
+          <>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10"
+              onClick={onRefresh}
+              disabled={isLoading}
+              aria-label={t('actualizar')}
+              title={t('actualizar')}
+            >
+              <RefreshCw aria-hidden="true" className={isLoading ? 'size-4 animate-spin' : 'size-4'} strokeWidth={1.5} />
+            </Button>
+            <Button className="h-10 gap-2" onClick={onNewReservation}>
+              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('nueva')}
+            </Button>
+          </>
+        }
+        movil={{
+          accion: (
+            <RowActionsMenu
+              orientacion="horizontal"
+              tamano="md"
+              titulo={t('titulo')}
+              acciones={[
+                { id: 'nueva', etiqueta: t('nueva'), icono: Plus, onSelect: onNewReservation },
+                { id: 'actualizar', etiqueta: t('actualizar'), icono: RefreshCw, onSelect: onRefresh, deshabilitada: isLoading },
+              ]}
+            />
+          ),
+        }}
+      />
 
       {/* Filtros */}
       <div className="flex flex-wrap items-center gap-3">
-        <Input
-          placeholder="Buscar por nombre, teléfono o email..."
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full sm:w-64 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
-        />
+        <div className="w-full sm:w-72">
+          <SearchInput value={search} onChange={onSearchChange} placeholder={t('buscar')} atajo={false} />
+        </div>
 
         <Select value={statusFilter} onValueChange={onStatusFilterChange}>
-          <SelectTrigger className="w-[160px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
-            <SelectValue placeholder="Estado" />
+          <SelectTrigger aria-label={t('estado')} className="h-10 w-[160px] border-line-strong bg-surface">
+            <SelectValue placeholder={t('estado')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos los estados</SelectItem>
+            <SelectItem value="all">{t('todosEstados')}</SelectItem>
             {(Object.entries(RESERVATION_STATUS_LABELS) as [ReservationStatus, string][]).map(
               ([key, label]) => (
                 <SelectItem key={key} value={key}>
@@ -115,11 +120,11 @@ export function ReservasHeader({
         </Select>
 
         <Select value={sourceFilter} onValueChange={onSourceFilterChange}>
-          <SelectTrigger className="w-[140px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
-            <SelectValue placeholder="Origen" />
+          <SelectTrigger aria-label={t('origen')} className="h-10 w-[140px] border-line-strong bg-surface">
+            <SelectValue placeholder={t('origen')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="all">{t('todosOrigenes')}</SelectItem>
             {(Object.entries(RESERVATION_SOURCE_LABELS) as [ReservationSource, string][]).map(
               ([key, label]) => (
                 <SelectItem key={key} value={key}>
@@ -131,14 +136,14 @@ export function ReservasHeader({
         </Select>
 
         <CampoFecha
-          aria-label="Desde"
+          aria-label={t('desde')}
           valor={dateFrom}
           onValorChange={onDateFromChange}
           className="w-[170px]"
         />
-        <span className="text-gray-400">—</span>
+        <span aria-hidden="true" className="text-fg-muted">—</span>
         <CampoFecha
-          aria-label="Hasta"
+          aria-label={t('hasta')}
           valor={dateTo}
           onValorChange={onDateToChange}
           className="w-[170px]"

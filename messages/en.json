@@ -9951,7 +9951,11 @@
     "confirmarCambio": "Confirm change",
     "motivo": "Reason",
     "motivoPlaceholder": "E.g. the customer changed their mind",
-    "motivoAyuda": "Required: it appears on the adjustment ticket and in the table history."
+    "motivoAyuda": "Required: it appears on the adjustment ticket and in the table history.",
+    "eliminarTitulo": "Remove the product from the order?",
+    "eliminarDescripcion": "“{producto}” will be removed from the order.",
+    "eliminar": "Remove",
+    "esteItem": "this product"
   },
   "posNotasRapidas": {
     "titulo": "Quick notes",
@@ -14754,6 +14758,245 @@
     "permisos": {
       "sinPermisoTitulo": "You do not have access to inventory",
       "sinPermisoDescripcion": "Ask an administrator of your organization for the inventory permission you need."
+    }
+  },
+  "posMesas": {
+    "titulo": "Tables",
+    "subtitulo": "{n, plural, one {# table} other {# tables}}",
+    "estados": {
+      "free": "Free",
+      "occupied": "Occupied",
+      "bill_requested": "Bill requested",
+      "reserved": "Reserved"
+    },
+    "estadosCorto": {
+      "free": "Free",
+      "occupied": "Occupied",
+      "bill_requested": "Bill",
+      "reserved": "Reserved"
+    },
+    "tiempo": {
+      "minutos": "{m} min",
+      "horasMinutos": "{h} h {m} min"
+    },
+    "tarjeta": {
+      "personas": "{n} / {capacidad} guests",
+      "enCocina": "{n} in the kitchen",
+      "revisar": "Check"
+    },
+    "zona": {
+      "sinZona": "No area",
+      "mesas": "{n, plural, one {# table} other {# tables}}",
+      "libres": "{n} free",
+      "porCobrar": "{n} to charge"
+    },
+    "acciones": {
+      "actualizar": "Refresh",
+      "nuevaMesa": "New table",
+      "gestionarZonas": "Manage areas",
+      "moverPedido": "Move bill",
+      "combinar": "Merge tables",
+      "cancelarCombinacion": "Cancel merge",
+      "historial": "History",
+      "editarMesa": "Edit table",
+      "solicitarCuenta": "Request bill",
+      "editarComensales": "Edit guests",
+      "liberarMesa": "Free table"
+    },
+    "leyenda": {
+      "etiqueta": "Table status",
+      "todas": "All",
+      "libres": "Free",
+      "ocupadas": "Occupied",
+      "porCobrar": "To charge",
+      "reservadas": "Reserved"
+    },
+    "filtros": {
+      "buscar": "Search table…",
+      "zona": "Area",
+      "estado": "Status",
+      "todasZonas": "All areas",
+      "todosEstados": "All statuses",
+      "chipZona": "Area: {zona}",
+      "chipEstado": "Status: {estado}"
+    },
+    "vista": {
+      "etiqueta": "Tables view",
+      "cuadricula": "Grid",
+      "plano": "Floor plan"
+    },
+    "combinar": {
+      "titulo": "Merge mode",
+      "instrucciones": "Select tables with the checkbox. The first one you pick is the main table and receives all orders.",
+      "seleccionadas": "{n, plural, one {# table selected} other {# tables selected}}",
+      "combinarAhora": "Merge now",
+      "seleccionar": "Select {mesa}",
+      "principal": "Main"
+    },
+    "vacio": {
+      "titulo": "Set up your dining room",
+      "descripcion": "Create an area and add tables."
+    },
+    "eliminar": {
+      "titulo": "Delete table?",
+      "descripcion": "This cannot be undone. Table {mesa} will be deleted.",
+      "confirmar": "Delete"
+    },
+    "comun": {
+      "cancelar": "Cancel",
+      "guardar": "Save"
+    },
+    "comensales": {
+      "tituloEditar": "Guests at {mesa}",
+      "numero": "Number of guests",
+      "capacidad": "Maximum capacity: {n} guests",
+      "titulo": "Edit guests",
+      "cantidad": "Number of guests",
+      "ayuda": "Enter how many people are at the table.",
+      "atajos": "Guest shortcuts"
+    },
+    "abrir": {
+      "titulo": "Open {mesa}",
+      "descripcion": "The table becomes occupied and you can add products from its detail.",
+      "confirmar": "Open table"
+    },
+    "detalle": {
+      "activa": "Active",
+      "disponible": "Available",
+      "combinarMesa": "Merge table",
+      "agregarProducto": "Add product"
+    },
+    "cifras": {
+      "etiqueta": "Table summary",
+      "comensales": "Guests",
+      "tiempo": "Time",
+      "items": "Items",
+      "total": "Total",
+      "mesero": "Server",
+      "sinAsignar": "Unassigned"
+    },
+    "pedido": {
+      "titulo": "Current order",
+      "resumen": "{n, plural, one {# pending item} other {# pending items}}",
+      "resumenConPagados": "{n, plural, one {# pending item} other {# pending items}} · {pagados} paid ({importe})",
+      "agregar": "Add",
+      "vacioTitulo": "No products in the order",
+      "vacioDescripcion": "Add products to send them to the kitchen.",
+      "agregarPrimero": "Add first product",
+      "pagadosTitulo": "Paid items ({n})",
+      "producto": "Product"
+    },
+    "mesero": {
+      "titulo": "Assign server",
+      "etiqueta": "Server",
+      "cargando": "Loading members…",
+      "placeholder": "Select a server",
+      "buscar": "Search by name or email…"
+    },
+    "cuenta": {
+      "cliente": "Customer",
+      "resumen": "Bill summary",
+      "subtotal": "Subtotal",
+      "total": "Total",
+      "enviarCocina": "Send to kitchen",
+      "verPreCuenta": "View pre-bill",
+      "solicitarCuenta": "Request bill",
+      "dividir": "Split bill ({n} guests)",
+      "divididaEn": "Bill split into {n} parts",
+      "cancelarDivision": "Cancel split",
+      "sinAsignar": "{n, plural, one {# unassigned product} other {# unassigned products}}",
+      "sinAsignarDescripcion": "Total: {total}. Split the bill again to include them.",
+      "dividirDeNuevo": "Split again (required)",
+      "modificarDivision": "Edit split",
+      "cobrar": {
+        "divideDeNuevo": "Split again to continue",
+        "pagosDivididos": "Process split payments",
+        "procesar": "Process payment",
+        "sinCaja": "Open a cash register to charge"
+      },
+      "liberarMesa": "Free table"
+    },
+    "agregar": {
+      "cerrar": "Close",
+      "buscar": "Search by name, SKU, barcode, variants or modifiers…",
+      "vacioTitulo": "No products",
+      "vacioDescripcion": "There are no products available to add."
+    },
+    "zonas": {
+      "titulo": "Manage areas",
+      "cerrar": "Close",
+      "vacioTitulo": "No areas",
+      "vacioDescripcion": "Assign an area to a table to see it here.",
+      "editarZona": "Edit {zona}",
+      "eliminarZona": "Delete {zona}",
+      "editarTitulo": "Edit area",
+      "guardar": "Save",
+      "nuevoNombre": "New name",
+      "placeholder": "Area name",
+      "eliminarTitulo": "Delete area?",
+      "eliminarDescripcion": "The area will be removed from all its tables. Tables are not deleted: they are left without an area.",
+      "eliminar": "Delete",
+      "cancelar": "Cancel"
+    },
+    "historial": {
+      "titulo": "Table history",
+      "vacioTitulo": "No sessions",
+      "vacioDescripcion": "There are no table sessions in the selected range and filters."
+    },
+    "avisos": {
+      "combinarMinimo": "You need at least 2 occupied tables to merge.",
+      "transferenciaParcial": "{cantidad} of {total} units will be transferred",
+      "transferenciaParcialDescripcion": "The rest stay at this table.",
+      "comensal": "Guest {n}",
+      "pagosCompletos": "All payments completed",
+      "pagosCompletosDescripcion": "There are no parts left to charge."
+    },
+    "dividir": {
+      "modo": "Split mode",
+      "porItems": "By items",
+      "equitativo": "Equal",
+      "personalizado": "Custom"
+    }
+  },
+  "posReservasMesas": {
+    "titulo": "Table reservations",
+    "subtitulo": "Manage the restaurant reservations",
+    "actualizar": "Refresh",
+    "nueva": "New reservation",
+    "buscar": "Search by name, phone or email…",
+    "estado": "Status",
+    "origen": "Source",
+    "todosEstados": "All statuses",
+    "todosOrigenes": "All sources",
+    "desde": "From",
+    "hasta": "To",
+    "cifras": {
+      "etiqueta": "Reservations summary",
+      "hoy": "Today",
+      "pendientes": "Pending",
+      "confirmadas": "Confirmed",
+      "sentadas": "Seated",
+      "canceladas": "Cancelled",
+      "noShow": "No-shows"
+    },
+    "vacio": {
+      "titulo": "No reservations to show",
+      "descripcion": "Create a new reservation or adjust the filters."
+    },
+    "acciones": {
+      "editar": "Edit",
+      "confirmar": "Confirm",
+      "sentar": "Mark as seated",
+      "completar": "Complete",
+      "cancelar": "Cancel reservation",
+      "noShow": "No-show",
+      "eliminar": "Delete"
+    },
+    "eliminar": {
+      "titulo": "Delete reservation?",
+      "descripcion": "This cannot be undone. The reservation will be deleted.",
+      "confirmar": "Delete",
+      "cancelar": "Cancel"
     }
   }
 }

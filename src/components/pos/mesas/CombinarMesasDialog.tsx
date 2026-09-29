@@ -14,7 +14,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Users, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Users, ShoppingBag, ArrowRight, AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { Tarjeta } from '@/components/kit';
 import type { TableWithSession } from './types';
 
 interface CombinarMesasDialogProps {
@@ -30,6 +32,7 @@ export function CombinarMesasDialog({
   mesas,
   onCombinar,
 }: CombinarMesasDialogProps) {
+  const tAvisos = useTranslations('posMesas.avisos');
   const [mesaPrincipal, setMesaPrincipal] = useState<string | null>(null);
   const [mesasSeleccionadas, setMesasSeleccionadas] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,11 +88,7 @@ export function CombinarMesasDialog({
         </DialogHeader>
 
         {mesasDisponibles.length < 2 && (
-          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              ⚠️ Necesitas al menos 2 mesas ocupadas para combinar.
-            </p>
-          </div>
+          <Tarjeta tono="advertencia" icono={AlertTriangle} titulo={tAvisos('combinarMinimo')} />
         )}
 
         <div className="space-y-4">

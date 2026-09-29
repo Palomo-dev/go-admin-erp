@@ -9951,7 +9951,11 @@
     "confirmarCambio": "Confirmar cambio",
     "motivo": "Motivo",
     "motivoPlaceholder": "Ej: el cliente cambió de opinión",
-    "motivoAyuda": "Obligatorio: sale en la comanda de ajuste y en el historial de la mesa."
+    "motivoAyuda": "Obligatorio: sale en la comanda de ajuste y en el historial de la mesa.",
+    "eliminarTitulo": "¿Quitar el producto del pedido?",
+    "eliminarDescripcion": "Se quitará «{producto}» del pedido.",
+    "eliminar": "Eliminar",
+    "esteItem": "este producto"
   },
   "posNotasRapidas": {
     "titulo": "Notas rápidas",
@@ -14754,6 +14758,245 @@
     "permisos": {
       "sinPermisoTitulo": "No tienes acceso al inventario",
       "sinPermisoDescripcion": "Pide a un administrador de tu organización el permiso de inventario que necesitas."
+    }
+  },
+  "posMesas": {
+    "titulo": "Mesas",
+    "subtitulo": "{n, plural, one {# mesa} other {# mesas}}",
+    "estados": {
+      "free": "Libre",
+      "occupied": "Ocupada",
+      "bill_requested": "Cuenta solicitada",
+      "reserved": "Reservada"
+    },
+    "estadosCorto": {
+      "free": "Libre",
+      "occupied": "Ocupada",
+      "bill_requested": "Cuenta",
+      "reserved": "Reservada"
+    },
+    "tiempo": {
+      "minutos": "{m} min",
+      "horasMinutos": "{h} h {m} min"
+    },
+    "tarjeta": {
+      "personas": "{n} / {capacidad} personas",
+      "enCocina": "{n} en cocina",
+      "revisar": "Revisar"
+    },
+    "zona": {
+      "sinZona": "Sin zona",
+      "mesas": "{n, plural, one {# mesa} other {# mesas}}",
+      "libres": "{n, plural, one {# libre} other {# libres}}",
+      "porCobrar": "{n} por cobrar"
+    },
+    "acciones": {
+      "actualizar": "Actualizar",
+      "nuevaMesa": "Nueva mesa",
+      "gestionarZonas": "Gestionar zonas",
+      "moverPedido": "Mover cuenta",
+      "combinar": "Combinar mesas",
+      "cancelarCombinacion": "Cancelar combinación",
+      "historial": "Historial",
+      "editarMesa": "Editar mesa",
+      "solicitarCuenta": "Solicitar cuenta",
+      "editarComensales": "Editar comensales",
+      "liberarMesa": "Liberar mesa"
+    },
+    "leyenda": {
+      "etiqueta": "Estado de las mesas",
+      "todas": "Todas",
+      "libres": "Libres",
+      "ocupadas": "Ocupadas",
+      "porCobrar": "Por cobrar",
+      "reservadas": "Reservadas"
+    },
+    "filtros": {
+      "buscar": "Buscar mesa…",
+      "zona": "Zona",
+      "estado": "Estado",
+      "todasZonas": "Todas las zonas",
+      "todosEstados": "Todos los estados",
+      "chipZona": "Zona: {zona}",
+      "chipEstado": "Estado: {estado}"
+    },
+    "vista": {
+      "etiqueta": "Vista de mesas",
+      "cuadricula": "Cuadrícula",
+      "plano": "Plano"
+    },
+    "combinar": {
+      "titulo": "Modo combinar",
+      "instrucciones": "Selecciona las mesas con la casilla. La primera que elijas es la principal y recibe todos los pedidos.",
+      "seleccionadas": "{n, plural, one {# mesa seleccionada} other {# mesas seleccionadas}}",
+      "combinarAhora": "Combinar ahora",
+      "seleccionar": "Seleccionar {mesa}",
+      "principal": "Principal"
+    },
+    "vacio": {
+      "titulo": "Arma tu salón",
+      "descripcion": "Crea una zona y agrega mesas."
+    },
+    "eliminar": {
+      "titulo": "¿Eliminar mesa?",
+      "descripcion": "Esta acción no se puede deshacer. La mesa {mesa} se eliminará.",
+      "confirmar": "Eliminar"
+    },
+    "comun": {
+      "cancelar": "Cancelar",
+      "guardar": "Guardar"
+    },
+    "comensales": {
+      "tituloEditar": "Comensales de {mesa}",
+      "numero": "Número de comensales",
+      "capacidad": "Capacidad máxima: {n} personas",
+      "titulo": "Editar comensales",
+      "cantidad": "Cantidad de comensales",
+      "ayuda": "Ingresa la cantidad de personas en la mesa.",
+      "atajos": "Atajos de comensales"
+    },
+    "abrir": {
+      "titulo": "Abrir {mesa}",
+      "descripcion": "La mesa pasará a ocupada y podrás agregar productos desde su detalle.",
+      "confirmar": "Abrir mesa"
+    },
+    "detalle": {
+      "activa": "Activa",
+      "disponible": "Disponible",
+      "combinarMesa": "Combinar mesa",
+      "agregarProducto": "Agregar producto"
+    },
+    "cifras": {
+      "etiqueta": "Resumen de la mesa",
+      "comensales": "Comensales",
+      "tiempo": "Tiempo",
+      "items": "Ítems",
+      "total": "Total",
+      "mesero": "Mesero",
+      "sinAsignar": "Sin asignar"
+    },
+    "pedido": {
+      "titulo": "Pedido actual",
+      "resumen": "{n, plural, one {# producto pendiente} other {# productos pendientes}}",
+      "resumenConPagados": "{n, plural, one {# producto pendiente} other {# productos pendientes}} · {pagados, plural, one {# pagado} other {# pagados}} ({importe})",
+      "agregar": "Agregar",
+      "vacioTitulo": "Sin productos en el pedido",
+      "vacioDescripcion": "Agrega productos para enviarlos a cocina.",
+      "agregarPrimero": "Agregar primer producto",
+      "pagadosTitulo": "Ítems pagados ({n})",
+      "producto": "Producto"
+    },
+    "mesero": {
+      "titulo": "Asignar mesero",
+      "etiqueta": "Mesero",
+      "cargando": "Cargando miembros…",
+      "placeholder": "Selecciona un mesero",
+      "buscar": "Buscar por nombre o correo…"
+    },
+    "cuenta": {
+      "cliente": "Cliente",
+      "resumen": "Resumen de cuenta",
+      "subtotal": "Subtotal",
+      "total": "Total",
+      "enviarCocina": "Enviar a cocina",
+      "verPreCuenta": "Ver pre-cuenta",
+      "solicitarCuenta": "Solicitar cuenta",
+      "dividir": "Dividir cuenta ({n} comensales)",
+      "divididaEn": "Cuenta dividida en {n} partes",
+      "cancelarDivision": "Cancelar división",
+      "sinAsignar": "{n, plural, one {# producto sin asignar} other {# productos sin asignar}}",
+      "sinAsignarDescripcion": "Total: {total}. Divide la cuenta de nuevo para incluirlos.",
+      "dividirDeNuevo": "Dividir de nuevo (requerido)",
+      "modificarDivision": "Modificar división",
+      "cobrar": {
+        "divideDeNuevo": "Divide de nuevo para continuar",
+        "pagosDivididos": "Procesar pagos divididos",
+        "procesar": "Procesar pago",
+        "sinCaja": "Abre una caja para cobrar"
+      },
+      "liberarMesa": "Liberar mesa"
+    },
+    "agregar": {
+      "cerrar": "Cerrar",
+      "buscar": "Buscar por nombre, SKU, código de barras, variantes o modificadores…",
+      "vacioTitulo": "Sin productos",
+      "vacioDescripcion": "No hay productos disponibles para agregar."
+    },
+    "zonas": {
+      "titulo": "Gestionar zonas",
+      "cerrar": "Cerrar",
+      "vacioTitulo": "Sin zonas",
+      "vacioDescripcion": "Asigna una zona a una mesa para verla aquí.",
+      "editarZona": "Editar {zona}",
+      "eliminarZona": "Eliminar {zona}",
+      "editarTitulo": "Editar zona",
+      "guardar": "Guardar",
+      "nuevoNombre": "Nuevo nombre",
+      "placeholder": "Nombre de la zona",
+      "eliminarTitulo": "¿Eliminar zona?",
+      "eliminarDescripcion": "Se quitará la zona de todas sus mesas. Las mesas no se eliminan: quedan sin zona.",
+      "eliminar": "Eliminar",
+      "cancelar": "Cancelar"
+    },
+    "historial": {
+      "titulo": "Historial de mesas",
+      "vacioTitulo": "Sin sesiones",
+      "vacioDescripcion": "No hay sesiones de mesa en el rango y los filtros elegidos."
+    },
+    "avisos": {
+      "combinarMinimo": "Necesitas al menos 2 mesas ocupadas para combinar.",
+      "transferenciaParcial": "Se transferirán {cantidad} de {total} unidades",
+      "transferenciaParcialDescripcion": "Las restantes se quedan en esta mesa.",
+      "comensal": "Comensal {n}",
+      "pagosCompletos": "Todos los pagos completados",
+      "pagosCompletosDescripcion": "No quedan partes pendientes de cobro."
+    },
+    "dividir": {
+      "modo": "Modo de división",
+      "porItems": "Por ítems",
+      "equitativo": "Equitativo",
+      "personalizado": "Personalizado"
+    }
+  },
+  "posReservasMesas": {
+    "titulo": "Reservas de mesas",
+    "subtitulo": "Gestiona las reservas del restaurante",
+    "actualizar": "Actualizar",
+    "nueva": "Nueva reserva",
+    "buscar": "Buscar por nombre, teléfono o correo…",
+    "estado": "Estado",
+    "origen": "Origen",
+    "todosEstados": "Todos los estados",
+    "todosOrigenes": "Todos los orígenes",
+    "desde": "Desde",
+    "hasta": "Hasta",
+    "cifras": {
+      "etiqueta": "Resumen de reservas",
+      "hoy": "Hoy",
+      "pendientes": "Pendientes",
+      "confirmadas": "Confirmadas",
+      "sentadas": "Sentadas",
+      "canceladas": "Canceladas",
+      "noShow": "No se presentaron"
+    },
+    "vacio": {
+      "titulo": "No hay reservas para mostrar",
+      "descripcion": "Crea una nueva reserva o ajusta los filtros."
+    },
+    "acciones": {
+      "editar": "Editar",
+      "confirmar": "Confirmar",
+      "sentar": "Marcar como sentada",
+      "completar": "Completar",
+      "cancelar": "Cancelar reserva",
+      "noShow": "No se presentó",
+      "eliminar": "Eliminar"
+    },
+    "eliminar": {
+      "titulo": "¿Eliminar reserva?",
+      "descripcion": "Esta acción no se puede deshacer. La reserva se eliminará.",
+      "confirmar": "Eliminar",
+      "cancelar": "Cancelar"
     }
   }
 }

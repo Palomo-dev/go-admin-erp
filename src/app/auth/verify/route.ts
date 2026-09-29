@@ -4,15 +4,33 @@ import { cookies } from 'next/headers';
 import { completeSignupAfterEmailConfirmation } from '@/app/auth/callback/route';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit';
+import { getRateLimitStore } from '@/lib/security/rateLimitStore';
+import { buscarInvitacionVigentePorCorreo, reenviarEnlaceInvitacion } from '@/lib/auth/invitaciones';
 
 /**
- * Rate limit del auto-reenvío del magic link (bombardeo de correo).
- * Esta ruta es pública y, con `?type=magiclink&email=...` y un token inválido,
- * dispara un envío por petición. La cookie anti-bucle no sirve como freno:
- * basta con no mandarla. Límites por IP y por correo destino.
+ * Rate limit del auto-reenvío del enlace (bombardeo de correo).
+ * Esta ruta es pública y, con `?type=magiclink|invite&email=...` y un token
+ * inválido, dispara un envío por petición. La cookie anti-bucle no sirve como
+ * freno: basta con no mandarla. Límites por IP y por correo destino.
  */
 const RESEND_IP_LIMIT = { limit: 5, windowMs: 15 * 60 * 1000 };
 const RESEND_EMAIL_LIMIT = { limit: 3, windowMs: 15 * 60 * 1000 };
+
+/**
+ * Código de la invitación vigente de un correo YA PROBADO por `verifyOtp`
+ * (el token del correo demuestra que quien abre el enlace controla el buzón).
+ * Nunca se llama con un correo que solo venga de la URL.
+ */
+async function codigoInvitacionDelCorreoVerificado(email: string | undefined | null): Promise<string | null> {
+  if (!email) return null;
+  try {
+    const invitacion = await buscarInvitacionVigentePorCorreo(getSupabaseAdmin(), email);
+    return invitacion?.code ?? null;
+  } catch (err) {
+    console.error('Error buscando invitación vigente del correo verificado:', err);
+    return null;
+  }
+}
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -24,12 +42,12 @@ export async function GET(request: NextRequest) {
   // cuando el token original fue consumido por email prefetch de Gmail/Outlook.
   const emailParam = requestUrl.searchParams.get('email');
 
+  // Sin la URL completa: lleva el token del correo.
   console.log('Verify endpoint called:', {
-    token: token ? token.substring(0, 20) + '...' : null,
+    hasToken: !!token,
     type,
     completeSignup,
     hasEmailParam: !!emailParam,
-    fullUrl: requestUrl.toString()
   });
 
   // Crear cliente Supabase para server-side
@@ -157,70 +175,52 @@ export async function GET(request: NextRequest) {
       if (verifyError) {
         console.error('Token verification error:', verifyError);
 
-        // Para type=invite: NO auto-resendear ni mostrar página de error.
-        // El token probablemente fue consumido por prefetch de Gmail/Outlook.
-        // Redirigir directamente a /auth/invite donde el wizard puede funcionar
-        // SIN sesión usando el API server-side (admin key) para crear el usuario
-        // y setear la contraseña. Esto elimina el bucle infinito de emails.
-        if (type === 'invite' && emailParam) {
-          console.log('Token invite falló para', emailParam, '→ redirect directo a /auth/invite');
-          // Buscar el código de invitación pendiente para este email
-          const admin = getSupabaseAdmin();
-          const { data: pendingInvite } = await admin
-            .from('invitations')
-            .select('code')
-            .eq('email', emailParam.toLowerCase().trim())
-            .eq('status', 'pending')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (pendingInvite?.code) {
-            return redirectWithCookies(`/auth/invite?invite_code=${pendingInvite.code}`);
-          }
-          // Si no hay invitación pendiente, caer al failed page
-          return redirectWithCookies(`/auth/verify/failed?type=${type}`);
-        }
-
-        // Para magiclink: mantener el auto-resend (usuarios existentes que
-        // necesitan autenticarse para aceptar la invitación)
-        if (type === 'magiclink' && emailParam) {
-          const resendCookieName = `ml_resent_${emailParam.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+        // invite / magiclink con token fallido (lo normal: el prefetch de
+        // Gmail/Outlook lo consumió). El `email` de la URL NO prueba nada: lo
+        // puede escribir cualquiera. Antes, con type=invite, se buscaba la
+        // invitación de ese correo y se redirigía con su código real al
+        // asistente, donde se creaba la cuenta con contraseña propia
+        // (AUTH-ACCESO-V2 §4.1). Ahora solo se REENVÍA el enlace a ese buzón,
+        // y la respuesta es la misma haya o no invitación (sin oráculo).
+        if ((type === 'invite' || type === 'magiclink') && emailParam) {
+          const correo = emailParam.toLowerCase().trim();
+          const resendCookieName = `ml_resent_${correo.replace(/[^a-z0-9]/g, '')}`;
           const alreadyResent = cookieStore.get(resendCookieName)?.value === '1';
 
-          if (!alreadyResent) {
-            // Solo se consulta el rate limit cuando de verdad se iría a enviar,
-            // para no gastar cuota del usuario legítimo en los casos en que la
-            // cookie ya frena el reenvío.
-            const ip = getClientIp(request);
-            const rl = await checkRateLimits([
-              { key: `verify:resend:ip:${ip}`, opts: RESEND_IP_LIMIT },
-              { key: `verify:resend:email:${emailParam.toLowerCase().trim()}`, opts: RESEND_EMAIL_LIMIT },
-            ]);
-
-            if (!rl.allowed) {
-              console.warn('Reenvío automático bloqueado por rate limit:', rl.blockedKey, 'ip:', ip);
-              return redirectWithCookies(`/auth/verify/failed?type=${type}`);
-            }
-
-            const resendResult = await tryResendMagicLink(emailParam, requestUrl.origin);
-            if (resendResult.success) {
-              // Setear cookie anti-bucle (10 min de expiración)
-              const response = redirectWithCookies(`/auth/verify/resent?email=${encodeURIComponent(emailParam)}`);
-              response.cookies.set(resendCookieName, '1', {
-                httpOnly: false,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                path: '/',
-                maxAge: 600, // 10 minutos
-              });
-              return response;
-            }
-          } else {
-            console.log('Reenvío automático ya realizado recientemente para', emailParam, '→ fallback a failed');
+          if (alreadyResent) {
+            console.log('Reenvío automático ya realizado recientemente → failed');
+            return redirectWithCookies(`/auth/verify/failed?type=${type}`);
           }
-          // Si el reenvío falló o ya se reenvió recientemente, caer al fallback.
-          return redirectWithCookies(`/auth/verify/failed?type=${type}`);
+
+          // El límite depende de la IP y del correo, no de que exista la
+          // invitación: bloquear no revela nada sobre el destinatario.
+          const ip = getClientIp(request);
+          const rl = await checkRateLimits([
+            { key: `verify:resend:ip:${ip}`, opts: RESEND_IP_LIMIT },
+            { key: `verify:resend:email:${correo}`, opts: RESEND_EMAIL_LIMIT },
+          ], { store: getRateLimitStore() });
+          if (!rl.allowed) {
+            console.warn('Reenvío automático bloqueado por rate limit:', rl.blockedKey, 'ip:', ip);
+            return redirectWithCookies(`/auth/verify/failed?type=${type}`);
+          }
+
+          try {
+            const { enviado } = await reenviarEnlaceInvitacion(getSupabaseAdmin(), correo, requestUrl.origin);
+            console.log('Reenvío automático del enlace de invitación:', enviado ? 'enviado' : 'sin invitación vigente o fallido');
+          } catch (err) {
+            console.error('Reenvío automático: error inesperado:', err);
+          }
+
+          // Misma respuesta en todos los casos; cookie anti-bucle de 10 min.
+          const response = redirectWithCookies(`/auth/verify/resent?email=${encodeURIComponent(correo)}`);
+          response.cookies.set(resendCookieName, '1', {
+            httpOnly: false,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 600,
+          });
+          return response;
         }
 
         // Para otros tipos (signup, recovery, email_change) o sin email en URL,
@@ -270,18 +270,10 @@ export async function GET(request: NextRequest) {
       // Pero si el recovery viene de una invitación (hay invitación pendiente para
       // este email en la tabla invitations), redirigir a /auth/invite.
       if (type === 'recovery') {
-        // Buscar invitación pendiente por email
-        const { data: pendingInvite } = await supabase
-          .from('invitations')
-          .select('code')
-          .eq('email', user.email)
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (pendingInvite?.code) {
-          return redirectWithCookies(`/auth/invite?invite_code=${pendingInvite.code}`);
+        // verifyOtp probó el buzón: ya se puede buscar su invitación vigente.
+        const inviteCode = await codigoInvitacionDelCorreoVerificado(user.email);
+        if (inviteCode) {
+          return redirectWithCookies(`/auth/invite?invite_code=${encodeURIComponent(inviteCode)}`);
         }
         return redirectWithCookies('/auth/reset-password');
       }
@@ -331,41 +323,30 @@ export async function GET(request: NextRequest) {
       // magiclink: la sesión ya queda establecida (cookies). Si hay invitación
       // pendiente, redirigir a /auth/invite para aceptarla. Si no, a la app.
       if (type === 'magiclink') {
-        const { data: pendingInvite, error: inviteQueryError } = await supabase
-          .from('invitations')
-          .select('code')
-          .eq('email', user.email)
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (inviteQueryError) {
-          console.error('Error buscando invitación pendiente para magiclink:', inviteQueryError, 'email:', user.email);
+        const inviteCode = await codigoInvitacionDelCorreoVerificado(user.email);
+        if (inviteCode) {
+          console.log('✅ Invitación pendiente del correo verificado → /auth/invite');
+          return redirectWithCookies(`/auth/invite?invite_code=${encodeURIComponent(inviteCode)}`);
         }
-
-        if (pendingInvite?.code) {
-          console.log('✅ Invitación pendiente encontrada para', user.email, '→ /auth/invite');
-          return redirectWithCookies(`/auth/invite?invite_code=${pendingInvite.code}`);
-        }
-        console.log('No se encontró invitación pendiente para', user.email, '→ /app/inicio');
         return redirectWithCookies('/app/inicio');
       }
 
       // invite: verifyOtp establece sesión; redirigir a /auth/invite con el código
-      // de invitación para que el usuario complete su perfil y defina su contraseña
+      // de la invitación VIGENTE de ese correo (se busca en la tabla y no en
+      // user_metadata: el código rota al reenviar la invitación).
       if (type === 'invite') {
-        const inviteCode = user.user_metadata?.invitation_code;
+        const inviteCode = await codigoInvitacionDelCorreoVerificado(user.email);
         if (inviteCode) {
-          return redirectWithCookies(`/auth/invite?invite_code=${inviteCode}`);
+          return redirectWithCookies(`/auth/invite?invite_code=${encodeURIComponent(inviteCode)}`);
         }
-        // Si no hay código de invitación en metadata, redirigir a reset-password
+        // Sin invitación vigente: que defina su contraseña.
         return redirectWithCookies('/auth/reset-password');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Email verification error:', error);
+      const detalle = error instanceof Error && error.message ? error.message : 'Unknown error';
       return redirectWithCookies(
-        '/auth/login?error=email-verification-error&details=' + encodeURIComponent(error.message || 'Unknown error')
+        '/auth/login?error=email-verification-error&details=' + encodeURIComponent(detalle)
       );
     }
   }
@@ -373,72 +354,4 @@ export async function GET(request: NextRequest) {
   // Si no hay token válido, redirigir a login
   console.log('No valid token found, redirecting to login');
   return redirectWithCookies('/auth/login?error=invalid-verification-link');
-}
-
-/**
- * Reenvía un magic link a un usuario con invitación pendiente.
- * Se usa cuando el token original fue consumido por email prefetch.
- * Reutiliza la misma lógica de /api/auth/invite/route.ts para usuarios existentes.
- *
- * @returns { success: boolean } - true si se reenvió, false si no hay invitación o falló.
- */
-async function tryResendMagicLink(email: string, origin: string): Promise<{ success: boolean }> {
-  try {
-    const admin = getSupabaseAdmin();
-    const normalizedEmail = email.toLowerCase().trim();
-
-    // Verificar que haya invitación pendiente para este email
-    // NOTA: la tabla invitations NO tiene organization_name, hay que traerlo
-    // via join con organizations. Si se incluye organization_name en el select
-    // directo, Postgres retorna error 42701 (column does not exist) y el
-    // auto-resend falla silenciosamente → el usuario cae al failed page.
-    const { data: pendingInvite, error: inviteError } = await admin
-      .from('invitations')
-      .select('code, organization_id, organizations!inner(name)')
-      .eq('email', normalizedEmail)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (inviteError || !pendingInvite) {
-      console.log('Reenvío: no hay invitación pendiente para', normalizedEmail, inviteError?.message || '');
-      return { success: false };
-    }
-
-    const inviteUrl = `${origin}/auth/invite?invite_code=${pendingInvite.code}`;
-    const orgName = Array.isArray(pendingInvite.organizations)
-      ? (pendingInvite.organizations[0] as any)?.name
-      : (pendingInvite.organizations as any)?.name || 'la organización';
-
-    // Reenviar magic link (mismo flujo que invite/route.ts)
-    const anonClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-
-    const { error: otpError } = await anonClient.auth.signInWithOtp({
-      email: normalizedEmail,
-      options: {
-        emailRedirectTo: inviteUrl,
-        data: {
-          invitation_code: pendingInvite.code,
-          organization_id: pendingInvite.organization_id,
-          organization_name: orgName,
-        },
-      },
-    });
-
-    if (otpError) {
-      console.error('Reenvío: error enviando Magic Link:', otpError);
-      return { success: false };
-    }
-
-    console.log('📧 Magic Link reenviado automáticamente a:', normalizedEmail, 'para invitación:', pendingInvite.code);
-    return { success: true };
-  } catch (error) {
-    console.error('Reenvío: error inesperado:', error);
-    return { success: false };
-  }
 }

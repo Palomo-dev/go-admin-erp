@@ -1,11 +1,6 @@
 import { supabase, signInWithEmail } from '@/lib/supabase/config';
-import type { AuthError, Session, User } from '@supabase/supabase-js';
 
 // Interfaces para tipos de datos
-interface OrganizationType {
-  name: string;
-}
-
 interface Plan {
   id: number;
   name: string;
@@ -120,21 +115,7 @@ export const handleEmailLogin = async (params: EmailLoginParams): Promise<void> 
         } else {
           // 0 organizaciones: verificar si tiene invitación pendiente
           console.log('� [EMAIL AUTH] Sin organizaciones, verificando invitaciones pendientes...');
-          const { data: pendingInvite } = await supabase
-            .from('invitations')
-            .select('code, organization_id, role_id, organizations(name), roles(name)')
-            .eq('email', sessionUser.email || email)
-            .eq('status', 'pending')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (pendingInvite?.code) {
-            console.log('📧 [EMAIL AUTH] Invitación pendiente encontrada, redirigiendo a invite wizard:', pendingInvite.code);
-            await supabase.auth.signOut();
-            window.location.replace(`/auth/invite?invite_code=${pendingInvite.code}`);
-            return;
-          }
+          if (await enlaceDeInvitacionEnviado(sessionUser.email || email)) return;
 
           console.log('🚀 [EMAIL AUTH] Login directo - no hay organizaciones ni invitaciones');
           proceedWithLogin(rememberMe, email);
@@ -162,32 +143,42 @@ export const handleEmailLogin = async (params: EmailLoginParams): Promise<void> 
     } else {
       // 0 organizaciones: verificar si tiene invitación pendiente
       console.log('� [EMAIL AUTH] Sin organizaciones, verificando invitaciones pendientes...');
-      const { data: pendingInvite } = await supabase
-        .from('invitations')
-        .select('code, organization_id, role_id, organizations(name), roles(name)')
-        .eq('email', user.email || email)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (pendingInvite?.code) {
-        console.log('📧 [EMAIL AUTH] Invitación pendiente encontrada, redirigiendo a invite wizard:', pendingInvite.code);
-        await supabase.auth.signOut();
-        window.location.replace(`/auth/invite?invite_code=${pendingInvite.code}`);
-        return;
-      }
+      if (await enlaceDeInvitacionEnviado(user.email || email)) return;
 
       console.log('🚀 [EMAIL AUTH] Login directo - no hay organizaciones ni invitaciones');
       proceedWithLogin(rememberMe, email);
     }
     
-  } catch (error: any) {
-    setError(error.message || 'Error al iniciar sesión');
+  } catch (error: unknown) {
+    setError(error instanceof Error && error.message ? error.message : 'Error al iniciar sesión');
   } finally {
     setLoading(false);
   }
 };
+
+/**
+ * Usuario sin organizaciones: si tiene una invitación pendiente, el servidor
+ * le manda el enlace a su correo (el código nunca llega al navegador por esta
+ * vía: una sesión no prueba el buzón, los correos se confirman al registrarse).
+ * Devuelve true si ya se redirigió a la pantalla de «revisa tu correo».
+ */
+async function enlaceDeInvitacionEnviado(email: string): Promise<boolean> {
+  try {
+    // Viene del asistente con su enlace (redirectTo=/auth/invite?invite_code=…):
+    // proceedWithLogin lo devuelve allí, no hace falta otro correo.
+    if (sessionStorage.getItem('redirectTo')?.startsWith('/auth/invite')) return false;
+    const res = await fetch('/api/auth/invite/pendiente', { method: 'POST', cache: 'no-store' });
+    if (!res.ok) return false;
+    const { enlaceEnviado } = (await res.json()) as { enlaceEnviado?: boolean };
+    if (!enlaceEnviado) return false;
+    await supabase.auth.signOut();
+    window.location.replace(`/auth/verify/resent?email=${encodeURIComponent(email)}`);
+    return true;
+  } catch (err) {
+    console.error('[EMAIL AUTH] No se pudo consultar la invitación pendiente:', err);
+    return false;
+  }
+}
 
 /**
  * Realiza el login con email y contraseña
@@ -273,10 +264,10 @@ async function performLogin(email: string, password: string): Promise<LoginResul
 
     return { success: true };
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
-      error: error.message || 'Error inesperado durante el login'
+      error: error instanceof Error && error.message ? error.message : 'Error inesperado durante el login'
     };
   }
 }
@@ -309,7 +300,7 @@ async function handleEmailVerification(
     } else {
       throw new Error('Tu cuenta aún no ha sido verificada. Por favor revisa tu correo electrónico y haz clic en el enlace de verificación.');
     }
-  } catch (error: any) {
+  } catch {
     if (setResendingEmail) setResendingEmail(false);
     throw new Error('Tu cuenta aún no ha sido verificada. Por favor revisa tu correo electrónico y haz clic en el enlace de verificación.');
   }
@@ -353,10 +344,24 @@ async function getUserOrganizations(userId: string): Promise<Organization[]> {
     throw new Error('Error al obtener las organizaciones del usuario');
   }
 
-  return (ownedOrgs || []).map((member: any) => {
+  type Suscripcion = { plan_id?: number | null; status?: string | null; plans?: { id?: number; name?: string } | null };
+  type Miembro = {
+    organization_id: number;
+    role_id?: number;
+    organizations?: {
+      id?: number;
+      name?: string;
+      status?: string;
+      logo_url?: string | null;
+      organization_types?: { name?: string } | null;
+      subscriptions?: Suscripcion[] | null;
+    } | null;
+  };
+
+  return ((ownedOrgs || []) as unknown as Miembro[]).map((member) => {
     // Obtener la suscripción activa
     const subscriptions = member.organizations?.subscriptions || [];
-    const activeSub = subscriptions.find((s: any) => s.status === 'active') || subscriptions[0];
+    const activeSub = subscriptions.find((s) => s.status === 'active') || subscriptions[0];
     
     return {
       id: member.organizations?.id || member.organization_id,
@@ -396,7 +401,7 @@ export const resendVerificationEmail = async (email: string): Promise<{ success:
       success: true,
       message: 'Correo de verificación reenviado correctamente. Revisa tu bandeja de entrada.'
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error inesperado al reenviar email:', err);
     return {
       success: false,

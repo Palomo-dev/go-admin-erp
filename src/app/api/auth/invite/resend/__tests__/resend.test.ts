@@ -211,12 +211,14 @@ describe('POST /api/auth/invite/resend', () => {
       options: {
         emailRedirectTo: 'https://app.goadmin.io/auth/invite?invite_code=abc123',
         data: {
-          invitation_code: 'abc123',
           organization_id: 142,
           organization_name: 'Organización Demo',
         },
       },
     });
+    // GO-sec 2026-09-28: el código no se guarda en user_metadata (rota al
+    // reenviar y viajaría en el JWT de la sesión).
+    expect(signInWithOtp.mock.calls[0][0].options.data).not.toHaveProperty('invitation_code');
   });
 
   // --- Vencimiento -------------------------------------------------------

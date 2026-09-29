@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Loader2, Copy, Check, ExternalLink } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
-import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMap } from '@/utils/roleUtils';
+import { getRoleInfoById, formatRolesForDropdown, roleDisplayMap } from '@/utils/roleUtils';
 import { InvitationsSkeleton } from './OrganizationSkeletons';
 import { useTranslations } from 'next-intl';
 import { EmailConfirmedGate, EmailConfirmedWarning } from '@/components/auth/EmailConfirmedGate';
@@ -23,7 +23,6 @@ import {
 interface InvitationProps {
   id: string;
   email: string;
-  code?: string;
   role_name: string;
   branch_name: string;
   job_position_name: string;
@@ -37,6 +36,8 @@ interface InvitationProps {
 
 export default function InvitationsTab({ orgId }: { orgId: number }) {
   const t = useTranslations('org.invitationsTab');
+  // Claves de rol dinámicas (roleEmployee, roleManager…): fuera del tipado estricto de next-intl.
+  const tClave = t as unknown as (clave: string) => string;
   const [invitations, setInvitations] = useState<InvitationProps[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +53,6 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   const [jobPositionId, setJobPositionId] = useState<string>('');
   const [sendingInvitation, setSendingInvitation] = useState(false);
   const [resendingId, setResendingId] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   // Límite de usuarios del plan
@@ -103,7 +103,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         const mainBranch = data.find((b) => b.is_main === true);
         setBranchId(String((mainBranch || data[0]).id));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching branches:', err);
     }
   };
@@ -162,22 +162,10 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
 
       const { data, error } = await supabase
       .from('invitations')
-      .select('id, email, code, role_id, branch_id, job_position_id, created_at, expires_at, used_at, status')
+      .select('id, email, role_id, branch_id, job_position_id, created_at, expires_at, used_at, status')
       .eq('organization_id', orgId);
 
       if (error) throw error;
-
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('roles')
-        .select('id, name');
-
-      let roleMap: { [key: number]: string } = {};
-      if (rolesData) {
-        roleMap = rolesData.reduce((acc: any, role: any) => {
-          acc[role.id] = role.name;
-          return acc;
-        }, {});
-      }
 
       // Fetch branches map
       const { data: branchesData } = await supabase
@@ -186,7 +174,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         .eq('organization_id', orgId);
       const branchMap: { [key: number]: string } = {};
       if (branchesData) {
-        branchesData.forEach((b: any) => { branchMap[b.id] = b.name; });
+        branchesData.forEach((b: { id: number; name: string }) => { branchMap[b.id] = b.name; });
       }
 
       // Fetch job positions map
@@ -196,19 +184,18 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         .eq('organization_id', orgId);
       const positionMap: { [key: string]: string } = {};
       if (positionsData) {
-        positionsData.forEach((p: any) => { positionMap[p.id] = p.name; });
+        positionsData.forEach((p: { id: string; name: string }) => { positionMap[p.id] = p.name; });
       }
 
       const formattedInvitations = data.map((invite) => {
         const roleInfo = getRoleInfoById(invite.role_id);
         const roleTranslationKey = `role${roleInfo.code.charAt(0).toUpperCase() + roleInfo.code.slice(1)}`;
-        const roleTranslation = t(roleTranslationKey as any);
+        const roleTranslation = tClave(roleTranslationKey);
         const displayName = roleTranslation !== roleTranslationKey ? roleTranslation : roleInfo.name;
 
         return {
           id: invite.id,
           email: invite.email,
-          code: invite.code,
           role_name: displayName,
           branch_name: invite.branch_id ? (branchMap[invite.branch_id] || '-') : '-',
           job_position_name: invite.job_position_id ? (positionMap[invite.job_position_id] || '-') : '-',
@@ -222,9 +209,9 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       });
 
       setInvitations(formattedInvitations);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching invitations:', err);
-      setError(err.message || t('errorLoading'));
+      setError(err instanceof Error && err.message ? err.message : t('errorLoading'));
     } finally {
       setLoading(false);
     }
@@ -242,7 +229,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       if (error) throw error;
 
       setJobPositions(data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching job positions:', err);
     }
   };
@@ -264,7 +251,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         const employeeRole = formattedRoles.find(r => r.code === 'employee') || formattedRoles[0];
         setRoleId(employeeRole.id);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching roles:', err);
     }
   };
@@ -293,127 +280,44 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         return;
       }
       
-      // Check if email is already invited or is an existing user
-      const { data: existingInvites } = await supabase
-        .from('invitations')
-        .select('id')
-        .eq('email', email.toLowerCase())
-        .eq('organization_id', orgId)
-        .eq('status', 'pending');
-      
-      if (existingInvites && existingInvites.length > 0) {
+      // La invitación la crea el SERVIDOR (código aleatorio que nunca llega al
+      // navegador; duplicados, pertenencia y organización de la sesión se
+      // validan allí) y manda el correo en la misma llamada.
+      const res = await fetch('/api/auth/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-organization-id': String(orgId) },
+        body: JSON.stringify({
+          email: email.toLowerCase(),
+          roleId: Number(roleId),
+          branchId: branchId ? parseInt(branchId, 10) : null,
+          jobPositionId: jobPositionId || null,
+          organizationId: orgId,
+          origin: window.location.origin
+        })
+      });
+      const result = await res.json().catch(() => ({}));
+
+      if (res.status === 409 && result.code === 'YA_INVITADO') {
         setError(t('alreadyInvited'));
         return;
       }
-
-      // Check if user already exists
-      const { data: existingUser } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', email.toLowerCase())
-        .single();
-      
-      if (existingUser) {
-        // Verificar si ya es miembro de esta organización
-        const { data: existingMember } = await supabase
-          .from('organization_members')
-          .select('id')
-          .eq('user_id', existingUser.id)
-          .eq('organization_id', orgId)
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (existingMember) {
-          setError(t('alreadyMember'));
-          return;
-        }
-
-        // El usuario existe pero no es miembro: continuar con la invitación
-        // El API route /api/auth/invite enviará un Magic Link al usuario existente
-        console.log('Usuario existente detectado, se enviará Magic Link para invitación');
-      }
-      
-      // Get current user session
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentUserId = session?.user?.id;
-      
-      if (!currentUserId) {
-        setError(t('noCurrentUser'));
+      if (res.status === 409 && result.code === 'YA_MIEMBRO') {
+        setError(t('alreadyMember'));
         return;
       }
-
-      // Get organization data for the invitation
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .select('name')
-        .eq('id', orgId)
-        .single();
-
-      if (orgError || !orgData) {
-        setError(t('noOrgInfo'));
+      if (!res.ok || !result.success) {
+        console.warn('Error enviando invitación:', result.error);
+        setError(t('errorSending'));
+        // Si la invitación quedó creada (solo falló el correo), que aparezca
+        // en la tabla para poder reenviarla.
+        if (result.invitationId) {
+          fetchInvitations();
+          fetchUserLimits();
+        }
         return;
       }
-      
-      // Generate unique code
-      const code = Math.random().toString(36).substring(2, 10);
-      
-      // Generate expiration date (30 days from now)
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30);
-      
-      // Create invitation record in our custom table
-      const { data: invite, error: inviteError } = await supabase
-        .from('invitations')
-        .insert([
-          {
-            email: email.toLowerCase(),
-            code: code,
-            role_id: roleId,
-            organization_id: orgId,
-            branch_id: branchId ? parseInt(branchId, 10) : null,
-            job_position_id: jobPositionId || null,
-            created_by: currentUserId,
-            expires_at: expiresAt.toISOString(),
-            status: 'pending'
-          }
-        ])
-        .select()
-        .single();
-        
-      if (inviteError) throw inviteError;
+      setSuccess(t('inviteSent', { email }));
 
-      // Send invitation email using Supabase's native invite flow (admin.inviteUserByEmail)
-      // via API route, para que se use el template "Invite user" en el Dashboard
-      const inviteUrl = `${window.location.origin}/auth/invite?invite_code=${code}`;
-      
-      try {
-        const res = await fetch('/api/auth/invite', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: email.toLowerCase(),
-            organizationId: orgId,
-            organizationName: orgData.name,
-            roleId,
-            invitationCode: code,
-            invitedBy: currentUserId,
-            origin: window.location.origin
-          })
-        });
-        const result = await res.json();
-
-        if (!res.ok || result.error) {
-          console.warn('Error enviando invitación:', result.error);
-          setSuccess(t('inviteCreatedManual', { email, url: inviteUrl }));
-        } else {
-          setSuccess(t('inviteSent', { email }));
-          console.log('📧 Invitation email sent via Supabase Auth to:', email);
-        }
-      } catch (emailSendError: any) {
-        console.warn('Error sending invitation email:', emailSendError);
-        setSuccess(t('inviteCreatedManual', { email, url: inviteUrl }));
-      }
-      
       // Reset form
       setEmail('');
       setRoleId('');
@@ -427,9 +331,9 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       fetchInvitations();
       fetchUserLimits();
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error sending invitation:', err);
-      setError(err.message || t('errorSending'));
+      setError(err instanceof Error && err.message ? err.message : t('errorSending'));
     } finally {
       setSendingInvitation(false);
     }
@@ -455,9 +359,9 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       );
       
       setSuccess(t('inviteRevoked'));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al revocar invitación:', err);
-      setError(err.message || t('errorRevoking'));
+      setError(err instanceof Error && err.message ? err.message : t('errorRevoking'));
     } finally {
       setLoading(false);
     }
@@ -468,94 +372,34 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
     try {
       setResendingId(id);
       
-      // Set a new expiration date (30 days from now)
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30);
-      
-      // Update the invitation with new expiration date
-      const { error } = await supabase
-        .from('invitations')
-        .update({ expires_at: expiresAt.toISOString() })
-        .eq('id', id);
+      // El servidor renueva la vigencia, rota el código y manda el correo.
+      const res = await fetch('/api/auth/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-organization-id': String(orgId) },
+        body: JSON.stringify({
+          invitationId: Number(id),
+          organizationId: orgId,
+          origin: window.location.origin
+        })
+      });
+      const result = await res.json().catch(() => ({}));
 
-      if (error) throw error;
-      
-      // Fetch the updated invitation to get the code and org info
-      const { data: inviteData } = await supabase
-        .from('invitations')
-        .select(`
-          code,
-          role_id,
-          organization_id,
-          organizations!inner(name)
-        `)
-        .eq('id', id)
-        .single();
-
-      if (!inviteData) {
-        throw new Error(t('noInviteInfo'));
+      if (!res.ok || !result.success) {
+        console.warn('Error reenviando invitación:', result.error);
+        setError(t('errorResending'));
+      } else {
+        setSuccess(t('inviteResent', { email }));
       }
-      
-      // Generate the invitation URL
-      const inviteCode = inviteData.code;
-      const inviteUrl = `${window.location.origin}/auth/invite?invite_code=${inviteCode}`;
-      
-      // Get organization name safely
-      const orgName = Array.isArray(inviteData.organizations) 
-        ? (inviteData.organizations[0] as any)?.name 
-        : (inviteData.organizations as any)?.name || 'la organización';
-      
-      // Resend invitation email using la ruta nativa de invitación (Invite user template)
-      try {
-        const res = await fetch('/api/auth/invite', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: email.toLowerCase(),
-            organizationId: inviteData.organization_id,
-            organizationName: orgName,
-            roleId: inviteData.role_id,
-            invitationCode: inviteCode,
-            origin: window.location.origin,
-            resend: true
-          })
-        });
-        const result = await res.json();
 
-        if (!res.ok || result.error) {
-          console.warn('Error reenviando invitación:', result.error);
-          setSuccess(t('inviteUpdatedUrl', { email, url: inviteUrl }));
-        } else {
-          setSuccess(t('inviteResent', { email }));
-          console.log('📧 Invitation email resent via Supabase Auth to:', email);
-        }
-      } catch (emailSendError: any) {
-        console.warn('Error reenviando invitación:', emailSendError);
-        setSuccess(t('inviteUpdatedUrl', { email, url: inviteUrl }));
-      }
-      
       // Refresh the invitations list
       await fetchInvitations();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al reenviar invitación:', err);
-      setError(err.message || t('errorResending'));
+      setError(err instanceof Error && err.message ? err.message : t('errorResending'));
     } finally {
       setResendingId(null);
     }
   };
-  const copyInviteLink = async (invitation: InvitationProps) => {
-    if (!invitation.code) return;
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const link = `${origin}/auth/invite?invite_code=${invitation.code}`;
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopiedId(invitation.id);
-      setTimeout(() => setCopiedId(null), 2000);
-    } catch (err) {
-      console.error('Error copiando link:', err);
-    }
-  };
-
   const getStatusBadge = (invitation: InvitationProps) => {
     if (invitation.status === 'revoked' || invitation.revoked) {
       return (
@@ -867,7 +711,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 <option value="" disabled>{t('selectRole')}</option>
                 {roles.map((role) => {
                   const roleTranslationKey = `role${role.code.charAt(0).toUpperCase() + role.code.slice(1)}`;
-                  const roleTranslation = t(roleTranslationKey as any);
+                  const roleTranslation = tClave(roleTranslationKey);
                   const displayName = roleTranslation !== roleTranslationKey ? roleTranslation : (roleDisplayMap[role.code] || role.name);
                   return (
                     <option key={role.id} value={role.id}>
@@ -1011,9 +855,6 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   {t('thExpirationDate')}
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {t('thLink')}
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   {t('thActions')}
                 </th>
               </tr>
@@ -1053,36 +894,6 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {invitation.expires_at}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {!invitation.used && !invitation.revoked && invitation.code ? (
-                        <div className="flex items-center gap-2">
-                          <a
-                            href={`${typeof window !== 'undefined' ? window.location.origin : ''}/auth/invite?invite_code=${invitation.code}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 inline-flex items-center gap-1 text-xs"
-                            title={t('openLink')}
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            {t('viewLink')}
-                          </a>
-                          <button
-                            onClick={() => copyInviteLink(invitation)}
-                            className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                            title={t('copyLink')}
-                            aria-label={t('copyLink')}
-                          >
-                            {copiedId === invitation.id ? (
-                              <Check className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-gray-300 dark:text-gray-600">—</span>
-                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       {!invitation.used && !invitation.revoked && (

@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { estadoCuentaInvitacion } from '@/lib/auth/cuentaInvitacion';
+import { buscarInvitacionVigentePorCodigo } from '@/lib/auth/invitaciones';
 import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit';
+import { getRateLimitStore } from '@/lib/security/rateLimitStore';
 
 export const dynamic = 'force-dynamic';
 
 /** Pública (se abre desde el correo, sin sesión): freno por IP. */
 const CONTEXT_IP_LIMIT = { limit: 30, windowMs: 15 * 60 * 1000 };
+
+/**
+ * Misma respuesta para «sin código», «formato inválido», «no existe»,
+ * «usada», «revocada» y «vencida»: la ruta no es un oráculo de códigos.
+ */
+function invitacionNoValida() {
+  return NextResponse.json({ error: 'Invitación inválida o expirada' }, { status: 404 });
+}
 
 /**
  * GET /api/auth/invite/context?code=...
@@ -21,33 +31,32 @@ const CONTEXT_IP_LIMIT = { limit: 30, windowMs: 15 * 60 * 1000 };
  *   existente → SOLO confirmar. Sin contraseña, sin datos. Y solo con sesión
  *               propia: enlace mágico o inicio de sesión.
  *
- * Antes el asistente lo deducía en el navegador a partir de la sesión y del
- * perfil, y sin sesión (enlace copiado desde la tabla, token consumido por
- * el prefetch del correo) trataba a un usuario existente como nuevo: le
- * pedía todos los datos y una contraseña nueva… y la API se la cambiaba.
+ * Solo responde a quien ya tiene el código (el enlace del correo). No devuelve
+ * el código: el navegador ya lo tiene en la URL y no hay por qué repetirlo.
+ * El correo completo sí, porque el asistente inicia sesión con él tras crear
+ * la cuenta; quien tiene el enlace es el destinatario.
  */
 export async function GET(request: NextRequest) {
-  const code = request.nextUrl.searchParams.get('code')?.trim();
-  if (!code || code.length > 128) {
-    return NextResponse.json({ error: 'Código de invitación requerido' }, { status: 400 });
-  }
-
   const ip = getClientIp(request);
-  const rl = await checkRateLimits([{ key: `invite:context:ip:${ip}`, opts: CONTEXT_IP_LIMIT }]);
+  const rl = await checkRateLimits(
+    [{ key: `invite:context:ip:${ip}`, opts: CONTEXT_IP_LIMIT }],
+    { store: getRateLimitStore() },
+  );
   if (!rl.allowed) {
     return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en unos minutos.' }, { status: 429 });
   }
 
+  const code = request.nextUrl.searchParams.get('code')?.trim();
+
   const admin = getSupabaseAdmin();
-  const { data, error } = await admin.rpc('validate_invitation_by_code', { invitation_code: code });
-  if (error) {
+  let invitacion;
+  try {
+    invitacion = await buscarInvitacionVigentePorCodigo(admin, code);
+  } catch (error) {
     console.error('[invite/context] validate_invitation_by_code:', error);
     return NextResponse.json({ error: 'No se pudo validar la invitación' }, { status: 500 });
   }
-  const invitacion = Array.isArray(data) ? data[0] : null;
-  if (!invitacion) {
-    return NextResponse.json({ error: 'Invitación inválida o expirada' }, { status: 404 });
-  }
+  if (!invitacion) return invitacionNoValida();
 
   let estado: 'nueva' | 'huerfana' | 'existente' = 'nueva';
   try {
@@ -65,7 +74,6 @@ export async function GET(request: NextRequest) {
     invitation: {
       id: invitacion.id,
       email: invitacion.email,
-      code: invitacion.code,
       role_id: invitacion.role_id,
       organization_id: invitacion.organization_id,
       organization_name: invitacion.organization_name || 'Organización',

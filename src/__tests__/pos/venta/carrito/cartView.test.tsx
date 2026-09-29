@@ -8,7 +8,7 @@
  */
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderConIdioma } from '@/test-utils/renderConIdioma';
-import type { Cart } from '@/components/pos/types';
+import type { Cart, Customer } from '@/components/pos/types';
 
 const cancelDebtWithCreditNote = jest.fn();
 const holdCart = jest.fn();
@@ -56,6 +56,27 @@ function montar(props: Partial<React.ComponentProps<typeof CartView>> = {}) {
 }
 
 beforeEach(() => jest.clearAllMocks());
+
+describe('CartView · cabecera (Figma 906:115576-80)', () => {
+  test('«Carrito · N productos» y, con cliente, «Cliente: X» a la derecha', () => {
+    const lineas = [
+      ...carrito().items,
+      { id: 'l2', product_id: 2, product: { id: 2, name: 'Pan', sku: 'P1', unit_code: 'und' }, quantity: 3, unit_price: 1000, total: 3000, tax_amount: 0 },
+    ] as Cart['items'];
+    montar({ cart: carrito({ items: lineas, customer: { id: 'c1', full_name: 'Ana Gómez' } as Customer }) });
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Carrito');
+    expect(screen.getByText(/2 productos/)).toBeTruthy();
+    expect(screen.getByText('Cliente: Ana Gómez')).toBeTruthy();
+  });
+
+  test('sin cliente no hay «Cliente:»; una línea va en singular; vacío no hay conteo', () => {
+    const { rerender } = renderConIdioma(<CartView cart={carrito()} onCartUpdate={jest.fn()} onCheckout={jest.fn()} onHold={jest.fn()} />);
+    expect(screen.getByText(/1 producto$/)).toBeTruthy();
+    expect(screen.queryByText(/^Cliente:/)).toBeNull();
+    rerender(<CartView cart={carrito({ items: [], total: 0 })} onCartUpdate={jest.fn()} onCheckout={jest.fn()} onHold={jest.fn()} />);
+    expect(screen.queryByText(/\d+ productos?$/)).toBeNull();
+  });
+});
 
 describe('CartView · cobrar y caja (D4)', () => {
   test('con caja: «Cobrar» con el total; F4 cobra', () => {

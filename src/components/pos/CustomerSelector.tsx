@@ -51,6 +51,12 @@ interface CustomerSelectorProps {
   onOpenChange?: (open: boolean) => void;
   /** Atajo que se muestra en «Cambiar» (el POS pasa «F2» y lo registra). */
   atajo?: string;
+  /**
+   * Muestra «Ver» y «Editar» del cliente elegido (Figma `906:115573`,
+   * `906:115574`) y abre su ficha en una pestaña nueva, para no interrumpir la
+   * venta en curso. Solo lo activa el POS de venta; PMS y mesas no cambian.
+   */
+  accionesFichaEnPestanaNueva?: boolean;
 }
 
 type ClienteBusqueda = Customer & {
@@ -179,7 +185,20 @@ async function buscarClientesYEspacios(term: string, organizationId: number): Pr
   return { customers: results, spaces };
 }
 
-export function CustomerSelector({ selectedCustomer, onCustomerSelect, className, open, onOpenChange, atajo }: CustomerSelectorProps) {
+/** Abre una ruta de la app en una pestaña nueva, sin dar acceso a esta ventana. */
+function abrirEnPestanaNueva(ruta: string) {
+  window.open(ruta, '_blank', 'noopener');
+}
+
+export function CustomerSelector({
+  selectedCustomer,
+  onCustomerSelect,
+  className,
+  open,
+  onOpenChange,
+  atajo,
+  accionesFichaEnPestanaNueva,
+}: CustomerSelectorProps) {
   const t = useTranslations('posVenta.cliente');
   const { organization } = useOrganization();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -271,6 +290,10 @@ export function CustomerSelector({ selectedCustomer, onCustomerSelect, className
     </div>
   );
 
+  // Un cliente creado sin conexión todavía no tiene ficha en el servidor.
+  const idFicha = accionesFichaEnPestanaNueva && selectedCustomer && !selectedCustomer.pending_sync ? selectedCustomer.id : null;
+  const rutaFicha = idFicha ? `/app/clientes/${encodeURIComponent(idFicha)}` : null;
+
   return (
     <div className={className}>
       <CustomerPicker
@@ -282,6 +305,8 @@ export function CustomerSelector({ selectedCustomer, onCustomerSelect, className
           cambiarAbierto(false);
         }}
         onQuitar={() => onCustomerSelect(undefined, undefined)}
+        onVer={rutaFicha ? () => abrirEnPestanaNueva(rutaFicha) : undefined}
+        onEditar={rutaFicha ? () => abrirEnPestanaNueva(`${rutaFicha}/editar`) : undefined}
         onCrear={crear}
         abierto={abierto}
         onAbiertoChange={cambiarAbierto}

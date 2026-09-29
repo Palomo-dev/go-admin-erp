@@ -5,6 +5,10 @@
  * mismo handler de `CartView` que antes, la cantidad a 0 pide confirmar, en
  * espera todo queda bloqueado, los atajos de la línea con foco funcionan y
  * no disparan dentro del campo de la nota.
+ *
+ * El campo del descuento de la línea es el `CampoNumero` del kit (texto con
+ * `inputMode="decimal"`): su rol es `textbox`, no `spinbutton` (auditoría POS
+ * venta #24, 2026-09-28).
  */
 import { fireEvent, screen, within } from '@testing-library/react';
 import { renderConIdioma } from '@/test-utils/renderConIdioma';
@@ -100,7 +104,7 @@ describe('LineasCarrito', () => {
     renderConIdioma(<LineasCarrito {...p} />);
     fireEvent.click(screen.getByRole('button', { name: /descuento frecuente de \$ 1000/ }));
     expect(p.onDescuentoAplicar).toHaveBeenCalledWith('b', 1000);
-    fireEvent.keyDown(screen.getByRole('spinbutton', { name: /Descuento de Producto b/ }), { key: 'Enter' });
+    fireEvent.keyDown(screen.getByRole('textbox', { name: /Descuento de Producto b/ }), { key: 'Enter' });
     expect(p.onDescuentoAplicar).toHaveBeenLastCalledWith('b', 700);
   });
 

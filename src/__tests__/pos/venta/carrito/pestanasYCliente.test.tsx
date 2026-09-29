@@ -89,6 +89,26 @@ describe('CustomerSelector sobre CustomerPicker', () => {
     expect(onSelect).toHaveBeenCalledWith(undefined, undefined);
   });
 
+  test('solo el POS de venta: «Ver» y «Editar» abren la ficha del cliente en una pestaña nueva', () => {
+    const abrir = jest.spyOn(window, 'open').mockImplementation(() => null);
+    const ana = { id: 'c1', full_name: 'Ana Gómez' } as Customer;
+    const { rerender } = renderConIdioma(<CustomerSelector selectedCustomer={ana} onCustomerSelect={jest.fn()} accionesFichaEnPestanaNueva />);
+    fireEvent.click(screen.getByRole('button', { name: 'Ver: Ana Gómez' }));
+    expect(abrir).toHaveBeenLastCalledWith('/app/clientes/c1', '_blank', 'noopener');
+    fireEvent.click(screen.getByRole('button', { name: 'Editar: Ana Gómez' }));
+    expect(abrir).toHaveBeenLastCalledWith('/app/clientes/c1/editar', '_blank', 'noopener');
+
+    // Un cliente creado sin conexión todavía no tiene ficha en el servidor.
+    rerender(<CustomerSelector selectedCustomer={{ ...ana, pending_sync: true }} onCustomerSelect={jest.fn()} accionesFichaEnPestanaNueva />);
+    expect(screen.queryByRole('button', { name: /^Ver:/ })).toBeNull();
+
+    // PMS y mesas no pasan la prop: sin «Ver» ni «Editar».
+    rerender(<CustomerSelector selectedCustomer={ana} onCustomerSelect={jest.fn()} />);
+    expect(screen.queryByRole('button', { name: /^Ver:/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Editar:/ })).toBeNull();
+    abrir.mockRestore();
+  });
+
   test('«Crear cliente» abre el formulario completo', async () => {
     searchCustomers.mockResolvedValue([]);
     renderConIdioma(<CustomerSelector onCustomerSelect={jest.fn()} open onOpenChange={jest.fn()} />);

@@ -6,6 +6,7 @@ import { Settings, ArrowLeft, MoreHorizontal } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { useAtajos } from '@/components/kit/useAtajos';
+import { KbdButton } from '@/components/kit/KbdButton';
 import { ProductSearch } from '@/components/pos/ProductSearch';
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
 import { PanelCarrito } from '@/components/pos/venta/PanelCarrito';
@@ -647,14 +648,9 @@ export default function POSPage() {
                   <div className="flex shrink-0 items-center justify-between gap-2">
                     <SheetTitle className="text-base font-semibold text-fg">{tBarra('hojaCarrito')}</SheetTitle>
                     <SheetDescription className="sr-only">{tBarra('etiqueta')}</SheetDescription>
-                    <button
-                      type="button"
-                      onClick={() => setMobileView('products')}
-                      className="flex h-9 items-center gap-1 rounded-lg px-2 text-sm font-medium text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                    >
-                      <ArrowLeft aria-hidden="true" className="size-4" />
+                    <KbdButton variante="fantasma" tamano="sm" icono={ArrowLeft} onClick={() => setMobileView('products')}>
                       {tBarra('seguirComprando')}
-                    </button>
+                    </KbdButton>
                   </div>
                   {cartPane}
                 </SheetContent>

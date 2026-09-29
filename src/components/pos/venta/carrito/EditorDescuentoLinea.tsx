@@ -3,7 +3,7 @@
 import { Check, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/Utils';
-import { CartTag } from '@/components/kit';
+import { CampoNumero, CartTag } from '@/components/kit';
 
 /**
  * Descuento de una línea editado en el sitio (ranura `editorDescuento` de
@@ -42,12 +42,12 @@ export function EditorDescuentoLinea({
 
   return (
     <div className="flex w-full flex-wrap items-center gap-1.5" role="group" aria-label={t('descuentoDe', { nombre })}>
-      <input
-        type="number"
-        min="0"
-        step="0.01"
-        value={valor}
-        onChange={(e) => onValor(e.target.value)}
+      {/* `CampoNumero` del kit (Figma `NumberInput`): el valor de la pantalla es texto, se adapta aquí. */}
+      <CampoNumero
+        tamano="sm"
+        valor={valor === '' ? null : parseFloat(valor) || 0}
+        onValorChange={(n) => onValor(n == null ? '' : String(n))}
+        minimo={0}
         onKeyDown={(e) => {
           // preventDefault: que Enter / Esc no lleguen además a los atajos de la pantalla.
           if (e.key === 'Enter') {
@@ -63,7 +63,7 @@ export function EditorDescuentoLinea({
         aria-label={t('descuentoDe', { nombre })}
         disabled={deshabilitado}
         autoFocus
-        className="h-7 w-24 rounded-md border border-line-strong bg-surface px-2 text-xs tabular-nums text-fg placeholder:text-fg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-28"
       />
       <button
         type="button"

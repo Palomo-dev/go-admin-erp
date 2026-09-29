@@ -3,6 +3,8 @@
 import { CreditCard, LockOpen, ShoppingCart } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { BotonImporte } from '@/components/kit';
+import { clasesBadgeTono } from '@/components/ui/badge';
+import { cn } from '@/utils/Utils';
 import { teclaAtajo } from '@/lib/pos/venta/atajos';
 import type { EstadoBotonCobrar } from '@/lib/pos/venta/requisitosCarrito';
 
@@ -43,7 +45,7 @@ export function BarraCobroMovil({ unidades, total, estado, onVerCarrito, onCobra
         <span className="relative flex size-10 items-center justify-center rounded-lg bg-brand-tint text-brand" aria-hidden="true">
           <ShoppingCart className="size-5" strokeWidth={1.75} />
           {unidades > 0 && (
-            <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-action px-1 text-[11px] font-semibold tabular-nums text-fg-on-brand">
+            <span className={cn(clasesBadgeTono('marca', 'solido', 'sm'), 'absolute -right-1.5 -top-1.5 min-w-5 justify-center tabular-nums')}>
               {unidades}
             </span>
           )}

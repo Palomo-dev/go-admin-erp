@@ -2,7 +2,8 @@
 
 import { ChefHat } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { PanelAdaptable } from '@/components/kit';
+import { EmptyState, KbdButton, PanelAdaptable, StatusBadge } from '@/components/kit';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ProductRecipe } from '@/lib/services/recipeService';
 
@@ -33,13 +34,9 @@ export function RecetaDialogo({ receta, cargando, onCerrar }: RecetaDialogoProps
       icono={ChefHat}
       ancho={672}
       pie={
-        <button
-          type="button"
-          onClick={onCerrar}
-          className="flex h-10 items-center justify-center rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-        >
+        <KbdButton variante="secundario" onClick={onCerrar}>
           {t('cerrar')}
-        </button>
+        </KbdButton>
       }
     >
       {cargando ? (
@@ -66,15 +63,7 @@ export function RecetaDialogo({ receta, cargando, onCerrar }: RecetaDialogoProps
             <div>
               <dt className="text-xs text-fg-secondary">{t('estado')}</dt>
               <dd>
-                <span
-                  className={
-                    receta.is_active
-                      ? 'inline-flex h-5 items-center rounded-full bg-success-subtle px-2 text-xs font-medium text-success-text'
-                      : 'inline-flex h-5 items-center rounded-full bg-subtle px-2 text-xs font-medium text-fg-secondary'
-                  }
-                >
-                  {receta.is_active ? t('activa') : t('inactiva')}
-                </span>
+                <StatusBadge estado={receta.is_active ? 'activa' : 'inactiva'} etiqueta={receta.is_active ? t('activa') : t('inactiva')} />
               </dd>
             </div>
             <div>
@@ -108,14 +97,16 @@ export function RecetaDialogo({ receta, cargando, onCerrar }: RecetaDialogoProps
                         {ing.quantity} {ing.unit_code}
                       </span>
                       {ing.is_optional && (
-                        <span className="inline-flex h-5 items-center rounded-full bg-subtle px-2 text-[11px] font-medium text-fg-secondary">{t('opcional')}</span>
+                        <Badge tono="neutro" tamano="sm">
+                          {t('opcional')}
+                        </Badge>
                       )}
                     </div>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-fg-secondary">{t('sinIngredientes')}</p>
+              <EmptyState compacto variante="empty" titulo={t('sinIngredientesTitulo')} descripcion={t('sinIngredientes')} />
             )}
           </div>
         </div>

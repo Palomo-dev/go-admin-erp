@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { DatabaseZap, RefreshCw } from 'lucide-react';
+import { KbdButton } from '@/components/kit/KbdButton';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useDesktopCatalog } from '@/lib/offline/useDesktopCatalog';
@@ -63,15 +64,10 @@ export function LocalCatalogNotice({ className }: { className?: string }) {
           ? t('conRed', { productos: status.productsCount, fecha: replicatedLabel ?? '—' })
           : t('sinReplicar')}
       </span>
-      <button
-        type="button"
-        onClick={() => replicateNow()}
-        disabled={replicating}
-        className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-fg disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-      >
-        <RefreshCw className={cn('h-3 w-3', replicating && 'animate-spin')} aria-hidden="true" />
+      {/* Figma `185:48655`: botón «Actualizar» (antes, un enlace subrayado). */}
+      <KbdButton variante="secundario" tamano="sm" icono={RefreshCw} cargando={replicating} onClick={() => replicateNow()}>
         {replicating ? t('actualizando') : t('actualizar')}
-      </button>
+      </KbdButton>
       {error && <span className="text-danger-text">{error}</span>}
     </div>
   );

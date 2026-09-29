@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import {
   CategoryBar,
   EmptyState,
+  KbdButton,
   MarcadorSinFoto,
   ProductCard,
   SearchInput,
@@ -218,9 +219,9 @@ export function GrillaProductos({
                 {t('cargandoMas')}
               </>
             ) : (
-              <button type="button" onClick={() => void cargarMas()} className="rounded-lg border border-line-strong px-3 py-1.5 text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+              <KbdButton variante="secundario" tamano="sm" onClick={() => void cargarMas()}>
                 {t('reintentarMas')}
-              </button>
+              </KbdButton>
             )}
           </div>
         )}
@@ -269,11 +270,14 @@ export function GrillaProductos({
           onFavorita={onFavoritaCategoria ? (id) => onFavoritaCategoria(Number(id)) : undefined}
           className="min-w-0 flex-1"
         />
-        {!cargando && !error && (
-          <span className="hidden shrink-0 text-xs tabular-nums text-fg-secondary md:inline">{t('total', { n: total })}</span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto pb-24 lg:pb-2">
+        {contenido}
+        {/* POS-UX-V2 §7.5: en escritorio el conteo va al pie del grid; en móvil no se muestra. */}
+        {!cargando && !error && productos.length > 0 && (
+          <p className="hidden pt-3 text-center text-xs tabular-nums text-fg-secondary md:block">{t('total', { n: total })}</p>
         )}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto pb-24 lg:pb-2">{contenido}</div>
     </section>
   );
 }

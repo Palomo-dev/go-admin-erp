@@ -13456,7 +13456,8 @@
         "notas": "Notes",
         "ingredientes": "Ingredients ({n})",
         "opcional": "Optional",
-        "sinIngredientes": "This recipe has no ingredients defined."
+        "sinIngredientes": "This recipe has no ingredients defined.",
+        "sinIngredientesTitulo": "No ingredients"
       },
       "codigoManualTitulo": "Type a barcode",
       "codigoManualEtiqueta": "Barcode",
@@ -13542,7 +13543,10 @@
       "anularStock": "Stock returns to the branch",
       "detalleFactura": "Invoice detail",
       "cargandoFactura": "Loading the invoice",
-      "errorDescuento": "The discount could not be applied"
+      "errorDescuento": "The discount could not be applied",
+      "nProductos": "{n, plural, one {# product} other {# products}}",
+      "clienteDe": "Customer: {nombre}",
+      "dias": "days"
     },
     "resumen": {
       "titulo": "Summary",

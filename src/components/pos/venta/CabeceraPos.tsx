@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Clock, Lock, LockOpen, ShoppingCart } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { BranchBadgeActiva, Kbd, KbdButton } from '@/components/kit';
+import { Badge } from '@/components/ui/badge';
 import { CustomerDisplayIndicator } from '@/components/pos/display/CustomerDisplayIndicator';
 import { PendientesSinConexionDialog } from '@/components/pos/PendientesSinConexionDialog';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
@@ -79,24 +80,6 @@ export function CabeceraPos({
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
-        {cajaAbierta ? (
-          <KbdButton
-            variante="destructivo"
-            tamano="md"
-            icono={Lock}
-            atajo={f9}
-            onClick={onCaja}
-            disabled={cierreBloqueado}
-            title={cierreBloqueado ? t('cierreBloqueado') : undefined}
-          >
-            {t('cerrarCaja')}
-          </KbdButton>
-        ) : (
-          <KbdButton variante="primario" tamano="md" icono={LockOpen} atajo={f9} onClick={onCaja}>
-            {t('abrirCaja')}
-          </KbdButton>
-        )}
-
         {/* Ventas, clientes y caja sin conexión pendientes de sincronizar (solo Desktop). */}
         <PendientesSinConexionDialog />
 
@@ -111,13 +94,32 @@ export function CabeceraPos({
         </span>
 
         <div className="flex items-center gap-1.5" aria-label={t('contadores')} role="group">
-          <span className="inline-flex h-6 items-center rounded-full border border-line-success bg-success-subtle px-2.5 text-xs font-semibold text-success-text">
+          <Badge tono="exito" tamano="md">
             {t('activos', { n: carritosActivos })}
-          </span>
-          <span className="inline-flex h-6 items-center rounded-full border border-line-warning bg-warning-subtle px-2.5 text-xs font-semibold text-warning-text">
+          </Badge>
+          <Badge tono="advertencia" tamano="md">
             {t('enEspera', { n: carritosEnEspera })}
-          </span>
+          </Badge>
         </div>
+
+        {/* Figma `248:80110`: «Cerrar caja» 176×48 al final de la fila. */}
+        {cajaAbierta ? (
+          <KbdButton
+            variante="destructivo"
+            tamano="lg"
+            icono={Lock}
+            atajo={f9}
+            onClick={onCaja}
+            disabled={cierreBloqueado}
+            title={cierreBloqueado ? t('cierreBloqueado') : undefined}
+          >
+            {t('cerrarCaja')}
+          </KbdButton>
+        ) : (
+          <KbdButton variante="primario" tamano="lg" icono={LockOpen} atajo={f9} onClick={onCaja}>
+            {t('abrirCaja')}
+          </KbdButton>
+        )}
       </div>
     </header>
   );

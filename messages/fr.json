@@ -13351,7 +13351,8 @@
         "notas": "Notes",
         "ingredientes": "Ingrédients ({n})",
         "opcional": "Facultatif",
-        "sinIngredientes": "Cette recette n’a pas d’ingrédients définis."
+        "sinIngredientes": "Cette recette n’a pas d’ingrédients définis.",
+        "sinIngredientesTitulo": "Aucun ingrédient"
       },
       "codigoManualTitulo": "Saisir un code-barres",
       "codigoManualEtiqueta": "Code-barres",
@@ -13437,7 +13438,10 @@
       "anularStock": "Le stock revient à la succursale",
       "detalleFactura": "Détail de la facture",
       "cargandoFactura": "Chargement de la facture",
-      "errorDescuento": "Impossible d’appliquer la remise"
+      "errorDescuento": "Impossible d’appliquer la remise",
+      "nProductos": "{n, plural, one {# produit} other {# produits}}",
+      "clienteDe": "Client : {nombre}",
+      "dias": "jours"
     },
     "resumen": {
       "titulo": "Récapitulatif",

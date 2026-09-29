@@ -14,13 +14,11 @@
  * en Desktop con red sigue el diálogo completo de siempre.
  */
 
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { WifiOff } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
+import { FormField, KbdButton, PanelAdaptable } from '@/components/kit';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { POSService } from '@/lib/services/posService';
 import type { Customer } from './types';
@@ -82,38 +80,47 @@ export function OfflineCustomerDialog({ open, onOpenChange, onCreated }: Offline
     }
   };
 
+  // Figma `187:7225`: diálogo del kit (hoja inferior en el celular). El pie queda fuera del
+  // `<form>`, así que «Guardar» se asocia con `form=`: Enter en un campo sigue enviando.
+  const idFormulario = useId();
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
+    <PanelAdaptable
+      abierto={open}
+      onAbiertoChange={(next) => {
         if (!next) reset();
         onOpenChange(next);
       }}
+      titulo={t('titulo')}
+      descripcion={t('descripcion')}
+      icono={WifiOff}
+      ancho={520}
+      ocupado={saving}
+      pie={
+        <>
+          <KbdButton variante="secundario" onClick={() => onOpenChange(false)} disabled={saving}>
+            {t('cancelar')}
+          </KbdButton>
+          <KbdButton type="submit" form={idFormulario} cargando={saving}>
+            {saving ? t('guardando') : t('guardar')}
+          </KbdButton>
+        </>
+      }
     >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t('titulo')}</DialogTitle>
-          <DialogDescription className="flex items-start gap-2">
-            <WifiOff className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" aria-hidden="true" />
-            <span>{t('descripcion')}</span>
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-3" noValidate>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="offline-customer-first-name">{t('nombres')}</Label>
-              <Input id="offline-customer-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} autoFocus required autoComplete="off" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="offline-customer-last-name">{t('apellidos')}</Label>
-              <Input id="offline-customer-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="off" />
-            </div>
-          </div>
-          <div className="grid grid-cols-[9rem_1fr] gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="offline-customer-doc-type">{t('tipoDocumento')}</Label>
+      <form id={idFormulario} onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
+        <div className="grid grid-cols-2 gap-3">
+          <FormField etiqueta={t('nombres')} obligatorio>
+            <Input id="offline-customer-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} autoFocus required autoComplete="off" />
+          </FormField>
+          <FormField etiqueta={t('apellidos')}>
+            <Input id="offline-customer-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="off" />
+          </FormField>
+        </div>
+        <div className="grid grid-cols-[9rem_1fr] gap-3">
+          <FormField etiqueta={t('tipoDocumento')} id="offline-customer-doc-type">
+            {(campo) => (
               <Select value={docType} onValueChange={setDocType}>
-                <SelectTrigger id="offline-customer-doc-type" aria-label={t('tipoDocumento')}>
+                <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -124,38 +131,27 @@ export function OfflineCustomerDialog({ open, onOpenChange, onCreated }: Offline
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="offline-customer-doc-number">{t('numeroDocumento')}</Label>
-              <Input id="offline-customer-doc-number" value={docNumber} onChange={(e) => setDocNumber(e.target.value)} inputMode="numeric" autoComplete="off" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="offline-customer-email">{t('email')}</Label>
-              <Input id="offline-customer-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="offline-customer-phone">{t('telefono')}</Label>
-              <Input id="offline-customer-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="off" />
-            </div>
-          </div>
-          {error && (
-            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-              {error}
-            </p>
-          )}
-          <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-              {t('cancelar')}
-            </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? t('guardando') : t('guardar')}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+            )}
+          </FormField>
+          <FormField etiqueta={t('numeroDocumento')}>
+            <Input id="offline-customer-doc-number" value={docNumber} onChange={(e) => setDocNumber(e.target.value)} inputMode="numeric" autoComplete="off" />
+          </FormField>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <FormField etiqueta={t('email')}>
+            <Input id="offline-customer-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
+          </FormField>
+          <FormField etiqueta={t('telefono')}>
+            <Input id="offline-customer-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="off" />
+          </FormField>
+        </div>
+        {error && (
+          <p role="alert" className="text-sm text-danger-text">
+            {error}
+          </p>
+        )}
+      </form>
+    </PanelAdaptable>
   );
 }
 

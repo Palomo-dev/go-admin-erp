@@ -94,6 +94,7 @@ export function PanelCarrito({
             open={clienteAbierto}
             onOpenChange={onClienteAbiertoChange}
             atajo={teclaAtajo('cliente')}
+            accionesFichaEnPestanaNueva
           />
           <CartView {...carrito} cart={activeCart} atajosActivos={atajosActivos} className="min-h-0 flex-1" />
         </>

@@ -13456,7 +13456,8 @@
         "notas": "Notas",
         "ingredientes": "Ingredientes ({n})",
         "opcional": "Opcional",
-        "sinIngredientes": "Esta receta no tiene ingredientes definidos."
+        "sinIngredientes": "Esta receta no tiene ingredientes definidos.",
+        "sinIngredientesTitulo": "Sin ingredientes"
       },
       "codigoManualTitulo": "Escribir código de barras",
       "codigoManualEtiqueta": "Código de barras",
@@ -13542,7 +13543,10 @@
       "anularStock": "El inventario vuelve a la sucursal",
       "detalleFactura": "Detalle de la factura",
       "cargandoFactura": "Cargando la factura",
-      "errorDescuento": "No se pudo aplicar el descuento"
+      "errorDescuento": "No se pudo aplicar el descuento",
+      "nProductos": "{n, plural, one {# producto} other {# productos}}",
+      "clienteDe": "Cliente: {nombre}",
+      "dias": "días"
     },
     "resumen": {
       "titulo": "Resumen",

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Clock, Plus, ShoppingCart, X } from 'lucide-react';
 import { Dialogo, EmptyState, KbdButton, useAtajos } from '@/components/kit';
+import { clasesBadgeTono } from '@/components/ui/badge';
 import { useDragScroll } from '@/hooks/useDragScroll';
 import { hayRafagaDelLector } from '@/hooks/useHardwareBarcodeScanner';
 import { teclaAtajo } from '@/lib/pos/venta/atajos';
@@ -119,12 +120,16 @@ export function CartTabs({ carts, activeCartId, onCartSelect, onNewCart, onRemov
                 >
                   <Icono aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} />
                   <span className="max-w-[9rem] truncate">{nombre(cart, index)}</span>
-                  {e.mostrarTotal && <span className="text-xs tabular-nums text-fg-secondary">{formatear(e.total)}</span>}
+                  {/* Figma `906:115555`/`906:115556`: Badge de total y de conteo. Con las
+                      clases del Badge (no el componente: es un `div` y va dentro de un botón). */}
+                  {e.mostrarTotal && (
+                    <span className={cn(clasesBadgeTono('neutro', 'suave', 'sm'), 'tabular-nums')}>{formatear(e.total)}</span>
+                  )}
                   {e.lineas > 0 && (
                     <span
                       className={cn(
-                        'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-semibold tabular-nums',
-                        e.enEspera ? 'border border-line-warning text-warning-text' : 'bg-brand-action text-fg-on-brand',
+                        clasesBadgeTono(e.enEspera ? 'advertencia' : 'marca', e.enEspera ? 'contorno' : 'solido', 'sm'),
+                        'min-w-5 justify-center tabular-nums',
                       )}
                       aria-label={t('lineas', { n: e.lineas })}
                     >

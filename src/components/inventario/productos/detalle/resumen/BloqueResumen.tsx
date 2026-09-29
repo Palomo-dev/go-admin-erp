@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Pencil, type LucideIcon } from 'lucide-react';
+import { FormSection } from '@/components/kit';
 import { cn } from '@/utils/Utils';
 import { useProductoDetalle } from '../ContextoProducto';
 
@@ -57,7 +58,13 @@ export function EnlaceEditar({ seccion, etiqueta }: { seccion: SeccionFormulario
   );
 }
 
-/** Bloque del Resumen (Figma `Producto — Detalles`): icono, título, «Editar» y cuerpo. */
+/**
+ * Bloque del Resumen (Figma `Producto — Detalles`, instancias de `FormSection`
+ * 191:9407…): el `FormSection` del kit con icono, título, «Editar» (a la
+ * sección del formulario único) y el cuerpo. Los datos van apilados etiqueta
+ * sobre valor en dos columnas, como en Figma (por eso `Dato` y no `FilaDato`,
+ * que es etiqueta a la izquierda y valor a la derecha).
+ */
 export function BloqueResumen({
   titulo,
   icono: Icono,
@@ -74,20 +81,17 @@ export function BloqueResumen({
   children: ReactNode;
   className?: string;
 }) {
+  const acciones =
+    accion || seccion ? (
+      <div className="flex items-center gap-1">
+        {accion}
+        {seccion && <EnlaceEditar seccion={seccion} etiqueta={titulo} />}
+      </div>
+    ) : undefined;
   return (
-    <section className={cn('rounded-xl border border-line bg-surface', className)} aria-label={titulo}>
-      <header className="flex items-center gap-3 border-b border-line px-4 py-3 sm:px-5">
-        <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
-          <Icono className="size-4" strokeWidth={1.75} />
-        </span>
-        <h3 className="min-w-0 flex-1 text-base font-semibold text-fg">{titulo}</h3>
-        <div className="flex shrink-0 items-center gap-1">
-          {accion}
-          {seccion && <EnlaceEditar seccion={seccion} etiqueta={titulo} />}
-        </div>
-      </header>
-      <div className="px-4 py-4 sm:px-5">{children}</div>
-    </section>
+    <FormSection titulo={titulo} icono={Icono} accion={acciones} className={className}>
+      <div className="min-w-0">{children}</div>
+    </FormSection>
   );
 }
 

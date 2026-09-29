@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { CalendarClock, CalendarDays, DollarSign, TrendingUp } from 'lucide-react';
-import { DataTable, ListCard, SegmentedControl, type ColumnaTabla, type EstadoTabla } from '@/components/kit';
+import { DataTable, ListCard, SegmentedControl, Tarjeta, type ColumnaTabla, type EstadoTabla } from '@/components/kit';
 import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -189,35 +189,47 @@ export function PreciosCostos() {
     <div className="flex flex-col gap-4">
       {/* Tarjetas: precio, costo y programado (A.9 #1-#3) */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Tarjeta titulo={t('precioActual')} ayuda={t('precioActualAyuda')} cargando={cargandoResumen && !resumen}>
-          <p className="text-3xl font-semibold tabular-nums text-fg">
-            {precio !== null ? moneda.formatear(precio) : t('sinPrecio')}
-            {precio !== null && porUnidad ? <span className="ml-1 text-base font-normal text-fg-muted">{porUnidad}</span> : null}
-          </p>
-          {descuento !== null && comparacion !== null && (
-            <p className="mt-1 flex items-center gap-2 text-sm">
-              <Badge tono="peligro" tamano="sm">
-                {t('descuento', { valor: descuento })}
-              </Badge>
-              <span className="text-fg-muted line-through tabular-nums">{moneda.formatear(comparacion)}</span>
-            </p>
+        <Tarjeta titulo={t('precioActual')} descripcion={t('precioActualAyuda')}>
+          {cargandoResumen && !resumen ? (
+            <Skeleton className="h-9 w-40" />
+          ) : (
+            <>
+              <p className="text-3xl font-semibold tabular-nums text-fg">
+                {precio !== null ? moneda.formatear(precio) : t('sinPrecio')}
+                {precio !== null && porUnidad ? <span className="ml-1 text-base font-normal text-fg-muted">{porUnidad}</span> : null}
+              </p>
+              {descuento !== null && comparacion !== null && (
+                <p className="mt-1 flex items-center gap-2 text-sm">
+                  <Badge tono="peligro" tamano="sm">
+                    {t('descuento', { valor: descuento })}
+                  </Badge>
+                  <span className="text-fg-muted line-through tabular-nums">{moneda.formatear(comparacion)}</span>
+                </p>
+              )}
+              {resumen?.precio_desde && <p className="mt-2 text-xs text-fg-secondary">{t('vigenteDesde', { fecha: fechaHora(resumen.precio_desde) })}</p>}
+            </>
           )}
-          {resumen?.precio_desde && <p className="mt-2 text-xs text-fg-secondary">{t('vigenteDesde', { fecha: fechaHora(resumen.precio_desde) })}</p>}
         </Tarjeta>
 
-        <Tarjeta titulo={t('costoActual')} ayuda={t('costoActualAyuda')} cargando={cargandoResumen && !resumen}>
-          <p className="text-3xl font-semibold tabular-nums text-fg">
-            {costo !== null ? moneda.formatear(costo) : t('sinCosto')}
-            {costo !== null && porUnidad ? <span className="ml-1 text-base font-normal text-fg-muted">{porUnidad}</span> : null}
-          </p>
-          <p className="mt-1 flex items-center gap-2 text-sm text-fg-secondary">
-            {margen !== null ? <Badge tono={tonoMargen(margen)} tamano="sm">{t('margen', { valor: margen })}</Badge> : t('sinMargen')}
-          </p>
-          {resumen?.costo_desde && <p className="mt-2 text-xs text-fg-secondary">{t('vigenteDesde', { fecha: fechaHora(resumen.costo_desde) })}</p>}
+        <Tarjeta titulo={t('costoActual')} descripcion={t('costoActualAyuda')}>
+          {cargandoResumen && !resumen ? (
+            <Skeleton className="h-9 w-40" />
+          ) : (
+            <>
+              <p className="text-3xl font-semibold tabular-nums text-fg">
+                {costo !== null ? moneda.formatear(costo) : t('sinCosto')}
+                {costo !== null && porUnidad ? <span className="ml-1 text-base font-normal text-fg-muted">{porUnidad}</span> : null}
+              </p>
+              <p className="mt-1 flex items-center gap-2 text-sm text-fg-secondary">
+                {margen !== null ? <Badge tono={tonoMargen(margen)} tamano="sm">{t('margen', { valor: margen })}</Badge> : t('sinMargen')}
+              </p>
+              {resumen?.costo_desde && <p className="mt-2 text-xs text-fg-secondary">{t('vigenteDesde', { fecha: fechaHora(resumen.costo_desde) })}</p>}
+            </>
+          )}
         </Tarjeta>
 
         {(precioProgramado || costoProgramado) && (
-          <Tarjeta titulo={t('programado.titulo')} ayuda={t('programado.ayuda')} icono={<CalendarClock className="size-4 text-info-text" aria-hidden />}>
+          <Tarjeta titulo={t('programado.titulo')} descripcion={t('programado.ayuda')} icono={CalendarClock} tono="informacion">
             <ul className="flex flex-col gap-2 text-sm">
               {precioProgramado && (
                 <li>
@@ -341,29 +353,3 @@ export function PreciosCostos() {
   );
 }
 
-function Tarjeta({
-  titulo,
-  ayuda,
-  icono,
-  cargando,
-  children,
-}: {
-  titulo: string;
-  ayuda: string;
-  icono?: ReactNode;
-  cargando?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <section className="rounded-xl border border-line bg-surface p-4" aria-label={titulo}>
-      <div className="mb-2 flex items-center gap-2">
-        {icono}
-        <div>
-          <h3 className="text-sm font-medium text-fg">{titulo}</h3>
-          <p className="text-xs text-fg-muted">{ayuda}</p>
-        </div>
-      </div>
-      {cargando ? <Skeleton className="h-9 w-40" /> : children}
-    </section>
-  );
-}

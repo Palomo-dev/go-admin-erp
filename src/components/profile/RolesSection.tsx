@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
+import { isOrgAdminLike } from '@/lib/utils/orgAdmin';
 import { UserCheck, Building, ExternalLink, MapPin, PlusCircle } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -10,6 +11,9 @@ import Link from 'next/link';
 interface Role {
   id: string;
   role_name: string;
+  /** `organization_members.role_id`: decide «admin» junto con `is_super_admin` (nunca el nombre). */
+  role_id?: number | null;
+  is_super_admin?: boolean | null;
   description: string;
   organization_id: string;
   organization?: {
@@ -38,18 +42,18 @@ interface RolesSectionProps {
   branches?: Branch[];
 }
 
-export default function RolesSection({ user, roles = [], branches = [] }: RolesSectionProps) {
+export default function RolesSection({ roles = [], branches = [] }: RolesSectionProps) {
   const [groupedRoles, setGroupedRoles] = useState<{[key: string]: Role[]}>({});
   const [orgLogos, setOrgLogos] = useState<Record<string, string>>({});
   const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
-    // Verificar si el usuario es admin en alguna organización
-    const hasAdminRole = roles.some(r => 
-      r.role_name?.toLowerCase().includes('admin') || 
-      r.role_name?.toLowerCase().includes('super')
+    // Admin en alguna organización, por `role_id` y `is_super_admin` (regla 6 de
+    // CLAUDE.md: nunca por el nombre del rol). Solo decide si se muestra el enlace
+    // a «Gestionar sucursales»; esa pantalla valida el permiso en el servidor.
+    setIsAdmin(
+      roles.some((r) => isOrgAdminLike({ isSuperAdmin: r.is_super_admin === true, roleId: Number(r.role_id ?? 0) }))
     );
-    setIsAdmin(hasAdminRole);
   }, [roles]);
 
   useEffect(() => {

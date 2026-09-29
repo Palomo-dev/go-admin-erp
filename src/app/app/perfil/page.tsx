@@ -51,6 +51,9 @@ interface UserSession {
 interface UserRole {
   id: string;
   role_name: string;
+  /** Decide «admin» con `is_super_admin` en RolesSection (nunca el nombre del rol). */
+  role_id?: number | null;
+  is_super_admin?: boolean | null;
   description: string;
   organization_id: string;
   organization?: {
@@ -172,6 +175,7 @@ export default function PerfilUsuarioPage() {
           .from('organization_members')
           .select(`
             role_id,
+            is_super_admin,
             organization_id,
             roles!inner(
               name,
@@ -194,6 +198,8 @@ export default function PerfilUsuarioPage() {
             return {
               id: `${roleObj.role_id}_${roleObj.organization_id}_${index}`, // ID único combinando role_id, org_id e índice
               role_name: roleObj.roles?.name || 'Sin nombre',
+              role_id: roleObj.role_id ?? null,
+              is_super_admin: roleObj.is_super_admin === true,
               description: roleObj.roles?.description || '',
               organization_id: roleObj.organization_id?.toString() || '',
               organization: {

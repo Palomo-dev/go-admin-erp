@@ -1,5 +1,5 @@
-import { createClient, type Provider } from '@supabase/supabase-js'
-import { isAppOnline, getCachedForRequest, cacheFreshResponse, isCacheableRequest, resolveOfflineDataRequest, setOnline } from '@/lib/utils/offlineCache'
+import { createClient, type AuthError, type Session, type User } from '@supabase/supabase-js'
+import { isAppOnline, getCachedForRequest, cacheFreshResponse, isCacheableRequest, resolveOfflineDataRequest } from '@/lib/utils/offlineCache'
 
 // Extrae la referencia del proyecto de la URL de Supabase
 export const getProjectRef = () => {
@@ -22,20 +22,6 @@ const getCookieDomain = (): string => {
   if (typeof window === 'undefined') return '; domain=.goadmin.io';
   const host = window.location.hostname;
   return host === 'goadmin.io' || host.endsWith('.goadmin.io') ? '; domain=.goadmin.io' : '';
-}
-
-// Función para obtener el valor de una cookie
-const getCookie = (name: string): string | null => {
-  if (typeof document === 'undefined') return null;
-  
-  const cookies = document.cookie.split(';');
-  for (const cookie of cookies) {
-    const [cookieName, cookieValue] = cookie.trim().split('=');
-    if (cookieName === name) {
-      return decodeURIComponent(cookieValue);
-    }
-  }
-  return null;
 }
 
 // Función para establecer una cookie (con soporte de chunks para cookies grandes)
@@ -80,22 +66,6 @@ const setCookie = (name: string, value: string, maxAge: number = 604800) => {
       chunkIndex++;
     }
     console.log(`🍪 [SETCOOKIE] Cookie chunked: ${name} (${chunkIndex} chunks, ${encodedValue.length} bytes)`);
-  }
-}
-
-// Función para eliminar una cookie
-const removeCookie = (name: string) => {
-  if (typeof document === 'undefined') return;
-  
-  const isAuthCookie = name.includes('-auth-token');
-  const isProduction = process.env.NODE_ENV === 'production';
-  const cookieDomain = getCookieDomain();
-  const secureFlag = isProduction ? ';Secure' : '';
-  
-  document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${secureFlag}${cookieDomain}`;
-  // Limpiar chunks .0, .1, .2... (incluir Secure para que el navegador acepte el borrado)
-  for (let i = 0; i < 20; i++) {
-    document.cookie = `${name}.${i}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${secureFlag}${cookieDomain}`;
   }
 }
 
@@ -187,9 +157,6 @@ export const createSupabaseClient = () => {
       throw new Error('Credenciales de Supabase no configuradas en producción')
     }
   }
-  
-  const projectRef = getProjectRef();
-  const storageKey = projectRef ? `sb-${projectRef}-auth-token` : 'sb-auth-token';
   
   return createClient(supabaseUrl, supabaseKey, {
     auth: {
@@ -496,7 +463,7 @@ export const createSupabaseClient = () => {
                     for (let i = 0; i < 20; i++) {
                       document.cookie = `${storageKey}.${i}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${secure}${domain}`;
                     }
-                  } catch (e) { /* ignore */ }
+                  } catch { /* ignore */ }
                 }
               }
 
@@ -547,11 +514,11 @@ export const createSupabaseClient = () => {
               }
 
               resolve(response);
-            } catch (error: any) {
+            } catch (error) {
               if (timeoutId) clearTimeout(timeoutId);
 
               const isTimeout = controller?.signal?.aborted && !options?.signal?.aborted;
-              const isAborted = error?.name === 'AbortError' || options?.signal?.aborted;
+              const isAborted = (error as { name?: unknown } | null | undefined)?.name === 'AbortError' || options?.signal?.aborted;
 
               // Timeout en desktop app offline: usar cache como fallback
               if (isTimeout && useOfflineLogic) {
@@ -603,7 +570,9 @@ export const createSupabaseClient = () => {
 }
 
 // Creación del cliente de Supabase para el servidor (middleware)
-export const createSupabaseServerClient = (request?: any) => {
+// `request` no se usa; se conserva para no romper la firma exportada.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const createSupabaseServerClient = (request?: unknown) => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
   
@@ -632,12 +601,12 @@ export const supabase = createSupabaseClient()
 // el cooldown y no haga la petición HTTP si estamos bloqueados.
 if (typeof window !== 'undefined') {
   const originalRefreshSession = supabase.auth.refreshSession.bind(supabase.auth);
-  supabase.auth.refreshSession = async (...args: any[]) => {
+  supabase.auth.refreshSession = async (...args: Parameters<typeof originalRefreshSession>) => {
     if (isRefreshBlocked()) {
       console.warn('🚫 [AUTH] refreshSession() bloqueado por cooldown anti-bucle');
       return {
         data: { session: null, user: null },
-        error: { message: 'Invalid Refresh Token: Refresh Token Not Found' } as any,
+        error: { message: 'Invalid Refresh Token: Refresh Token Not Found' } as AuthError,
       };
     }
     return originalRefreshSession(...args);
@@ -739,7 +708,44 @@ let lastLoginAttempt = 0;
 const LOGIN_THROTTLE_MS = 3_000; // mínimo 3s entre intentos de login
 let lastLoginEmail = '';
 
-export const signInWithEmail = async (email: string, password: string) => {
+type ResultadoAccesoServidor = {
+  data: { session: Session | null; user: User | null };
+  error: { message: string; status: number; codigoAcceso: string; bloqueadoHasta?: string } | null;
+};
+
+async function iniciarSesionPorServidor(email: string, password: string): Promise<ResultadoAccesoServidor> {
+  let res: Response;
+  try {
+    res = await fetch('/api/auth/acceso', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+      cache: 'no-store',
+    });
+  } catch {
+    return { data: { session: null, user: null }, error: { message: 'red', status: 0, codigoAcceso: 'inesperado' } };
+  }
+  const cuerpo = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    session?: Session;
+    codigo?: string;
+    bloqueadoHasta?: string;
+  };
+  if (res.ok && cuerpo.ok && cuerpo.session) {
+    return { data: { session: cuerpo.session, user: cuerpo.session.user }, error: null };
+  }
+  return {
+    data: { session: null, user: null },
+    error: {
+      message: cuerpo.codigo || 'inesperado',
+      status: res.status,
+      codigoAcceso: cuerpo.codigo || 'inesperado',
+      bloqueadoHasta: cuerpo.bloqueadoHasta,
+    },
+  };
+}
+
+export const signInWithEmail = async (email: string, password: string): Promise<ResultadoAccesoServidor> => {
   const now = Date.now();
   const timeSinceLast = now - lastLoginAttempt;
 
@@ -752,7 +758,8 @@ export const signInWithEmail = async (email: string, password: string) => {
       error: {
         message: 'Demasiados intentos. Espera unos segundos antes de volver a intentar.',
         status: 429,
-      } as any,
+        codigoAcceso: 'demasiadas',
+      },
     };
   }
 
@@ -762,12 +769,10 @@ export const signInWithEmail = async (email: string, password: string) => {
   // Un login explícito invalida cualquier bloqueo previo por refresh token muerto.
   unblockRefresh('inicio de login con email');
 
-  const result = await supabase.auth.signInWithPassword({ email, password });
-  
-  // Si el login es exitoso, forzar sincronización
-  if (result.data.session && !result.error) {
-    console.log('✅ [AUTH] Login exitoso, sincronizando sesión...');
-  }
+  // Acceso v3, fase 5: el servidor cuenta los fallos y bloquea tras 5 por
+  // cuenta + IP (POST /api/auth/acceso). El error lleva `codigoAcceso` (y
+  // `bloqueadoHasta`), que `iniciarSesionConCorreo` usa tal cual.
+  const result = await iniciarSesionPorServidor(email, password);
 
   if (result.data.session) {
     const { access_token, refresh_token, expires_at, user } = result.data.session;
@@ -1049,7 +1054,7 @@ export const getUserOrganization = async (userId: string, requestedOrgId?: strin
     if (branchesData.length > 0) {
       // Preferir la sucursal marcada como principal (is_main=true);
       // si ninguna lo está, usar la primera disponible.
-      defaultBranchId = branchesData.find((b: any) => b.is_main === true)?.id ?? branchesData[0].id;
+      defaultBranchId = branchesData.find((b) => b.is_main === true)?.id ?? branchesData[0].id;
     } else {
       console.log(`La organización ${orgData.id} no tiene sucursales activas`);
     }
@@ -1115,7 +1120,7 @@ export const resetPassword = async (email: string) => {
     }
     
     return { data, error: null };
-  } catch (err: any) {
+  } catch (err) {
     return { data: null, error: err };
   }
 }
@@ -1166,48 +1171,6 @@ export const getOrganizations = async () => {
 };
 
 // Función específica para registro con manejo mejorado de verificación
-export const signUpWithEmail = async (email: string, password: string, userData: any, redirectUrl: string) => {
-  // Check if email already exists
-  console.log('Verificando correo electrónico...');
-  console.log('Email:', email); 
-  const { data: existingUsers } = await supabase
-    .from('users')
-    .select('id')
-    .eq('email', email)
-    .maybeSingle();
-
-  console.log('Usuario existente:', existingUsers);
-
-  if (existingUsers) {
-    return {
-      data: { user: null },
-      error: { message: 'Este correo electrónico ya está registrado' }
-    };
-  }
-  console.log('Usuario no existente, procediendo a crear...');
-  console.log('Datos del usuario:', email, password, userData, redirectUrl);
-
-  try {
-    console.log('Intentando crear usuario con Supabase Auth...');
-    const { data, error } = await supabase.auth.signUp({
-      email: 'example@email.com',
-      password: 'example-password',
-    })
-    
-    return { data: { user: null, session: null }, error: null };
-  } catch (error: any) {
-    console.error('Error crítico en signUpWithEmail:', error);
-    
-    return {
-      data: { user: null, session: null },
-      error: {
-        message: 'Error interno del servidor. Por favor, intenta nuevamente o contacta al administrador.'
-      }
-    };
-  }
-}
-
-
 // Invitaciones: validateInvitation / acceptInvitation / createProfileFromInvitation
 // se retiraron (GO-sec 2026-09-28). Leían invitations.code desde el navegador y
 // nadie las importaba. El flujo vive en /api/auth/invite*, /api/auth/accept-invitation

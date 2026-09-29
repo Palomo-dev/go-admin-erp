@@ -1,4 +1,5 @@
 import { supabase, signInWithEmail } from '@/lib/supabase/config';
+import { codigoDeErrorAuth, type CodigoErrorLogin } from '@/lib/auth/codigosAcceso';
 
 /**
  * Inicio de sesión con correo y contraseña (acceso v3, docs/design/AUTH-ACCESO-V2.md
@@ -10,6 +11,8 @@ import { supabase, signInWithEmail } from '@/lib/supabase/config';
  * pantalla ya no ofrece «Crear cuenta» cuando solo falla la contraseña.
  */
 
+export { codigoDeErrorAuth, type CodigoErrorLogin };
+
 export interface OrganizacionDeUsuario {
   id: number;
   name: string;
@@ -20,8 +23,6 @@ export interface OrganizacionDeUsuario {
   logo_url?: string;
 }
 
-export type CodigoErrorLogin = 'credenciales' | 'sin_confirmar' | 'bloqueado' | 'demasiadas' | 'inesperado';
-
 export interface ErrorLogin {
   codigo: CodigoErrorLogin;
   /** ISO: hasta cuándo dura el bloqueo por intentos (solo con `bloqueado`). */
@@ -31,18 +32,6 @@ export interface ErrorLogin {
 export type ResultadoLogin =
   | { ok: true; userId: string; email: string }
   | { ok: false; error: ErrorLogin };
-
-/** Traduce el error de Auth a un código. Nunca se muestra el texto crudo de Supabase. */
-export function codigoDeErrorAuth(error: { message?: string; status?: number; code?: string } | null | undefined): CodigoErrorLogin {
-  if (!error) return 'inesperado';
-  const m = (error.message || '').toLowerCase();
-  if (error.code === 'email_not_confirmed' || m.includes('email not confirmed')) return 'sin_confirmar';
-  if (error.code === 'invalid_credentials' || m.includes('invalid login credentials') || m.includes('user not found')) {
-    return 'credenciales';
-  }
-  if (error.status === 429 || m.includes('too many requests') || m.includes('rate limit')) return 'demasiadas';
-  return 'inesperado';
-}
 
 /**
  * Abre la sesión con correo y contraseña y la deja en el cliente (cookie de

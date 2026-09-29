@@ -866,6 +866,40 @@ async function runAppGate(
 }
 
 /**
+ * R12 (docs/design/AUTH-ACCESO-V2.md §6): quien entra a /app sin ninguna
+ * organización activa va a `/auth/select-organization` (estado vacío: crear
+ * una o unirse con un código) en vez de a una app vacía.
+ *
+ * Solo consulta cuando NO hay organización identificable (ni cookie `org_id`
+ * ni subdominio): con organización elegida no cuesta nada. Fail open: sin
+ * token, sin respuesta o con error, deja pasar (la UI vuelve a comprobar).
+ * Perfil queda abierto para poder gestionar la cuenta sin organización.
+ */
+async function redirigirSiNoTieneOrganizacion(
+  request: NextRequest,
+  userId: string | null,
+  accessToken: string | null,
+  regreso: string
+): Promise<NextResponse | null> {
+  const { pathname } = request.nextUrl;
+  if (pathname === '/app/perfil' || pathname.startsWith('/app/perfil/')) return null;
+  if (!userId || !accessToken) return null;
+  if (request.cookies.get('org_id')?.value) return null;
+  const partes = (request.headers.get('host') || '').split('.');
+  if (partes.length >= 4 && partes[0] !== 'www') return null;
+
+  const filas = await edgeSelect<{ id: number }>(
+    `organization_members?select=id&user_id=eq.${encodeURIComponent(userId)}&is_active=eq.true&limit=1`,
+    { deadline: Date.now() + MW_DB_BUDGET_MS, accessToken }
+  );
+  if (!filas || filas.length > 0) return null;
+
+  const destino = new URL('/auth/select-organization', request.url);
+  destino.searchParams.set('dest', regreso);
+  return NextResponse.redirect(destino);
+}
+
+/**
  * Maneja la protección de rutas y redirecciones
  */
 async function handleRouteProtection(
@@ -935,20 +969,21 @@ async function handleRouteProtection(
 
   // Sesión vencida: el cliente la restaura con su refresh token en
   // /auth/login?reason=expired y vuelve a redirectTo (el middleware no refresca).
+  // R15 (docs/design/AUTH-ACCESO-V2.md §6): se vuelve a la ruta completa, con
+  // su query (antes solo `pathname` y solo bajo /app/). El login la valida con
+  // `destinoTrasLogin` antes de usarla.
+  const regreso = `${pathname}${request.nextUrl.search}`;
+
   if (isExpired && !isPublicRoute) {
     console.log('🔒 [MIDDLEWARE] Sesión vencida, el cliente debe refrescarla en /auth/login');
     const redirectUrl = new URL('/auth/login', request.url);
-    if (pathname.startsWith('/app/')) {
-      redirectUrl.searchParams.set('redirectTo', pathname);
-    }
+    redirectUrl.searchParams.set('redirectTo', regreso);
     redirectUrl.searchParams.set('reason', 'expired');
     return NextResponse.redirect(redirectUrl);
   }
-  
-  // Prevenir acceso a página de sesión expirada si no está expirada
-  if (!isExpired && pathname === '/auth/session-expired') {
-    return NextResponse.redirect(new URL('/app/inicio', request.url));
-  }
+
+  // (R2) `/auth/session-expired` ya no es pantalla: su route handler redirige
+  // 308 al login con el aviso. Se quitó la regla vieja que la mandaba a /app/inicio.
 
   // Redirigir usuarios no autenticados a login
   if (!isAuthenticated && !isPublicRoute) {
@@ -956,9 +991,7 @@ async function handleRouteProtection(
       console.log('🚀 [MIDDLEWARE] Redirigiendo usuario no autenticado a login');
     }
     const redirectUrl = new URL('/auth/login', request.url);
-    if (pathname.startsWith('/app/')) {
-      redirectUrl.searchParams.set('redirectTo', pathname);
-    }
+    redirectUrl.searchParams.set('redirectTo', regreso);
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -989,6 +1022,8 @@ async function handleRouteProtection(
         !pathname.startsWith('/auth/select-organization') &&
         !pathname.startsWith('/auth/signup') &&
         !pathname.startsWith('/auth/reset-password') &&
+        // R7: se puede pedir el enlace de recuperación aun con una sesión abierta.
+        !pathname.startsWith('/auth/forgot-password') &&
         !pathname.startsWith('/auth/super-admin-access')) {
       if (shouldDebug) {
         console.log('🚀 [MIDDLEWARE] Redirigiendo usuario autenticado desde auth a /app/inicio');
@@ -1000,6 +1035,8 @@ async function handleRouteProtection(
     // Acotadas por presupuesto de tiempo y cacheadas en cookie durante 60s,
     // para que nunca puedan colgar la invocacion del middleware.
     if (pathname.startsWith('/app/')) {
+      const sinOrganizacion = await redirigirSiNoTieneOrganizacion(request, userId, accessToken, regreso);
+      if (sinOrganizacion) return sinOrganizacion;
       const { redirect, gateCookie } = await runAppGate(request, pathname, userId, accessToken);
       if (redirect) return redirect;
       pendingGateCookie = gateCookie;

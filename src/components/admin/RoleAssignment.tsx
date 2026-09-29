@@ -1,20 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRoles } from '@/hooks/useRoles';
 import { supabase } from '@/lib/supabase/config';
+import { cambiarRolMiembro } from '@/lib/services/miembrosService';
 import { RoleWithPermissions } from '@/lib/services/roleService';
 import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 import { 
   Users, 
   UserCheck, 
   Search, 
-  Filter,
   ChevronDown,
   Save,
   RotateCcw,
   AlertCircle,
-  CheckCircle,
   User
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -58,7 +57,7 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
   const [pendingChanges, setPendingChanges] = useState<{[memberId: number]: number}>({});
 
   // Cargar miembros de la organización
-  const loadMembers = async () => {
+  const loadMembers = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -87,7 +86,9 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
 
       if (error) throw error;
       setLoadError(null);
-      setMembers((data as any) || []);
+      // Sin esquema tipado, el cliente infiere los embebidos como arrays; en
+      // runtime profiles y roles llegan como objeto (relación muchos a uno).
+      setMembers((data as unknown as OrganizationMember[] | null) || []);
     } catch (error) {
       logError('[RoleAssignment] cargar miembros de la organización', error);
       setLoadError(describeError(error));
@@ -95,13 +96,13 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [organizationId]);
 
   useEffect(() => {
     if (organizationId) {
       loadMembers();
     }
-  }, [organizationId]);
+  }, [organizationId, loadMembers]);
 
   // Filtrar miembros según búsqueda y filtros
   const filteredMembers = members.filter(member => {
@@ -151,13 +152,9 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
         role_id: roleId
       }));
 
+      // Por RPC con guardas en la base (antes RLS lo filtraba en silencio).
       for (const update of updates) {
-        const { error } = await supabase
-          .from('organization_members')
-          .update({ role_id: update.role_id })
-          .eq('id', update.id);
-        
-        if (error) throw error;
+        await cambiarRolMiembro(update.id, update.role_id);
       }
 
       toast.success(`${updates.length} asignaciones de roles actualizadas`);
@@ -340,6 +337,8 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
                       {/* Avatar */}
                       <div className="flex-shrink-0">
                         {member.profiles.avatar_url && getAvatarUrl(member.profiles.avatar_url) ? (
+                          // Avatar de URL externa y tamaño fijo (40px): no se migra a next/image.
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             className="h-10 w-10 rounded-full"
                             src={getAvatarUrl(member.profiles.avatar_url)}

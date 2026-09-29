@@ -21165,6 +21165,9 @@
       "error": "We could not complete the invitation. Try again.",
       "demasiados": "Too many attempts. Wait a few minutes.",
       "vencida": "The invitation is no longer valid. Ask for a new link."
+    },
+    "salida": {
+      "cerrando": "Signing out…"
     }
   },
   "inventarioUnidades": {
@@ -21402,5 +21405,25 @@
         "conversion_del_sistema": "System conversions are read-only."
       }
     }
+  },
+  "perfilSeguridad": {
+    "titulo": "Security",
+    "descripcion": "Manage the password you use to sign in to GO Admin.",
+    "contrasenaTitulo": "Password",
+    "contrasenaDescripcion": "Change it if you think someone else knows it.",
+    "cambiar": "Change",
+    "dialogoTitulo": "Change password",
+    "dialogoDescripcion": "Enter your current password and the new one.",
+    "actual": "Current password",
+    "nueva": "New password",
+    "confirmar": "Confirm new password",
+    "cerrarOtras": "Sign out of my other devices",
+    "guardar": "Change password",
+    "actualizada": "Your password was updated.",
+    "confirmaCorreo": "You must confirm your email address to change your password.",
+    "errorActual": "Your current password is incorrect.",
+    "errorIgualActual": "The new password must be different from the current one.",
+    "errorDemasiadas": "Too many attempts in a row. Wait a few minutes and try again.",
+    "errorInesperado": "We could not change your password. Try again in a moment."
   }
 }

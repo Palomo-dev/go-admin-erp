@@ -21060,6 +21060,9 @@
       "error": "Não conseguimos concluir o convite. Tente de novo.",
       "demasiados": "Muitas tentativas. Aguarde alguns minutos.",
       "vencida": "O convite não é mais válido. Peça um novo link."
+    },
+    "salida": {
+      "cerrando": "Saindo…"
     }
   },
   "inventarioUnidades": {
@@ -21297,5 +21300,25 @@
         "conversion_del_sistema": "As conversões do sistema são somente leitura."
       }
     }
+  },
+  "perfilSeguridad": {
+    "titulo": "Segurança",
+    "descripcion": "Gerencie a senha que você usa para entrar no GO Admin.",
+    "contrasenaTitulo": "Senha",
+    "contrasenaDescripcion": "Troque-a se achar que outra pessoa a conhece.",
+    "cambiar": "Trocar",
+    "dialogoTitulo": "Trocar senha",
+    "dialogoDescripcion": "Digite sua senha atual e a nova.",
+    "actual": "Senha atual",
+    "nueva": "Nova senha",
+    "confirmar": "Confirmar nova senha",
+    "cerrarOtras": "Sair dos meus outros dispositivos",
+    "guardar": "Trocar senha",
+    "actualizada": "Sua senha foi atualizada.",
+    "confirmaCorreo": "Você precisa confirmar seu e-mail para trocar a senha.",
+    "errorActual": "A senha atual está incorreta.",
+    "errorIgualActual": "A nova senha deve ser diferente da atual.",
+    "errorDemasiadas": "Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.",
+    "errorInesperado": "Não conseguimos trocar a senha. Tente de novo em um instante."
   }
 }

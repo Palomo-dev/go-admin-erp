@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { cambiarEstadoMiembro, cambiarRolMiembro, retirarMiembro } from '@/lib/services/miembrosService';
 import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMap } from '@/utils/roleUtils';
 import BranchAssignmentModal from './BranchAssignmentModal';
 import { MemberQuotasSheet } from './quotas/MemberQuotasSheet';
@@ -27,17 +28,45 @@ interface MemberProps {
   created_at: string;
 }
 
+// Rol tal como lo devuelve formatRolesForDropdown (fila de `roles` + código).
+interface RolDropdown {
+  id: number;
+  name: string;
+  code: string;
+}
+
+interface SucursalOpcion {
+  id: number;
+  name: string;
+}
+
+// Fila de la RPC get_profiles_by_organization (una por miembro y sucursal).
+interface FilaPerfilMiembro {
+  id: string;
+  user_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  role_id: number | null;
+  role_name: string | null;
+  is_super_admin: boolean | null;
+  is_active: boolean | null;
+  branch_id: string | null;
+  branch_name: string | null;
+  job_position_name: string | null;
+  created_at: string;
+}
+
 export default function MembersTab({ orgId }: { orgId: number }) {
   const [members, setMembers] = useState<MemberProps[]>([]);
-  const [roles, setRoles] = useState<any[]>([]);
-  const [branches, setBranches] = useState<any[]>([]);
+  const [roles, setRoles] = useState<RolDropdown[]>([]);
+  const [branches, setBranches] = useState<SucursalOpcion[]>([]);
   const [loading, setLoading] = useState(false);
   const t = useTranslations('org.membersTab');
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [updatingRole, setUpdatingRole] = useState(false);
-  const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [newRole, setNewRole] = useState<string>('');
+  const [, setSuccess] = useState<string | null>(null);
+  const [, setUpdatingRole] = useState(false);
+  const [, setUpdatingStatus] = useState(false);
   
   // Estados para los filtros
   const [nameFilter, setNameFilter] = useState('');
@@ -73,6 +102,9 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       fetchBranches();
       fetchUserLimit();
     }
+    // Carga solo al cambiar orgId: las funciones fetch* se recrean en cada render
+    // y meterlas en las dependencias dispararía la carga en cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
 
   const fetchUserLimit = async () => {
@@ -122,7 +154,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       // Group members by organization_member_id to handle multiple branch assignments
       const memberMap = new Map();
       
-      membersData.forEach((member: any) => {
+      membersData.forEach((member: FilaPerfilMiembro) => {
         const memberId = member.id;
         
         if (!memberMap.has(memberId)) {
@@ -165,9 +197,9 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       }));
 
       setMembers(formattedMembers);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error al obtener miembros:', err);
-      setError(err.message || t('errorLoading'));
+      setError((err instanceof Error ? err.message : '') || t('errorLoading'));
     } finally {
       setLoading(false);
     }
@@ -185,7 +217,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       
       const formattedRoles = formatRolesForDropdown(data);
       setRoles(formattedRoles);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching roles:', err);
     }
   };
@@ -200,7 +232,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
 
       if (error) throw error;
       setBranches(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching branches:', err);
     }
   };
@@ -216,14 +248,8 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         throw new Error(`Role code ${roleCode} not found`);
       }
       
-      // Update the member's role_id in profiles table
-      const { error } = await supabase
-        .from('organization_members')
-        .update({ role_id: roleId })
-        .eq('id', memberId)
-        .eq('organization_id', orgId);
-
-      if (error) throw error;
+      // Por RPC con guardas en la base (antes RLS lo filtraba en silencio).
+      await cambiarRolMiembro(memberId, roleId);
       
       // Get role info using our utility function
       const roleInfo = getRoleInfoById(roleId);
@@ -242,9 +268,9 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       }));
       
       setSuccess(t('roleUpdated'));
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error al actualizar rol:', err);
-      setError(err.message || t('errorUpdatingRole'));
+      setError((err instanceof Error ? err.message : '') || t('errorUpdatingRole'));
     } finally {
       setUpdatingRole(false);
     }
@@ -268,14 +294,8 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       // Toggle the status
       const newStatus = !currentStatus;
       
-      // Update the member's status in organization_members table
-      const { error } = await supabase
-        .from('organization_members')
-        .update({ is_active: newStatus })
-        .eq('id', memberId)
-        .eq('organization_id', orgId);
-      
-      if (error) throw error;
+      // Por RPC con guardas en la base (antes RLS lo filtraba en silencio).
+      await cambiarEstadoMiembro(memberId, newStatus);
       
       // Update local member data
       setMembers(prev => prev.map(m => {
@@ -289,9 +309,9 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       }));
       
       setSuccess(t('userStatusChanged', { status: newStatus ? t('activated') : t('deactivated') }));
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error al actualizar estado:', err);
-      setError(err.message || t('errorUpdatingStatus'));
+      setError((err instanceof Error ? err.message : '') || t('errorUpdatingStatus'));
     } finally {
       setUpdatingStatus(false);
     }
@@ -302,14 +322,8 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       try {
         setLoading(true);
         
-        // Remove from organization_members
-        const { error } = await supabase
-          .from('organization_members')
-          .delete()
-          .eq('id', memberId)
-          .eq('organization_id', orgId);
-
-        if (error) throw error;
+        // Por RPC con guardas en la base (antes RLS lo filtraba en silencio).
+        await retirarMiembro(memberId);
         
         // Update the local state to remove the member
         setMembers(prev => prev.filter(m => m.id !== memberId));
@@ -317,9 +331,9 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         
         // Refresh the members list
         await fetchMembers();
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error removing member:', err);
-        setError(err.message || t('errorRemoving'));
+        setError((err instanceof Error ? err.message : '') || t('errorRemoving'));
       } finally {
         setLoading(false);
       }
@@ -339,7 +353,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       
       return nameMatches && emailMatches && roleMatches && branchMatches && statusMatches;
     });
-  }, [members, nameFilter, emailFilter, roleFilter, localBranchFilter, statusFilter]);
+  }, [members, nameFilter, emailFilter, roleFilter, localBranchFilter, statusFilter, t]);
 
   // Paginación
   const totalPages = Math.ceil(filteredMembers.length / pageSize);
@@ -674,7 +688,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                       <option value="">{t('selectRole')}</option>
                       {roles.map(role => {
                         const roleTranslationKey = `role${role.code.charAt(0).toUpperCase() + role.code.slice(1)}`;
-                        const roleTranslation = t(roleTranslationKey as any);
+                        const roleTranslation = t(roleTranslationKey as Parameters<typeof t>[0]);
                         const displayName = roleTranslation !== roleTranslationKey ? roleTranslation : (roleDisplayMap[role.code] || role.name);
                         return (
                           <option key={role.id} value={role.code}>

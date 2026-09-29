@@ -2734,8 +2734,8 @@ describe('31. Toda ruta de src/app/api pasa por una puerta del servidor', () => 
 
   /** `ruta MÉTODO` (o `ruta REEXPORT`) → por qué no necesita puerta en el handler. */
   const SIN_PUERTA = new Map<string, string>([
-    ['app/api/auth/accept-invitation/route.ts POST', 'pública: crea la cuenta del invitado; valida el código con validate_invitation_by_code y solo cuentas nuevas/huérfanas (estadoCuentaInvitacion)'],
-    ['app/api/auth/check-email/route.ts POST', 'pública para el registro (aún no hay cuenta); límite por IP'],
+    ['app/api/auth/acceso/route.ts POST', 'pública: es el inicio de sesión (aún no hay sesión); mensaje único de credenciales, bloqueo 15 min tras 5 fallos por cuenta+IP o 20 por IP (fn_acceso_*), límite general por IP (acceso v3, fase 5)'],
+    ['app/api/auth/accept-invitation/route.ts POST','pública: crea la cuenta del invitado; valida el código con validate_invitation_by_code y solo cuentas nuevas/huérfanas (estadoCuentaInvitacion)'],
     ['app/api/auth/registro/route.ts POST', 'pública: paso 1 del registro (aún no hay cuenta); respuesta uniforme exista o no el correo; política de contraseña y límite por IP y por correo (acceso v3, v2-6/v2-8)'],
     ['app/api/auth/reenviar-confirmacion/route.ts POST', 'pública: reenvía el correo de confirmación; respuesta uniforme exista o no la cuenta; límite por IP y por correo (acceso v3, R1/v2-6)'],
     ['app/api/auth/invite/context/route.ts GET', 'pública: se abre desde el correo con el código; límite por IP'],
@@ -3158,5 +3158,36 @@ describe('Búsqueda única de clientes', () => {
     expect(pos).not.toMatch(/from\(\s*['"]customers['"]\s*\)[\s\S]{0,300}?\.or\(/);
     const offline = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'offline', 'posOfflineReads.ts')));
     expect(offline).toMatch(/buscarClientesEnLista\(/);
+  });
+});
+
+// Acceso v3, fase 5 (docs/design/AUTH-ACCESO-V2.md §13.4 y §13.5): el rol, la
+// organización, el cargo y el estado de OTROS miembros solo cambian por las RPC
+// fn_miembro_* (lib/services/miembrosService.ts). Escribirlos desde el
+// navegador no hace nada (RLS lo filtra en silencio) y, sobre la propia fila,
+// el disparador lo rechaza. Único cambio directo permitido: salir uno mismo
+// (is_active = false en ManageOrganizationsTab).
+describe('35. Miembros: rol, cargo, estado y retiro solo por las RPC fn_miembro_*', () => {
+  const esPrueba = (f: string) => /[\/]__tests__[\/]|\.test\.tsx?$/.test(f);
+  const DE_NAVEGADOR = /from\s+['"]@\/lib\/supabase\/config['"]/;
+  const ESCRITURA = /from\(\s*['"]organization_members['"]\s*\)\s*\.(?:update\(\s*\{[^}]*\b(?:role_id|is_super_admin|organization_id|job_position_id|user_id)\b|delete\()/;
+
+  test('ningún archivo con el cliente del navegador escribe rol, cargo u organización de un miembro, ni lo borra', () => {
+    const ofensores = walkDir(SRC_ROOT)
+      .filter((f) => !esPrueba(f))
+      .filter((f) => {
+        const s = stripAllComments(readFile(f));
+        return DE_NAVEGADOR.test(s) && ESCRITURA.test(s);
+      })
+      .map(rel);
+    expect(ofensores).toEqual([]);
+  });
+
+  test('las RPC de gestión de miembros solo se llaman desde el servicio único', () => {
+    const llaman = walkDir(SRC_ROOT)
+      .filter((f) => !esPrueba(f))
+      .filter((f) => /rpc\(\s*fn\b|rpc\(\s*['"]fn_miembro_/.test(readFile(f)) && /fn_miembro_/.test(readFile(f)))
+      .map(rel);
+    expect(llaman).toEqual(['lib/services/miembrosService.ts']);
   });
 });

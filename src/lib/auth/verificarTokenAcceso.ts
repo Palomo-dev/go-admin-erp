@@ -76,6 +76,13 @@ export interface ClaimsVerificados {
   role: string;
   email?: string;
   session_id?: string;
+  /**
+   * Métodos con los que se abrió la sesión (claim amr de Supabase: password,
+   * oauth, otp, recovery, magiclink, invite…). Solo de un token ya verificado.
+   * Lo usa /api/auth/restablecer: la contraseña solo se cambia sin la actual
+   * con una sesión abierta desde un enlace del correo (R8).
+   */
+  amr?: { method: string; timestamp: number }[];
 }
 
 export type VeredictoToken =
@@ -107,12 +114,20 @@ function claimsDeUsuario(payload: JWTPayload): ClaimsVerificados | null {
   if (role !== 'authenticated') return null;
   const email = (payload as { email?: unknown }).email;
   const sessionId = (payload as { session_id?: unknown }).session_id;
+  const amrCrudo = (payload as { amr?: unknown }).amr;
+  const amr = Array.isArray(amrCrudo)
+    ? amrCrudo
+        .filter((a): a is { method: string; timestamp: number } =>
+          !!a && typeof (a as { method?: unknown }).method === 'string' && typeof (a as { timestamp?: unknown }).timestamp === 'number')
+        .map((a) => ({ method: a.method, timestamp: a.timestamp }))
+    : undefined;
   return {
     sub,
     exp,
     role,
     ...(typeof email === 'string' ? { email } : {}),
     ...(typeof sessionId === 'string' ? { session_id: sessionId } : {}),
+    ...(amr && amr.length > 0 ? { amr } : {}),
   };
 }
 

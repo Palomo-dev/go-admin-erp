@@ -19,6 +19,7 @@
  */
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { esFormatoCodigoValido } from './formatoCodigoInvitacion';
 
 /** Vigencia de una invitación nueva o reenviada. */
 export const DIAS_VIGENCIA_INVITACION = 30;
@@ -28,15 +29,8 @@ export function generarCodigoInvitacion(): string {
   return randomBytes(32).toString('hex');
 }
 
-/**
- * Formato admitido para un código recibido del cliente. Los códigos nuevos son
- * hexadecimales de 64; se admiten longitudes menores por los ya emitidos.
- */
-const CODIGO_RE = /^[A-Za-z0-9_-]{6,128}$/;
-
-export function esFormatoCodigoValido(codigo: unknown): codigo is string {
-  return typeof codigo === 'string' && CODIGO_RE.test(codigo);
-}
+// Formato del código: compartido con el navegador (sin dependencias de Node).
+export { esFormatoCodigoValido };
 
 /** Igualdad en tiempo constante (se comparan los SHA-256, de igual longitud). */
 export function codigosIguales(a: string, b: string): boolean {

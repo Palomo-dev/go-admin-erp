@@ -1,6 +1,7 @@
 import { supabase, ensureSessionSynced } from '@/lib/supabase/config';
 import { saveBiometricCredentials } from '@/lib/services/biometricService';
 import { guardarOrganizacionActiva, invalidateBranchIdCache } from '@/lib/hooks/useOrganization';
+import { destinoTrasLogin } from '@/lib/auth/recuperacionSesion';
 
 // Define Organization type
 export interface Organization {
@@ -21,66 +22,35 @@ export interface Organization {
   status?: string; // Campo para indicar si la organización está activa o inactiva
 }
 
-export interface SelectOrganizationParams {
-  organization: Organization;
-  email?: string;
-  rememberMe?: boolean;
-  setShowOrgPopup: (show: boolean) => void;
-  proceedWithLogin: (rememberMe: boolean, email: string) => void;
-}
-
-export const selectOrganizationFromPopup = async ({
-  organization,
-  email = '',
-  rememberMe = false,
-  setShowOrgPopup,
-  proceedWithLogin
-}: SelectOrganizationParams) => {
-  console.log('🏢 [DEBUG] selectOrganizationFromPopup iniciado:', {
-    organizationId: organization.id,
-    organizationName: organization.name,
-    email
-  });
-  
-  setShowOrgPopup(false);
-  
-  // Limpiar caches stale de la organización anterior
+/**
+ * Activa una organización en este navegador (limpia las cachés de la anterior y
+ * escribe organizacionActiva, las claves legacy y las cookies org_id /
+ * goadmin_org_id). Lo usan el login con una sola organización y el selector
+ * único /auth/select-organization (antes también el popup del login, R4).
+ */
+export function activarOrganizacion(organization: Pick<Organization, 'id' | 'name' | 'logo_url'>): void {
   localStorage.removeItem('appLayout_userData_cache');
   localStorage.removeItem('currentBranchId');
   sessionStorage.removeItem('currentBranchId');
   invalidateBranchIdCache();
-  
-  // Guardar organización usando la función centralizada: escribe
-  // organizacionActiva, sessionStorage, las claves legacy y las cookies
-  // `org_id` / `goadmin_org_id`.
   guardarOrganizacionActiva({
-    id: organization.id,
+    id: Number(organization.id),
     name: organization.name,
-    logo_url: organization.logo_url
+    logo_url: organization.logo_url,
   });
+}
 
-  console.log('💾 [DEBUG] Organización guardada en localStorage:', {
-    currentOrganizationId: localStorage.getItem('currentOrganizationId'),
-    currentOrganizationName: localStorage.getItem('currentOrganizationName')
-  });
-  
-  console.log('🚀 [DEBUG] Llamando proceedWithLogin...');
-  
-  // Continue with login process
-  try {
-    await proceedWithLogin(rememberMe, email);
-    console.log('✅ [DEBUG] proceedWithLogin completado exitosamente');
-  } catch (error) {
-    console.error('❌ [DEBUG] Error en proceedWithLogin:', error);
-  }
-};
+export interface OpcionesEntrada {
+  /** Destino explícito (ya validado); si no, redirectTo de sessionStorage validado o /app/inicio. */
+  destino?: string;
+}
 
-
-export const proceedWithLogin = async (rememberMe: boolean = false, email: string = '') => {
+export const proceedWithLogin = async (rememberMe: boolean = false, email: string = '', opciones: OpcionesEntrada = {}) => {
   console.log(' [DEBUG] proceedWithLogin iniciado:', { rememberMe, email });
   
   // Obtener la sesión actual
-  let { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const { data: sessionDataInicial, error: sessionError } = await supabase.auth.getSession();
+  let sessionData = sessionDataInicial;
   
   console.log(' [DEBUG] Session data obtenida:', {
     hasSession: !!sessionData.session,
@@ -261,7 +231,7 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
       console.log('🔄 Actualizando perfil con organización ID:', orgId);
       
       // Update the user's profile with the selected organization
-      const { data: updateData, error: profUpdate } = await supabase
+      const { error: profUpdate } = await supabase
         .from('profiles')
         .update({ last_org_id: parseInt(orgId) })
         .eq('id', sessionData.session.user.id);
@@ -291,12 +261,9 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
         try {
           // Handle different possible structures of the returned data
           if (orgData.organization_types) {
-            const orgTypes = orgData.organization_types as any;
-            if (typeof orgTypes === 'object') {
-              if (orgTypes.name) {
-                orgTypeName = orgTypes.name;
-              }
-            }
+            const orgTypes = orgData.organization_types as { name?: string } | { name?: string }[];
+            const tipo = Array.isArray(orgTypes) ? orgTypes[0] : orgTypes;
+            if (tipo?.name) orgTypeName = tipo.name;
           }
         } catch (e) {
           console.error('Error extracting organization type:', e);
@@ -319,14 +286,14 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
   const deobfuscateEmail = (obfuscated: string): string => {
     try {
       return atob(obfuscated).split('').reverse().join('');
-    } catch (e) {
+    } catch {
       return '';
     }
   };
   
   // Add to window for use in other components
   if (typeof window !== 'undefined') {
-    (window as any).deobfuscateEmail = deobfuscateEmail;
+    (window as unknown as { deobfuscateEmail?: (v: string) => string }).deobfuscateEmail = deobfuscateEmail;
   }
   
   if (rememberMe) {
@@ -338,8 +305,9 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
     localStorage.removeItem('userEmail');
   }
 
-  // Check if there's a redirectTo in session storage
-  const redirectTo = sessionStorage.getItem('redirectTo');
+  // Destino: explícito, o redirectTo de sessionStorage VALIDADO (R15: antes se
+  // usaba sin validar y era una redirección abierta), o /app/inicio.
+  const redirectTo = opciones.destino ?? destinoTrasLogin(sessionStorage.getItem('redirectTo'));
 
   // Registrar el dispositivo en la base de datos
   if (sessionData?.session?.user?.id) {
@@ -408,14 +376,8 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
         // Pequeño delay adicional para asegurar que las cookies se establezcan
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        if (redirectTo) {
-          console.log('🚀 [DEBUG] Redirigiendo a redirectTo:', redirectTo);
-          sessionStorage.removeItem('redirectTo');
-          window.location.replace(redirectTo);
-        } else {
-          console.log('🚀 [DEBUG] Redirigiendo a dashboard por defecto: /app/inicio');
-          window.location.replace('/app/inicio');
-        }
+        sessionStorage.removeItem('redirectTo');
+        window.location.replace(redirectTo);
       } else {
         console.error('❌ [DEBUG] No se pudo establecer la sesión correctamente');
         window.location.replace('/auth/login?error=session-failed');
@@ -428,22 +390,21 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
 };
 
 // Función para registrar el dispositivo del usuario
-export const registerUserDevice = async (sessionOrUserId: any) => {
+export const registerUserDevice = async (sessionOrUserId: string | { user?: { id?: string } } | null | undefined) => {
   try {
     // Determinar si es una sesión completa o solo un userId
     let userId: string;
     if (typeof sessionOrUserId === 'string' && sessionOrUserId.trim() !== '') {
       // Es solo un userId
       userId = sessionOrUserId;
-    } else if (sessionOrUserId && sessionOrUserId.user && sessionOrUserId.user.id) {
+    } else if (sessionOrUserId && typeof sessionOrUserId === 'object' && sessionOrUserId.user?.id) {
       // Es una sesión completa
       userId = sessionOrUserId.user.id;
     } else {
       console.error('Parámetro no válido para registrar dispositivo:', {
         type: typeof sessionOrUserId,
         value: sessionOrUserId,
-        hasUser: sessionOrUserId?.user,
-        hasUserId: sessionOrUserId?.user?.id
+        hasUser: typeof sessionOrUserId === 'object' ? !!sessionOrUserId?.user : false
       });
       throw new Error('No se pudo obtener el ID de usuario para registrar el dispositivo');
     }
@@ -591,8 +552,7 @@ const detectDeviceType = (userAgent: string): string => {
 // Detectar información detallada del navegador
 const detectBrowserInfo = () => {
   const ua = window.navigator.userAgent;
-  const platform = window.navigator.platform;
-  const browserInfo: {[key: string]: any} = {
+  const browserInfo: Record<string, string> = {
     browser: 'unknown',
     browserVersion: 'unknown',
     os: 'unknown',
@@ -672,7 +632,7 @@ const generateDeviceFingerprint = async (): Promise<string> => {
       const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    } catch (e) {
+    } catch {
       // Fallback si falla la API de Crypto
       return btoa(fingerprint).substring(0, 64);
     }

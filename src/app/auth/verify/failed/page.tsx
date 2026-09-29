@@ -1,156 +1,127 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
+/**
+ * Verificación — el enlace falló / enlace reenviado. UNA sola pantalla neutra
+ * con dos estados (R9; Figma sección 18, filas 6 y 6b; docs/design/AUTH-ACCESO-V2.md
+ * §11 y §13). `/auth/verify/resent` redirige aquí con `?estado=reenviado`.
+ *
+ * Respuesta uniforme: lo que se muestre no depende de si el correo tiene una
+ * invitación o una confirmación pendiente (39999d0f y decisión v2-6). El
+ * correo de la URL se muestra enmascarado.
+ */
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
+import { useTranslations } from 'next-intl';
+import { Link2Off, Loader2, MailCheck } from 'lucide-react';
+import { FormField } from '@/components/kit/FormField';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { Input } from '@/components/ui/input';
+import { EscenaAcceso, TarjetaAcceso, AvisoAcceso, IconoDestacado, Enlace } from '@/components/kit/acceso';
+import { enmascararCorreoVisible } from '@/lib/auth/avisosAcceso';
+
+const CORREO_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function FailedContent() {
-  const searchParams = useSearchParams();
-  const type = searchParams?.get('type') || 'magiclink';
-
+  const t = useTranslations('acceso.verificar');
+  const tc = useTranslations('acceso.comun');
+  const params = useSearchParams();
+  const tipo = params?.get('type') || 'magiclink';
+  const [estado, setEstado] = useState<'formulario' | 'reenviado'>(params?.get('estado') === 'reenviado' ? 'reenviado' : 'formulario');
+  const [correoEnviado, setCorreoEnviado] = useState<string | null>(enmascararCorreoVisible(params?.get('email')));
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
+  const [errorCorreo, setErrorCorreo] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [espera, setEspera] = useState(false);
 
-  async function handleResend(e: React.FormEvent) {
+  const reenviar = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
-
-    setStatus('sending');
-    setErrorMsg('');
-
-    try {
-      const res = await fetch('/api/auth/invite/resend', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim(),
-          origin: window.location.origin,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        setStatus('sent');
-      } else {
-        setStatus('error');
-        setErrorMsg(data.error || 'No se pudo reenviar el enlace.');
-      }
-    } catch {
-      setStatus('error');
-      setErrorMsg('Error de conexión. Intenta nuevamente.');
+    const correo = email.trim().toLowerCase();
+    if (!CORREO_RE.test(correo)) {
+      setErrorCorreo(tc('correoInvalido'));
+      return;
     }
-  }
+    setErrorCorreo(null);
+    setEspera(false);
+    setEnviando(true);
+    try {
+      // signup → confirmación de la cuenta; magiclink / invite → enlace de la invitación.
+      const res =
+        tipo === 'signup'
+          ? await fetch('/api/auth/reenviar-confirmacion', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: correo }),
+            })
+          : await fetch('/api/auth/invite/resend', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: correo, origin: window.location.origin }),
+            });
+      if (res.status === 429) {
+        setEspera(true);
+        return;
+      }
+      setCorreoEnviado(enmascararCorreoVisible(correo));
+      setEstado('reenviado');
+    } catch {
+      setCorreoEnviado(enmascararCorreoVisible(correo));
+      setEstado('reenviado');
+    } finally {
+      setEnviando(false);
+    }
+  };
 
-  // Estado: enlace reenviado exitosamente
-  if (status === 'sent') {
+  const pie = <p className="text-center"><Enlace href="/auth/login">{tc('volverAlLogin')}</Enlace></p>;
+
+  if (estado === 'reenviado') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4 bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black relative overflow-hidden">
-        <AuthSceneBackground />
-        <div className="bg-white dark:bg-gray-800 shadow-lg sm:shadow-2xl rounded-lg sm:rounded-xl w-full max-w-md overflow-hidden relative z-10">
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Revisa tu correo
-            </h2>
-          </div>
-          <div className="p-4 sm:p-6">
-            <div className="bg-green-50 dark:bg-green-900/30 border-l-4 border-green-500 p-3 sm:p-4">
-              <p className="text-xs sm:text-sm text-green-700 dark:text-green-300">
-                Si hay una invitaci&oacute;n pendiente para{' '}
-                <strong className="break-all">{email}</strong>, acabamos de enviar un
-                nuevo enlace. Revisa tu correo (y spam) y haz clic en
-                &quot;Acceder a mi cuenta&quot;.
-              </p>
-            </div>
-          </div>
-          <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
-            <a
-              href="/auth/login"
-              className="w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-            >
-              Ir al inicio de sesi&oacute;n
-            </a>
-          </div>
-        </div>
-      </div>
+      <EscenaAcceso>
+        <TarjetaAcceso
+          titulo={t('reenviadoTitulo')}
+          descripcion={correoEnviado ? t('reenviado', { correo: correoEnviado }) : t('reenviadoSinCorreo')}
+          centrado
+          icono={<IconoDestacado icono={MailCheck} tono="exito" />}
+          pie={pie}
+        />
+      </EscenaAcceso>
     );
   }
 
-  // Estado: formulario para ingresar email
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4 bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black relative overflow-hidden">
-      <AuthSceneBackground />
-      <div className="bg-white dark:bg-gray-800 shadow-lg sm:shadow-2xl rounded-lg sm:rounded-xl w-full max-w-md overflow-hidden relative z-10">
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-            El enlace ha expirado
-          </h2>
-        </div>
-        <div className="p-4 sm:p-6">
-          <div className="bg-amber-50 dark:bg-amber-900/30 border-l-4 border-amber-500 p-3 sm:p-4 mb-3 sm:mb-4">
-            <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300">
-              El enlace de acceso ya fue utilizado o ha expirado. Esto puede
-              ocurrir cuando tu cliente de correo (Gmail, Outlook) abre el
-              enlace autom&aacute;ticamente por seguridad antes de que hagas clic.
-            </p>
-          </div>
-
-          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3">
-            Ingresa tu correo y te enviaremos un nuevo enlace para aceptar la
-            invitaci&oacute;n:
-          </p>
-
-          <form onSubmit={handleResend} className="space-y-3">
-            <input
+    <EscenaAcceso>
+      <TarjetaAcceso
+        titulo={t('fallidoTitulo')}
+        descripcion={t('fallido')}
+        icono={<IconoDestacado icono={Link2Off} tono="advertencia" />}
+        aviso={espera ? <AvisoAcceso tono="advertencia">{t('espera')}</AvisoAcceso> : undefined}
+        pie={pie}
+      >
+        <form className="flex flex-col gap-4" onSubmit={reenviar} noValidate>
+          <FormField etiqueta={t('correo')} obligatorio error={errorCorreo}>
+            <Input
               type="email"
-              required
+              name="email"
+              autoComplete="email"
+              inputMode="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@correo.com"
-              disabled={status === 'sending'}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              className="h-10 rounded-lg"
+              placeholder="nombre@empresa.com"
             />
-
-            {status === 'error' && (
-              <div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-2 sm:p-3">
-                <p className="text-xs text-red-700 dark:text-red-300">{errorMsg}</p>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={status === 'sending'}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {status === 'sending' ? 'Enviando...' : 'Reenviar enlace'}
-            </button>
-          </form>
-        </div>
-        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
-          <a
-            href="/auth/login"
-            className="w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-          >
-            Ir al inicio de sesi&oacute;n
-          </a>
-        </div>
-      </div>
-    </div>
+          </FormField>
+          <button type="submit" disabled={enviando} className={clasesBoton({ anchoCompleto: true })}>
+            {enviando && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+            {enviando ? t('reenviando') : t('reenviar')}
+          </button>
+        </form>
+      </TarjetaAcceso>
+    </EscenaAcceso>
   );
 }
 
-export default function FailedPage() {
+export default function VerifyFailedPage() {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black">
-        <div className="text-center">
-          <p className="text-white">Loading...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={null}>
       <FailedContent />
     </Suspense>
   );

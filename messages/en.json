@@ -20922,7 +20922,9 @@
         "callback-processing-failed": "We could not complete sign-in. Try again.",
         "native-callback-invalid-params": "We could not complete sign-in in the app. Try again.",
         "generico": "We could not sign you in. Try again."
-      }
+      },
+      "faceId": "Face ID",
+      "huella": "your fingerprint"
     },
     "seleccion": {
       "titulo": "Choose an organization",

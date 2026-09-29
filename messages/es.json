@@ -20922,7 +20922,9 @@
         "callback-processing-failed": "No pudimos completar el inicio de sesión. Inténtalo de nuevo.",
         "native-callback-invalid-params": "No pudimos completar el inicio de sesión en la app. Inténtalo de nuevo.",
         "generico": "No pudimos iniciar sesión. Inténtalo de nuevo."
-      }
+      },
+      "faceId": "Face ID",
+      "huella": "tu huella"
     },
     "seleccion": {
       "titulo": "Elige una organización",

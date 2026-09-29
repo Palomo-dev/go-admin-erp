@@ -20817,7 +20817,9 @@
         "callback-processing-failed": "Não conseguimos concluir o login. Tente de novo.",
         "native-callback-invalid-params": "Não conseguimos concluir o login no aplicativo. Tente de novo.",
         "generico": "Não conseguimos fazer seu login. Tente de novo."
-      }
+      },
+      "faceId": "Face ID",
+      "huella": "sua digital"
     },
     "seleccion": {
       "titulo": "Escolha uma organização",

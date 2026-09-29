@@ -30,6 +30,19 @@ export function destinoInternoSeguro(raw: string | null | undefined): string {
 }
 
 /**
+ * Destino tras iniciar sesión (R15, docs/design/AUTH-ACCESO-V2.md §6): el mismo
+ * filtro que `destinoInternoSeguro` (antes `redirectTo` de sessionStorage se
+ * usaba sin validar), con UNA excepción: la vuelta al asistente de invitación
+ * (`/auth/invite?invite_code=…`), que manda al login a quien ya tiene cuenta y
+ * debe volver a aceptar.
+ */
+export function destinoTrasLogin(raw: string | null | undefined): string {
+  const destino = typeof raw === 'string' ? raw.trim() : '';
+  if (/^\/auth\/invite(\?|$)/.test(destino) && !/[\u0000-\u001f]/.test(destino)) return destino;
+  return destinoInternoSeguro(destino);
+}
+
+/**
  * ¿Toca intentar la recuperación ahora? Registra el intento en `storage`
  * (sessionStorage de la pestaña) para no entrar en bucle si el refresco no
  * llega a la cookie que lee el middleware.

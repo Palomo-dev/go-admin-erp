@@ -25,3 +25,4 @@ export { MedidorFortaleza, useEvaluacionContrasena, type MedidorFortalezaProps }
 export { PhoneField, type PhoneFieldProps } from './PhoneField';
 export { PreferenciasAcceso, SelectorIdiomaCompacto, BotonTemaAcceso } from './PreferenciasAcceso';
 export { ViajeroDePie, ViajeroSentado, Planeta, Cohete, Luna, Nube, EstrellaTrazo } from './ilustraciones';
+export { TarjetaOrganizacion, type TarjetaOrganizacionProps } from './TarjetaOrganizacion';

@@ -2736,6 +2736,7 @@ describe('31. Toda ruta de src/app/api pasa por una puerta del servidor', () => 
   const SIN_PUERTA = new Map<string, string>([
     ['app/api/auth/accept-invitation/route.ts POST', 'pública: crea la cuenta del invitado; valida el código con validate_invitation_by_code y solo cuentas nuevas/huérfanas (estadoCuentaInvitacion)'],
     ['app/api/auth/check-email/route.ts POST', 'pública para el registro (aún no hay cuenta); límite por IP'],
+    ['app/api/auth/reenviar-confirmacion/route.ts POST', 'pública: reenvía el correo de confirmación; respuesta uniforme exista o no la cuenta; límite por IP y por correo (acceso v3, R1/v2-6)'],
     ['app/api/auth/invite/context/route.ts GET', 'pública: se abre desde el correo con el código; límite por IP'],
     ['app/api/auth/invite/resend/route.ts POST', 'pública: reenvía el enlace validando contra invitations; límite por IP y por correo'],
     ['app/api/auth/native-callback/route.ts GET', 'puente OAuth de la app móvil: solo redirige al esquema de la app, no lee ni escribe datos'],

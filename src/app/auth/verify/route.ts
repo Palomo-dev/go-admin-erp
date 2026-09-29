@@ -212,7 +212,7 @@ export async function GET(request: NextRequest) {
           }
 
           // Misma respuesta en todos los casos; cookie anti-bucle de 10 min.
-          const response = redirectWithCookies(`/auth/verify/resent?email=${encodeURIComponent(correo)}`);
+          const response = redirectWithCookies(`/auth/verify/failed?type=${type}&estado=reenviado&email=${encodeURIComponent(correo)}`);
           response.cookies.set(resendCookieName, '1', {
             httpOnly: false,
             secure: process.env.NODE_ENV === 'production',

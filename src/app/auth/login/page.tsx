@@ -1,23 +1,35 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, type MouseEvent as ReactMouseEvent, Suspense } from 'react';
-import Link from 'next/link';
+/**
+ * Iniciar sesión — acceso v3 (Figma sección 18 «Acceso v3 — V1 con el viajero»,
+ * filas 1 a 1d; docs/design/AUTH-ACCESO-V2.md §11 y §13).
+ *
+ * Conserva todo lo de antes (matriz de paridad §12.2): correo y contraseña,
+ * «Recordar mi correo» (solo el correo), Google, Microsoft y biometría en la
+ * app, recuperación de la sesión vencida (`?reason=expired`), `?addAccount=1`,
+ * `redirectTo` (ahora validado), el modal de geolocalización y el registro del
+ * dispositivo. Cambia: un único mensaje de credenciales, bloqueo por intentos
+ * con hora de desbloqueo, catálogo único de avisos de la URL y, al entrar, el
+ * selector único de organización (se salta si solo hay una).
+ */
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
+import { Loader2 } from 'lucide-react';
 import {
-  handleEmailLogin,
+  iniciarSesionConCorreo,
+  getUserOrganizations,
+  decidirOrganizacion,
+  enlaceDeInvitacionEnviado,
+  reenviarConfirmacion,
+  proceedWithLogin,
+  activarOrganizacion,
   handleGoogleLogin,
   handleMicrosoftLogin,
-  selectOrganizationFromPopup,
-  proceedWithLogin,
-  checkAuthProvider,
-  getProviderLabel,
-  Organization
+  type ErrorLogin,
 } from '@/lib/auth';
 import GeolocationModal from '@/components/auth/GeolocationModal';
-import EmailNotConfirmedAlert from '@/components/auth/EmailNotConfirmedAlert';
-import { type GeolocationPreference, shouldShowGeolocationModal, saveGeolocationPreference } from '@/lib/utils/geolocation';
-import { useTranslations, useLocale } from 'next-intl';
-import { getOrgTypeLabel } from '@/lib/utils/organizationTypes';
+import { shouldShowGeolocationModal, saveGeolocationPreference } from '@/lib/utils/geolocation';
 import { useMobileAuth } from '@/hooks/useMobileAuth';
 import { useMobileNative } from '@/hooks/useMobileNative';
 import {
@@ -29,120 +41,86 @@ import {
   purgeLegacyStoredPassword,
 } from '@/lib/services/biometricService';
 import { supabase } from '@/lib/supabase/config';
-import { destinoInternoSeguro, registrarIntentoRecuperacion } from '@/lib/auth/recuperacionSesion';
-import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
-import { Firma, Isotipo } from '@/components/shell/marca/Firma';
+import { destinoInternoSeguro, destinoTrasLogin, registrarIntentoRecuperacion } from '@/lib/auth/recuperacionSesion';
+import { avisoDesdeParametros, vieneDeSesionVencida, type AvisoUrl } from '@/lib/auth/avisosAcceso';
+import { FormField } from '@/components/kit/FormField';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  EscenaAcceso,
+  TarjetaAcceso,
+  CampoContrasena,
+  AvisoAcceso,
+  DividerTexto,
+  BotonProveedor,
+  PieEnlace,
+  Enlace,
+} from '@/components/kit/acceso';
+
+const CORREO_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** «Recordarme»: el correo ofuscado como siempre (base64 invertido); nunca la contraseña. */
+const ofuscar = (correo: string) => btoa(correo).split('').reverse().join('');
+const desofuscar = (valor: string) => atob(valor.split('').reverse().join(''));
+
+type Aviso =
+  | { tipo: 'url'; aviso: AvisoUrl }
+  | { tipo: 'login'; error: ErrorLogin }
+  | { tipo: 'vencida' }
+  | { tipo: 'reenviado' }
+  | { tipo: 'generico' };
 
 function LoginContent() {
-  const t = useTranslations('auth.login');
-  const tc = useTranslations('common');
+  const t = useTranslations('acceso.login');
+  const tc = useTranslations('acceso.comun');
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isMobileApp, authResult, oauthError: mobileOAuthError } = useMobileAuth();
   const { authenticateBiometric } = useMobileNative();
-  const [biometricAvailable, setBiometricAvailable] = useState(false);
-  const [biometricType, setBiometricType] = useState<string | null>(null);
-  const [biometricEnabled, setBiometricEnabled] = useState(false);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [userOrganizations, setUserOrganizations] = useState<Organization[]>([]);
-  const [showOrgPopup, setShowOrgPopup] = useState(false);
-  const [favoriteOrgs, setFavoriteOrgs] = useState<number[]>([]);
-  const [orgSearchQuery, setOrgSearchQuery] = useState('');
+  const [entrando, setEntrando] = useState(false);
+  const [aviso, setAviso] = useState<Aviso | null>(null);
+  const [errorCorreo, setErrorCorreo] = useState<string | null>(null);
+  const [reenviando, setReenviando] = useState(false);
   const [showGeolocationModal, setShowGeolocationModal] = useState(false);
-  const [emailNotConfirmed, setEmailNotConfirmed] = useState(false);
-  const [, setResendingEmail] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const searchParams = useSearchParams();
-  
- 
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricType, setBiometricType] = useState<string | null>(null);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const refAviso = useRef<HTMLDivElement>(null);
+
+  // Avisos de la URL (catálogo único) y redirectTo validado.
   useEffect(() => {
     if (!searchParams) return;
-    // Check for error in URL
-    const errorParam = searchParams.get('error');
-    if (errorParam) {
-      setError(
-        errorParam === 'auth-callback-failed' 
-          ? t('errorExternalProvider')
-          : t('errorGeneric')
-      );
-    }
-    
-    // Check for message parameter (like email-not-confirmed)
-    const messageParam = searchParams.get('message');
-    if (messageParam === 'email-not-confirmed') {
-      setEmailNotConfirmed(true);
-      setError(t('emailNotVerified'));
-    }
-    
-    // Check for redirectTo parameter
+    const desdeUrl = avisoDesdeParametros(searchParams);
+    if (desdeUrl) setAviso({ tipo: 'url', aviso: desdeUrl });
     const redirectTo = searchParams.get('redirectTo');
-    if (redirectTo) {
-      // Store it in session storage for after login
-      sessionStorage.setItem('redirectTo', redirectTo);
-    }
-    
-    // Check if coming from session expired page
-    const fromExpired = searchParams.get('fromExpired') === 'true';
-    if (fromExpired) {
-      // Clear any stored credentials to prevent auto-login
-      localStorage.removeItem('rememberMe');
-      localStorage.removeItem('userEmail');
-      localStorage.removeItem('userPassword');
-      setEmail('');
-      setPassword('');
-      setRememberMe(false);
-      
-      // Show a message about the expired session
-      setError(t('sessionExpired'));
-    }
-    
-    // Check for success messages (email confirmation)
-    const success = searchParams.get('success');
-    const message = searchParams.get('message');
-    if (success === 'email-confirmed' && message) {
-      setSuccessMessage(decodeURIComponent(message));
-    }
-    
-    // Check for corrupted session errors
-    const error = searchParams.get('error');
-    if (error === 'corrupted-session') {
-      setError(t('sessionCorrupted'));
-    } else if (error === 'session-parse-error') {
-      setError(t('sessionParseError'));
-    } else if (error === 'auth-failed') {
-      const details = searchParams.get('details');
-      setError(t('authFailed', { details: details ? decodeURIComponent(details) : t('unknownError') }));
-    }
-    
-    // Verificar si necesitamos mostrar el modal de geolocalización
+    if (redirectTo) sessionStorage.setItem('redirectTo', destinoTrasLogin(redirectTo));
     if (shouldShowGeolocationModal()) {
-      // No hay preferencia guardada, mostrar modal después de un breve delay
-      setTimeout(() => {
-        setShowGeolocationModal(true)
-      }, 1000)
+      const temporizador = setTimeout(() => setShowGeolocationModal(true), 1000);
+      return () => clearTimeout(temporizador);
     }
-  }, [searchParams, userOrganizations, t]);
+  }, [searchParams]);
 
-  // Sesión vencida (GO-sec 2026-09-24): el middleware verifica la firma del
-  // JWT y ya no deja pasar un access token vencido; manda aquí con
-  // reason=expired. getSession() refresca con el refresh token del dispositivo
-  // y escribe la cookie nueva; si hay sesión se vuelve a redirectTo con una
-  // navegación completa (para que el middleware lea la cookie nueva). Un
-  // intento por pestaña cada 30 s: sin bucles si el refresco no llega a la cookie.
+  // Sesión vencida (GO-sec 2026-09-24): el middleware manda aquí con
+  // reason=expired. getSession() refresca con el refresh token del dispositivo;
+  // si hay sesión se vuelve a redirectTo con navegación completa. Un intento
+  // por pestaña cada 30 s. Si no se pudo, se avisa (fila 1d del Figma).
   useEffect(() => {
-    if (!searchParams || searchParams.get('reason') !== 'expired') return;
-    if (searchParams.get('addAccount') === '1') return;
+    if (!vieneDeSesionVencida(searchParams)) return;
+    if (searchParams?.get('addAccount') === '1') return;
     const storage = typeof window !== 'undefined' ? window.sessionStorage : null;
-    if (!registrarIntentoRecuperacion(storage)) return;
-    const destino = destinoInternoSeguro(searchParams.get('redirectTo'));
-    // Sin cancelación en el cleanup a propósito: el intento ya quedó
-    // registrado y en modo estricto el segundo montaje no lo repite.
-    setLoading(true);
+    if (!registrarIntentoRecuperacion(storage)) {
+      setAviso((a) => a ?? { tipo: 'vencida' });
+      return;
+    }
+    const destino = destinoInternoSeguro(searchParams?.get('redirectTo'));
+    setEntrando(true);
     supabase.auth
       .getSession()
       .then(({ data }) => {
@@ -150,739 +128,312 @@ function LoginContent() {
           window.location.replace(destino);
           return;
         }
-        setLoading(false);
+        setEntrando(false);
+        setAviso((a) => a ?? { tipo: 'vencida' });
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setEntrando(false);
+        setAviso((a) => a ?? { tipo: 'vencida' });
+      });
   }, [searchParams]);
 
-  // Procesar resultado de OAuth via deep link (móvil Capacitor)
+  // OAuth por deep link (app móvil).
   useEffect(() => {
     if (!isMobileApp) return;
     if (authResult?.success && authResult.next) {
       router.push(authResult.next);
-    } else if (authResult && !authResult.success && authResult.error) {
-      setError(authResult.error);
+    } else if (authResult && !authResult.success) {
+      setAviso({ tipo: 'generico' });
       setLoading(false);
     }
   }, [isMobileApp, authResult, router]);
 
-  // Mostrar errores de OAuth móvil
   useEffect(() => {
     if (isMobileApp && mobileOAuthError) {
-      setError(mobileOAuthError);
+      setAviso({ tipo: 'generico' });
       setLoading(false);
     }
   }, [isMobileApp, mobileOAuthError]);
 
-  // Verificar disponibilidad de biometría en móvil
+  // Biometría (solo app con hardware y credenciales guardadas).
   useEffect(() => {
     if (!isMobileApp) return;
-    let cancelled = false;
+    let cancelado = false;
     (async () => {
-      const availability = await isBiometricAvailable();
-      if (cancelled) return;
-      setBiometricAvailable(availability.available);
-      setBiometricType(availability.biometryType || null);
-      if (availability.available) {
-        const canLogin = await canUseBiometricLogin();
-        if (!cancelled) setBiometricEnabled(canLogin);
+      const disponible = await isBiometricAvailable();
+      if (cancelado) return;
+      setBiometricAvailable(disponible.available);
+      setBiometricType(disponible.biometryType || null);
+      if (disponible.available) {
+        const puede = await canUseBiometricLogin();
+        if (!cancelado) setBiometricEnabled(puede);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelado = true;
+    };
   }, [isMobileApp]);
 
-  // Login biométrico: verifica huella/Face ID y restaura sesión con credenciales guardadas
-  const onBiometricLogin = async () => {
-    if (!isMobileApp || !biometricAvailable) return;
-    setLoading(true);
-    setError(null);
-    try {
-      // authenticateBiometric espera objeto { reason?: string }
-      const result = await authenticateBiometric({ reason: t('biometric.reason') });
-      if (!result?.verified) {
-        setError(result?.reason || t('biometric.failed'));
-        setLoading(false);
-        return;
+  // Correo recordado; se purga la contraseña que guardaban versiones viejas.
+  useEffect(() => {
+    const guardado = localStorage.getItem('userEmail');
+    if (guardado) {
+      try {
+        setEmail(desofuscar(guardado));
+        setRememberMe(true);
+      } catch {
+        localStorage.removeItem('userEmail');
       }
-
-      // Restaurar la sesión con el refresh token guardado (nunca con la
-      // contraseña, que ya no se almacena en el dispositivo).
-      const email = getBiometricEmail();
-      const refreshToken = getBiometricRefreshToken();
-      if (!email || !refreshToken) {
-        setError(t('biometric.noCredentials'));
-        setLoading(false);
-        return;
-      }
-
-      const { data, error: signInError } = await supabase.auth.refreshSession({
-        refresh_token: refreshToken,
-      });
-      if (signInError || !data.session) {
-        setError(signInError?.message || t('biometric.restoreFailed'));
-        setLoading(false);
-        return;
-      }
-
-      // Los refresh tokens rotan: se guarda el nuevo para el próximo desbloqueo.
-      saveBiometricCredentials(email, data.session.refresh_token);
-
-      // Proceder con el flujo normal de post-login
-      proceedWithLogin(true, email);
-    } catch (err) {
-      console.error('[biometricLogin] Error:', err);
-      setError(t('biometric.error'));
-    } finally {
-      setLoading(false);
     }
-  };
+    purgeLegacyStoredPassword();
+    localStorage.removeItem('supabase.auth.token');
+    localStorage.removeItem('sb-access-token');
+    localStorage.removeItem('sb-refresh-token');
+    const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? process.env.NEXT_PUBLIC_SUPABASE_URL.split('.')[0].replace('https://', '')
+      : '';
+    if (projectRef) localStorage.removeItem(`sb-${projectRef}-auth-token`);
+  }, []);
 
-  const [oauthProvider, setOauthProvider] = useState<string | null>(null);
+  // El aviso nuevo recibe el foco para que el lector de pantalla lo lea.
+  useEffect(() => {
+    if (aviso && aviso.tipo === 'login') refAviso.current?.focus();
+  }, [aviso]);
 
-  const onEmailBlur = async () => {
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
-    setOauthProvider(null);
-    const provider = await checkAuthProvider(email);
-    if (provider) {
-      setOauthProvider(provider);
+  /** Tras abrir la sesión: 0 organizaciones → selección vacía; 1 → se entra; 2+ → selector. */
+  const continuar = async (userId: string, correo: string) => {
+    setEntrando(true);
+    try {
+      const organizaciones = await getUserOrganizations(userId);
+      const decision = decidirOrganizacion(organizaciones);
+      if (decision.tipo === 'una') {
+        activarOrganizacion(decision.organizacion);
+        await proceedWithLogin(rememberMe, correo);
+        return;
+      }
+      if (decision.tipo === 'varias') {
+        const destino = destinoTrasLogin(sessionStorage.getItem('redirectTo'));
+        await proceedWithLogin(rememberMe, correo, {
+          destino: `/auth/select-organization?dest=${encodeURIComponent(destino)}`,
+        });
+        return;
+      }
+      if (await enlaceDeInvitacionEnviado(correo)) return;
+      const redirectTo = sessionStorage.getItem('redirectTo');
+      // Vuelta al asistente de invitación: allí se une a la organización.
+      const destino = redirectTo?.startsWith('/auth/invite') ? destinoTrasLogin(redirectTo) : '/auth/select-organization';
+      await proceedWithLogin(rememberMe, correo, { destino });
+    } catch (err) {
+      console.error('[login] No se pudo continuar tras iniciar sesión:', err);
+      setEntrando(false);
+      setAviso({ tipo: 'generico' });
     }
   };
 
   const onEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Resetear estado de email no confirmado
-    setEmailNotConfirmed(false);
-
-    // Si el usuario está registrado con OAuth, bloquear login con contraseña
-    if (oauthProvider) {
-      setError(t('oauthAccountBlocked', { provider: getProviderLabel(oauthProvider) }));
+    if (!CORREO_RE.test(email.trim())) {
+      setErrorCorreo(tc('correoInvalido'));
       return;
     }
-
-    // Guardar o eliminar credenciales segun rememberMe.
-    // Solo el CORREO: la contraseña nunca se guarda en el dispositivo. Antes se
-    // escribía en `userPassword` con `btoa()` + reverse, que se revierte en una
-    // línea, y la pantalla de sesión expirada no la borraba
-    // (auditoría de acceso, 2026-09-22). El desbloqueo biométrico usa ahora un
-    // refresh token revocable, que se guarda más abajo tras abrir sesión.
+    setErrorCorreo(null);
+    setAviso(null);
     if (rememberMe) {
-      localStorage.setItem('userEmail', btoa(email).split('').reverse().join(''));
+      localStorage.setItem('userEmail', ofuscar(email.trim()));
       localStorage.setItem('rememberMe', 'true');
     } else {
       localStorage.removeItem('userEmail');
       localStorage.removeItem('rememberMe');
     }
     localStorage.removeItem('userPassword');
-
-    await handleEmailLogin({
-      email,
-      password,
-      rememberMe,
-      setLoading,
-      setError,
-      setUserOrganizations,
-      setShowOrgPopup,
-      proceedWithLogin: (rememberMe: boolean, email: string) => proceedWithLogin(rememberMe, email),
-      setEmailNotConfirmed,
-      setResendingEmail
-    });
-  };
-
-  const onGoogleLogin = async () => {
-    console.log('Redirect to:', `${window.location.origin}/auth/callback`); 
-    await handleGoogleLogin({
-      setLoading,
-      setError
-    });
-  };
-  
-
-
-  const onMicrosoftLogin = async () => {
-    await handleMicrosoftLogin({
-      setLoading,
-      setError
-    });
-  };
-  
-
-  // Cargar favoritos de localStorage al montar
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('favoriteOrgIds');
-      if (stored) {
-        setFavoriteOrgs(JSON.parse(stored));
-      }
-    } catch {
-      // Si el JSON está corrupto, ignorar
-    }
-  }, []);
-
-  // Toggle favorito: marca/desmarca una organización como favorita
-  const toggleFavoriteOrg = useCallback((e: ReactMouseEvent, orgId: number) => {
-    e.stopPropagation();
-    setFavoriteOrgs((prev) => {
-      const next = prev.includes(orgId)
-        ? prev.filter((id) => id !== orgId)
-        : [...prev, orgId];
-      localStorage.setItem('favoriteOrgIds', JSON.stringify(next));
-      return next;
-    });
-  }, []);
-
-  // Badge de estado de la organización
-  const getOrgStatusBadge = useCallback((status?: string) => {
-    if (!status || status === 'active') {
-      return { label: t('orgStatus.active'), className: 'bg-green-100 text-green-700' };
-    }
-    if (status === 'suspended' || status === 'frozen') {
-      return { label: t('orgStatus.frozen'), className: 'bg-red-100 text-red-700' };
-    }
-    if (status === 'deleted') {
-      return { label: t('orgStatus.deleted'), className: 'bg-gray-200 text-gray-600' };
-    }
-    return { label: t('orgStatus.inactive'), className: 'bg-amber-100 text-amber-700' };
-  }, [t]);
-
-  // Organizaciones ordenadas: favoritas primero, luego filtradas por búsqueda
-  const sortedOrganizations = useMemo(() => {
-    const q = orgSearchQuery.trim().toLowerCase();
-    const filtered = q
-      ? userOrganizations.filter((org) => org.name?.toLowerCase().includes(q))
-      : userOrganizations;
-    return [...filtered].sort((a, b) => {
-      const aFav = favoriteOrgs.includes(a.id) ? 0 : 1;
-      const bFav = favoriteOrgs.includes(b.id) ? 0 : 1;
-      return aFav - bFav;
-    });
-  }, [userOrganizations, favoriteOrgs, orgSearchQuery]);
-
-  // Handle organization selection from popup
-  const onSelectOrganizationFromPopup = async (org: Organization) => {
-    console.log('📄 [LOGIN PAGE] Usuario seleccionó organización:', {
-      orgId: org.id,
-      orgName: org.name,
-      currentEmail: email
-    });
-    
-    try {
-      await selectOrganizationFromPopup({
-        organization: org,
-        email,
-        rememberMe,
-        setShowOrgPopup,
-        proceedWithLogin: (rememberMe, email) => {
-          console.log('🔗 [LOGIN PAGE] Wrapper proceedWithLogin llamado:', { rememberMe, email });
-          return proceedWithLogin(rememberMe, email);
-        }
-      });
-      console.log('✅ [LOGIN PAGE] selectOrganizationFromPopup completado');
-    } catch (error) {
-      console.error('❌ [LOGIN PAGE] Error en selectOrganizationFromPopup:', error);
-    }
-  };
-  
-  // Manejar selección de geolocalización
-  const handleGeolocationSelection = (preference: GeolocationPreference) => {
-    console.log('Preferencia de geolocalización seleccionada:', preference);
-    // El modal ya guarda la preferencia en cookies
-    setShowGeolocationModal(false);
-  };
-  
-  const handleCloseGeolocationModal = () => {
-    // Si el usuario cierra el modal sin seleccionar, asumir "denied"
-    if (shouldShowGeolocationModal()) {
-      saveGeolocationPreference('denied')
-    }
-    
-    setShowGeolocationModal(false);
-  };
-  
-  // Load remembered email on component mount
-  useEffect(() => {
-    // No intentar recuperar el email guardado si venimos de una sesión expirada
-    const fromExpired = searchParams?.get('fromExpired') === 'true';
-    if (fromExpired) {
+    setLoading(true);
+    const resultado = await iniciarSesionConCorreo(email, password);
+    setLoading(false);
+    if (!resultado.ok) {
+      setAviso({ tipo: 'login', error: resultado.error });
       return;
     }
-    
-    // Verificar si hay un email guardado para "recordarme"
-    const savedEmail = localStorage.getItem('userEmail');
-    if (savedEmail) {
-      try {
-        // Intentar decodificar el email (base64 + reverse)
-        const decodedEmail = atob(savedEmail.split('').reverse().join(''));
-        setEmail(decodedEmail);
-        setRememberMe(true);
-      } catch {
-        // Si hay un error al decodificar, limpiar el valor corrupto
-        localStorage.removeItem('userEmail');
+    await continuar(resultado.userId, resultado.email);
+  };
+
+  const onBiometricLogin = async () => {
+    if (!isMobileApp || !biometricAvailable) return;
+    setLoading(true);
+    setAviso(null);
+    try {
+      const verificado = await authenticateBiometric({ reason: t('titulo') });
+      if (!verificado?.verified) {
+        setAviso({ tipo: 'generico' });
+        return;
       }
+      const correo = getBiometricEmail();
+      const refreshToken = getBiometricRefreshToken();
+      if (!correo || !refreshToken) {
+        setAviso({ tipo: 'generico' });
+        return;
+      }
+      const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
+      if (error || !data.session) {
+        setAviso({ tipo: 'generico' });
+        return;
+      }
+      // Los refresh tokens rotan: se guarda el nuevo para el próximo desbloqueo.
+      saveBiometricCredentials(correo, data.session.refresh_token);
+      await continuar(data.session.user.id, correo);
+    } catch (err) {
+      console.error('[login] Biometría:', err);
+      setAviso({ tipo: 'generico' });
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // La contraseña ya no se guarda ni se rellena: se purga la que hubieran
-    // dejado versiones anteriores en este dispositivo.
-    purgeLegacyStoredPassword();
-    
-    // Limpiar cualquier token de Supabase que pudiera estar en localStorage
-    // para asegurar que solo se usen cookies para la autenticación
-    localStorage.removeItem('supabase.auth.token');
-    localStorage.removeItem('sb-access-token');
-    localStorage.removeItem('sb-refresh-token');
-    
-    // Limpiar cualquier token específico del proyecto
-    const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL
-      ? process.env.NEXT_PUBLIC_SUPABASE_URL.split('.')[0].replace('https://', '')
-      : '';
-    if (projectRef) {
-      localStorage.removeItem(`sb-${projectRef}-auth-token`);
+  const erroresOAuth = (m: string | null) => {
+    if (m) setAviso({ tipo: 'generico' });
+  };
+
+  const onReenviar = async () => {
+    setReenviando(true);
+    await reenviarConfirmacion(email.trim());
+    setReenviando(false);
+    setAviso({ tipo: 'reenviado' });
+  };
+
+  const horaDesbloqueo = (iso?: string) => {
+    if (!iso) return null;
+    const fecha = new Date(iso);
+    if (Number.isNaN(fecha.getTime())) return null;
+    // Hora local del navegador: aún no hay organización (ni su zona horaria).
+    return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(fecha);
+  };
+
+  const renderAviso = () => {
+    if (!aviso) return null;
+    if (aviso.tipo === 'url') {
+      return (
+        <AvisoAcceso tono={aviso.aviso.tono} titulo={aviso.aviso.titulo ? t(aviso.aviso.titulo) : undefined}>
+          {t(aviso.aviso.clave)}
+        </AvisoAcceso>
+      );
     }
-  }, [searchParams]);
-  
+    if (aviso.tipo === 'vencida') {
+      return (
+        <AvisoAcceso tono="info" titulo={t('sesionVencidaTitulo')}>
+          {t('sesionVencida')}
+        </AvisoAcceso>
+      );
+    }
+    if (aviso.tipo === 'reenviado') return <AvisoAcceso tono="exito">{t('reenviado')}</AvisoAcceso>;
+    if (aviso.tipo === 'generico') return <AvisoAcceso tono="error">{t('errores.generico')}</AvisoAcceso>;
+    const { codigo, bloqueadoHasta } = aviso.error;
+    if (codigo === 'bloqueado') {
+      const hora = horaDesbloqueo(bloqueadoHasta);
+      return (
+        <AvisoAcceso ref={refAviso} tono="advertencia" titulo={t('bloqueadoTitulo')}>
+          {hora ? t('bloqueado', { hora }) : t('bloqueadoMinutos', { minutos: 15 })}
+        </AvisoAcceso>
+      );
+    }
+    if (codigo === 'sin_confirmar') {
+      return (
+        <AvisoAcceso
+          ref={refAviso}
+          tono="advertencia"
+          titulo={t('sinConfirmarTitulo')}
+          accion={
+            <button type="button" onClick={onReenviar} disabled={reenviando} className="font-medium text-link underline-offset-4 hover:underline disabled:opacity-50">
+              {t('reenviar')}
+            </button>
+          }
+        >
+          {t('sinConfirmar')}
+        </AvisoAcceso>
+      );
+    }
+    const clave = codigo === 'credenciales' ? 'credenciales' : codigo === 'demasiadas' ? 'demasiadasSolicitudes' : 'errorInesperado';
+    return (
+      <AvisoAcceso ref={refAviso} tono="error">
+        {t(clave)}
+      </AvisoAcceso>
+    );
+  };
+
+  if (entrando) {
+    return (
+      <EscenaAcceso>
+        <TarjetaAcceso titulo={tc('entrando')} descripcion={tc('entrandoDescripcion')} centrado icono={<Loader2 className="size-8 animate-spin text-brand" aria-hidden="true" />} />
+      </EscenaAcceso>
+    );
+  }
+
+  const bloqueado = aviso?.tipo === 'login' && aviso.error.codigo === 'bloqueado';
+
   return (
-    <div className="min-h-screen flex items-stretch justify-center bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black relative overflow-hidden">
-      {/* Fondo decorativo animado: planeta, nubes, cohete, estrellas */}
-      <AuthSceneBackground />
-
-      {/* Panel de branding - solo desktop */}
-      <div className="hidden lg:flex lg:w-2/5 items-center justify-center p-10 relative z-10">
-        <div className="relative z-10 max-w-md text-white">
-          {/* Firma del manual de marca, variante sobre fondo azul */}
-          <div className="mb-8">
-            <Firma invertido />
-          </div>
-          <h1 className="text-3xl xl:text-4xl font-bold mb-4 leading-tight">
-            {t('welcomeBack')}
-          </h1>
-          <p className="text-base xl:text-lg text-blue-100 dark:text-gray-300 mb-8 leading-relaxed">
-            {t('subtitle')}
-          </p>
-          {/* Features */}
-          <ul className="space-y-3 text-blue-50 dark:text-gray-300">
-            <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </span>
-              <span className="text-sm">{t('features.onePlace')}</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </span>
-              <span className="text-sm">{t('features.allInOne')}</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </span>
-              <span className="text-sm">{t('features.realtime')}</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      {/* Panel del formulario - flota sobre el fondo azul */}
-      <div className="w-full lg:w-3/5 flex items-center justify-center py-6 sm:py-8 md:py-12 px-4 sm:px-6 md:px-8 lg:px-10 relative z-10">
-      <div className="max-w-md w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white dark:bg-gray-800 p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100 dark:border-gray-700 lg:my-6 lg:p-8 lg:max-w-md">
-        <div className="flex flex-col items-center">
-          {/* Isotipo del manual de marca (en desktop lo lleva el panel azul) */}
-          <div className="mb-3 sm:mb-4 lg:hidden">
-            <Isotipo tamano={40} />
-          </div>
-          
-          {/* Título mejorado */}
-          <h2 className="text-center text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent mb-1 sm:mb-2">
-            {t('welcomeBack')}
-          </h2>
-          <p className="text-center text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">
-            {t('subtitle')}
-          </p>
-          
-          {/* Organization selector - hidden now, will show popup when needed */}
-        </div>
-        
-        {error && !emailNotConfirmed && (
-          <div className="bg-red-100 border border-red-400 text-red-700 dark:bg-red-900/30 dark:border-red-500 dark:text-red-300 px-3 py-2 sm:px-4 sm:py-3 rounded text-sm sm:text-base relative" role="alert">
-            <span className="block sm:inline">{error}</span>
-            {error.includes('El usuario no existe') && (
-              <div className="mt-2">
-                <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
-                  {t('createAccount')}
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
-        
-        {/* Componente especial para email no confirmado */}
-        {emailNotConfirmed && (
-          <EmailNotConfirmedAlert 
-            email={email}
-            onClose={() => {
-              setEmailNotConfirmed(false);
-              setError(null);
-            }}
-          />
-        )}
-        
-        {/* Organization selection popup */}
-        {showOrgPopup && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-black/70 flex items-center justify-center z-50 px-4 py-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden">
-              {/* Header del popup */}
-              <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-                <div>
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {t('orgPicker.title')}
-                  </h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    {t('orgPicker.subtitle')}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowOrgPopup(false)}
-                  aria-label={tc('close')}
-                  className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
-                >
-                  <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Buscador */}
-              {userOrganizations.length > 3 && (
-                <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-                  <div className="relative">
-                    <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
-                    </svg>
-                    <input
-                      type="text"
-                      value={orgSearchQuery}
-                      onChange={(e) => setOrgSearchQuery(e.target.value)}
-                      placeholder={t('orgPicker.searchPlaceholder')}
-                      className="w-full pl-9 pr-3 py-2 text-sm rounded-md bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Lista de organizaciones */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                {sortedOrganizations.length === 0 ? (
-                  <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
-                    {t('orgPicker.empty')}
-                  </p>
-                ) : (
-                  sortedOrganizations.map((org) => {
-                    const isFav = favoriteOrgs.includes(org.id);
-                    const statusBadge = getOrgStatusBadge(org.status);
-                    return (
-                      <div
-                        key={org.id}
-                        className="group flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-gray-700/50 transition-all cursor-pointer"
-                        onClick={() => onSelectOrganizationFromPopup(org)}
-                      >
-                        {/* Botón de favorito (estrella) */}
-                        <button
-                          type="button"
-                          onClick={(e) => toggleFavoriteOrg(e, org.id)}
-                          className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                          title={isFav ? t('orgPicker.removeFavorite') : t('orgPicker.addFavorite')}
-                        >
-                          <svg
-                            className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${isFav ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600 group-hover:text-gray-400'}`}
-                            fill={isFav ? 'currentColor' : 'none'}
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={1.5}
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.604 17.11a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
-                          </svg>
-                        </button>
-
-                        {/* Logo */}
-                        <div className="flex-shrink-0">
-                          {org.logo_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- logo de la organización en URL externa (Storage)
-                            <img
-                              src={org.logo_url}
-                              alt={`${org.name} logo`}
-                              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border border-gray-200 dark:border-gray-600"
-                            />
-                          ) : (
-                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm sm:text-base font-semibold shadow-sm">
-                              {org.name.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Detalles */}
-                        <div className="flex-grow min-w-0">
-                          <div className="font-medium text-sm sm:text-base text-gray-800 dark:text-gray-100 truncate">
-                            {org.name}
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                            {getOrgTypeLabel(org.type_id?.name || '', locale)}
-                          </div>
-                        </div>
-
-                        {/* Badges */}
-                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                            {org.plan_id?.name || 'Free'}
-                          </span>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium ${statusBadge.className}`}>
-                            {statusBadge.label}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Footer del popup */}
-              <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
-                <p className="text-[11px] text-center text-gray-400 dark:text-gray-500">
-                  {t('orgPicker.favoritesFirst')}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <form className="mt-4 sm:mt-6 md:mt-8 space-y-4 sm:space-y-6" onSubmit={onEmailLogin}>
-          {/* Success Message */}
-          {successMessage && (
-            <div className="rounded-md bg-green-50 p-3 sm:p-4 mb-3 sm:mb-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-green-800">
-                    {successMessage}
-                  </p>
-                </div>
-                <div className="ml-auto pl-3">
-                  <div className="-mx-1.5 -my-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setSuccessMessage(null)}
-                      className="inline-flex rounded-md bg-green-50 p-1.5 text-green-500 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 focus:ring-offset-green-50"
-                    >
-                      <span className="sr-only">{tc('close')}</span>
-                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          <div className="space-y-3 sm:space-y-4">
-            <div className="relative">
-              <div className="flex items-center border border-blue-300 dark:border-gray-600 rounded-md">
-                <span className="pl-2 sm:pl-3 pr-1 sm:pr-2 text-blue-500">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
-                    <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
-                  </svg>
-                </span>
-                <input
-                  id="email-address"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-400"
-                  placeholder={t('emailPlaceholder')}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onBlur={onEmailBlur}
-                />
-              </div>
-            </div>
-            {oauthProvider && (
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.485 2.495c.671-1.167 2.357-1.167 3.028 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                </svg>
-                <span>{t.rich('oauthAccountHint', { provider: getProviderLabel(oauthProvider), strong: (chunks) => <strong>{chunks}</strong> })}</span>
-              </div>
-            )}
-            <div className="relative">
-              <div className="flex items-center border border-blue-300 dark:border-gray-600 rounded-md">
-                <span className="pl-2 sm:pl-3 pr-1 sm:pr-2 text-blue-500">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
-                    <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
-                  </svg>
-                </span>
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  required
-                  className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-400"
-                  placeholder={t('passwordPlaceholder')}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button 
-                  type="button" 
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="pr-2 sm:pr-3 text-blue-500 hover:text-blue-700 transition-colors"
-                  title={showPassword ? t('hidePassword') : t('showPassword')}
-                >
-                  {showPassword ? (
-                    // Icono de ojo tachado (ocultar)
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                    </svg>
-                  ) : (
-                    // Icono de ojo abierto (mostrar)
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-                {t('rememberMe')}
+    <EscenaAcceso>
+      <TarjetaAcceso
+        titulo={t('titulo')}
+        descripcion={t('descripcion')}
+        aviso={renderAviso()}
+        pie={<PieEnlace pregunta={t('sinCuenta')} enlace={t('crearCuenta')} href="/auth/signup" />}
+      >
+        <form className="flex flex-col gap-4" onSubmit={onEmailLogin} noValidate>
+          <FormField etiqueta={tc('correo')} obligatorio error={errorCorreo}>
+            <Input
+              type="email"
+              name="email"
+              autoComplete="username"
+              inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-10 rounded-lg"
+              placeholder="nombre@empresa.com"
+            />
+          </FormField>
+          <CampoContrasena etiqueta={tc('contrasena')} valor={password} onValor={setPassword} modo="actual" />
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Checkbox id="recordar-correo" checked={rememberMe} onCheckedChange={(v) => setRememberMe(v === true)} />
+              <label htmlFor="recordar-correo" className="cursor-pointer text-[13px] text-fg">
+                {t('recordar')}
               </label>
             </div>
-
-            <div className="text-xs sm:text-sm">
-              <Link href="/auth/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
-                {t('forgotPassword')}
-              </Link>
-            </div>
+            <Enlace href="/auth/forgot-password">{t('olvide')}</Enlace>
           </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex justify-center py-2.5 sm:py-3 px-4 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? t('submitting') : t('submit')}
-            </button>
-          </div>
-          
-          <div className="text-center mt-3 sm:mt-4">
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-              {t('noAccount')}{' '}
-              <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
-                {t('signUp')}
-              </Link>
-            </p>
-          </div>
+          <button type="submit" disabled={loading || bloqueado || !password} className={clasesBoton({ anchoCompleto: true })}>
+            {loading && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+            {loading ? t('entrandoBoton') : t('entrar')}
+          </button>
         </form>
-
-        <div className="mt-4 sm:mt-6">
-          <div className="flex items-center gap-3 text-xs sm:text-sm">
-            <div className="flex-1 border-t border-gray-300 dark:border-gray-600"></div>
-            <span className="text-gray-500 dark:text-gray-400">{tc('or')}</span>
-            <div className="flex-1 border-t border-gray-300 dark:border-gray-600"></div>
-          </div>
-
-          <div className="mt-4 sm:mt-6 space-y-2">
-            <button
-              type="button"
-              onClick={onGoogleLogin}
-              disabled={loading}
-              className="w-full flex items-center justify-center py-2 sm:py-2.5 px-3 sm:px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-
-            >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" viewBox="0 0 23 23">
-                <path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z" />
-                <path fill="#34A853" d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 0 1-6.723-4.823l-4.04 3.067A11.965 11.965 0 0 0 12 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987Z" />
-                <path fill="#4A90E2" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z" />
-                <path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.73 1.237 5.335l4.04-3.067Z" />
-              </svg>
-              {t('googleLogin')}
+        <DividerTexto />
+        <div className="flex flex-col gap-2">
+          <BotonProveedor proveedor="google" texto={t('google')} disabled={loading} onClick={() => handleGoogleLogin({ setLoading, setError: erroresOAuth })} />
+          {/* Microsoft solo en la app: en la web el callback no lo completaba (decisión v2-4). */}
+          {isMobileApp && (
+            <BotonProveedor proveedor="microsoft" texto={t('microsoft')} disabled={loading} onClick={() => handleMicrosoftLogin({ setLoading, setError: erroresOAuth })} />
+          )}
+          {isMobileApp && biometricAvailable && biometricEnabled && (
+            <button type="button" onClick={onBiometricLogin} disabled={loading} className={clasesBoton({ variante: 'secundario', anchoCompleto: true })}>
+              {t('biometrico', { metodo: biometricType === 'faceId' ? t('faceId') : t('huella') })}
             </button>
-            <button
-              type="button"
-              onClick={onMicrosoftLogin}
-              disabled={loading}
-              className="w-full flex items-center justify-center py-2 sm:py-2.5 px-3 sm:px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" viewBox="0 0 23 23">
-                <path fill="#f3f3f3" d="M0 0h23v23H0z" />
-                <path fill="#f35325" d="M1 1h10v10H1z" />
-                <path fill="#81bc06" d="M12 1h10v10H12z" />
-                <path fill="#05a6f0" d="M1 12h10v10H1z" />
-                <path fill="#ffba08" d="M12 12h10v10H12z" />
-              </svg>
-              Microsoft
-            </button>
-
-            {/* Login biométrico (solo móvil con hardware disponible y credenciales guardadas) */}
-            {isMobileApp && biometricAvailable && biometricEnabled && (
-              <button
-                type="button"
-                onClick={onBiometricLogin}
-                disabled={loading}
-                className="w-full flex items-center justify-center py-2 sm:py-2.5 px-3 sm:px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span className="mr-2 text-base">
-                  {biometricType === 'faceId' ? '👤' : '👆'}
-                </span>
-                {t('biometric.signInWith', { method: biometricType === 'faceId' ? t('biometric.faceId') : t('biometric.fingerprint') })}
-              </button>
-            )}
-          </div>
+          )}
         </div>
-      </div>
-      </div>
-      
-      {/* Modal de Geolocalización */}
+      </TarjetaAcceso>
+
       <GeolocationModal
         isOpen={showGeolocationModal}
-        onClose={handleCloseGeolocationModal}
-        onSelection={handleGeolocationSelection}
+        onClose={() => {
+          if (shouldShowGeolocationModal()) saveGeolocationPreference('denied');
+          setShowGeolocationModal(false);
+        }}
+        onSelection={() => setShowGeolocationModal(false)}
       />
-    </div>
+    </EscenaAcceso>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={null}>
       <LoginContent />
     </Suspense>
   );

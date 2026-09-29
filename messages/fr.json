@@ -20817,7 +20817,9 @@
         "callback-processing-failed": "Nous n’avons pas pu terminer la connexion. Réessayez.",
         "native-callback-invalid-params": "Nous n’avons pas pu terminer la connexion dans l’application. Réessayez.",
         "generico": "Nous n’avons pas pu vous connecter. Réessayez."
-      }
+      },
+      "faceId": "Face ID",
+      "huella": "votre empreinte"
     },
     "seleccion": {
       "titulo": "Choisissez une organisation",

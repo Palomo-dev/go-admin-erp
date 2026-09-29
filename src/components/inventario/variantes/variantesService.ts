@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import type { ErrorRutaVariantes, EscrituraVariantes } from './contrato';
+import type { CatalogoOrden } from './logicaVariantes';
 import type {
   DatosTipo,
   DatosValor,
@@ -183,6 +184,39 @@ async function escribir<T>(cuerpo: EscrituraVariantes): Promise<T> {
 export const variantesService = {
   async resumen(org: number, cliente: Cliente = supabase): Promise<ResumenVariantes> {
     return aResumenVariantes(await llamar<unknown>(cliente, 'fn_variantes_resumen', { p_org: org }));
+  },
+
+  /**
+   * Orden y muestras del catálogo (tipos y valores ACTIVOS) en una consulta
+   * liviana, para quien muestra variantes: el selector del POS y la tienda
+   * (`ordenarAtributosSegunCatalogo`) y el formulario del producto. Lee con la
+   * RLS de pertenencia; no trae variantes.
+   */
+  async catalogoOrden(org: number, cliente: Pick<SupabaseClient, 'from'> = supabase): Promise<CatalogoOrden> {
+    const { data, error } = await cliente
+      .from('variant_types')
+      .select('name, display_order, display_style, is_active, variant_values(value, display_order, hex_color, is_active)')
+      .eq('organization_id', org)
+      .eq('is_active', true);
+    if (error) throw error;
+    const filas = (data ?? []) as {
+      name: string;
+      display_order: number | null;
+      display_style: string | null;
+      variant_values: { value: string; display_order: number | null; hex_color: string | null; is_active: boolean | null }[] | null;
+    }[];
+    return {
+      tipos: filas.map((t) => ({
+        nombre: t.name,
+        orden: Number(t.display_order) || 0,
+        estilo: (['texto', 'color', 'imagen'].includes(String(t.display_style)) ? t.display_style : 'texto') as EstiloTipo,
+      })),
+      valores: filas.flatMap((t) =>
+        (t.variant_values ?? [])
+          .filter((v) => v.is_active !== false)
+          .map((v) => ({ tipo: t.name, valor: v.value, orden: Number(v.display_order) || 0, hex: v.hex_color })),
+      ),
+    };
   },
 
   guardarTipo(id: number | null, datos: DatosTipo): Promise<ResultadoGuardado> {

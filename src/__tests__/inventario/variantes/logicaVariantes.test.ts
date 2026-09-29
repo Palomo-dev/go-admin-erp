@@ -23,7 +23,7 @@ import {
   sePuedeEliminar,
   traduccionesFaltantes,
 } from '@/components/inventario/variantes/logicaVariantes';
-import { aErrorVariantes, aResumenVariantes } from '@/components/inventario/variantes/variantesService';
+import { aErrorVariantes, aResumenVariantes, variantesService } from '@/components/inventario/variantes/variantesService';
 import { escrituraVariantesSchema, estadoHttpDeError, permisoDeAccion } from '@/components/inventario/variantes/contrato';
 import type { TipoVariante, ValorVariante } from '@/components/inventario/variantes/tipos';
 
@@ -218,5 +218,50 @@ describe('servicio y contrato', () => {
     expect(escrituraVariantesSchema.safeParse({ accion: 'completar' }).success).toBe(true);
     expect(escrituraVariantesSchema.safeParse({ accion: 'completar', p_org: 5 }).success).toBe(false);
     expect(escrituraVariantesSchema.safeParse({ accion: 'valor_guardar', id: null, datos: { valor: 'M', sku: 'M-1' } }).success).toBe(false);
+  });
+});
+
+describe('orden del catálogo para el POS (una consulta)', () => {
+  it('lee tipos activos con sus valores activos y los deja listos para ordenarAtributosSegunCatalogo', async () => {
+    const filtros: [string, unknown][] = [];
+    const cliente = {
+      from: (tabla: string) => {
+        expect(tabla).toBe('variant_types');
+        const q = {
+          select: () => q,
+          eq: (c: string, v: unknown) => {
+            filtros.push([c, v]);
+            return q;
+          },
+          then: (ok: (r: unknown) => unknown) =>
+            ok({
+              data: [
+                {
+                  name: 'Talla',
+                  display_order: 1,
+                  display_style: 'texto',
+                  variant_values: [
+                    { value: 'M', display_order: 1, hex_color: null, is_active: true },
+                    { value: 'S', display_order: 0, hex_color: null, is_active: true },
+                    { value: 'XXS', display_order: 9, hex_color: null, is_active: false },
+                  ],
+                },
+                { name: 'Color', display_order: 0, display_style: 'color', variant_values: [{ value: 'Negro', display_order: 0, hex_color: '#111827', is_active: true }] },
+              ],
+              error: null,
+            }),
+        };
+        return q;
+      },
+    };
+    const catalogo = await variantesService.catalogoOrden(132, cliente as never);
+    expect(filtros).toEqual([
+      ['organization_id', 132],
+      ['is_active', true],
+    ]);
+    expect(catalogo.valores.map((v) => v.valor)).toEqual(['M', 'S', 'Negro']);
+    const r = ordenarAtributosSegunCatalogo({ Talla: ['M', 'S'], Color: ['Negro'] }, catalogo);
+    expect(r.map((a) => a.nombre)).toEqual(['Color', 'Talla']);
+    expect(r[1].valores.map((v) => v.valor)).toEqual(['S', 'M']);
   });
 });

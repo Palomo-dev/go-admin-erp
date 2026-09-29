@@ -491,3 +491,172 @@ solo este documento).
 | 7 | En venta, ¿se puede agregar un producto sin stock desde «Agregar productos»? | Sí, con aviso en la línea (el bloqueo real es al emitir) |
 | 8 | Cliente vacío: ¿se ofrece «Consumidor final» como atajo? | Pendiente de su decisión; no está en el código de hoy |
 | 9 | Los 4 frames de órdenes de compra y los de B.7 ya usan los componentes: ¿se aprueba cambiar también la hoja móvil de la OC y la tabla de B.7? | Sí, tras la pregunta 1 |
+
+---
+
+## 7. Factura de compra con la misma estructura
+
+Decisión del dueño (2026-09-28): la factura de venta se queda con la v2 de este documento y «facturas de
+venta y de compra deben tener una estructura IGUAL». Aclaración posterior: **igual la estructura, no los
+botones**: misma organización de la pantalla (cabecera arriba, mismas zonas y orden de tarjetas, resumen a
+la derecha, mismos componentes del kit y mismos patrones de estados), pero cada factura conserva sus
+acciones, campos y flujos. La compra no toma «Emitir», oportunidad, forma de pago, factura electrónica,
+arqueo ni comisión; conserva «Confirmar factura», el número del proveedor, el modo «desde orden de compra»,
+las retenciones y la confirmación con recepción y documento soporte.
+
+Alcance: solo Figma y este documento. El código de la app no cambió.
+
+### 7.1 Dónde verlo
+
+- Sección **«Facturas de compra — Nueva y editar v2 (misma estructura que venta)»** `1066:105465`, página
+  `07 Finanzas`, en x = 0, y = 76.000 (debajo de la v2 de venta), 14.720 × 8.526:
+  https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1066-105465
+- **Índice** (`264:98925`): entrada 26 con hipervínculo a la sección.
+- La sección vieja `425:178189` pasó a llamarse «Facturas de compra — nueva y editar (B.7) — versión
+  anterior» y lleva arriba la nota `1072:113901` con enlace a la v2. **No se borró ni se movió nada**
+  (mismo criterio que la venta: su versión anterior tampoco se movió a «99 Archivo»).
+- Los frames se hicieron **duplicando los de la venta v2** y adaptándolos, para que la igualdad de estructura
+  sea literal: mismo `Sidebar`, `AppHeader`, `DocumentHeader Variant=formulario`, tarjetas, tabla de líneas,
+  columna derecha y bandas de estado.
+
+### 7.2 Estructura compartida y lo propio de cada una
+
+| Zona (mismo orden en las dos) | Estructura compartida | Venta v2 | Compra v2 |
+|---|---|---|---|
+| Cabecera | `DocumentHeader formulario`: migas, ←, título, subtítulo, tres acciones | Cancelar · Guardar borrador · **Emitir factura** | Cancelar · Guardar borrador · **Confirmar factura** (icono `CheckCircle`, como en el código) |
+| Banda de estado (debajo de la cabecera) | Misma banda: información, candado, error, progreso | resolución, venta ligada, emitida | desde orden, borrador, confirmada, anulada |
+| Fila 1, izquierda | Tarjeta «Datos del documento» | numeración de la resolución, fechas, términos, sucursal, moneda, forma de pago, oportunidad, FE, arqueo | número del proveedor + «#», sucursal que recibe, emisión, plazo en días, vencimiento, moneda, «Los precios incluyen IVA», recepción y documento soporte |
+| Fila 1, derecha | Tarjeta del tercero con el picker `inline selected` y su ayuda | `CustomerPicker` | `SupplierPicker` (el par Compra/Venta del mismo diálogo) |
+| Fila 2 | «Líneas de la factura»: barra (contador, «Buscar producto · F3», «Agregar ítem manual»), encabezado, filas `LineaDocumentoEdicion`, pie con unidades y total | `Documento=venta` (stock, lote, serial, aviso de faltantes) | `Documento=compra` (stock o recibido, seriales, aviso «Diferencia con la orden») |
+| Fila 3, izquierda | Tarjeta «Notas» + tarjeta propia | Notas y términos · Comisión del vendedor | Notas internas · **Retenciones** |
+| Fila 3, derecha (fija al desplazar) | `DocumentTotals` + tarjeta propia + Atajos | `Variant=venta` · Impuestos de la organización | `Variant=compra` (retenciones que restan y **neto a pagar**) · **Pago al proveedor** |
+| Modos | nueva vacía · nueva con datos · editar borrador · cargando · no editable · errores · guardando · tableta 1024 · móvil 390 | + emitiendo con faltantes | + **desde orden de compra** · no editable en dos variantes (**confirmada** y **anulada**) · guardando y confirmando |
+| Diálogos | los mismos componentes con variante | Elegir cliente, Agregar productos Venta, Ítem manual Venta, Emitir con faltantes | Elegir proveedor, Crear proveedor, Agregar productos Compra, Crear producto (compra), Ítem manual Compra, **Confirmar factura** |
+
+### 7.3 Correspondencia campo a campo
+
+Código de compra: `src/components/finanzas/facturas-compra/formulario/FormularioFacturaCompra.tsx` (FFC)
+y `facturas-compra/detalle/DialogosCompra.tsx` (DC). Tipo: **C** = estructura compartida, **V** = propio de
+venta, **P** = propio de compra.
+
+| # | Venta v2 | Compra v2 | Tipo | Compra hoy (código) | En Figma |
+|---|---|---|---|---|---|
+| 1 | Migas Finanzas › Facturas de venta › Nueva factura | Finanzas › Facturas de compra › Nueva factura / número | C | FFC:458-466 | igual |
+| 2 | «Nueva factura de venta» / «Editar factura · borrador» | «Nueva factura de compra» / «Editar factura FE-88213» | C | `tituloNueva`, `tituloEditar` | igual al código |
+| 3 | Subtítulo: organización · sucursal · moneda | «Registra la factura que te envió el proveedor» · sucursal · moneda; «Desde la orden OC-…» | C | `subtitulo`, `desdeOrden` | igual + sucursal y moneda |
+| 4 | Cancelar | Cancelar | C | FFC:467-471 | igual |
+| 5 | Guardar borrador | Guardar borrador (también al editar) | C | FFC:472-475 | igual (no se forzó «Guardar cambios») |
+| 6 | **Emitir factura** | **Confirmar factura** | V / P | FFC:476-479 | confirma con el diálogo de DC |
+| 7 | Numeración de la resolución + número «al emitir» | **Número de la factura del proveedor** * + botón **«#»** | V / P | FFC:511-542 (`siguienteNumero`) | tooltip «Usar consecutivo interno — solo si la factura del proveedor no trae número» (hoy solo `title` «Sugerir consecutivo»: **cambio de texto**) |
+| 8 | Sucursal * | **Sucursal que recibe** * (fija si viene de una orden) | C | FFC:544-563 (`disabled={!!poId}`) | igual; en «desde orden», deshabilitada con «Fija: la de la orden» |
+| 9 | Fecha de emisión * | Emisión * (no posterior a hoy) | C | FFC:565-577 (`CampoFecha`, `max` hoy) | `DateRange` del kit |
+| 10 | Términos de pago (select) | **Plazo** en días (`NumberInput` con sufijo «días») + «Vence el …» | V / P | FFC:579-592 | igual; el proveedor elegido llena el plazo con sus días de crédito |
+| 11 | Vencimiento (emisión + términos) | Vencimiento (emisión + plazo; cambiarlo vacía el plazo) | C | FFC:594-607 | igual, ayuda «Al cambiarla, el plazo se vacía» |
+| 12 | Moneda * | Moneda (por defecto la base) | C | FFC:609-628 | «COP (moneda base)» |
+| 13 | Forma de pago | — | V | no existe en compra | no se dibujó |
+| 14 | «Precios con impuestos incluidos» (tarjeta Impuestos de la organización) | **«Los precios incluyen IVA»** en Datos del documento | P | FFC:630-641 | igual al código |
+| 15 | Oportunidad del CRM | — (el equivalente es la orden de compra, que llega por `?orden=`) | V / P | FFC:92, 209-257 | modo «desde orden de compra» con banda y aviso en la línea |
+| 16 | Factura electrónica al emitir | Recepción y documento soporte: **se eligen al confirmar** | V / P | DC:40-88 (`recepcionar`, `generar_ds`) | fila informativa: **Propuesta** (anotada fuera del frame); las casillas reales están en el diálogo «Confirmar factura» |
+| 17 | Incluir en el arqueo de caja | — | V | no existe | no se dibujó |
+| 18 | Tarjeta Cliente (`CustomerPicker`) | Tarjeta **Proveedor** (`SupplierPicker inline selected`: NIT · DV, contacto, «Por pagar», datos fiscales para documento soporte) | C | FFC:494-509 (`SupplierPicker` simple) | picker aprobado con filtros (ya en el kit de Figma) |
+| 19 | Líneas: `LineaDocumentoEdicion Documento=venta` | `Documento=compra` | C | FFC:649-689 (`DocumentoLineas modo="edicion"`) | igual |
+| 20 | Columna «Precio unit.» | «Costo unit.» | P | `precioUnitario` = costo | igual |
+| 21 | Columna «Impuestos» (varios por línea, M2) | «IVA» por línea (0 · 5 · 19 % desde «⋯») | P | FFC:75 `TARIFAS`, `accionesLinea` | la fila usa `ImpuestosLinea` de la variante compra; ver pregunta 2 |
+| 22 | Buscar producto · F3 (`Agregar productos Venta`) | Buscar producto · F3 (`Agregar productos Compra`, chip «Proveedor: …» = «Solo del proveedor», costo del proveedor, stock) | C | FFC:669-676 (`ProductSearchDialog mode="purchase"`, `supplierId`) | instancia `Documento=Compra, Estado=Filtros aplicados`; «entrega N días» (`product_suppliers.lead_time_days`) como **Propuesta** |
+| 23 | Agregar ítem manual (`Ítem manual Venta`) | Agregar ítem manual (`Ítem manual Compra`) | C | FFC:677-684 (hoy el botón dice «Concepto sin producto») | componente compartido; ver pregunta 3 |
+| 24 | Seriales de la línea (chip y «⋯») | Seriales de la línea («⋯», uno por renglón) | C | `DialogoTextoLinea` | chip «Seriales 5/5» |
+| 25 | Aviso de faltantes de stock | Aviso «Diferencia con la orden» | V / P | — | variante `aviso` de cada documento |
+| 26 | Notas para el cliente + Términos y condiciones | **Notas internas** | V / P | FFC:779-795 | igual al código |
+| 27 | Comisión del vendedor | — (el estado se conserva al editar, no se muestra) | V | FFC:108-114 | no se dibujó |
+| 28 | — | **Retenciones**: retención configurada, base, tarifa, valor, quitar; total retenido | P | FFC:689-777: concepto de **texto libre**, «Retención en la fuente» 2,5 % por defecto | **Cambio**: se eligen de las retenciones de Finanzas › Impuestos › Retenciones (`organization_taxes.kind = withholding`); se guarda `tax_code` en `invoice_purchase_withholdings` (la columna ya existe); base editable, tarifa de la configuración |
+| 29 | `DocumentTotals Variant=venta` (retenciones informativas) | `Variant=compra`: subtotal, descuentos, base por impuesto, retenciones que restan, total, **neto a pagar** | C | FFC:798-807 | igual |
+| 30 | Impuestos de la organización | **Pago al proveedor**: «Pagarás a … a más tardar el …» | V / P | FFC:808-810 (`resumenPago`) | tarjeta con el mismo texto + «la cuenta por pagar se crea al confirmar, por el neto» |
+| 31 | Atajos (M6) | Atajos (F2 proveedor, F3, Alt+M, Ctrl+S, Ctrl+Enter confirmar) | C | no existen en compra | **Propuesta** compartida (insignia «Mejora M6») |
+| 32 | Salir con cambios (`ConfirmDialog`) | ídem | C | FFC:436-440: **`window.confirm` nativo** | mismo diálogo que venta |
+| 33 | No editable: solo lectura con motivo y acciones | ídem: **confirmada** (Ver factura · Descargar PDF · Registrar pago; anular desde el detalle) y **anulada** (motivo; sin pagos) | C | FFC:442-453: `EmptyState` «ya no es un borrador» | **Propuesta** (anotada) |
+| 34 | Errores en línea + resumen arriba (M4) | ídem: proveedor, número del proveedor, línea sin descripción | C | FFC:484-488 (`errorGeneral`) + error por campo | igual al patrón de venta |
+| 35 | Emitiendo (pasos) | Guardando y confirmando (borrador, CxP por el neto, asiento, recepción) | C | «Guardando…» en el botón; `DialogoConfirmarCompra` con `cargando` | lista de pasos: **Propuesta** |
+| 36 | — | **Confirmar factura**: consecuencias, «Recepcionar al confirmar» (sí por defecto), «Generar documento soporte» | P | FFC:847-876 · DC:40-88 | diálogo dibujado con el texto del código |
+
+Nota: §1.3 de este documento dice que compras usa `<input type="date">`; el código ya pasó a `CampoFecha`
+(FFC:565-607).
+
+### 7.4 Frames de la sección
+
+| Frame | Id |
+|---|---|
+| Escritorio · Modo=nueva — con datos (base) | `1066:105475` |
+| Escritorio · Modo=nueva — vacía | `1068:106373` |
+| Escritorio · Modo=nueva — desde orden de compra | `1068:107142` |
+| Escritorio · Modo=editar — borrador | `1068:108236` |
+| Escritorio · Modo=editar — cargando | `1068:108674` |
+| Escritorio · Modo=no editable — confirmada | `1068:661685` |
+| Escritorio · Modo=no editable — anulada | `1068:662704` |
+| Escritorio · Modo=nueva — errores de validación | `1068:663599` |
+| Escritorio · Modo=nueva — guardando y confirmando | `1068:664604` |
+| Diálogo / Elegir proveedor (SupplierPicker, filtros) | `1069:111929` |
+| Diálogo / Crear proveedor — formulario rápido | `1069:112338` |
+| Compra / Proveedor creado vuelve elegido | `1069:112365` |
+| Diálogo / Agregar productos (compra · Solo del proveedor) | `1069:112373` |
+| Diálogo / Crear producto (compra) | `1069:112874` |
+| Diálogo / Agregar ítem manual (compra) | `1069:112901` |
+| Compra / Número del proveedor y consecutivo interno («#») | `1069:113059` |
+| Panel / Retenciones desde la configuración (cambio) | `1069:113080` |
+| Diálogo / Confirmar factura (recepción y documento soporte) | `1069:113139` |
+| Diálogo / Salir con cambios sin guardar | `1069:113180` |
+| Tableta 1024 · Modo=nueva — con datos | `1069:665725` |
+| Móvil 390 · Modo=nueva — con datos | `1069:666353` |
+
+Cada frame lleva encima una nota que dice qué es igual a venta, qué es propio de compra y qué es
+**Propuesta** o **Cambio** frente al código de hoy.
+
+Datos del ejemplo (ficticios): proveedor «Distribuidora del Norte», factura FE-88213, orden OC-2026-0311;
+4 líneas (IVA 19 %, un descuento, 5 seriales, un flete manual), subtotal $ 5.918.000, IVA $ 1.119.404,
+total $ 7.011.004, retenciones $ 204.203 (ReteFuente compras 2,5 % y ReteICA Bogotá 0,966 % sobre
+$ 5.891.600), neto a pagar $ 6.806.801. Los modos «desde orden» y «errores» recalculan sus totales.
+
+### 7.5 Chequeo por script (use_figma, 2026-09-28)
+
+| Comprobación | Resultado |
+|---|---|
+| Solapes entre nodos de primer nivel de la sección | **0** |
+| Sección contra el resto de la página · nodos fuera de la sección | **0 · 0** |
+| Nota de «versión anterior» contra los frames de B.7 | **0** (B.7 ya tenía 2 solapes propios entre anotaciones, previos a este cambio) |
+| Instancias rotas (1.858) | **0** |
+| Textos desbordados o recortados por su marco (1.973 textos) | **0** |
+| Rellenos sólidos sin variable en nodos propios (no instancias) · familias tipográficas | **0** · solo Inter |
+| Nombres reales de organizaciones (contra la lista de la base; textos, capas, índice y nota de B.7) | **0** |
+
+Hallazgos del chequeo que no se resolvieron dentro de esta sección (no se editaron componentes ajenos):
+
+- El set `Diálogo · Agregar productos` (`1042:34652`) **tiene errores**: sus dos variantes «Hoja móvil»
+  (`1032:34685`, `1032:34864`) quedaron sin nombres de propiedad (`=AgregarProductosDialog, =Venta, =Hoja
+  móvil`) y la columna del nombre del producto queda en 25–28 px, con el SKU desbordado. Pasa igual en la
+  hoja de venta (`1037:105409`). Por eso la hoja móvil de compra **no se incluyó** en la sección: hay que
+  corregir primero la variante en `02 Componentes`.
+- En «Diálogo / Salir con cambios sin guardar» de la venta (`1036:103966`) el pie no cabe en 480 px y
+  «Seguir editando» se recorta; en la copia de compra el diálogo se ensanchó a 600 px.
+- El `Índice` de la página ya era más alto que su sección y toca «Impuestos» (y = 896); la entrada 26 le
+  sumó una línea.
+
+### 7.6 Capturas
+
+`docs/design/figma/76-factura-compra-v2-*.png` (20): `00-seccion`, `01-nueva-con-datos`, `02-nueva-vacia`,
+`03-desde-orden-de-compra`, `04-editar-borrador`, `05-editar-cargando`, `06-no-editable-confirmada`,
+`07-no-editable-anulada`, `08-errores`, `09-guardando-confirmando`, `10-tableta`, `11-movil`,
+`12-elegir-proveedor`, `13-crear-proveedor`, `14-agregar-productos`, `15-item-manual`,
+`16-numero-consecutivo`, `17-retenciones-configuracion`, `18-confirmar-factura`, `19-salir-con-cambios`.
+No se versionan (el commit lleva solo este documento).
+
+### 7.7 Preguntas para el dueño
+
+| # | Pregunta | Recomendación |
+|---|---|---|
+| 1 | ¿Se aprueba que las retenciones de la compra se elijan de las configuradas (Finanzas › Impuestos › Retenciones) en lugar de escribirse a mano? | Sí: evita conceptos y tarifas mal escritos; la base sigue editable y se guarda `tax_code` (sin migración: la columna ya existe) |
+| 2 | El IVA por línea de compra hoy es un menú con 0 · 5 · 19 %: ¿pasa a `ImpuestosLinea` con los impuestos de la organización, como en venta? | Sí, con la misma pieza; así el impoconsumo y otras tarifas también sirven en compras |
+| 3 | El botón y el diálogo de compra dicen hoy «Concepto sin producto»; el componente compartido dice «Agregar ítem manual». ¿Cuál queda? | «Agregar ítem manual» en las dos, con la ayuda «servicios, fletes u otros gastos que no entran al inventario» |
+| 4 | Factura confirmada o anulada: ¿se muestra en solo lectura con su motivo y acciones (como venta) en vez del `EmptyState` de hoy? | Sí: misma estructura, y el usuario ve qué puede hacer (pagar, PDF, anular desde el detalle) |
+| 5 | ¿La fila informativa «Recepción y documento soporte: se eligen al confirmar» se queda en Datos del documento? | Sí, como texto de ayuda; las casillas siguen en «Confirmar factura» |
+| 6 | ¿«Agregar productos» de compra muestra el plazo de entrega del proveedor (`lead_time_days`)? | Sí, en la línea secundaria, solo cuando el producto tiene ese dato para el proveedor elegido |
+| 7 | ¿Atajos de teclado (M6) también en compra? | Sí, los mismos; Ctrl+Enter abre «Confirmar factura» |
+| 8 | ¿Se corrige la variante «Hoja móvil» de `Diálogo · Agregar productos` antes de dibujar la hoja móvil de compra? | Sí; la corrige quien mantiene el componente y después se agrega el frame a esta sección |

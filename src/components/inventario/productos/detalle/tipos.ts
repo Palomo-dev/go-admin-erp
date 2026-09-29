@@ -3,8 +3,9 @@
  *
  * Pestañas (Figma `04 Inventario › Producto — …`, PARIDAD-DETALLE-PRODUCTO):
  * Resumen · Inventario (Stock · Lotes · Kardex · Seriales) · Precios y costos ·
- * Variantes y modificadores · Imágenes · Proveedores y etiquetas · Notas ·
- * Historial. Van en la URL (`?tab=inventario&sub=seriales`).
+ * Variantes y modificadores · Producción (B5, solo si tiene contenido) ·
+ * Imágenes · Proveedores y etiquetas · Notas · Historial. Van en la URL
+ * (`?tab=inventario&sub=seriales`; Producción guarda la suya en `?psub=`).
  */
 
 export type PestanaDetalle =
@@ -12,6 +13,7 @@ export type PestanaDetalle =
   | 'inventario'
   | 'precios'
   | 'variantes'
+  | 'produccion'
   | 'imagenes'
   | 'proveedores'
   | 'notas'
@@ -22,6 +24,7 @@ export const PESTANAS_DETALLE: readonly PestanaDetalle[] = [
   'inventario',
   'precios',
   'variantes',
+  'produccion',
   'imagenes',
   'proveedores',
   'notas',
@@ -98,6 +101,9 @@ export interface ProductoDetalle {
   warranty_months: number | null;
   is_parent: boolean | null;
   is_composite: boolean | null;
+  /** Producción (B5): `preparation` · `composite` · … (decide si se ve la pestaña Producción). */
+  production_type?: string | null;
+  track_lots?: boolean | null;
   parent_product_id: number | null;
   variant_data: Record<string, string> | null;
   weight_kg: number | string | null;

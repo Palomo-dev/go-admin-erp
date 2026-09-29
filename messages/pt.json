@@ -7701,7 +7701,8 @@
         "modificadores": "Adicionais",
         "proveedores": "Fornecedores",
         "etiquetas": "Etiquetas"
-      }
+      },
+      "produccion": "Produção"
     },
     "estado": {
       "active": "Ativo",
@@ -9954,6 +9955,10 @@
       "guardando": "Salvando…",
       "crear": "Criar e selecionar",
       "slugOcupadoTitulo": "Altere o slug: ele já existe"
+    },
+    "ingredienteRapido": {
+      "titulo": "Criar ingrediente",
+      "descripcion": "É criado como produto do catálogo com seu custo e adicionado à receita."
     }
   },
   "arranque": {

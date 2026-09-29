@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import dynamic from 'next/dynamic';
 import { ChefHat, ChevronDown, CircleAlert, History, Info, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { SegmentedControl } from '@/components/kit';
@@ -24,9 +23,7 @@ import { recipeService, type IngredienteOpcion } from '@/lib/services/recipeServ
 import { cn } from '@/utils/Utils';
 import { idsPropios } from '../../logica/formularioProducto';
 import type { PropsSeccionFormulario } from '../tipos';
-
-// Import diferido: el diálogo contiene el mismo ProductoForm (ciclo de módulos).
-const ProductoFormDialog = dynamic(() => import('@/components/shared/form-dialogs/ProductoFormDialog'), { ssr: false });
+import { DialogoIngredienteRapido } from './DialogoIngredienteRapido';
 
 /**
  * «Avanzado › Receta» (docs/design/PRODUCTO-RECETAS-Y-SUBSECCIONES.md §2;
@@ -63,7 +60,7 @@ export function SeccionReceta({
   const excluirIds = useMemo(() => idsPropios(estado, productId), [estado, productId]);
   const [seleccion, setSeleccion] = useState<string>(COMPARTIDA);
   const [quitadas, setQuitadas] = useState(0);
-  const [crearIngrediente, setCrearIngrediente] = useState<((op: IngredienteOpcion) => void) | null>(null);
+  const [crearIngrediente, setCrearIngrediente] = useState<{ texto: string; agregar: (op: IngredienteOpcion) => void } | null>(null);
   const recetaRef = useRef(r);
   recetaRef.current = r;
 
@@ -115,16 +112,16 @@ export function SeccionReceta({
     return out;
   }, [r.compartida, r.porVariante, variantes, seleccionValida, t]);
 
-  const onCrearIngrediente = useCallback((_texto: string, agregar: (op: IngredienteOpcion) => void) => {
-    setCrearIngrediente(() => agregar);
+  const onCrearIngrediente = useCallback((texto: string, agregar: (op: IngredienteOpcion) => void) => {
+    setCrearIngrediente({ texto, agregar });
   }, []);
 
-  const alCrearProducto = async (p: { id: number }) => {
-    const agregar = crearIngrediente;
+  const alCrearProducto = async (productoId: number) => {
+    const agregar = crearIngrediente?.agregar;
     setCrearIngrediente(null);
     if (!agregar) return;
     try {
-      const op = await recipeService.ingredientePorId(organizacionId, p.id);
+      const op = await recipeService.ingredientePorId(organizacionId, productoId);
       if (op) agregar(op);
     } catch {
       // El producto ya quedó creado; se puede agregar desde el buscador.
@@ -329,10 +326,12 @@ export function SeccionReceta({
       )}
 
       {crearIngrediente && (
-        <ProductoFormDialog
-          open
-          onOpenChange={(abierto) => !abierto && setCrearIngrediente(null)}
-          onCreated={(p) => void alCrearProducto(p)}
+        <DialogoIngredienteRapido
+          organizacionId={organizacionId}
+          texto={crearIngrediente.texto}
+          codigoMoneda={moneda.codigo}
+          onCreado={(id) => void alCrearProducto(id)}
+          onCerrar={() => setCrearIngrediente(null)}
         />
       )}
     </div>

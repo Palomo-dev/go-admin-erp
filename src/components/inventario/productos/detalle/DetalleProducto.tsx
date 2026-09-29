@@ -34,6 +34,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { loadProductImages, getPublicUrl, type ProductImageType } from '@/lib/supabase/imageUtils';
 import { avisarCambioCatalogo } from '@/lib/services/website/avisarCambioCatalogo';
 import { productoService } from '@/lib/services/productoService';
@@ -62,6 +63,7 @@ import { ProveedoresProducto } from './proveedores/ProveedoresProducto';
 import { EtiquetasProducto } from './proveedores/EtiquetasProducto';
 import { NotasProducto } from './notas/NotasProducto';
 import { HistorialProducto } from './historial/HistorialProducto';
+import { PestanaProduccion, debeMostrarPestanaProduccion } from './produccion';
 
 const RUTA_CATALOGO = '/app/inventario/productos';
 const ID_TABS = 'producto';
@@ -162,6 +164,8 @@ function ContenidoDetalle({ tab, sub }: { tab: PestanaDetalle; sub: string | nul
   const router = useRouter();
   const { toast } = useToast();
   const { producto, organizacionId, resumen, permisos, recargar, irA, mensajeError } = useProductoDetalle();
+  // «Transferir» lleva el producto y, si hay una sucursal elegida en la cabecera, el origen (B3 lee ambos).
+  const { selectedBranchId } = useBranch();
   const [imagenes, setImagenes] = useState<ProductImageType[]>([]);
   const [confirmarEliminar, setConfirmarEliminar] = useState(false);
   const [dialogoEtiquetas, setDialogoEtiquetas] = useState(false);
@@ -216,7 +220,10 @@ function ContenidoDetalle({ tab, sub }: { tab: PestanaDetalle; sub: string | nul
     { id: 'duplicar', etiqueta: t('acciones.duplicar'), icono: Copy, onSelect: () => router.push(`${rutaProducto}/duplicar`),
       deshabilitada: !!resumen && !permisos.crear, motivo: t('acciones.motivoSinPermiso') },
     { id: 'transferir', etiqueta: t('acciones.transferir'), icono: ArrowLeftRight,
-      onSelect: () => router.push(`/app/inventario/transferencias/nuevo?producto_id=${producto.id}`),
+      onSelect: () =>
+        router.push(
+          `/app/inventario/transferencias/nuevo?producto_id=${producto.id}${selectedBranchId ? `&origen=${selectedBranchId}` : ''}`,
+        ),
       deshabilitada: !rastrea || eliminado, motivo: eliminado ? t('acciones.motivoEliminado') : t('acciones.motivoSinInventario') },
     { id: 'imprimir', etiqueta: t('acciones.imprimirEtiqueta'), icono: Printer, onSelect: () => setDialogoEtiquetas(true) },
     { id: 'codigos', etiqueta: t('acciones.codigosBarras'), icono: Barcode, onSelect: () => setDialogoCodigos(true),
@@ -237,6 +244,10 @@ function ContenidoDetalle({ tab, sub }: { tab: PestanaDetalle; sub: string | nul
     { valor: 'inventario', etiqueta: t('pestanas.inventario') },
     { valor: 'precios', etiqueta: t('pestanas.precios') },
     { valor: 'variantes', etiqueta: t('pestanas.variantes'), contador: conteos ? conteos.variantes + conteos.modificadores : undefined },
+    // Producción (B5): compuesto, preparación o producto que ya se abrió en esa pestaña (enlace directo).
+    ...(debeMostrarPestanaProduccion(producto) || tab === 'produccion'
+      ? [{ valor: 'produccion' as const, etiqueta: t('pestanas.produccion') }]
+      : []),
     { valor: 'imagenes', etiqueta: t('pestanas.imagenes'), contador: conteos?.imagenes },
     { valor: 'proveedores', etiqueta: t('pestanas.proveedores'), contador: conteos ? conteos.proveedores + conteos.etiquetas : undefined },
     { valor: 'notas', etiqueta: t('pestanas.notas'), contador: conteos?.notas },
@@ -361,6 +372,7 @@ function ContenidoDetalle({ tab, sub }: { tab: PestanaDetalle; sub: string | nul
           {tab === 'precios' && <PreciosCostos />}
           {tab === 'variantes' && subActual === 'variantes' && <VariantesProducto />}
           {tab === 'variantes' && subActual === 'modificadores' && <ModificadoresProducto />}
+          {tab === 'produccion' && <PestanaProduccion producto={producto} permisos={permisos} />}
           {tab === 'imagenes' && <ImagenesProducto />}
           {tab === 'proveedores' && subActual === 'proveedores' && <ProveedoresProducto />}
           {tab === 'proveedores' && subActual === 'etiquetas' && <EtiquetasProducto />}

@@ -105,28 +105,25 @@ describe('aviso previo del POS: una llamada por carrito', () => {
 });
 
 describe('reservas de pedidos web', () => {
-  it('expande la receta en el servidor y reserva cada ingrediente con inventario', async () => {
-    rpc.mockResolvedValue({
-      data: [
-        { product_id: 11, quantity: '0.3', track_stock: true, es_ingrediente: true },
-        { product_id: 12, quantity: '0.03', track_stock: false, es_ingrediente: true },
-      ],
-      error: null,
-    });
-    const update = jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) });
-    const cadena = {
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      is: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      maybeSingle: jest.fn().mockResolvedValue({ data: { id: 5, qty_reserved: 1 } }),
-      update,
-    };
-    from.mockReturnValue(cadena);
+  // Núcleo B0: la receta la expande el servidor dentro de fn_stock_reservar
+  // (mismo resolutor que la venta) y la reserva queda registrada por documento.
+  it('una sola RPC: el servidor expande la receta y reserva; el navegador no toca stock_levels', async () => {
+    rpc.mockResolvedValue({ data: { ok: true, reservas: [{ product_id: 11, qty: 0.3 }] }, error: null });
     const r = await stockMovementService.reserveStock(134, 109, 'W-1', [{ product_id: 901, quantity: 2 }]);
-    expect(rpc).toHaveBeenCalledWith('fn_receta_expandir', { p_product_id: 901, p_qty: 2 });
-    expect(update).toHaveBeenCalledTimes(1);
-    expect(update.mock.calls[0][0]).toMatchObject({ qty_reserved: 1.3 });
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith('fn_stock_reservar', {
+      p_org: 134, p_branch: 109, p_ref_id: 'W-1', p_items: [{ product_id: 901, quantity: 2 }],
+    });
+    expect(from).not.toHaveBeenCalled();
+    expect(r.success).toBe(true);
+  });
+  it('liberar devuelve lo reservado por el documento', async () => {
+    rpc.mockResolvedValue({ data: { ok: true, items_released: 1 }, error: null });
+    const r = await stockMovementService.releaseStockReservation(109, 'W-1', [{ product_id: 901, quantity: 2 }]);
+    expect(rpc).toHaveBeenCalledWith('fn_stock_liberar_reserva', {
+      p_branch: 109, p_ref_id: 'W-1', p_items: [{ product_id: 901, quantity: 2 }],
+    });
+    expect(from).not.toHaveBeenCalled();
     expect(r.success).toBe(true);
   });
 });

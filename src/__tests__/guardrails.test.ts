@@ -1859,7 +1859,11 @@ describe('26. Compras: un solo asiento por hecho, con la factura (ADR-CC-009)', 
   );
 
   test('el disparador de ajustes de inventario no contabiliza compras ni traslados', () => {
-    const ultima = ultimaQueMenciona(/function\s+public\.fn_auto_journal_stock_movement\s*\(/i);
+    // La última que la DEFINE (`create or replace`). Inventario B0 (P4,
+    // 20260929020600_inv_b0_7_asiento_unico_ajuste) la parchea sobre la
+    // definición viva con md5 comprobado y un solo marcador, sin tocar esta
+    // exclusión: esa migración solo la nombra y no cuenta como definición.
+    const ultima = ultimaQueMenciona(/create\s+or\s+replace\s+function\s+public\.fn_auto_journal_stock_movement\s*\(/i);
     expect(ultima).toBeDefined();
     const cuerpo = ultima!.sql.slice(ultima!.sql.search(/function\s+public\.fn_auto_journal_stock_movement\s*\(/i));
     const exclusion = cuerpo.match(/IF\s+NEW\.source\s+IN\s*\(([^)]*)\)\s*THEN\s*RETURN\s+NEW/i);
@@ -3019,5 +3023,71 @@ describe('34. Invitaciones: el código de invitación no sale del servidor', () 
       }
     }
     expect(infractores).toEqual([]);
+  });
+});
+
+/**
+ * 33. Existencias: nada fuera del núcleo escribe stock_levels, stock_movements ni
+ * stock_reservations (INVENTARIO-PLAN.md §3.2 y §5.1, bloque B0, 2026-09-28).
+ *
+ * Todo movimiento de stock pasa por la primitiva SQL `fn_inv_int_mover`
+ * (bloqueo, una sola regla de costo promedio, lote, FEFO, seriales, kardex con
+ * autor). Antes 15 funciones SQL y más de 10 servicios TS escribían estas
+ * tablas con cuatro reglas de costo distintas y sin transacción.
+ *
+ * `PENDIENTES_POR_BLOQUE` es la deuda que queda al cerrar B0, cada archivo con el
+ * bloque que lo pasa a una RPC. Solo puede ACHICARSE: un archivo nuevo que
+ * escriba estas tablas rompe el primer test; uno de la lista que deje de
+ * escribirlas rompe el segundo (quítalo de la lista en el mismo commit). B10
+ * cierra la RLS en solo lectura cuando la lista quede vacía.
+ */
+describe('33. Existencias: nada fuera del núcleo escribe las tablas de stock', () => {
+  const ESCRITURA_STOCK_RE = /from\(\s*['"](stock_levels|stock_movements|stock_reservations)['"]\s*\)[\s\S]{0,300}?\.(insert|upsert|update|delete)\(/;
+  // Filtro propio (ver el caso 32): sin el helper común.
+  const esPrueba33 = (f: string) => /[\\/]__tests__[\\/]|\.test\.|\.spec\./.test(f);
+  const PENDIENTES_POR_BLOQUE: Record<string, string> = {
+    'app/api/web-orders/[id]/refund/route.ts': 'B9 · reembolso web → fn_stock_entrada',
+    'components/inventario/lotes/LotesService.ts': 'B1 · fn_lote_guardar / fn_lote_ajustar',
+    'components/inventario/productos/bulk/bulkService.ts': 'B7 · costo y precio masivos por fn_producto_fijar_costo/precio',
+    'components/inventario/transferencias/TransferenciasService.ts': 'B3 · fn_traslado_*',
+    'lib/ai/assistant/undoService.ts': 'B9 · deshacer por fn_producto_int_ajustar_stock',
+    'lib/services/adjustmentService.ts': 'B2 · fn_ajuste_aplicar',
+    'lib/services/aiActionsService.ts': 'B9 · actualizar stock por fn_producto_int_ajustar_stock',
+    'lib/services/webOrderServerConfirmation.ts': 'B9 · fn_pedido_web_confirmar_stock',
+  };
+  const escritores = () =>
+    walkDir(SRC_ROOT)
+      .filter((f) => !esPrueba33(f))
+      .filter((f) => ESCRITURA_STOCK_RE.test(stripAllComments(readFile(f))))
+      .map(rel)
+      .sort();
+
+  test('ningún archivo nuevo escribe stock_levels / stock_movements / stock_reservations', () => {
+    const nuevos = escritores().filter((r) => !(r in PENDIENTES_POR_BLOQUE));
+    // Si esto falla: llama a una RPC que pase por fn_inv_int_mover (ver
+    // src/lib/inventario/nucleo/tipos.ts); no escribas las tablas desde src/.
+    expect(nuevos).toEqual([]);
+  });
+
+  test('la deuda solo se achica: cada pendiente sigue escribiendo (si no, quítalo de la lista)', () => {
+    const actuales = new Set(escritores());
+    const yaResueltos = Object.keys(PENDIENTES_POR_BLOQUE).filter((r) => !actuales.has(r));
+    expect(yaResueltos).toEqual([]);
+  });
+
+  test('stockMovementService es una fachada de RPC: no toca las tablas', () => {
+    const src = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'services', 'stockMovementService.ts')));
+    expect(src).not.toMatch(/\.from\(/);
+    for (const rpc of ['decrement_stock_with_recipe', 'fn_stock_reservar', 'fn_stock_liberar_reserva', 'fn_kardex_entrada_compra', 'fn_inv_reversion_entrada']) {
+      expect(src).toContain(`'${rpc}'`);
+    }
+  });
+
+  test('nadie llama a la primitiva ni a sus internas desde src/', () => {
+    const llaman = walkDir(SRC_ROOT)
+      .filter((f) => !esPrueba33(f))
+      .filter((f) => /rpc\(\s*['"]fn_inv_int_/.test(readFile(f)))
+      .map(rel);
+    expect(llaman).toEqual([]);
   });
 });

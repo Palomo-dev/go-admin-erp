@@ -14550,5 +14550,105 @@
       "datos_invalidos": "Vérifiez les données du formulaire.",
       "error_interno": "Une erreur est survenue. Réessayez."
     }
+  },
+  "inventario": {
+    "origenes": {
+      "purchase": "Achat",
+      "sale": "Vente",
+      "adjustment": "Ajustement",
+      "transfer": "Transfert",
+      "return": "Retour",
+      "loss": "Démarque",
+      "production": "Production",
+      "initial": "Stock initial",
+      "web_sale": "Vente web",
+      "mesa_sale": "Vente à table",
+      "invoice_sale": "Vente (facture)",
+      "folio_item": "Folio",
+      "room_consumption": "Consommation chambre",
+      "web_order": "Réservation web",
+      "purchase_order": "Réception d’achat",
+      "purchase_invoice": "Facture d’achat",
+      "invoice_void": "Annulation de facture",
+      "credit_note": "Avoir",
+      "web_refund": "Retour web",
+      "folio_item_reversal": "Annulation de folio",
+      "transfer_out": "Transfert sortant",
+      "transfer_in": "Transfert entrant",
+      "purchase_void": "Annulation d’achat",
+      "credit_note_void": "Annulation d’avoir",
+      "desconocido": "Autre origine"
+    },
+    "documentos": {
+      "venta": "Vente",
+      "factura_venta": "Facture de vente",
+      "nota_credito": "Avoir",
+      "devolucion": "Retour",
+      "anulacion_venta": "Annulation de vente",
+      "factura_compra": "Facture d’achat",
+      "orden_compra": "Bon de commande",
+      "ajuste": "Ajustement",
+      "traslado": "Transfert",
+      "orden_produccion": "Ordre de production",
+      "folio": "Réservation (folio)",
+      "pedido_web": "Commande web",
+      "producto": "Produit",
+      "otro": "Sans document",
+      "abrir": "Ouvrir {documento}",
+      "sinAcceso": "Document indisponible"
+    },
+    "vencimiento": {
+      "vigente": "Valide",
+      "por_vencer": "Bientôt périmé",
+      "vencido": "Périmé",
+      "sin_vencimiento": "Sans péremption",
+      "venceEn": "{dias, plural, one {Expire dans # jour} other {Expire dans # jours}}",
+      "venceHoy": "Expire aujourd’hui",
+      "vencioHace": "{dias, plural, one {Expiré depuis # jour} other {Expiré depuis # jours}}"
+    },
+    "lotes": {
+      "titulo": "Choisir un lot",
+      "ayuda": "Le lot qui expire en premier est suggéré (FEFO). Vous pouvez en choisir un autre.",
+      "opcion": "{codigo} · {cantidad} unités",
+      "noVenderVencidos": "Ne pas vendre les lots périmés",
+      "reparto": "Répartition : {asignado} sur {total} unités attribuées",
+      "faltante": "{faltante} unités sans lot",
+      "sinLotes": "Ce produit n’a aucun lot en stock dans cette succursale.",
+      "cantidadDelLote": "Quantité du lot {codigo}",
+      "usar": "Utiliser ces lots",
+      "cancelar": "Annuler",
+      "sugerirFefo": "Répartir par péremption"
+    },
+    "saldo": {
+      "entrada": "Entrée",
+      "salida": "Sortie",
+      "saldo": "Solde",
+      "costoPromedio": "Coût moyen",
+      "saldoTras": "Solde après le mouvement : {saldo}",
+      "negativo": "Solde négatif"
+    },
+    "errores": {
+      "stock_insuficiente": "Stock insuffisant : disponible {disponible}, demandé {solicitado}.",
+      "cantidad_invalida": "La quantité doit être supérieure à zéro.",
+      "direccion_invalida": "Mouvement invalide.",
+      "origen_requerido": "L’origine du mouvement manque.",
+      "lote_invalido": "Le lot n’appartient pas à ce produit.",
+      "serial_repetido": "Des numéros de série sont répétés.",
+      "seriales_no_cuadran": "Le nombre de numéros de série ne correspond pas à la quantité.",
+      "serial_no_disponible": "Un numéro de série n’est pas disponible dans cette succursale.",
+      "estado_serial_requerido": "Indiquez le statut final des numéros de série.",
+      "sin_permiso": "Vous n’avez pas l’autorisation pour cette action d’inventaire.",
+      "SUCURSAL_NO_ES_DE_LA_ORG": "La succursale n’appartient pas à l’organisation.",
+      "PRODUCTO_NO_ES_DE_LA_ORG": "Le produit n’appartient pas à l’organisation.",
+      "PEDIDO_NO_ES_DE_LA_ORG": "La commande n’appartient pas à l’organisation.",
+      "ORIGEN_INVALIDO": "Cette origine n’est pas admise ici.",
+      "ORIGEN_SIN_ID": "Le document d’origine manque.",
+      "conversion_faltante": "Il manque une conversion d’unités dans la recette.",
+      "desconocido": "Le mouvement d’inventaire n’a pas pu être effectué."
+    },
+    "permisos": {
+      "sinPermisoTitulo": "Vous n’avez pas accès à l’inventaire",
+      "sinPermisoDescripcion": "Demandez à un administrateur de votre organisation l’autorisation d’inventaire nécessaire."
+    }
   }
 }

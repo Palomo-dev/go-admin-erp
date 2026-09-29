@@ -55,3 +55,81 @@ export type OrigenMovimientoStock = (typeof ORIGENES_MOVIMIENTO_STOCK)[number];
 export function esOrigenMovimientoValido(valor: string): valor is OrigenMovimientoStock {
   return (ORIGENES_MOVIMIENTO_STOCK as readonly string[]).includes(valor);
 }
+
+// ─── Presentación: el ÚNICO mapa de orígenes (bloque B0) ─────────────────────
+//
+// Antes cada pantalla tenía el suyo (`KardexTable.tsx`, `MovimientosTable.tsx`,
+// `stockService.ts`) con orígenes que la BD no acepta (`waste`,
+// `recipe_consumption`) y sin 15 de los 24 reales. Desde B0 la etiqueta, el
+// tono y el tipo de documento salen de aquí; `kit/inventario/BadgeOrigenMovimiento`
+// los pinta (Figma 530:65022). La etiqueta es la clave
+// `inventario.origenes.<origen>` en messages/*.json.
+
+/** Mismos tonos que `kit/estadoTono` (`TonoBadge`), sin depender de la capa de componentes. */
+export type TonoOrigen = 'marca' | 'exito' | 'advertencia' | 'peligro' | 'informacion' | 'neutro';
+
+export type TipoDocumentoOrigen =
+  | 'venta'
+  | 'factura_venta'
+  | 'nota_credito'
+  | 'devolucion'
+  | 'factura_compra'
+  | 'orden_compra'
+  | 'ajuste'
+  | 'traslado'
+  | 'orden_produccion'
+  | 'folio'
+  | 'pedido_web'
+  | 'producto';
+
+export interface MetaOrigen {
+  /** Tono del badge (Figma 530:65022). */
+  tono: TonoOrigen;
+  /** Dirección con que escribe hoy el código (`ambas` si depende del caso: ajuste, devolución). */
+  direccion: 'in' | 'out' | 'ambas';
+  /** Documento que explica el movimiento (lo resuelve `fn_inv_documentos`). */
+  documento: TipoDocumentoOrigen;
+}
+
+export const META_ORIGEN: Record<OrigenMovimientoStock, MetaOrigen> = {
+  purchase: { tono: 'marca', direccion: 'in', documento: 'factura_compra' },
+  sale: { tono: 'peligro', direccion: 'out', documento: 'venta' },
+  adjustment: { tono: 'advertencia', direccion: 'ambas', documento: 'ajuste' },
+  transfer: { tono: 'informacion', direccion: 'ambas', documento: 'traslado' },
+  return: { tono: 'exito', direccion: 'in', documento: 'devolucion' },
+  loss: { tono: 'peligro', direccion: 'out', documento: 'producto' },
+  production: { tono: 'marca', direccion: 'ambas', documento: 'orden_produccion' },
+  initial: { tono: 'neutro', direccion: 'in', documento: 'producto' },
+  web_sale: { tono: 'peligro', direccion: 'out', documento: 'venta' },
+  mesa_sale: { tono: 'peligro', direccion: 'out', documento: 'venta' },
+  invoice_sale: { tono: 'peligro', direccion: 'out', documento: 'factura_venta' },
+  folio_item: { tono: 'advertencia', direccion: 'out', documento: 'folio' },
+  room_consumption: { tono: 'advertencia', direccion: 'out', documento: 'folio' },
+  web_order: { tono: 'informacion', direccion: 'out', documento: 'pedido_web' },
+  purchase_order: { tono: 'marca', direccion: 'in', documento: 'orden_compra' },
+  purchase_invoice: { tono: 'marca', direccion: 'in', documento: 'factura_compra' },
+  invoice_void: { tono: 'exito', direccion: 'in', documento: 'factura_venta' },
+  credit_note: { tono: 'exito', direccion: 'in', documento: 'nota_credito' },
+  web_refund: { tono: 'exito', direccion: 'in', documento: 'pedido_web' },
+  folio_item_reversal: { tono: 'advertencia', direccion: 'in', documento: 'folio' },
+  transfer_out: { tono: 'informacion', direccion: 'out', documento: 'traslado' },
+  transfer_in: { tono: 'informacion', direccion: 'in', documento: 'traslado' },
+  purchase_void: { tono: 'peligro', direccion: 'out', documento: 'factura_compra' },
+  credit_note_void: { tono: 'peligro', direccion: 'out', documento: 'nota_credito' },
+};
+
+/** Metadatos de un origen; `null` si no es un origen admitido (datos viejos o valor ajeno). */
+export function metaOrigen(valor: string | null | undefined): MetaOrigen | null {
+  return valor && esOrigenMovimientoValido(valor) ? META_ORIGEN[valor] : null;
+}
+
+/** Orígenes de venta: los que pueden dejar existencia negativa salvo `bloquear_venta_sin_stock` (P5). */
+export const ORIGENES_VENTA: readonly OrigenMovimientoStock[] = [
+  'sale',
+  'web_sale',
+  'mesa_sale',
+  'invoice_sale',
+  'folio_item',
+  'room_consumption',
+  'web_order',
+];

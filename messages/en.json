@@ -14655,5 +14655,105 @@
       "datos_invalidos": "Check the form data.",
       "error_interno": "Something went wrong. Please try again."
     }
+  },
+  "inventario": {
+    "origenes": {
+      "purchase": "Purchase",
+      "sale": "Sale",
+      "adjustment": "Adjustment",
+      "transfer": "Transfer",
+      "return": "Return",
+      "loss": "Shrinkage",
+      "production": "Production",
+      "initial": "Opening stock",
+      "web_sale": "Web sale",
+      "mesa_sale": "Table sale",
+      "invoice_sale": "Sale (invoice)",
+      "folio_item": "Folio",
+      "room_consumption": "Room consumption",
+      "web_order": "Web reservation",
+      "purchase_order": "Purchase receipt",
+      "purchase_invoice": "Purchase invoice",
+      "invoice_void": "Invoice void",
+      "credit_note": "Credit note",
+      "web_refund": "Web refund",
+      "folio_item_reversal": "Folio reversal",
+      "transfer_out": "Transfer out",
+      "transfer_in": "Transfer in",
+      "purchase_void": "Purchase void",
+      "credit_note_void": "Credit note void",
+      "desconocido": "Other source"
+    },
+    "documentos": {
+      "venta": "Sale",
+      "factura_venta": "Sales invoice",
+      "nota_credito": "Credit note",
+      "devolucion": "Return",
+      "anulacion_venta": "Sale void",
+      "factura_compra": "Purchase invoice",
+      "orden_compra": "Purchase order",
+      "ajuste": "Adjustment",
+      "traslado": "Transfer",
+      "orden_produccion": "Production order",
+      "folio": "Reservation (folio)",
+      "pedido_web": "Web order",
+      "producto": "Product",
+      "otro": "No document",
+      "abrir": "Open {documento}",
+      "sinAcceso": "Document not available"
+    },
+    "vencimiento": {
+      "vigente": "Valid",
+      "por_vencer": "Expiring soon",
+      "vencido": "Expired",
+      "sin_vencimiento": "No expiry",
+      "venceEn": "{dias, plural, one {Expires in # day} other {Expires in # days}}",
+      "venceHoy": "Expires today",
+      "vencioHace": "{dias, plural, one {Expired # day ago} other {Expired # days ago}}"
+    },
+    "lotes": {
+      "titulo": "Choose lot",
+      "ayuda": "The one expiring first is suggested (FEFO). You can pick another.",
+      "opcion": "{codigo} · {cantidad} units",
+      "noVenderVencidos": "Do not sell expired lots",
+      "reparto": "Split: {asignado} of {total} units assigned",
+      "faltante": "{faltante} units left without a lot",
+      "sinLotes": "This product has no lots in stock at this branch.",
+      "cantidadDelLote": "Quantity from lot {codigo}",
+      "usar": "Use these lots",
+      "cancelar": "Cancel",
+      "sugerirFefo": "Split by expiry"
+    },
+    "saldo": {
+      "entrada": "In",
+      "salida": "Out",
+      "saldo": "Balance",
+      "costoPromedio": "Average cost",
+      "saldoTras": "Balance after the movement: {saldo}",
+      "negativo": "Negative balance"
+    },
+    "errores": {
+      "stock_insuficiente": "Not enough stock: available {disponible}, requested {solicitado}.",
+      "cantidad_invalida": "Quantity must be greater than zero.",
+      "direccion_invalida": "Invalid movement.",
+      "origen_requerido": "The movement source is missing.",
+      "lote_invalido": "The lot does not belong to this product.",
+      "serial_repetido": "There are repeated serials.",
+      "seriales_no_cuadran": "The number of serials does not match the quantity.",
+      "serial_no_disponible": "A serial is not available at this branch.",
+      "estado_serial_requerido": "Set the final status of the serials.",
+      "sin_permiso": "You do not have permission for this inventory action.",
+      "SUCURSAL_NO_ES_DE_LA_ORG": "The branch does not belong to the organization.",
+      "PRODUCTO_NO_ES_DE_LA_ORG": "The product does not belong to the organization.",
+      "PEDIDO_NO_ES_DE_LA_ORG": "The order does not belong to the organization.",
+      "ORIGEN_INVALIDO": "This source is not allowed here.",
+      "ORIGEN_SIN_ID": "The source document is missing.",
+      "conversion_faltante": "A unit conversion is missing in the recipe.",
+      "desconocido": "The inventory movement could not be completed."
+    },
+    "permisos": {
+      "sinPermisoTitulo": "You do not have access to inventory",
+      "sinPermisoDescripcion": "Ask an administrator of your organization for the inventory permission you need."
+    }
   }
 }

@@ -14550,5 +14550,105 @@
       "datos_invalidos": "Verifique os dados do formulário.",
       "error_interno": "Algo deu errado. Tente novamente."
     }
+  },
+  "inventario": {
+    "origenes": {
+      "purchase": "Compra",
+      "sale": "Venda",
+      "adjustment": "Ajuste",
+      "transfer": "Transferência",
+      "return": "Devolução",
+      "loss": "Perda",
+      "production": "Produção",
+      "initial": "Estoque inicial",
+      "web_sale": "Venda web",
+      "mesa_sale": "Venda mesa",
+      "invoice_sale": "Venda (fatura)",
+      "folio_item": "Fólio",
+      "room_consumption": "Consumo do quarto",
+      "web_order": "Reserva web",
+      "purchase_order": "Recebimento de compra",
+      "purchase_invoice": "Fatura de compra",
+      "invoice_void": "Anulação de fatura",
+      "credit_note": "Nota de crédito",
+      "web_refund": "Devolução web",
+      "folio_item_reversal": "Estorno de fólio",
+      "transfer_out": "Transferência saída",
+      "transfer_in": "Transferência entrada",
+      "purchase_void": "Anulação de compra",
+      "credit_note_void": "Anulação de nota de crédito",
+      "desconocido": "Outra origem"
+    },
+    "documentos": {
+      "venta": "Venda",
+      "factura_venta": "Fatura de venda",
+      "nota_credito": "Nota de crédito",
+      "devolucion": "Devolução",
+      "anulacion_venta": "Anulação de venda",
+      "factura_compra": "Fatura de compra",
+      "orden_compra": "Pedido de compra",
+      "ajuste": "Ajuste",
+      "traslado": "Transferência",
+      "orden_produccion": "Ordem de produção",
+      "folio": "Reserva (fólio)",
+      "pedido_web": "Pedido web",
+      "producto": "Produto",
+      "otro": "Sem documento",
+      "abrir": "Abrir {documento}",
+      "sinAcceso": "Documento indisponível"
+    },
+    "vencimiento": {
+      "vigente": "Válido",
+      "por_vencer": "A vencer",
+      "vencido": "Vencido",
+      "sin_vencimiento": "Sem validade",
+      "venceEn": "{dias, plural, one {Vence em # dia} other {Vence em # dias}}",
+      "venceHoy": "Vence hoje",
+      "vencioHace": "{dias, plural, one {Venceu há # dia} other {Venceu há # dias}}"
+    },
+    "lotes": {
+      "titulo": "Escolher lote",
+      "ayuda": "Sugere-se o que vence primeiro (FEFO). Você pode escolher outro.",
+      "opcion": "{codigo} · {cantidad} un.",
+      "noVenderVencidos": "Não vender lotes vencidos",
+      "reparto": "Distribuição: {asignado} de {total} un. atribuídas",
+      "faltante": "Faltam {faltante} un. sem lote",
+      "sinLotes": "Este produto não tem lotes com estoque nesta filial.",
+      "cantidadDelLote": "Quantidade do lote {codigo}",
+      "usar": "Usar estes lotes",
+      "cancelar": "Cancelar",
+      "sugerirFefo": "Distribuir por validade"
+    },
+    "saldo": {
+      "entrada": "Entrada",
+      "salida": "Saída",
+      "saldo": "Saldo",
+      "costoPromedio": "Custo médio",
+      "saldoTras": "Saldo após o movimento: {saldo}",
+      "negativo": "Saldo negativo"
+    },
+    "errores": {
+      "stock_insuficiente": "Estoque insuficiente: disponível {disponible}, solicitado {solicitado}.",
+      "cantidad_invalida": "A quantidade deve ser maior que zero.",
+      "direccion_invalida": "Movimento inválido.",
+      "origen_requerido": "Falta a origem do movimento.",
+      "lote_invalido": "O lote não pertence a este produto.",
+      "serial_repetido": "Há seriais repetidos.",
+      "seriales_no_cuadran": "A quantidade de seriais não corresponde à quantidade.",
+      "serial_no_disponible": "Algum serial não está disponível nesta filial.",
+      "estado_serial_requerido": "Informe o status final dos seriais.",
+      "sin_permiso": "Você não tem permissão para esta ação de estoque.",
+      "SUCURSAL_NO_ES_DE_LA_ORG": "A filial não pertence à organização.",
+      "PRODUCTO_NO_ES_DE_LA_ORG": "O produto não pertence à organização.",
+      "PEDIDO_NO_ES_DE_LA_ORG": "O pedido não pertence à organização.",
+      "ORIGEN_INVALIDO": "Esta origem não é permitida aqui.",
+      "ORIGEN_SIN_ID": "Falta o documento de origem.",
+      "conversion_faltante": "Falta uma conversão de unidades na receita.",
+      "desconocido": "Não foi possível concluir o movimento de estoque."
+    },
+    "permisos": {
+      "sinPermisoTitulo": "Você não tem acesso ao estoque",
+      "sinPermisoDescripcion": "Peça a um administrador da sua organização a permissão de estoque de que precisa."
+    }
   }
 }

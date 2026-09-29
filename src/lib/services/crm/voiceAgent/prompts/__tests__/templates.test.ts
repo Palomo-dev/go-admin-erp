@@ -162,9 +162,17 @@ describe('Voice Agent Prompt Templates', () => {
         expect(PROMPT_PROSPECCION_LEADS_NUEVOS).not.toContain('¡');
       });
 
-      it('usa formato correcto para precios', () => {
-        expect(PROMPT_PROSPECCION_LEADS_NUEVOS).toContain('US$ 30');
-        expect(PROMPT_PROSPECCION_LEADS_NUEVOS).toContain('US$ 300');
+      it('usa formato correcto para precios en COP', () => {
+        expect(PROMPT_PROSPECCION_LEADS_NUEVOS).toContain('$99.000');
+        expect(PROMPT_PROSPECCION_LEADS_NUEVOS).toContain('$189.000');
+        expect(PROMPT_PROSPECCION_LEADS_NUEVOS).toContain('$990.000');
+      });
+
+      it('menciona precios en USD solo para método de pago', () => {
+        expect(PROMPT_PROSPECCION_LEADS_NUEVOS).toContain('US$30');
+        expect(PROMPT_PROSPECCION_LEADS_NUEVOS).toContain('US$60');
+        expect(PROMPT_PROSPECCION_LEADS_NUEVOS).toContain('US$300');
+        expect(PROMPT_PROSPECCION_LEADS_NUEVOS).toContain('método de pago');
       });
 
       it('menciona las herramientas permitidas', () => {
@@ -284,6 +292,15 @@ describe('Voice Agent Prompt Templates', () => {
         expect(text).toContain('GO Admin');
         expect(text).not.toContain('Go-Admin');
         expect(text).not.toContain('GoAdmin');
+      });
+
+      it(`${name}: precios en COP con punto separador`, () => {
+        // Solo los prompts de prospección tienen precios
+        if (name !== 'Encuesta') {
+          expect(text).toContain('$99.000');
+          expect(text).toContain('$189.000');
+          expect(text).toContain('$990.000');
+        }
       });
 
       it(`${name}: no usa "usted" (tuteo)`, () => {

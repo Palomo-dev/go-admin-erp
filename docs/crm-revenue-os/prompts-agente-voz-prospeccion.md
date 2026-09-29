@@ -105,7 +105,7 @@ Según especificación R-02:
 - ✅ Tuteo (nunca "usted")
 - ✅ "GO Admin" sin guion
 - ✅ Sin signos de exclamación iniciales ("¡")
-- ✅ Precios con formato "US$ 30" (con espacio)
+- ✅ Precios en COP: "$99.000", "$189.000", "$990.000" mensuales
 - ✅ Frases cortas y verbos simples
 - ✅ Tono amable y tranquilo
 

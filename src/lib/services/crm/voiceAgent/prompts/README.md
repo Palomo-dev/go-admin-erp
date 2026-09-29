@@ -111,7 +111,7 @@ Todos los prompts siguen estas reglas (especificación R-02):
 - **Tratamiento**: Tuteo (nunca "usted")
 - **Marca**: "GO Admin" (sin guion, sin espacio)
 - **Signos**: Sin signos de exclamación inicial ("¡")
-- **Precios**: Formato "US$ 30" (con espacio, sin coma de miles)
+- **Precios**: En COP con punto separador de miles: "$99.000" (Pro), "$189.000" (Business), "$990.000" (Ultimate) mensuales
 - **Naturalidad**: Frases cortas, verbos simples, tono amable y tranquilo
 
 ## Avisos legales

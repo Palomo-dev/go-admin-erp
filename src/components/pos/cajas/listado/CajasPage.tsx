@@ -25,6 +25,7 @@ import { Banknote, DollarSign, Eye, FileText, History, ListChecks, Lock, Plus, P
 import {
   BranchBadgeActiva,
   EmptyState,
+  Kbd,
   KpiStrip,
   PageHeader,
   RowActionsMenu,
@@ -386,9 +387,7 @@ export function CajasPage() {
             <span className="text-xs text-fg-muted" aria-live="polite">
               {t('actualizado', { hace: haceCuanto(actualizado) })}
             </span>
-            <kbd className="hidden rounded border border-line bg-subtle px-1.5 font-mono text-[11px] leading-4 text-fg-secondary lg:inline">
-              F9
-            </kbd>
+            <Kbd tecla="F9" tamano="sm" className="hidden lg:inline-flex" />
           </>
         }
       />

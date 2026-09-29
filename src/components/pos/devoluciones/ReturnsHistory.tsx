@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { History, Calendar, DollarSign, Filter, RefreshCw, Eye, Download } from 'lucide-react';
+import { History, Calendar, CheckCircle2, DollarSign, Filter, RefreshCw, Eye, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,9 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { toast } from 'sonner';
 import { CampoFecha } from '@/components/kit/CampoFecha';
+import { KpiStrip, StatCard, StatusBadge } from '@/components/kit';
+import { filasACsv } from '@/lib/utils/csv';
+import { guardarArchivo } from '@/lib/documents/cliente';
 
 interface ReturnsHistoryProps {
   refreshTrigger?: number;
@@ -77,54 +80,24 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
     setShowDetails(true);
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants = {
-      processed: { 
-        className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200", 
-        label: t('estados.processed')
-      },
-      pending: { 
-        className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200", 
-        label: t('estados.pending')
-      },
-      cancelled: { 
-        className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200", 
-        label: t('estados.cancelled')
-      }
-    };
-
-    const variant = variants[status as keyof typeof variants] || variants.processed;
-    
-    return (
-      <Badge className={variant.className}>
-        {variant.label}
-      </Badge>
-    );
-  };
+  // Tono del sistema de badges (estadoTono.ts): pendiente en advertencia; procesada y cancelada en neutro.
+  const getStatusBadge = (status: string) => <StatusBadge estado={status} etiqueta={nombreEstado(status)} tamano="sm" />;
 
   const exportarCSV = async () => {
     try {
-      const csvData = returns.map(returnItem => ({
-        [tComun('fecha')]: formatDate(returnItem.return_date),
-        [tComun('idVenta')]: returnItem.sale_id,
-        [tComun('totalReembolso')]: returnItem.refund_total_with_tax,
-        [tComun('motivo')]: returnItem.reason,
-        [tComun('estado')]: nombreEstado(returnItem.status),
-        [tComun('items')]: returnItem.return_items.length
-      }));
-
-      const csvContent = [
-        Object.keys(csvData[0]).join(','),
-        ...csvData.map(row => Object.values(row).join(','))
-      ].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.setAttribute('href', url);
-      a.setAttribute('download', `historial-devoluciones-${getToday()}.csv`);
-      a.click();
-      window.URL.revokeObjectURL(url);
+      // CSV compartido: separador «;», BOM y celdas con fórmula neutralizadas (como el listado de ventas).
+      const csv = filasACsv(
+        [tComun('fecha'), tComun('idVenta'), tComun('totalReembolso'), tComun('motivo'), tComun('estado'), tComun('items')],
+        returns.map((returnItem) => [
+          formatDate(returnItem.return_date),
+          returnItem.sale_id,
+          returnItem.refund_total_with_tax,
+          returnItem.reason,
+          nombreEstado(returnItem.status),
+          returnItem.return_items.length,
+        ]),
+      );
+      guardarArchivo(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `historial-devoluciones-${getToday()}.csv`);
       
       toast.success(t('exportado'));
     } catch {
@@ -138,45 +111,11 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
   return (
     <div className="space-y-4">
       {/* Métricas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{t('totalDevoluciones')}</p>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{returns.length}</p>
-              </div>
-              <History className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{t('procesadas')}</p>
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{devolucionesProcesadas}</p>
-              </div>
-              <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                <div className="w-4 h-4 bg-green-600 dark:bg-green-400 rounded-full"></div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{t('totalReembolsado')}</p>
-                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{formatear(totalReembolsado)}</p>
-              </div>
-              <DollarSign className="h-8 w-8 text-red-600 dark:text-red-400" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <KpiStrip etiqueta={t('metricas')}>
+        <StatCard etiqueta={t('totalDevoluciones')} icono={History} valor={returns.length} cargando={loading} />
+        <StatCard etiqueta={t('procesadas')} icono={CheckCircle2} valor={devolucionesProcesadas} cargando={loading} />
+        <StatCard etiqueta={t('totalReembolsado')} icono={DollarSign} valor={formatear(totalReembolsado)} tono="advertencia" cargando={loading} />
+      </KpiStrip>
 
       {/* Filtros */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">

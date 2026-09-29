@@ -14,11 +14,12 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { ArrowDownCircle, ArrowUpCircle, Banknote, CreditCard, FileText, Info, Printer, Receipt, Wallet } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, Banknote, CreditCard, FileText, Info, ListChecks, Printer, Receipt, Wallet } from 'lucide-react';
 import {
   DataTable,
   FilaDato,
   KpiStrip,
+  ListCard,
   ListaDatos,
   PaginationCompact,
   StatCard,
@@ -247,15 +248,12 @@ export function TablaMovimientos({ movimientos, formatear, compacta }: { movimie
       estado="listo"
       vacio={{ titulo: t('movimientosVacio'), descripcion: t('movimientosVacioDescripcion') }}
       tarjetaMovil={(m) => (
-        <div className="flex items-start justify-between gap-3 rounded-lg border border-line bg-surface px-3 py-2">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-fg">{concepto(m)}</p>
-            <p className="text-xs text-fg-muted">{fechaHora(m.created_at)}{m.reference ? ` · ${m.reference}` : ''}</p>
-          </div>
-          <span className={m.type === 'in' ? 'shrink-0 text-sm font-semibold tabular-nums text-success-text' : 'shrink-0 text-sm font-semibold tabular-nums text-danger-text'}>
-            {`${m.type === 'in' ? '+' : '−'}${formatear(m.amount)}`}
-          </span>
-        </div>
+        <ListCard
+          icono={m.type === 'in' ? ArrowUpCircle : ArrowDownCircle}
+          titulo={concepto(m)}
+          meta={`${fechaHora(m.created_at)}${m.reference ? ` · ${m.reference}` : ''}`}
+          valor={<span className={m.type === 'in' ? 'text-success-text' : 'text-danger-text'}>{`${m.type === 'in' ? '+' : '−'}${formatear(m.amount)}`}</span>}
+        />
       )}
       pie={p.total > p.tamano ? <PaginationCompact pagina={p.pagina} tamano={p.tamano} total={p.total} onPaginaChange={p.setPagina} /> : undefined}
     />
@@ -308,16 +306,19 @@ export function TablaArqueos({ arqueos, formatear, visible }: { arqueos: readonl
       acciones={acciones}
       vacio={{ titulo: t('arqueosVacio'), descripcion: t('arqueosVacioDescripcion') }}
       tarjetaMovil={(a) => (
-        <div className="flex items-start justify-between gap-3 rounded-lg border border-line bg-surface px-3 py-2">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-fg">{tTipos(a.count_type)}</p>
-            <p className="text-xs text-fg-muted">{fechaHora(a.created_at)}{a.counted_by_name ? ` · ${a.counted_by_name}` : ''}</p>
-          </div>
-          <div className="shrink-0 text-right text-sm tabular-nums">
-            <p className="font-semibold text-fg">{formatear(a.counted_amount)}</p>
-            {visible && a.difference !== null && <p className={a.difference < 0 ? 'text-xs text-danger-text' : 'text-xs text-fg-muted'}>{conSigno(a.difference, formatear)}</p>}
-          </div>
-        </div>
+        // Con ListCard el «⋯» vuelve en móvil: «Imprimir comprobante» y «Ver PDF».
+        <ListCard
+          icono={ListChecks}
+          titulo={tTipos(a.count_type)}
+          meta={`${fechaHora(a.created_at)}${a.counted_by_name ? ` · ${a.counted_by_name}` : ''}`}
+          valor={formatear(a.counted_amount)}
+          estado={
+            visible && a.difference !== null ? (
+              <span className={a.difference < 0 ? 'text-xs tabular-nums text-danger-text' : 'text-xs tabular-nums text-fg-muted'}>{conSigno(a.difference, formatear)}</span>
+            ) : undefined
+          }
+          acciones={acciones(a)}
+        />
       )}
       pie={p.total > p.tamano ? <PaginationCompact pagina={p.pagina} tamano={p.tamano} total={p.total} onPaginaChange={p.setPagina} /> : undefined}
     />
@@ -353,17 +354,14 @@ export function TablaVentasTurno({ ventas, formatear, truncadas }: { ventas: rea
         etiquetaFila={(v) => v.numero ?? t('sinNumero')}
         vacio={{ titulo: t('ventasVacio'), descripcion: t('ventasVacioDescripcion') }}
         tarjetaMovil={(v) => (
-          <button
-            type="button"
+          <ListCard
+            icono={Receipt}
+            titulo={v.numero ?? t('sinNumero')}
+            meta={fechaHora(v.created_at)}
+            valor={formatear(v.total)}
+            estado={<StatusBadge estado={BADGE_ESTADO_VENTA[estado(v)]} etiqueta={tEstados(estado(v))} tamano="sm" />}
             onClick={() => router.push(`/app/pos/ventas/${v.id}`)}
-            className="flex w-full items-start justify-between gap-3 rounded-lg border border-line bg-surface px-3 py-2 text-left"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-fg">{v.numero ?? t('sinNumero')}</p>
-              <p className="text-xs text-fg-muted">{fechaHora(v.created_at)}</p>
-            </div>
-            <span className="shrink-0 text-sm font-semibold tabular-nums text-fg">{formatear(v.total)}</span>
-          </button>
+          />
         )}
         pie={p.total > p.tamano ? <PaginationCompact pagina={p.pagina} tamano={p.tamano} total={p.total} onPaginaChange={p.setPagina} /> : undefined}
       />

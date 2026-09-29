@@ -10555,6 +10555,10 @@
         "historialDescripcion": "Review returns",
         "catalogoMotivos": "Reason catalog",
         "gestionarMotivos": "Manage reasons"
+      },
+      "migas": {
+        "pos": "Point of sale",
+        "devoluciones": "Returns"
       }
     },
     "busqueda": {
@@ -10659,7 +10663,8 @@
         "processed": "Processed",
         "pending": "Pending",
         "cancelled": "Cancelled"
-      }
+      },
+      "metricas": "History figures"
     },
     "motivos": {
       "pagina": {
@@ -10694,7 +10699,8 @@
         "estadoPlaceholder": "Status",
         "todos": "All",
         "inactivos": "Inactive",
-        "actualizar": "Refresh"
+        "actualizar": "Refresh",
+        "subtituloConteo": "{total, plural, one {# reason} other {# reasons}} · {activos, plural, one {# active} other {# active}}"
       },
       "lista": {
         "eliminado": "Reason deleted successfully",
@@ -10745,7 +10751,9 @@
           "nombreRequerido": "The name is required",
           "nombreLargo": "The name cannot exceed 100 characters",
           "descripcionLarga": "The description cannot exceed 500 characters"
-        }
+        },
+        "orden": "Order",
+        "ordenAyuda": "Position of the reason in the list (0 comes first)"
       },
       "errores": {
         "codigoDuplicado": "A reason with the code \"{codigo}\" already exists",
@@ -12014,7 +12022,18 @@
       "pagos": {
         "titulo": "Applied payments",
         "vacio": "The sale has no payments.",
-        "vuelto": "Change {monto}"
+        "vuelto": "Change {monto}",
+        "columnas": {
+          "metodo": "Method",
+          "referencia": "Reference",
+          "fecha": "Date",
+          "cambio": "Change",
+          "importe": "Amount"
+        },
+        "totales": "Payment totals",
+        "totalPagado": "Total paid",
+        "cambio": "Change given",
+        "falta": "Amount due"
       },
       "historial": {
         "titulo": "History",
@@ -12097,7 +12116,8 @@
         "entrega": "Delivery",
         "direccion": "Address",
         "cupon": "Coupon"
-      }
+      },
+      "anuladaTitulo": "Sale voided"
     },
     "devolucion": {
       "titulo": "Create return",

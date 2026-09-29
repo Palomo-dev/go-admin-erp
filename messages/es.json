@@ -10555,6 +10555,10 @@
         "historialDescripcion": "Consulta devoluciones",
         "catalogoMotivos": "Catálogo de Motivos",
         "gestionarMotivos": "Gestionar motivos"
+      },
+      "migas": {
+        "pos": "Punto de venta",
+        "devoluciones": "Devoluciones"
       }
     },
     "busqueda": {
@@ -10659,7 +10663,8 @@
         "processed": "Procesado",
         "pending": "Pendiente",
         "cancelled": "Cancelado"
-      }
+      },
+      "metricas": "Cifras del historial"
     },
     "motivos": {
       "pagina": {
@@ -10694,7 +10699,8 @@
         "estadoPlaceholder": "Estado",
         "todos": "Todos",
         "inactivos": "Inactivos",
-        "actualizar": "Actualizar"
+        "actualizar": "Actualizar",
+        "subtituloConteo": "{total, plural, one {# motivo} other {# motivos}} · {activos, plural, one {# activo} other {# activos}}"
       },
       "lista": {
         "eliminado": "Motivo eliminado correctamente",
@@ -10745,7 +10751,9 @@
           "nombreRequerido": "El nombre es requerido",
           "nombreLargo": "El nombre no puede exceder 100 caracteres",
           "descripcionLarga": "La descripción no puede exceder 500 caracteres"
-        }
+        },
+        "orden": "Orden",
+        "ordenAyuda": "Posición del motivo en la lista (0 va primero)"
       },
       "errores": {
         "codigoDuplicado": "Ya existe un motivo con el código \"{codigo}\"",
@@ -12014,7 +12022,18 @@
       "pagos": {
         "titulo": "Pagos aplicados",
         "vacio": "La venta no tiene pagos.",
-        "vuelto": "Cambio {monto}"
+        "vuelto": "Cambio {monto}",
+        "columnas": {
+          "metodo": "Método",
+          "referencia": "Referencia",
+          "fecha": "Fecha",
+          "cambio": "Cambio",
+          "importe": "Importe"
+        },
+        "totales": "Totales de pago",
+        "totalPagado": "Total pagado",
+        "cambio": "Cambio entregado",
+        "falta": "Falta por pagar"
       },
       "historial": {
         "titulo": "Historial",
@@ -12097,7 +12116,8 @@
         "entrega": "Entrega",
         "direccion": "Dirección",
         "cupon": "Cupón"
-      }
+      },
+      "anuladaTitulo": "Venta anulada"
     },
     "devolucion": {
       "titulo": "Crear devolución",

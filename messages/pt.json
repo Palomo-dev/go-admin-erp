@@ -10450,6 +10450,10 @@
         "historialDescripcion": "Consulte devoluções",
         "catalogoMotivos": "Catálogo de motivos",
         "gestionarMotivos": "Gerenciar motivos"
+      },
+      "migas": {
+        "pos": "Ponto de venda",
+        "devoluciones": "Devoluções"
       }
     },
     "busqueda": {
@@ -10554,7 +10558,8 @@
         "processed": "Processada",
         "pending": "Pendente",
         "cancelled": "Cancelada"
-      }
+      },
+      "metricas": "Números do histórico"
     },
     "motivos": {
       "pagina": {
@@ -10589,7 +10594,8 @@
         "estadoPlaceholder": "Status",
         "todos": "Todos",
         "inactivos": "Inativos",
-        "actualizar": "Atualizar"
+        "actualizar": "Atualizar",
+        "subtituloConteo": "{total, plural, one {# motivo} other {# motivos}} · {activos, plural, one {# ativo} other {# ativos}}"
       },
       "lista": {
         "eliminado": "Motivo excluído com sucesso",
@@ -10640,7 +10646,9 @@
           "nombreRequerido": "O nome é obrigatório",
           "nombreLargo": "O nome não pode ter mais de 100 caracteres",
           "descripcionLarga": "A descrição não pode ter mais de 500 caracteres"
-        }
+        },
+        "orden": "Ordem",
+        "ordenAyuda": "Posição do motivo na lista (0 vem primeiro)"
       },
       "errores": {
         "codigoDuplicado": "Já existe um motivo com o código \"{codigo}\"",
@@ -11909,7 +11917,18 @@
       "pagos": {
         "titulo": "Pagamentos aplicados",
         "vacio": "A venda não tem pagamentos.",
-        "vuelto": "Troco {monto}"
+        "vuelto": "Troco {monto}",
+        "columnas": {
+          "metodo": "Método",
+          "referencia": "Referência",
+          "fecha": "Data",
+          "cambio": "Troco",
+          "importe": "Valor"
+        },
+        "totales": "Totais de pagamento",
+        "totalPagado": "Total pago",
+        "cambio": "Troco entregue",
+        "falta": "Falta pagar"
       },
       "historial": {
         "titulo": "Histórico",
@@ -11992,7 +12011,8 @@
         "entrega": "Entrega",
         "direccion": "Endereço",
         "cupon": "Cupom"
-      }
+      },
+      "anuladaTitulo": "Venda anulada"
     },
     "devolucion": {
       "titulo": "Criar devolução",

@@ -17,6 +17,8 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { cn } from '@/utils/Utils';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { CampoFecha } from '@/components/kit/CampoFecha';
+import { StatusBadge } from '@/components/kit';
+import { BADGE_ESTADO_VENTA, estadoVenta } from '@/lib/pos/ventas/estadoVenta';
 
 interface TicketSearchProps {
   onSaleSelect: (sale: SaleForReturn) => void;
@@ -28,6 +30,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
   const t = useTranslations('posDevoluciones.busqueda');
   const tComun = useTranslations('posDevoluciones.comun');
   const tFormulario = useTranslations('posDevoluciones.formulario');
+  const tEstados = useTranslations('posVentas.estados');
   const { formatDate, formatDateTime } = useFormatDate();
   // Métodos de pago conocidos se traducen; uno desconocido se muestra tal cual (es un dato).
   const nombreMetodoPago = (metodo: string): string =>
@@ -95,14 +98,10 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
     setShowDetails(false);
   };
 
-  const getStatusBadge = (status: string, paymentStatus: string) => {
-    if (status === 'paid' && paymentStatus === 'paid') {
-      return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">{t('estados.pagado')}</Badge>;
-    }
-    if (paymentStatus === 'partial') {
-      return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">{t('estados.parcial')}</Badge>;
-    }
-    return <Badge variant="secondary">{t('estados.pendiente')}</Badge>;
+  // Misma regla de estado que el listado de ventas y la caja (`estadoVenta`).
+  const getStatusBadge = (status: string, paymentStatus: string, total?: number) => {
+    const e = estadoVenta({ status, payment_status: paymentStatus, total });
+    return <StatusBadge estado={BADGE_ESTADO_VENTA[e]} etiqueta={tEstados(e)} tamano="sm" />;
   };
 
   return (
@@ -228,7 +227,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                           </div>
                         </TableCell>
                         <TableCell>
-                          {getStatusBadge(sale.status, sale.payment_status)}
+                          {getStatusBadge(sale.status, sale.payment_status, sale.total)}
                         </TableCell>
                         <TableCell className="dark:text-gray-300">
                           <Badge variant="outline" className="dark:border-gray-500">
@@ -358,7 +357,7 @@ export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) 
                           {tComun('estado')}
                         </div>
                         <div className="mt-1">
-                          {getStatusBadge(selectedSale.status, selectedSale.payment_status)}
+                          {getStatusBadge(selectedSale.status, selectedSale.payment_status, selectedSale.total)}
                         </div>
                       </CardContent>
                     </Card>

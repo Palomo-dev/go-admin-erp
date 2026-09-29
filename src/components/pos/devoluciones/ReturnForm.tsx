@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, Package, CreditCard, DollarSign, Calculator, AlertTriangle, Camera } from 'lucide-react';
+import { ArrowLeft, Package, CreditCard, DollarSign, Calculator, AlertTriangle, Camera, Receipt } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { CampoNumero, FilaDato, ListaDatos, Tarjeta } from '@/components/kit';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -292,35 +291,14 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
       {hasReturnableItems && (
         <>
           {/* Información de la venta */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg dark:text-white">{t('infoVenta')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <Label className="text-sm text-gray-600 dark:text-gray-400">{tComun('cliente')}</Label>
-                  <div className="dark:text-gray-200">{sale.customer?.full_name || tComun('clienteGeneral')}</div>
-                </div>
-                <div>
-                  <Label className="text-sm text-gray-600 dark:text-gray-400">{tComun('fecha')}</Label>
-                  <div className="dark:text-gray-200">{formatDate(sale.sale_date)}</div>
-                </div>
-                <div>
-                  <Label className="text-sm text-gray-600 dark:text-gray-400">{t('totalOriginal')}</Label>
-                  <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                    {formatear(sale.total)}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-sm text-gray-600 dark:text-gray-400">{t('metodoPago')}</Label>
-                  <div className="dark:text-gray-200">
-                    {sale.payment_method ? nombreMetodoPago(sale.payment_method) : t('noEspecificado')}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <Tarjeta titulo={t('infoVenta')} icono={Receipt}>
+            <ListaDatos etiqueta={t('infoVenta')}>
+              <FilaDato etiqueta={tComun('cliente')} valor={sale.customer?.full_name || tComun('clienteGeneral')} />
+              <FilaDato etiqueta={tComun('fecha')} valor={formatDate(sale.sale_date)} />
+              <FilaDato etiqueta={t('totalOriginal')} valor={formatear(sale.total)} tono="fuerte" />
+              <FilaDato etiqueta={t('metodoPago')} valor={sale.payment_method ? nombreMetodoPago(sale.payment_method) : t('noEspecificado')} />
+            </ListaDatos>
+          </Tarjeta>
 
           {/* Selección de items */}
           <Card className="dark:bg-gray-800 dark:border-gray-700">
@@ -394,14 +372,16 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                             ))}
                           </div>
                         ) : (
-                          <Input
-                            type="number"
-                            min={0}
-                            max={item.max_returnable}
-                            value={item.return_quantity}
-                            onChange={(e) => handleQuantityChange(item.sale_item_id, parseInt(e.target.value) || 0)}
+                          <CampoNumero
+                            valor={item.return_quantity}
+                            onValorChange={(v) => handleQuantityChange(item.sale_item_id, v ?? 0)}
+                            minimo={0}
+                            maximo={item.max_returnable}
+                            decimales={0}
                             disabled={!item.selected}
-                            className="w-20 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            tamano="sm"
+                            className="w-20"
+                            aria-label={t('aDevolver')}
                           />
                         )}
                       </TableCell>
@@ -514,30 +494,16 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                 </div>
 
                 <div className="space-y-4">
-                  <Card className="dark:bg-gray-900 dark:border-gray-600">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg dark:text-white">{t('resumen')}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex justify-between">
-                        <span className="dark:text-gray-300">{t('itemsSeleccionados')}</span>
-                        <span className="font-medium dark:text-white">{selectedItemsCount}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="dark:text-gray-300">{t('cantidadTotal')}</span>
-                        <span className="font-medium dark:text-white">
-                          {returnItems.filter(item => item.selected).reduce((sum, item) => sum + item.return_quantity, 0)}
-                        </span>
-                      </div>
-                      <Separator className="dark:bg-gray-700" />
-                      <div className="flex justify-between text-lg">
-                        <span className="font-medium dark:text-white">{t('totalReembolso')}</span>
-                        <span className="font-bold text-red-600 dark:text-red-400">
-                          {formatear(totalRefund)}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <Tarjeta titulo={t('resumen')}>
+                    <ListaDatos etiqueta={t('resumen')}>
+                      <FilaDato etiqueta={t('itemsSeleccionados')} valor={selectedItemsCount} />
+                      <FilaDato
+                        etiqueta={t('cantidadTotal')}
+                        valor={returnItems.filter(item => item.selected).reduce((sum, item) => sum + item.return_quantity, 0)}
+                      />
+                      <FilaDato etiqueta={t('totalReembolso')} valor={formatear(totalRefund)} tono="fuerte" tamano="lg" separadorAntes />
+                    </ListaDatos>
+                  </Tarjeta>
 
                   <div className="flex space-x-3">
                     <Button

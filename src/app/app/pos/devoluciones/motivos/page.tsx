@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { Tag } from 'lucide-react';
+import { PageHeader } from '@/components/kit';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   ReturnReasonsList, 
   ReturnReasonForm, 
@@ -24,6 +26,7 @@ export default function MotivosDevolucionPage() {
   const [editingReason, setEditingReason] = useState<ReturnReason | null>(null);
   const t = useTranslations('posDevoluciones.motivos.pagina');
   const tErrores = useTranslations('posDevoluciones.motivos.errores');
+  const tEncabezado = useTranslations('posDevoluciones.motivos.encabezado');
   const { getToday } = useFormatDate();
 
   const loadReasons = useCallback(async () => {
@@ -169,16 +172,16 @@ export default function MotivosDevolucionPage() {
 
   if (orgLoading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <PageHeaderSkeleton />
-        <CardListSkeleton cards={5} columns="1" />
+      <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6" aria-busy="true">
+        <PageHeader titulo={tEncabezado('titulo')} icono={Tag} cargando />
+        <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
         <ReturnReasonsHeader
           filters={filters}
           onFiltersChange={handleFiltersChange}

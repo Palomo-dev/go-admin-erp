@@ -10450,6 +10450,10 @@
         "historialDescripcion": "Consultez les retours",
         "catalogoMotivos": "Catalogue des motifs",
         "gestionarMotivos": "Gérer les motifs"
+      },
+      "migas": {
+        "pos": "Point de vente",
+        "devoluciones": "Retours"
       }
     },
     "busqueda": {
@@ -10554,7 +10558,8 @@
         "processed": "Traité",
         "pending": "En attente",
         "cancelled": "Annulé"
-      }
+      },
+      "metricas": "Chiffres de l'historique"
     },
     "motivos": {
       "pagina": {
@@ -10589,7 +10594,8 @@
         "estadoPlaceholder": "Statut",
         "todos": "Tous",
         "inactivos": "Inactifs",
-        "actualizar": "Actualiser"
+        "actualizar": "Actualiser",
+        "subtituloConteo": "{total, plural, one {# motif} other {# motifs}} · {activos, plural, one {# actif} other {# actifs}}"
       },
       "lista": {
         "eliminado": "Motif supprimé avec succès",
@@ -10640,7 +10646,9 @@
           "nombreRequerido": "Le nom est obligatoire",
           "nombreLargo": "Le nom ne peut pas dépasser 100 caractères",
           "descripcionLarga": "La description ne peut pas dépasser 500 caractères"
-        }
+        },
+        "orden": "Ordre",
+        "ordenAyuda": "Position du motif dans la liste (0 en premier)"
       },
       "errores": {
         "codigoDuplicado": "Un motif avec le code « {codigo} » existe déjà",
@@ -11909,7 +11917,18 @@
       "pagos": {
         "titulo": "Paiements imputés",
         "vacio": "La vente n'a pas de paiements.",
-        "vuelto": "Monnaie rendue {monto}"
+        "vuelto": "Monnaie rendue {monto}",
+        "columnas": {
+          "metodo": "Moyen",
+          "referencia": "Référence",
+          "fecha": "Date",
+          "cambio": "Monnaie",
+          "importe": "Montant"
+        },
+        "totales": "Totaux des paiements",
+        "totalPagado": "Total payé",
+        "cambio": "Monnaie rendue",
+        "falta": "Reste à payer"
       },
       "historial": {
         "titulo": "Historique",
@@ -11992,7 +12011,8 @@
         "entrega": "Livraison",
         "direccion": "Adresse",
         "cupon": "Coupon"
-      }
+      },
+      "anuladaTitulo": "Vente annulée"
     },
     "devolucion": {
       "titulo": "Créer un retour",

@@ -673,3 +673,104 @@ invitación en tableta oscura, selección en móvil, sin organizaciones, `Escena
 8. Siguen abiertas las preguntas 1 a 13 de §9 (Microsoft en web, contraseña única, enumeración,
    bloqueo, registro A o B, selector único, sesión vencida, Términos, 2FA…): la v3 las dibuja con las
    mismas recomendaciones.
+
+---
+
+## 12. Implementación de la v3 en código — Paso 1: análisis (2026-09-29)
+
+Encargo aprobado por el dueño el 2026-09-29: aplicar la v3 en código sin perder funcionalidad, con
+las 13 decisiones de §9 y las 8 de §11.5 tomadas según la recomendación, y el cambio de ubicación
+(país según el navegador, un solo campo «Ciudad» con buscador, «Misma ubicación de la organización»,
+tarjeta de Inicio y exigencia al activar la facturación electrónica). Esta sección es el análisis
+previo; el estado de cada fase se anexa al final (§13).
+
+### 12.1 Inventario del código actual (re-verificado hoy)
+
+| Zona | Archivos (líneas) | Qué hace hoy |
+|---|---|---|
+| Login | `app/auth/login/page.tsx` (889), `lib/auth/emailAuth.ts` (411), `lib/auth/organizationAuth.ts` (683), `lib/supabase/config.ts` `signInWithEmail` (L742) | `signInWithPassword` **desde el navegador** (3 s de espera por correo, en memoria), mensajes fijos en español y crudos de Supabase, popup propio de organizaciones (siempre, aun con una), `proceedWithLogin` va a `sessionStorage.redirectTo` sin validar, registra el dispositivo, cookie `go-admin-user-id`, «Recordarme» guarda solo el correo, biometría (app), `?reason=expired` recupera la sesión con el refresh token (`recuperacionSesion.ts`), Google, Microsoft, `GeolocationModal` |
+| Registro | `app/auth/signup/page.tsx` (1021) + `components/auth/{PersonalInfoStep,RegistrationForm,OrganizationStep,BranchStep,SubscriptionStep,PriceSummary,PaymentMethodStep,VerificationStep}.tsx` | 6 pasos en el navegador; `POST /api/auth/check-email` (oráculo); `supabase.auth.signUp` al final con todo en `signup_data`; **en producción la confirmación de correo está apagada** (306 de 372 altas por correo de los últimos 90 días quedaron confirmadas en el mismo segundo): el alta crea organización, sucursal, membresía, suscripción y Stripe al instante, antes de confirmar nada. Foto de perfil subida al bucket `profiles/avatars/temp` **sin sesión**. Idiomas de e it, que la app no tiene |
+| Alta de organización | 3 copias: `signup/page.tsx` `createSignupData`, `auth/callback/route.ts` `completeSignupAfterEmailConfirmation`, `organization/CreateOrganizationWizard.tsx` `finalizeCreation` | organización → membresía → tarifa → sucursal principal (creada por disparador) → `member_branches` → suscripción (disparador) → Stripe → `plan_id`; cada copia con su tabla de planes (callback: ultimate 5, business 3, pro 2, resto 1; las otras dos: resto 2) |
+| Ubicación | `organization/CreateOrganizationForm.tsx` (1231), `branches/BranchForm.tsx` (952) | país con «Colombia»/`COL` por defecto en el código; `municipalities` solo tiene Colombia (582); sucursales: **70 de 94 sin `country_code`** (67 «Colombia», 2 «México», 1 sin país); organizaciones: 12 de 89 sin `country_code` |
+| Recuperar / restablecer | `forgot-password/page.tsx` (234), `reset-password/page.tsx` (352), `config.ts` `resetPassword` | revela «cuenta con Google» (RPC `get_auth_provider_by_email`, **ejecutable por anon**) y «no verificada»; restablecer acepta **cualquier** sesión abierta y cambia la contraseña sin la actual; política 8 + 4 reglas |
+| Verificación | `auth/verify/route.ts` (357), `verify/failed` (157), `verify/resent` (76) | `verifyOtp` por tipo; tras 39999d0f el código de invitación solo sale tras `verifyOtp` correcto y el reenvío es uniforme (límites por IP y correo); `failed` y `resent` en español fijo, `resent` pinta el correo de la URL |
+| Callback OAuth / PKCE | `auth/callback/route.ts` (535), `middleware.ts` L239 (`/?code=` → callback), `api/auth/native-callback` | Google → perfil + cookie `go-admin-oauth-session` → `select-organization`; **cualquier otro proveedor se trata como confirmación de correo** (Microsoft termina en un login vacío) |
+| Selección de organización | `auth/select-organization/page.tsx` (466) + popup del login | dos selectores; `?_oauth=` muerto; dos redirecciones compitiendo (`proceedWithLogin` + `router.push(dest)` **sin validar**); sin organizaciones → `/auth/signup?step=organization&google=true` aunque no sea Google |
+| Invitación | `auth/invite/page.tsx` (211), `components/auth/InvitationWizard.tsx` (750), `api/auth/{invite,invite/context,invite/resend,invite/pendiente,accept-invitation}`, `lib/auth/{invitaciones,cuentaInvitacion}.ts` | **commit 39999d0f (hoy)**: código de 256 bits generado en servidor, nunca sale salvo en el correo o tras `verifyOtp`; 404 uniforme; límite por IP en el canje; guardarraíl 34 y 4 archivos de pruebas. El asistente sigue en español fijo, fuera de `<form>`, política 8 + 3 |
+| Sesión vencida / salida | `auth/session-expired/page.tsx` (104), `middleware.ts` L932-947 | nadie enlaza la página; `/auth/logout` figura en el middleware y no existe |
+| Cuenta congelada, super admin | `app/app/cuenta-congelada/page.tsx` (467), `auth/super-admin-access/page.tsx` (136) | fuera del flujo principal; se conservan |
+| Perfil | `components/profile/SeguridadSection.tsx` (524) | cambio de contraseña en el navegador (8 caracteres) y 2FA que se activa pero el login nunca pide |
+| Fondo | `components/auth/AuthSceneBackground.tsx` (282) | 33 animaciones, sin `prefers-reduced-motion`, también en móvil |
+
+Base de datos verificada por MCP: `check_email_exists` (DEFINER, ejecutable por `authenticated`),
+`get_auth_provider_by_email` (DEFINER, ejecutable por `anon` y `authenticated`), `fn_rate_limit_hit`
+(solo `service_role`), `accept_invitation_atomic` y `validate_invitation_by_code` ya cerradas por
+39999d0f. Asesor de seguridad: `auth_leaked_password_protection` **desactivado** (la protección de
+contraseñas filtradas de Supabase no está encendida). Línea base de avisos: anon DEFINER 15,
+authenticated DEFINER 442.
+
+### 12.2 Matriz de paridad: funcionalidad actual → v3 (nada se pierde)
+
+| # | Hoy | v3 | Cómo se conserva |
+|---|---|---|---|
+| P1 | Entrar con correo y contraseña | igual, por `POST /api/auth/acceso` (servidor) | la sesión la sigue fijando el cliente con `setSession` y la cookie de siempre |
+| P2 | «Recordarme» (solo correo, ofuscado) | «Recordar mi correo» | misma clave `userEmail` |
+| P3 | Google | igual | `handleGoogleLogin` sin cambios |
+| P4 | Microsoft | **solo en la app** (decisión v2-4) | el callback reconoce cualquier proveedor OAuth, no solo Google |
+| P5 | Biometría (app) | igual | `onBiometricLogin` sin cambios |
+| P6 | `?reason=expired` recupera la sesión y vuelve a `redirectTo` | igual + aviso si no se pudo recuperar | `recuperacionSesion.ts` sin cambios |
+| P7 | `?addAccount=1` (selector de cuentas) | igual | middleware sin cambios en esa regla |
+| P8 | Popup de organizaciones con favoritas y búsqueda | `/auth/select-organization` único, con favoritas, principal y búsqueda; se salta con una | misma clave `favoriteOrgIds` |
+| P9 | Sin organizaciones + invitación pendiente → correo con el enlace | igual | `/api/auth/invite/pendiente` sin cambios; la pantalla «reenviado» pasa a `failed?estado=reenviado` |
+| P10 | Registro de dispositivo, cookie `go-admin-user-id`, `last_org_id` | igual | `proceedWithLogin` conservado |
+| P11 | Correo sin confirmar: aviso + reenvío | aviso + botón «Reenviar» con límite | `EmailNotConfirmedAlert` |
+| P12 | Registro en 6 pasos | cuenta → «Revisa tu correo» → organización → sucursal → plan → pago (decisión v2-8) | los datos de organización, sucursal, plan, cupón, referido (`?ref=`) y tarjeta se piden igual, después de confirmar |
+| P13 | Foto de perfil e idioma en el registro | idioma = el del selector de la pantalla; foto en Perfil | se guarda `preferred_language`; la foto ya no se sube sin sesión |
+| P14 | «Unirse con código» (no hacía nada) | lleva a `/auth/invite?invite_code=…` (R6) | — |
+| P15 | Usuario de Google sin organización → alta de organización | igual, por el asistente | `?step=organization&google=true` redirige |
+| P16 | Altas antiguas con `signup_data` sin confirmar | se siguen materializando al confirmar | `completeSignupAfterEmailConfirmation` se conserva para ese caso |
+| P17 | Olvidé mi contraseña + reenvío con cuenta atrás | igual, respuesta neutra | — |
+| P18 | Restablecer contraseña | solo con sesión de recuperación; opción de cerrar otras sesiones | `POST /api/auth/restablecer` |
+| P19 | `/auth/verify` (todos los tipos) | igual; `signup` confirmado sin organización → asistente | reglas de 39999d0f intactas |
+| P20 | Invitación: nueva, huérfana, existente, sesión ajena | igual, traducida, en `<form>`, política única | `accept-invitation` y `accept_invitation_atomic` sin cambios de lógica |
+| P21 | Sesión vencida (`/auth/session-expired`) | 308 → `/auth/login?reason=expired` (R2); limpieza en `/auth/logout` (R3) | — |
+| P22 | Super admin, cuenta congelada | igual | no se tocan en esta tanda salvo enlaces |
+| P23 | Cambio de contraseña en Perfil | igual, validado en el servidor con la política única | 2FA oculto (decisión v2-12) |
+| P24 | `GeolocationModal` en el login | igual | — |
+
+### 12.3 Pruebas de caracterización (antes de cambiar)
+
+Se escriben primero contra el código de hoy y se mantienen en verde después (ajustando solo lo que
+la v3 cambia a propósito, con el motivo en el propio test):
+
+1. Login: destino tras entrar (`redirectTo` validado, `/app/inicio` por defecto); 0, 1 y N
+   organizaciones.
+2. Registro: el alta de organización crea organización, membresía, sucursal principal y suscripción
+   con el plan elegido.
+3. Invitación: el código no sale del servidor (guardarraíl 34 y pruebas de 39999d0f intactos).
+4. Restablecer: la contraseña solo cambia con una sesión de recuperación.
+5. Callback OAuth: Google con y sin organización; confirmación de correo; código consumido.
+6. Selección de organización: `dest` validado; una sola redirección.
+7. Sesión vencida: middleware → login con `reason=expired` y `redirectTo`.
+
+### 12.4 Decisiones de implementación
+
+- **Login por el servidor** (`POST /api/auth/acceso`): cuenta intentos fallidos en la tabla
+  `auth_intentos_acceso` (clave = SHA-256 del correo normalizado + IP; nunca el correo en claro),
+  bloquea 15 min tras 5 fallos en 15 min por cuenta + IP y tras 20 por IP, responde siempre el mismo
+  error de credenciales y devuelve los tokens para `setSession`. Límite honesto: quien llame
+  directamente a Auth de Supabase con la clave anónima se salta este contador (le quedan los límites
+  propios de Supabase); la web, la app y el escritorio pasan por aquí.
+- **Política única de contraseña** (`lib/auth/politicaContrasena.ts`, isomórfica): 10 caracteres,
+  sin reglas de mayúsculas/símbolos, distinta del correo, no filtrada (Have I Been Pwned por
+  k-anonimato: solo salen 5 caracteres del SHA-1). Como la protección de Supabase está apagada, el
+  servidor hace la comprobación en registro, restablecer, invitación y perfil. Pendiente del dueño:
+  encender «Leaked password protection» y mínimo 10 en Auth › Password security.
+- **Registro sin enumeración** (`POST /api/auth/registro`): crea la cuenta sin confirmar
+  (`email_confirm: false`) aunque el proyecto tenga la confirmación apagada, envía el correo de
+  confirmación y responde igual si el correo ya existía.
+- **Un solo alta de organización**: RPC transaccional `fn_alta_organizacion` (SECURITY INVOKER: las
+  mismas políticas RLS de hoy, en una transacción) usada por el asistente del registro y por el de
+  «Nueva organización» dentro de la app.
+- **Escena**: `EscenaAcceso` pinta cielo y viajero con variables `auth/*` (modo claro = día de pie,
+  oscuro = noche sentado); estática en móvil y con `prefers-reduced-motion`.

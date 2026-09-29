@@ -704,3 +704,28 @@ configuración 3, organización 2, inicio 2, chat 2, admin 2, shell 1.
   de `CampoFecha` con la misma estética; ninguna pantalla del pedido la necesitó.
 - `components/ui/date-picker.tsx` y `components/ui/calendar.tsx` siguen existiendo para esos
   módulos; cuando se rediseñen, se cambian por `CampoFecha` / `DateRangeButton`.
+
+## Selector de variantes y modificadores (2026-09-28)
+
+Figma `02 Componentes` › `VariantModifierDialog` **155:7980** (`Layout=desktop` 155:7746 · `Layout=sheet`
+155:7862). Frames de uso en `05 POS y ventas`: escritorio `158:27344` (instancia `158:28008`), hoja móvil
+`159:31608` (instancia `159:31735`), validación `198:14706` y lista sin atributos `198:14715`. Su descripción en
+Figma lo dice: «Sustituye a VariantSelectorDialog. Sheet en móvil».
+
+| Figma | Código | Contrato |
+|---|---|---|
+| `VariantModifierDialog` (desktop y sheet) | `kit/SelectorVariantes.tsx` + `selectorVariantesLogica.ts` | Controlado y de presentación. `producto: { nombre, imagen? }` (miniatura 56; sin foto, `MarcadorSinFoto`), `subtitulo?` (por defecto «Elige talla y color · 6 variantes» con `Intl.ListFormat`), `cargando`, `errorCarga: { mensaje, onReintentar }`, `atributos: { nombre, valores: { valor, elegido, existe, agotado? }[] }[]` + `onAtributo(nombre, valor)`, `lista?` (variantes sin atributos: filas radio con precio, «Sin precio» o «Agotado») + `onElegirVariante`, `resumen: { etiqueta, precio, stock?: disponible · agotado · sinControl }`, `grupos: { id, nombre, regla: uno · hasta N · varias, obligatorio, minimo?, opciones: { id, nombre, extra, elegida }[] }[]` + `onOpcion(grupo, opcion)`, `errorGrupo: { grupoId, mensaje }`, `cantidad` + `onCantidad` (sin `onCantidad` no hay `− n +`), `precioUnitario` (con extras; `null` = sin precio), `bloqueo: 'agotado' · 'sinPrecio' · 'sinVariante' · null`, `onAgregar`, `moneda` |
+| Botones por atributo (`brand-tint` + borde `brand` + `brand-deep` el elegido; `border-strong` el resto; opacidad 45 % la combinación que no existe) | idem | `radiogroup` por atributo, `radio` + `aria-checked` por valor. La combinación inexistente se ve atenuada como en Figma **pero se puede tocar**: salta a la variante que tiene ese valor (si se deshabilitara, con 40-Negro y 43-Azul la 43-Azul quedaría inalcanzable). Valor agotado: tachado y «· Agotado» para el lector de pantalla |
+| Resumen `bg-subtle` (SKU, punto de stock, precio H3) | idem | «4 disponibles en {sucursal}» (verde), «Agotado en {sucursal}» (rojo), «Solo hay 4 disponibles y pides 6» (ámbar, no bloquea: el cobro valida el stock), «Sin control de stock» |
+| Grupos de modificadores: insignia `Badge` advertencia «Obligatorio · elige 1» / neutra «Hasta 2»; filas con `Checkbox` 18 px | idem (`ui/checkbox`, `ui/badge` con `tono`) | Cada fila es un `label`: toda la fila marca. El aviso de 198:14706 es un `role="alert"` sobre el pie; el grupo queda `aria-invalid` y el foco va a su primera casilla |
+| Pie: cantidad 40 · 48 · 40 y `Button` primario «Agregar N · $ total» con `ShoppingCart` | idem (`clasesBoton`) | ↑/↓ en el campo de cantidad; Enter agrega. Al terminar de cargar el foco va a «Agregar» (Enter agrega sin buscar el botón). Deshabilitado con el motivo en `aria-describedby` |
+| Cabecera con miniatura | `kit/PanelAdaptable.tsx` prop **`miniatura`** (nueva, aditiva) | 56 × 56 `bg-subtle` en lugar del icono; con miniatura el título es H3 16/22 y la descripción Small 13/18 |
+
+La lógica no vive en el kit. `pos/VariantSelectorDialog.tsx` (mismo nombre y contrato de siempre, para mesas,
+PMS, envíos y «Agregar productos») carga variantes y modificadores y decide con `lib/pos/venta/modificadores.ts`:
+`estadoAtributos`, `varianteAlElegirValor`, `varianteInicial` y `bloqueoVariante` (nuevas) más las de L20. Props
+nuevas, opcionales: `sucursal: { filtro, nombre }` (stock por variante vía
+`POSService.getProductVariants(padre, { branchFilter })`, también sin conexión), `conCantidad` +
+`cantidadInicial` (la cantidad llega como tercer argumento de `onSelectVariant`) y `varianteInicialId` (el
+escáner leyó una variante de un producto con modificadores: abre con ella, B-06). Agotado = regla única
+`lib/pos/stockDisponible.ts` (`agotadoPorStock`), la misma de la tarjeta del catálogo.

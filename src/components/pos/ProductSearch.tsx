@@ -71,12 +71,15 @@ function almacenLocal(): Storage | null {
 
 export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSearchProps) {
   const t = useTranslations('posVenta.catalogo');
-  const { branchFilter } = useBranch();
+  const { branchFilter, branches } = useBranch();
   const moneda = useMonedaOrganizacion();
 
   // Estado para selector de variantes
   const [showVariantDialog, setShowVariantDialog] = useState(false);
   const [selectedParentProduct, setSelectedParentProduct] = useState<Product | null>(null);
+  // Variante que leyó el lector cuando el producto lleva modificadores: el
+  // selector abre con ella elegida (antes se perdía, B-06).
+  const [varianteEscaneada, setVarianteEscaneada] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -169,10 +172,12 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
     setSelectedCategory(null);
   };
 
-  // Entrega al carrito con la cantidad rápida (si la hay) y la consume.
-  const entregar = (product: Product, modifiers?: SelectedModifier[]) => {
-    if (cantidadRapida && cantidadRapida > 1) {
-      onProductSelect(product, modifiers, cantidadRapida);
+  // Entrega al carrito con la cantidad rápida (si la hay) y la consume. El
+  // selector de variantes trae su propia cantidad (`− n +`, que abre con la rápida).
+  const entregar = (product: Product, modifiers?: SelectedModifier[], cantidadElegida?: number) => {
+    const cantidad = cantidadElegida ?? cantidadRapida;
+    if (cantidad && cantidad > 1) {
+      onProductSelect(product, modifiers, cantidad);
     } else if (modifiers !== undefined) {
       onProductSelect(product, modifiers);
     } else {
@@ -203,6 +208,7 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
     }
     // Si el producto tiene variantes o modificadores configurados, abrir el selector
     if (accion === 'dialogo') {
+      setVarianteEscaneada(null);
       setSelectedParentProduct(product);
       setShowVariantDialog(true);
     } else {
@@ -218,11 +224,11 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
   };
 
   // Manejar selección de variante (y sus modificadores) desde el diálogo
-  const handleVariantSelect = (variant: SelectedVariant, modifiers: SelectedModifier[] = []) => {
+  const handleVariantSelect = (variant: SelectedVariant, modifiers: SelectedModifier[] = [], cantidad = 1) => {
     // Hereda categoría y estación del padre y toma su nombre legible (L17).
     const enrichedVariant = enriquecerVariante(variant, selectedParentProduct as PosGridProduct | null);
     // La variante lleva la fila completa del producto (ver SelectedVariant).
-    entregar(enrichedVariant as unknown as Product, modifiers);
+    entregar(enrichedVariant as unknown as Product, modifiers, cantidad);
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
   };
@@ -265,7 +271,8 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
       }
       if (decision.tipo === 'dialogo_padre') {
         // El código identifica una variante concreta, pero el producto lleva
-        // modificadores: se elige en el diálogo del padre.
+        // modificadores: se eligen en el diálogo del padre con esa variante ya elegida.
+        setVarianteEscaneada(decision.varianteId ?? null);
         setSelectedParentProduct(decision.padre);
         setShowVariantDialog(true);
         return;
@@ -367,6 +374,8 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
     }
   };
 
+  const nombreSucursal = branchFilter === null ? null : branches?.find((b) => b.id === branchFilter)?.name ?? undefined;
+
   const mensajeError = catalogo.error?.sinCatalogo ? (catalogo.error.error as Error)?.message ?? null : null;
 
   return (
@@ -409,6 +418,10 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
           onOpenChange={setShowVariantDialog}
           product={selectedParentProduct}
           onSelectVariant={handleVariantSelect}
+          sucursal={{ filtro: branchFilter, nombre: nombreSucursal }}
+          conCantidad
+          cantidadInicial={cantidadRapida ?? 1}
+          varianteInicialId={varianteEscaneada}
         />
       )}
 

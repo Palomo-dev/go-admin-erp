@@ -32,6 +32,7 @@ import {
 } from './catalogStore';
 import { precioVigente } from '@/lib/pos/precioVigente';
 import { sinRetenciones } from '@/lib/services/taxResolverCore';
+import { agotadoPorStock } from '@/lib/pos/stockDisponible';
 
 /** Mensaje único para «no hay catálogo local todavía». */
 export const CATALOG_NOT_REPLICATED_MESSAGE = 'Catálogo local aún no replicado: conecta a internet una vez';
@@ -230,7 +231,7 @@ export async function getProductsPaginated(params: OfflineProductsPaginatedParam
       track_stock: product.track_stock,
       stock_quantity: stockQty,
       qty_reserved: reservedQty,
-      is_out_of_stock: product.track_stock === true && stockQty <= 0,
+      is_out_of_stock: agotadoPorStock(product.track_stock, stockQty),
       is_favorite: product.is_favorite,
       sales_count_90d: 0,
       has_recipe: recipe !== undefined,
@@ -243,18 +244,26 @@ export async function getProductsPaginated(params: OfflineProductsPaginatedParam
   return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
 }
 
-/** Equivalente offline de `POSService.getProductVariants`. */
-export async function getProductVariants(organizationId: number, parentProductId: number, imageUrl: ImageUrlResolver) {
+/** Equivalente offline de `POSService.getProductVariants` (con `opciones.branchFilter`, también el stock por variante). */
+export async function getProductVariants(
+  organizationId: number,
+  parentProductId: number,
+  imageUrl: ImageUrlResolver,
+  opciones?: { branchFilter?: number | null },
+) {
   await requireCatalog(organizationId);
   const variants = (await getCatalogRowsByIndex('products', 'by_org_parent', [organizationId, parentProductId]))
     .filter((v) => v.status === 'active')
     .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
   const ids = variants.map((v) => v.id);
-  const [images, prices, parentImages] = await Promise.all([
+  const conStock = opciones !== undefined && opciones.branchFilter !== undefined;
+  const [images, prices, parentImages, stockRows] = await Promise.all([
     getCatalogRowsByProducts('product_images', ids),
     getCatalogRowsByProducts('product_prices', ids),
     getCatalogRowsByProducts('product_images', [parentProductId]),
+    conStock ? getCatalogRowsByProducts('stock_levels', ids) : Promise.resolve([] as CatalogStockLevel[]),
   ]);
+  const stockByProduct = groupBy(stockRows, (s) => s.product_id);
   const imagesByProduct = groupBy(images, (i) => i.product_id);
   const pricesByProduct = groupBy(prices, (p) => p.product_id);
   const parentImage: CatalogProductImage | undefined = parentImages.find((i) => i.is_primary) ?? parentImages[0];
@@ -276,8 +285,18 @@ export async function getProductVariants(organizationId: number, parentProductId
       price: price ? num(price.price) : null,
       product_images: own.length > 0 ? own : parentImages,
       image: primary?.storage_path ? imageUrl(primary.storage_path) : parentImage?.storage_path ? imageUrl(parentImage.storage_path) : null,
+      ...(conStock ? stockDeVariante(variant.track_stock, stockByProduct.get(variant.id) ?? [], opciones?.branchFilter ?? null) : {}),
     };
   });
+}
+
+function stockDeVariante(trackStock: boolean, filas: CatalogStockLevel[], branchId: number | null) {
+  const stock = sumStock(filas, branchId);
+  return {
+    stock_quantity: stock.qty_on_hand,
+    qty_reserved: stock.qty_reserved,
+    is_out_of_stock: agotadoPorStock(trackStock, stock.qty_on_hand),
+  };
 }
 
 /** Equivalente offline de `POSService.getProductByBarcode` (fila cruda de `products`). */

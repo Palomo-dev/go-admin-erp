@@ -34,6 +34,7 @@ import { getStorageImageUrl } from '@/lib/utils/storageImageUrl';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { nombreVisibleMetodo, ordenarMetodosDeLaOrganizacion } from '@/lib/finanzas/metodosPagoOrganizacion';
 import { precioVigente, importePrecioVigente, ProductoSinPrecioError } from '@/lib/pos/precioVigente';
+import { agotadoPorStock } from '@/lib/pos/stockDisponible';
 import { calcularLineaVenta, totalesDeLineas } from '@/lib/pos/lineaVenta';
 import { anularVentaEnServidor } from '@/lib/pos/anularVenta';
 import { formatDateInTz } from '@/lib/utils/dateDisplay';
@@ -487,7 +488,7 @@ export class POSService {
         // el producto está agotado, aunque no exista registro en stock_levels para
         // la branch actual. Antes se requería hasStockData, pero eso hacía que
         // productos sin registro de stock aparecieran como disponibles.
-        const isOutOfStock = product.track_stock === true && stockQty <= 0;
+        const isOutOfStock = agotadoPorStock(product.track_stock, stockQty);
         // Precio vigente (effective_from <= ahora < effective_to), no el último
         // registrado: un precio vencido o programado a futuro no se muestra.
         const vigente = precioVigente(pricesMap[product.id] || []);
@@ -532,10 +533,18 @@ export class POSService {
     }
   }
 
-  // Obtener variantes de un producto padre
-  static async getProductVariants(parentProductId: number) {
+  /**
+   * Variantes (productos hijos) de un producto padre, con su precio vigente.
+   *
+   * Con `opciones.branchFilter` (el mismo filtro de la grilla: número =
+   * sucursal concreta, `null` = todas) cada variante trae además su stock
+   * (`stock_quantity`, `qty_reserved`) y `is_out_of_stock` con la misma regla
+   * que la tarjeta del catálogo (`agotadoPorStock`). Sin opciones la salida
+   * es la de siempre (PMS, envíos, «Agregar productos»).
+   */
+  static async getProductVariants(parentProductId: number, opciones?: { branchFilter?: number | null }) {
     if (this.usesLocalCatalog()) {
-      return posOfflineReads.getProductVariants(this.organizationId, parentProductId, getStorageImageUrl);
+      return posOfflineReads.getProductVariants(this.organizationId, parentProductId, getStorageImageUrl, opciones);
     }
     try {
       const { data, error } = await supabase
@@ -583,6 +592,29 @@ export class POSService {
         .select('id, product_id, storage_path, is_primary')
         .eq('product_id', parentProductId);
 
+      // Stock por variante en la sucursal que vende (solo si se pidió). Misma
+      // consulta que la grilla: filas sin lote; sin sucursal, suma todas.
+      const conStock = opciones !== undefined && opciones.branchFilter !== undefined;
+      const stockPorVariante: Record<number, { qty_on_hand: number; qty_reserved: number }> = {};
+      if (conStock && variantIds.length > 0) {
+        let consultaStock = supabase
+          .from('stock_levels')
+          .select('product_id, qty_on_hand, qty_reserved')
+          .in('product_id', variantIds)
+          .is('lot_id', null);
+        if (opciones.branchFilter !== null && opciones.branchFilter !== undefined) {
+          consultaStock = consultaStock.eq('branch_id', opciones.branchFilter);
+        }
+        const { data: filasStock, error: errorStock } = await consultaStock;
+        if (errorStock) throw errorStock;
+        (filasStock || []).forEach((s: { product_id: number; qty_on_hand: number | string | null; qty_reserved: number | string | null }) => {
+          const previo = stockPorVariante[s.product_id] ?? { qty_on_hand: 0, qty_reserved: 0 };
+          previo.qty_on_hand += Number(s.qty_on_hand) || 0;
+          previo.qty_reserved += Number(s.qty_reserved) || 0;
+          stockPorVariante[s.product_id] = previo;
+        });
+      }
+
       const parentImage = parentImages?.find((img: any) => img.is_primary) || parentImages?.[0];
 
       return data?.map((variant: any) => {
@@ -594,11 +626,19 @@ export class POSService {
             ? getStorageImageUrl(parentImage.storage_path)
             : null;
 
+        const stock = stockPorVariante[variant.id] ?? { qty_on_hand: 0, qty_reserved: 0 };
         return {
           ...variant,
           price: precioVigente(variant.product_prices || [])?.price || null,
           product_images: ownImages.length > 0 ? ownImages : (parentImages || []),
-          image: resolvedImage
+          image: resolvedImage,
+          ...(conStock
+            ? {
+                stock_quantity: stock.qty_on_hand,
+                qty_reserved: stock.qty_reserved,
+                is_out_of_stock: agotadoPorStock(variant.track_stock, stock.qty_on_hand),
+              }
+            : {}),
         };
       }) || [];
     } catch (error) {

@@ -12133,7 +12133,9 @@
         "todos": "Tous",
         "sinRecordatorio": "Sans relance depuis {dias} jours",
         "sinRecordatorioChip": "Sans relance {dias} j",
-        "clienteChip": "Un client"
+        "clienteChip": "Un client",
+        "cliente": "Client",
+        "clienteChipNombre": "Client : {nombre}"
       },
       "columnas": {
         "cliente": "Client",
@@ -12173,7 +12175,8 @@
       "sinResultados": "Essayez une autre recherche ou d'autres filtres.",
       "errorCarga": "Les créances n'ont pas pu être chargées",
       "sinPermiso": "Vous n'avez pas accès aux créances",
-      "sinPermisoDescripcion": "Demandez à un administrateur l'autorisation de voir les créances."
+      "sinPermisoDescripcion": "Demandez à un administrateur l'autorisation de voir les créances.",
+      "todasLasSucursales": "Toutes les succursales"
     },
     "recordatorio": {
       "enviados": "{count, plural, one {Relance envoyée} other {# relances envoyées}}",
@@ -12226,7 +12229,19 @@
       "creada": "Créé le",
       "sucursal": "Succursale",
       "ultimoRecordatorio": "Dernière relance",
-      "nunca": "Jamais"
+      "nunca": "Jamais",
+      "columnasPagos": {
+        "fecha": "Date",
+        "recibo": "Reçu",
+        "metodo": "Mode",
+        "referencia": "Référence",
+        "aplicado": "Imputé",
+        "estado": "Statut"
+      },
+      "verCarteraCliente": "Voir les créances du client",
+      "cuotasPagadas": "{pagadas} échéances sur {total}",
+      "cuotasPendientes": "{count, plural, =0 {Aucune échéance en attente} one {# échéance en attente} other {# échéances en attente}}",
+      "proximaCuotaDetalle": "Échéance {numero} · {monto}"
     },
     "cuotas": {
       "titulo": "Échéancier",
@@ -12269,7 +12284,9 @@
         "cuotas_invalidas": "Vérifiez les échéances.",
         "plan_no_cuadra": "Les échéances ne correspondent pas au solde du compte.",
         "error_desconocido": "L'opération n'a pas abouti. Réessayez."
-      }
+      },
+      "eliminarConfirmarTitulo": "Supprimer l'échéancier ?",
+      "eliminarConfirmarDescripcion": "Les échéances de ce compte sont supprimées. Le solde restant ne change pas."
     },
     "estadoCuenta": {
       "titulo": "Relevé de compte",
@@ -12309,7 +12326,8 @@
       "pagaEnPromedio": "Paie en moyenne en",
       "cuentasAbiertas": "Comptes ouverts du client",
       "sinCuentas": "Le client n'a pas de comptes ouverts",
-      "sinCuentasDescripcion": "Les ventes à crédit ou les factures avec solde apparaîtront ici."
+      "sinCuentasDescripcion": "Les ventes à crédit ou les factures avec solde apparaîtront ici.",
+      "sinAnticipos": "Aucun acompte"
     },
     "errores": {
       "cliente_sin_correo": "Le client n'a pas d'e-mail.",
@@ -12734,7 +12752,8 @@
         "excluidasTitulo": "{count, plural, one {{n} facture n'est pas annulée} other {{n} factures ne sont pas annulées}}",
         "anuladas": "{count, plural, one {{n} facture annulée} other {{n} factures annulées}}",
         "anularFallidas": "{count, plural, one {{n} facture n'a pas pu être annulée} other {{n} factures n'ont pas pu être annulées}} : {detalle}"
-      }
+      },
+      "saldoMovil": "Solde {saldo}"
     },
     "enviar": {
       "titulo": "Envoyer la facture {numero}",
@@ -14006,6 +14025,11 @@
         "borrador": "La facture {numero} a été créée en brouillon, avec sa vente, ses taxes et sa commission. Émettez-la depuis Factures de vente.",
         "yaConvertida": "Ce devis avait déjà la facture {numero} : aucune autre n’a été créée.",
         "faltantes": "{n, plural, one {Un produit n’a pas assez de stock} other {# produits n’ont pas assez de stock}} : vérifiez avant d’émettre."
+      },
+      "eliminar": {
+        "titulo": "Supprimer le devis {numero} ?",
+        "descripcion": "Le devis en brouillon est supprimé et ne peut pas être récupéré.",
+        "confirmar": "Supprimer le devis"
       }
     }
   },
@@ -14036,7 +14060,9 @@
       "confirmar": "Voulez-vous vraiment annuler cet avoir ?",
       "motivo": "Motif de l’annulation :",
       "hecho": "Avoir annulé avec succès",
-      "error": "Impossible d’annuler"
+      "error": "Impossible d’annuler",
+      "titulo": "Annuler l’avoir {numero}",
+      "confirmarBoton": "Annuler l’avoir"
     },
     "listado": {
       "titulo": "Avoirs",

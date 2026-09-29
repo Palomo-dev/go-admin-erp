@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { CotizacionesService, type Quotation } from '@/lib/services/cotizacionesService';
 import { DetalleCotizacion } from '@/components/finanzas/cotizaciones/id/DetalleCotizacion';
-import { Loader2, FileQuestion, AlertTriangle, ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Loader2, FileQuestion, ArrowLeft } from 'lucide-react';
+import { EmptyState } from '@/components/kit';
+
+const RUTA_LISTADO = '/app/finanzas/cotizaciones';
 
 export default function CotizacionDetallePage() {
   const params = useParams();
-  const router = useRouter();
   const [cotizacion, setCotizacion] = useState<Quotation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,34 +50,27 @@ export default function CotizacionDetallePage() {
 
   if (notFound) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 gap-4">
-        <FileQuestion className="h-16 w-16 text-gray-400 dark:text-gray-600" />
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Cotización no encontrada</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            La cotización que buscas no existe o ha sido eliminada.
-          </p>
-        </div>
-        <Button variant="outline" onClick={() => router.push('/app/finanzas/cotizaciones')}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver a cotizaciones
-        </Button>
+      <div className="p-4 sm:p-6">
+        <EmptyState
+          variante="empty"
+          icono={FileQuestion}
+          titulo="Cotización no encontrada"
+          descripcion="La cotización que buscas no existe o ha sido eliminada."
+          accion={{ etiqueta: 'Volver a cotizaciones', href: RUTA_LISTADO, icono: ArrowLeft }}
+        />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 gap-4">
-        <AlertTriangle className="h-16 w-16 text-amber-500" />
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Error al cargar</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{error}</p>
-        </div>
-        <Button variant="outline" onClick={() => router.push('/app/finanzas/cotizaciones')}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver a cotizaciones
-        </Button>
+      <div className="p-4 sm:p-6">
+        <EmptyState
+          variante="error"
+          titulo="Error al cargar"
+          descripcion={error}
+          accion={{ etiqueta: 'Volver a cotizaciones', href: RUTA_LISTADO, icono: ArrowLeft }}
+        />
       </div>
     );
   }

@@ -8,6 +8,13 @@ import { TRAMOS_ANTIGUEDAD, type TramoAntiguedad } from './antiguedad';
 export const FILTROS_CARTERA = ['estado', 'tramo', 'cliente', 'sin_recordatorio_dias'] as const;
 export const CAMPOS_ORDEN_CARTERA = ['vencimiento', 'saldo', 'antiguedad', 'cliente', 'creada'] as const;
 
+/**
+ * Tamaños de página del listado (25 por defecto). Van a `useListadoServidor`
+ * como `tamanosPermitidos`: sin ellos el kit valida contra `TAMANOS_PAGINA`
+ * (10, 20, 50, 100), no encuentra el 25 y lo baja a 10 en silencio.
+ */
+export const TAMANOS_PAGINA_CARTERA = [25, 50, 100] as const;
+
 export const ESTADOS_CARTERA = ['abiertas', 'todos', 'current', 'partial', 'overdue', 'paid', 'cancelled'] as const;
 export type EstadoFiltroCartera = (typeof ESTADOS_CARTERA)[number];
 

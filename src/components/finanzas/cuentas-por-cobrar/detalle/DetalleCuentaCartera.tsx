@@ -9,11 +9,15 @@
  * cuenta y el recordatorio por el motor de documentos y el correo del CRM.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Ban, Bell, CalendarClock, CircleDollarSign, FileText, Printer, Receipt, RefreshCw, Trash2, User } from 'lucide-react';
+import { AlertTriangle, Ban, Bell, CalendarClock, CircleDollarSign, FileText, Printer, Receipt, RefreshCw, Trash2, User } from 'lucide-react';
 import {
   CadenaDocumento,
+  ChipDocumento,
+  DataTable,
+  Dialogo,
   DocumentoCabecera,
   EmptyState,
   FilaDato,
@@ -25,6 +29,7 @@ import {
   Tarjeta,
   clasesBoton,
   type AccionFila,
+  type ColumnaTabla,
   type EslabonDocumento,
 } from '@/components/kit';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
@@ -34,7 +39,7 @@ import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { abrirDocumento } from '@/lib/documents/cliente';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
-import { proximaCuota, type CuotaCartera, type DetalleCuentaPorCobrar } from '@/lib/finanzas/cartera/contratoCartera';
+import { proximaCuota, type CuotaCartera, type DetalleCuentaPorCobrar, type PagoCartera } from '@/lib/finanzas/cartera/contratoCartera';
 import { ErrorPeticionCartera, enviarRecordatorio, pedirDetalleCuenta } from '@/lib/finanzas/cartera/clienteCartera';
 import { pagoAnulable } from '@/lib/finanzas/ventas/detalleLogica';
 import { RegistrarPagoConectado } from '@/components/finanzas/pagos/RegistrarPagoConectado';
@@ -43,6 +48,9 @@ import { PlanCuotasCartera } from '@/components/finanzas/cartera/PlanCuotasCarte
 import { CrearPlanCuotasDialog } from '@/components/finanzas/cartera/CrearPlanCuotasDialog';
 import { EstadoCuentaDialog } from '@/components/finanzas/cartera/EstadoCuentaDialog';
 import { rutasCartera } from '../listado/ListadoCartera';
+
+/** La tabla va dentro de una `Tarjeta sinRelleno`: sin su propio marco, con la raya superior como separador. */
+const TABLA_EN_TARJETA = '[&>div]:rounded-none [&>div]:border-x-0 [&>div]:border-b-0';
 
 export function DetalleCuentaCartera({ id, origen }: { id: string; origen: 'finanzas' | 'pos' }) {
   const t = useTranslations('cartera');
@@ -60,6 +68,8 @@ export function DetalleCuentaCartera({ id, origen }: { id: string; origen: 'fina
   const [estadoCuenta, setEstadoCuenta] = useState(false);
   const [crearPlan, setCrearPlan] = useState(false);
   const [recordando, setRecordando] = useState(false);
+  const [confirmarQuitarPlan, setConfirmarQuitarPlan] = useState(false);
+  const [quitandoPlan, setQuitandoPlan] = useState(false);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -144,12 +154,23 @@ export function DetalleCuentaCartera({ id, origen }: { id: string; origen: 'fina
     await cargar();
   };
 
+  /** «Quitar plan de cuotas» se confirma antes de borrar (acción destructiva). */
+  const confirmarEliminarPlan = async () => {
+    setQuitandoPlan(true);
+    try {
+      await eliminarPlan();
+    } finally {
+      setQuitandoPlan(false);
+      setConfirmarQuitarPlan(false);
+    }
+  };
+
   const menu: AccionFila[] = [
     { id: 'factura', etiqueta: t('detalle.verFactura'), icono: Receipt, onSelect: () => datos?.factura && router.push(`/app/finanzas/facturas-venta/${datos.factura.id}`), oculta: !datos?.factura || enPos },
     { id: 'pdf-factura', etiqueta: t('detalle.pdfFactura'), icono: Printer, onSelect: () => datos?.factura && abrirDocumento('factura-venta', datos.factura.id), oculta: !datos?.factura },
     { id: 'cliente', etiqueta: t('detalle.carteraCliente'), icono: User, onSelect: () => datos?.cliente && router.push(rutas.cliente(datos.cliente.id)), oculta: !datos?.cliente },
     { id: 'plan', etiqueta: datos?.cuotas.length ? t('cuotas.reemplazar') : t('cuotas.crearPlan'), icono: CalendarClock, onSelect: () => setCrearPlan(true), oculta: !permisos.crear || !abierta || tieneAbonosEnCuotas, separadorAntes: true },
-    { id: 'quitar-plan', etiqueta: t('cuotas.eliminar'), icono: Trash2, onSelect: () => void eliminarPlan(), destructiva: true, oculta: !permisos.crear || !datos?.cuotas.length || tieneAbonosEnCuotas },
+    { id: 'quitar-plan', etiqueta: t('cuotas.eliminar'), icono: Trash2, onSelect: () => setConfirmarQuitarPlan(true), destructiva: true, oculta: !permisos.crear || !datos?.cuotas.length || tieneAbonosEnCuotas },
     { id: 'actualizar', etiqueta: t('listado.actualizar'), icono: RefreshCw, onSelect: () => void cargar() },
   ];
 
@@ -164,6 +185,59 @@ export function DetalleCuentaCartera({ id, origen }: { id: string; origen: 'fina
           .map((p) => ({ id: p.id, tipo: 'pago' as const, numero: p.recibo ?? t('detalle.pago'), fecha: formatDate(p.fecha), importe: fmt(p.monto) })),
       ]
     : [];
+
+  // ── KPI con el conteo de cuotas ya cargado (Figma X1 740:50039…50096) ──────
+  const cuotas = datos?.cuotas ?? [];
+  const cuotasPagadas = cuotas.filter((q) => q.estado === 'paid').length;
+  const cuotasPendientes = cuotas.filter((q) => q.estado !== 'paid' && q.estado !== 'written_off' && q.saldo > 0).length;
+
+  // ── Pagos recibidos (Figma X1 740:50484, 740:50452, 740:50475) ─────────────
+  const columnasPagos: ColumnaTabla<PagoCartera>[] = [
+    {
+      id: 'fecha',
+      encabezado: t('detalle.columnasPagos.fecha'),
+      celda: (p) => <span className="whitespace-nowrap tabular-nums">{formatDateTime(p.fecha)}</span>,
+    },
+    {
+      id: 'recibo',
+      encabezado: t('detalle.columnasPagos.recibo'),
+      celda: (p) => <ChipDocumento tipo="recibo" numero={p.recibo ?? t('detalle.pago')} onClick={() => abrirDocumento('recibo-caja', p.id)} anulado={p.estado !== 'completed'} />,
+    },
+    {
+      id: 'metodo',
+      encabezado: t('detalle.columnasPagos.metodo'),
+      ocultarDebajo: 'md',
+      celda: (p) => <span className="whitespace-nowrap text-fg-secondary">{p.metodoNombre ?? p.metodo ?? '—'}</span>,
+    },
+    {
+      id: 'referencia',
+      encabezado: t('detalle.columnasPagos.referencia'),
+      ocultarDebajo: 'lg',
+      celda: (p) => <span className="text-fg-secondary">{p.referencia ?? '—'}</span>,
+    },
+    {
+      id: 'aplicado',
+      encabezado: t('detalle.columnasPagos.aplicado'),
+      variante: 'importe',
+      celda: (p) => {
+        const anulado = p.estado !== 'completed';
+        const cuota = p.cuotaId ? cuotas.find((q) => q.id === p.cuotaId) : null;
+        return (
+          <span className="flex flex-col items-end">
+            <span className={anulado ? 'text-fg-muted line-through' : 'font-medium text-fg'}>{fmt(p.monto)}</span>
+            {cuota && <span className="text-xs text-fg-muted">{t('detalle.aplicadoACuota', { numero: cuota.numero })}</span>}
+            {anulado && p.motivoAnulacion && <span className="text-xs text-fg-muted">{t('detalle.anuladoPor', { motivo: p.motivoAnulacion })}</span>}
+          </span>
+        );
+      },
+    },
+    {
+      id: 'estado',
+      encabezado: t('detalle.columnasPagos.estado'),
+      alinear: 'centro',
+      celda: (p) => <StatusBadge estado={p.estado === 'completed' ? 'paid' : 'void'} />,
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
@@ -217,19 +291,30 @@ export function DetalleCuentaCartera({ id, origen }: { id: string; origen: 'fina
         <>
           <KpiStrip etiqueta={t('detalle.kpis')}>
             <StatCard etiqueta={t('detalle.montoOriginal')} valor={fmt(c.monto)} />
-            <StatCard etiqueta={t('detalle.pagado')} valor={fmt(pagado)} tono={pagado > 0 ? 'exito' : 'neutro'} />
-            <StatCard etiqueta={t('detalle.saldo')} valor={fmt(c.saldo)} tono={c.dias > 0 && c.saldo > 0 ? 'peligro' : 'neutro'} />
+            <StatCard
+              etiqueta={t('detalle.pagado')}
+              valor={fmt(pagado)}
+              tono={pagado > 0 ? 'exito' : 'neutro'}
+              detalle={cuotas.length > 0 ? t('detalle.cuotasPagadas', { pagadas: cuotasPagadas, total: cuotas.length }) : undefined}
+            />
+            <StatCard
+              etiqueta={t('detalle.saldo')}
+              valor={fmt(c.saldo)}
+              tono={c.dias > 0 && c.saldo > 0 ? 'peligro' : 'neutro'}
+              iconoDetalle={cuotasPendientes > 0 ? AlertTriangle : undefined}
+              detalle={cuotas.length > 0 ? t('detalle.cuotasPendientes', { count: cuotasPendientes }) : undefined}
+            />
             <StatCard
               etiqueta={t('detalle.proximaCuota')}
-              valor={proxima ? fmt(proxima.saldo) : '—'}
-              detalle={proxima ? t('cuotas.cuotaN', { numero: proxima.numero, fecha: formatPlain(proxima.vencimiento) }) : t('detalle.sinCuotas')}
+              valor={proxima ? formatPlain(proxima.vencimiento) : '—'}
+              detalle={proxima ? t('detalle.proximaCuotaDetalle', { numero: proxima.numero, monto: fmt(proxima.saldo) }) : t('detalle.sinCuotas')}
             />
           </KpiStrip>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
             <div className="flex min-w-0 flex-col gap-4 lg:col-span-2 lg:gap-6">
               {datos.cuotas.length > 0 && (
-                <Tarjeta titulo={t('cuotas.titulo')} sinRelleno>
+                <Tarjeta titulo={t('cuotas.titulo')} sinRelleno className="overflow-hidden">
                   <PlanCuotasCartera
                     cuotas={datos.cuotas}
                     formatear={fmt}
@@ -239,47 +324,28 @@ export function DetalleCuentaCartera({ id, origen }: { id: string; origen: 'fina
                 </Tarjeta>
               )}
 
-              <Tarjeta titulo={t('detalle.pagos')} sinRelleno>
-                {datos.pagos.length === 0 ? (
-                  <p className="px-4 py-6 text-sm text-fg-muted">{t('detalle.sinPagos')}</p>
-                ) : (
-                  <ul className="divide-y divide-line">
-                    {datos.pagos.map((p) => {
-                      const anulado = p.estado !== 'completed';
-                      const cuota = p.cuotaId ? datos.cuotas.find((q) => q.id === p.cuotaId) : null;
-                      return (
-                        <li key={p.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
-                          <div className="flex min-w-0 flex-1 flex-col">
-                            <span className={anulado ? 'text-fg-muted line-through' : 'font-medium text-fg'}>
-                              {[p.recibo, p.metodoNombre ?? p.metodo].filter(Boolean).join(' · ')}
-                            </span>
-                            <span className="text-xs text-fg-muted">
-                              {formatDateTime(p.fecha)}
-                              {cuota ? ` · ${t('detalle.aplicadoACuota', { numero: cuota.numero })}` : ''}
-                              {anulado && p.motivoAnulacion ? ` · ${t('detalle.anuladoPor', { motivo: p.motivoAnulacion })}` : ''}
-                            </span>
-                          </div>
-                          {anulado && <StatusBadge estado="void" />}
-                          <span className={anulado ? 'tabular-nums text-fg-muted line-through' : 'font-medium tabular-nums text-fg'}>{fmt(p.monto)}</span>
-                          <RowActionsMenu
-                            titulo={p.recibo ?? t('detalle.pago')}
-                            acciones={[
-                              { id: 'recibo', etiqueta: t('detalle.verRecibo'), icono: Printer, onSelect: () => abrirDocumento('recibo-caja', p.id) },
-                              {
-                                id: 'anular',
-                                etiqueta: t('detalle.anularPago'),
-                                icono: Ban,
-                                destructiva: true,
-                                onSelect: () => setPagoAAnular({ id: p.id, monto: fmt(p.monto) }),
-                                oculta: !puedeAnular || !pagoAnulable(p),
-                              },
-                            ]}
-                          />
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+              <Tarjeta titulo={t('detalle.pagos')} sinRelleno className="overflow-hidden">
+                <DataTable
+                  etiqueta={t('detalle.pagos')}
+                  densidad="compacta"
+                  className={TABLA_EN_TARJETA}
+                  columnas={columnasPagos}
+                  filas={datos.pagos}
+                  obtenerId={(p) => p.id}
+                  etiquetaFila={(p) => p.recibo ?? t('detalle.pago')}
+                  acciones={(p) => [
+                    { id: 'recibo', etiqueta: t('detalle.verRecibo'), icono: Printer, onSelect: () => abrirDocumento('recibo-caja', p.id) },
+                    {
+                      id: 'anular',
+                      etiqueta: t('detalle.anularPago'),
+                      icono: Ban,
+                      destructiva: true,
+                      onSelect: () => setPagoAAnular({ id: p.id, monto: fmt(p.monto) }),
+                      oculta: !puedeAnular || !pagoAnulable(p),
+                    },
+                  ]}
+                  vacio={{ titulo: t('detalle.sinPagos'), icono: CircleDollarSign, compacto: true }}
+                />
               </Tarjeta>
             </div>
 
@@ -291,10 +357,16 @@ export function DetalleCuentaCartera({ id, origen }: { id: string; origen: 'fina
                     {datos.cliente.documento && <FilaDato etiqueta={t('detalle.documento')} valor={datos.cliente.documento} />}
                     {datos.cliente.email && <FilaDato etiqueta={t('detalle.correo')} valor={datos.cliente.email} />}
                     {datos.cliente.telefono && <FilaDato etiqueta={t('detalle.telefono')} valor={datos.cliente.telefono} />}
-                    <FilaDato etiqueta={t('detalle.carteraTotal')} valor={fmt(datos.cliente.carteraTotal)} tono="fuerte" href={rutas.cliente(datos.cliente.id)} />
+                    <FilaDato etiqueta={t('detalle.carteraTotal')} valor={fmt(datos.cliente.carteraTotal)} tono="fuerte" />
                   </ListaDatos>
                 ) : (
                   <p className="text-sm text-fg-muted">{t('listado.sinCliente')}</p>
+                )}
+                {datos.cliente && (
+                  <Link href={rutas.cliente(datos.cliente.id)} className={clasesBoton({ variante: 'secundario', tamano: 'sm', anchoCompleto: true, className: 'mt-3' })}>
+                    <User aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                    {t('detalle.verCarteraCliente')}
+                  </Link>
                 )}
               </Tarjeta>
 
@@ -356,6 +428,14 @@ export function DetalleCuentaCartera({ id, origen }: { id: string; origen: 'fina
               origen={origen}
             />
           )}
+          <Dialogo
+            abierto={confirmarQuitarPlan}
+            onAbiertoChange={(v) => !quitandoPlan && setConfirmarQuitarPlan(v)}
+            titulo={t('cuotas.eliminarConfirmarTitulo')}
+            descripcion={t('cuotas.eliminarConfirmarDescripcion')}
+            ancho={440}
+            primario={{ etiqueta: t('cuotas.eliminar'), onClick: () => void confirmarEliminarPlan(), destructiva: true, cargando: quitandoPlan }}
+          />
           <CrearPlanCuotasDialog
             abierto={crearPlan}
             onAbiertoChange={setCrearPlan}

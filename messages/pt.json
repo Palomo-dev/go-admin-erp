@@ -12133,7 +12133,9 @@
         "todos": "Todos",
         "sinRecordatorio": "Sem lembrete há {dias} dias",
         "sinRecordatorioChip": "Sem lembrete {dias} d",
-        "clienteChip": "Um cliente"
+        "clienteChip": "Um cliente",
+        "cliente": "Cliente",
+        "clienteChipNombre": "Cliente: {nombre}"
       },
       "columnas": {
         "cliente": "Cliente",
@@ -12173,7 +12175,8 @@
       "sinResultados": "Tente outra busca ou outros filtros.",
       "errorCarga": "Não foi possível carregar as contas a receber",
       "sinPermiso": "Você não tem acesso à carteira",
-      "sinPermisoDescripcion": "Peça a um administrador a permissão para ver a carteira."
+      "sinPermisoDescripcion": "Peça a um administrador a permissão para ver a carteira.",
+      "todasLasSucursales": "Todas as filiais"
     },
     "recordatorio": {
       "enviados": "{count, plural, one {Lembrete enviado} other {# lembretes enviados}}",
@@ -12226,7 +12229,19 @@
       "creada": "Criada",
       "sucursal": "Filial",
       "ultimoRecordatorio": "Último lembrete",
-      "nunca": "Nunca"
+      "nunca": "Nunca",
+      "columnasPagos": {
+        "fecha": "Data",
+        "recibo": "Recibo",
+        "metodo": "Método",
+        "referencia": "Referência",
+        "aplicado": "Aplicado",
+        "estado": "Status"
+      },
+      "verCarteraCliente": "Ver carteira do cliente",
+      "cuotasPagadas": "{pagadas} de {total} parcelas",
+      "cuotasPendientes": "{count, plural, =0 {Sem parcelas pendentes} one {# parcela pendente} other {# parcelas pendentes}}",
+      "proximaCuotaDetalle": "Parcela {numero} · {monto}"
     },
     "cuotas": {
       "titulo": "Plano de parcelas",
@@ -12269,7 +12284,9 @@
         "cuotas_invalidas": "Revise as parcelas.",
         "plan_no_cuadra": "As parcelas não somam o saldo da conta.",
         "error_desconocido": "Não foi possível concluir. Tente novamente."
-      }
+      },
+      "eliminarConfirmarTitulo": "Remover o plano de parcelas?",
+      "eliminarConfirmarDescripcion": "As parcelas desta conta são apagadas. O saldo pendente não muda."
     },
     "estadoCuenta": {
       "titulo": "Extrato",
@@ -12309,7 +12326,8 @@
       "pagaEnPromedio": "Paga em média em",
       "cuentasAbiertas": "Contas abertas do cliente",
       "sinCuentas": "O cliente não tem contas abertas",
-      "sinCuentasDescripcion": "Quando houver vendas a prazo ou faturas com saldo, aparecerão aqui."
+      "sinCuentasDescripcion": "Quando houver vendas a prazo ou faturas com saldo, aparecerão aqui.",
+      "sinAnticipos": "Sem adiantamentos"
     },
     "errores": {
       "cliente_sin_correo": "O cliente não tem e-mail.",
@@ -12734,7 +12752,8 @@
         "excluidasTitulo": "{count, plural, one {{n} fatura não é anulada} other {{n} faturas não são anuladas}}",
         "anuladas": "{count, plural, one {{n} fatura anulada} other {{n} faturas anuladas}}",
         "anularFallidas": "{count, plural, one {{n} fatura não pôde ser anulada} other {{n} faturas não puderam ser anuladas}}: {detalle}"
-      }
+      },
+      "saldoMovil": "Saldo {saldo}"
     },
     "enviar": {
       "titulo": "Enviar a fatura {numero}",
@@ -14006,6 +14025,11 @@
         "borrador": "A fatura {numero} foi criada em rascunho, com a venda, os impostos e a comissão. Emita-a em Faturas de venda.",
         "yaConvertida": "Esta cotação já tinha a fatura {numero}: nenhuma outra foi criada.",
         "faltantes": "{n, plural, one {Um produto não tem estoque suficiente} other {# produtos não têm estoque suficiente}}: verifique antes de emitir."
+      },
+      "eliminar": {
+        "titulo": "Excluir o orçamento {numero}?",
+        "descripcion": "O orçamento em rascunho é excluído e não pode ser recuperado.",
+        "confirmar": "Excluir orçamento"
       }
     }
   },
@@ -14036,7 +14060,9 @@
       "confirmar": "Tem certeza de que deseja anular esta nota de crédito?",
       "motivo": "Motivo da anulação:",
       "hecho": "Nota de crédito anulada com sucesso",
-      "error": "Não foi possível anular"
+      "error": "Não foi possível anular",
+      "titulo": "Anular a nota de crédito {numero}",
+      "confirmarBoton": "Anular nota de crédito"
     },
     "listado": {
       "titulo": "Notas de crédito",

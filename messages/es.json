@@ -12238,7 +12238,9 @@
         "todos": "Todos",
         "sinRecordatorio": "Sin recordatorio en {dias} días",
         "sinRecordatorioChip": "Sin recordatorio en {dias} d",
-        "clienteChip": "Un cliente"
+        "clienteChip": "Un cliente",
+        "cliente": "Cliente",
+        "clienteChipNombre": "Cliente: {nombre}"
       },
       "columnas": {
         "cliente": "Cliente",
@@ -12278,7 +12280,8 @@
       "sinResultados": "Prueba con otra búsqueda u otros filtros.",
       "errorCarga": "No se pudieron cargar las cuentas por cobrar",
       "sinPermiso": "No tienes acceso a la cartera",
-      "sinPermisoDescripcion": "Pide a un administrador el permiso para ver la cartera."
+      "sinPermisoDescripcion": "Pide a un administrador el permiso para ver la cartera.",
+      "todasLasSucursales": "Todas las sucursales"
     },
     "recordatorio": {
       "enviados": "{count, plural, one {Recordatorio enviado} other {# recordatorios enviados}}",
@@ -12331,7 +12334,19 @@
       "creada": "Creada",
       "sucursal": "Sucursal",
       "ultimoRecordatorio": "Último recordatorio",
-      "nunca": "Nunca"
+      "nunca": "Nunca",
+      "columnasPagos": {
+        "fecha": "Fecha",
+        "recibo": "Recibo",
+        "metodo": "Método",
+        "referencia": "Referencia",
+        "aplicado": "Aplicado",
+        "estado": "Estado"
+      },
+      "verCarteraCliente": "Ver cartera del cliente",
+      "cuotasPagadas": "{pagadas} de {total} cuotas",
+      "cuotasPendientes": "{count, plural, =0 {Sin cuotas pendientes} one {# cuota pendiente} other {# cuotas pendientes}}",
+      "proximaCuotaDetalle": "Cuota {numero} · {monto}"
     },
     "cuotas": {
       "titulo": "Plan de cuotas",
@@ -12374,7 +12389,9 @@
         "cuotas_invalidas": "Revisa las cuotas.",
         "plan_no_cuadra": "Las cuotas no suman el saldo de la cuenta.",
         "error_desconocido": "No se pudo completar. Inténtalo de nuevo."
-      }
+      },
+      "eliminarConfirmarTitulo": "¿Quitar el plan de cuotas?",
+      "eliminarConfirmarDescripcion": "Se borran las cuotas de esta cuenta. El saldo pendiente no cambia."
     },
     "estadoCuenta": {
       "titulo": "Estado de cuenta",
@@ -12414,7 +12431,8 @@
       "pagaEnPromedio": "Paga en promedio",
       "cuentasAbiertas": "Cuentas abiertas del cliente",
       "sinCuentas": "El cliente no tiene cuentas abiertas",
-      "sinCuentasDescripcion": "Cuando tenga ventas a crédito o facturas con saldo, aparecerán aquí."
+      "sinCuentasDescripcion": "Cuando tenga ventas a crédito o facturas con saldo, aparecerán aquí.",
+      "sinAnticipos": "Sin anticipos"
     },
     "errores": {
       "cliente_sin_correo": "El cliente no tiene correo.",
@@ -12839,7 +12857,8 @@
         "excluidasTitulo": "{count, plural, one {{n} factura no se anula} other {{n} facturas no se anulan}}",
         "anuladas": "{count, plural, one {{n} factura anulada} other {{n} facturas anuladas}}",
         "anularFallidas": "{count, plural, one {{n} factura no se pudo anular} other {{n} facturas no se pudieron anular}}: {detalle}"
-      }
+      },
+      "saldoMovil": "Saldo {saldo}"
     },
     "enviar": {
       "titulo": "Enviar la factura {numero}",
@@ -14111,6 +14130,11 @@
         "borrador": "Se creó la factura {numero} en borrador, con su venta, impuestos y comisión. Emítela desde Facturas de venta.",
         "yaConvertida": "Esta cotización ya tenía la factura {numero}: no se creó otra.",
         "faltantes": "{n, plural, one {Un producto no tiene existencias suficientes} other {# productos no tienen existencias suficientes}}: revísalo antes de emitir."
+      },
+      "eliminar": {
+        "titulo": "¿Eliminar la cotización {numero}?",
+        "descripcion": "La cotización en borrador se borra y no se puede recuperar.",
+        "confirmar": "Eliminar cotización"
       }
     }
   },
@@ -14141,7 +14165,9 @@
       "confirmar": "¿Seguro que quieres anular esta nota crédito?",
       "motivo": "Motivo de la anulación:",
       "hecho": "Nota crédito anulada correctamente",
-      "error": "No se pudo anular"
+      "error": "No se pudo anular",
+      "titulo": "Anular la nota crédito {numero}",
+      "confirmarBoton": "Anular nota crédito"
     },
     "listado": {
       "titulo": "Notas crédito",

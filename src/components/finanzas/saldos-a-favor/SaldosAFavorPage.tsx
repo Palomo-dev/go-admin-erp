@@ -1,12 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -16,7 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { EmptyState, StatCard, StatusBadge } from '@/components/kit';
 import { Plus, Wallet, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
@@ -28,10 +23,11 @@ import { AplicarSaldoFavorDialog } from './AplicarSaldoFavorDialog';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { useBranch } from '@/lib/context/BranchContext';
 
-const statusMap: Record<string, { label: string; className: string }> = {
-  active: { label: 'Activo', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' },
-  used: { label: 'Usado', className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' },
-  expired: { label: 'Vencido', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' },
+/** Estado del saldo → estado de la tabla única del kit (`expired` no está; «vencido» sí) y su texto. */
+const statusMap: Record<string, { estado: string; label: string }> = {
+  active: { estado: 'active', label: 'Activo' },
+  used: { estado: 'used', label: 'Usado' },
+  expired: { estado: 'vencido', label: 'Vencido' },
 };
 
 export function SaldosAFavorPage() {
@@ -103,16 +99,9 @@ export function SaldosAFavorPage() {
 
       <BranchBadge className="mb-3" />
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-gray-500 dark:text-gray-400">Total disponible</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-            {formatCurrency(totalDisponible)}
-          </p>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard etiqueta="Total disponible" icono={Wallet} cargando={isLoading} valor={formatCurrency(totalDisponible)} tono={totalDisponible > 0 ? 'exito' : 'neutro'} />
+      </div>
 
       <Card>
         <CardContent className="p-0">
@@ -137,25 +126,27 @@ export function SaldosAFavorPage() {
                 </TableRow>
               ) : errorCarga ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-red-600 dark:text-red-400">
-                    {errorCarga}{' '}
-                    <Button variant="link" size="sm" onClick={() => cargar(organizationId, branchFilter)}>
-                      {t('reintentar')}
-                    </Button>
+                  <TableCell colSpan={7}>
+                    <EmptyState
+                      compacto
+                      variante="error"
+                      titulo={errorCarga}
+                      accion={{ etiqueta: t('reintentar'), onClick: () => cargar(organizationId, branchFilter) }}
+                    />
                   </TableCell>
                 </TableRow>
               ) : saldos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    No hay saldos a favor registrados.
+                  <TableCell colSpan={7}>
+                    <EmptyState compacto variante="empty" icono={Wallet} titulo="No hay saldos a favor registrados." />
                   </TableCell>
                 </TableRow>
               ) : (
                 saldos.map((s) => {
                   const st =
                     s.status === 'cancelled'
-                      ? { label: t('estadoAnulado'), className: statusMap.used.className }
-                      : statusMap[s.status] || { label: s.status, className: '' };
+                      ? { estado: 'cancelled', label: t('estadoAnulado') }
+                      : statusMap[s.status] || { estado: s.status, label: s.status };
                   return (
                     <TableRow key={s.id}>
                       <TableCell className="font-medium">{s.customer_name || 'N/A'}</TableCell>
@@ -166,7 +157,7 @@ export function SaldosAFavorPage() {
                       </TableCell>
                       <TableCell>{formatFecha(s.expiry_date)}</TableCell>
                       <TableCell>
-                        <Badge className={st.className}>{st.label}</Badge>
+                        <StatusBadge estado={st.estado} etiqueta={st.label} />
                       </TableCell>
                       <TableCell className="text-right">
                         <Button

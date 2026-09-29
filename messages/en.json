@@ -12238,7 +12238,9 @@
         "todos": "All",
         "sinRecordatorio": "No reminder in {dias} days",
         "sinRecordatorioChip": "No reminder in {dias} d",
-        "clienteChip": "One customer"
+        "clienteChip": "One customer",
+        "cliente": "Customer",
+        "clienteChipNombre": "Customer: {nombre}"
       },
       "columnas": {
         "cliente": "Customer",
@@ -12278,7 +12280,8 @@
       "sinResultados": "Try another search or filters.",
       "errorCarga": "The receivables could not be loaded",
       "sinPermiso": "You don't have access to receivables",
-      "sinPermisoDescripcion": "Ask an administrator for the permission to view receivables."
+      "sinPermisoDescripcion": "Ask an administrator for the permission to view receivables.",
+      "todasLasSucursales": "All branches"
     },
     "recordatorio": {
       "enviados": "{count, plural, one {Reminder sent} other {# reminders sent}}",
@@ -12331,7 +12334,19 @@
       "creada": "Created",
       "sucursal": "Branch",
       "ultimoRecordatorio": "Last reminder",
-      "nunca": "Never"
+      "nunca": "Never",
+      "columnasPagos": {
+        "fecha": "Date",
+        "recibo": "Receipt",
+        "metodo": "Method",
+        "referencia": "Reference",
+        "aplicado": "Applied",
+        "estado": "Status"
+      },
+      "verCarteraCliente": "View customer receivables",
+      "cuotasPagadas": "{pagadas} of {total} installments",
+      "cuotasPendientes": "{count, plural, =0 {No pending installments} one {# pending installment} other {# pending installments}}",
+      "proximaCuotaDetalle": "Installment {numero} · {monto}"
     },
     "cuotas": {
       "titulo": "Installment plan",
@@ -12374,7 +12389,9 @@
         "cuotas_invalidas": "Check the installments.",
         "plan_no_cuadra": "The installments don't add up to the account balance.",
         "error_desconocido": "It could not be completed. Try again."
-      }
+      },
+      "eliminarConfirmarTitulo": "Remove the installment plan?",
+      "eliminarConfirmarDescripcion": "The installments of this account are deleted. The outstanding balance does not change."
     },
     "estadoCuenta": {
       "titulo": "Statement",
@@ -12414,7 +12431,8 @@
       "pagaEnPromedio": "Pays on average in",
       "cuentasAbiertas": "Customer's open accounts",
       "sinCuentas": "The customer has no open accounts",
-      "sinCuentasDescripcion": "Credit sales or invoices with a balance will appear here."
+      "sinCuentasDescripcion": "Credit sales or invoices with a balance will appear here.",
+      "sinAnticipos": "No advances"
     },
     "errores": {
       "cliente_sin_correo": "The customer has no email.",
@@ -12839,7 +12857,8 @@
         "excluidasTitulo": "{count, plural, one {{n} invoice will not be voided} other {{n} invoices will not be voided}}",
         "anuladas": "{count, plural, one {{n} invoice voided} other {{n} invoices voided}}",
         "anularFallidas": "{count, plural, one {{n} invoice could not be voided} other {{n} invoices could not be voided}}: {detalle}"
-      }
+      },
+      "saldoMovil": "Balance {saldo}"
     },
     "enviar": {
       "titulo": "Send invoice {numero}",
@@ -14111,6 +14130,11 @@
         "borrador": "Invoice {numero} was created as a draft, with its sale, taxes and commission. Issue it from Sales invoices.",
         "yaConvertida": "This quotation already had invoice {numero}: no other invoice was created.",
         "faltantes": "{n, plural, one {One product does not have enough stock} other {# products do not have enough stock}}: check before issuing."
+      },
+      "eliminar": {
+        "titulo": "Delete quote {numero}?",
+        "descripcion": "The draft quote is deleted and cannot be recovered.",
+        "confirmar": "Delete quote"
       }
     }
   },
@@ -14141,7 +14165,9 @@
       "confirmar": "Are you sure you want to void this credit note?",
       "motivo": "Reason for voiding:",
       "hecho": "Credit note voided successfully",
-      "error": "Couldn't void it"
+      "error": "Couldn't void it",
+      "titulo": "Void credit note {numero}",
+      "confirmarBoton": "Void credit note"
     },
     "listado": {
       "titulo": "Credit notes",

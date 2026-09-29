@@ -4,42 +4,18 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreVertical, Eye, Pencil, Copy, Trash2, Printer, FileText } from 'lucide-react';
+import { Dialogo, RowActionsMenu, StatusBadge } from '@/components/kit';
+import { Eye, Pencil, Copy, Trash2, Printer, FileText } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { CotizacionesService, type Quotation, type QuotationFilters } from '@/lib/services/cotizacionesService';
 import { CopyableId } from '@/components/common/CopyableId';
 import { abrirDocumento, imprimirDocumento } from '@/lib/documents/cliente';
-
-const formatearFecha = (fechaStr: string | null | undefined): string => {
-  if (!fechaStr) return 'N/A';
-  try {
-    const partes = fechaStr.split('T')[0].split('-');
-    if (partes.length !== 3) return fechaStr;
-    return `${partes[2]}/${partes[1]}/${partes[0]}`;
-  } catch {
-    return fechaStr || 'N/A';
-  }
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'draft': return 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-    case 'sent': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-    case 'accepted': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-    case 'rejected': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-    case 'expired': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
-    case 'converted': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
-  }
-};
 
 const getStatusText = (status: string) => {
   switch (status) {
@@ -61,9 +37,15 @@ export function CotizacionesTable({ filtros }: CotizacionesTableProps) {
   const router = useRouter();
   // Imprimir y PDF salen del motor único de documentos (plantilla de marca, datos leídos en el servidor).
   const ta = useTranslations('accionesDocumento');
+  const tc = useTranslations('documentosVenta.cotizaciones');
+  // `issue_date` y `valid_until` son columnas `date`: se pintan sin convertir de zona.
+  const { formatPlain } = useFormatDate();
+  const formatearFecha = (fecha: string | null | undefined) => (fecha ? formatPlain(fecha) : 'N/A');
   const { toast } = useToast();
   const [cotizaciones, setCotizaciones] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [aEliminar, setAEliminar] = useState<Quotation | null>(null);
+  const [eliminando, setEliminando] = useState(false);
   const organizationId = getOrganizationId();
   const { branchFilter } = useBranch();
   // Cada cotización en su moneda (`quotations.currency`); sin ella, la base de la organización.
@@ -101,14 +83,18 @@ export function CotizacionesTable({ filtros }: CotizacionesTableProps) {
     }
   };
 
-  const handleEliminar = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta cotización?')) return;
+  const handleEliminar = async () => {
+    if (!aEliminar) return;
+    setEliminando(true);
     try {
-      await CotizacionesService.deleteQuotation(id);
+      await CotizacionesService.deleteQuotation(aEliminar.id);
       toast({ title: 'Cotización eliminada' });
       cargarCotizaciones();
     } catch (error: unknown) {
       toast({ title: 'Error', description: (error as { message?: string }).message, variant: 'destructive' });
+    } finally {
+      setEliminando(false);
+      setAEliminar(null);
     }
   };
 
@@ -172,50 +158,41 @@ export function CotizacionesTable({ filtros }: CotizacionesTableProps) {
                 {formatMoneda(cot.total, paraDocumento(cot.currency))}
               </TableCell>
               <TableCell>
-                <Badge className={getStatusColor(cot.status)}>
-                  {getStatusText(cot.status)}
-                </Badge>
+                {/* `expired` no está en la tabla de estados del kit; «vencida» sí (peligro). */}
+                <StatusBadge estado={cot.status === 'expired' ? 'vencida' : cot.status} etiqueta={getStatusText(cot.status)} />
               </TableCell>
               <TableCell onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                    <DropdownMenuItem onClick={() => router.push(`/app/finanzas/cotizaciones/${cot.id}`)}>
-                      <Eye className="h-4 w-4 mr-2" /> Ver detalle
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => imprimirDocumento('cotizacion', cot.id)}>
-                      <Printer className="h-4 w-4 mr-2" /> {ta('imprimir')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => abrirDocumento('cotizacion', cot.id)}>
-                      <FileText className="h-4 w-4 mr-2" /> {ta('verPdf')}
-                    </DropdownMenuItem>
-                    {(cot.status === 'draft' || cot.status === 'sent') && (
-                      <DropdownMenuItem onClick={() => router.push(`/app/finanzas/cotizaciones/${cot.id}/editar`)}>
-                        <Pencil className="h-4 w-4 mr-2" /> Editar
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem onClick={() => handleDuplicar(cot.id)}>
-                      <Copy className="h-4 w-4 mr-2" /> Duplicar
-                    </DropdownMenuItem>
-                    {cot.status === 'draft' && (
-                      <DropdownMenuItem
-                        onClick={() => handleEliminar(cot.id)}
-                        className="text-red-600 dark:text-red-400"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" /> Eliminar
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <RowActionsMenu
+                  titulo={cot.number}
+                  acciones={[
+                    { id: 'ver', etiqueta: 'Ver detalle', icono: Eye, onSelect: () => router.push(`/app/finanzas/cotizaciones/${cot.id}`) },
+                    { id: 'imprimir', etiqueta: ta('imprimir'), icono: Printer, onSelect: () => imprimirDocumento('cotizacion', cot.id) },
+                    { id: 'pdf', etiqueta: ta('verPdf'), icono: FileText, onSelect: () => abrirDocumento('cotizacion', cot.id) },
+                    {
+                      id: 'editar',
+                      etiqueta: 'Editar',
+                      icono: Pencil,
+                      onSelect: () => router.push(`/app/finanzas/cotizaciones/${cot.id}/editar`),
+                      oculta: cot.status !== 'draft' && cot.status !== 'sent',
+                    },
+                    { id: 'duplicar', etiqueta: 'Duplicar', icono: Copy, onSelect: () => void handleDuplicar(cot.id) },
+                    { id: 'eliminar', etiqueta: 'Eliminar', icono: Trash2, destructiva: true, separadorAntes: true, onSelect: () => setAEliminar(cot), oculta: cot.status !== 'draft' },
+                  ]}
+                />
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+
+      <Dialogo
+        abierto={aEliminar !== null}
+        onAbiertoChange={(v) => !v && !eliminando && setAEliminar(null)}
+        titulo={tc('eliminar.titulo', { numero: aEliminar?.number ?? '' })}
+        descripcion={tc('eliminar.descripcion')}
+        ancho={440}
+        primario={{ etiqueta: tc('eliminar.confirmar'), onClick: () => void handleEliminar(), destructiva: true, cargando: eliminando }}
+      />
     </div>
   );
 }

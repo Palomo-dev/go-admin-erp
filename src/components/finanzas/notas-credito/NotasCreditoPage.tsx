@@ -11,15 +11,11 @@ import {
   RefreshCw,
   ArrowLeft,
   FileText,
-  MoreVertical,
   Eye,
   XCircle,
   Filter,
   Calendar,
   User,
-  CheckCircle,
-  Clock,
-  AlertCircle,
   Printer,
 } from 'lucide-react';
 import {
@@ -30,7 +26,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -39,13 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { ChipDocumento, DialogoMotivo, RowActionsMenu, StatusBadge } from '@/components/kit';
 import {
   Select,
   SelectContent,
@@ -62,28 +51,8 @@ import { abrirDocumento, imprimirDocumento } from '@/lib/documents/cliente';
 import { CopyableId } from '@/components/common/CopyableId';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 
-const statusColors: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-  pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  sent: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  accepted: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  void: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  paid: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-};
-
 /** Estados con etiqueta en `notasCredito.estados`. */
 const ESTADOS_CONOCIDOS = new Set(['draft', 'pending', 'sent', 'accepted', 'rejected', 'void', 'paid']);
-
-const statusIcons: Record<string, React.ReactNode> = {
-  draft: <FileText className="h-3 w-3" />,
-  pending: <Clock className="h-3 w-3" />,
-  sent: <CheckCircle className="h-3 w-3" />,
-  accepted: <CheckCircle className="h-3 w-3" />,
-  rejected: <AlertCircle className="h-3 w-3" />,
-  void: <XCircle className="h-3 w-3" />,
-  paid: <CheckCircle className="h-3 w-3" />,
-};
 
 /** Cada nota es una fila de `invoice_sales` (select *): trae su propia `currency`. */
 type NotaConMoneda = NotaCredito & { currency?: string | null };
@@ -145,20 +114,29 @@ export function NotasCreditoPage() {
     loadData();
   }, [loadData]);
 
-  const handleAnular = async (id: string) => {
-    if (!confirm(t('anular.confirmar'))) return;
-    
-    const reason = prompt(t('anular.motivo'));
+  // Anular: motivo obligatorio en un diálogo (antes `confirm()` + `prompt()`,
+  // que dejaba mandar un motivo vacío y el servidor lo rechazaba).
+  const [notaAAnular, setNotaAAnular] = useState<NotaCredito | null>(null);
+  const [anulando, setAnulando] = useState(false);
+  const [errorAnular, setErrorAnular] = useState<string | null>(null);
+
+  const handleAnular = async (motivo: string) => {
+    if (!notaAAnular) return;
+    setAnulando(true);
+    setErrorAnular(null);
     try {
-      const result = await notasCreditoService.anularNotaCredito(id, reason || undefined);
+      const result = await notasCreditoService.anularNotaCredito(notaAAnular.id, motivo);
       if (result.success) {
         toast({ title: t('comun.exito'), description: t('anular.hecho') });
+        setNotaAAnular(null);
         loadData();
       } else {
-        toast({ title: t('comun.error'), description: result.error || t('anular.error'), variant: 'destructive' });
+        setErrorAnular(result.error || t('anular.error'));
       }
     } catch {
-      toast({ title: t('comun.error'), description: t('anular.error'), variant: 'destructive' });
+      setErrorAnular(t('anular.error'));
+    } finally {
+      setAnulando(false);
     }
   };
 
@@ -379,12 +357,7 @@ export function NotasCreditoPage() {
                     </TableCell>
                     <TableCell className="text-gray-600 dark:text-gray-300">
                       {nota.related_invoice ? (
-                        <Link 
-                          href={`/app/finanzas/facturas-venta/${nota.related_invoice_id}`}
-                          className="text-blue-600 hover:underline dark:text-blue-400"
-                        >
-                          {nota.related_invoice.number}
-                        </Link>
+                        <ChipDocumento tipo="factura" numero={nota.related_invoice.number} href={`/app/finanzas/facturas-venta/${nota.related_invoice_id}`} />
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}
@@ -393,48 +366,29 @@ export function NotasCreditoPage() {
                       {formatMoneda(Number(nota.total), paraDocumento((nota as NotaConMoneda).currency))}
                     </TableCell>
                     <TableCell>
-                      <Badge className={`${statusColors[nota.status]} flex items-center gap-1 w-fit`}>
-                        {statusIcons[nota.status]}
-                        {etiquetaEstado(nota.status)}
-                      </Badge>
+                      <StatusBadge estado={nota.status} etiqueta={etiquetaEstado(nota.status)} />
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t('listado.masAcciones', { numero: nota.number })}>
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                          <DropdownMenuItem
-                            onClick={() => router.push(`/app/finanzas/notas-credito/${nota.id}`)}
-                            className="cursor-pointer"
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            {t('listado.verDetalle')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => imprimirDocumento('nota-credito', nota.id)} className="cursor-pointer">
-                            <Printer className="h-4 w-4 mr-2" />
-                            {ta('imprimir')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => abrirDocumento('nota-credito', nota.id)} className="cursor-pointer">
-                            <FileText className="h-4 w-4 mr-2" />
-                            {ta('verPdf')}
-                          </DropdownMenuItem>
-                          {nota.status !== 'void' && nota.status !== 'accepted' && (
-                            <>
-                              <DropdownMenuSeparator className="dark:bg-gray-700" />
-                              <DropdownMenuItem
-                                onClick={() => handleAnular(nota.id)}
-                                className="cursor-pointer text-red-600 dark:text-red-400"
-                              >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                {t('listado.anular')}
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <RowActionsMenu
+                        titulo={nota.number}
+                        acciones={[
+                          { id: 'ver', etiqueta: t('listado.verDetalle'), icono: Eye, onSelect: () => router.push(`/app/finanzas/notas-credito/${nota.id}`) },
+                          { id: 'imprimir', etiqueta: ta('imprimir'), icono: Printer, onSelect: () => imprimirDocumento('nota-credito', nota.id) },
+                          { id: 'pdf', etiqueta: ta('verPdf'), icono: FileText, onSelect: () => abrirDocumento('nota-credito', nota.id) },
+                          {
+                            id: 'anular',
+                            etiqueta: t('listado.anular'),
+                            icono: XCircle,
+                            destructiva: true,
+                            separadorAntes: true,
+                            onSelect: () => {
+                              setErrorAnular(null);
+                              setNotaAAnular(nota);
+                            },
+                            oculta: nota.status === 'void' || nota.status === 'accepted',
+                          },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 ))
@@ -443,6 +397,22 @@ export function NotasCreditoPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <DialogoMotivo
+        abierto={notaAAnular !== null}
+        onAbiertoChange={(v) => {
+          if (!v && !anulando) {
+            setNotaAAnular(null);
+            setErrorAnular(null);
+          }
+        }}
+        titulo={t('anular.titulo', { numero: notaAAnular?.number ?? '' })}
+        descripcion={t('anular.confirmar')}
+        textoConfirmar={t('anular.confirmarBoton')}
+        onConfirmar={handleAnular}
+        cargando={anulando}
+        error={errorAnular}
+      />
     </div>
   );
 }

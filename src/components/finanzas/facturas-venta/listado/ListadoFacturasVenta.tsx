@@ -41,8 +41,10 @@ import {
   Upload,
 } from 'lucide-react';
 import {
+  AccionRapida,
   BranchBadgeActiva,
   BulkActionBar,
+  CampoNumero,
   CustomerPicker,
   DataTable,
   DateRangeButton,
@@ -60,9 +62,12 @@ import {
   SegmentedControl,
   StatCard,
   StatusBadge,
+  Tarjeta,
+  clasesBoton,
   etiquetaRango,
   etiquetaRangoLarga,
   inicioDeMes,
+  simboloMoneda,
   useListadoServidor,
   type AccionFila,
   type ChipFiltro,
@@ -86,6 +91,7 @@ import {
   CLAVES_VENCE,
   FILTROS_PANTALLA_FACTURAS,
   OPCIONES_VENCE,
+  TAMANOS_PAGINA_FACTURAS,
   esOpcionVence,
   finDeMes,
   ordenFacturasRpc,
@@ -107,10 +113,12 @@ const ESTADOS_FE = ['pending', 'processing', 'sent', 'accepted', 'rejected', 'fa
 /** Tope de «Seleccionar las N» y de la exportación: 25 páginas de 200. */
 const PAGINAS_MAX = 25;
 
-const CLASE_ACCION_RAPIDA =
-  'flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent';
-const CLASE_CAMPO =
-  'h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
+/** Monto de un filtro de la URL (`monto_min`/`monto_max`) para `CampoNumero`; vacío o inválido → null. */
+function numeroFiltro(valor: string | undefined): number | null {
+  if (!valor) return null;
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : null;
+}
 
 /** Copia de los filtros de la URL sin esas claves. */
 function sinClaves(filtros: Record<string, string>, claves: readonly string[]): Record<string, string> {
@@ -136,6 +144,7 @@ export function ListadoFacturasVenta() {
     camposOrden: [...CAMPOS_ORDEN_FACTURAS],
     ordenPorDefecto: { campo: 'emision', direccion: 'desc' },
     tamanoPorDefecto: 25,
+    tamanosPermitidos: TAMANOS_PAGINA_FACTURAS,
   });
 
   const [datos, setDatos] = useState<RespuestaListadoFacturas | null>(null);
@@ -212,6 +221,8 @@ export function ListadoFacturasVenta() {
   const total = datos?.total ?? 0;
   const kpi = datos?.kpis.find((k) => k.moneda === moneda.code) ?? datos?.kpis[0] ?? null;
   const fmtKpi = useMemo(() => crearFormateadorMoneda(moneda.paraDocumento(kpi?.moneda)), [moneda, kpi?.moneda]);
+  /** Prefijo de los campos de monto del panel Filtros (la moneda de los KPI, la misma que los chips). */
+  const simboloKpi = useMemo(() => simboloMoneda(moneda.paraDocumento(kpi?.moneda)), [moneda, kpi?.moneda]);
   const fmtFila = useCallback((f: FilaFacturaListado, v: number) => crearFormateadorMoneda(moneda.paraDocumento(f.moneda))(v), [moneda]);
   const sustantivo = {
     singular: t('listado.sustantivo.singular'),
@@ -605,20 +616,13 @@ export function ListadoFacturasVenta() {
         acciones={
           <>
             {permisos.crear && (
-              <button
-                type="button"
-                onClick={() => setImportar(true)}
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
+              <button type="button" onClick={() => setImportar(true)} className={clasesBoton({ variante: 'secundario' })}>
                 <Upload aria-hidden="true" className="size-4" strokeWidth={1.5} />
                 {t('listado.importar')}
               </button>
             )}
             {permisos.crear && (
-              <Link
-                href={`${RUTA}/nuevo`}
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-              >
+              <Link href={`${RUTA}/nuevo`} className={clasesBoton({ variante: 'primario' })}>
                 <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
                 {t('listado.nueva')}
               </Link>
@@ -823,27 +827,25 @@ export function ListadoFacturasVenta() {
             <div className="grid grid-cols-2 gap-3">
               <FormField etiqueta={t('listado.filtros.montoMin')}>
                 {(c) => (
-                  <input
+                  <CampoNumero
                     id={c.id}
-                    type="number"
-                    min={0}
-                    inputMode="decimal"
-                    value={l.filtros.monto_min ?? ''}
-                    onChange={(e) => l.setFiltro('monto_min', e.target.value || null)}
-                    className={CLASE_CAMPO}
+                    aria-describedby={c['aria-describedby']}
+                    valor={numeroFiltro(l.filtros.monto_min)}
+                    onValorChange={(v) => l.setFiltro('monto_min', v === null ? null : String(v))}
+                    minimo={0}
+                    prefijo={simboloKpi}
                   />
                 )}
               </FormField>
               <FormField etiqueta={t('listado.filtros.montoMax')}>
                 {(c) => (
-                  <input
+                  <CampoNumero
                     id={c.id}
-                    type="number"
-                    min={0}
-                    inputMode="decimal"
-                    value={l.filtros.monto_max ?? ''}
-                    onChange={(e) => l.setFiltro('monto_max', e.target.value || null)}
-                    className={CLASE_CAMPO}
+                    aria-describedby={c['aria-describedby']}
+                    valor={numeroFiltro(l.filtros.monto_max)}
+                    onValorChange={(v) => l.setFiltro('monto_max', v === null ? null : String(v))}
+                    minimo={0}
+                    prefijo={simboloKpi}
                   />
                 )}
               </FormField>
@@ -868,31 +870,20 @@ export function ListadoFacturasVenta() {
         acciones={accionesDe}
         accionesRapidas={(f) => (
           <div className="flex items-center">
-            <button
-              type="button"
-              title={puedePagar(f) ? t('acciones.registrarPago') : t('listado.pagoNoDisponible')}
-              aria-label={t('listado.pagarFactura', { numero: f.numero ?? '' })}
-              disabled={!puedePagar(f)}
-              onClick={(e) => {
-                e.stopPropagation();
-                pagarFactura(f);
-              }}
-              className={CLASE_ACCION_RAPIDA}
-            >
-              <Banknote aria-hidden="true" className="size-4" strokeWidth={1.5} />
-            </button>
-            <button
-              type="button"
-              title={t('acciones.imprimir')}
-              aria-label={t('listado.imprimirFactura', { numero: f.numero ?? '' })}
-              onClick={(e) => {
-                e.stopPropagation();
-                imprimirDocumento('factura-venta', f.id);
-              }}
-              className={CLASE_ACCION_RAPIDA}
-            >
-              <Printer aria-hidden="true" className="size-4" strokeWidth={1.5} />
-            </button>
+            <AccionRapida
+              soloIcono
+              icono={Banknote}
+              etiqueta={t('listado.pagarFactura', { numero: f.numero ?? '' })}
+              onClick={() => pagarFactura(f)}
+              deshabilitada={!puedePagar(f)}
+              motivo={t('listado.pagoNoDisponible')}
+            />
+            <AccionRapida
+              soloIcono
+              icono={Printer}
+              etiqueta={t('listado.imprimirFactura', { numero: f.numero ?? '' })}
+              onClick={() => imprimirDocumento('factura-venta', f.id)}
+            />
           </div>
         )}
         tarjetaMovil={(f, ctx) => (
@@ -905,7 +896,15 @@ export function ListadoFacturasVenta() {
                 {t('listado.venceEl', { fecha: formatDate(f.vencimiento) })}
               </span>
             }
-            valor={fmtFila(f, f.saldo > 0 ? f.saldo : f.total)}
+            valor={
+              <span className="flex flex-col items-end">
+                <span>{fmtFila(f, f.total)}</span>
+                <span className={estadoPago(f) === 'anulada' ? 'text-xs font-normal text-fg-muted' : f.saldo > 0 ? 'text-xs font-normal text-danger-text' : 'text-xs font-normal text-success-text'}>
+                  {t('listado.saldoMovil', { saldo: fmtFila(f, f.saldo) })}
+                </span>
+              </span>
+            }
+            etiquetas={badgeFe(f)}
             estado={badgeEstado(f)}
             acciones={accionesDe(f)}
             onClick={() => router.push(`${RUTA}/${f.id}`)}
@@ -933,6 +932,7 @@ export function ListadoFacturasVenta() {
             total={total}
             onPaginaChange={l.setPagina}
             onTamanoChange={l.setTamano}
+            opcionesTamano={TAMANOS_PAGINA_FACTURAS}
             sustantivo={sustantivo}
             cargando={cargando}
           />
@@ -969,18 +969,19 @@ export function ListadoFacturasVenta() {
         bloqueo={repartoAnulacion.anulables.length === 0 ? t('listado.lote.ningunaAnulable') : null}
       >
         {repartoAnulacion.excluidas.length > 0 && (
-          <div className="flex flex-col gap-1.5 rounded-lg border border-line bg-subtle px-3 py-2.5 text-[13px]">
-            <p className="font-medium text-fg">
-              {t('listado.lote.excluidasTitulo', { count: repartoAnulacion.excluidas.length, n: entero(repartoAnulacion.excluidas.length) })}
-            </p>
-            <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto text-fg-secondary">
+          <Tarjeta
+            tono="advertencia"
+            icono={AlertTriangle}
+            titulo={t('listado.lote.excluidasTitulo', { count: repartoAnulacion.excluidas.length, n: entero(repartoAnulacion.excluidas.length) })}
+          >
+            <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto text-[13px] text-fg-secondary">
               {repartoAnulacion.excluidas.map(({ fila, motivo }) => (
                 <li key={fila.id}>
                   <span className="font-medium text-fg">{fila.numero ?? t('detalle.sinNumero')}</span> · {t(`anular.bloqueos.${motivo}`)}
                 </li>
               ))}
             </ul>
-          </div>
+          </Tarjeta>
         )}
       </DialogoMotivo>
 

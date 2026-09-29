@@ -34,6 +34,14 @@ type Idioma = (typeof IDIOMAS)[number];
 const POS = ['src/components/pos', 'src/app/app/pos', 'src/lib/pos', 'src/components/shared'];
 const PRODUCTOS = ['src/components/inventario/productos', 'src/app/app/inventario/productos', 'src/components/inventario/garantias'];
 const FINANZAS = ['src/components/finanzas', 'src/app/app/finanzas', 'src/lib/finanzas', 'src/components/shared'];
+const SERIALES_B4 = [
+  'src/components/inventario/seriales',
+  'src/components/inventario/garantias',
+  'src/components/inventario/reportes/trazabilidad',
+  'src/app/app/inventario/seriales',
+  'src/app/app/inventario/garantias',
+  'src/app/app/inventario/reportes/trazabilidad',
+];
 
 /** Namespace → carpetas (o archivos) cuyo código lo usa. */
 const MODULOS: Record<string, string[]> = {
@@ -74,6 +82,10 @@ const MODULOS: Record<string, string[]> = {
   facturacionElectronica: [...FINANZAS, 'src/components/configuracion'],
   notasCredito: FINANZAS,
   documentosSoporte: FINANZAS,
+  // Inventario B4 (2026-09-28): seriales, garantías y trazabilidad.
+  inventarioSeriales: SERIALES_B4,
+  inventarioGarantias: SERIALES_B4,
+  inventarioTrazabilidad: SERIALES_B4,
 };
 
 type Arbol = { [clave: string]: string | Arbol };

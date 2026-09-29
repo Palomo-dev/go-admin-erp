@@ -15531,5 +15531,702 @@
       "confirmar": "{n, plural, =0 {Assign} one {Assign to # product} other {Assign to # products}}",
       "eligeUno": "Choose at least one product"
     }
+  },
+  "inventarioSeriales": {
+    "comun": {
+      "titulo": "Serial numbers",
+      "inventario": "Inventory",
+      "existencias": "Stock",
+      "sustantivo": {
+        "singular": "serial number",
+        "plural": "serial numbers"
+      },
+      "nSeriales": "{count, plural, one {{n} serial number} other {{n} serial numbers}}",
+      "tituloSerial": "Serial {serial}"
+    },
+    "estados": {
+      "in_stock": "In stock",
+      "reserved": "Reserved",
+      "sold": "Sold",
+      "returned": "Returned",
+      "in_transit": "In transit",
+      "damaged": "Damaged",
+      "rma": "RMA",
+      "warranty_claim": "Warranty claim",
+      "warranty": "Under warranty",
+      "repair": "In repair",
+      "defective": "Defective"
+    },
+    "documentos": {
+      "garantia": "Warranty claim"
+    },
+    "garantia": {
+      "vigente": "Active",
+      "vigenteMeses": "Active · {meses, plural, one {# month} other {# months}}",
+      "hasta": "until {fecha}",
+      "porVencer": "Expires in {dias, plural, one {# day} other {# days}}",
+      "vencida": "Expired",
+      "vencioEl": "expired on {fecha}",
+      "empiezaAlVender": "Starts when sold",
+      "meses": "{meses, plural, one {# month} other {# months}}",
+      "enReclamo": "Under claim",
+      "enRma": "In RMA",
+      "noAplica": "Not applicable",
+      "dadoDeBaja": "written off",
+      "sinGarantia": "No warranty"
+    },
+    "historial": {
+      "vacio": "This serial number has no activity yet.",
+      "pendiente": "Pending",
+      "detalle": {
+        "por": "by {usuario}",
+        "reemplazoDe": "replaces unit {serial}",
+        "rma": "RMA {rma}"
+      },
+      "eventos": {
+        "recibido": "Received",
+        "recibidoDe": "Received from {proveedor}",
+        "trasladado": "Transferred to {sucursal}",
+        "reservado": "Reserved for an order",
+        "vendido": "Sold",
+        "vendidoA": "Sold to {cliente}",
+        "reemplazoEntregado": "Delivered as a warranty replacement",
+        "devuelto": "Returned by the customer",
+        "danado": "Marked as damaged",
+        "rma": "Sent to the supplier",
+        "reclamoAbierto": "Warranty claim opened",
+        "reclamoAprobado": "Claim approved",
+        "reparado": "Repaired and returned to the customer",
+        "reemplazado": "Replaced with {reemplazo}",
+        "reembolsado": "Refunded to the customer",
+        "reclamoRechazado": "Claim rejected",
+        "garantiaReiniciada": "Warranty reset: it starts when sold",
+        "cambioEstado": "Status change: {de} → {a}"
+      }
+    },
+    "listado": {
+      "subtituloLema": "every unit with its history, from purchase to warranty",
+      "subtituloMovil": "{total} · {stock} in stock",
+      "actualizar": "Refresh",
+      "por": "by {nombre}",
+      "etiquetaFila": "Serial {serial} of {producto}",
+      "errorSeleccionarTodo": "Could not select all serial numbers",
+      "errorCarga": "We could not load the serial numbers",
+      "sinResultados": "Try another serial number, product or customer, or remove a filter.",
+      "vacio": {
+        "titulo": "No serial numbers yet",
+        "descripcion": "Serial numbers are registered when a purchase is received or from the product with “Generate serial numbers”."
+      },
+      "sinPermiso": {
+        "titulo": "You do not have permission to see serial numbers",
+        "descripcion": "Ask an administrator of your organization for inventory access."
+      },
+      "exportar": {
+        "boton": "Export",
+        "sinDatos": "There are no serial numbers to export",
+        "listo": "{count, plural, one {# serial number exported} other {# serial numbers exported}}",
+        "error": "Could not export. Please try again."
+      },
+      "csv": {
+        "serial": "Serial number",
+        "producto": "Product",
+        "sku": "SKU",
+        "estado": "Status",
+        "sucursal": "Branch",
+        "recibido": "Received",
+        "origen": "Source document",
+        "proveedor": "Supplier",
+        "venta": "Sale",
+        "fechaVenta": "Sale date",
+        "cliente": "Customer",
+        "garantiaMeses": "Warranty (months)",
+        "garantiaDesde": "Warranty from",
+        "garantiaHasta": "Warranty until",
+        "reclamo": "Claim"
+      },
+      "masivas": {
+        "trasladar": "Transfer",
+        "etiquetas": "Print labels",
+        "exportar": "Export",
+        "danados": "{count, plural, one {Mark # as damaged} other {Mark # as damaged}}",
+        "reclamo": "Open warranty claim",
+        "sinPermiso": "You do not have permission to transfer",
+        "soloEnStock": "Only units in stock can be transferred",
+        "unProducto": "Choose units of the same product and branch"
+      },
+      "chips": {
+        "estado": "Status: {estados}",
+        "producto": "Product: {nombre}",
+        "garantia": {
+          "vigente": "Active warranty",
+          "por_vencer": "Expires in 30 days",
+          "vencida": "Expired warranty",
+          "sin_iniciar": "Starts when sold",
+          "corriendo_en_bodega": "Running in the warehouse"
+        }
+      },
+      "columnas": {
+        "serial": "Serial number",
+        "estado": "Status",
+        "donde": "Where it is",
+        "venta": "Sale",
+        "cliente": "Customer",
+        "garantia": "Warranty"
+      },
+      "donde": {
+        "conCliente": "With the customer",
+        "vendidoEn": "sold at {sucursal}",
+        "vendido": "sold",
+        "conProveedor": "With the supplier",
+        "haciaSucursal": "→ {sucursal}",
+        "enTransito": "In transit",
+        "traslado": "transfer {numero}",
+        "sinSucursal": "No branch",
+        "revision": "received for inspection",
+        "recibido": "received {fecha}"
+      },
+      "kpis": {
+        "etiqueta": "Serial number summary",
+        "enStock": "In stock",
+        "enSucursales": "{count, plural, one {in {n} branch} other {in {n} branches}}",
+        "vendidos": "Sold",
+        "vendidosEnlazados": "{venta} with a linked sale, {cliente} with a customer",
+        "vendidosCompletos": "all with sale and customer",
+        "garantiaVigente": "Active warranty",
+        "vencen30": "{count, plural, one {{n} expires in 30 days} other {{n} expire in 30 days}}",
+        "ningunaVence30": "none expire in 30 days",
+        "enReclamo": "Under claim or repair",
+        "reclamosAbiertos": "{count, plural, one {{n} open claim} other {{n} open claims}}",
+        "sinReclamos": "no open claims"
+      },
+      "aviso": {
+        "titulo": "{count, plural, one {{n} warranty is running while the unit is in the warehouse} other {{n} warranties are running while the units are in the warehouse}}",
+        "descripcion": "A serial number’s warranty starts on the day of the sale. These units had it set earlier and are using up months before anyone buys them.",
+        "verCuales": "See which"
+      },
+      "buscar": {
+        "placeholder": "Scan or type a serial number, product or customer",
+        "etiqueta": "Search serial numbers"
+      },
+      "filtros": {
+        "estado": "Status",
+        "garantia": "Warranty",
+        "garantiaTodas": "All",
+        "verN": "{count, plural, one {Show {n} serial number} other {Show {n} serial numbers}}"
+      },
+      "movil": {
+        "vendida": "Sold",
+        "reclamo": "Claim {codigo}"
+      }
+    },
+    "acciones": {
+      "verHistorial": "See serial history",
+      "verVenta": "See sale {numero}",
+      "verCliente": "See customer",
+      "abrirReclamo": "Open warranty claim",
+      "verReclamo": "See claim {codigo}",
+      "trasladar": "Transfer to another branch",
+      "imprimirEtiqueta": "Print label",
+      "verProducto": "See product",
+      "marcarDanado": "Mark as damaged",
+      "errorEtiquetas": "Could not prepare the label printing",
+      "ventanaBloqueada": "The browser blocked the print window. Allow pop-ups and try again.",
+      "danadosOk": "{count, plural, one {# serial number marked as damaged} other {# serial numbers marked as damaged}}",
+      "danadosRechazados": "{count, plural, one {# could not be marked because of its status} other {# could not be marked because of their status}}",
+      "sinPermiso": "You do not have permission to change the status of serial numbers.",
+      "errorGuardar": "Could not save the change. Please try again.",
+      "danadoTitulo": "Mark {serial} as damaged?",
+      "danadosTitulo": "{count, plural, one {Mark # serial number as damaged?} other {Mark # serial numbers as damaged?}}",
+      "danadoConsecuencia1": "The serial number is no longer available for sale. Stock does not change: the stock adjustment is made separately.",
+      "danadoConsecuencia2": "The change and the reason are kept in the serial history.",
+      "motivo": "Reason",
+      "motivoGolpe": "Knock or physical damage",
+      "motivoNoEnciende": "Does not turn on",
+      "motivoIncompleto": "Arrived incomplete"
+    },
+    "detalle": {
+      "cargando": "Loading the serial number",
+      "error": "We could not load the serial number",
+      "volver": "Back to serial numbers",
+      "sinPermiso": {
+        "titulo": "You do not have permission to see this serial number",
+        "descripcion": "Ask an administrator of your organization for inventory access."
+      },
+      "noEncontrado": {
+        "titulo": "We could not find this serial number",
+        "descripcion": "It does not exist or belongs to another organization."
+      },
+      "sku": "SKU {sku}",
+      "sinDato": "No data",
+      "imprimirEtiqueta": "Print label",
+      "abrirReclamo": "Open claim",
+      "abrirReclamoGarantia": "Open warranty claim",
+      "registrarDevolucion": "Register customer return",
+      "historial": "Serial history",
+      "origen": {
+        "titulo": "Origin",
+        "proveedor": "Supplier",
+        "ordenCompra": "Purchase order",
+        "facturaCompra": "Purchase invoice",
+        "recibidaEl": "· received on {fecha}",
+        "altaManual": "Added manually on {fecha}",
+        "costo": "Purchase cost",
+        "recibidoEn": "Received at",
+        "lote": "Lot",
+        "sinLote": "No lot"
+      },
+      "venta": {
+        "titulo": "Sale",
+        "venta": "Sale",
+        "sinEnlace": "Sold without a linked sale",
+        "cliente": "Customer",
+        "sinCliente": "No customer",
+        "vendidoPor": "Sold by",
+        "precio": "Sale price",
+        "sinVenta": "This unit has not been sold yet."
+      },
+      "garantia": {
+        "titulo": "Warranty",
+        "plazo": "Term",
+        "plazoMeses": "{meses, plural, one {# month from the sale} other {# months from the sale}}",
+        "sinPlazo": "No warranty",
+        "vigencia": "Validity",
+        "rango": "{inicio} → {fin}",
+        "quedan": "{dias, plural, one {# day left} other {# days left}}",
+        "vencida": "expired",
+        "restante": "{meses, plural, one {# month} other {# months}} and {dias, plural, one {# day} other {# days}} left",
+        "empiezaAlVender": "Starts on the day of the sale",
+        "sinVigencia": "Not started",
+        "hastaCorto": "Warranty until {fecha}",
+        "reclamos": "Claims",
+        "ninguno": "None",
+        "reclamoEstado": "{codigo} · {estado}"
+      }
+    }
+  },
+  "inventarioGarantias": {
+    "comun": {
+      "titulo": "Warranties",
+      "inventario": "Inventory",
+      "seriales": "Serial numbers",
+      "sustantivo": {
+        "singular": "claim",
+        "plural": "claims"
+      }
+    },
+    "estados": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "in_process": "In progress",
+      "resolved": "Resolved",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
+    },
+    "motivos": {
+      "noEnciende": "Does not turn on",
+      "noCarga": "Battery does not charge",
+      "pantalla": "Screen failure",
+      "sonido": "Sound failure",
+      "golpe": "Knock or physical damage",
+      "otro": "Other"
+    },
+    "errores": {
+      "sin_permiso": "You do not have permission for this warranty action.",
+      "sucursal_no_permitida": "You do not have access to that branch.",
+      "sucursal_invalida": "The branch does not belong to your organization.",
+      "no_encontrado": "We could not find the record.",
+      "serial_no_encontrado": "We could not find that serial number in your organization.",
+      "reclamo_no_encontrado": "We could not find the claim.",
+      "serial_no_vendido": "The serial number is not sold: warranties can only be claimed on sold units.",
+      "sin_garantia": "This serial number has no warranty.",
+      "garantia_vencida": "The warranty of this serial number has expired.",
+      "reclamo_abierto": "This serial number already has an open claim.",
+      "transicion_invalida": "The claim changed status in the meantime. Reload the page.",
+      "motivo_requerido": "Write the reason.",
+      "rma_requerido": "Write the supplier’s RMA number.",
+      "proveedor_invalido": "The supplier does not belong to your organization.",
+      "tipo_invalido": "Choose how it is resolved.",
+      "reemplazo_requerido": "Choose the replacement unit.",
+      "reemplazo_invalido": "The replacement unit is no longer available or belongs to another product.",
+      "monto_invalido": "Enter an amount greater than zero.",
+      "estado_invalido": "Invalid status.",
+      "datos_invalidos": "Check the form data.",
+      "error_desconocido": "Could not complete it. Please try again."
+    },
+    "listado": {
+      "subtituloLema": "claims on sold serial numbers, from the customer to the supplier",
+      "subtituloMovil": "{pendientes} pending · {proveedor} with the supplier",
+      "actualizar": "Refresh",
+      "nuevoReclamo": "New claim",
+      "etiquetaFila": "Claim {codigo} for serial {serial}",
+      "errorCarga": "We could not load the claims",
+      "sinResultados": "Try another claim, serial number or customer, or remove a filter.",
+      "garantiaVigente": "Active",
+      "garantiaVencida": "Expired",
+      "sinGarantia": "No warranty",
+      "vacio": {
+        "titulo": "No warranty claims yet",
+        "descripcion": "When a customer complains about a sold unit, open the claim here with its serial number."
+      },
+      "sinPermiso": {
+        "titulo": "You do not have permission to see warranties",
+        "descripcion": "Ask an administrator of your organization for inventory access."
+      },
+      "exportar": {
+        "boton": "Export",
+        "sinDatos": "There are no claims to export",
+        "error": "Could not export. Please try again."
+      },
+      "csv": {
+        "codigo": "Claim",
+        "fecha": "Date",
+        "estado": "Status",
+        "serial": "Serial number",
+        "producto": "Product",
+        "cliente": "Customer",
+        "motivo": "Reason",
+        "garantiaHasta": "Warranty until",
+        "rma": "RMA",
+        "resolucion": "Resolution"
+      },
+      "resoluciones": {
+        "repair": "Repair",
+        "replacement": "Replacement",
+        "refund": "Refund",
+        "store_credit": "Store credit",
+        "rejected": "Rejected"
+      },
+      "kpis": {
+        "etiqueta": "Warranty summary",
+        "pendientes": "Pending",
+        "pendientesVencidos": "{count, plural, one {{n} unreviewed for more than 48 h} other {{n} unreviewed for more than 48 h}}",
+        "pendientesPlazo": "to review within 48 h",
+        "sinPendientes": "no claims to review",
+        "conProveedor": "With the supplier",
+        "rmaAbiertos": "{count, plural, one {{n} open RMA} other {{n} open RMAs}}",
+        "resueltosMes": "Resolved this month",
+        "resueltosDetalle": "{reparados} repaired · {reemplazados} replaced",
+        "reembolsadoMes": "Refunded this month",
+        "reembolsos": "{count, plural, =0 {no refunds} one {{n} refund} other {{n} refunds}}"
+      },
+      "buscar": {
+        "placeholder": "Search by claim, serial number or customer",
+        "etiqueta": "Search claims"
+      },
+      "filtros": {
+        "estado": "Status",
+        "garantia": "Warranty",
+        "todas": "All",
+        "verN": "{count, plural, one {Show {n} claim} other {Show {n} claims}}"
+      },
+      "chips": {
+        "estado": "Status: {estados}",
+        "garantia": {
+          "vigente": "Active warranty",
+          "vencida": "Expired warranty"
+        }
+      },
+      "columnas": {
+        "reclamo": "Claim",
+        "serial": "Serial number",
+        "cliente": "Customer",
+        "motivo": "Reason",
+        "garantia": "Warranty",
+        "estado": "Status"
+      },
+      "movil": {
+        "conProveedor": "{rma} · with the supplier",
+        "garantiaVigente": "active warranty",
+        "garantiaVencida": "expired warranty"
+      }
+    },
+    "nuevo": {
+      "titulo": "New warranty claim",
+      "descripcion": "Scan the sold serial number. The warranty and the customer come from the sale.",
+      "serial": "Serial number",
+      "serialPlaceholder": "Scan or type the serial number",
+      "buscando": "Looking for the serial number…",
+      "vendido": "sold on {fecha} in {venta} to {cliente}",
+      "sinCliente": "walk-in customer",
+      "garantiaVigente": "Active warranty: {meses, plural, one {# month} other {# months}} from the sale, {restanteMeses, plural, one {# month} other {# months}} and {restanteDias, plural, one {# day} other {# days}} left.",
+      "garantiaVigenteCorta": "Active warranty.",
+      "noReclamable": {
+        "serial_no_encontrado": "We could not find that serial number in your organization.",
+        "serial_no_vendido": "This serial number is not sold: warranties can only be claimed on sold units.",
+        "sin_garantia": "This serial number has no warranty.",
+        "garantia_vencida": "The warranty of this serial number has expired.",
+        "reclamo_abierto": "This serial number already has an open claim.",
+        "reclamo_abierto_codigo": "This serial number already has claim {codigo} open."
+      },
+      "motivo": "Reason",
+      "motivoPlaceholder": "Choose the reason",
+      "descripcionCampo": "Description",
+      "descripcionPlaceholder": "What happened, since when, what the customer brings",
+      "nota": "When the claim is created, the serial number moves to “Warranty claim” and the step is kept in its history.",
+      "crear": "Create claim",
+      "creado": "Claim {codigo} created",
+      "bloqueo": {
+        "serial": "Scan a sold serial number",
+        "noReclamable": "This serial number does not accept a claim"
+      },
+      "errores": {
+        "serial": "Type or scan the serial number",
+        "motivo": "Choose the reason",
+        "descripcionOtro": "Describe the problem"
+      }
+    },
+    "rma": {
+      "titulo": "Send to supplier (RMA)",
+      "descripcion": "Claim {codigo} · serial {serial}",
+      "proveedor": "Supplier",
+      "numero": "Supplier RMA number",
+      "numeroPlaceholder": "RMA-2026-031",
+      "errorNumero": "Write the RMA number",
+      "transportadora": "Carrier",
+      "guia": "Tracking number",
+      "notas": "Notes for the supplier",
+      "nota": "The claim moves to “In progress · with the supplier” and the serial number stays in “Warranty claim”. When it comes back, it is resolved with a repair, replacement or refund.",
+      "enviar": "Send to supplier",
+      "enviado": "Claim {codigo} sent to the supplier"
+    },
+    "resolver": {
+      "titulo": "Resolve claim {codigo}",
+      "tipo": "How it is resolved",
+      "tipoPlaceholder": "Choose how it is resolved",
+      "tipos": {
+        "repair": "Repair and return to the customer",
+        "replacement": "Replacement with another unit",
+        "refund": "Refund"
+      },
+      "reemplazo": "Replacement serial number",
+      "reemplazoAyuda": "Only units of the same product in stock",
+      "reemplazoPlaceholder": "Choose the unit",
+      "cargandoReemplazos": "Loading units…",
+      "sinReemplazos": "There are no units of this product in stock",
+      "opcionReemplazo": "{serial} · in stock at {sucursal}",
+      "monto": "Refunded amount",
+      "notas": "Notes",
+      "aviso": {
+        "reemplazo": "{nuevo} is sold to {cliente} with a new warranty from today, and {serial} becomes “{estado}”.",
+        "reembolso": "{serial} returns to the company and becomes “{estado}”. The refund credit note is issued in Finance.",
+        "reparacion": "{serial} returns to the customer as sold; its warranty stays as it was."
+      },
+      "avisoStock": "The stock of the replacement unit is deducted by the inventory core; the serial number is already sold to the customer.",
+      "elCliente": "the customer",
+      "confirmar": "Resolve claim",
+      "resuelto": "Claim {codigo} resolved",
+      "errores": {
+        "tipo": "Choose how it is resolved",
+        "reemplazo": "Choose the replacement unit",
+        "monto": "Enter an amount greater than zero"
+      }
+    },
+    "acciones": {
+      "verDetalle": "See details",
+      "aprobar": "Approve",
+      "enviarProveedor": "Send to supplier (RMA)",
+      "resolver": "Resolve",
+      "verSerial": "See serial {serial}",
+      "rechazar": "Reject",
+      "aprobado": "Claim {codigo} approved",
+      "rechazado": "Claim {codigo} rejected",
+      "rechazarTitulo": "Reject claim {codigo}?",
+      "rechazarConsecuencia": "The unit returns to the customer as sold and its warranty stays as it was.",
+      "motivoRechazo": "Rejection reason"
+    },
+    "detalle": {
+      "titulo": "Claim {codigo}",
+      "subtitulo": "{motivo} · opened on {fecha} by {usuario}",
+      "alguien": "someone",
+      "cargando": "Loading the claim",
+      "error": "We could not load the claim",
+      "volver": "Back to warranties",
+      "sinPermiso": {
+        "titulo": "You do not have permission to see this claim",
+        "descripcion": "Ask an administrator of your organization for inventory access."
+      },
+      "noEncontrado": {
+        "titulo": "We could not find this claim",
+        "descripcion": "It does not exist or belongs to another organization."
+      },
+      "enviarProveedor": "Send to supplier",
+      "resolver": "Resolve",
+      "aprobar": "Approve",
+      "garantiaVigente": "Active warranty",
+      "garantiaVigenteQuedan": "Active · {meses, plural, one {# month} other {# months}} and {dias, plural, one {# day} other {# days}} left",
+      "garantiaVencida": "Expired on {fecha}",
+      "sinGarantia": "No warranty",
+      "pendienteProveedor": "Pending shipment to the supplier",
+      "rmaPorAsignar": "RMA to be assigned",
+      "pendienteResolver": "Pending resolution",
+      "rmaNumero": "RMA {rma}",
+      "sinDato": "No data",
+      "historial": "History",
+      "unidad": {
+        "titulo": "Claimed unit",
+        "serial": "Serial number",
+        "venta": "Sale",
+        "cliente": "Customer",
+        "garantia": "Warranty",
+        "sinVenta": "No linked sale",
+        "sinCliente": "No customer"
+      },
+      "reclamo": {
+        "titulo": "Claim",
+        "motivo": "Reason",
+        "descripcion": "Description",
+        "adjuntos": "Attachments",
+        "nAdjuntos": "{count, plural, one {# attachment} other {# attachments}}",
+        "sinAdjuntos": "No attachments",
+        "aprobado": "Approved"
+      },
+      "rma": {
+        "titulo": "Shipment to the supplier",
+        "proveedor": "Supplier",
+        "numero": "RMA number",
+        "transportadora": "Carrier",
+        "guia": "Tracking number",
+        "enviado": "Sent",
+        "notas": "Notes"
+      },
+      "resolucion": {
+        "titulo": "Resolution",
+        "tipo": "How it was resolved",
+        "reemplazo": "Replacement unit",
+        "monto": "Refunded amount",
+        "notas": "Notes",
+        "fecha": "Resolved"
+      }
+    }
+  },
+  "inventarioTrazabilidad": {
+    "titulo": "Traceability",
+    "subtitulo": "Follow a lot, a serial number or a document from start to finish",
+    "migas": {
+      "inventario": "Inventory",
+      "informes": "Reports"
+    },
+    "actualizar": "Refresh",
+    "cargando": "Searching",
+    "error": "We could not run the search",
+    "recorrido": "Journey",
+    "documentos": "Documents",
+    "sinDocumentos": "No linked documents.",
+    "sinRecorrido": "No movements recorded for this lot.",
+    "sinResultados": "We could not find a {tipo} with that code in your organization.",
+    "tipos": {
+      "documento": "document",
+      "lote": "lot",
+      "codigo": "serial number, lot or document"
+    },
+    "exportar": {
+      "boton": "Export",
+      "error": "Could not export. Please try again."
+    },
+    "movil": {
+      "lote": "Lot {codigo}",
+      "serial": "Serial {codigo}",
+      "codigo": "{codigo}"
+    },
+    "sinPermiso": {
+      "titulo": "You do not have permission to see traceability",
+      "descripcion": "Ask an administrator of your organization for inventory access."
+    },
+    "buscar": {
+      "placeholder": "Scan or type a lot, a serial number or a document (OC-, TR-, AJ-, GAR- or the invoice number)",
+      "etiqueta": "Code to trace"
+    },
+    "inicial": {
+      "titulo": "What do you want to trace?",
+      "descripcion": "Type or scan a lot, a serial number or a document (an invoice, OC-131, TR-43, AJ-77, GAR-0007). We show you where it came from, where it went and who it reached.",
+      "escanear": "Scan code",
+      "recientes": "Recent:"
+    },
+    "csv": {
+      "fecha": "Date",
+      "evento": "Event",
+      "documento": "Document",
+      "sucursal": "Branch",
+      "cliente": "Customer",
+      "producto": "Product",
+      "lote": "Lot",
+      "cantidad": "Quantity"
+    },
+    "serial": {
+      "titulo": "Serial {serial} · {producto}",
+      "vendidoA": "Sold to {cliente} on {fecha}",
+      "sinCliente": "walk-in customer",
+      "garantiaHasta": "warranty active until {fecha}",
+      "garantiaVencida": "expired warranty",
+      "reclamoAbierto": "claim {codigo} open",
+      "pendienteProveedor": "Pending shipment to the supplier",
+      "rmaPorAsignar": "RMA to be assigned",
+      "por": "by {nombre}",
+      "reclamoGarantia": "warranty claim",
+      "ver": "See serial number"
+    },
+    "lote": {
+      "titulo": "Lot {codigo} · {producto}",
+      "sku": "SKU {sku}",
+      "recibidoEl": "received on {fecha} in {documento}",
+      "vence": "expires on {fecha} ({dias, plural, =0 {today} one {in # day} other {in # days}})",
+      "vencio": "expired on {fecha}",
+      "otrosLotes": "{count, plural, one {There is # more lot with this code (of another product)} other {There are # more lots with this code (of other products)}}",
+      "ver": "See lot",
+      "uds": "{n} units",
+      "costoUnitario": "{costo} each",
+      "consumidorFinal": "Walk-in customer",
+      "aQuien": "Who was it sold to?",
+      "exportarClientes": "Export customers for recall",
+      "sinVentasTitulo": "No sales of this lot",
+      "sinVentasDescripcion": "When it sells, you will see here who it reached.",
+      "vencimiento": {
+        "vencido": "Expired",
+        "por_vencer": "Expiring soon",
+        "vigente": "Valid"
+      },
+      "kpis": {
+        "etiqueta": "Lot summary",
+        "recibidas": "Received",
+        "vendidas": "Sold",
+        "aClientes": "{count, plural, one {to {n} customer} other {to {n} customers}} · last {fecha}",
+        "sinVentas": "no sales",
+        "existencias": "In stock",
+        "mermas": "Shrinkage and adjustments"
+      },
+      "columnas": {
+        "fecha": "Date",
+        "venta": "Sale",
+        "cliente": "Customer",
+        "sucursal": "Branch",
+        "uds": "Units"
+      }
+    },
+    "pasos": {
+      "recibido": "Received · {cantidad} units",
+      "trasladado": "{cantidad} units transferred",
+      "traslado_recibido": "{cantidad} units received at {sucursal}",
+      "ajuste": "Adjustment of {cantidad} units",
+      "movimiento": "Movement of {cantidad} units",
+      "vendido": "Sold in {ventas, plural, one {# sale} other {# sales}}",
+      "vendidoDetalle": "to {clientes, plural, one {# customer} other {# customers}}, at {sucursales, plural, one {# branch} other {# branches}}",
+      "unidades": "{signo}{cantidad} units"
+    },
+    "documento": {
+      "titulo": "{tipo} {numero}",
+      "abrir": "Open the document",
+      "movimientos": "Inventory movements",
+      "seriales": "Serial numbers",
+      "sinSeriales": "No serial numbers in this document.",
+      "sinMovimientosTitulo": "No movements",
+      "sinMovimientos": "This document did not move stock.",
+      "columnas": {
+        "fecha": "Date",
+        "producto": "Product",
+        "lote": "Lot",
+        "sucursal": "Branch",
+        "cantidad": "Quantity"
+      }
+    }
   }
 }

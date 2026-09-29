@@ -15531,5 +15531,702 @@
       "confirmar": "{n, plural, =0 {Asignar} one {Asignar a # producto} other {Asignar a # productos}}",
       "eligeUno": "Elige al menos un producto"
     }
+  },
+  "inventarioSeriales": {
+    "comun": {
+      "titulo": "Seriales",
+      "inventario": "Inventario",
+      "existencias": "Existencias",
+      "sustantivo": {
+        "singular": "serial",
+        "plural": "seriales"
+      },
+      "nSeriales": "{count, plural, one {{n} serial} other {{n} seriales}}",
+      "tituloSerial": "Serial {serial}"
+    },
+    "estados": {
+      "in_stock": "En stock",
+      "reserved": "Reservado",
+      "sold": "Vendido",
+      "returned": "Devuelto",
+      "in_transit": "En tránsito",
+      "damaged": "Dañado",
+      "rma": "RMA",
+      "warranty_claim": "Reclamo garantía",
+      "warranty": "En garantía",
+      "repair": "En reparación",
+      "defective": "Defectuoso"
+    },
+    "documentos": {
+      "garantia": "Reclamo de garantía"
+    },
+    "garantia": {
+      "vigente": "Vigente",
+      "vigenteMeses": "Vigente · {meses, plural, one {# mes} other {# meses}}",
+      "hasta": "hasta {fecha}",
+      "porVencer": "Vence en {dias, plural, one {# día} other {# días}}",
+      "vencida": "Vencida",
+      "vencioEl": "venció el {fecha}",
+      "empiezaAlVender": "Empieza al vender",
+      "meses": "{meses, plural, one {# mes} other {# meses}}",
+      "enReclamo": "En reclamo",
+      "enRma": "En RMA",
+      "noAplica": "No aplica",
+      "dadoDeBaja": "dado de baja",
+      "sinGarantia": "Sin garantía"
+    },
+    "historial": {
+      "vacio": "Aún no hay movimientos de este serial.",
+      "pendiente": "Pendiente",
+      "detalle": {
+        "por": "por {usuario}",
+        "reemplazoDe": "reemplaza la unidad {serial}",
+        "rma": "RMA {rma}"
+      },
+      "eventos": {
+        "recibido": "Recibido",
+        "recibidoDe": "Recibido de {proveedor}",
+        "trasladado": "Trasladado a {sucursal}",
+        "reservado": "Reservado para un pedido",
+        "vendido": "Vendido",
+        "vendidoA": "Vendido a {cliente}",
+        "reemplazoEntregado": "Entregado como reemplazo de garantía",
+        "devuelto": "Devuelto por el cliente",
+        "danado": "Marcado como dañado",
+        "rma": "Enviado al proveedor",
+        "reclamoAbierto": "Reclamo de garantía abierto",
+        "reclamoAprobado": "Reclamo aprobado",
+        "reparado": "Reparado y devuelto al cliente",
+        "reemplazado": "Reemplazado por {reemplazo}",
+        "reembolsado": "Reembolsado al cliente",
+        "reclamoRechazado": "Reclamo rechazado",
+        "garantiaReiniciada": "Garantía reiniciada: empieza al vender",
+        "cambioEstado": "Cambio de estado: {de} → {a}"
+      }
+    },
+    "listado": {
+      "subtituloLema": "cada unidad con su historia, de la compra a la garantía",
+      "subtituloMovil": "{total} · {stock} en stock",
+      "actualizar": "Actualizar",
+      "por": "por {nombre}",
+      "etiquetaFila": "Serial {serial} de {producto}",
+      "errorSeleccionarTodo": "No se pudieron seleccionar todos los seriales",
+      "errorCarga": "No pudimos cargar los seriales",
+      "sinResultados": "Prueba con otro serial, producto o cliente, o quita un filtro.",
+      "vacio": {
+        "titulo": "Aún no hay seriales",
+        "descripcion": "Los seriales se registran al recibir una compra o desde el producto con «Generar seriales»."
+      },
+      "sinPermiso": {
+        "titulo": "No tienes permiso para ver los seriales",
+        "descripcion": "Pídele a un administrador de tu organización que te dé acceso a inventario."
+      },
+      "exportar": {
+        "boton": "Exportar",
+        "sinDatos": "No hay seriales para exportar",
+        "listo": "{count, plural, one {Se exportó # serial} other {Se exportaron # seriales}}",
+        "error": "No se pudo exportar. Inténtalo de nuevo."
+      },
+      "csv": {
+        "serial": "Serial",
+        "producto": "Producto",
+        "sku": "SKU",
+        "estado": "Estado",
+        "sucursal": "Sucursal",
+        "recibido": "Recibido",
+        "origen": "Documento de origen",
+        "proveedor": "Proveedor",
+        "venta": "Venta",
+        "fechaVenta": "Fecha de venta",
+        "cliente": "Cliente",
+        "garantiaMeses": "Garantía (meses)",
+        "garantiaDesde": "Garantía desde",
+        "garantiaHasta": "Garantía hasta",
+        "reclamo": "Reclamo"
+      },
+      "masivas": {
+        "trasladar": "Trasladar",
+        "etiquetas": "Imprimir etiquetas",
+        "exportar": "Exportar",
+        "danados": "{count, plural, one {Marcar # como dañado} other {Marcar # como dañados}}",
+        "reclamo": "Abrir reclamo de garantía",
+        "sinPermiso": "No tienes permiso para trasladar",
+        "soloEnStock": "Solo se trasladan unidades en stock",
+        "unProducto": "Elige unidades de un mismo producto y sucursal"
+      },
+      "chips": {
+        "estado": "Estado: {estados}",
+        "producto": "Producto: {nombre}",
+        "garantia": {
+          "vigente": "Garantía vigente",
+          "por_vencer": "Vence en 30 días",
+          "vencida": "Garantía vencida",
+          "sin_iniciar": "Empieza al vender",
+          "corriendo_en_bodega": "Corriendo en bodega"
+        }
+      },
+      "columnas": {
+        "serial": "Serial",
+        "estado": "Estado",
+        "donde": "Dónde está",
+        "venta": "Venta",
+        "cliente": "Cliente",
+        "garantia": "Garantía"
+      },
+      "donde": {
+        "conCliente": "Con el cliente",
+        "vendidoEn": "vendido en {sucursal}",
+        "vendido": "vendido",
+        "conProveedor": "Con el proveedor",
+        "haciaSucursal": "→ {sucursal}",
+        "enTransito": "En tránsito",
+        "traslado": "traslado {numero}",
+        "sinSucursal": "Sin sucursal",
+        "revision": "recibido para revisión",
+        "recibido": "recibido {fecha}"
+      },
+      "kpis": {
+        "etiqueta": "Resumen de seriales",
+        "enStock": "En stock",
+        "enSucursales": "{count, plural, one {en {n} sucursal} other {en {n} sucursales}}",
+        "vendidos": "Vendidos",
+        "vendidosEnlazados": "{venta} con su venta enlazada, {cliente} con cliente",
+        "vendidosCompletos": "todos con venta y cliente",
+        "garantiaVigente": "Garantía vigente",
+        "vencen30": "{count, plural, one {{n} vence en 30 días} other {{n} vencen en 30 días}}",
+        "ningunaVence30": "ninguna vence en 30 días",
+        "enReclamo": "En reclamo o reparación",
+        "reclamosAbiertos": "{count, plural, one {{n} reclamo abierto} other {{n} reclamos abiertos}}",
+        "sinReclamos": "sin reclamos abiertos"
+      },
+      "aviso": {
+        "titulo": "{count, plural, one {{n} garantía está corriendo con la unidad en bodega} other {{n} garantías están corriendo con la unidad en bodega}}",
+        "descripcion": "La garantía de un serial empieza el día de la venta. Estas unidades la tienen fijada desde antes y consumen meses antes de que alguien las compre.",
+        "verCuales": "Ver cuáles"
+      },
+      "buscar": {
+        "placeholder": "Escanea o escribe un serial, producto o cliente",
+        "etiqueta": "Buscar seriales"
+      },
+      "filtros": {
+        "estado": "Estado",
+        "garantia": "Garantía",
+        "garantiaTodas": "Todas",
+        "verN": "{count, plural, one {Ver {n} serial} other {Ver {n} seriales}}"
+      },
+      "movil": {
+        "vendida": "Vendida",
+        "reclamo": "Reclamo {codigo}"
+      }
+    },
+    "acciones": {
+      "verHistorial": "Ver historial del serial",
+      "verVenta": "Ver la venta {numero}",
+      "verCliente": "Ver el cliente",
+      "abrirReclamo": "Abrir reclamo de garantía",
+      "verReclamo": "Ver el reclamo {codigo}",
+      "trasladar": "Trasladar a otra sucursal",
+      "imprimirEtiqueta": "Imprimir etiqueta",
+      "verProducto": "Ver producto",
+      "marcarDanado": "Marcar como dañado",
+      "errorEtiquetas": "No se pudo preparar la impresión de etiquetas",
+      "ventanaBloqueada": "El navegador bloqueó la ventana de impresión. Permite las ventanas emergentes e inténtalo de nuevo.",
+      "danadosOk": "{count, plural, one {# serial marcado como dañado} other {# seriales marcados como dañados}}",
+      "danadosRechazados": "{count, plural, one {# no se pudo marcar por su estado} other {# no se pudieron marcar por su estado}}",
+      "sinPermiso": "No tienes permiso para cambiar el estado de los seriales.",
+      "errorGuardar": "No se pudo guardar el cambio. Inténtalo de nuevo.",
+      "danadoTitulo": "¿Marcar {serial} como dañado?",
+      "danadosTitulo": "{count, plural, one {¿Marcar # serial como dañado?} other {¿Marcar # seriales como dañados?}}",
+      "danadoConsecuencia1": "El serial deja de estar disponible para vender. Las existencias no cambian: el ajuste de stock se hace aparte.",
+      "danadoConsecuencia2": "El cambio y el motivo quedan en el historial del serial.",
+      "motivo": "Motivo",
+      "motivoGolpe": "Golpe o daño físico",
+      "motivoNoEnciende": "No enciende",
+      "motivoIncompleto": "Llegó incompleto"
+    },
+    "detalle": {
+      "cargando": "Cargando el serial",
+      "error": "No pudimos cargar el serial",
+      "volver": "Volver a seriales",
+      "sinPermiso": {
+        "titulo": "No tienes permiso para ver este serial",
+        "descripcion": "Pídele a un administrador de tu organización que te dé acceso a inventario."
+      },
+      "noEncontrado": {
+        "titulo": "No encontramos este serial",
+        "descripcion": "No existe o pertenece a otra organización."
+      },
+      "sku": "SKU {sku}",
+      "sinDato": "Sin dato",
+      "imprimirEtiqueta": "Imprimir etiqueta",
+      "abrirReclamo": "Abrir reclamo",
+      "abrirReclamoGarantia": "Abrir reclamo de garantía",
+      "registrarDevolucion": "Registrar devolución del cliente",
+      "historial": "Historial del serial",
+      "origen": {
+        "titulo": "Origen",
+        "proveedor": "Proveedor",
+        "ordenCompra": "Orden de compra",
+        "facturaCompra": "Factura de compra",
+        "recibidaEl": "· recibida el {fecha}",
+        "altaManual": "Alta manual el {fecha}",
+        "costo": "Costo de compra",
+        "recibidoEn": "Recibido en",
+        "lote": "Lote",
+        "sinLote": "Sin lote"
+      },
+      "venta": {
+        "titulo": "Venta",
+        "venta": "Venta",
+        "sinEnlace": "Vendido sin venta enlazada",
+        "cliente": "Cliente",
+        "sinCliente": "Sin cliente",
+        "vendidoPor": "Vendido por",
+        "precio": "Precio de venta",
+        "sinVenta": "Esta unidad todavía no se ha vendido."
+      },
+      "garantia": {
+        "titulo": "Garantía",
+        "plazo": "Plazo",
+        "plazoMeses": "{meses, plural, one {# mes desde la venta} other {# meses desde la venta}}",
+        "sinPlazo": "Sin garantía",
+        "vigencia": "Vigencia",
+        "rango": "{inicio} → {fin}",
+        "quedan": "quedan {dias, plural, one {# día} other {# días}}",
+        "vencida": "vencida",
+        "restante": "quedan {meses, plural, one {# mes} other {# meses}} y {dias, plural, one {# día} other {# días}}",
+        "empiezaAlVender": "Empieza el día de la venta",
+        "sinVigencia": "Sin vigencia",
+        "hastaCorto": "Garantía hasta {fecha}",
+        "reclamos": "Reclamos",
+        "ninguno": "Ninguno",
+        "reclamoEstado": "{codigo} · {estado}"
+      }
+    }
+  },
+  "inventarioGarantias": {
+    "comun": {
+      "titulo": "Garantías",
+      "inventario": "Inventario",
+      "seriales": "Seriales",
+      "sustantivo": {
+        "singular": "reclamo",
+        "plural": "reclamos"
+      }
+    },
+    "estados": {
+      "pending": "Pendiente",
+      "approved": "Aprobado",
+      "in_process": "En proceso",
+      "resolved": "Resuelto",
+      "rejected": "Rechazado",
+      "cancelled": "Cancelado"
+    },
+    "motivos": {
+      "noEnciende": "No enciende",
+      "noCarga": "No carga la batería",
+      "pantalla": "Falla la pantalla",
+      "sonido": "Falla el sonido",
+      "golpe": "Golpe o daño físico",
+      "otro": "Otro"
+    },
+    "errores": {
+      "sin_permiso": "No tienes permiso para esta acción de garantías.",
+      "sucursal_no_permitida": "No tienes acceso a esa sucursal.",
+      "sucursal_invalida": "La sucursal no es de tu organización.",
+      "no_encontrado": "No encontramos el registro.",
+      "serial_no_encontrado": "No encontramos ese serial en tu organización.",
+      "reclamo_no_encontrado": "No encontramos el reclamo.",
+      "serial_no_vendido": "El serial no está vendido: solo se reclama la garantía de unidades vendidas.",
+      "sin_garantia": "Este serial no tiene garantía.",
+      "garantia_vencida": "La garantía de este serial ya venció.",
+      "reclamo_abierto": "Este serial ya tiene un reclamo abierto.",
+      "transicion_invalida": "El reclamo cambió de estado mientras tanto. Recarga la página.",
+      "motivo_requerido": "Escribe el motivo.",
+      "rma_requerido": "Escribe el número de RMA del proveedor.",
+      "proveedor_invalido": "El proveedor no es de tu organización.",
+      "tipo_invalido": "Elige cómo se resuelve.",
+      "reemplazo_requerido": "Elige la unidad de reemplazo.",
+      "reemplazo_invalido": "La unidad de reemplazo ya no está disponible o es de otro producto.",
+      "monto_invalido": "Escribe un monto mayor que cero.",
+      "estado_invalido": "Estado no válido.",
+      "datos_invalidos": "Revisa los datos del formulario.",
+      "error_desconocido": "No se pudo completar. Inténtalo de nuevo."
+    },
+    "listado": {
+      "subtituloLema": "reclamos sobre seriales vendidos, del cliente al proveedor",
+      "subtituloMovil": "{pendientes} pendientes · {proveedor} con el proveedor",
+      "actualizar": "Actualizar",
+      "nuevoReclamo": "Nuevo reclamo",
+      "etiquetaFila": "Reclamo {codigo} del serial {serial}",
+      "errorCarga": "No pudimos cargar los reclamos",
+      "sinResultados": "Prueba con otro reclamo, serial o cliente, o quita un filtro.",
+      "garantiaVigente": "Vigente",
+      "garantiaVencida": "Vencida",
+      "sinGarantia": "Sin garantía",
+      "vacio": {
+        "titulo": "Aún no hay reclamos de garantía",
+        "descripcion": "Cuando un cliente reclame por una unidad vendida, ábrelo aquí con su serial."
+      },
+      "sinPermiso": {
+        "titulo": "No tienes permiso para ver las garantías",
+        "descripcion": "Pídele a un administrador de tu organización que te dé acceso a inventario."
+      },
+      "exportar": {
+        "boton": "Exportar",
+        "sinDatos": "No hay reclamos para exportar",
+        "error": "No se pudo exportar. Inténtalo de nuevo."
+      },
+      "csv": {
+        "codigo": "Reclamo",
+        "fecha": "Fecha",
+        "estado": "Estado",
+        "serial": "Serial",
+        "producto": "Producto",
+        "cliente": "Cliente",
+        "motivo": "Motivo",
+        "garantiaHasta": "Garantía hasta",
+        "rma": "RMA",
+        "resolucion": "Resolución"
+      },
+      "resoluciones": {
+        "repair": "Reparación",
+        "replacement": "Reemplazo",
+        "refund": "Reembolso",
+        "store_credit": "Saldo a favor",
+        "rejected": "Rechazado"
+      },
+      "kpis": {
+        "etiqueta": "Resumen de garantías",
+        "pendientes": "Pendientes",
+        "pendientesVencidos": "{count, plural, one {{n} lleva más de 48 h sin revisar} other {{n} llevan más de 48 h sin revisar}}",
+        "pendientesPlazo": "por revisar en menos de 48 h",
+        "sinPendientes": "sin reclamos por revisar",
+        "conProveedor": "Con el proveedor",
+        "rmaAbiertos": "{count, plural, one {{n} RMA abierto} other {{n} RMA abiertos}}",
+        "resueltosMes": "Resueltos este mes",
+        "resueltosDetalle": "{reparados} reparados · {reemplazados} reemplazados",
+        "reembolsadoMes": "Reembolsado este mes",
+        "reembolsos": "{count, plural, =0 {sin reembolsos} one {{n} reembolso} other {{n} reembolsos}}"
+      },
+      "buscar": {
+        "placeholder": "Buscar por reclamo, serial o cliente",
+        "etiqueta": "Buscar reclamos"
+      },
+      "filtros": {
+        "estado": "Estado",
+        "garantia": "Garantía",
+        "todas": "Todas",
+        "verN": "{count, plural, one {Ver {n} reclamo} other {Ver {n} reclamos}}"
+      },
+      "chips": {
+        "estado": "Estado: {estados}",
+        "garantia": {
+          "vigente": "Garantía vigente",
+          "vencida": "Garantía vencida"
+        }
+      },
+      "columnas": {
+        "reclamo": "Reclamo",
+        "serial": "Serial",
+        "cliente": "Cliente",
+        "motivo": "Motivo",
+        "garantia": "Garantía",
+        "estado": "Estado"
+      },
+      "movil": {
+        "conProveedor": "{rma} · con el proveedor",
+        "garantiaVigente": "garantía vigente",
+        "garantiaVencida": "garantía vencida"
+      }
+    },
+    "nuevo": {
+      "titulo": "Nuevo reclamo de garantía",
+      "descripcion": "Escanea el serial vendido. La garantía y el cliente salen de la venta.",
+      "serial": "Serial",
+      "serialPlaceholder": "Escanea o escribe el serial",
+      "buscando": "Buscando el serial…",
+      "vendido": "vendido el {fecha} en {venta} a {cliente}",
+      "sinCliente": "consumidor final",
+      "garantiaVigente": "Garantía vigente: {meses, plural, one {# mes} other {# meses}} desde la venta, quedan {restanteMeses, plural, one {# mes} other {# meses}} y {restanteDias, plural, one {# día} other {# días}}.",
+      "garantiaVigenteCorta": "Garantía vigente.",
+      "noReclamable": {
+        "serial_no_encontrado": "No encontramos ese serial en tu organización.",
+        "serial_no_vendido": "Este serial no está vendido: la garantía solo se reclama sobre unidades vendidas.",
+        "sin_garantia": "Este serial no tiene garantía.",
+        "garantia_vencida": "La garantía de este serial ya venció.",
+        "reclamo_abierto": "Este serial ya tiene un reclamo abierto.",
+        "reclamo_abierto_codigo": "Este serial ya tiene abierto el reclamo {codigo}."
+      },
+      "motivo": "Motivo",
+      "motivoPlaceholder": "Elige el motivo",
+      "descripcionCampo": "Descripción",
+      "descripcionPlaceholder": "Qué pasó, desde cuándo, qué trae el cliente",
+      "nota": "Al crear el reclamo, el serial pasa a «Reclamo garantía» y el paso queda en su historial.",
+      "crear": "Crear reclamo",
+      "creado": "Reclamo {codigo} creado",
+      "bloqueo": {
+        "serial": "Escanea un serial vendido",
+        "noReclamable": "Este serial no admite un reclamo"
+      },
+      "errores": {
+        "serial": "Escribe o escanea el serial",
+        "motivo": "Elige el motivo",
+        "descripcionOtro": "Describe el problema"
+      }
+    },
+    "rma": {
+      "titulo": "Enviar al proveedor (RMA)",
+      "descripcion": "Reclamo {codigo} · serial {serial}",
+      "proveedor": "Proveedor",
+      "numero": "Número de RMA del proveedor",
+      "numeroPlaceholder": "RMA-2026-031",
+      "errorNumero": "Escribe el número de RMA",
+      "transportadora": "Transportadora",
+      "guia": "Guía",
+      "notas": "Notas para el proveedor",
+      "nota": "El reclamo pasa a «En proceso · con el proveedor» y el serial sigue en «Reclamo garantía». Al volver, se resuelve con reparación, reemplazo o reembolso.",
+      "enviar": "Enviar al proveedor",
+      "enviado": "Reclamo {codigo} enviado al proveedor"
+    },
+    "resolver": {
+      "titulo": "Resolver reclamo {codigo}",
+      "tipo": "Cómo se resuelve",
+      "tipoPlaceholder": "Elige cómo se resuelve",
+      "tipos": {
+        "repair": "Reparación y entrega al cliente",
+        "replacement": "Reemplazo por otra unidad",
+        "refund": "Reembolso"
+      },
+      "reemplazo": "Serial de reemplazo",
+      "reemplazoAyuda": "Solo unidades del mismo producto en stock",
+      "reemplazoPlaceholder": "Elige la unidad",
+      "cargandoReemplazos": "Cargando unidades…",
+      "sinReemplazos": "No hay unidades de este producto en stock",
+      "opcionReemplazo": "{serial} · en stock en {sucursal}",
+      "monto": "Monto reembolsado",
+      "notas": "Notas",
+      "aviso": {
+        "reemplazo": "{nuevo} queda vendido a {cliente} con garantía nueva desde hoy, y {serial} queda «{estado}».",
+        "reembolso": "{serial} vuelve a la empresa y queda «{estado}». La nota crédito del reembolso se hace en Finanzas.",
+        "reparacion": "{serial} vuelve al cliente como vendido; su garantía sigue como estaba."
+      },
+      "avisoStock": "Las existencias de la unidad de reemplazo se descuentan con el núcleo de inventario; el serial ya queda vendido al cliente.",
+      "elCliente": "el cliente",
+      "confirmar": "Resolver reclamo",
+      "resuelto": "Reclamo {codigo} resuelto",
+      "errores": {
+        "tipo": "Elige cómo se resuelve",
+        "reemplazo": "Elige la unidad de reemplazo",
+        "monto": "Escribe un monto mayor que cero"
+      }
+    },
+    "acciones": {
+      "verDetalle": "Ver detalle",
+      "aprobar": "Aprobar",
+      "enviarProveedor": "Enviar al proveedor (RMA)",
+      "resolver": "Resolver",
+      "verSerial": "Ver serial {serial}",
+      "rechazar": "Rechazar",
+      "aprobado": "Reclamo {codigo} aprobado",
+      "rechazado": "Reclamo {codigo} rechazado",
+      "rechazarTitulo": "¿Rechazar el reclamo {codigo}?",
+      "rechazarConsecuencia": "La unidad vuelve al cliente como vendida y su garantía sigue como estaba.",
+      "motivoRechazo": "Motivo del rechazo"
+    },
+    "detalle": {
+      "titulo": "Reclamo {codigo}",
+      "subtitulo": "{motivo} · abierto el {fecha} por {usuario}",
+      "alguien": "alguien",
+      "cargando": "Cargando el reclamo",
+      "error": "No pudimos cargar el reclamo",
+      "volver": "Volver a garantías",
+      "sinPermiso": {
+        "titulo": "No tienes permiso para ver este reclamo",
+        "descripcion": "Pídele a un administrador de tu organización que te dé acceso a inventario."
+      },
+      "noEncontrado": {
+        "titulo": "No encontramos este reclamo",
+        "descripcion": "No existe o pertenece a otra organización."
+      },
+      "enviarProveedor": "Enviar al proveedor",
+      "resolver": "Resolver",
+      "aprobar": "Aprobar",
+      "garantiaVigente": "Garantía vigente",
+      "garantiaVigenteQuedan": "Vigente · quedan {meses, plural, one {# mes} other {# meses}} y {dias, plural, one {# día} other {# días}}",
+      "garantiaVencida": "Vencida el {fecha}",
+      "sinGarantia": "Sin garantía",
+      "pendienteProveedor": "Pendiente de enviar al proveedor",
+      "rmaPorAsignar": "RMA por asignar",
+      "pendienteResolver": "Pendiente de resolver",
+      "rmaNumero": "RMA {rma}",
+      "sinDato": "Sin dato",
+      "historial": "Historial",
+      "unidad": {
+        "titulo": "Unidad reclamada",
+        "serial": "Serial",
+        "venta": "Venta",
+        "cliente": "Cliente",
+        "garantia": "Garantía",
+        "sinVenta": "Sin venta enlazada",
+        "sinCliente": "Sin cliente"
+      },
+      "reclamo": {
+        "titulo": "Reclamo",
+        "motivo": "Motivo",
+        "descripcion": "Descripción",
+        "adjuntos": "Adjuntos",
+        "nAdjuntos": "{count, plural, one {# adjunto} other {# adjuntos}}",
+        "sinAdjuntos": "Sin adjuntos",
+        "aprobado": "Aprobado"
+      },
+      "rma": {
+        "titulo": "Envío al proveedor",
+        "proveedor": "Proveedor",
+        "numero": "Número de RMA",
+        "transportadora": "Transportadora",
+        "guia": "Guía",
+        "enviado": "Enviado",
+        "notas": "Notas"
+      },
+      "resolucion": {
+        "titulo": "Resolución",
+        "tipo": "Cómo se resolvió",
+        "reemplazo": "Unidad de reemplazo",
+        "monto": "Monto reembolsado",
+        "notas": "Notas",
+        "fecha": "Resuelto"
+      }
+    }
+  },
+  "inventarioTrazabilidad": {
+    "titulo": "Trazabilidad",
+    "subtitulo": "Sigue un lote, un serial o un documento de principio a fin",
+    "migas": {
+      "inventario": "Inventario",
+      "informes": "Informes"
+    },
+    "actualizar": "Actualizar",
+    "cargando": "Buscando",
+    "error": "No pudimos hacer la búsqueda",
+    "recorrido": "Recorrido",
+    "documentos": "Documentos",
+    "sinDocumentos": "Sin documentos enlazados.",
+    "sinRecorrido": "Sin movimientos registrados para este lote.",
+    "sinResultados": "No encontramos un {tipo} con ese código en tu organización.",
+    "tipos": {
+      "documento": "documento",
+      "lote": "lote",
+      "codigo": "serial, lote ni documento"
+    },
+    "exportar": {
+      "boton": "Exportar",
+      "error": "No se pudo exportar. Inténtalo de nuevo."
+    },
+    "movil": {
+      "lote": "Lote {codigo}",
+      "serial": "Serial {codigo}",
+      "codigo": "{codigo}"
+    },
+    "sinPermiso": {
+      "titulo": "No tienes permiso para ver la trazabilidad",
+      "descripcion": "Pídele a un administrador de tu organización que te dé acceso a inventario."
+    },
+    "buscar": {
+      "placeholder": "Escanea o escribe un lote, un serial o un documento (OC-, TR-, AJ-, GAR- o el número de la factura)",
+      "etiqueta": "Código a rastrear"
+    },
+    "inicial": {
+      "titulo": "¿Qué quieres rastrear?",
+      "descripcion": "Escribe o escanea un lote, un serial o un documento (una factura, OC-131, TR-43, AJ-77, GAR-0007). Te mostramos de dónde vino, por dónde pasó y a quién llegó.",
+      "escanear": "Escanear código",
+      "recientes": "Recientes:"
+    },
+    "csv": {
+      "fecha": "Fecha",
+      "evento": "Evento",
+      "documento": "Documento",
+      "sucursal": "Sucursal",
+      "cliente": "Cliente",
+      "producto": "Producto",
+      "lote": "Lote",
+      "cantidad": "Cantidad"
+    },
+    "serial": {
+      "titulo": "Serial {serial} · {producto}",
+      "vendidoA": "Vendido a {cliente} el {fecha}",
+      "sinCliente": "consumidor final",
+      "garantiaHasta": "garantía vigente hasta el {fecha}",
+      "garantiaVencida": "garantía vencida",
+      "reclamoAbierto": "reclamo {codigo} abierto",
+      "pendienteProveedor": "Pendiente de enviar al proveedor",
+      "rmaPorAsignar": "RMA por asignar",
+      "por": "por {nombre}",
+      "reclamoGarantia": "reclamo de garantía",
+      "ver": "Ver el serial"
+    },
+    "lote": {
+      "titulo": "Lote {codigo} · {producto}",
+      "sku": "SKU {sku}",
+      "recibidoEl": "recibido el {fecha} en {documento}",
+      "vence": "vence el {fecha} ({dias, plural, =0 {hoy} one {en # día} other {en # días}})",
+      "vencio": "venció el {fecha}",
+      "otrosLotes": "{count, plural, one {Hay # lote más con este código (de otro producto)} other {Hay # lotes más con este código (de otros productos)}}",
+      "ver": "Ver el lote",
+      "uds": "{n} uds",
+      "costoUnitario": "{costo} c/u",
+      "consumidorFinal": "Consumidor final",
+      "aQuien": "¿A quién se vendió?",
+      "exportarClientes": "Exportar clientes para retiro",
+      "sinVentasTitulo": "Sin ventas de este lote",
+      "sinVentasDescripcion": "Cuando se venda, aquí verás a quién llegó.",
+      "vencimiento": {
+        "vencido": "Vencido",
+        "por_vencer": "Por vencer",
+        "vigente": "Vigente"
+      },
+      "kpis": {
+        "etiqueta": "Resumen del lote",
+        "recibidas": "Recibidas",
+        "vendidas": "Vendidas",
+        "aClientes": "{count, plural, one {a {n} cliente} other {a {n} clientes}} · última {fecha}",
+        "sinVentas": "sin ventas",
+        "existencias": "En existencias",
+        "mermas": "Mermas y ajustes"
+      },
+      "columnas": {
+        "fecha": "Fecha",
+        "venta": "Venta",
+        "cliente": "Cliente",
+        "sucursal": "Sucursal",
+        "uds": "Uds"
+      }
+    },
+    "pasos": {
+      "recibido": "Recibido · {cantidad} uds",
+      "trasladado": "{cantidad} uds trasladadas",
+      "traslado_recibido": "{cantidad} uds recibidas en {sucursal}",
+      "ajuste": "Ajuste de {cantidad} uds",
+      "movimiento": "Movimiento de {cantidad} uds",
+      "vendido": "Vendido en {ventas, plural, one {# venta} other {# ventas}}",
+      "vendidoDetalle": "a {clientes, plural, one {# cliente} other {# clientes}}, en {sucursales, plural, one {# sucursal} other {# sucursales}}",
+      "unidades": "{signo}{cantidad} uds"
+    },
+    "documento": {
+      "titulo": "{tipo} {numero}",
+      "abrir": "Abrir el documento",
+      "movimientos": "Movimientos de inventario",
+      "seriales": "Seriales",
+      "sinSeriales": "Sin seriales en este documento.",
+      "sinMovimientosTitulo": "Sin movimientos",
+      "sinMovimientos": "Este documento no movió existencias.",
+      "columnas": {
+        "fecha": "Fecha",
+        "producto": "Producto",
+        "lote": "Lote",
+        "sucursal": "Sucursal",
+        "cantidad": "Cantidad"
+      }
+    }
   }
 }

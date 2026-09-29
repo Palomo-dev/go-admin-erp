@@ -1,395 +1,433 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useTranslations } from 'next-intl';
+import { AlertTriangle, Download, Plus, RefreshCw, ScanBarcode, ShieldCheck } from 'lucide-react';
+import {
+  DataTable,
+  FilterChips,
+  FilterPanel,
+  FormField,
+  KpiStrip,
+  ListCard,
+  ListToolbar,
+  PageHeader,
+  Pagination,
+  RowActionsMenu,
+  SearchInput,
+  StatCard,
+  useListadoServidor,
+  type ChipFiltro,
+  type ColumnaTabla,
+  type EstadoTabla,
+} from '@/components/kit';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { SegmentedControl } from '@/components/kit';
 import { useToast } from '@/components/ui/use-toast';
-import { DataTablePagination } from '@/components/ui/DataTablePagination';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Search,
-  RefreshCw,
-  ArrowLeft,
-  Eye,
-  ShieldCheck,
-  Plus,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Wrench,
-  DollarSign,
-  Package,
-} from 'lucide-react';
-import {
-  warrantyClaimsService,
-  type WarrantyClaimWithDetails,
-  type WarrantyClaimStats,
-  type WarrantyClaimStatus,
-  type ResolutionType,
-} from '@/lib/services/warrantyClaimsService';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { CreateClaimDialog } from './CreateClaimDialog';
-import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { CopyableId } from '@/components/common/CopyableId';
+import { getOrganizationName } from '@/lib/hooks/useOrganization';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { filasACsv } from '@/lib/utils/csv';
+import { ErrorPeticionSeriales, clienteGarantias } from '@/lib/services/seriales/cliente';
+import {
+  ESTADOS_RECLAMO,
+  PERMISOS_SERIALES_VACIOS,
+  type EstadoReclamo,
+  type FiltrosGarantias,
+  type KpisGarantias,
+  type PermisosSeriales,
+  type ReclamoFila,
+} from '@/lib/services/seriales/contrato';
+import { rutaReclamo } from '@/components/inventario/seriales/logica';
+import { CreateClaimDialog } from './CreateClaimDialog';
+import { useAccionesReclamo } from './DialogosReclamo';
+import { BadgeEstadoReclamo } from './piezas';
 
-const STATUS_CONFIG: Record<WarrantyClaimStatus, { label: string; color: string; icon: React.ReactNode }> = {
-  pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: <Clock size={12} /> },
-  approved: { label: 'Aprobado', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: <CheckCircle2 size={12} /> },
-  rejected: { label: 'Rechazado', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', icon: <XCircle size={12} /> },
-  in_process: { label: 'En Proceso', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: <Wrench size={12} /> },
-  resolved: { label: 'Resuelto', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400', icon: <CheckCircle2 size={12} /> },
-  cancelled: { label: 'Cancelado', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400', icon: <XCircle size={12} /> },
-};
+const CAMPOS_ORDEN = ['fecha', 'codigo'] as const;
+const ESTADOS_FILTRO: readonly EstadoReclamo[] = ['pending', 'approved', 'in_process', 'resolved', 'rejected'];
 
-const RESOLUTION_CONFIG: Record<ResolutionType, { label: string; icon: React.ReactNode }> = {
-  repair: { label: 'Reparación', icon: <Wrench size={12} /> },
-  replacement: { label: 'Reemplazo', icon: <Package size={12} /> },
-  refund: { label: 'Reembolso', icon: <DollarSign size={12} /> },
-  store_credit: { label: 'Crédito Tienda', icon: <DollarSign size={12} /> },
-  rejected: { label: 'Rechazado', icon: <XCircle size={12} /> },
-};
-
-const PAGE_SIZE = 20;
-
+/**
+ * Reclamos de garantía (Figma «Existencias — Garantías» 592:329722): ámbito
+ * de organización (sin selector de sucursal), estado del reclamo y garantía
+ * calculada desde la venta. Paginado y filtrado en el servidor
+ * (`GET /api/inventario/garantias` → `fn_garantias_listado`).
+ */
 export function GarantiasPage() {
-  const { toast } = useToast();
   const router = useRouter();
-  const { formatDate } = useFormatDate();
+  const { toast } = useToast();
+  const t = useTranslations('inventarioGarantias.listado');
+  const tc = useTranslations('inventarioGarantias.comun');
+  const te = useTranslations('inventarioGarantias.estados');
+  const entero = useFormatoEntero();
+  const { formatDateTime, formatPlain, getToday } = useFormatDate();
   const { formatear } = useMonedaOrganizacion();
-  const organizationId = getOrganizationId();
 
-  const [claims, setClaims] = useState<WarrantyClaimWithDetails[]>([]);
-  const [stats, setStats] = useState<WarrantyClaimStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
+  const l = useListadoServidor({
+    filtros: ['estado', 'garantia'],
+    camposOrden: [...CAMPOS_ORDEN],
+    ordenPorDefecto: { campo: 'fecha', direccion: 'desc' },
+    tamanoPorDefecto: 20,
+  });
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState<string>('all');
-  const [filtroResolucion, setFiltroResolucion] = useState<string>('all');
-  const [fechaDesde, setFechaDesde] = useState('');
-  const [fechaHasta, setFechaHasta] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [filas, setFilas] = useState<ReclamoFila[]>([]);
+  const [total, setTotal] = useState(0);
+  const [kpis, setKpis] = useState<KpisGarantias | null>(null);
+  const [permisos, setPermisos] = useState<PermisosSeriales>(PERMISOS_SERIALES_VACIOS);
+  const [cargando, setCargando] = useState(true);
+  const [estadoError, setEstadoError] = useState<'error' | 'sinPermiso' | null>(null);
+  const [recarga, setRecarga] = useState(0);
+  const [nuevo, setNuevo] = useState(false);
+  const [exportando, setExportando] = useState(false);
 
-  const fetchClaims = useCallback(async (showRefreshing = false) => {
-    if (showRefreshing) setIsRefreshing(true);
-    else setLoading(true);
+  const recargar = useCallback(() => setRecarga((n) => n + 1), []);
+  const acciones = useAccionesReclamo({ permisos, onCambio: recargar });
 
-    try {
-      const filters = {
-        search: searchTerm || undefined,
-        status: (filtroEstado !== 'all' ? filtroEstado : undefined) as WarrantyClaimStatus | undefined,
-        resolutionType: (filtroResolucion !== 'all' ? filtroResolucion : undefined) as ResolutionType | undefined,
-        dateFrom: fechaDesde || undefined,
-        dateTo: fechaHasta || undefined,
-      };
+  const estados = useMemo(
+    () => (l.filtros.estado ?? '').split(',').filter((e): e is EstadoReclamo => (ESTADOS_RECLAMO as readonly string[]).includes(e)),
+    [l.filtros.estado],
+  );
+  const garantia = l.filtros.garantia === 'vigente' || l.filtros.garantia === 'vencida' ? l.filtros.garantia : undefined;
 
-      const [claimsRes, statsRes] = await Promise.all([
-        warrantyClaimsService.getClaims(organizationId, filters, currentPage, PAGE_SIZE),
-        warrantyClaimsService.getStats(organizationId),
-      ]);
-
-      if (claimsRes.error) throw claimsRes.error;
-      setClaims(claimsRes.data);
-      setTotalCount(claimsRes.count);
-
-      if (statsRes.error) {
-        console.warn('Error obteniendo stats:', statsRes.error);
-      } else {
-        setStats(statsRes.data);
-      }
-    } catch (err: unknown) {
-      console.error('Error cargando reclamos:', err);
-      toast({
-        title: 'Error',
-        description: (err as { message?: string } | null)?.message || 'No se pudieron cargar los reclamos de garantía',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [organizationId, searchTerm, filtroEstado, filtroResolucion, fechaDesde, fechaHasta, currentPage, toast]);
+  const filtrosServidor = useMemo<FiltrosGarantias>(
+    () => ({
+      busqueda: l.busqueda || undefined,
+      estados: estados.length ? estados : undefined,
+      garantia,
+      orden: l.orden?.campo === 'codigo' ? 'codigo' : 'fecha',
+      direccion: l.orden?.direccion ?? 'desc',
+    }),
+    [l.busqueda, estados, garantia, l.orden?.campo, l.orden?.direccion],
+  );
+  const clave = JSON.stringify({ ...filtrosServidor, desde: l.rango.desde, limite: l.tamano });
 
   useEffect(() => {
-    const timer = setTimeout(() => fetchClaims(), 300);
-    return () => clearTimeout(timer);
-  }, [fetchClaims]);
+    const control = new AbortController();
+    setCargando(true);
+    clienteGarantias
+      .listar({ ...filtrosServidor, desde: l.rango.desde, limite: l.tamano }, control.signal)
+      .then((r) => {
+        setFilas(r.filas);
+        setTotal(r.total);
+        setKpis(r.kpis);
+        setPermisos(r.permisos);
+        setEstadoError(null);
+      })
+      .catch((e: unknown) => {
+        if (control.signal.aborted) return;
+        if (e instanceof ErrorPeticionSeriales && e.sinPermiso) setEstadoError('sinPermiso');
+        else {
+          console.error('Error cargando garantías:', e);
+          setEstadoError('error');
+        }
+      })
+      .finally(() => {
+        if (!control.signal.aborted) setCargando(false);
+      });
+    return () => control.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clave, recarga]);
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-
-  const handleRefresh = () => {
-    setCurrentPage(1);
-    fetchClaims(true);
+  const exportar = async () => {
+    setExportando(true);
+    try {
+      const r = await clienteGarantias.listar({ ...filtrosServidor, desde: 0, limite: Math.min(Math.max(total, 1), 5000) });
+      if (r.filas.length === 0) {
+        toast({ title: t('exportar.sinDatos') });
+        return;
+      }
+      const csv = filasACsv(
+        [t('csv.codigo'), t('csv.fecha'), t('csv.estado'), t('csv.serial'), t('csv.producto'), t('csv.cliente'), t('csv.motivo'), t('csv.garantiaHasta'), t('csv.rma'), t('csv.resolucion')],
+        r.filas.map((f) => [
+          f.codigo,
+          formatDateTime(f.fecha),
+          te(f.estado),
+          f.serial.serial,
+          f.producto?.nombre ?? null,
+          f.cliente?.nombre ?? null,
+          f.motivo,
+          formatPlain(f.garantia.fin),
+          f.rma,
+          f.resolucion ? t(`resoluciones.${f.resolucion}`) : null,
+        ]),
+      );
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+      const enlace = document.createElement('a');
+      enlace.href = url;
+      enlace.download = `garantias_${getToday()}.csv`;
+      document.body.appendChild(enlace);
+      enlace.click();
+      document.body.removeChild(enlace);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Error exportando garantías:', e);
+      toast({ variant: 'destructive', title: t('exportar.error') });
+    } finally {
+      setExportando(false);
+    }
   };
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
+  const chips: ChipFiltro[] = [
+    ...(estados.length ? [{ clave: 'estado', etiqueta: t('chips.estado', { estados: estados.map((e) => te(e)).join(', ') }) }] : []),
+    ...(garantia ? [{ clave: 'garantia', etiqueta: t(`chips.garantia.${garantia}`) }] : []),
+  ];
 
-  const statCards = useMemo(() => {
-    if (!stats) return [];
-    return [
-      { label: 'Total', value: stats.total, icon: <ShieldCheck size={18} />, color: 'text-gray-600 dark:text-gray-400' },
-      { label: 'Pendientes', value: stats.pending, icon: <Clock size={18} />, color: 'text-yellow-600 dark:text-yellow-400' },
-      { label: 'Aprobados', value: stats.approved, icon: <CheckCircle2 size={18} />, color: 'text-green-600 dark:text-green-400' },
-      { label: 'Rechazados', value: stats.rejected, icon: <XCircle size={18} />, color: 'text-red-600 dark:text-red-400' },
-      { label: 'Resueltos', value: stats.resolved, icon: <CheckCircle2 size={18} />, color: 'text-indigo-600 dark:text-indigo-400' },
-      { label: 'Monto Reembolsos', value: formatear(stats.totalRefundAmount), icon: <DollarSign size={18} />, color: 'text-purple-600 dark:text-purple-400' },
-    ];
-  }, [stats, formatear]);
+  const columnas: ColumnaTabla<ReclamoFila>[] = [
+    {
+      id: 'codigo',
+      encabezado: t('columnas.reclamo'),
+      ordenable: true,
+      campoOrden: 'codigo',
+      celda: (f) => (
+        <div className="flex min-w-0 flex-col">
+          <span className="font-medium text-fg tabular-nums">{f.codigo ?? '—'}</span>
+          <span className="text-xs text-fg-secondary tabular-nums">{formatDateTime(f.fecha)}</span>
+        </div>
+      ),
+    },
+    {
+      id: 'serial',
+      encabezado: t('columnas.serial'),
+      celda: (f) => (
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate text-fg tabular-nums">{f.serial.serial}</span>
+          <span className="truncate text-xs text-fg-secondary">{f.producto?.nombre ?? ''}</span>
+        </div>
+      ),
+    },
+    { id: 'cliente', encabezado: t('columnas.cliente'), ocultarDebajo: 'md', celda: (f) => <span className="truncate">{f.cliente?.nombre ?? '—'}</span> },
+    { id: 'motivo', encabezado: t('columnas.motivo'), ocultarDebajo: 'lg', celda: (f) => <span className="truncate">{f.motivo}</span> },
+    {
+      id: 'garantia',
+      encabezado: t('columnas.garantia'),
+      ocultarDebajo: 'xl',
+      celda: (f) =>
+        f.garantia.estado === 'vigente' ? (
+          <Badge tono="exito" tamano="sm">{t('garantiaVigente')}</Badge>
+        ) : f.garantia.estado === 'vencida' ? (
+          <Badge tono="peligro" tamano="sm">{t('garantiaVencida')}</Badge>
+        ) : (
+          <Badge tono="neutro" tamano="sm">{t('sinGarantia')}</Badge>
+        ),
+    },
+    { id: 'estado', encabezado: t('columnas.estado'), celda: (f) => <BadgeEstadoReclamo estado={f.estado} /> },
+  ];
+
+  const estadoTabla: EstadoTabla = cargando
+    ? 'cargando'
+    : estadoError === 'sinPermiso'
+      ? 'sinPermiso'
+      : estadoError
+        ? 'error'
+        : filas.length === 0 && l.hayCriterios
+          ? 'sinResultados'
+          : 'listo';
+
+  const sustantivo = { singular: tc('sustantivo.singular'), plural: tc('sustantivo.plural') };
+  const botonNuevo = permisos.gestionar ? (
+    <Button className="h-10 gap-2" onClick={() => setNuevo(true)}>
+      <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+      {t('nuevoReclamo')}
+    </Button>
+  ) : null;
 
   return (
-    <div className="space-y-4 p-4 sm:p-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Link href="/app/inventario">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <ArrowLeft size={18} />
+    <div className="flex flex-col gap-4 lg:gap-5">
+      <PageHeader
+        titulo={tc('titulo')}
+        subtitulo={[getOrganizationName(), t('subtituloLema')].filter(Boolean).join(' · ')}
+        icono={ShieldCheck}
+        cargando={cargando}
+        migas={[{ etiqueta: tc('inventario'), href: '/app/inventario' }, { etiqueta: tc('seriales'), href: '/app/inventario/seriales' }]}
+        acciones={
+          <>
+            <Button variant="outline" size="icon" className="size-10" onClick={recargar} aria-label={t('actualizar')} title={t('actualizar')}>
+              <RefreshCw aria-hidden="true" className="size-4" strokeWidth={1.5} />
             </Button>
-          </Link>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-              Reclamos de Garantía
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Gestión de reclamos basados en números de serie
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-            <Plus size={16} className="mr-1" />
-            Nuevo Reclamo
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
-            <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
-            Actualizar
-          </Button>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {loading && !stats ? (
-          Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-lg" />
-          ))
-        ) : (
-          statCards.map((stat) => (
-            <Card key={stat.label} className="dark:bg-gray-800/50 dark:border-gray-700">
-              <CardContent className="p-3 sm:p-4">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{stat.label}</span>
-                  <span className={stat.color}>{stat.icon}</span>
-                </div>
-                <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                  {stat.value}
-                </p>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
-
-      {/* Filters */}
-      <Card className="dark:bg-gray-800/50 dark:border-gray-700">
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <Input
-                placeholder="Buscar por serial o cliente..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-9"
-              />
-            </div>
-            <Select
-              value={filtroEstado}
-              onValueChange={(v) => { setFiltroEstado(v); setCurrentPage(1); }}
+            <Button variant="outline" className="h-10 gap-2" onClick={exportar} disabled={exportando || estadoError !== null}>
+              <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('exportar.boton')}
+            </Button>
+            {botonNuevo}
+          </>
+        }
+        movil={{
+          subtitulo: kpis ? t('subtituloMovil', { pendientes: entero(kpis.pendientes), proveedor: entero(kpis.con_proveedor) }) : undefined,
+          accion: permisos.gestionar ? (
+            <button
+              type="button"
+              onClick={() => setNuevo(true)}
+              aria-label={t('nuevoReclamo')}
+              className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                  <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={filtroResolucion}
-              onValueChange={(v) => { setFiltroResolucion(v); setCurrentPage(1); }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Resolución" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las resoluciones</SelectItem>
-                {Object.entries(RESOLUTION_CONFIG).map(([key, cfg]) => (
-                  <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              type="date"
-              placeholder="Desde"
-              value={fechaDesde}
-              onChange={(e) => { setFechaDesde(e.target.value); setCurrentPage(1); }}
-            />
-            <Input
-              type="date"
-              placeholder="Hasta"
-              value={fechaHasta}
-              onChange={(e) => { setFechaHasta(e.target.value); setCurrentPage(1); }}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Table */}
-      <Card className="dark:bg-gray-800/50 dark:border-gray-700">
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="p-4 space-y-3">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : claims.length === 0 ? (
-            <div className="text-center py-12">
-              <ShieldCheck className="w-12 h-12 mx-auto mb-3 opacity-30 text-gray-400" />
-              <p className="text-gray-500 dark:text-gray-400 mb-1">No se encontraron reclamos de garantía</p>
-              <p className="text-sm text-gray-400 dark:text-gray-500">
-                Los reclamos aparecerán aquí al registrar garantías sobre seriales vendidos
-              </p>
-            </div>
+              <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
+            </button>
           ) : (
-            <>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="min-w-[120px]">Reclamo</TableHead>
-                      <TableHead className="min-w-[140px]">Serial</TableHead>
-                      <TableHead className="min-w-[180px]">Producto</TableHead>
-                      <TableHead className="min-w-[140px]">Cliente</TableHead>
-                      <TableHead className="min-w-[110px]">Fecha Reclamo</TableHead>
-                      <TableHead className="min-w-[100px]">Estado</TableHead>
-                      <TableHead className="min-w-[120px]">Resolución</TableHead>
-                      <TableHead className="w-[60px]">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {claims.map((claim) => {
-                      const statusCfg = STATUS_CONFIG[claim.status] || STATUS_CONFIG.pending;
-                      const resCfg = claim.resolution_type ? RESOLUTION_CONFIG[claim.resolution_type] : null;
-                      return (
-                        <TableRow key={claim.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/70">
-                          <TableCell>
-                            <CopyableId
-                              label={`#${claim.id.substring(0, 8)}`}
-                              copyValue={claim.id}
-                              onClick={() => router.push(`/app/inventario/garantias/${claim.id}`)}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
-                              {claim.serial_numbers?.serial || 'N/A'}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[180px]">
-                                {claim.serial_numbers?.products?.name || 'N/A'}
-                              </span>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                SKU: {claim.serial_numbers?.products?.sku || 'N/A'}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm text-gray-600 dark:text-gray-300">
-                            {claim.customers?.full_name || 'N/A'}
-                          </TableCell>
-                          <TableCell className="text-sm text-gray-600 dark:text-gray-300">
-                            {formatDate(claim.claim_date)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={`${statusCfg.color} gap-1`} variant="secondary">
-                              {statusCfg.icon}
-                              {statusCfg.label}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {resCfg ? (
-                              <Badge variant="outline" className="gap-1 capitalize">
-                                {resCfg.icon}
-                                {resCfg.label}
-                              </Badge>
-                            ) : (
-                              <span className="text-gray-400">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Link href={`/app/inventario/garantias/${claim.id}`}>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <Eye size={16} />
-                              </Button>
-                            </Link>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="p-3 border-t border-gray-200 dark:border-gray-700">
-                <DataTablePagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={handlePageChange}
-                  onPageSizeChange={() => {}}
-                  totalItems={totalCount}
-                  pageSize={PAGE_SIZE}
-                />
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-      {/* Dialog: Crear reclamo */}
-      <CreateClaimDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
-        onCreated={() => fetchClaims(true)}
+            <RowActionsMenu orientacion="horizontal" titulo={tc('titulo')} acciones={[{ id: 'exportar', etiqueta: t('exportar.boton'), icono: Download, onSelect: exportar }]} />
+          ),
+        }}
       />
+
+      {estadoError !== 'sinPermiso' && (
+        <KpiStrip etiqueta={t('kpis.etiqueta')} className="hidden sm:grid">
+          <StatCard
+            etiqueta={t('kpis.pendientes')}
+            cargando={!kpis}
+            valor={kpis ? entero(kpis.pendientes) : '—'}
+            tono={kpis && kpis.pendientes_vencidos > 0 ? 'peligro' : kpis && kpis.pendientes > 0 ? 'advertencia' : 'neutro'}
+            iconoDetalle={kpis && kpis.pendientes > 0 ? AlertTriangle : undefined}
+            detalle={
+              kpis
+                ? kpis.pendientes_vencidos > 0
+                  ? t('kpis.pendientesVencidos', { count: kpis.pendientes_vencidos, n: entero(kpis.pendientes_vencidos) })
+                  : kpis.pendientes > 0
+                    ? t('kpis.pendientesPlazo')
+                    : t('kpis.sinPendientes')
+                : undefined
+            }
+            onClick={() => l.setFiltro('estado', 'pending')}
+          />
+          <StatCard
+            etiqueta={t('kpis.conProveedor')}
+            cargando={!kpis}
+            valor={kpis ? entero(kpis.con_proveedor) : '—'}
+            detalle={kpis ? t('kpis.rmaAbiertos', { count: kpis.con_proveedor, n: entero(kpis.con_proveedor) }) : undefined}
+            onClick={() => l.setFiltro('estado', 'in_process')}
+          />
+          <StatCard
+            etiqueta={t('kpis.resueltosMes')}
+            cargando={!kpis}
+            valor={kpis ? entero(kpis.resueltos_mes) : '—'}
+            tono={kpis && kpis.resueltos_mes > 0 ? 'exito' : 'neutro'}
+            tendencia={kpis && kpis.resueltos_mes > 0 ? 'sube' : undefined}
+            detalle={kpis ? t('kpis.resueltosDetalle', { reparados: entero(kpis.reparados_mes), reemplazados: entero(kpis.reemplazados_mes) }) : undefined}
+            onClick={() => l.setFiltro('estado', 'resolved')}
+          />
+          <StatCard
+            etiqueta={t('kpis.reembolsadoMes')}
+            cargando={!kpis}
+            valor={kpis ? formatear(kpis.reembolsado_mes) : '—'}
+            detalle={kpis ? t('kpis.reembolsos', { count: kpis.reembolsos_mes, n: entero(kpis.reembolsos_mes) }) : undefined}
+          />
+        </KpiStrip>
+      )}
+
+      <ListToolbar
+        busqueda={
+          <SearchInput
+            value={l.busqueda}
+            onChange={l.setBusqueda}
+            cargando={cargando}
+            placeholder={t('buscar.placeholder')}
+            etiqueta={t('buscar.etiqueta')}
+            accesorio={<ScanBarcode aria-hidden="true" className="size-4 text-fg-muted" strokeWidth={1.5} />}
+          />
+        }
+        filtros={
+          <FilterPanel conteo={l.filtrosActivos} onLimpiar={l.limpiarFiltros} textoVerResultados={t('filtros.verN', { count: total, n: entero(total) })}>
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-1 text-sm font-medium text-fg">{t('filtros.estado')}</legend>
+              <div className="grid grid-cols-2 gap-2">
+                {ESTADOS_FILTRO.map((e) => (
+                  <label key={e} className="flex items-center gap-2 text-sm text-fg">
+                    <Checkbox
+                      checked={estados.includes(e)}
+                      onCheckedChange={(v) => l.setFiltro('estado', v === true ? [...estados, e] : estados.filter((x) => x !== e))}
+                      className="size-[18px] rounded"
+                    />
+                    {te(e)}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <FormField etiqueta={t('filtros.garantia')}>
+              {(c) => (
+                <SegmentedControl
+                  aria-labelledby={c.idEtiqueta}
+                  anchoCompleto
+                  valor={garantia ?? 'todas'}
+                  onValorChange={(v) => l.setFiltro('garantia', v === 'todas' ? null : v)}
+                  opciones={[
+                    { valor: 'todas', etiqueta: t('filtros.todas') },
+                    { valor: 'vigente', etiqueta: t('chips.garantia.vigente') },
+                    { valor: 'vencida', etiqueta: t('chips.garantia.vencida') },
+                  ]}
+                />
+              )}
+            </FormField>
+          </FilterPanel>
+        }
+        chips={<FilterChips chips={chips} onQuitar={(c) => l.setFiltro(c, null)} onLimpiarTodo={l.limpiarFiltros} />}
+      />
+
+      <DataTable
+        etiqueta={tc('titulo')}
+        columnas={columnas}
+        filas={filas}
+        obtenerId={(f) => f.id}
+        estado={estadoTabla}
+        orden={l.orden}
+        onOrdenar={l.ordenarPor}
+        onFilaClick={(f) => router.push(rutaReclamo(f.id))}
+        etiquetaFila={(f) => t('etiquetaFila', { codigo: f.codigo ?? '', serial: f.serial.serial })}
+        acciones={(f) => acciones.accionesDe(f)}
+        tarjetaMovil={(f) => (
+          <ListCard
+            icono={ShieldCheck}
+            titulo={f.codigo ?? f.serial.serial}
+            subtitulo={`${f.serial.serial} · ${f.motivo}`}
+            meta={
+              f.estado === 'in_process' && f.rma
+                ? t('movil.conProveedor', { rma: f.rma })
+                : [f.cliente?.nombre, f.garantia.estado === 'vigente' ? t('movil.garantiaVigente') : f.garantia.estado === 'vencida' ? t('movil.garantiaVencida') : null]
+                    .filter(Boolean)
+                    .join(' · ')
+            }
+            estado={<BadgeEstadoReclamo estado={f.estado} />}
+            acciones={acciones.accionesDe(f)}
+            onClick={() => router.push(rutaReclamo(f.id))}
+          />
+        )}
+        vacio={{
+          titulo: t('vacio.titulo'),
+          descripcion: t('vacio.descripcion'),
+          icono: ShieldCheck,
+          accion: permisos.gestionar ? { etiqueta: t('nuevoReclamo'), onClick: () => setNuevo(true), icono: Plus } : undefined,
+        }}
+        sinResultados={{ descripcion: t('sinResultados') }}
+        error={{ titulo: t('errorCarga') }}
+        sinPermiso={{ titulo: t('sinPermiso.titulo'), descripcion: t('sinPermiso.descripcion') }}
+        onLimpiarFiltros={l.limpiarTodo}
+        onReintentar={recargar}
+        termino={l.busqueda}
+        pie={
+          <Pagination
+            pagina={l.pagina}
+            tamano={l.tamano}
+            total={total}
+            onPaginaChange={l.setPagina}
+            onTamanoChange={l.setTamano}
+            sustantivo={sustantivo}
+            cargando={cargando}
+          />
+        }
+      />
+
+
+      <CreateClaimDialog
+        open={nuevo}
+        onOpenChange={setNuevo}
+        onCreated={(id) => {
+          recargar();
+          if (id) router.push(rutaReclamo(id));
+        }}
+      />
+      {acciones.dialogos}
     </div>
   );
 }
+
+export default GarantiasPage;

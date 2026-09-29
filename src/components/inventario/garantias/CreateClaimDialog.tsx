@@ -1,441 +1,240 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { AlertTriangle, CheckCircle2, Info, Loader2 } from 'lucide-react';
+import { Dialogo, FormField } from '@/components/kit';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { RichTextEditor } from '@/components/shared/RichTextEditor';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import {
-  Search,
-  ShieldCheck,
-  Package,
-  User,
-  Loader2,
-  AlertTriangle,
-  CheckCircle2,
-} from 'lucide-react';
-import { supabase } from '@/lib/supabase/config';
-import {
-  warrantyClaimsService,
-} from '@/lib/services/warrantyClaimsService';
-import {
-  getOrganizationId,
-  getCurrentUserId,
-} from '@/lib/hooks/useOrganization';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { useEtiquetaEstadoSerial } from '@/components/inventario/productos/detalle/inventario/seriales/piezas';
+import { ErrorPeticionSeriales, clienteGarantias } from '@/lib/services/seriales/cliente';
+import type { EvaluacionSerial } from '@/lib/services/seriales/contrato';
+import { mesesYDias } from '@/components/inventario/seriales/logica';
+import { MOTIVOS_RECLAMO, validarReclamo, type MotivoReclamo } from './logica';
 
-interface SerialSearchResult {
-  id: number;
-  serial: string;
-  status: string;
-  warranty_start: string | null;
-  warranty_end: string | null;
-  warranty_months: number | null;
-  sale_date: string | null;
-  sold_to_customer_id: string | null;
-  product_id: number;
-  products: { name: string; sku: string; brand: string | null } | null;
-  customers: { id: string; full_name: string; phone: string | null; email: string | null } | null;
-}
-
-interface CreateClaimDialogProps {
+export interface CreateClaimDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Serial elegido desde el listado, el detalle o la sub-pestaña del producto. */
   preselectedSerialId?: number | null;
-  onCreated?: () => void;
+  /** Se llama con el id del reclamo creado. */
+  onCreated?: (id?: string) => void;
 }
 
-export function CreateClaimDialog({
-  open,
-  onOpenChange,
-  preselectedSerialId,
-  onCreated,
-}: CreateClaimDialogProps) {
-  const t = useTranslations('productoDetalle.seriales.reclamo');
-  const etiquetaEstado = useEtiquetaEstadoSerial();
+/**
+ * «Nuevo reclamo de garantía» (Figma 592:332573, 672 px). Se escanea o escribe
+ * el serial vendido; la garantía y el cliente salen de la venta. Solo deja
+ * crear si el serial está vendido, con garantía vigente y sin otro reclamo
+ * abierto (lo mismo que exige `fn_garantia_crear`). Al crear, el serial pasa a
+ * «Reclamo garantía» y el paso queda en su historial.
+ */
+export function CreateClaimDialog({ open, onOpenChange, preselectedSerialId, onCreated }: CreateClaimDialogProps) {
+  const t = useTranslations('inventarioGarantias.nuevo');
+  const tm = useTranslations('inventarioGarantias.motivos');
+  const te = useTranslations('inventarioGarantias.errores');
   const { toast } = useToast();
   const { formatDate } = useFormatDate();
-  const organizationId = getOrganizationId();
 
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [codigo, setCodigo] = useState('');
+  const [evaluacion, setEvaluacion] = useState<EvaluacionSerial | null>(null);
+  const [buscando, setBuscando] = useState(false);
+  const [motivo, setMotivo] = useState<MotivoReclamo | ''>('');
+  const [descripcion, setDescripcion] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [intento, setIntento] = useState(false);
+  const peticion = useRef<AbortController | null>(null);
 
-  // Búsqueda de serial
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<SerialSearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [selectedSerial, setSelectedSerial] = useState<SerialSearchResult | null>(null);
-
-  // Formulario
-  const [claimReason, setClaimReason] = useState('');
-  const [description, setDescription] = useState('');
-
-  // Reset al abrir
+  // Al abrir: limpia y, si llega un serial, lo evalúa por id.
   useEffect(() => {
-    if (open) {
-      setSearchTerm('');
-      setSearchResults([]);
-      setSelectedSerial(null);
-      setClaimReason('');
-      setDescription('');
-    }
-  }, [open]);
+    if (!open) return;
+    setCodigo('');
+    setEvaluacion(null);
+    setMotivo('');
+    setDescripcion('');
+    setError(null);
+    setIntento(false);
+    if (preselectedSerialId) void evaluar({ id: preselectedSerialId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, preselectedSerialId]);
 
-  const loadSerialById = useCallback(async (serialId: number) => {
-    setLoading(true);
+  const evaluar = async (consulta: { id?: number; codigo?: string }) => {
+    peticion.current?.abort();
+    const control = new AbortController();
+    peticion.current = control;
+    setBuscando(true);
+    setError(null);
     try {
-      const { data, error } = await supabase
-        .from('serial_numbers')
-        .select(`
-          id, serial, status, warranty_start, warranty_end, warranty_months,
-          sale_date, sold_to_customer_id, product_id,
-          products!fk_serial_product ( name, sku, brand ),
-          customers!fk_serial_customer ( id, full_name, phone, email )
-        `)
-        .eq('id', serialId)
-        .eq('organization_id', organizationId)
-        .single();
-
-      if (error) throw error;
-      setSelectedSerial(data as unknown as SerialSearchResult);
-    } catch (err: unknown) {
-      console.error('Error cargando serial:', err);
-      toast({
-        title: t('errorTitulo'),
-        description: t('errorCargar'),
-        variant: 'destructive',
-      });
+      const r = await clienteGarantias.evaluarSerial(consulta, control.signal);
+      if (control.signal.aborted) return;
+      setEvaluacion(r);
+      if (r.serial && consulta.id) setCodigo(r.serial);
+    } catch (e) {
+      if (control.signal.aborted) return;
+      setEvaluacion(null);
+      setError(e instanceof ErrorPeticionSeriales && e.sinPermiso ? te('sin_permiso') : te('error_desconocido'));
     } finally {
-      setLoading(false);
-    }
-  }, [organizationId, toast, t]);
-
-  // Cargar serial pre-seleccionado
-  useEffect(() => {
-    if (open && preselectedSerialId) {
-      void loadSerialById(preselectedSerialId);
-    }
-  }, [open, preselectedSerialId, loadSerialById]);
-
-  // Búsqueda de seriales (debounced)
-  useEffect(() => {
-    if (!open || preselectedSerialId) return;
-    if (!searchTerm || searchTerm.length < 3) {
-      setSearchResults([]);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const { data, error } = await supabase
-          .from('serial_numbers')
-          .select(`
-            id, serial, status, warranty_start, warranty_end, warranty_months,
-            sale_date, sold_to_customer_id, product_id,
-            products!fk_serial_product ( name, sku, brand ),
-            customers!fk_serial_customer ( id, full_name, phone, email )
-          `)
-          .eq('organization_id', organizationId)
-          .or(`serial.ilike.%${searchTerm}%`)
-          .limit(10);
-
-        if (error) throw error;
-        setSearchResults((data || []) as unknown as SerialSearchResult[]);
-      } catch (err: unknown) {
-        console.error('Error buscando seriales:', err);
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm, open, preselectedSerialId, organizationId]);
-
-  const warrantyValid = selectedSerial?.warranty_end
-    ? new Date(selectedSerial.warranty_end) > new Date()
-    : false;
-
-  const warrantyDaysLeft = selectedSerial?.warranty_end
-    ? Math.ceil((new Date(selectedSerial.warranty_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-    : 0;
-
-  const handleSubmit = async () => {
-    if (!selectedSerial) {
-      toast({ title: t('seleccionaSerial'), variant: 'destructive' });
-      return;
-    }
-    if (!claimReason.trim()) {
-      toast({ title: t('motivoObligatorio'), variant: 'destructive' });
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const userId = await getCurrentUserId();
-
-      const { data, error } = await warrantyClaimsService.createClaim({
-        organization_id: organizationId,
-        serial_number_id: selectedSerial.id,
-        customer_id: selectedSerial.sold_to_customer_id || null,
-        claim_reason: claimReason.trim(),
-        description: description.trim() || null,
-        status: 'pending',
-        created_by: userId,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: t('creado'),
-        description: t('creadoDetalle', { id: data?.id?.substring(0, 8) || t('sinDato') }),
-      });
-
-      onOpenChange(false);
-      onCreated?.();
-    } catch (err: unknown) {
-      console.error('Error creando reclamo:', err);
-      toast({
-        title: t('errorTitulo'),
-        description: (err as Error)?.message || t('errorCrear'),
-        variant: 'destructive',
-      });
-    } finally {
-      setSubmitting(false);
+      if (!control.signal.aborted) setBuscando(false);
     }
   };
 
+  const buscarCodigo = () => {
+    const c = codigo.trim();
+    if (!c || (evaluacion?.serial && evaluacion.serial.toLowerCase() === c.toLowerCase())) return;
+    void evaluar({ codigo: c });
+  };
+
+  const errorForm = validarReclamo({ serialId: evaluacion?.id ?? null, puede: !!evaluacion?.puede, motivo, descripcion });
+
+  const crear = async () => {
+    setIntento(true);
+    if (errorForm || !evaluacion?.id || !motivo) return;
+    setGuardando(true);
+    setError(null);
+    try {
+      const r = await clienteGarantias.crear({
+        serial_id: evaluacion.id,
+        motivo: tm(motivo),
+        descripcion: descripcion.trim() || null,
+      });
+      toast({ title: t('creado', { codigo: r.codigo }) });
+      onCreated?.(r.id);
+      onOpenChange(false);
+    } catch (e) {
+      const codigoError = e instanceof ErrorPeticionSeriales ? e.codigo : 'error_desconocido';
+      setError(te.has(codigoError) ? te(codigoError) : te('error_desconocido'));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const hoy = evaluacion?.hoy ?? '';
+  const garantia = evaluacion?.garantia;
+  const restante = garantia?.estado === 'vigente' && garantia.fin && hoy ? mesesYDias(hoy, garantia.fin.slice(0, 10)) : null;
+  const ayudaSerial = evaluacion?.encontrado
+    ? [
+        evaluacion.producto?.nombre,
+        evaluacion.fecha_venta || evaluacion.venta?.numero
+          ? t('vendido', {
+              fecha: evaluacion.fecha_venta ? formatDate(evaluacion.fecha_venta) : '—',
+              venta: evaluacion.venta?.numero ?? '—',
+              cliente: evaluacion.cliente?.nombre ?? t('sinCliente'),
+            })
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : undefined;
+
+  const motivoBloqueo = errorForm === 'serial' ? t('bloqueo.serial') : errorForm === 'noReclamable' ? t('bloqueo.noReclamable') : undefined;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{t('titulo')}</DialogTitle>
-          <DialogDescription>{t('descripcion')}</DialogDescription>
-        </DialogHeader>
+    <Dialogo
+      abierto={open}
+      onAbiertoChange={onOpenChange}
+      titulo={t('titulo')}
+      descripcion={t('descripcion')}
+      ancho={672}
+      primario={{
+        etiqueta: t('crear'),
+        onClick: crear,
+        cargando: guardando,
+        deshabilitada: !!motivoBloqueo || buscando,
+        motivo: motivoBloqueo,
+      }}
+    >
+      <div className="flex flex-col gap-4">
+        <FormField
+          etiqueta={t('serial')}
+          obligatorio
+          ayuda={ayudaSerial}
+          error={intento && errorForm === 'serial' ? t('errores.serial') : undefined}
+        >
+          <Input
+            value={codigo}
+            onChange={(e) => {
+              setCodigo(e.target.value);
+              if (evaluacion) setEvaluacion(null);
+            }}
+            onBlur={buscarCodigo}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                buscarCodigo();
+              }
+            }}
+            placeholder={t('serialPlaceholder')}
+            autoComplete="off"
+            autoFocus={!preselectedSerialId}
+            className="h-10 tabular-nums"
+          />
+        </FormField>
 
-        {loading ? (
-          <div className="space-y-3 py-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-20 w-full" />
-          </div>
-        ) : (
-          <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
-            {/* Búsqueda de serial (solo si no hay pre-seleccionado) */}
-            {!preselectedSerialId && !selectedSerial && (
-              <div className="space-y-2">
-                <Label>{t('buscar')}</Label>
-                <div className="relative">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <Input
-                    placeholder={t('buscarPlaceholder')}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
-                    autoFocus
-                  />
-                </div>
-                {searching && (
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Loader2 size={12} className="animate-spin" /> {t('buscando')}
-                  </p>
-                )}
-                {!searching && searchTerm.length >= 3 && searchResults.length === 0 && (
-                  <p className="text-xs text-gray-500">{t('sinResultados')}</p>
-                )}
-                {searchResults.length > 0 && (
-                  <div className="space-y-1 max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                    {searchResults.map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={() => setSelectedSerial(s)}
-                        className="w-full text-left p-2 hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 last:border-0 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="font-mono text-sm font-medium text-blue-600 dark:text-blue-400">
-                              {s.serial}
-                            </span>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {s.products?.name || t('sinDato')} · {t('sku', { sku: s.products?.sku || t('sinDato') })}
-                            </p>
-                          </div>
-                          <Badge
-                            variant="secondary"
-                            className={
-                              s.status === 'sold'
-                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
-                                : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                            }
-                          >
-                            {etiquetaEstado(s.status)}
-                          </Badge>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Serial seleccionado */}
-            {selectedSerial && (
-              <div className="space-y-3">
-                <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{t('serial')}</span>
-                    {!preselectedSerialId && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-xs"
-                        onClick={() => {
-                          setSelectedSerial(null);
-                          setSearchTerm('');
-                        }}
-                      >
-                        {t('cambiar')}
-                      </Button>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck size={16} className="text-blue-600" />
-                    <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
-                      {selectedSerial.serial}
-                    </span>
-                  </div>
-
-                  {/* Info producto */}
-                  <div className="flex items-start gap-2 pt-1">
-                    <Package size={14} className="text-gray-400 mt-0.5" />
-                    <div className="text-xs">
-                      <p className="text-gray-900 dark:text-white font-medium">
-                        {selectedSerial.products?.name || t('sinDato')}
-                      </p>
-                      <p className="text-gray-500 dark:text-gray-400">
-                        {t('sku', { sku: selectedSerial.products?.sku || t('sinDato') })}
-                        {selectedSerial.products?.brand ? ` · ${selectedSerial.products.brand}` : ''}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Info cliente */}
-                  {selectedSerial.customers && (
-                    <div className="flex items-start gap-2 pt-1">
-                      <User size={14} className="text-gray-400 mt-0.5" />
-                      <div className="text-xs">
-                        <p className="text-gray-900 dark:text-white font-medium">
-                          {selectedSerial.customers.full_name}
-                        </p>
-                        <p className="text-gray-500 dark:text-gray-400">
-                          {selectedSerial.customers.phone || selectedSerial.customers.email || t('sinContacto')}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {!selectedSerial.customers && (
-                    <div className="flex items-start gap-2 pt-1">
-                      <AlertTriangle size={14} className="text-amber-500 mt-0.5" />
-                      <p className="text-xs text-amber-600 dark:text-amber-400">{t('sinCliente')}</p>
-                    </div>
-                  )}
-
-                  {/* Estado garantía */}
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{t('garantia')}</span>
-                    {selectedSerial.warranty_end ? (
-                      <Badge
-                        className={
-                          warrantyValid
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 gap-1'
-                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 gap-1'
-                        }
-                      >
-                        {warrantyValid ? (
-                          <>
-                            <CheckCircle2 size={12} />
-                            {t('vigente', { count: warrantyDaysLeft })}
-                          </>
-                        ) : (
-                          <>
-                            <AlertTriangle size={12} />
-                            {t('vencida')}
-                          </>
-                        )}
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">{t('sinGarantia')}</Badge>
-                    )}
-                  </div>
-
-                  {selectedSerial.sale_date && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {t('fechaVenta', { fecha: formatDate(selectedSerial.sale_date) })}
-                    </p>
-                  )}
-                </div>
-
-                {/* Formulario reclamo */}
-                <div className="space-y-2">
-                  <Label htmlFor="claim-reason">
-                    {t('motivo')} <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="claim-reason"
-                    placeholder={t('motivoPlaceholder')}
-                    value={claimReason}
-                    onChange={(e) => setClaimReason(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="claim-description">{t('descripcionCampo')}</Label>
-                  <RichTextEditor
-                    value={description}
-                    onChange={(html) => setDescription(html)}
-                    placeholder={t('descripcionPlaceholder')}
-                    minHeight={60}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            {t('cancelar')}
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={submitting || !selectedSerial || !claimReason.trim()}
-          >
-            {submitting ? (
-              <>
-                <Loader2 size={16} className="mr-2 animate-spin" />
-                {t('creando')}
-              </>
+        <div aria-live="polite">
+          {buscando && (
+            <p className="flex items-center gap-2 text-sm text-fg-secondary">
+              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+              {t('buscando')}
+            </p>
+          )}
+          {!buscando && evaluacion && (
+            evaluacion.puede ? (
+              <p className="flex items-start gap-2 rounded-lg bg-success-subtle px-3 py-2.5 text-sm text-success-text">
+                <CheckCircle2 aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
+                {restante
+                  ? t('garantiaVigente', { meses: garantia?.meses ?? 0, restanteMeses: restante.meses, restanteDias: restante.dias })
+                  : t('garantiaVigenteCorta')}
+              </p>
             ) : (
-              <>
-                <ShieldCheck size={16} className="mr-2" />
-                {t('crear')}
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+              <p className="flex items-start gap-2 rounded-lg bg-danger-subtle px-3 py-2.5 text-sm text-danger-text" role="alert">
+                <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
+                {evaluacion.motivo === 'reclamo_abierto' && evaluacion.reclamo_abierto?.codigo
+                  ? t('noReclamable.reclamo_abierto_codigo', { codigo: evaluacion.reclamo_abierto.codigo })
+                  : t(`noReclamable.${evaluacion.motivo ?? 'serial_no_encontrado'}`)}
+              </p>
+            )
+          )}
+        </div>
+
+        <FormField etiqueta={t('motivo')} obligatorio error={intento && errorForm === 'motivo' ? t('errores.motivo') : undefined}>
+          {(c) => (
+            <Select value={motivo} onValueChange={(v) => setMotivo(v as MotivoReclamo)}>
+              <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} aria-invalid={c['aria-invalid']} aria-describedby={c['aria-describedby']} className="h-10 border-line-strong bg-surface">
+                <SelectValue placeholder={t('motivoPlaceholder')} />
+              </SelectTrigger>
+              <SelectContent>
+                {MOTIVOS_RECLAMO.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {tm(m)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </FormField>
+
+        <FormField
+          etiqueta={t('descripcionCampo')}
+          obligatorio={motivo === 'otro'}
+          error={intento && errorForm === 'descripcionOtro' ? t('errores.descripcionOtro') : undefined}
+        >
+          <Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} maxLength={2000} placeholder={t('descripcionPlaceholder')} className="h-10" />
+        </FormField>
+
+        <p className="flex items-start gap-2 rounded-lg bg-subtle px-3 py-2.5 text-[13px] text-fg-secondary">
+          <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
+          {t('nota')}
+        </p>
+
+        {error && (
+          <p role="alert" className="text-sm text-danger-text">
+            {error}
+          </p>
+        )}
+      </div>
+    </Dialogo>
   );
 }
+
+export default CreateClaimDialog;

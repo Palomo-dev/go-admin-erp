@@ -347,41 +347,17 @@ export class FoliosService {
    */
   async deleteFolioItem(itemId: string, folioId: string): Promise<void> {
     try {
-      // Obtener el item antes de eliminarlo para saber si hay que revertir stock
-      const { data: item } = await supabase
-        .from('folio_items')
-        .select('product_id, quantity, unit_price')
-        .eq('id', itemId)
-        .maybeSingle();
-
-      const { error } = await supabase
-        .from('folio_items')
-        .delete()
-        .eq('id', itemId);
-
+      // Inventario B9: borrar el cargo y devolver su stock en una transacción (fn_folio_item_eliminar).
+      // Antes se devolvía como una COMPRA al precio de venta (corrompía el costo promedio) y, con
+      // receta, se devolvía el plato en vez de sus ingredientes. Sin sucursal no se devuelve stock,
+      // igual que antes.
+      const branchId = getCurrentBranchId();
+      if (!branchId) console.warn('⚠️ No se pudo obtener branch_id para revertir stock del folio item');
+      const { error } = await supabase.rpc('fn_folio_item_eliminar', {
+        p_item_id: itemId,
+        p_branch_id: branchId || null,
+      });
       if (error) throw error;
-
-      // Revertir stock si el item tenía product_id
-      if (item?.product_id && item?.quantity && Number(item.quantity) > 0) {
-        try {
-          const orgId = getOrganizationId();
-          const branchId = getCurrentBranchId();
-          if (!branchId) {
-            console.warn('⚠️ No se pudo obtener branch_id para revertir stock del folio item');
-            return;
-          }
-          await stockMovementService.incrementOnPurchase(
-            orgId,
-            branchId,
-            folioId,
-            [{ product_id: item.product_id, quantity: Number(item.quantity), unit_price: Number(item.unit_price || 0) }],
-            'folio_item_reversal'
-          );
-          console.log(`📦 Stock revertido (folio item eliminado): producto ${item.product_id}`);
-        } catch (stockError) {
-          console.warn('⚠️ Error revirtiendo stock (no bloquea eliminación):', stockError);
-        }
-      }
 
       // Actualizar balance del folio
       await this.updateFolioBalance(folioId);

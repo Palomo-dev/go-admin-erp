@@ -220,62 +220,19 @@ export async function POST(
     for (const item of itemsToReturn) {
       if (!item.product_id || item.quantity <= 0) continue;
 
-      // Verificar si el producto rastrea stock
-      const { data: product } = await supabase
-        .from('products')
-        .select('track_stock')
-        .eq('id', item.product_id)
-        .maybeSingle();
-
-      if (!product || product.track_stock === false) continue;
-
-      // Incrementar qty_on_hand
-      const { data: stockLevel } = await supabase
-        .from('stock_levels')
-        .select('id, qty_on_hand')
-        .eq('product_id', item.product_id)
-        .eq('branch_id', order.branch_id)
-        .is('lot_id', null)
-        .limit(1)
-        .maybeSingle();
-
-      if (stockLevel) {
-        await supabase
-          .from('stock_levels')
-          .update({
-            qty_on_hand: (Number(stockLevel.qty_on_hand) || 0) + item.quantity,
-            updated_at: now,
-          })
-          .eq('id', stockLevel.id);
-      } else {
-        await supabase
-          .from('stock_levels')
-          .insert({
-            product_id: item.product_id,
-            branch_id: order.branch_id,
-            lot_id: null,
-            qty_on_hand: item.quantity,
-            qty_reserved: 0,
-            avg_cost: 0,
-            min_level: 0,
-          });
-      }
-
-      // Crear movimiento de stock (devolución)
-      const { error: movementError } = await supabase
-        .from('stock_movements')
-        .insert({
-          organization_id: order.organization_id,
-          branch_id: order.branch_id,
-          product_id: item.product_id,
-          lot_id: null,
-          direction: 'in',
-          qty: item.quantity,
-          unit_cost: 0,
-          source: 'web_refund',
-          source_id: String(order.id),
-          note: `Devolución por reembolso - Pedido ${order.order_number}`,
-        });
+      // Inventario B9: por la primitiva de stock (bloqueo, kardex, lote y costo vigente), con el origen
+      // 'web_refund' que ya enlaza la trazabilidad al pedido. Antes se escribía stock_levels a mano y
+      // el movimiento entraba a costo 0. Productos sin inventario: la base los salta.
+      const { error: movementError } = await supabase.rpc('fn_stock_entrada_al_costo', {
+        p_organization_id: order.organization_id,
+        p_branch_id: order.branch_id,
+        p_product_id: item.product_id,
+        p_qty: item.quantity,
+        p_source: 'web_refund',
+        p_source_id: String(order.id),
+        p_note: `Devolución por reembolso - Pedido ${order.order_number}`,
+        p_updated_by: null,
+      });
 
       if (movementError) {
         stockErrors.push(`Producto ${item.product_id}: ${movementError.message}`);

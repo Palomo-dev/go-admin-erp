@@ -1688,7 +1688,10 @@ describe('23. stock_movements.source: CHECK, lista de TS y código coinciden', (
     // ya no se exige aquí. B8 (2026-09-29) retiró la recepción de OC del
     // navegador (purchase_order ahora solo lo escribe fn_oc_recepcionar por
     // fn_kardex_entrada_compra_int): se exige purchase_invoice, que sigue en TS.
-    expect(escritos.size).toBeGreaterThanOrEqual(5);
+    // B9 (2026-09-29) retiró el reembolso web (web_refund ahora por
+    // fn_stock_entrada_al_costo) y la confirmación web por servidor
+    // (fn_pedido_web_confirmar_stock): el piso baja de 5 a 4.
+    expect(escritos.size).toBeGreaterThanOrEqual(4);
     expect([...escritos.keys()]).toEqual(expect.arrayContaining(['purchase_invoice']));
 
     const rechazados = [...escritos.entries()]
@@ -3069,10 +3072,8 @@ describe('33. Existencias: nada fuera del núcleo escribe las tablas de stock', 
   // Filtro propio (ver el caso 32): sin el helper común.
   const esPrueba33 = (f: string) => /[\\/]__tests__[\\/]|\.test\.|\.spec\./.test(f);
   const PENDIENTES_POR_BLOQUE: Record<string, string> = {
-    'app/api/web-orders/[id]/refund/route.ts': 'B9 · reembolso web → fn_stock_entrada',
     'lib/ai/assistant/undoService.ts': 'B9 · deshacer por fn_producto_int_ajustar_stock',
     'lib/services/aiActionsService.ts': 'B9 · actualizar stock por fn_producto_int_ajustar_stock',
-    'lib/services/webOrderServerConfirmation.ts': 'B9 · fn_pedido_web_confirmar_stock',
   };
   const escritores = () =>
     walkDir(SRC_ROOT)

@@ -2,7 +2,6 @@ import { supabase } from '@/lib/supabase/config';
 import { getCurrentUserId, getOrganizationId } from '@/lib/hooks/useOrganization';
 import { PropinasService } from '@/components/pos/propinas/propinasService';
 import { deliveryIntegrationService } from './deliveryIntegrationService';
-import { stockMovementService } from './stockMovementService';
 import { generateInvoiceNumber } from '@/lib/utils/invoiceUtils';
 import type { WebOrder } from './webOrdersService';
 import {
@@ -98,34 +97,18 @@ class WebOrderConfirmationService {
     //     si falla (p. ej. pedido sin cliente) queda en el log y se puede reintentar (idempotente).
     await this.activarMembresias(order.id);
 
-    // 2b. Descontar stock definitivamente y liberar reserva
+    // 2b. Stock: descuento con receta, liberar la reserva y vender seriales en una sola RPC
+    //     (inventario B9, fn_pedido_web_confirmar_stock), la misma que usa la confirmación del
+    //     servidor. Antes esta copia no vendía los seriales reservados. No bloquea la confirmación.
     try {
-      const stockResult = await stockMovementService.decrementOnSale(
-        order.organization_id,
-        order.branch_id,
-        saleId,
-        (order.items || []).map(item => ({
-          product_id: item.product_id,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-        })),
-        'web_sale',
-        userId
-      );
-      if (stockResult.errors.length > 0) {
-        console.warn('⚠️ Algunos items no descontaron stock:', stockResult.errors);
-      }
-      console.log(`📦 Stock descontado (web order confirm): ${(order.items || []).length - stockResult.skipped} items`);
-
-      // Liberar reserva (qty_reserved) ya que el stock fue descontado definitivamente
-      await stockMovementService.releaseStockReservation(
-        order.branch_id,
-        order.id,
-        (order.items || []).map(item => ({
-          product_id: item.product_id,
-          quantity: item.quantity,
-        }))
-      );
+      const { data: stockRes, error: stockRpcError } = await supabase.rpc('fn_pedido_web_confirmar_stock', {
+        p_order_id: order.id,
+        p_sale_id: saleId,
+        p_user_id: userId,
+      });
+      if (stockRpcError) throw stockRpcError;
+      const errores = ((stockRes ?? {}) as { errores?: string[] }).errores ?? [];
+      if (errores.length > 0) console.warn('⚠️ Algunos items no descontaron stock:', errores);
     } catch (stockError) {
       console.warn('⚠️ Error descontando stock (no bloquea la confirmación):', stockError);
     }

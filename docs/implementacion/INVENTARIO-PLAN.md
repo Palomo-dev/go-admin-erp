@@ -1866,3 +1866,28 @@ manda el navegador (`item.price`) en lugar de recalcularlo en el servidor.
 - Falta: el `tsc` completo sobre la copia limpia no terminó antes del corte (la máquina corría tres
   a la vez); el `tsc` de los archivos de B6a y sus dependencias pasó sin errores en el árbol. Lo
   demás pendiente está en B6a.4 (contratos para POS, B5, B7, B8, B10) y B6a.5.
+
+---
+
+## Anexo B9 — Consumidores externos: PMS y pedidos web (2026-09-29, parcial)
+
+Migraciones (MCP, con reversión): `20260929216000_inv_b9_folio_item_eliminar`,
+`20260929217000_inv_b9_pedido_web_confirmar_stock`, `20260929218000_inv_b9_entrada_al_costo`.
+
+- **PMS:** el consumo de habitación ya no descuenta dos veces (`spaceConsumptionService` solo crea el
+  cargo; `addFolioItem` descuenta). Borrar un cargo del folio va por `fn_folio_item_eliminar`: borra
+  y devuelve el stock en una transacción, con receta expandida, origen `folio_item_reversal`, al costo
+  vigente y sin recalcular el promedio (antes entraba como compra al precio de venta).
+- **Pedidos web:** una sola RPC `fn_pedido_web_confirmar_stock(pedido, venta, usuario)` para las dos
+  confirmaciones (servidor y botón): descuenta con receta (idempotente por venta), libera exactamente
+  lo reservado (`fn_inv_int_liberar`) y marca `stock_released_at`, y vende los seriales con su evento
+  (antes el evento usaba `serial_id`, columna inexistente, y nunca se guardó). Borrado
+  `webOrdersService.convertToSale` (sin uso). En producción había pedidos confirmados con la reserva
+  sin liberar; se liberan cuando la función vuelva a correr sobre ellos (no se hizo reparación masiva).
+- **Reembolso web:** `fn_stock_entrada_al_costo` (origen `web_refund`, costo vigente en vez de 0),
+  solo service role.
+- Guardarraíl 33: salen de la deuda el reembolso y la confirmación de servidor.
+
+Pendiente de B9 (zonas de otras sesiones, sin tocar): GO Assistant (`assistant_*`, `undoService`,
+`aiActionsService`) y POS (selector de lote, escáner real, `pos_checkout_v1` con `lot_id` y errores de
+stock como aviso). B10 depende de que B9 cierre.

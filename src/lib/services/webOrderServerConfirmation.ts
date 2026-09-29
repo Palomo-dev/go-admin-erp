@@ -532,116 +532,22 @@ export const webOrderServerConfirmation = {
     // para siempre (un reintento devuelve creada=false). Ver la función.
     const membresias = await activarMembresiasVentaWeb(supabase, saleId, order.order_number);
 
-    // ── 3. Descontar stock definitivamente (RPC) ──
-    for (const item of order.items || []) {
-      if (!item.product_id) continue;
-      const qty = Number(item.quantity) || 0;
-      if (qty <= 0) continue;
-
-      const { error: rpcError } = await supabase.rpc('decrement_stock_with_recipe', {
-        p_organization_id: order.organization_id,
-        p_branch_id: order.branch_id,
-        p_product_id: item.product_id,
-        p_qty: qty,
-        p_source: 'web_sale',
-        p_source_id: String(saleId),
-        p_unit_cost: Number(item.unit_price) || null,
-        p_updated_by: userId,
-      });
-
-      if (rpcError) {
-        stockErrors.push(`Producto ${item.product_name || item.product_id}: ${rpcError.message}`);
-      }
-    }
-
-    // ── 4. Liberar reserva (qty_reserved) ──
-    for (const item of order.items || []) {
-      if (!item.product_id) continue;
-      const qty = Number(item.quantity) || 0;
-      if (qty <= 0) continue;
-
-      // Buscar el stock_level para liberar la reserva
-      const { data: stockLevel } = await supabase
-        .from('stock_levels')
-        .select('id, qty_reserved')
-        .eq('product_id', item.product_id)
-        .eq('branch_id', order.branch_id)
-        .is('lot_id', null)
-        .limit(1)
-        .maybeSingle();
-
-      if (stockLevel) {
-        const newReserved = Math.max(0, (Number(stockLevel.qty_reserved) || 0) - qty);
-        await supabase
-          .from('stock_levels')
-          .update({
-            qty_reserved: newReserved,
-            updated_at: now,
-          })
-          .eq('id', stockLevel.id);
-      }
-    }
-
-    // ── 4.1. Vender seriales reservados para este pedido web ──
-    // Los seriales se reservaron en POST /api/web-orders (reserveSerials).
-    // Al confirmar el pago, cambiamos su estado de 'reserved' a 'sold' y los
-    // vinculamos a la venta creada. Sin este paso los seriales quedan
-    // reservados indefinidamente y no se reflejan como vendidos.
-    try {
-      const { data: reservedSerials, error: serialLoadError } = await supabase
-        .from('serial_numbers')
-        .select('id, product_id, serial')
-        .eq('organization_id', order.organization_id)
-        .eq('web_order_id', order.id)
-        .eq('status', 'reserved');
-
-      if (!serialLoadError && reservedSerials && reservedSerials.length > 0) {
-        // Mapear product_id -> unit_price desde los items del pedido
-        const priceMap = new Map<number, number>();
-        for (const item of order.items || []) {
-          if (item.product_id) {
-            priceMap.set(item.product_id, Number(item.unit_price) || 0);
-          }
-        }
-
-        const nowIso = new Date().toISOString();
-        for (const serial of reservedSerials) {
-          await supabase
-            .from('serial_numbers')
-            .update({
-              status: 'sold',
-              sale_id: saleId,
-              invoice_sale_id: null, // se actualiza después de crear la factura
-              sold_to_customer_id: order.customer_id || null,
-              sold_by_user_id: userId,
-              sale_channel: 'web',
-              sale_date: nowIso,
-              price_at_sale: priceMap.get(serial.product_id) || null,
-              web_order_id: order.id,
-              updated_at: nowIso,
-              updated_by: userId,
-            })
-            .eq('id', serial.id);
-
-          // Registrar evento de venta en el tracking
-          await supabase
-            .from('serial_tracking_events')
-            .insert({
-              serial_id: serial.id,
-              event_type: 'sold',
-              from_status: 'reserved',
-              to_status: 'sold',
-              source_table: 'sales',
-              source_id: saleId,
-              notes: `Venta automática desde pedido web ${order.order_number}`,
-              performed_by: userId,
-              created_at: nowIso,
-            });
-        }
-        console.log(`✅ ${reservedSerials.length} seriales vendidos desde pedido web ${order.order_number}`);
-      }
-    } catch (serialError: unknown) {
-      console.warn('⚠️ Error vendiendo seriales reservados (no bloquea confirmación):', serialError instanceof Error ? serialError.message : serialError);
+    // ── 3. Stock: descuento con receta, liberar la reserva y vender seriales ──
+    // Una sola RPC (inventario B9, fn_pedido_web_confirmar_stock), la misma del botón «Confirmar
+    // pedido». Antes aquí se liberaba la reserva restando qty_reserved a mano (sin receta ni lote) y
+    // el evento de los seriales se insertaba con una columna inexistente. No bloquea la confirmación:
+    // los errores por línea vuelven en `errores`.
+    const { data: stockRes, error: stockRpcError } = await supabase.rpc('fn_pedido_web_confirmar_stock', {
+      p_order_id: order.id,
+      p_sale_id: saleId,
+      p_user_id: userId,
+    });
+    if (stockRpcError) {
+      stockErrors.push(`Stock del pedido: ${stockRpcError.message}`);
+    } else {
+      const r = (stockRes ?? {}) as { errores?: string[]; seriales?: number };
+      stockErrors.push(...(r.errores ?? []));
+      if (r.seriales) console.log(`✅ ${r.seriales} seriales vendidos desde pedido web ${order.order_number}`);
     }
 
     // ── 5. Crear factura de venta (invoice_sales + invoice_items) ──

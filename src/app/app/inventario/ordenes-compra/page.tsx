@@ -7,7 +7,7 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { purchaseOrderService, type PurchaseOrder, type PurchaseOrderStats } from '@/lib/services/purchaseOrderService';
 import { useTranslations } from 'next-intl';
-import { useMensajeErrorRecepcionOC } from '@/components/inventario/ordenes-compra/detalle/LotesRecepcion';
+import { useMensajeErrorRecepcionOC } from '@/components/inventario/recepcion/LotesRecepcion';
 
 import {
   AlertDialog,

@@ -72,7 +72,8 @@ import type { GuardarFacturaCompra } from '@/lib/services/compras/contrato';
 import { impuestosOrganizacion, type ImpuestoDocumento, type ProductoParaDocumento } from '@/lib/services/documentos/edicionDocumento';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { useBaseCompras } from '../rutasCompras';
-import { DialogoConfirmarCompra } from '../detalle/DialogosCompra';
+import { DialogoConfirmarCompra, type RecepcionConLotes } from '../detalle/DialogosCompra';
+import { useProductosConLote, useTextoErrorRecepcion } from '@/components/inventario/recepcion/LotesRecepcion';
 
 interface LineaForm {
   key: string;
@@ -445,9 +446,25 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     withholdings: retenciones.map((r) => ({ concept: r.concept.trim(), base: r.base, rate: r.rate, ...(r.tax_code ? { tax_code: r.tax_code } : {}) })),
   });
 
+  // Inventario B8: lote y vencimiento de los productos con lotes al recibir
+  // (la factura aún no tiene ids de línea en pantalla: se identifican por producto).
+  const conLote = useProductosConLote(lineas.map((l) => l.product_id), !!confirmarId);
+  const recepcionLotes: RecepcionConLotes | undefined =
+    sucursal !== null
+      ? {
+          organizacionId: getOrganizationId(),
+          sucursalId: sucursal,
+          hoy: getToday(),
+          lineas: lineas
+            .filter((l) => l.product_id !== null && conLote.has(l.product_id) && l.qty > 0)
+            .map((l) => ({ clave: l.key, product_id: l.product_id as number, nombre: l.description, qty: l.qty })),
+        }
+      : undefined;
+  const textoErrorRecepcion = useTextoErrorRecepcion();
+
   const mensajeError = (e: unknown): string => {
     const codigo = e instanceof ErrorPeticionCompra ? e.codigo : 'error_desconocido';
-    return t.has(`errores.${codigo}`) ? t(`errores.${codigo}` as never) : t('errores.error_desconocido');
+    return t.has(`errores.${codigo}`) ? t(`errores.${codigo}` as never) : textoErrorRecepcion(codigo) ?? t('errores.error_desconocido');
   };
 
   const guardar = async (modo: 'borrador' | 'confirmar' | 'salir', destino?: string) => {
@@ -1039,6 +1056,7 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
               moneda={ctxMoneda}
               hayProductos={lineas.some((l) => l.product_id !== null)}
               puedeRecepcionar
+              recepcion={recepcionLotes}
               cargando={confirmando}
               error={errorConfirmar}
               onConfirmar={async (opciones) => {

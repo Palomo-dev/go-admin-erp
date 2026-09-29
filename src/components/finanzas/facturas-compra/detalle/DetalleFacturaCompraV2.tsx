@@ -68,7 +68,8 @@ import { leerDetalleFacturaCompra, type DetalleFacturaCompra, type PagoCompraLei
 import { RegistrarPagoProveedor } from '@/components/finanzas/cuentas-por-pagar/RegistrarPagoProveedor';
 import { ProgramarPagoDialog } from '@/components/finanzas/cuentas-por-pagar/ProgramarPagoDialog';
 import { RUTA_CXP, RUTA_PROVEEDORES, useBaseCompras } from '../rutasCompras';
-import { DialogoConfirmarCompra, DialogoRecepcionar } from './DialogosCompra';
+import { DialogoConfirmarCompra, DialogoRecepcionar, type RecepcionConLotes } from './DialogosCompra';
+import { useProductosConLote, useTextoErrorRecepcion } from '@/components/inventario/recepcion/LotesRecepcion';
 
 type DialogoAbierto = 'confirmar' | 'recepcionar' | 'anular' | 'pagar' | 'programar' | 'eliminar' | null;
 
@@ -117,9 +118,23 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
   const ctxMoneda = moneda.paraDocumento(f?.currency);
   const formatear = useMemo(() => crearFormateadorMoneda(ctxMoneda), [ctxMoneda]);
 
+  // Inventario B8: lote y vencimiento de los productos con lotes al recibir.
+  const conLote = useProductosConLote(f?.lineas.map((l) => l.product_id) ?? [], dialogo === 'confirmar' || dialogo === 'recepcionar');
+  const recepcionLotes: RecepcionConLotes | undefined = f
+    ? {
+        organizacionId: getOrganizationId(),
+        sucursalId: f.branch_id,
+        hoy: getToday(),
+        lineas: f.lineas
+          .filter((l) => l.product_id !== null && conLote.has(l.product_id) && l.qty > 0)
+          .map((l) => ({ clave: l.id, invoice_item_id: l.id, product_id: l.product_id as number, nombre: l.description, qty: l.qty })),
+      }
+    : undefined;
+  const textoErrorRecepcion = useTextoErrorRecepcion();
+
   const mensajeError = (e: unknown) => {
     const codigo = e instanceof ErrorPeticionCompra ? e.codigo : 'error_desconocido';
-    return t.has(`errores.${codigo}`) ? t(`errores.${codigo}` as never) : t('errores.error_desconocido');
+    return t.has(`errores.${codigo}`) ? t(`errores.${codigo}` as never) : textoErrorRecepcion(codigo) ?? t('errores.error_desconocido');
   };
 
   const ejecutar = async (accion: () => Promise<unknown>, exito: string) => {
@@ -518,6 +533,7 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
         onConfirmar={(opciones) =>
           void ejecutar(() => clienteCompras.confirmar(f.id, opciones), opciones.recepcionar ? td('confirmada.conRecepcion') : td('confirmada.sinRecepcion'))
         }
+        recepcion={recepcionLotes}
       />
       <DialogoRecepcionar
         abierto={dialogo === 'recepcionar'}
@@ -528,9 +544,10 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
         moneda={ctxMoneda}
         cargando={ocupado}
         error={errorAccion}
-        onRecepcionar={() =>
+        recepcion={recepcionLotes}
+        onRecepcionar={(lotes) =>
           void ejecutar(async () => {
-            const r = await clienteCompras.recepcionar(f.id);
+            const r = await clienteCompras.recepcionar(f.id, lotes);
             if (r.saltadas.length > 0) toastSuccess(td('recepcionar.saltadas', { n: r.saltadas.length }));
           }, td('recepcionar.listo'))
         }

@@ -60,7 +60,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
-import { LotesRecepcion, lotesIncompletos, useMensajeErrorRecepcionOC } from './LotesRecepcion';
+import { LotesRecepcion, lotesIncompletos, useMensajeErrorRecepcionOC } from '@/components/inventario/recepcion/LotesRecepcion';
 
 interface OrdenCompraDetalleProps {
   orderUuid: string;

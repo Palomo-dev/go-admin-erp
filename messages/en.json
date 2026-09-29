@@ -19648,7 +19648,8 @@
       "noCuadra": "the lots must add up to what arrives",
       "errorCarga": "The product lots could not be loaded.",
       "cargando": "Loading lots…",
-      "dialogoDescripcion": "Lots of {producto}"
+      "dialogoDescripcion": "Lots of {producto}",
+      "motivoFaltan": "Enter the lot and expiry of the lot-tracked products."
     },
     "errores": {
       "sin_sesion": "Your session ended. Please sign in again.",
@@ -19680,6 +19681,7 @@
       "lote_repetido": "That lot code already exists for the product.",
       "lote_vencimiento_distinto": "Lot {lote} already exists and expires on {vence}: use that expiry or another code.",
       "fecha_invalida": "The expiry date is not valid.",
+      "lotes_sin_linea": "There are lots for a line that is not on the invoice. Reload the page.",
       "error_desconocido": "The receipt couldn't be recorded. Nothing was received; please try again."
     }
   }

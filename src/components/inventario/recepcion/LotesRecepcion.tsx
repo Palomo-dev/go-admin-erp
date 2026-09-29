@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * Captura de lotes al recibir una línea de la orden de compra (inventario B8).
+ * Captura de lotes al recibir mercancía (inventario B8): la orden de compra y la
+ * factura de compra («Recepcionar al confirmar» y «Recepcionar a inventario»).
  * Lo mínimo para que la recepción lleve lote y vencimiento sin rediseñar el
  * diálogo: filas «código · vence · cantidad», «Agregar lote» y «Elegir lote
  * existente» con el `DialogoLotes` del kit (lotes del producto por
@@ -12,13 +13,14 @@
  * `expiry_date` es un día calendario (`YYYY-MM-DD`): se elige con `CampoFecha`
  * y nunca pasa por `new Date`.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Plus, Trash2, Layers } from 'lucide-react';
 import { CampoFecha } from '@/components/kit/CampoFecha';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { DialogoLotes } from '@/components/kit/inventario';
 import { lotesDeProducto } from '@/components/inventario/lotes/LotesService';
+import { supabase } from '@/lib/supabase/config';
 import type { LoteDisponible } from '@/lib/inventario/nucleo/tipos';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import {
@@ -212,4 +214,124 @@ export function useMensajeErrorRecepcionOC(): (err: unknown) => string {
     },
     [t],
   );
+}
+
+/**
+ * Productos (de los ids dados) que manejan lotes: la recepción los exige con
+ * lote y vencimiento. Solo lectura (RLS de `products`); si la lectura falla se
+ * devuelve vacío y el servidor sigue exigiendo el lote (`lote_requerido`).
+ */
+export function useProductosConLote(productIds: readonly (number | null | undefined)[], activo = true): Set<number> {
+  const ids = useMemo(
+    () => [...new Set(productIds.filter((x): x is number => typeof x === 'number' && x > 0))].sort((a, b) => a - b),
+    [productIds],
+  );
+  const clave = ids.join(',');
+  const [conLote, setConLote] = useState<Set<number>>(new Set());
+  useEffect(() => {
+    if (!activo || ids.length === 0) {
+      setConLote(new Set());
+      return;
+    }
+    let vigente = true;
+    void supabase
+      .from('products')
+      .select('id')
+      .in('id', ids)
+      .eq('track_lots', true)
+      .then(({ data, error }) => {
+        if (!vigente) return;
+        setConLote(error ? new Set() : new Set((data ?? []).map((p: { id: number }) => p.id)));
+      });
+    return () => {
+      vigente = false;
+    };
+    // `clave` resume `ids`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clave, activo]);
+  return conLote;
+}
+
+/** Texto (es/en/fr/pt) de un código de error de la recepción, o null si no es uno de ellos. */
+export function useTextoErrorRecepcion(): (codigo: string) => string | null {
+  const t = useTranslations('inventarioRecepcionOC.errores');
+  return useCallback((codigo: string) => (t.has(codigo) ? t(codigo as never) : null), [t]);
+}
+
+/** Línea de un documento (factura de compra) cuyo producto maneja lotes. */
+export interface LineaConLote {
+  /** Clave de la línea en la pantalla. */
+  clave: string;
+  /** Línea ya guardada (detalle de la factura); sin ella se identifica por producto. */
+  invoice_item_id?: string;
+  product_id: number;
+  nombre: string;
+  qty: number;
+}
+
+/** Lotes por línea → cuerpo `lotes` de confirmar/recepcionar la factura de compra. */
+export function lotesPorLinea(
+  lineas: readonly LineaConLote[],
+  valores: Readonly<Record<string, readonly LoteCapturado[]>>,
+): { invoice_item_id?: string; product_id?: number; lotes: { lot_id?: number; lot_code?: string | null; expiry_date?: string | null; qty: number }[] }[] {
+  return lineas
+    .map((l) => ({ l, lotes: (valores[l.clave] ?? []).filter((x) => Number(x.qty) > 0) }))
+    .filter(({ lotes }) => lotes.length > 0)
+    .map(({ l, lotes }) => ({
+      ...(l.invoice_item_id ? { invoice_item_id: l.invoice_item_id } : { product_id: l.product_id }),
+      lotes: lotes.map((x) => ({
+        ...(x.lot_id ? { lot_id: x.lot_id } : {}),
+        lot_code: x.lot_code?.trim() || null,
+        expiry_date: x.expiry_date || null,
+        qty: r3(Number(x.qty)),
+      })),
+    }));
+}
+
+/**
+ * Bloque «Lote y vencimiento» de la recepción de un documento: una captura por
+ * línea con producto que maneja lotes. Lo usan los diálogos de la factura de
+ * compra (confirmar recibiendo y recepcionar).
+ */
+export function LotesDeDocumento({
+  organizacionId,
+  sucursalId,
+  hoy,
+  lineas,
+  valores,
+  onChange,
+}: {
+  organizacionId: number;
+  sucursalId: number;
+  hoy: string;
+  lineas: readonly LineaConLote[];
+  valores: Readonly<Record<string, LoteCapturado[]>>;
+  onChange: (clave: string, valor: LoteCapturado[]) => void;
+}) {
+  if (lineas.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      {lineas.map((l) => (
+        <div key={l.clave} className="flex flex-col gap-1">
+          <p className="text-sm text-fg">{l.nombre}</p>
+          <LotesRecepcion
+            organizacionId={organizacionId}
+            sucursalId={sucursalId}
+            productoId={l.product_id}
+            productoNombre={l.nombre}
+            cantidad={l.qty}
+            requerido
+            valor={valores[l.clave] ?? []}
+            onChange={(v) => onChange(l.clave, v)}
+            hoy={hoy}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Alguna línea con lote obligatorio sin capturar o con reparto que no cuadra. */
+export function faltanLotes(lineas: readonly LineaConLote[], valores: Readonly<Record<string, readonly LoteCapturado[]>>): boolean {
+  return lineas.some((l) => lotesIncompletos(true, l.qty, valores[l.clave] ?? []));
 }

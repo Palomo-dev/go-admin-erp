@@ -19543,7 +19543,8 @@
       "noCuadra": "la somme des lots doit être égale à ce qui arrive",
       "errorCarga": "Impossible de charger les lots du produit.",
       "cargando": "Chargement des lots…",
-      "dialogoDescripcion": "Lots de {producto}"
+      "dialogoDescripcion": "Lots de {producto}",
+      "motivoFaltan": "Indiquez le lot et la péremption des produits suivis par lot."
     },
     "errores": {
       "sin_sesion": "Votre session a expiré. Reconnectez-vous.",
@@ -19575,6 +19576,7 @@
       "lote_repetido": "Ce code de lot existe déjà pour le produit.",
       "lote_vencimiento_distinto": "Le lot {lote} existe déjà et expire le {vence} : utilisez cette date ou un autre code.",
       "fecha_invalida": "La date de péremption n'est pas valide.",
+      "lotes_sin_linea": "Des lots concernent une ligne absente de la facture. Rechargez la page.",
       "error_desconocido": "La réception n'a pas pu être enregistrée. Rien n'a été reçu ; réessayez."
     }
   }

@@ -19543,7 +19543,8 @@
       "noCuadra": "a soma dos lotes deve ser igual ao que chega",
       "errorCarga": "Não foi possível carregar os lotes do produto.",
       "cargando": "Carregando lotes…",
-      "dialogoDescripcion": "Lotes de {producto}"
+      "dialogoDescripcion": "Lotes de {producto}",
+      "motivoFaltan": "Informe o lote e a validade dos produtos controlados por lote."
     },
     "errores": {
       "sin_sesion": "Sua sessão terminou. Entre novamente.",
@@ -19575,6 +19576,7 @@
       "lote_repetido": "Esse código de lote já existe para o produto.",
       "lote_vencimiento_distinto": "O lote {lote} já existe e vence em {vence}: use essa validade ou outro código.",
       "fecha_invalida": "A data de validade não é válida.",
+      "lotes_sin_linea": "Há lotes para uma linha que não está na fatura. Recarregue a página.",
       "error_desconocido": "Não foi possível registrar o recebimento. Nada foi recebido; tente novamente."
     }
   }

@@ -19,6 +19,7 @@ import {
   type ErrorCompra,
   type EstadoCuentaProveedor,
   type GuardarFacturaCompra,
+  type LotesRecepcionFactura,
   type ProgramarPago,
   type ResultadoConfirmar,
   type ResultadoGuardar,
@@ -56,16 +57,30 @@ export function guardarFacturaCompra(ctx: Ctx, datos: GuardarFacturaCompra): Pro
   return llamar<ResultadoGuardar>(ctx, 'fn_factura_compra_guardar', { p_org: ctx.organizationId, p_payload: datos });
 }
 
-export function confirmarFacturaCompra(ctx: Ctx, id: string, recepcionar: boolean, generarDs: boolean): Promise<ResultadoConfirmar> {
+/**
+ * Con `lotes` (inventario B8) usa la sobrecarga con `p_lotes`: lote y
+ * vencimiento por línea; sin ellos, la firma de siempre.
+ */
+export function confirmarFacturaCompra(
+  ctx: Ctx,
+  id: string,
+  recepcionar: boolean,
+  generarDs: boolean,
+  lotes?: LotesRecepcionFactura,
+): Promise<ResultadoConfirmar> {
   return llamar<ResultadoConfirmar>(ctx, 'fn_factura_compra_confirmar', {
     p_id: id,
     p_recepcionar: recepcionar,
     p_generar_ds: generarDs,
+    ...(recepcionar && lotes && lotes.length > 0 ? { p_lotes: lotes } : {}),
   });
 }
 
-export function recepcionarFacturaCompra(ctx: Ctx, id: string): Promise<ResultadoRecepcion> {
-  return llamar<ResultadoRecepcion>(ctx, 'fn_factura_compra_recepcionar', { p_id: id });
+export function recepcionarFacturaCompra(ctx: Ctx, id: string, lotes?: LotesRecepcionFactura): Promise<ResultadoRecepcion> {
+  return llamar<ResultadoRecepcion>(ctx, 'fn_factura_compra_recepcionar', {
+    p_id: id,
+    ...(lotes && lotes.length > 0 ? { p_lotes: lotes } : {}),
+  });
 }
 
 export async function anularFacturaCompra(ctx: Ctx, id: string, motivo: string): Promise<void> {

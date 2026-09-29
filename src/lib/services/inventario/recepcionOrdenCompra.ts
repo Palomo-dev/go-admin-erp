@@ -124,6 +124,7 @@ export const ERRORES_RECEPCION_OC = [
   'lote_invalido',
   'lote_repetido',
   'lote_vencimiento_distinto',
+  'lotes_sin_linea',
   'fecha_invalida',
   'error_desconocido',
 ] as const;

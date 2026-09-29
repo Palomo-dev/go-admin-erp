@@ -323,3 +323,80 @@ describe('textos en es/en/fr/pt (namespace inventarioRecepcionOC)', () => {
     for (const codigo of ERRORES_RECEPCION_OC) expect({ codigo, texto: typeof errores[codigo] }).toEqual({ codigo, texto: 'string' });
   });
 });
+
+describe('factura de compra: lotes y seriales al recibir (B8, 2.ª parte)', () => {
+  const RAIZ = path.join(__dirname, '..', '..', '..', '..');
+  const sql = fs.readFileSync(path.join(RAIZ, 'supabase/migrations/20260929170200_inv_b8_3_factura_lotes_seriales.sql'), 'utf8');
+
+  it('confirmar y recepcionar pasan p_lotes solo si hay lotes (si no, la firma de siempre)', async () => {
+    const { confirmarFacturaCompra, recepcionarFacturaCompra } = await import('@/lib/services/compras/facturasCompra.server');
+    const llamadas: { fn: string; args: Record<string, unknown> }[] = [];
+    const ctx = {
+      organizationId: ORG,
+      userId: 'u-1',
+      supabase: { rpc: async (fn: string, args: Record<string, unknown>) => (llamadas.push({ fn, args }), { data: {}, error: null }) },
+    } as never;
+    const lotes = [{ product_id: 16, lotes: [{ lot_code: 'LT-1', expiry_date: '2027-01-31', qty: 2 }] }];
+    await confirmarFacturaCompra(ctx, 'f-1', true, false);
+    await confirmarFacturaCompra(ctx, 'f-1', true, false, lotes);
+    await confirmarFacturaCompra(ctx, 'f-1', false, false, lotes);
+    await recepcionarFacturaCompra(ctx, 'f-1');
+    await recepcionarFacturaCompra(ctx, 'f-1', lotes);
+    expect(llamadas.map((c) => Object.keys(c.args).sort().join(','))).toEqual([
+      'p_generar_ds,p_id,p_recepcionar',
+      'p_generar_ds,p_id,p_lotes,p_recepcionar',
+      'p_generar_ds,p_id,p_recepcionar',
+      'p_id',
+      'p_id,p_lotes',
+    ]);
+  });
+
+  it('el cuerpo de confirmar acepta lotes por línea o por producto, y nada más', async () => {
+    const { confirmarFacturaSchema, recepcionarFacturaSchema } = await import('@/lib/services/compras/contrato');
+    const bien = { recepcionar: true, lotes: [{ invoice_item_id: UUID, lotes: [{ lot_id: 3, qty: 1 }] }, { product_id: 9, lotes: [{ lot_code: 'X', qty: 2 }] }] };
+    expect(confirmarFacturaSchema.safeParse(bien).success).toBe(true);
+    expect(recepcionarFacturaSchema.safeParse({}).success).toBe(true);
+    expect(recepcionarFacturaSchema.safeParse({ lotes: [{ lotes: [{ lot_code: 'X', qty: 1 }] }] }).success).toBe(false);
+    expect(recepcionarFacturaSchema.safeParse({ lotes: [{ product_id: 9, lotes: [{ lot_code: 'X', qty: 1, costo: 5 }] }] }).success).toBe(false);
+  });
+
+  it('los códigos de error de la recepción llegan a la pantalla de compras (texto en inventarioRecepcionOC)', async () => {
+    const { codigoErrorCompra, estadoHttpErrorCompra, ERRORES_RECEPCION_COMPRA } = await import('@/lib/services/compras/contrato');
+    for (const lang of ['es', 'en', 'fr', 'pt']) {
+      const errores = (JSON.parse(fs.readFileSync(path.join(RAIZ, 'messages', `${lang}.json`), 'utf8')) as {
+        inventarioRecepcionOC: { errores: Record<string, string> };
+      }).inventarioRecepcionOC.errores;
+      for (const c of ERRORES_RECEPCION_COMPRA) expect({ lang, c, ok: typeof errores[c] }).toEqual({ lang, c, ok: 'string' });
+    }
+    for (const c of ['lote_requerido', 'lotes_no_cuadran', 'lotes_sin_linea', 'seriales_no_cuadran', 'serial_repetido', 'lote_vencimiento_distinto']) {
+      expect(codigoErrorCompra(c)).toBe(c);
+      expect(estadoHttpErrorCompra(codigoErrorCompra(c))).toBe(422);
+    }
+  });
+
+  it('los seriales de la factura se crean al recibir, no al guardar', () => {
+    // El parche de fn_fc_guardar_int cambia la creación por un aviso.
+    const parche = sql.slice(sql.indexOf('-- ── 4.'), sql.indexOf('-- ── 5.'));
+    expect(parche).toContain("v_ini constant text := '    -- L14: seriales `in_stock`");
+    expect(parche).not.toMatch(/insert into public\.serial_numbers/);
+    const recepcion = sql.slice(sql.indexOf('create or replace function public.fn_fc_recepcionar_int(p_id uuid, p_lotes jsonb)'), sql.indexOf('create or replace function public.fn_fc_recepcionar_int(p_id uuid)\n'));
+    expect(recepcion).toContain('public.fn_inv_int_seriales_de_recepcion(');
+    expect(recepcion).toContain('public.fn_inv_int_lote_de_recepcion(');
+    expect(recepcion).toContain("raise exception 'lote_requerido'");
+    expect(recepcion).toContain('public.fn_kardex_entrada_compra_int(');
+    expect(recepcion).not.toMatch(/(insert\s+into|update)\s+public\.(stock_levels|stock_movements)\b/i);
+  });
+
+  it('los ayudantes y las internas no se exponen; las públicas nuevas sí, sin anon', () => {
+    for (const f of [
+      'fn_inv_int_lote_de_recepcion(integer, integer, integer, integer, jsonb) from public, anon, authenticated',
+      'fn_fc_recepcionar_int(uuid, jsonb) from public, anon, authenticated',
+      'fn_fc_confirmar_int(uuid, boolean, boolean, uuid, jsonb) from public, anon, authenticated',
+      'fn_factura_compra_confirmar(uuid, boolean, boolean, jsonb) from public, anon',
+      'fn_factura_compra_recepcionar(uuid, jsonb) from public, anon',
+    ]) {
+      expect(sql).toContain(`revoke all on function public.${f};`);
+    }
+    expect(fs.existsSync(path.join(RAIZ, 'supabase/rollbacks/20260929170200_inv_b8_3_factura_lotes_seriales_rollback.sql'))).toBe(true);
+  });
+});

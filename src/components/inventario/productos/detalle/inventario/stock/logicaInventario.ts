@@ -4,8 +4,6 @@
  * inicial del formulario. Sin React: la prueban los tests.
  */
 
-import type { TonoBadge } from '@/components/kit/estadoTono';
-
 // ── Rutas a otros módulos ─────────────────────────────────────────────────
 
 export type TipoAjuste = 'entrada' | 'salida';
@@ -144,144 +142,12 @@ export function claveVarianteSucursal(productId: number, branchId: number): stri
   return `${productId}:${branchId}`;
 }
 
-// ── Lotes ──────────────────────────────────────────────────────────────────
-
-export type EstadoVencimiento = 'vencido' | 'por_vencer' | 'vigente' | 'sin_vencimiento';
-
-/** Días para vencer que cuentan como «por vencer». */
-export const DIAS_POR_VENCER = 30;
-
-export function estadoVencimiento(dias: number | null): EstadoVencimiento {
-  if (dias === null) return 'sin_vencimiento';
-  if (dias < 0) return 'vencido';
-  if (dias <= DIAS_POR_VENCER) return 'por_vencer';
-  return 'vigente';
-}
-
-export const TONO_VENCIMIENTO: Record<EstadoVencimiento, TonoBadge> = {
-  vencido: 'peligro',
-  por_vencer: 'advertencia',
-  vigente: 'exito',
-  sin_vencimiento: 'neutro',
-};
-
 // ── Kardex ─────────────────────────────────────────────────────────────────
-
-/** Valores del CHECK `stock_movements_source_check` (migración 20260923100000). */
-export const ORIGENES_KARDEX = [
-  'purchase',
-  'sale',
-  'adjustment',
-  'transfer',
-  'return',
-  'loss',
-  'production',
-  'initial',
-  'web_sale',
-  'mesa_sale',
-  'invoice_sale',
-  'folio_item',
-  'room_consumption',
-  'web_order',
-  'purchase_order',
-  'purchase_invoice',
-  'invoice_void',
-  'credit_note',
-  'web_refund',
-  'folio_item_reversal',
-  'transfer_out',
-  'transfer_in',
-  'credit_note_void',
-] as const;
-
-export type OrigenKardex = (typeof ORIGENES_KARDEX)[number];
-
-export function esOrigenKardex(v: string): v is OrigenKardex {
-  return (ORIGENES_KARDEX as readonly string[]).includes(v);
-}
-
-/** Color del origen (Figma 32 · kardex en el detalle: venta roja, ajuste ámbar, compra azul). */
-export function tonoOrigen(origen: string): TonoBadge {
-  switch (origen) {
-    case 'sale':
-    case 'web_sale':
-    case 'mesa_sale':
-    case 'invoice_sale':
-    case 'folio_item':
-    case 'room_consumption':
-    case 'web_order':
-    case 'credit_note_void':
-      return 'peligro';
-    case 'purchase':
-    case 'purchase_order':
-    case 'purchase_invoice':
-      return 'informacion';
-    case 'adjustment':
-    case 'loss':
-      return 'advertencia';
-    case 'transfer':
-    case 'transfer_in':
-    case 'transfer_out':
-      return 'marca';
-    case 'return':
-    case 'invoice_void':
-    case 'credit_note':
-    case 'web_refund':
-    case 'folio_item_reversal':
-      return 'exito';
-    default:
-      return 'neutro';
-  }
-}
-
-const ES_NUMERICO = /^[0-9]+$/;
-
-/** Órdenes de compra del kardex cuyo uuid hay que resolver (la ruta del detalle va por uuid). */
-export function idsOrdenesCompra(movs: readonly { origen: string; origen_id: string | null }[]): number[] {
-  const ids = new Set<number>();
-  for (const m of movs) {
-    if ((m.origen === 'purchase_order' || m.origen === 'purchase') && m.origen_id && ES_NUMERICO.test(m.origen_id)) {
-      ids.add(Number(m.origen_id));
-    }
-  }
-  return Array.from(ids);
-}
-
-/**
- * Ruta del documento que originó el movimiento, o null si no hay pantalla de
- * detalle para ese origen (ventas de POS, folios, tienda web…).
- */
-export function rutaDocumento(
-  origen: string,
-  origenId: string | null,
-  uuidsOrdenes: ReadonlyMap<number, string> = new Map(),
-): string | null {
-  if (!origenId) return null;
-  switch (origen) {
-    case 'invoice_sale':
-    case 'credit_note':
-    case 'credit_note_void':
-    case 'invoice_void':
-      return `/app/finanzas/facturas-venta/${encodeURIComponent(origenId)}`;
-    case 'purchase_invoice':
-      return `/app/inventario/facturas-compra/${encodeURIComponent(origenId)}`;
-    case 'purchase_order':
-    case 'purchase': {
-      if (!ES_NUMERICO.test(origenId)) return null;
-      const uuid = uuidsOrdenes.get(Number(origenId));
-      return uuid ? `/app/inventario/ordenes-compra/${uuid}` : null;
-    }
-    case 'adjustment':
-    case 'loss':
-      return ES_NUMERICO.test(origenId) ? `/app/inventario/ajustes/${origenId}` : null;
-    case 'transfer':
-    case 'transfer_in':
-    case 'transfer_out':
-      return ES_NUMERICO.test(origenId) ? `/app/inventario/transferencias/${origenId}` : null;
-    default:
-      return null;
-  }
-}
+//
+// El tipo del movimiento, su tono y el documento salen del kit de B0
+// (`BadgeOrigenMovimiento`, `EnlaceDocumento` + `fn_inv_documentos`): aquí ya no
+// hay un segundo mapa de orígenes ni de rutas. El vencimiento de los lotes, de
+// `BadgeVencimiento` y el estado que calcula `fn_lotes_listado`.
 
 /** Tope de filas del CSV del kardex (se piden en páginas de 500). */
 export const TOPE_EXPORTAR_KARDEX = 10000;

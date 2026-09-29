@@ -36,11 +36,13 @@ export function useMensajeErrorInventario(): (error: unknown) => string {
  * descartar las que no son de la organización.
  */
 export function useAlcanceSucursales() {
-  const { branchFilter, branches, isLoading, selectedBranchId } = useBranch();
-  const sucursales = useMemo(
-    () => (branchFilter ? [branchFilter] : branches.map((b) => b.id)),
-    [branchFilter, branches],
+  const { branchFilter, branches: todas, isLoading, selectedBranchId } = useBranch();
+  // Sucursales del usuario con id (el tipo Branch lo deja opcional).
+  const branches = useMemo(
+    () => todas.filter((b): b is typeof b & { id: number } => typeof b.id === 'number').map((b) => ({ id: b.id, name: b.name })),
+    [todas],
   );
+  const sucursales = useMemo(() => (branchFilter ? [branchFilter] : branches.map((b) => b.id)), [branchFilter, branches]);
   return {
     sucursales,
     /** Sucursal concreta para escribir (la seleccionada o la principal). */

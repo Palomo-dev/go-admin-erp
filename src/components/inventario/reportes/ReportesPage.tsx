@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   Card,
   CardContent,
@@ -44,7 +45,7 @@ import {
 } from 'lucide-react';
 import { ReportesService } from './ReportesService';
 import { ReportesPagination, usePagination } from './ReportesPagination';
-import { StockReport, KardexEntry, RotationReport, SupplierPurchaseReport, ReportFilter } from './types';
+import { StockReport, RotationReport, SupplierPurchaseReport, ReportFilter } from './types';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz, toPlainDate } from '@/lib/utils/timezone';
@@ -54,6 +55,7 @@ import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 export function ReportesPage() {
   const { toast } = useToast();
+  const tk = useTranslations('inventarioKardex.reportes');
   const { branchFilter, setSelectedBranch } = useBranch();
   const { formatDate } = useFormatDate();
   const { timezone } = useOrgTimezone();
@@ -63,20 +65,17 @@ export function ReportesPage() {
   
   // Data states
   const [stockData, setStockData] = useState<StockReport[]>([]);
-  const [kardexData, setKardexData] = useState<KardexEntry[]>([]);
   const [rotacionData, setRotacionData] = useState<RotationReport[]>([]);
   const [comprasData, setComprasData] = useState<SupplierPurchaseReport[]>([]);
   
   // Filters
   const [categorias, setCategorias] = useState<{ id: number; name: string }[]>([]);
   const [sucursales, setSucursales] = useState<{ id: number; name: string }[]>([]);
-  const [productos, setProductos] = useState<{ id: number; name: string; sku: string }[]>([]);
   
   const [filters, setFilters] = useState<ReportFilter>({
     dateFrom: toPlainDate(new Date(new Date().setMonth(new Date().getMonth() - 1)), timezone),
     dateTo: todayInTz(timezone),
   });
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
   // Sincronizar el filtro de sucursal local con el contexto global de sucursal
   useEffect(() => {
@@ -85,14 +84,12 @@ export function ReportesPage() {
 
   const loadFiltersData = useCallback(async () => {
     try {
-      const [cats, branches, prods] = await Promise.all([
+      const [cats, branches] = await Promise.all([
         ReportesService.obtenerCategorias(),
         ReportesService.obtenerSucursales(),
-        ReportesService.obtenerProductos(),
       ]);
       setCategorias(cats);
       setSucursales(branches);
-      setProductos(prods);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Error cargando filtros:', errorMessage, error);
@@ -110,12 +107,6 @@ export function ReportesPage() {
         case 'stock':
           const stock = await ReportesService.obtenerReporteStock(filters);
           setStockData(stock);
-          break;
-        case 'kardex':
-          if (selectedProductId) {
-            const kardex = await ReportesService.obtenerKardex(selectedProductId, filters);
-            setKardexData(kardex);
-          }
           break;
         case 'rotacion':
           const rotacion = await ReportesService.obtenerReporteRotacion(filters);
@@ -137,18 +128,19 @@ export function ReportesPage() {
     } finally {
       setLoading(false);
     }
-  }, [filters, selectedProductId, toast]);
+  }, [filters, toast]);
 
   useEffect(() => {
-    if (activeTab === 'kardex' && !selectedProductId) return;
+    // El kardex vive en /app/inventario/kardex (saldo corrido en el servidor, B1).
+    if (activeTab === 'kardex') return;
     loadReport(activeTab);
-  }, [activeTab, loadReport, selectedProductId]);
+  }, [activeTab, loadReport]);
 
   // `exportToCSV` es async desde que el dia del nombre de archivo lo resuelve
   // el servicio con la zona de la organizacion. Sin el `await`, el aviso
   // saldria antes de que el archivo se hubiera generado.
   const handleExportCSV = async (
-    data: StockReport[] | KardexEntry[] | RotationReport[] | SupplierPurchaseReport[],
+    data: StockReport[] | RotationReport[] | SupplierPurchaseReport[],
     filename: string
   ) => {
     await ReportesService.exportToCSV(data, filename);
@@ -173,7 +165,6 @@ export function ReportesPage() {
 
   // Paginación para cada tabla
   const stockPagination = usePagination(stockData, 10);
-  const kardexPagination = usePagination(kardexData, 15);
   const rotacionPagination = usePagination(rotacionData, 10);
   const comprasPagination = usePagination(comprasData, 10);
 
@@ -400,96 +391,21 @@ export function ReportesPage() {
           </Card>
         </TabsContent>
 
-        {/* Kardex */}
+        {/* Kardex: el tercer kardex se retiró (INVENTARIO-PLAN §3.3). El único es /app/inventario/kardex,
+            con el saldo corrido calculado en el servidor (fn_kardex_saldo_corrido). */}
         <TabsContent value="kardex" className="space-y-4">
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
-                Kardex de Producto
-              </CardTitle>
-              <CardDescription className="dark:text-gray-400">
-                Selecciona un producto para ver su kardex
-              </CardDescription>
+              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">{tk('titulo')}</CardTitle>
+              <CardDescription className="dark:text-gray-400">{tk('descripcion')}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-4 items-end">
-                <div className="flex-1 space-y-2">
-                  <Label className="dark:text-gray-300">Producto</Label>
-                  <Select
-                    value={selectedProductId?.toString() || ''}
-                    onValueChange={(v) => setSelectedProductId(v ? parseInt(v) : null)}
-                  >
-                    <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                      <SelectValue placeholder="Seleccionar producto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {productos.map(p => (
-                        <SelectItem key={p.id} value={p.id.toString()}>{p.name} ({p.sku})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={() => handleExportCSV(kardexData, 'kardex')}
-                  disabled={kardexData.length === 0}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  CSV
-                </Button>
-              </div>
-
-              {!selectedProductId ? (
-                <div className="text-center py-10 text-gray-500 dark:text-gray-400">
-                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Selecciona un producto para ver su kardex</p>
-                </div>
-              ) : loading ? (
-                <div className="flex items-center justify-center py-10">
-                  <Skeleton className="h-8 w-8 mx-auto" /></div>
-              ) : kardexData.length === 0 ? (
-                <div className="text-center py-10 text-gray-500 dark:text-gray-400">
-                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No hay movimientos para este producto</p>
-                </div>
-              ) : (
-                <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="dark:border-gray-700">
-                        <TableHead className="dark:text-gray-300">Fecha</TableHead>
-                        <TableHead className="dark:text-gray-300">Tipo</TableHead>
-                        <TableHead className="dark:text-gray-300">Referencia</TableHead>
-                        <TableHead className="dark:text-gray-300 text-center">Entrada</TableHead>
-                        <TableHead className="dark:text-gray-300 text-center">Salida</TableHead>
-                        <TableHead className="dark:text-gray-300 text-center">Saldo</TableHead>
-                        <TableHead className="dark:text-gray-300 text-right">Costo Unit.</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {kardexPagination.paginatedData.map((entry) => (
-                        <TableRow key={entry.id} className="dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                          <TableCell className="dark:text-gray-300">{formatDate(entry.date)}</TableCell>
-                          <TableCell className="dark:text-gray-300">{entry.movement_type}</TableCell>
-                          <TableCell className="dark:text-gray-300">{entry.document_reference}</TableCell>
-                          <TableCell className="text-center text-green-600 font-medium">{entry.quantity_in || '-'}</TableCell>
-                          <TableCell className="text-center text-red-600 font-medium">{entry.quantity_out || '-'}</TableCell>
-                          <TableCell className="text-center font-medium dark:text-white">{entry.balance}</TableCell>
-                          <TableCell className="text-right dark:text-gray-300">{formatear(entry.unit_cost)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <ReportesPagination
-                    currentPage={kardexPagination.currentPage}
-                    totalPages={kardexPagination.totalPages}
-                    pageSize={kardexPagination.pageSize}
-                    totalItems={kardexPagination.totalItems}
-                    onPageChange={kardexPagination.handlePageChange}
-                    onPageSizeChange={kardexPagination.handlePageSizeChange}
-                  />
-                </>
-              )}
+            <CardContent>
+              <Button asChild>
+                <Link href="/app/inventario/kardex">
+                  <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
+                  {tk('abrir')}
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

@@ -18763,6 +18763,18 @@
       "ultimo": "Último movimiento",
       "mostrando": "Se muestran {n} de {total}, los de mayor diferencia.",
       "nota": "La diferencia es existencias menos kardex. Se corregirá con un movimiento de apertura que explique el saldo, sin tocar las cantidades."
+    },
+    "detalle": {
+      "entradas": "Entradas",
+      "salidas": "Salidas",
+      "saldo": "Saldo",
+      "costoPromedio": "Costo promedio",
+      "lote": "Lote"
+    },
+    "reportes": {
+      "titulo": "Kardex de producto",
+      "descripcion": "El kardex ahora vive en su propia pantalla, con el saldo corrido calculado en el servidor, el documento de cada movimiento y el cuadre con las existencias.",
+      "abrir": "Abrir el kardex"
     }
   },
   "inventarioLotes": {

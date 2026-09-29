@@ -18763,6 +18763,18 @@
       "ultimo": "Last movement",
       "mostrando": "Showing {n} of {total}, those with the largest difference.",
       "nota": "The difference is stock on hand minus the stock ledger. It will be corrected with an opening movement that explains the balance, without changing quantities."
+    },
+    "detalle": {
+      "entradas": "Inflows",
+      "salidas": "Outflows",
+      "saldo": "Balance",
+      "costoPromedio": "Average cost",
+      "lote": "Lot"
+    },
+    "reportes": {
+      "titulo": "Product stock ledger",
+      "descripcion": "The stock ledger now has its own screen, with the running balance calculated on the server, the document behind each movement and the reconciliation against stock on hand.",
+      "abrir": "Open the stock ledger"
     }
   },
   "inventarioLotes": {

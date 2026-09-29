@@ -18658,6 +18658,18 @@
       "ultimo": "Dernier mouvement",
       "mostrando": "{n} sur {total} affichés, ceux avec le plus grand écart.",
       "nota": "L'écart correspond aux existences moins le kardex. Il sera corrigé par un mouvement d'ouverture qui explique le solde, sans modifier les quantités."
+    },
+    "detalle": {
+      "entradas": "Entrées",
+      "salidas": "Sorties",
+      "saldo": "Solde",
+      "costoPromedio": "Coût moyen",
+      "lote": "Lot"
+    },
+    "reportes": {
+      "titulo": "Kardex du produit",
+      "descripcion": "Le kardex a désormais son propre écran, avec le solde cumulé calculé sur le serveur, le document de chaque mouvement et le rapprochement avec les stocks.",
+      "abrir": "Ouvrir le kardex"
     }
   },
   "inventarioLotes": {

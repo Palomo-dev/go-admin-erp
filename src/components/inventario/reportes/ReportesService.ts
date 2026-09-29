@@ -2,7 +2,27 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { todayInTz } from '@/lib/utils/timezone';
-import { StockReport, KardexEntry, RotationReport, SupplierPurchaseReport, ReportFilter } from './types';
+import { StockReport, RotationReport, SupplierPurchaseReport, ReportFilter } from './types';
+
+/** Filas de las lecturas de reportes (solo las columnas que se piden). */
+interface FilaStockReporte {
+  qty_on_hand: number | null;
+  min_level: number | null;
+  avg_cost: number | null;
+  products: { id: number; name: string | null; sku: string | null; categories: { name: string | null } | null } | null;
+  branches: { id: number; name: string | null } | null;
+}
+interface ProductoReporte {
+  id: number;
+  name: string;
+  sku: string;
+  categories: { name: string | null } | null;
+}
+interface OrdenReporte {
+  id: number;
+  total: number | null;
+  created_at: string;
+}
 
 export class ReportesService {
   static async obtenerReporteStock(filters?: ReportFilter): Promise<StockReport[]> {
@@ -47,7 +67,7 @@ export class ReportesService {
         throw new Error(`Error obteniendo reporte stock: ${error.message}`);
       }
 
-      return (data || []).map((item: any) => {
+      return ((data || []) as unknown as FilaStockReporte[]).map((item) => {
         const unitCost = item.avg_cost || 0;
         const quantity = item.qty_on_hand || 0;
         const minStock = item.min_level || 0;
@@ -57,7 +77,7 @@ export class ReportesService {
         else if (quantity < minStock) status = 'low';
 
         return {
-          product_id: item.products?.id,
+          product_id: item.products?.id ?? 0,
           product_name: item.products?.name || '',
           sku: item.products?.sku || '',
           category_name: item.products?.categories?.name || 'Sin categoría',
@@ -72,59 +92,6 @@ export class ReportesService {
       });
     } catch (err) {
       console.error('❌ ReportesService.obtenerReporteStock:', err);
-      throw err instanceof Error ? err : new Error(String(err));
-    }
-  }
-
-  static async obtenerKardex(productId: number, filters?: ReportFilter): Promise<KardexEntry[]> {
-    try {
-      const branchId = filters?.branchId;
-
-      let query = supabase
-        .from('stock_movements')
-        .select('*')
-        .eq('product_id', productId)
-        .order('created_at', { ascending: true });
-
-      if (branchId) {
-        query = query.eq('branch_id', branchId);
-      }
-      if (filters?.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom);
-      }
-      if (filters?.dateTo) {
-        query = query.lte('created_at', filters.dateTo);
-      }
-
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('❌ Error obteniendo kardex:', error.message, error.code);
-        throw new Error(`Error obteniendo kardex: ${error.message}`);
-      }
-
-      let balance = 0;
-      return (data || []).map((mov: any) => {
-        const isEntry = mov.direction === 'in';
-        const quantityIn = isEntry ? Math.abs(mov.qty || 0) : 0;
-        const quantityOut = !isEntry ? Math.abs(mov.qty || 0) : 0;
-        balance += quantityIn - quantityOut;
-
-        return {
-          id: mov.id,
-          date: mov.created_at,
-          movement_type: mov.source || mov.direction,
-          document_reference: mov.source_id || '-',
-          quantity_in: quantityIn,
-          quantity_out: quantityOut,
-          balance,
-          unit_cost: mov.unit_cost || 0,
-          total_cost: (mov.unit_cost || 0) * Math.abs(mov.qty || 0),
-          notes: mov.note || '',
-        };
-      });
-    } catch (err) {
-      console.error('❌ ReportesService.obtenerKardex:', err);
       throw err instanceof Error ? err : new Error(String(err));
     }
   }
@@ -153,7 +120,7 @@ export class ReportesService {
       }
 
       const rotationData = await Promise.all(
-        (products || []).map(async (product: any) => {
+        ((products || []) as unknown as ProductoReporte[]).map(async (product) => {
           // Movimientos de salida (ventas)
           let salesQuery = supabase
             .from('stock_movements')
@@ -180,8 +147,8 @@ export class ReportesService {
 
           const { data: purchaseData } = await purchaseQuery;
 
-          const totalSold = (salesData || []).reduce((sum: number, m: any) => sum + Math.abs(m.qty || 0), 0);
-          const totalPurchased = (purchaseData || []).reduce((sum: number, m: any) => sum + Math.abs(m.qty || 0), 0);
+          const totalSold = ((salesData || []) as { qty: number | null }[]).reduce((sum: number, m) => sum + Math.abs(m.qty || 0), 0);
+          const totalPurchased = ((purchaseData || []) as { qty: number | null }[]).reduce((sum: number, m) => sum + Math.abs(m.qty || 0), 0);
 
           // Calcular índice de rotación (ventas / promedio de inventario)
           const avgInventory = totalPurchased > 0 ? totalPurchased / 2 : 1;
@@ -222,7 +189,7 @@ export class ReportesService {
       }
 
       const supplierReports = await Promise.all(
-        (suppliers || []).map(async (supplier: any) => {
+        ((suppliers || []) as { id: number; name: string }[]).map(async (supplier) => {
           let query = supabase
             .from('purchase_orders')
             .select('id, total, created_at')
@@ -234,8 +201,8 @@ export class ReportesService {
           const { data: orders } = await query;
 
           const totalOrders = (orders || []).length;
-          const totalAmount = (orders || []).reduce((sum: number, o: any) => sum + (o.total || 0), 0);
-          const lastOrder = (orders || []).sort((a: any, b: any) => 
+          const totalAmount = ((orders || []) as OrdenReporte[]).reduce((sum: number, o) => sum + (o.total || 0), 0);
+          const lastOrder = ((orders || []) as OrdenReporte[]).sort((a, b) => 
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )[0];
 
@@ -333,6 +300,7 @@ export class ReportesService {
    * la organizacion de la sesion, como hace el resto de metodos de esta clase.
    * Por eso el metodo es `async`; no lleva ningun parametro `timezone`.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- firma fijada por guardarrail16Descargas.test.ts
   static async exportToCSV(data: any[], filename: string): Promise<void> {
     if (data.length === 0) return;
 

@@ -484,3 +484,192 @@ Observaciones del chequeo visual (no son desbordes, pero hay que decidirlas):
 - Mensajes crudos de Supabase, catálogo de `?error=`, `redirectTo` sin validar, texto de
   `?message=` en pantalla, reset sin contraseña actual: van con la implementación, tras aprobar.
 - La implementación en código (Next.js) empieza solo cuando el dueño apruebe en Figma.
+
+---
+
+## 11. v3 — V1 con el viajero (2026-09-29)
+
+Comentario del dueño sobre la v2: «Lo que hiciste del auth V2 no me gustó. Yo quería como la V1 pero
+con el Principito: estructúralo bien, me gusta así el formulario como flotando. […] que compartan
+estructura con los otros componentes […] que reutilices componentes, que tengan una sincronía». Luego
+precisó: «que sea una mezcla de v1 y v2 en auth».
+
+Alcance: **solo Figma y este documento**; no se tocó código de la app. La v2 no se borró: quedó
+marcada como descartada.
+
+### 11.1 Qué viene de la V1 y qué de la v2
+
+| De la V1 (secciones 1 a 5 de `08 Acceso y organización`) | De la v2 (sección 17, descartada) |
+|---|---|
+| Fondo a pantalla completa (antes `AuthScene` 352:137811) | El viajero y su cielo: día en tema claro, noche en tema oscuro |
+| Marca a la izquierda con lema, descripción y tres viñetas con check | Selector de idioma y de tema arriba a la derecha |
+| **El formulario en una tarjeta flotante centrada** (radio xl, `bg/surface`, `shadow/lg`, 32 px de relleno, 20 px entre bloques) | Pie con © · Términos · Privacidad · Ayuda |
+| Orden de los campos y jerarquía título → descripción → campos → acción → «o» → Google → pie | Contenido y estados: mensaje único de credenciales, bloqueo por intentos, sesión vencida, «Entrando…», medidor de contraseña, registro por pasos, respuestas neutras, invitación en dos pasos, selector único de organización, sin Microsoft en la web |
+
+V1 de referencia (node-ids):
+
+| Sección V1 | Sección | Frames principales |
+|---|---|---|
+| 1. Entrar | 354:20 | listo 354:21 · error 354:171 · entrando 354:318 · sesión expirada 354:462 · móvil 354:608 y 354:742 |
+| 2. Crear cuenta | 359:144425 | datos personales 359:144426 · correo ya registrado 359:144618 · revisa tu correo 359:144820 · móvil 359:144939 · aviso de confirmación 398:15951 |
+| 3. Recuperar y restablecer | 359:145100 | recuperar 359:145101 · enviado 359:145187 · cuenta con Google 359:145276 · restablecer 359:145369 · enlace caducado 359:145475 · móvil 359:145559 |
+| 4. Verificación, invitación y sesión expirada | 359:145645 | invitación datos 359:145646 · contraseña 359:145771 · aceptada 359:145884 · enlace caducado 359:145967 · correo confirmado 359:146059 · sesión expirada 359:146136 · móvil 359:146220 |
+| 5. Selección de organización | 360:145468 | listo 360:145469 · sin resultados 360:145660 · cargando 360:145780 · sin organizaciones 360:145902 · error 360:146002 · móvil 360:146096 |
+
+Estructura V1 medida en 354:21: `AuthScene` a sangre + `Marca` (56 px del borde, 493 px de ancho) +
+`AuthCard` de 440 px centrada. La v3 conserva eso y corrige el único defecto visible de la V1: el texto
+de la marca pasaba por debajo de la tarjeta (ahora la marca mide 360 px).
+
+### 11.2 Figma — sección `18. Acceso v3 — V1 con el viajero (propuesta)`
+
+[node 1131:44810](https://www.figma.com/design/EAvjINVRnlzFM70GVoWXgl/?node-id=1131-44810), página
+`08 Acceso y organización`, debajo de la 17 (x 0, y 72807, 6668 de ancho). En el Índice (354:19) es la
+línea 18 con hipervínculo; la línea 17 dice ahora «descartada por el dueño (2026-09-29)» y la sección
+1073:675594 pasó a llamarse `17. Acceso (auth) v2 — con el viajero · DESCARTADA por el dueño`.
+
+**Cada pantalla es un frame con solo dos instancias**: `EscenaAcceso` (fondo, en posición absoluta y
+estirado) + `TarjetaAcceso` (centrada por auto-layout). Todo el contenido del formulario va dentro del
+slot `Cuerpo` de la tarjeta y son instancias del kit. El frame fija el modo de variables (Claro → Light,
+Oscuro → Dark) y crece si la tarjeta es más alta que 900 / 768 / 844.
+
+| Fila | Pantalla | Frames | Primer frame (escritorio claro) |
+|---|---|---|---|
+| 1 | Iniciar sesión — listo | 6 | 1134:730116 |
+| 1b | Iniciar sesión — error de credenciales | 4 (escritorio + móvil) | 1134:731646 |
+| 1c | Iniciar sesión — bloqueado por intentos | 2 | 1134:732652 |
+| 1d | Iniciar sesión — sesión vencida | 2 | 1134:733190 |
+| 2 | Callback de Google — entrando | 6 | 1137:48524 |
+| 3 | Registro 1 de 6 · Tu cuenta | 6 | 1137:49745 |
+| 3b | Registro 2 de 6 · Tu organización (Ancha) | 2 | 1137:51660 |
+| 3c | Registro 3 de 6 · Sucursal principal (Ancha) | 2 | 1137:52351 |
+| 3d | Registro 4 de 6 · Plan (Plan, sin marca ni viajero) | 2 | 1138:52188 |
+| 3e | Registro 5 de 6 · Método de pago | 2 | 1138:53081 |
+| 3f | Registro 6 de 6 · Revisa tu correo | 4 | 1138:53600 |
+| 4 | Olvidé mi contraseña | 6 | 1138:54493 |
+| 4b | Olvidé mi contraseña — enviado | 4 | 1138:55715 |
+| 5 | Restablecer contraseña — con fortaleza | 6 | 1138:741028 |
+| 5b | Restablecer — éxito | 2 | 1138:742556 |
+| 5c | Restablecer — enlace vencido | 2 | 1138:742994 |
+| 6 | Verificar correo — el enlace falló | 6 | 1138:743452 |
+| 6b | Verificar correo — enlace reenviado | 2 | 1138:744722 |
+| 7 | Aceptar invitación — tus datos | 6 | 1139:747992 |
+| 7b | Aceptar invitación — tu contraseña | 2 | 1139:749496 |
+| 7c | Aceptar invitación — ya tienes cuenta | 2 | 1139:750078 |
+| 8 | Selección de organización (Ancha) | 6 | 1139:750538 |
+| 8b | Selección — sin organizaciones | 2 | 1139:752204 |
+
+Composición por dispositivo (vive en `EscenaAcceso`, no en cada pantalla):
+- **Escritorio 1440**: Firma arriba a la izquierda; marca con lema y viñetas (V1) en la columna
+  izquierda; viajero abajo a la izquierda; planeta/luna y cohete del cielo a la derecha; idioma y tema
+  en una píldora `bg/surface` arriba a la derecha; pie abajo al centro.
+- **Tableta 1024**: Firma, píldora, viajero pequeño abajo a la izquierda y pie; sin lema (no cabe junto
+  a la tarjeta).
+- **Móvil 390**: Firma y píldora arriba, tarjeta de 358 px, viajero pequeño abajo al centro sobre el pie.
+
+Las anotaciones «Nuevo» ya no van dentro de las pantallas: cada fila tiene su nota encima, con la
+ruta, qué viene de la V1 (con su node-id) y qué de la v2.
+
+### 11.3 Componentes — reutilizados, creados y ajustados
+
+**Por qué la v2 se sentía suelta**: sus componentes vivían en una sección aparte
+`Acceso v2 — El viajero y su cielo (Nuevo)` (1069:665482, en x 86000 de `02 Componentes`, lejos de
+todo) y las pantallas tenían marcos sueltos con aspecto de componente: logo, «Idioma y tema», lema,
+pie, barra de pasos, enlaces y el separador «o» eran frames y textos, no instancias. En la v3 no queda
+ningún nodo suelto dentro de las pantallas (ver chequeo).
+
+**Reutilizados sin cambios**: `Button` 9:343, `Checkbox` 50:2695, `SegmentedControl` 103:3064,
+`Badge` 7:70, `SearchInput` 42:1191 (el buscador de organización es el mismo del resto del ERP: 40 px,
+radio md, `Icon/Search`), `PlanOption` 395:10775, `ThemeToggle` 45:2067, `Divider` 7:71, `OAuthButton`
+351:137865, `Isotipo` 5:10 e iconos de `Fundamentos › Iconos`.
+
+**Reorganizados** (la sección suelta 1069:665482 quedó vacía y se eliminó; los componentes no se
+duplicaron, se movieron con sus mismos ids y la v2 los sigue usando):
+
+| Componente | Ubicación nueva | Cambio |
+|---|---|---|
+| `Ilustración/Viajero` 1069:665554 | `02 Componentes › Fundamentos › Ilustración · El viajero y su cielo` | Variantes `Pose=De pie/Sentado × Tema=Día/Noche`: Día 1069:665528 y 1069:665553 (modo Light fijo), Noche 1124:35281 y 1124:35317 (modo Dark fijo) |
+| `Ilustración/Cielo` 1069:665724 (antes `Auth/Cielo`) | ídem | `Tema=Día` 1069:665586 · `Tema=Noche` 1069:665644; planeta y luna bajan 64 px para no quedar bajo la píldora; una estrella nocturna se movió para no pisar el lema |
+| `Ilustración/Planeta` 1069:665563 · `Cohete` 1069:665575 · `Nube` 1069:665578 · `Luna` 1069:665582 · `Estrella` 1069:665585 | ídem | solo se movieron |
+| `Firma` 5:19 | `Fundamentos` | nueva propiedad `Sobre=Superficie/Cielo` (1124:35341, 1124:35345): isotipo blanco y texto blanco sobre el cielo, en lugar del logo dibujado a mano de la v2 |
+
+**Creados** (todos con variantes y propiedades, en la sección de su familia):
+
+| Componente | Sección | Variantes · propiedades |
+|---|---|---|
+| `TarjetaAcceso` 1129:35496 | `Acceso` | `Ancho=Normal (440) / Ancha (560) / Plan (1000) / Móvil (358)` · Título, Descripción, Mostrar descripción, Mostrar pasos, Mostrar icono, Mostrar aviso, Mostrar pie · **slot `Cuerpo`** · instancias anidadas expuestas: `Pasos` (ProgresoPasos), `Icono` (IconoDestacado), `Aviso` (AuthAlert), `Pie` (PieEnlace) |
+| `EscenaAcceso` 1129:36409 | `Acceso` | `Tema=Día/Noche × Dispositivo=Escritorio/Tableta/Móvil` (cada variante fija su modo) · Lema, Descripción, Mostrar marca, Mostrar viajero. Contiene Ilustración/Cielo, Ilustración/Viajero, Firma, LanguagePicker trigger, ThemeToggle y Enlace |
+| `Enlace` 1125:35312 | `Átomos` | `Tono=marca/neutro/sobre-color × Tamaño=sm/md` · Texto, Icono, Icono (swap) |
+| `DividerTexto` 1125:35314 | `Átomos` | Texto («o») entre dos `Divider` |
+| `IconoDestacado` 1125:35346 | `Átomos` | `Tono=marca/éxito/advertencia/peligro/neutro` · Icono (swap) |
+| `PieEnlace` 1125:35348 | `Átomos` | Pregunta, Mostrar pregunta · `Enlace` anidado expuesto |
+| `ProgresoPasos` 1126:35349 | `Formularios` | `Actual=1…6` · Etiqueta, Seis pasos (apagado = dos pasos, para la invitación) |
+| `MedidorFortaleza` 1126:35448 | `Formularios` | `Nivel=Vacía/Débil/Aceptable/Fuerte` · Requisito 1, 2 y 3 |
+| `PhoneField` 1126:35450 | `Formularios` | Etiqueta (misma tipografía que `FormField`) · `PhoneInput` anidado expuesto |
+| `LanguagePicker` `Layout=trigger` 1126:35468 | `Sesión` (en el set 78:3173) | Idioma; 32 px de alto, globo + idioma + chevron |
+
+**Ajustados en el kit** (aditivo; se verificó que V1 y v2 siguen con 0 instancias rotas):
+- `AuthAlert` 351:137890: propiedad `Mensaje`. Efecto secundario: las cuatro variantes muestran ahora
+  el mismo texto por defecto; ninguna instancia existente dependía del texto por defecto (revisado en
+  todo el archivo).
+- `PasswordField` 351:137843: propiedades `Etiqueta` y `Mensaje`; el mensaje de error llena el ancho.
+- `OrgSelectCard` 351:137970: propiedades `Inicial`, `Nombre`, `Detalle`, `Mostrar estrella`,
+  `Mostrar distintivos`, `Mostrar atajo`; el bloque de texto crece y trunca con puntos suspensivos.
+  Resuelve la falta de variante móvil anotada en §8.4.
+- `PhoneInput` 724:18240: el campo del número usaba blanco fijo; ahora `bg/surface` (arregla el modo
+  oscuro anotado en §8.4). El mensaje llena el ancho.
+- `FormField` 50:2685 (texto de ayuda) y `Skeleton` 106:3394 (la barra) llenan el ancho.
+- `OAuthButton`: se probó una propiedad de texto y se revirtió, porque el texto depende del proveedor.
+
+Pendiente de aprobación (no se hizo): reemplazar `AuthScene` 352:137811 por `EscenaAcceso` en las
+secciones V1, y `PasswordField State=fortaleza` (política vieja de 8 + 4 reglas) por
+`PasswordField` + `MedidorFortaleza`.
+
+### 11.4 Chequeo por script (2026-09-29)
+
+| Comprobación | Resultado |
+|---|---|
+| Frames de pantalla | **84** (escritorio 1440, tableta 1024, móvil 390; claro y oscuro) |
+| Instancias en la sección (incluido el contenido de los slots) | 2.716 · **0 rotas** |
+| Raíz de cada pantalla | 84 de 84 con exactamente 2 instancias (`EscenaAcceso` + `TarjetaAcceso`) |
+| Nodos sueltos dentro de los slots (texto, vector, rectángulo, grupo) | **0** · grupos 0 |
+| Frames con nombre de un componente (señal de desanclado) | **0** · los 64 frames internos son contenedores de disposición (filas y columnas de instancias) |
+| Marcas «Nuevo» dentro de las pantallas | **0** |
+| Textos desbordados (fuera de su contenedor o de la tarjeta) | **0** (dos del móvil con error se corrigieron en `PasswordField`) |
+| Textos con puntos suspensivos a propósito | 84 (nombre y detalle de `OrgSelectCard`; en móvil sí truncan) |
+| Solapes entre frames y notas de la sección / con otras secciones | **0 / 0** |
+| Tarjeta sobre marca, viajero, firma, preferencias o pie | **0** |
+| Pinturas sin variable en los componentes nuevos | **0** |
+| Componentes nuevos bloqueados u ocultos | 0 |
+| V1 (217 instancias) y v2 (787) tras mover componentes | 0 rotas |
+| Nombres de organización | solo genéricos: «Mi empresa S.A.S.», «Distribuidora del Norte», «Café de la Esquina», «Taller Los Andes». Cotejados contra la tabla `organizations` por SQL (sin traer nombres): ninguna coincidencia exacta; la frase genérica «mi empresa» aparece dentro del nombre de una organización, pero «Mi empresa S.A.S.» no coincide con ninguna |
+
+Nota técnica para quien edite: en instancias dentro de un slot, Figma a veces no repinta el ancho
+«rellenar» de los hijos hasta que se vuelve a tocar el tamaño; se hizo una pasada de refresco. Y la
+opacidad de una pintura enlazada a variable no se propagaba a las instancias de `EscenaAcceso`: se usa
+opacidad de capa.
+
+Capturas: `docs/design/figma/81-auth-v3-*.png` (15: login escritorio claro y oscuro, tableta, móvil
+oscuro, error en móvil, bloqueado, callback oscuro, registro 1, plan oscuro, restablecer en móvil,
+invitación en tableta oscura, selección en móvil, sin organizaciones, `EscenaAcceso` y
+`TarjetaAcceso`).
+
+### 11.5 Preguntas para el dueño (con recomendación)
+
+1. **Composición.** ¿Apruebas la estructura V1 con el viajero: marca a la izquierda, tarjeta flotante
+   centrada, viajero abajo a la izquierda y planeta/cohete (o luna) a la derecha? *Recomendación: sí.*
+2. **Pose de noche.** En oscuro el viajero va sentado mirando las estrellas (como en el sitio). ¿O de
+   pie en ambos temas? *Recomendación: sentado; es la diferencia más clara entre día y noche.*
+3. **Tableta.** Sin lema ni viñetas (no caben junto a la tarjeta de 440). ¿De acuerdo, o prefieres el
+   lema arriba de la tarjeta? *Recomendación: sin lema.*
+4. **Paso de plan.** Con la tarjeta de 1000 px la escena oculta marca y viajero. ¿De acuerdo?
+   *Recomendación: sí; el plan necesita el ancho.*
+5. **Móvil.** Viajero pequeño abajo, sobre el pie. ¿Lo dejamos o lo quitamos en móvil?
+   *Recomendación: dejarlo; es estático y no estorba.*
+6. **Reemplazos en el kit.** Al aprobar: `EscenaAcceso` sustituye a `AuthScene` y `MedidorFortaleza`
+   sustituye a `PasswordField State=fortaleza`. *Recomendación: sí, en la misma aprobación.*
+7. **Numeración.** La sección se llama `18. Acceso v3 — V1 con el viajero (propuesta)` para seguir la
+   numeración del Índice. ¿Qué hacemos con la 17 cuando apruebes la 18? *Recomendación: moverla a
+   `99 Archivo — versiones anteriores` en lugar de borrarla.*
+8. Siguen abiertas las preguntas 1 a 13 de §9 (Microsoft en web, contraseña única, enumeración,
+   bloqueo, registro A o B, selector único, sesión vencida, Términos, 2FA…): la v3 las dibuja con las
+   mismas recomendaciones.

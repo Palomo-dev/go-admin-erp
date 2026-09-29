@@ -9412,7 +9412,9 @@
         "costoUnitario": "Custo unitário",
         "costo": "Custo",
         "total": "Total",
-        "acciones": "Ações"
+        "acciones": "Ações",
+        "lote": "Lote",
+        "vence": "Validade"
       },
       "cantidadEn": "Quantidade inicial em {sucursal}",
       "minimoEn": "Estoque mínimo em {sucursal}",
@@ -9423,7 +9425,12 @@
       "totalExistencia": "Total {unidades} un.",
       "notaKardex": "{count, plural, one {# filial ativa} other {# filiais ativas}}. A entrada inicial fica registrada no kardex ao salvar. Custo unitário vazio = custo do produto.",
       "notaEditar": "A quantidade em estoque muda com um ajuste de estoque: “Ajustar” abre em outra aba para você não perder as alterações não salvas. O mínimo pode ser editado aqui.",
-      "avisoSinCosto": "Há quantidades sem custo: informe o custo unitário ou o custo do produto em “Preços e custos”."
+      "avisoSinCosto": "Há quantidades sem custo: informe o custo unitário ou o custo do produto em “Preços e custos”.",
+      "loteEn": "Lote do estoque inicial em {sucursal}",
+      "venceEn": "Validade do lote em {sucursal}",
+      "lotePlaceholder": "Automático",
+      "vencePlaceholder": "Sem validade",
+      "notaLotes": "Cada quantidade entra no lote indicado; sem código, cria-se um com a data de hoje."
     },
     "trazabilidad": {
       "titulo": "Rastreabilidade",
@@ -9461,6 +9468,13 @@
           "n3": "Sequencial (3 dígitos)",
           "n2": "Sequencial (2 dígitos)"
         }
+      },
+      "lotes": {
+        "etiqueta": "Controla lotes e validades",
+        "ayuda": "Cada entrada fica em um lote com sua validade e a venda baixa primeiro o que vence antes.",
+        "sinInventario": "Ative “Controlar estoque” para controlar lotes.",
+        "notaEditar": "O estoque atual fica sem lote: passe-o para um lote em Estoque › Lotes ou com um ajuste.",
+        "notaVariantes": "As variantes também controlam lotes; cada lote pertence a uma variante."
       }
     },
     "variantes": {

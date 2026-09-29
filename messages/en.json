@@ -9517,7 +9517,9 @@
         "costoUnitario": "Unit cost",
         "costo": "Cost",
         "total": "Total",
-        "acciones": "Actions"
+        "acciones": "Actions",
+        "lote": "Lot",
+        "vence": "Expires"
       },
       "cantidadEn": "Opening quantity at {sucursal}",
       "minimoEn": "Minimum stock at {sucursal}",
@@ -9528,7 +9530,12 @@
       "totalExistencia": "Total {unidades} units",
       "notaKardex": "{count, plural, one {# active branch} other {# active branches}}. The opening entry is recorded in the stock ledger when you save. Empty unit cost = product cost.",
       "notaEditar": "On-hand stock is changed with an inventory adjustment: “Adjust” opens it in a new tab so you don’t lose unsaved changes. The minimum can be edited here.",
-      "avisoSinCosto": "Some quantities have no cost: enter the unit cost or the product cost in “Prices and costs”."
+      "avisoSinCosto": "Some quantities have no cost: enter the unit cost or the product cost in “Prices and costs”.",
+      "loteEn": "Lot of the opening stock at {sucursal}",
+      "venceEn": "Lot expiry date at {sucursal}",
+      "lotePlaceholder": "Automatic",
+      "vencePlaceholder": "No expiry",
+      "notaLotes": "Each quantity goes into the given lot; without a code, one is created with today's date."
     },
     "trazabilidad": {
       "titulo": "Traceability",
@@ -9566,6 +9573,13 @@
           "n3": "Sequence (3 digits)",
           "n2": "Sequence (2 digits)"
         }
+      },
+      "lotes": {
+        "etiqueta": "Track lots and expiry dates",
+        "ayuda": "Each receipt goes into a lot with its expiry date, and sales take the one that expires first.",
+        "sinInventario": "Turn on “Track inventory” to manage lots.",
+        "notaEditar": "Existing stock stays without a lot: move it to a lot from Inventory › Lots or with an adjustment.",
+        "notaVariantes": "Variants also track lots; each lot belongs to one variant."
       }
     },
     "variantes": {

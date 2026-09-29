@@ -2,7 +2,9 @@
 
 import { useTranslations } from 'next-intl';
 import { Info, PackageCheck, SlidersHorizontal, Warehouse } from 'lucide-react';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 import { CampoNumero } from '@/components/kit/CampoNumero';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/utils/Utils';
 import type { FilaStockForm } from '../../logica/formularioProducto';
@@ -23,15 +25,19 @@ import type { PropsSeccionFormulario } from '../tipos';
  * - Editar: la existencia es de solo lectura (se cambia con un ajuste, que se
  *   abre en otra pestaña para no perder lo que no se ha guardado); el mínimo
  *   sí se edita.
+ * - Con lotes (`track_lots`, crear/duplicar): cada cantidad entra a un lote con
+ *   su código y vencimiento opcional; sin código el servidor propone
+ *   L-AAAAMMDD (fn_producto_int_stock_inicial, inv_b7_3).
  * - Con variantes el stock se captura por variante, no aquí.
  */
-export function SeccionStockInicial({ estado, cambiar, errores, modo, moneda, productId }: PropsSeccionFormulario) {
+export function SeccionStockInicial({ estado, cambiar, errores, modo, moneda, productId, hoy }: PropsSeccionFormulario) {
   const t = useTranslations('productoForm.stock');
   const te = useTranslations('productoForm.errores');
   const cantidad = useCantidad();
 
   const rastrea = estado.track_stock && estado.product_type !== 'service';
   const editar = modo === 'editar';
+  const conLotes = !editar && estado.track_lots;
   const filas = estado.stock;
   const costoProducto = estado.cost;
 
@@ -115,6 +121,29 @@ export function SeccionStockInicial({ estado, cambiar, errores, modo, moneda, pr
       aria-describedby={hayError ? idError : undefined}
     />
   );
+  const campoLote = (f: FilaStockForm) => (
+    <Input
+      className="h-8"
+      value={f.lot_code}
+      maxLength={60}
+      onChange={(ev) => actualizarFila(f.branch_id, { lot_code: ev.target.value })}
+      placeholder={t('lotePlaceholder')}
+      aria-label={t('loteEn', { sucursal: f.nombre })}
+      disabled={!((f.qty ?? 0) > 0)}
+    />
+  );
+  const campoVence = (f: FilaStockForm) => (
+    <CampoFecha
+      tamano="sm"
+      valor={f.expiry_date}
+      onValorChange={(dia) => actualizarFila(f.branch_id, { expiry_date: dia || null })}
+      hoy={hoy}
+      limpiable
+      placeholder={t('vencePlaceholder')}
+      aria-label={t('venceEn', { sucursal: f.nombre })}
+      disabled={!((f.qty ?? 0) > 0)}
+    />
+  );
   const botonAjustar = (f: FilaStockForm) => (
     <BotonInventario
       tamano="sm"
@@ -160,6 +189,16 @@ export function SeccionStockInicial({ estado, cambiar, errores, modo, moneda, pr
                   {t('columnas.cantidad')}
                 </th>
               )}
+              {conLotes && (
+                <>
+                  <th scope="col" className={cn(th, 'w-36 text-left')}>
+                    {t('columnas.lote')}
+                  </th>
+                  <th scope="col" className={cn(th, 'w-40 text-left')}>
+                    {t('columnas.vence')}
+                  </th>
+                </>
+              )}
               <th scope="col" className={cn(th, 'w-32 text-right')}>
                 {t('columnas.minimo')}
               </th>
@@ -188,6 +227,12 @@ export function SeccionStockInicial({ estado, cambiar, errores, modo, moneda, pr
                 ) : (
                   <td className="px-3 py-2">{campoCantidad(f)}</td>
                 )}
+                {conLotes && (
+                  <>
+                    <td className="px-3 py-2">{campoLote(f)}</td>
+                    <td className="px-3 py-2">{campoVence(f)}</td>
+                  </>
+                )}
                 <td className="px-3 py-2">{campoMinimo(f)}</td>
                 {editar ? (
                   <td className="py-2 pl-3 pr-4 text-right">{botonAjustar(f)}</td>
@@ -204,9 +249,12 @@ export function SeccionStockInicial({ estado, cambiar, errores, modo, moneda, pr
           </tbody>
           <tfoot className="bg-subtle">
             <tr>
-              <td colSpan={editar ? 4 : 5} className="px-4 py-2.5 text-xs text-fg-secondary">
+              <td colSpan={editar ? 4 : conLotes ? 7 : 5} className="px-4 py-2.5 text-xs text-fg-secondary">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span>{editar ? t('notaEditar') : t('notaKardex', { count: filas.length })}</span>
+                  <span>
+                    {editar ? t('notaEditar') : t('notaKardex', { count: filas.length })}
+                    {conLotes && ` ${t('notaLotes')}`}
+                  </span>
                   <span className="text-sm font-semibold tabular-nums text-fg">
                     {editar
                       ? t('totalExistencia', { unidades: cantidad(existenciaActual) })
@@ -249,6 +297,18 @@ export function SeccionStockInicial({ estado, cambiar, errores, modo, moneda, pr
                 </div>
               )}
             </div>
+            {conLotes && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-xs font-medium text-fg-secondary">{t('columnas.lote')}</span>
+                  {campoLote(f)}
+                </div>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-xs font-medium text-fg-secondary">{t('columnas.vence')}</span>
+                  {campoVence(f)}
+                </div>
+              </div>
+            )}
             {editar && <div className="flex justify-end">{botonAjustar(f)}</div>}
           </li>
         ))}
@@ -259,6 +319,7 @@ export function SeccionStockInicial({ estado, cambiar, errores, modo, moneda, pr
               : t('totales', { unidades: cantidad(totales.unidades), valor: moneda.formatear(totales.valor) })}
           </span>
           {editar ? t('notaEditar') : t('notaKardex', { count: filas.length })}
+          {conLotes && ` ${t('notaLotes')}`}
         </li>
       </ul>
 

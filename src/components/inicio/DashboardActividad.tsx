@@ -9,10 +9,9 @@ import {
   BedDouble,
   ArrowLeftRight,
   Clock,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tarjeta, EmptyState, PaginationCompact } from '@/components/kit';
 import { cn } from '@/utils/Utils';
 import { formatCurrency } from '@/utils/Utils';
 import type { ActividadReciente } from './inicioService';
@@ -71,6 +70,7 @@ export function DashboardActividad({ data, isLoading }: DashboardActividadProps)
     return data.filter((item) => item.modulo === filtro);
   }, [data, filtro]);
 
+  // Página en base 0 (la de PaginationCompact es en base 1: se convierte al pasarla).
   // Reset page cuando cambia el filtro
   const totalPages = Math.ceil(dataFiltrada.length / ITEMS_PER_PAGE);
   const safePage = Math.min(currentPage, Math.max(0, totalPages - 1));
@@ -86,28 +86,20 @@ export function DashboardActividad({ data, isLoading }: DashboardActividadProps)
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-        <Skeleton className="h-5 w-40 mb-4" />
+      <Tarjeta titulo={t('title')} icono={Clock}>
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-12 rounded-lg" />
           ))}
         </div>
-      </div>
+      </Tarjeta>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-          {t('title')}
-        </h3>
-      </div>
-
+    <Tarjeta titulo={t('title')} icono={Clock}>
       {/* Tabs de filtro por módulo */}
-      <div className="flex flex-wrap gap-1 mb-4 pb-3 border-b border-gray-100 dark:border-gray-700/50">
+      <div className="mb-4 flex flex-wrap gap-1 border-b border-line pb-3">
         {FILTROS.map((f) => {
           const isActive = filtro === f.value;
           const count = f.value === 'todos' ? data.length : data.filter((d) => d.modulo === f.value).length;
@@ -117,19 +109,21 @@ export function DashboardActividad({ data, isLoading }: DashboardActividadProps)
               key={f.value}
               type="button"
               onClick={() => handleFiltroChange(f.value)}
+              aria-pressed={isActive}
               className={cn(
-                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
+                'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
                 isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
+                  ? 'bg-brand-action text-fg-on-brand'
+                  : 'text-fg-secondary hover:bg-hover hover:text-fg',
               )}
             >
               {t(f.labelKey)}
               {count > 0 && (
                 <span
                   className={cn(
-                    'text-[10px] px-1 rounded',
-                    isActive ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-600',
+                    'rounded px-1 text-[10px] tabular-nums',
+                    isActive ? 'bg-brand-action-hover' : 'bg-subtle',
                   )}
                 >
                   {count}
@@ -141,9 +135,7 @@ export function DashboardActividad({ data, isLoading }: DashboardActividadProps)
       </div>
 
       {dataFiltrada.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">
-          {t('noActivity')}
-        </p>
+        <EmptyState compacto icono={Clock} titulo={t('noActivity')} descripcion={t('noActivityDesc')} />
       ) : (
         <>
           <div className="space-y-2">
@@ -153,23 +145,23 @@ export function DashboardActividad({ data, isLoading }: DashboardActividadProps)
               return (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50"
+                  className="flex items-center justify-between rounded-lg border border-line bg-subtle p-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={cn('p-1.5 rounded-lg flex-shrink-0', config.bg)}>
                       <Icon className={cn('h-3.5 w-3.5', config.color)} />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      <p className="truncate text-sm font-medium text-fg">
                         {item.descripcion}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                      <p className="text-xs text-fg-secondary">
                         {formatRelativeTime(item.fecha, t)}
                       </p>
                     </div>
                   </div>
                   {item.monto !== undefined && (
-                    <span className="text-sm font-semibold text-green-600 dark:text-green-400 shrink-0 ml-3">
+                    <span className="ml-3 shrink-0 text-sm font-semibold text-success-text tabular-nums">
                       {formatCurrency(item.monto)}
                     </span>
                   )}
@@ -178,37 +170,18 @@ export function DashboardActividad({ data, isLoading }: DashboardActividadProps)
             })}
           </div>
 
-          {/* Paginación */}
+          {/* Paginación compacta del kit (Figma 447:73137), en base 1 */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/50">
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {safePage * ITEMS_PER_PAGE + 1}–{Math.min((safePage + 1) * ITEMS_PER_PAGE, dataFiltrada.length)} {t('activity.of')} {dataFiltrada.length}
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setCurrentPage(Math.max(0, safePage - 1))}
-                  disabled={safePage === 0}
-                  className="p-1.5 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  aria-label={t('activity.prevPage')}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <span className="text-xs text-gray-600 dark:text-gray-300 px-2">
-                  {safePage + 1} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage(Math.min(totalPages - 1, safePage + 1))}
-                  disabled={safePage >= totalPages - 1}
-                  className="p-1.5 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  aria-label={t('activity.nextPage')}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+            <PaginationCompact
+              pagina={safePage + 1}
+              tamano={ITEMS_PER_PAGE}
+              total={dataFiltrada.length}
+              onPaginaChange={(p) => setCurrentPage(p - 1)}
+              className="mt-4 border-t border-line pt-3"
+            />
           )}
         </>
       )}
-    </div>
+    </Tarjeta>
   );
 }

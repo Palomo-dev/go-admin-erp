@@ -16,6 +16,7 @@ import {
   ShoppingCart,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/utils/Utils';
 import type { DashboardKPIData, PeriodoDashboard, HorasDashboard, FechasCustomDashboard, PuntoHora, PuntoDiaMes } from './inicioService';
 import { useLiveVisitors } from './useLiveVisitors';
@@ -200,20 +201,6 @@ const periodoLabel: Record<PeriodoDashboard, string> = {
   personalizado: 'periods.custom',
 };
 
-function generateSparklineData(value: number, deltaPct: number | null, points = 7): number[] {
-  if (value === 0 && deltaPct === null) return [0, 0, 0, 0, 0, 0, 0];
-  const trend = deltaPct !== null ? deltaPct / 100 : 0;
-  const result: number[] = [];
-  for (let i = 0; i < points; i++) {
-    const progress = i / (points - 1);
-    const base = value * (1 - trend * (1 - progress));
-    const variation = Math.sin(i * 1.3 + value * 0.001) * value * 0.05;
-    result.push(Math.max(0, base + variation));
-  }
-  result[points - 1] = value;
-  return result;
-}
-
 // Props comunes para tooltips de recharts
 interface TooltipPayloadItem {
   value: number;
@@ -223,16 +210,6 @@ interface TooltipPayloadItem {
 interface TooltipProps {
   active?: boolean;
   payload?: TooltipPayloadItem[];
-}
-
-// Tooltip para el mini-sparkline
-function SparklineTooltip({ active, payload }: TooltipProps) {
-  if (!active || !payload || !payload.length) return null;
-  return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm px-2 py-1 text-[10px] font-medium text-gray-700 dark:text-gray-200">
-      {formatCurrency(payload[0].value)}
-    </div>
-  );
 }
 
 // Sparkline real con eje X de horas y dos líneas: hoy vs ayer a esta misma hora
@@ -409,7 +386,6 @@ function MiniConversionFunnel({
   visitas,
   pedidos,
   completados,
-  cancelados,
   tasaVisitaPedido,
   tasaPedidoCompletado,
   tasaAbandono,
@@ -684,7 +660,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
   const t = useTranslations('home.kpis');
   const locale = useLocale();
   // Visitantes en vivo via Realtime (solo para el KPI visitasWeb)
-  const { liveCount, isActive } = useLiveVisitors(organizationId);
+  const { liveCount } = useLiveVisitors(organizationId);
   // KPI seleccionado para el modal de detalle
   const [selectedKpi, setSelectedKpi] = useState<KpiConfigItem | null>(null);
 
@@ -734,16 +710,6 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
 
         const hasDelta = deltaPct !== null;
         const isPositive = hasDelta && deltaPct! >= 0;
-
-        // Badge estilos: pill con fondo
-        const badgeClass = !hasDelta
-          ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
-          : isPositive
-            ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-            : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300';
-
-        // Datos para el mini-sparkline sintético (fallback)
-        const sparkData = generateSparklineData(value, deltaPct).map((v, i) => ({ idx: i, val: v }));
 
         // Determinar qué sparkline mostrar según KPI y período
         const fmtVal = kpi.isCurrency ? formatCurrency : (n: number) => n.toLocaleString(locale);
@@ -821,17 +787,10 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
                     : value.toLocaleString(locale)}
               </p>
               {isLiveVisits && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                  <span className="relative flex h-2 w-2">
-                    {isActive && (
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                    )}
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-                  </span>
-                  <span className="text-[10px] font-semibold text-green-700 dark:text-green-300">
-                    {liveCount} {liveCount === 1 ? t('liveVisitor') : t('liveVisitors')}
-                  </span>
-                </span>
+                // «En vivo» (Figma 463:15509): Badge del manual con punto.
+                <Badge tono="exito" tamano="sm" punto>
+                  {liveCount} {liveCount === 1 ? t('liveVisitor') : t('liveVisitors')}
+                </Badge>
               )}
             </div>
             {/* Desglose de compras web por estado */}
@@ -865,25 +824,15 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
                 </span>
               </div>
             )}
-            {/* Badge pill */}
+            {/* Variación vs periodo anterior (Figma `Delta` 447:73041): Badge con tono */}
             <div className="mt-1.5">
-              <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${badgeClass}`}>
-                {hasDelta ? (
-                  <>
-                    {isPositive ? (
-                      <TrendingUp className="h-2.5 w-2.5" />
-                    ) : (
-                      <TrendingDown className="h-2.5 w-2.5" />
-                    )}
-                    {isPositive ? '+' : ''}{deltaPct!.toFixed(1)}%
-                  </>
-                ) : (
-                  <>
-                    <Minus className="h-2.5 w-2.5" />
-                    —
-                  </>
-                )}
-              </span>
+              <Badge
+                tono={!hasDelta ? 'neutro' : isPositive ? 'exito' : 'peligro'}
+                tamano="sm"
+                icono={!hasDelta ? Minus : isPositive ? TrendingUp : TrendingDown}
+              >
+                {hasDelta ? `${isPositive ? '+' : ''}${deltaPct!.toFixed(1)}%` : '—'}
+              </Badge>
             </div>
             {/* Mini-sparkline:
                 - conversionWeb: mini-funnel Visitas → Pedidos → Completados
@@ -891,7 +840,8 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
                 - KPIs dinámicos (ventasHoy, facturasHoy) con periodo='hoy': horario (hoy vs ayer a esta hora)
                 - KPIs dinámicos con periodo!='hoy': diario por posición del período (actual vs anterior)
                 - KPIs no dinámicos con serie mensual: diario del mes (mes actual vs anterior)
-                - fallback: sintético */}
+                - sin serie real: nada. Antes se dibujaba una curva sintética
+                  (Math.sin) que parecía un dato y no lo era (C.20). */}
             {kpi.key === 'conversionWeb' && data ? (
               <MiniConversionFunnel
                 visitas={data.visitasWeb}
@@ -955,24 +905,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
                 formatValue={fmtVal}
                 t={t}
               />
-            ) : (
-              <div className="mt-2 h-8 -mx-1">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={sparkData}>
-                    <YAxis domain={['dataMin', 'dataMax']} hide />
-                    <RechartsTooltip content={<SparklineTooltip />} cursor={false} />
-                    <Line
-                      type="monotone"
-                      dataKey="val"
-                      stroke={colors.stroke}
-                      strokeWidth={1.5}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
+            ) : null}
           </div>
         );
 

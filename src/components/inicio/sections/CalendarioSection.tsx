@@ -15,6 +15,9 @@ import {
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { toastError } from '@/components/ui/use-toast';
+import { useLocale, useTranslations } from 'next-intl';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState, KpiStrip, StatCard, Tarjeta } from '@/components/kit';
 import ModuloSection from '../ModuloSection';
 import {
   SOURCE_TYPE_LABELS,
@@ -85,43 +88,11 @@ function buildExportData(
   };
 }
 
-function KpiCard({
-  label,
-  value,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: string;
-  icon: React.ComponentType<{ className?: string }>;
-  accent: string;
-}) {
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-            {label}
-          </p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-            {value}
-          </p>
-        </div>
-        <div className={`p-2 rounded-lg ${accent}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function ProximosEventosList({ eventos }: { eventos: ProximoEvento[] }) {
+  const t = useTranslations('home.panel.calendario');
   if (eventos.length === 0) {
     return (
-      <div className="text-center py-10 text-gray-500 dark:text-gray-400">
-        <Calendar className="h-10 w-10 mx-auto mb-2 opacity-40" />
-        <p className="text-sm">No hay eventos próximos</p>
-      </div>
+      <EmptyState compacto icono={Calendar} titulo={t('sinEventos')} descripcion={t('sinEventosDesc')} />
     );
   }
 
@@ -174,6 +145,8 @@ function ProximosEventosList({ eventos }: { eventos: ProximoEvento[] }) {
 }
 
 export default function CalendarioSection() {
+  const t = useTranslations('home.panel.calendario');
+  const locale = useLocale();
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState<CalendarioKPIs | null>(null);
   const [eventos, setEventos] = useState<ProximoEvento[]>([]);
@@ -303,50 +276,24 @@ export default function CalendarioSection() {
       isLoading={isLoading}
     >
       <div className="space-y-6">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <KpiCard
-            label="Eventos hoy"
-            value={String(kpis?.eventosHoy ?? 0)}
-            icon={Calendar}
-            accent="bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400"
-          />
-          <KpiCard
-            label="Esta semana"
-            value={String(kpis?.eventosEstaSemana ?? 0)}
-            icon={CalendarRange}
-            accent="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-          />
-          <KpiCard
-            label="Este mes"
-            value={String(kpis?.eventosEsteMes ?? 0)}
-            icon={CalendarDays}
-            accent="bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400"
-          />
-          <KpiCard
-            label="Próximos"
-            value={String(kpis?.proximosEventos ?? 0)}
-            icon={Clock}
-            accent="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
-          />
-        </div>
+        <KpiStrip>
+          <StatCard etiqueta={t('eventosHoy')} valor={(kpis?.eventosHoy ?? 0).toLocaleString(locale)} icono={Calendar} cargando={isLoading} />
+          <StatCard etiqueta={t('estaSemana')} valor={(kpis?.eventosEstaSemana ?? 0).toLocaleString(locale)} icono={CalendarRange} cargando={isLoading} />
+          <StatCard etiqueta={t('esteMes')} valor={(kpis?.eventosEsteMes ?? 0).toLocaleString(locale)} icono={CalendarDays} cargando={isLoading} />
+          <StatCard etiqueta={t('proximos')} valor={(kpis?.proximosEventos ?? 0).toLocaleString(locale)} icono={Clock} cargando={isLoading} />
+        </KpiStrip>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-            Próximos eventos
-          </h3>
+        <Tarjeta titulo={t('proximosEventos')}>
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"
-                />
+                <Skeleton key={i} className="h-12" />
               ))}
             </div>
           ) : (
             <ProximosEventosList eventos={eventos} />
           )}
-        </div>
+        </Tarjeta>
       </div>
     </ModuloSection>
   );

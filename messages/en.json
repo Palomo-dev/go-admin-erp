@@ -369,7 +369,8 @@
       "current": "Current period",
       "prev": "Previous period",
       "monthCurrent": "Current month",
-      "monthPrev": "Previous month"
+      "monthPrev": "Previous month",
+      "label": "Period"
     },
     "hours": {
       "morning": "Morning",
@@ -600,7 +601,8 @@
         "of": "of",
         "prevPage": "Previous page",
         "nextPage": "Next page"
-      }
+      },
+      "noActivityDesc": "Sales, invoices and movements will show up here as they happen."
     },
     "onboarding": {
       "title": "Getting started",
@@ -635,6 +637,35 @@
       "customers": {
         "title": "Register customers",
         "description": "Add your first customers"
+      }
+    },
+    "panel": {
+      "gestionarSucursales": "Manage branches",
+      "tendenciaVaciaDesc": "Once you record sales, you will see their day-by-day trend here.",
+      "sinModulosTitulo": "No active business modules",
+      "sinModulosDesc": "Turn them on in module settings to see their summary here.",
+      "sinTareasDesc": "When a task is assigned to you, it will show up here.",
+      "sinNotificacionesDesc": "Your notices will show up here.",
+      "calendario": {
+        "eventosHoy": "Events today",
+        "estaSemana": "This week",
+        "esteMes": "This month",
+        "proximos": "Upcoming",
+        "proximosEventos": "Upcoming events",
+        "sinEventos": "No upcoming events",
+        "sinEventosDesc": "Events you schedule in the calendar will show up here."
+      },
+      "chat": {
+        "sesionesActivas": "Active sessions",
+        "mensajesHoy": "Messages today",
+        "canalesConectados": "Connected channels",
+        "conversacionesPendientes": "Pending conversations"
+      },
+      "timeline": {
+        "eventosHoy": "Events today",
+        "eventosTotales": "Total events",
+        "usuariosActivos": "Active users",
+        "modulosActivos": "Active modules"
       }
     }
   },

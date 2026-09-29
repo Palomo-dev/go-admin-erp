@@ -5,6 +5,8 @@ import { MessageSquare, Globe, MessageCircle, Facebook, Instagram, Send, Mail } 
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { toastError } from '@/components/ui/use-toast';
+import { useLocale, useTranslations } from 'next-intl';
+import { KpiStrip, StatCard } from '@/components/kit';
 import ModuloSection from '../ModuloSection';
 import type {
   SectionExportData,
@@ -137,6 +139,8 @@ function buildExportData(
 // ─── Componente ──────────────────────────────────────────────────────────────
 
 export default function ChatSection() {
+  const t = useTranslations('home.panel.chat');
+  const locale = useLocale();
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState<ChatKPIs>(emptyKPIs);
   const [sesiones, setSesiones] = useState<SesionReciente[]>([]);
@@ -305,32 +309,12 @@ export default function ChatSection() {
     >
       <div className="space-y-6">
         {/* KPIs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <KPICard
-            label="Sesiones activas"
-            value={kpis.sesionesActivas}
-            icon={MessageSquare}
-            accent="text-pink-600 dark:text-pink-400"
-          />
-          <KPICard
-            label="Mensajes hoy"
-            value={kpis.mensajesHoy}
-            icon={MessageCircle}
-            accent="text-blue-600 dark:text-blue-400"
-          />
-          <KPICard
-            label="Canales conectados"
-            value={kpis.canalesConectados}
-            icon={Globe}
-            accent="text-emerald-600 dark:text-emerald-400"
-          />
-          <KPICard
-            label="Convers. pendientes"
-            value={kpis.conversacionesPendientes}
-            icon={MessageSquare}
-            accent="text-amber-600 dark:text-amber-400"
-          />
-        </div>
+        <KpiStrip>
+          <StatCard etiqueta={t('sesionesActivas')} valor={kpis.sesionesActivas.toLocaleString(locale)} icono={MessageSquare} cargando={isLoading} />
+          <StatCard etiqueta={t('mensajesHoy')} valor={kpis.mensajesHoy.toLocaleString(locale)} icono={MessageCircle} cargando={isLoading} />
+          <StatCard etiqueta={t('canalesConectados')} valor={kpis.canalesConectados.toLocaleString(locale)} icono={Globe} cargando={isLoading} />
+          <StatCard etiqueta={t('conversacionesPendientes')} valor={kpis.conversacionesPendientes.toLocaleString(locale)} icono={MessageSquare} cargando={isLoading} />
+        </KpiStrip>
 
         {/* Estado vacío: sin canales configurados */}
         {!hasData && (
@@ -451,29 +435,5 @@ export default function ChatSection() {
         )}
       </div>
     </ModuloSection>
-  );
-}
-
-// ─── Sub-componentes ─────────────────────────────────────────────────────────
-
-function KPICard({
-  label,
-  value,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: number;
-  icon: React.ComponentType<{ className?: string }>;
-  accent: string;
-}) {
-  return (
-    <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-xs text-gray-500 dark:text-gray-400">{label}</span>
-        <Icon className={`h-4 w-4 ${accent}`} />
-      </div>
-      <p className="text-xl font-bold text-gray-900 dark:text-white">{value}</p>
-    </div>
   );
 }

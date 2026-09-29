@@ -10,8 +10,11 @@ import {
   Package,
   BedDouble,
   Bell,
+  CheckCircle2,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { Tarjeta } from '@/components/kit';
 import { cn } from '@/utils/Utils';
 import { inicioService, type AlertaDashboard } from './inicioService';
 import { useTranslations } from 'next-intl';
@@ -31,21 +34,21 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const SEVERITY_CONFIG = {
   alta: {
-    bg: 'bg-red-50 dark:bg-red-900/20',
-    border: 'border-red-200 dark:border-red-800',
-    icon: 'text-red-600 dark:text-red-400',
+    bg: 'bg-danger-subtle',
+    border: 'border-line-danger',
+    icon: 'text-danger-text',
     Icon: AlertTriangle,
   },
   media: {
-    bg: 'bg-amber-50 dark:bg-amber-900/20',
-    border: 'border-amber-200 dark:border-amber-800',
-    icon: 'text-amber-600 dark:text-amber-400',
+    bg: 'bg-warning-subtle',
+    border: 'border-line-warning',
+    icon: 'text-warning-text',
     Icon: AlertCircle,
   },
   baja: {
-    bg: 'bg-blue-50 dark:bg-blue-900/20',
-    border: 'border-blue-200 dark:border-blue-800',
-    icon: 'text-blue-600 dark:text-blue-400',
+    bg: 'bg-info-subtle',
+    border: 'border-line-info',
+    icon: 'text-info-text',
     Icon: Info,
   },
 };
@@ -87,45 +90,35 @@ export function DashboardAlertas({ organizationId, activeModuleCodes }: Dashboar
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-            {t('attentionRequired')}
-          </h3>
-        </div>
+      <Tarjeta titulo={t('attentionRequired')} icono={Bell} tono="advertencia">
         <div className="space-y-2">
           <Skeleton className="h-16 w-full rounded-lg" />
           <Skeleton className="h-16 w-full rounded-lg" />
         </div>
-      </div>
+      </Tarjeta>
     );
   }
 
   if (alertas.length === 0) {
     return (
-      <div className="bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800 p-5">
-        <div className="flex items-center gap-2">
-          <Info className="h-4 w-4 text-green-600 dark:text-green-400" />
-          <p className="text-sm font-medium text-green-700 dark:text-green-300">
-            {t('noAlerts')}
-          </p>
-        </div>
-      </div>
+      // Sin alertas: la misma Tarjeta en tono éxito. Convertirla en casillas
+      // `TarjetaHoy` (Figma «Hoy») es otro cambio (#10 de la auditoría).
+      <Tarjeta tono="exito">
+        <p role="status" className="flex items-center gap-2 text-sm font-medium text-success-text">
+          <CheckCircle2 aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} />
+          {t('noAlerts')}
+        </p>
+      </Tarjeta>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-          {t('attentionRequired')}
-        </h3>
-        <span className="ml-auto text-xs font-medium text-gray-500 dark:text-gray-400">
-          {alertas.length}
-        </span>
-      </div>
+    <Tarjeta
+      titulo={t('attentionRequired')}
+      icono={Bell}
+      tono="advertencia"
+      accion={<Badge tono="advertencia" tamano="sm">{alertas.length}</Badge>}
+    >
 
       <div className="space-y-2">
         {alertas.map((alerta) => {
@@ -138,7 +131,7 @@ export function DashboardAlertas({ organizationId, activeModuleCodes }: Dashboar
               key={alerta.id}
               href={alerta.href}
               className={cn(
-                'block p-3 rounded-lg border transition-all hover:shadow-sm',
+                'block rounded-lg border p-3 transition-all hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
                 config.bg,
                 config.border,
               )}
@@ -148,15 +141,15 @@ export function DashboardAlertas({ organizationId, activeModuleCodes }: Dashboar
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <ModuleIcon className={cn('h-3.5 w-3.5', config.icon)} />
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    <p className="truncate text-sm font-medium text-fg">
                       {alerta.titulo}
                     </p>
                   </div>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                  <p className="mt-0.5 text-xs text-fg-secondary">
                     {alerta.descripcion}
                   </p>
                   {alerta.monto !== undefined && alerta.monto > 0 && (
-                    <p className={cn('text-xs font-semibold mt-1', config.icon)}>
+                    <p className={cn('mt-1 text-xs font-semibold tabular-nums', config.icon)}>
                       {formatCurrency(alerta.monto)}
                     </p>
                   )}
@@ -166,6 +159,6 @@ export function DashboardAlertas({ organizationId, activeModuleCodes }: Dashboar
           );
         })}
       </div>
-    </div>
+    </Tarjeta>
   );
 }

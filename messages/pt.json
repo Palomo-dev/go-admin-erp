@@ -369,7 +369,8 @@
       "current": "Período atual",
       "prev": "Período anterior",
       "monthCurrent": "Mês atual",
-      "monthPrev": "Mês anterior"
+      "monthPrev": "Mês anterior",
+      "label": "Período"
     },
     "hours": {
       "morning": "Manhã",
@@ -599,7 +600,8 @@
         "of": "de",
         "prevPage": "Página anterior",
         "nextPage": "Próxima página"
-      }
+      },
+      "noActivityDesc": "Vendas, faturas e movimentações aparecerão aqui à medida que acontecerem."
     },
     "onboarding": {
       "title": "Primeiros passos",
@@ -634,6 +636,35 @@
       "customers": {
         "title": "Registrar clientes",
         "description": "Adicione seus primeiros clientes"
+      }
+    },
+    "panel": {
+      "gestionarSucursales": "Gerenciar filiais",
+      "tendenciaVaciaDesc": "Quando você registrar vendas, verá aqui a evolução dia a dia.",
+      "sinModulosTitulo": "Nenhum módulo de negócio ativo",
+      "sinModulosDesc": "Ative-os na configuração de módulos para ver aqui o resumo.",
+      "sinTareasDesc": "Quando uma tarefa for atribuída a você, ela aparecerá aqui.",
+      "sinNotificacionesDesc": "Seus avisos aparecerão aqui.",
+      "calendario": {
+        "eventosHoy": "Eventos hoje",
+        "estaSemana": "Esta semana",
+        "esteMes": "Este mês",
+        "proximos": "Próximos",
+        "proximosEventos": "Próximos eventos",
+        "sinEventos": "Nenhum evento próximo",
+        "sinEventosDesc": "Os eventos que você agendar no calendário aparecerão aqui."
+      },
+      "chat": {
+        "sesionesActivas": "Sessões ativas",
+        "mensajesHoy": "Mensagens hoje",
+        "canalesConectados": "Canais conectados",
+        "conversacionesPendientes": "Conversas pendentes"
+      },
+      "timeline": {
+        "eventosHoy": "Eventos hoje",
+        "eventosTotales": "Total de eventos",
+        "usuariosActivos": "Usuários ativos",
+        "modulosActivos": "Módulos ativos"
       }
     }
   },

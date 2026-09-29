@@ -369,7 +369,8 @@
       "current": "Période actuelle",
       "prev": "Période précédente",
       "monthCurrent": "Mois actuel",
-      "monthPrev": "Mois précédent"
+      "monthPrev": "Mois précédent",
+      "label": "Période"
     },
     "hours": {
       "morning": "Matin",
@@ -599,7 +600,8 @@
         "of": "de",
         "prevPage": "Page précédente",
         "nextPage": "Page suivante"
-      }
+      },
+      "noActivityDesc": "Les ventes, factures et mouvements apparaîtront ici au fur et à mesure."
     },
     "onboarding": {
       "title": "Premiers pas",
@@ -634,6 +636,35 @@
       "customers": {
         "title": "Enregistrer des clients",
         "description": "Ajoutez vos premiers clients"
+      }
+    },
+    "panel": {
+      "gestionarSucursales": "Gérer les succursales",
+      "tendenciaVaciaDesc": "Dès que vous enregistrerez des ventes, vous verrez ici leur évolution jour par jour.",
+      "sinModulosTitulo": "Aucun module métier actif",
+      "sinModulosDesc": "Activez-les dans la configuration des modules pour voir ici leur résumé.",
+      "sinTareasDesc": "Quand une tâche vous sera assignée, elle apparaîtra ici.",
+      "sinNotificacionesDesc": "Vos avis apparaîtront ici.",
+      "calendario": {
+        "eventosHoy": "Événements aujourd'hui",
+        "estaSemana": "Cette semaine",
+        "esteMes": "Ce mois-ci",
+        "proximos": "À venir",
+        "proximosEventos": "Événements à venir",
+        "sinEventos": "Aucun événement à venir",
+        "sinEventosDesc": "Les événements que vous planifiez dans le calendrier apparaîtront ici."
+      },
+      "chat": {
+        "sesionesActivas": "Sessions actives",
+        "mensajesHoy": "Messages aujourd'hui",
+        "canalesConectados": "Canaux connectés",
+        "conversacionesPendientes": "Conversations en attente"
+      },
+      "timeline": {
+        "eventosHoy": "Événements aujourd'hui",
+        "eventosTotales": "Total des événements",
+        "usuariosActivos": "Utilisateurs actifs",
+        "modulosActivos": "Modules actifs"
       }
     }
   },

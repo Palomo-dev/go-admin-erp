@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { TrendingUp, BarChart3 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tarjeta, EmptyState } from '@/components/kit';
 import { formatCurrency } from '@/utils/Utils';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { inicioService, type PuntoTendencia } from './inicioService';
@@ -26,9 +27,10 @@ interface DashboardTendenciaProps {
  * Gráfico de tendencia de ventas (línea suavizada estilo Shopify) de los
  * últimos `dias` días. Usa recharts con tooltip interactivo.
  *
- * La tarjeta se estira (`h-full flex flex-col`) para igualar la altura de su
- * compañera de grid (p. ej. DashboardActividad), y la gráfica crece con
- * `flex-1` para llenar el espacio disponible — sin dejar espacio en blanco.
+ * La tarjeta (`Tarjeta` del kit, Figma 447:73036) se estira (`h-full`) para
+ * igualar la altura de su compañera de grid (p. ej. DashboardActividad), y la
+ * gráfica crece con `flex-1` para llenar el espacio disponible — sin dejar
+ * espacio en blanco.
  */
 export function DashboardTendencia({ organizationId, dias = 30 }: DashboardTendenciaProps) {
   const t = useTranslations('home');
@@ -72,10 +74,9 @@ export function DashboardTendencia({ organizationId, dias = 30 }: DashboardTende
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 h-full flex flex-col">
-        <Skeleton className="h-5 w-40 mb-4" />
-        <Skeleton className="h-48 w-full rounded-lg flex-1" />
-      </div>
+      <Tarjeta titulo={t('salesTrend')} icono={BarChart3} className="h-full">
+        <Skeleton className="h-48 w-full flex-1 rounded-lg" />
+      </Tarjeta>
     );
   }
 
@@ -104,9 +105,9 @@ export function DashboardTendencia({ organizationId, dias = 30 }: DashboardTende
     if (!active || !payload || !payload.length) return null;
     const item = payload[0];
     return (
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-3 py-2 text-xs">
-        <p className="text-gray-500 dark:text-gray-400 mb-1">{item.payload.fecha}</p>
-        <p className="font-semibold text-gray-900 dark:text-white">
+      <div className="rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg">
+        <p className="mb-1 text-fg-secondary">{item.payload.fecha}</p>
+        <p className="font-semibold text-fg tabular-nums">
           {formatCurrency(item.value)}
         </p>
       </div>
@@ -114,30 +115,21 @@ export function DashboardTendencia({ organizationId, dias = 30 }: DashboardTende
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-            {t('salesTrend')}
-          </h3>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-          <TrendingUp className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-          <span className="font-medium text-gray-900 dark:text-white">
-            {formatCurrency(total)}
-          </span>
+    <Tarjeta
+      titulo={t('salesTrend')}
+      icono={BarChart3}
+      className="h-full"
+      accion={
+        <span className="flex items-center gap-1.5 text-xs text-fg-secondary">
+          <TrendingUp aria-hidden="true" className="size-3.5 text-success-text" strokeWidth={1.5} />
+          <span className="font-medium text-fg tabular-nums">{formatCurrency(total)}</span>
           <span>· {dias}d</span>
-        </div>
-      </div>
-
+        </span>
+      }
+    >
       {data.length === 0 || total === 0 ? (
-        <div
-          ref={chartContainerRef}
-          className="flex-1 min-h-0 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400"
-        >
-          <BarChart3 className="h-10 w-10 mb-2 opacity-30" />
-          <p className="text-sm">{t('noSalesData')}</p>
+        <div ref={chartContainerRef} className="flex min-h-0 flex-1 flex-col justify-center">
+          <EmptyState compacto icono={BarChart3} titulo={t('noSalesData')} descripcion={t('panel.tendenciaVaciaDesc')} />
         </div>
       ) : (
         <div ref={chartContainerRef} className="flex-1 min-h-0 w-full">
@@ -179,6 +171,6 @@ export function DashboardTendencia({ organizationId, dias = 30 }: DashboardTende
           </ResponsiveContainer>
         </div>
       )}
-    </div>
+    </Tarjeta>
   );
 }

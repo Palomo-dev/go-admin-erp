@@ -15096,5 +15096,207 @@
       "confirmar": "Delete",
       "cancelar": "Cancel"
     }
+  },
+  "inventarioImagenes": {
+    "titulo": "Images",
+    "migaInventario": "Inventory",
+    "cargando": "Loading…",
+    "subtitulo": "{organizacion} · {n} {count, plural, one {image} other {images}}",
+    "subtituloMovil": "{n} {count, plural, one {image} other {images}}",
+    "buscar": "Search by file name or product",
+    "buscarProductos": "Search by product, SKU or file",
+    "errorCarga": "We couldn't load the images",
+    "seleccionar": "Select “{nombre}”",
+    "abrirDetalle": "View details of “{nombre}”",
+    "abrirProducto": "Open the product “{nombre}”",
+    "nImagenes": "{n, plural, one {# image} other {# images}}",
+    "sustantivo": {
+      "singular": "image",
+      "plural": "images"
+    },
+    "sinPermiso": {
+      "titulo": "You don't have access to images",
+      "descripcion": "Ask an administrator of the organization to give you inventory access."
+    },
+    "pestanas": {
+      "etiqueta": "Image source",
+      "biblioteca": "Library",
+      "productos": "From products"
+    },
+    "kpi": {
+      "etiqueta": "Image summary",
+      "imagenes": "Images",
+      "imagenesDetalle": "{biblioteca} in the library · {productos} from products",
+      "sinUsar": "Unused",
+      "sinUsarDetalle": "No product uses them",
+      "sinUsarNinguna": "All of them are in use",
+      "productosSinImagen": "Products without an image",
+      "verEnCatalogo": "See in the catalog",
+      "publicas": "Public",
+      "publicasDetalle": "Visible in the online store"
+    },
+    "insignias": {
+      "publica": "Public",
+      "privada": "Private",
+      "principal": "Main",
+      "galeria": "Gallery"
+    },
+    "uso": {
+      "enProductos": "{n, plural, one {In # product} other {In # products}}",
+      "sinUsar": "Unused",
+      "verProducto": "View product"
+    },
+    "vacio": {
+      "titulo": "Your library is empty",
+      "descripcion": "Upload photos once and use them in several products, the online store and the POS.",
+      "tituloProductos": "No product has its own photos",
+      "descripcionProductos": "Photos you upload from a product's form or detail show up here."
+    },
+    "filtros": {
+      "producto": "Product",
+      "visibilidad": "Visibility",
+      "uso": "Usage",
+      "formato": "Format",
+      "tamano": "Size",
+      "todos": "All",
+      "todas": {
+        "visibilidad": "Public and private",
+        "tamano": "Any size"
+      },
+      "opciones": {
+        "todas": "All",
+        "todos": "All",
+        "en_uso": "In use",
+        "sin_usar": "Unused",
+        "publicas": "Public",
+        "privadas": "Private",
+        "jpg_png": "JPG / PNG",
+        "webp": "WEBP",
+        "pequena": "Under 200 KB",
+        "mediana": "200 KB to 1 MB",
+        "grande": "Over 1 MB"
+      },
+      "nota": "Changes apply instantly.",
+      "verResultados": "Show {n, plural, one {# image} other {# images}}"
+    },
+    "acciones": {
+      "ver": "View details",
+      "verEditar": "View and edit details",
+      "asignar": "Assign to products",
+      "asignarPuntos": "Assign to products…",
+      "hacerPublica": "Make public",
+      "hacerPrivada": "Make private",
+      "copiarEnlace": "Copy link",
+      "descargar": "Download",
+      "eliminar": "Delete",
+      "abrirProducto": "Open the product",
+      "productosSinImagen": "See products without an image",
+      "actualizar": "Refresh",
+      "motivoDescargar": "Images selected on other pages are downloaded from their page"
+    },
+    "detalle": {
+      "titulo": "Image",
+      "descripcion": "Image details and the products that use it",
+      "error": "We couldn't load the image",
+      "tamano": "Size",
+      "subida": "Uploaded",
+      "alt": "Alt text",
+      "sinAlt": "No alt text",
+      "altAyuda": "Read by screen readers and search engines. It is copied to the products that use it.",
+      "altPlaceholder": "Brown leather boot, side view",
+      "visibilidad": "Visibility",
+      "nombre": "Name",
+      "nombreObligatorio": "Enter a name for the image",
+      "publica": "Public",
+      "publicaAyuda": "Visible in the online store",
+      "guardar": "Save changes",
+      "usadaEn": "{n, plural, one {Used in # product} other {Used in # products}}",
+      "sinUsar": "Unused",
+      "sinUsarAyuda": "No product uses it yet. Assign it so it shows in the catalog, the POS and the store.",
+      "principal": "Main",
+      "galeria": "Gallery",
+      "abrir": "Open",
+      "yMas": "and {n, plural, one {# more product} other {# more products}}"
+    },
+    "eliminar": {
+      "tituloUna": "Delete “{nombre}”?",
+      "tituloVarias": "Delete {n, plural, one {# image} other {# images}}?",
+      "principalYGaleria": "It is the main image of {principal, plural, one {# product} other {# products}} and is in the gallery of {galeria, plural, =0 {no other product} one {one more} other {# more}}. Those products will lose this photo; the main one will take the next one in its gallery.",
+      "soloGaleria": "It is in the gallery of {n, plural, one {# product} other {# products}}. Those products will lose this photo.",
+      "variasEnUso": "{n, plural, one {There is # use in products} other {There are # uses in products}}: those products will lose the photo and, where it was the main one, take the next one in their gallery.",
+      "sinUso": "No product uses them. The file is deleted and this can't be undone."
+    },
+    "toast": {
+      "guardada": "Image saved",
+      "errorGuardar": "We couldn't save the image",
+      "publicas": "{n, plural, one {# image is now public} other {# images are now public}}",
+      "privadas": "{n, plural, one {# image is now private} other {# images are now private}}",
+      "enlaceCopiado": "Link copied",
+      "errorCopiar": "We couldn't copy the link",
+      "asignada": "{n, plural, =0 {Not assigned to any new product} one {Assigned to # product} other {Assigned to # products}}",
+      "yaLaTenian": "{n, plural, one {# product already had it} other {# products already had it}}",
+      "errorAsignar": "We couldn't assign the image",
+      "eliminadas": "{n, plural, one {# image deleted} other {# images deleted}}",
+      "errorEliminar": "We couldn't delete",
+      "subidas": "{n, plural, one {# image uploaded to the library} other {# images uploaded to the library}}"
+    },
+    "errores": {
+      "sinPermiso": "You don't have permission for this action",
+      "noEncontrada": "The image no longer exists",
+      "rutaInvalida": "The file path doesn't belong to this organization",
+      "formato": "Unsupported format: use JPG, PNG or WEBP",
+      "tamano": "The image is larger than 5 MB",
+      "nombre": "Enter a name for the image"
+    },
+    "subir": {
+      "boton": "Upload images",
+      "titulo": "Upload images",
+      "descripcion": "JPG, PNG or WEBP · up to 5 MB each · saved in the library of {organizacion}",
+      "arrastra": "Drag your photos here",
+      "suelta": "Drop to upload",
+      "reglas": "Up to {n} images · max. 5 MB · JPG, PNG or WEBP",
+      "subir": "Upload",
+      "tomarFoto": "Take photo",
+      "generarIa": "Generate with AI",
+      "iaEtiqueta": "What image do you need?",
+      "iaPlaceholder": "Brown leather boot on a white background",
+      "iaGenerar": "Generate",
+      "iaCosto": "Uses AI credits from your plan.",
+      "iaError": "We couldn't generate the image. Try again.",
+      "iaSinCreditos": "You have no AI credits left to generate images.",
+      "listo": "Done",
+      "esperaSubida": "Wait for the uploads to finish",
+      "rechazoFormato": "Unsupported format ({ext}): convert it to JPG",
+      "rechazoFormatoCorto": "Unsupported format: use JPG, PNG or WEBP",
+      "rechazoTamano": "Larger than 5 MB: reduce it before uploading",
+      "rechazoCupo": "Up to {n} per batch: upload it afterwards",
+      "errorSubida": "Upload failed. Check your connection.",
+      "errorRegistro": "It couldn't be saved in the library",
+      "quitar": "Remove “{nombre}” from the list",
+      "estados": {
+        "esperando": "waiting",
+        "subiendo": "uploading",
+        "subida": "uploaded",
+        "error": "failed"
+      }
+    },
+    "asignar": {
+      "titulo": "Assign “{nombre}” to products",
+      "descripcion": "Choose the products; you can make it the main image.",
+      "buscar": "Search product",
+      "placeholder": "Search by name, SKU or code",
+      "vacio": "Type to search products",
+      "sinResultados": "No product matches",
+      "errorBuscar": "We couldn't search products",
+      "conVariantes": "with variants",
+      "yaElegido": "Already in the list",
+      "elegidos": "Chosen products",
+      "ninguno": "You haven't chosen any products yet.",
+      "quitar": "Remove “{nombre}”",
+      "principal": "Make it the main image",
+      "principalAyuda": "It will be the cover photo in the catalog, the POS and the store.",
+      "confirmar": "{n, plural, =0 {Assign} one {Assign to # product} other {Assign to # products}}",
+      "eligeUno": "Choose at least one product"
+    }
   }
 }

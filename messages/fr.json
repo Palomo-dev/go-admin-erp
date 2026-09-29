@@ -14991,5 +14991,207 @@
       "confirmar": "Supprimer",
       "cancelar": "Annuler"
     }
+  },
+  "inventarioImagenes": {
+    "titulo": "Images",
+    "migaInventario": "Inventaire",
+    "cargando": "Chargement…",
+    "subtitulo": "{organizacion} · {n} {count, plural, one {image} other {images}}",
+    "subtituloMovil": "{n} {count, plural, one {image} other {images}}",
+    "buscar": "Rechercher par nom de fichier ou produit",
+    "buscarProductos": "Rechercher par produit, SKU ou fichier",
+    "errorCarga": "Impossible de charger les images",
+    "seleccionar": "Sélectionner « {nombre} »",
+    "abrirDetalle": "Voir le détail de « {nombre} »",
+    "abrirProducto": "Ouvrir le produit « {nombre} »",
+    "nImagenes": "{n, plural, one {# image} other {# images}}",
+    "sustantivo": {
+      "singular": "image",
+      "plural": "images"
+    },
+    "sinPermiso": {
+      "titulo": "Vous n'avez pas accès aux images",
+      "descripcion": "Demandez à un administrateur de l'organisation de vous donner accès à l'inventaire."
+    },
+    "pestanas": {
+      "etiqueta": "Origine des images",
+      "biblioteca": "Bibliothèque",
+      "productos": "Des produits"
+    },
+    "kpi": {
+      "etiqueta": "Résumé des images",
+      "imagenes": "Images",
+      "imagenesDetalle": "{biblioteca} dans la bibliothèque · {productos} des produits",
+      "sinUsar": "Non utilisées",
+      "sinUsarDetalle": "Aucun produit ne les utilise",
+      "sinUsarNinguna": "Toutes sont utilisées",
+      "productosSinImagen": "Produits sans image",
+      "verEnCatalogo": "Voir dans le catalogue",
+      "publicas": "Publiques",
+      "publicasDetalle": "Visibles dans la boutique en ligne"
+    },
+    "insignias": {
+      "publica": "Publique",
+      "privada": "Privée",
+      "principal": "Principale",
+      "galeria": "Galerie"
+    },
+    "uso": {
+      "enProductos": "{n, plural, one {Dans # produit} other {Dans # produits}}",
+      "sinUsar": "Non utilisée",
+      "verProducto": "Voir le produit"
+    },
+    "vacio": {
+      "titulo": "Votre bibliothèque est vide",
+      "descripcion": "Téléversez vos photos une fois et utilisez-les dans plusieurs produits, la boutique en ligne et le POS.",
+      "tituloProductos": "Aucun produit n'a ses propres photos",
+      "descripcionProductos": "Les photos téléversées depuis le formulaire ou le détail d'un produit apparaissent ici."
+    },
+    "filtros": {
+      "producto": "Produit",
+      "visibilidad": "Visibilité",
+      "uso": "Utilisation",
+      "formato": "Format",
+      "tamano": "Taille",
+      "todos": "Tous",
+      "todas": {
+        "visibilidad": "Publiques et privées",
+        "tamano": "Toute taille"
+      },
+      "opciones": {
+        "todas": "Toutes",
+        "todos": "Tous",
+        "en_uso": "Utilisées",
+        "sin_usar": "Non utilisées",
+        "publicas": "Publiques",
+        "privadas": "Privées",
+        "jpg_png": "JPG / PNG",
+        "webp": "WEBP",
+        "pequena": "Moins de 200 Ko",
+        "mediana": "De 200 Ko à 1 Mo",
+        "grande": "Plus de 1 Mo"
+      },
+      "nota": "Les changements s'appliquent immédiatement.",
+      "verResultados": "Voir {n, plural, one {# image} other {# images}}"
+    },
+    "acciones": {
+      "ver": "Voir les données",
+      "verEditar": "Voir et modifier les données",
+      "asignar": "Attribuer à des produits",
+      "asignarPuntos": "Attribuer à des produits…",
+      "hacerPublica": "Rendre publique",
+      "hacerPrivada": "Rendre privée",
+      "copiarEnlace": "Copier le lien",
+      "descargar": "Télécharger",
+      "eliminar": "Supprimer",
+      "abrirProducto": "Ouvrir le produit",
+      "productosSinImagen": "Voir les produits sans image",
+      "actualizar": "Actualiser",
+      "motivoDescargar": "Les images choisies sur d'autres pages se téléchargent depuis leur page"
+    },
+    "detalle": {
+      "titulo": "Image",
+      "descripcion": "Données de l'image et produits qui l'utilisent",
+      "error": "Impossible de charger l'image",
+      "tamano": "Taille",
+      "subida": "Téléversée",
+      "alt": "Texte alternatif",
+      "sinAlt": "Sans texte alternatif",
+      "altAyuda": "Lu par les lecteurs d'écran et les moteurs de recherche. Il est copié dans les produits qui l'utilisent.",
+      "altPlaceholder": "Bottine en cuir marron, vue de côté",
+      "visibilidad": "Visibilité",
+      "nombre": "Nom",
+      "nombreObligatorio": "Saisissez un nom pour l'image",
+      "publica": "Publique",
+      "publicaAyuda": "Visible dans la boutique en ligne",
+      "guardar": "Enregistrer",
+      "usadaEn": "{n, plural, one {Utilisée dans # produit} other {Utilisée dans # produits}}",
+      "sinUsar": "Non utilisée",
+      "sinUsarAyuda": "Aucun produit ne l'utilise encore. Attribuez-la pour qu'elle apparaisse dans le catalogue, le POS et la boutique.",
+      "principal": "Principale",
+      "galeria": "Galerie",
+      "abrir": "Ouvrir",
+      "yMas": "et {n, plural, one {# autre produit} other {# autres produits}}"
+    },
+    "eliminar": {
+      "tituloUna": "Supprimer « {nombre} » ?",
+      "tituloVarias": "Supprimer {n, plural, one {# image} other {# images}} ?",
+      "principalYGaleria": "C'est l'image principale de {principal, plural, one {# produit} other {# produits}} et elle figure dans la galerie de {galeria, plural, =0 {aucun autre} one {un autre} other {# autres}}. Ces produits perdront cette photo ; le principal prendra la suivante de sa galerie.",
+      "soloGaleria": "Elle figure dans la galerie de {n, plural, one {# produit} other {# produits}}. Ces produits perdront cette photo.",
+      "variasEnUso": "{n, plural, one {Il y a # utilisation dans des produits} other {Il y a # utilisations dans des produits}} : ces produits perdront la photo et, là où elle était principale, prendront la suivante de leur galerie.",
+      "sinUso": "Aucun produit ne les utilise. Le fichier est supprimé et c'est irréversible."
+    },
+    "toast": {
+      "guardada": "Image enregistrée",
+      "errorGuardar": "Impossible d'enregistrer l'image",
+      "publicas": "{n, plural, one {# image est maintenant publique} other {# images sont maintenant publiques}}",
+      "privadas": "{n, plural, one {# image est maintenant privée} other {# images sont maintenant privées}}",
+      "enlaceCopiado": "Lien copié",
+      "errorCopiar": "Impossible de copier le lien",
+      "asignada": "{n, plural, =0 {Attribuée à aucun nouveau produit} one {Attribuée à # produit} other {Attribuée à # produits}}",
+      "yaLaTenian": "{n, plural, one {# produit l'avait déjà} other {# produits l'avaient déjà}}",
+      "errorAsignar": "Impossible d'attribuer l'image",
+      "eliminadas": "{n, plural, one {# image supprimée} other {# images supprimées}}",
+      "errorEliminar": "Impossible de supprimer",
+      "subidas": "{n, plural, one {# image téléversée dans la bibliothèque} other {# images téléversées dans la bibliothèque}}"
+    },
+    "errores": {
+      "sinPermiso": "Vous n'avez pas l'autorisation pour cette action",
+      "noEncontrada": "L'image n'existe plus",
+      "rutaInvalida": "Le chemin du fichier n'appartient pas à cette organisation",
+      "formato": "Format non pris en charge : utilisez JPG, PNG ou WEBP",
+      "tamano": "L'image dépasse 5 Mo",
+      "nombre": "Saisissez un nom pour l'image"
+    },
+    "subir": {
+      "boton": "Téléverser des images",
+      "titulo": "Téléverser des images",
+      "descripcion": "JPG, PNG ou WEBP · jusqu'à 5 Mo chacune · enregistrées dans la bibliothèque de {organizacion}",
+      "arrastra": "Glissez vos photos ici",
+      "suelta": "Déposez pour téléverser",
+      "reglas": "Jusqu'à {n} images · 5 Mo max. · JPG, PNG ou WEBP",
+      "subir": "Téléverser",
+      "tomarFoto": "Prendre une photo",
+      "generarIa": "Générer avec l'IA",
+      "iaEtiqueta": "De quelle image avez-vous besoin ?",
+      "iaPlaceholder": "Bottine en cuir marron sur fond blanc",
+      "iaGenerar": "Générer",
+      "iaCosto": "Utilise des crédits d'IA de votre forfait.",
+      "iaError": "Impossible de générer l'image. Réessayez.",
+      "iaSinCreditos": "Vous n'avez plus de crédits d'IA pour générer des images.",
+      "listo": "Terminé",
+      "esperaSubida": "Attendez la fin des téléversements",
+      "rechazoFormato": "Format non pris en charge ({ext}) : convertissez-la en JPG",
+      "rechazoFormatoCorto": "Format non pris en charge : utilisez JPG, PNG ou WEBP",
+      "rechazoTamano": "Plus de 5 Mo : réduisez-la avant de la téléverser",
+      "rechazoCupo": "{n} maximum par lot : téléversez-la ensuite",
+      "errorSubida": "Échec du téléversement. Vérifiez votre connexion.",
+      "errorRegistro": "Impossible de l'enregistrer dans la bibliothèque",
+      "quitar": "Retirer « {nombre} » de la liste",
+      "estados": {
+        "esperando": "en attente",
+        "subiendo": "en cours",
+        "subida": "téléversée",
+        "error": "en erreur"
+      }
+    },
+    "asignar": {
+      "titulo": "Attribuer « {nombre} » à des produits",
+      "descripcion": "Choisissez les produits ; vous pouvez en faire l'image principale.",
+      "buscar": "Rechercher un produit",
+      "placeholder": "Rechercher par nom, SKU ou code",
+      "vacio": "Saisissez pour rechercher des produits",
+      "sinResultados": "Aucun produit ne correspond",
+      "errorBuscar": "Impossible de rechercher les produits",
+      "conVariantes": "avec variantes",
+      "yaElegido": "Déjà dans la liste",
+      "elegidos": "Produits choisis",
+      "ninguno": "Vous n'avez encore choisi aucun produit.",
+      "quitar": "Retirer « {nombre} »",
+      "principal": "En faire l'image principale",
+      "principalAyuda": "Ce sera la photo de couverture dans le catalogue, le POS et la boutique.",
+      "confirmar": "{n, plural, =0 {Attribuer} one {Attribuer à # produit} other {Attribuer à # produits}}",
+      "eligeUno": "Choisissez au moins un produit"
+    }
   }
 }

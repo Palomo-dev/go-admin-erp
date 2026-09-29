@@ -14991,5 +14991,207 @@
       "confirmar": "Excluir",
       "cancelar": "Cancelar"
     }
+  },
+  "inventarioImagenes": {
+    "titulo": "Imagens",
+    "migaInventario": "Estoque",
+    "cargando": "Carregando…",
+    "subtitulo": "{organizacion} · {n} {count, plural, one {imagem} other {imagens}}",
+    "subtituloMovil": "{n} {count, plural, one {imagem} other {imagens}}",
+    "buscar": "Buscar por nome do arquivo ou produto",
+    "buscarProductos": "Buscar por produto, SKU ou arquivo",
+    "errorCarga": "Não foi possível carregar as imagens",
+    "seleccionar": "Selecionar «{nombre}»",
+    "abrirDetalle": "Ver detalhes de «{nombre}»",
+    "abrirProducto": "Abrir o produto «{nombre}»",
+    "nImagenes": "{n, plural, one {# imagem} other {# imagens}}",
+    "sustantivo": {
+      "singular": "imagem",
+      "plural": "imagens"
+    },
+    "sinPermiso": {
+      "titulo": "Você não tem acesso às imagens",
+      "descripcion": "Peça a um administrador da organização que lhe dê acesso ao estoque."
+    },
+    "pestanas": {
+      "etiqueta": "Origem das imagens",
+      "biblioteca": "Biblioteca",
+      "productos": "De produtos"
+    },
+    "kpi": {
+      "etiqueta": "Resumo das imagens",
+      "imagenes": "Imagens",
+      "imagenesDetalle": "{biblioteca} na biblioteca · {productos} de produtos",
+      "sinUsar": "Sem uso",
+      "sinUsarDetalle": "Nenhum produto as usa",
+      "sinUsarNinguna": "Todas estão em uso",
+      "productosSinImagen": "Produtos sem imagem",
+      "verEnCatalogo": "Ver no catálogo",
+      "publicas": "Públicas",
+      "publicasDetalle": "Visíveis na loja virtual"
+    },
+    "insignias": {
+      "publica": "Pública",
+      "privada": "Privada",
+      "principal": "Principal",
+      "galeria": "Galeria"
+    },
+    "uso": {
+      "enProductos": "{n, plural, one {Em # produto} other {Em # produtos}}",
+      "sinUsar": "Sem uso",
+      "verProducto": "Ver produto"
+    },
+    "vacio": {
+      "titulo": "Sua biblioteca está vazia",
+      "descripcion": "Envie as fotos uma vez e use-as em vários produtos, na loja virtual e no PDV.",
+      "tituloProductos": "Nenhum produto tem fotos próprias",
+      "descripcionProductos": "As fotos enviadas pelo formulário ou pelo detalhe de um produto aparecem aqui."
+    },
+    "filtros": {
+      "producto": "Produto",
+      "visibilidad": "Visibilidade",
+      "uso": "Uso",
+      "formato": "Formato",
+      "tamano": "Tamanho",
+      "todos": "Todos",
+      "todas": {
+        "visibilidad": "Públicas e privadas",
+        "tamano": "Qualquer tamanho"
+      },
+      "opciones": {
+        "todas": "Todas",
+        "todos": "Todos",
+        "en_uso": "Em uso",
+        "sin_usar": "Sem uso",
+        "publicas": "Públicas",
+        "privadas": "Privadas",
+        "jpg_png": "JPG / PNG",
+        "webp": "WEBP",
+        "pequena": "Menos de 200 KB",
+        "mediana": "De 200 KB a 1 MB",
+        "grande": "Mais de 1 MB"
+      },
+      "nota": "As alterações se aplicam na hora.",
+      "verResultados": "Ver {n, plural, one {# imagem} other {# imagens}}"
+    },
+    "acciones": {
+      "ver": "Ver dados",
+      "verEditar": "Ver e editar dados",
+      "asignar": "Atribuir a produtos",
+      "asignarPuntos": "Atribuir a produtos…",
+      "hacerPublica": "Tornar pública",
+      "hacerPrivada": "Tornar privada",
+      "copiarEnlace": "Copiar link",
+      "descargar": "Baixar",
+      "eliminar": "Excluir",
+      "abrirProducto": "Abrir o produto",
+      "productosSinImagen": "Ver produtos sem imagem",
+      "actualizar": "Atualizar",
+      "motivoDescargar": "As escolhidas em outras páginas são baixadas pela própria página"
+    },
+    "detalle": {
+      "titulo": "Imagem",
+      "descripcion": "Dados da imagem e produtos que a usam",
+      "error": "Não foi possível carregar a imagem",
+      "tamano": "Tamanho",
+      "subida": "Enviada",
+      "alt": "Texto alternativo",
+      "sinAlt": "Sem texto alternativo",
+      "altAyuda": "Lido por leitores de tela e buscadores. É copiado para os produtos que a usam.",
+      "altPlaceholder": "Bota de couro marrom, vista lateral",
+      "visibilidad": "Visibilidade",
+      "nombre": "Nome",
+      "nombreObligatorio": "Digite um nome para a imagem",
+      "publica": "Pública",
+      "publicaAyuda": "Visível na loja virtual",
+      "guardar": "Salvar alterações",
+      "usadaEn": "{n, plural, one {Usada em # produto} other {Usada em # produtos}}",
+      "sinUsar": "Sem uso",
+      "sinUsarAyuda": "Nenhum produto a usa ainda. Atribua-a para que apareça no catálogo, no PDV e na loja.",
+      "principal": "Principal",
+      "galeria": "Galeria",
+      "abrir": "Abrir",
+      "yMas": "e {n, plural, one {mais # produto} other {mais # produtos}}"
+    },
+    "eliminar": {
+      "tituloUna": "Excluir «{nombre}»?",
+      "tituloVarias": "Excluir {n, plural, one {# imagem} other {# imagens}}?",
+      "principalYGaleria": "É a imagem principal de {principal, plural, one {# produto} other {# produtos}} e está na galeria de {galeria, plural, =0 {nenhum outro} one {outro} other {outros #}}. Esses produtos ficarão sem esta foto; o principal usará a próxima da galeria.",
+      "soloGaleria": "Está na galeria de {n, plural, one {# produto} other {# produtos}}. Esses produtos ficarão sem esta foto.",
+      "variasEnUso": "{n, plural, one {Há # uso em produtos} other {Há # usos em produtos}}: esses produtos ficarão sem a foto e, onde era a principal, usarão a próxima da galeria.",
+      "sinUso": "Nenhum produto as usa. O arquivo é excluído e não pode ser desfeito."
+    },
+    "toast": {
+      "guardada": "Imagem salva",
+      "errorGuardar": "Não foi possível salvar a imagem",
+      "publicas": "{n, plural, one {# imagem agora é pública} other {# imagens agora são públicas}}",
+      "privadas": "{n, plural, one {# imagem agora é privada} other {# imagens agora são privadas}}",
+      "enlaceCopiado": "Link copiado",
+      "errorCopiar": "Não foi possível copiar o link",
+      "asignada": "{n, plural, =0 {Não foi atribuída a nenhum produto novo} one {Atribuída a # produto} other {Atribuída a # produtos}}",
+      "yaLaTenian": "{n, plural, one {# produto já a tinha} other {# produtos já a tinham}}",
+      "errorAsignar": "Não foi possível atribuir a imagem",
+      "eliminadas": "{n, plural, one {# imagem excluída} other {# imagens excluídas}}",
+      "errorEliminar": "Não foi possível excluir",
+      "subidas": "{n, plural, one {# imagem enviada para a biblioteca} other {# imagens enviadas para a biblioteca}}"
+    },
+    "errores": {
+      "sinPermiso": "Você não tem permissão para esta ação",
+      "noEncontrada": "A imagem não existe mais",
+      "rutaInvalida": "O caminho do arquivo não é desta organização",
+      "formato": "Formato não suportado: use JPG, PNG ou WEBP",
+      "tamano": "A imagem passa de 5 MB",
+      "nombre": "Digite um nome para a imagem"
+    },
+    "subir": {
+      "boton": "Enviar imagens",
+      "titulo": "Enviar imagens",
+      "descripcion": "JPG, PNG ou WEBP · até 5 MB cada · salvas na biblioteca de {organizacion}",
+      "arrastra": "Arraste suas fotos para cá",
+      "suelta": "Solte para enviar",
+      "reglas": "Até {n} imagens · máx. 5 MB · JPG, PNG ou WEBP",
+      "subir": "Enviar",
+      "tomarFoto": "Tirar foto",
+      "generarIa": "Gerar com IA",
+      "iaEtiqueta": "De que imagem você precisa?",
+      "iaPlaceholder": "Bota de couro marrom em fundo branco",
+      "iaGenerar": "Gerar",
+      "iaCosto": "Usa créditos de IA do seu plano.",
+      "iaError": "Não foi possível gerar a imagem. Tente de novo.",
+      "iaSinCreditos": "Você não tem mais créditos de IA para gerar imagens.",
+      "listo": "Pronto",
+      "esperaSubida": "Aguarde o fim dos envios",
+      "rechazoFormato": "Formato não suportado ({ext}): converta para JPG",
+      "rechazoFormatoCorto": "Formato não suportado: use JPG, PNG ou WEBP",
+      "rechazoTamano": "Passa de 5 MB: reduza antes de enviar",
+      "rechazoCupo": "Máximo de {n} por vez: envie depois",
+      "errorSubida": "Não foi possível enviar. Verifique sua conexão.",
+      "errorRegistro": "Não foi possível salvar na biblioteca",
+      "quitar": "Remover «{nombre}» da lista",
+      "estados": {
+        "esperando": "na fila",
+        "subiendo": "enviando",
+        "subida": "enviada",
+        "error": "com erro"
+      }
+    },
+    "asignar": {
+      "titulo": "Atribuir «{nombre}» a produtos",
+      "descripcion": "Escolha os produtos; você pode marcá-la como principal.",
+      "buscar": "Buscar produto",
+      "placeholder": "Busque por nome, SKU ou código",
+      "vacio": "Digite para buscar produtos",
+      "sinResultados": "Nenhum produto corresponde",
+      "errorBuscar": "Não foi possível buscar produtos",
+      "conVariantes": "com variantes",
+      "yaElegido": "Já está na lista",
+      "elegidos": "Produtos escolhidos",
+      "ninguno": "Você ainda não escolheu produtos.",
+      "quitar": "Remover «{nombre}»",
+      "principal": "Marcar como principal",
+      "principalAyuda": "Será a foto de capa no catálogo, no PDV e na loja.",
+      "confirmar": "{n, plural, =0 {Atribuir} one {Atribuir a # produto} other {Atribuir a # produtos}}",
+      "eligeUno": "Escolha pelo menos um produto"
+    }
   }
 }

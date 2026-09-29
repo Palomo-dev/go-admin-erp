@@ -15096,5 +15096,207 @@
       "confirmar": "Eliminar",
       "cancelar": "Cancelar"
     }
+  },
+  "inventarioImagenes": {
+    "titulo": "Imágenes",
+    "migaInventario": "Inventario",
+    "cargando": "Cargando…",
+    "subtitulo": "{organizacion} · {n} {count, plural, one {imagen} other {imágenes}}",
+    "subtituloMovil": "{n} {count, plural, one {imagen} other {imágenes}}",
+    "buscar": "Buscar por nombre de archivo o producto",
+    "buscarProductos": "Buscar por producto, SKU o archivo",
+    "errorCarga": "No pudimos cargar las imágenes",
+    "seleccionar": "Seleccionar «{nombre}»",
+    "abrirDetalle": "Ver detalle de «{nombre}»",
+    "abrirProducto": "Abrir el producto «{nombre}»",
+    "nImagenes": "{n, plural, one {# imagen} other {# imágenes}}",
+    "sustantivo": {
+      "singular": "imagen",
+      "plural": "imágenes"
+    },
+    "sinPermiso": {
+      "titulo": "No tienes acceso a las imágenes",
+      "descripcion": "Pide a un administrador de la organización que te dé acceso al inventario."
+    },
+    "pestanas": {
+      "etiqueta": "Origen de las imágenes",
+      "biblioteca": "Biblioteca",
+      "productos": "De productos"
+    },
+    "kpi": {
+      "etiqueta": "Resumen de imágenes",
+      "imagenes": "Imágenes",
+      "imagenesDetalle": "{biblioteca} en la biblioteca · {productos} de productos",
+      "sinUsar": "Sin usar",
+      "sinUsarDetalle": "Ningún producto las usa",
+      "sinUsarNinguna": "Todas están en uso",
+      "productosSinImagen": "Productos sin imagen",
+      "verEnCatalogo": "Ver en el catálogo",
+      "publicas": "Públicas",
+      "publicasDetalle": "Visibles en la tienda web"
+    },
+    "insignias": {
+      "publica": "Pública",
+      "privada": "Privada",
+      "principal": "Principal",
+      "galeria": "Galería"
+    },
+    "uso": {
+      "enProductos": "{n, plural, one {En # producto} other {En # productos}}",
+      "sinUsar": "Sin usar",
+      "verProducto": "Ver producto"
+    },
+    "vacio": {
+      "titulo": "Tu biblioteca está vacía",
+      "descripcion": "Sube fotos una vez y úsalas en varios productos, en la tienda web y en el POS.",
+      "tituloProductos": "Ningún producto tiene fotos propias",
+      "descripcionProductos": "Las fotos que subas desde el formulario o el detalle de un producto aparecen aquí."
+    },
+    "filtros": {
+      "producto": "Producto",
+      "visibilidad": "Visibilidad",
+      "uso": "Uso",
+      "formato": "Formato",
+      "tamano": "Tamaño",
+      "todos": "Todos",
+      "todas": {
+        "visibilidad": "Públicas y privadas",
+        "tamano": "Cualquier tamaño"
+      },
+      "opciones": {
+        "todas": "Todas",
+        "todos": "Todos",
+        "en_uso": "En uso",
+        "sin_usar": "Sin usar",
+        "publicas": "Públicas",
+        "privadas": "Privadas",
+        "jpg_png": "JPG / PNG",
+        "webp": "WEBP",
+        "pequena": "Menos de 200 KB",
+        "mediana": "De 200 KB a 1 MB",
+        "grande": "Más de 1 MB"
+      },
+      "nota": "Los cambios se aplican al instante.",
+      "verResultados": "Ver {n, plural, one {# imagen} other {# imágenes}}"
+    },
+    "acciones": {
+      "ver": "Ver datos",
+      "verEditar": "Ver y editar datos",
+      "asignar": "Asignar a productos",
+      "asignarPuntos": "Asignar a productos…",
+      "hacerPublica": "Hacer pública",
+      "hacerPrivada": "Hacer privada",
+      "copiarEnlace": "Copiar enlace",
+      "descargar": "Descargar",
+      "eliminar": "Eliminar",
+      "abrirProducto": "Abrir el producto",
+      "productosSinImagen": "Ver productos sin imagen",
+      "actualizar": "Actualizar",
+      "motivoDescargar": "Las elegidas en otras páginas se descargan desde su página"
+    },
+    "detalle": {
+      "titulo": "Imagen",
+      "descripcion": "Datos de la imagen y productos que la usan",
+      "error": "No pudimos cargar la imagen",
+      "tamano": "Tamaño",
+      "subida": "Subida",
+      "alt": "Texto alternativo",
+      "sinAlt": "Sin texto alternativo",
+      "altAyuda": "Lo leen los lectores de pantalla y los buscadores. Se copia a los productos que la usan.",
+      "altPlaceholder": "Botín de cuero café, vista lateral",
+      "visibilidad": "Visibilidad",
+      "nombre": "Nombre",
+      "nombreObligatorio": "Escribe un nombre para la imagen",
+      "publica": "Pública",
+      "publicaAyuda": "Visible en la tienda web",
+      "guardar": "Guardar cambios",
+      "usadaEn": "{n, plural, one {Usada en # producto} other {Usada en # productos}}",
+      "sinUsar": "Sin usar",
+      "sinUsarAyuda": "Ningún producto la usa todavía. Asígnala para que aparezca en el catálogo, el POS y la tienda.",
+      "principal": "Principal",
+      "galeria": "Galería",
+      "abrir": "Abrir",
+      "yMas": "y {n, plural, one {# producto más} other {# productos más}}"
+    },
+    "eliminar": {
+      "tituloUna": "¿Eliminar «{nombre}»?",
+      "tituloVarias": "¿Eliminar {n, plural, one {# imagen} other {# imágenes}}?",
+      "principalYGaleria": "Es la imagen principal de {principal, plural, one {# producto} other {# productos}} y está en la galería de {galeria, plural, =0 {ningún otro} one {otro} other {otros #}}. Esos productos quedarán sin esta foto; el principal tomará la siguiente de su galería.",
+      "soloGaleria": "Está en la galería de {n, plural, one {# producto} other {# productos}}. Esos productos quedarán sin esta foto.",
+      "variasEnUso": "{n, plural, one {Hay # uso en productos} other {Hay # usos en productos}}: esos productos quedarán sin la foto y, donde era la principal, tomarán la siguiente de su galería.",
+      "sinUso": "Ningún producto las usa. El archivo se borra y no se puede deshacer."
+    },
+    "toast": {
+      "guardada": "Imagen guardada",
+      "errorGuardar": "No pudimos guardar la imagen",
+      "publicas": "{n, plural, one {# imagen ahora es pública} other {# imágenes ahora son públicas}}",
+      "privadas": "{n, plural, one {# imagen ahora es privada} other {# imágenes ahora son privadas}}",
+      "enlaceCopiado": "Enlace copiado",
+      "errorCopiar": "No pudimos copiar el enlace",
+      "asignada": "{n, plural, =0 {No se asignó a ningún producto nuevo} one {Asignada a # producto} other {Asignada a # productos}}",
+      "yaLaTenian": "{n, plural, one {# producto ya la tenía} other {# productos ya la tenían}}",
+      "errorAsignar": "No pudimos asignar la imagen",
+      "eliminadas": "{n, plural, one {# imagen eliminada} other {# imágenes eliminadas}}",
+      "errorEliminar": "No pudimos eliminar",
+      "subidas": "{n, plural, one {# imagen subida a la biblioteca} other {# imágenes subidas a la biblioteca}}"
+    },
+    "errores": {
+      "sinPermiso": "No tienes permiso para esta acción",
+      "noEncontrada": "La imagen ya no existe",
+      "rutaInvalida": "La ruta del archivo no es de esta organización",
+      "formato": "Formato no admitido: usa JPG, PNG o WEBP",
+      "tamano": "La imagen supera los 5 MB",
+      "nombre": "Escribe un nombre para la imagen"
+    },
+    "subir": {
+      "boton": "Subir imágenes",
+      "titulo": "Subir imágenes",
+      "descripcion": "JPG, PNG o WEBP · hasta 5 MB cada una · se guardan en la biblioteca de {organizacion}",
+      "arrastra": "Arrastra tus fotos aquí",
+      "suelta": "Suelta para subir",
+      "reglas": "Hasta {n} imágenes · máx. 5 MB · JPG, PNG o WEBP",
+      "subir": "Subir",
+      "tomarFoto": "Tomar foto",
+      "generarIa": "Generar con IA",
+      "iaEtiqueta": "¿Qué imagen necesitas?",
+      "iaPlaceholder": "Botín de cuero café sobre fondo blanco",
+      "iaGenerar": "Generar",
+      "iaCosto": "Usa créditos de IA de tu plan.",
+      "iaError": "No pudimos generar la imagen. Intenta de nuevo.",
+      "iaSinCreditos": "No te quedan créditos de IA para generar imágenes.",
+      "listo": "Listo",
+      "esperaSubida": "Espera a que terminen las subidas",
+      "rechazoFormato": "Formato no admitido ({ext}): conviértela a JPG",
+      "rechazoFormatoCorto": "Formato no admitido: usa JPG, PNG o WEBP",
+      "rechazoTamano": "Pesa más de 5 MB: redúcela antes de subirla",
+      "rechazoCupo": "Máximo {n} por tanda: súbela después",
+      "errorSubida": "No se pudo subir. Revisa tu conexión.",
+      "errorRegistro": "No se pudo guardar en la biblioteca",
+      "quitar": "Quitar «{nombre}» de la lista",
+      "estados": {
+        "esperando": "en espera",
+        "subiendo": "subiendo",
+        "subida": "subida",
+        "error": "con error"
+      }
+    },
+    "asignar": {
+      "titulo": "Asignar «{nombre}» a productos",
+      "descripcion": "Elige los productos; puedes marcarla como principal.",
+      "buscar": "Buscar producto",
+      "placeholder": "Busca por nombre, SKU o código",
+      "vacio": "Escribe para buscar productos",
+      "sinResultados": "Ningún producto coincide",
+      "errorBuscar": "No pudimos buscar productos",
+      "conVariantes": "con variantes",
+      "yaElegido": "Ya está en la lista",
+      "elegidos": "Productos elegidos",
+      "ninguno": "Todavía no elegiste productos.",
+      "quitar": "Quitar «{nombre}»",
+      "principal": "Marcarla como principal",
+      "principalAyuda": "Será la foto de portada en el catálogo, el POS y la tienda.",
+      "confirmar": "{n, plural, =0 {Asignar} one {Asignar a # producto} other {Asignar a # productos}}",
+      "eligeUno": "Elige al menos un producto"
+    }
   }
 }

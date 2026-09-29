@@ -1118,3 +1118,89 @@ cambia solo ese hook.
   filtra por `?proveedor=` (agente de compras).
 - Tableta sin frames en Figma; categorías móviles de detalle y formulario sin frame (se usan los
   responsivos actuales).
+
+---
+
+## Anexo B4 — Seriales, garantías y trazabilidad (2026-09-29)
+
+Commits: `01edc4bd` servidor (migraciones, RPC y rutas) · `00d31ba3` garantías · `83d8f4a3`
+seriales · `a0c96cb5` trazabilidad. Parte de B4 que no mueve stock (§5.12), con P8 (fase 1) y P9
+aprobados. Solo archivos de B4
+(§5.5) y los namespaces `inventarioSeriales`, `inventarioGarantias` e `inventarioTrazabilidad`
+en es/en/fr/pt.
+
+**Migraciones** (aplicadas por el MCP, `.sql` y rollback en el repo, probadas antes con
+`begin … rollback` / `DO … RAISE`):
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929040000_inv_b4_seriales_unicos_por_organizacion` | P8 fase 1: índice único `(organization_id, serial)` (0 choques en 102 seriales). La unicidad global `serial_numbers_serial_key` sigue: la retira B10 (fase 2) |
+| `20260929040100_inv_b4_garantias_reinicio_en_bodega` | P9, datos: 98 seriales `in_stock` con garantía corriendo → sin `warranty_start/end` (org 133: ids 15–107, 93 filas; org 143: ids 108–112, 5 filas). Antes 98, después 0; los vendidos no se tocan. Rastro por serial: evento `warranty_reset` con las fechas anteriores en `metadata` (de ahí restaura el rollback) |
+| `20260929040200_inv_b4_garantia_desde_la_venta` | Disparador `trg_serial_garantia_desde_venta`: en bodega no corre garantía; al pasar a `sold` arranca el día de la venta en la zona de la sucursal/organización con `warranty_months` (o el plazo del producto). Cubre a todos los escritores (recepción, «Generar seriales», POS, factura, pedido web, reemplazo) sin reescribir sus funciones |
+| `20260929040300_inv_b4_garantias_esquema` | `warranty_claims`: `code` (GAR-0001 por organización), proveedor y datos del envío (RMA, transportadora, guía, notas), aprobación; CHECK de estado y de resolución; un solo reclamo abierto por serial; RLS de solo lectura para miembros activos y sin GRANT de escritura (antes FOR ALL y anon con escritura) |
+| `20260929040400_inv_b4_seriales_listado_detalle` | `fn_seriales_listado` (paginado, filtros, KPI), `fn_serial_detalle`, `fn_seriales_permisos` |
+| `20260929040500_inv_b4_garantias_funciones` | `fn_garantias_listado`, `fn_garantia_detalle`, `fn_garantia_serial_para_reclamo`, `fn_garantia_crear`, `fn_garantia_cambiar_estado` (aprobar · rechazar con motivo), `fn_garantia_enviar_rma`, `fn_garantia_reemplazos`, `fn_garantia_resolver` (reparación · reemplazo · reembolso; guarda quién resolvió) |
+| `20260929040600_inv_b4_trazabilidad` | `fn_trazabilidad(org, código, sucursal, desde, límite)`: serial, lote o documento (OC-, TR-, AJ-, GAR-, factura, pedido, factura de compra) |
+| `20260929040700_inv_b4_permisos_y_documentos_del_nucleo` | Sin lógica duplicada: permisos por `fn_inventario_exigir_permiso` (`ver`, `garantias`) y documentos por `fn_documento_de_movimiento` de B0; solo el reclamo de garantía se resuelve en B4 |
+| `20260929040710_inv_b4_documento_compra_legado` | Los movimientos `purchase` viejos con id numérico de OC encuentran su orden |
+| `20260929040720_inv_b4_trigger_reclamos_search_path` | `fn_update_warranty_claims_updated_at` fija `search_path` (aviso de `get_advisors`) |
+
+Todas DEFINER con `search_path`, organización y permiso antes de leer o escribir y `REVOKE …
+FROM public, anon`; los ayudantes `*_int_*` sin EXECUTE para `authenticated`. Probado en la base:
+usuario de otra organización → 42501 en listado, detalle, crear reclamo y trazabilidad; serial de
+otra organización pedido desde la propia → P0002 (404); anon → 42501; INSERT directo en
+`warranty_claims` → 42501. Ciclo completo en `begin … rollback` (org 133): crear GAR-0001 →
+segundo reclamo rechazado (`reclamo_abierto`) → aprobar → RMA → resolver con reemplazo: la unidad
+nueva vendida al cliente con garantía desde hoy, la reclamada en RMA, 5 eventos.
+
+**Rutas** (`withOrg`, organización de la sesión, permiso en el servidor, `codigo` estable):
+`GET /api/inventario/seriales`, `GET …/seriales/[id]`, `POST …/seriales/estado`,
+`GET|POST /api/inventario/garantias`, `GET …/garantias/serial`, `GET …/garantias/[id]`,
+`POST …/garantias/[id]/{estado,rma,resolver}`, `GET …/garantias/[id]/reemplazos`,
+`GET /api/inventario/trazabilidad`. Sin sesión 401; organización ajena en body o query 403 sin
+RPC; recurso de otra organización 404.
+
+**Pantallas** (escritorio y móvil, estados cargando · vacío · sin resultados · error · sin
+permiso · sin sucursal):
+- Seriales `590:319444`: KPI, aviso de garantías corriendo en bodega (hoy 0 tras P9), filtros de
+  estado y garantía, columnas Serial · Estado · Dónde está · Venta · Cliente · Garantía, menú por
+  estado, selección (Trasladar · Imprimir etiquetas · Exportar · Marcar dañados), detalle con
+  Origen · Venta (sucursal de la VENTA) · Garantía · Historial enlazado.
+- Garantías `592:329722` + RMA `973:186133`: listado con KPI, nuevo reclamo que valida vendido,
+  garantía vigente y sin reclamo abierto, aprobar, rechazar con motivo, enviar al proveedor
+  (el número de RMA ya se guarda), resolver; el detalle carga (antes pedía relaciones que no
+  existen).
+- Trazabilidad `594:126324`: inicial con recientes, serial (recorrido + documentos), lote (KPI,
+  recorrido, a quién se vendió paginado, exportar clientes), documento (movimientos y seriales).
+- Sub-pestaña Seriales del producto: «Nuevo reclamo» usa el diálogo nuevo (mismas props).
+- `serialTrackingReports.ts`: relaciones con sus nombres reales y días en la zona de la
+  organización; `serialTrackingService.createSerial` ya no fija garantía al recibir.
+
+**Contratos que B4 deja anotados (no mueve stock):**
+- **B0 / B9 · reemplazo de garantía**: `fn_garantia_resolver` con `replacement` deja la unidad
+  nueva `sold` al cliente, pero no descuenta su existencia. El evento `sold` de esa unidad lleva
+  `metadata.stock_pendiente = { producto, sucursal, cantidad: -1, origen: 'warranty_replacement',
+  reclamo }`. Cumplirlo = dentro de la misma función, `fn_inv_int_mover(org, sucursal, producto,
+  null, 'out', 1, null, 'warranty_replacement', reclamo_id, …, '{"seriales":[id]}')` (el origen
+  hay que añadirlo al CHECK y a `origenesMovimientoStock.ts`), y B10 concilia los pendientes que
+  existan de antes. La unidad reclamada queda `damaged`/`rma` sin volver a entrar al stock.
+- **B8 · recepción**: crear los seriales solo con `warranty_months`; el disparador pone las fechas
+  al vender. Con P8 fase 1 la validación de repetidos debe ser por organización.
+- **B10 · P8 fase 2**: retirar `serial_numbers_serial_key` cuando B8 valide por organización
+  (`serialTrackingService.validateSerialExists` ya filtra por organización).
+- **B3 · traslados**: «Trasladar a otra sucursal» abre `/app/inventario/transferencias/nuevo?producto_id&origen`.
+- **B1 · lotes**: «Ver el lote» abre `/app/inventario/lotes?busqueda=<código>` (hoy la pantalla
+  no lee el parámetro).
+- **POS**: «Registrar devolución del cliente» del detalle del serial lleva a `/app/pos/devoluciones`.
+
+**Verificación**: en una copia limpia de HEAD, `tsc` sin errores en archivos de B4 (los 6 que quedan
+son de membresías) y 28 suites de jest en verde (rutas, contrato de migraciones, lógica,
+guardarraíles, zona horaria, seriales de compras y del POS). `traduccionesModulos` falla en
+`kit.estados` por `sin_fe` (estado añadido por finanzas sin su etiqueta), no por B4; los
+namespaces de B4 pasan.
+
+**Pendiente o distinto de Figma**: «Solicitar acceso al administrador» del estado sin sucursal no
+existe en la app (se muestra el estado sin botón); los enlaces a documentos usan
+`kit/inventario/EnlaceDocumento` («Venta FACT-0019 ↗») en lugar de icono + número; tableta sin
+frames. Los 2 seriales vendidos de la org 133 conservan la garantía fijada al recibir (P9: los
+vendidos no se tocan).

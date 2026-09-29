@@ -1,556 +1,395 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { AlertTriangle, ArrowLeftRight, Info, PackageCheck, Pencil, Printer, Send } from 'lucide-react';
+import { BranchBadgeActiva, EmptyState, PageHeader, RowActionsMenu, Tarjeta } from '@/components/kit';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { 
-  ArrowLeft, 
-  ArrowRight, 
-  Truck, 
-  PackageCheck, 
-  XCircle,
-  MapPin,
-  Calendar,
-  User,
-  FileText,
-  Loader2,
-  CheckCircle2
-} from 'lucide-react';
-import { TransferenciasService } from '../TransferenciasService';
-import { InventoryTransfer, TransferItem } from '../types';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { useToast } from '@/components/ui/use-toast';
-import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { ErrorPeticionTraslado, clienteTraslados } from '@/lib/inventario/transferencias/cliente';
+import { PERMISOS_TRASLADOS_VACIOS, type DetalleTraslado, type RenglonTraslado } from '@/lib/inventario/transferencias/contrato';
+import {
+  RUTA_TRASLADOS,
+  accionesDe,
+  redondear,
+  rutaEditarTraslado,
+  rutaKardex,
+  rutaOrdenProduccion,
+} from '@/lib/inventario/transferencias/logica';
+import { cn } from '@/utils/Utils';
+import { useImpresionGuias } from '../ImpresionGuias';
+import { BadgeEstadoTraslado, SeguimientoTraslado, useCantidad } from '../piezas';
+import { useAccionesTraslado } from '../useAccionesTraslado';
 
-interface TransferenciaDetalleProps {
-  transferenciaId: number;
-}
-
-const estadoConfig: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-  draft: { 
-    label: 'Borrador', 
-    className: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-    icon: <FileText className="h-4 w-4" />
-  },
-  pending: { 
-    label: 'Pendiente', 
-    className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-    icon: <FileText className="h-4 w-4" />
-  },
-  in_transit: { 
-    label: 'En Tránsito', 
-    className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    icon: <Truck className="h-4 w-4" />
-  },
-  partial: { 
-    label: 'Recepción Parcial', 
-    className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
-    icon: <PackageCheck className="h-4 w-4" />
-  },
-  complete: { 
-    label: 'Completa', 
-    className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-    icon: <CheckCircle2 className="h-4 w-4" />
-  },
-  cancelled: { 
-    label: 'Cancelada', 
-    className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-    icon: <XCircle className="h-4 w-4" />
-  }
-};
-
-export function TransferenciaDetalle({ transferenciaId }: TransferenciaDetalleProps) {
+/**
+ * Detalle de un traslado (Figma 831:535830 en tránsito, 831:536248 con el menú
+ * ⋯, móvil 589:326053): renglones con lote, seriales y costo (con permiso),
+ * seguimiento con autor y enlace al kardex, y las acciones del estado:
+ * despachar (y escanear seriales), recibir, editar, imprimir guía, cancelar o
+ * devolver al origen. `?despachar=1` abre el despacho (desde «Crear y
+ * despachar» con seriales) y `?imprimir=1` la guía.
+ */
+export function TransferenciaDetalle({ transferenciaId }: { transferenciaId: number }) {
   const router = useRouter();
-  const { toast } = useToast();
-  const { formatDate } = useFormatDate();
-  const [transferencia, setTransferencia] = useState<InventoryTransfer | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [procesando, setProcesando] = useState(false);
-  const [showRecepcionModal, setShowRecepcionModal] = useState(false);
-  const [cantidadesRecibidas, setCantidadesRecibidas] = useState<Record<number, number>>({});
+  const params = useSearchParams();
+  const t = useTranslations('inventarioTraslados.detalle');
+  const tc = useTranslations('inventarioTraslados.comun');
+  const cantidad = useCantidad();
+  const { formatDateTime, formatPlain } = useFormatDate();
+  const { formatear: dinero } = useMonedaOrganizacion();
+  const guias = useImpresionGuias();
+
+  const [detalle, setDetalle] = useState<DetalleTraslado | null>(null);
+  const [estado, setEstado] = useState<'cargando' | 'listo' | 'error' | 'sinPermiso' | 'noEncontrado'>('cargando');
+  const [recarga, setRecarga] = useState(0);
+  const recargar = useCallback(() => setRecarga((n) => n + 1), []);
+  const autoAbierto = useRef(false);
 
   useEffect(() => {
-    cargarTransferencia();
-  }, [transferenciaId]);
-
-  const cargarTransferencia = async () => {
-    try {
-      setLoading(true);
-      const data = await TransferenciasService.obtenerTransferenciaPorId(transferenciaId);
-      setTransferencia(data);
-      
-      // Inicializar cantidades recibidas
-      if (data?.items) {
-        const cantidades: Record<number, number> = {};
-        data.items.forEach(item => {
-          if (item.id) {
-            cantidades[item.id] = 0;
-          }
-        });
-        setCantidadesRecibidas(cantidades);
-      }
-    } catch (error) {
-      console.error('Error cargando transferencia:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo cargar la transferencia',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEnviar = async () => {
-    if (!confirm('¿Confirmar envío? Se descontará el stock del origen.')) return;
-
-    try {
-      setProcesando(true);
-      await TransferenciasService.actualizarEstado(transferenciaId, 'in_transit');
-      toast({
-        title: 'Transferencia enviada',
-        description: 'La transferencia está en tránsito'
-      });
-      cargarTransferencia();
-    } catch (error) {
-      console.error('Error enviando:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo enviar la transferencia',
-        variant: 'destructive'
-      });
-    } finally {
-      setProcesando(false);
-    }
-  };
-
-  const handleCancelar = async () => {
-    if (!confirm('¿Está seguro de cancelar esta transferencia?')) return;
-
-    try {
-      setProcesando(true);
-      await TransferenciasService.cancelarTransferencia(transferenciaId);
-      toast({
-        title: 'Transferencia cancelada',
-        description: 'La transferencia ha sido cancelada'
-      });
-      cargarTransferencia();
-    } catch (error) {
-      console.error('Error cancelando:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo cancelar',
-        variant: 'destructive'
-      });
-    } finally {
-      setProcesando(false);
-    }
-  };
-
-  const handleConfirmarRecepcion = async () => {
-    const itemsARecibir = Object.entries(cantidadesRecibidas)
-      .filter(([_, qty]) => qty > 0)
-      .map(([id, qty]) => ({
-        transfer_item_id: parseInt(id),
-        received_qty: qty
-      }));
-
-    if (itemsARecibir.length === 0) {
-      toast({
-        title: 'Sin cambios',
-        description: 'Ingrese al menos una cantidad a recibir',
-        variant: 'destructive'
-      });
+    if (!Number.isSafeInteger(transferenciaId) || transferenciaId <= 0) {
+      setEstado('noEncontrado');
       return;
     }
+    let vigente = true;
+    setEstado((e) => (e === 'listo' ? e : 'cargando'));
+    clienteTraslados
+      .detalle(transferenciaId)
+      .then((d) => {
+        if (!vigente) return;
+        setDetalle(d);
+        setEstado('listo');
+      })
+      .catch((e: unknown) => {
+        if (!vigente) return;
+        if (e instanceof ErrorPeticionTraslado && e.sinPermiso) setEstado('sinPermiso');
+        else if (e instanceof ErrorPeticionTraslado && e.noEncontrado) setEstado('noEncontrado');
+        else {
+          console.error('Error cargando el traslado:', e);
+          setEstado('error');
+        }
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [transferenciaId, recarga]);
 
-    try {
-      setProcesando(true);
-      await TransferenciasService.recibirItems(transferenciaId, itemsARecibir);
-      toast({
-        title: 'Recepción confirmada',
-        description: 'Los items han sido recibidos'
-      });
-      setShowRecepcionModal(false);
-      cargarTransferencia();
-    } catch (error) {
-      console.error('Error recibiendo:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo confirmar la recepción',
-        variant: 'destructive'
-      });
-    } finally {
-      setProcesando(false);
+  const permisos = detalle?.permisos ?? PERMISOS_TRASLADOS_VACIOS;
+  const acciones = useAccionesTraslado({ permisos, onCambio: recargar, detalle });
+
+  // Enlaces que abren una acción al llegar (una sola vez).
+  useEffect(() => {
+    if (!detalle || autoAbierto.current) return;
+    const a = accionesDe(detalle.traslado.estado, permisos);
+    if (params?.get('despachar') === '1' && a.despachar) {
+      autoAbierto.current = true;
+      acciones.despachar(detalle.traslado.id);
+    } else if (params?.get('recibir') === '1' && a.recibir) {
+      autoAbierto.current = true;
+      acciones.recibir(detalle.traslado.id);
+    } else if (params?.get('imprimir') === '1') {
+      autoAbierto.current = true;
+      void guias.imprimir([detalle.traslado.id], [detalle]);
     }
+  }, [detalle, permisos, params, acciones, guias]);
+
+  const migas = [
+    { etiqueta: tc('inventario'), href: '/app/inventario' },
+    { etiqueta: tc('tituloCorto'), href: RUTA_TRASLADOS },
+    { etiqueta: detalle?.traslado.code ?? '…' },
+  ];
+
+  if (estado !== 'listo' || !detalle) {
+    return (
+      <div className="flex flex-col gap-4 lg:gap-5">
+        <PageHeader titulo={t('tituloCargando')} icono={ArrowLeftRight} variante="detail" migas={migas} volverA={RUTA_TRASLADOS} cargando={estado === 'cargando'} />
+        {estado === 'cargando' ? (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]" aria-busy="true" aria-label={t('cargando')}>
+            <Skeleton className="h-80 rounded-xl" />
+            <Skeleton className="h-72 rounded-xl" />
+          </div>
+        ) : estado === 'sinPermiso' ? (
+          <EmptyState variante="forbidden" titulo={t('sinPermiso.titulo')} descripcion={t('sinPermiso.descripcion')} accion={{ etiqueta: tc('volver'), href: RUTA_TRASLADOS }} />
+        ) : estado === 'noEncontrado' ? (
+          <EmptyState titulo={t('noEncontrado.titulo')} descripcion={t('noEncontrado.descripcion')} icono={ArrowLeftRight} accion={{ etiqueta: tc('volver'), href: RUTA_TRASLADOS }} />
+        ) : (
+          <EmptyState variante="error" titulo={t('error')} onReintentar={recargar} />
+        )}
+      </div>
+    );
+  }
+
+  const tr = detalle.traslado;
+  const items = detalle.items;
+  const a = accionesDe(tr.estado, permisos);
+  const origen = tr.origen.nombre ?? '';
+  const destino = tr.destino.nombre ?? '';
+  const productos = new Set(items.map((i) => i.product_id)).size;
+  const unidades = redondear(items.reduce((s, i) => s + i.cantidad, 0));
+  const pendientes = redondear(items.reduce((s, i) => s + i.pendiente, 0));
+  const conDiferencia = items.some((i) => i.faltante > 0);
+  const primerProducto = items[0] ?? null;
+  const enlaceKardex = primerProducto ? rutaKardex(primerProducto.product_id, tr.origen.id) : null;
+  const loteMenu = items.find((i) => i.lote)?.lote?.codigo ?? null;
+
+  const subtitulo = (() => {
+    const ruta = tc('ruta', { origen, destino });
+    const autor = tr.autor ?? t('sinAutor');
+    if (tr.estado === 'pending') return t('subtitulo.pendiente', { ruta, fecha: formatDateTime(tr.creado_en), autor });
+    if (tr.estado === 'in_transit')
+      return tr.despachado_en
+        ? t('subtitulo.enTransito', { ruta, fecha: formatDateTime(tr.despachado_en), autor: tr.despachado_por ?? autor })
+        : t('subtitulo.enTransitoLegado', { ruta });
+    if (tr.estado === 'received')
+      return tr.recibido_en ? t('subtitulo.recibido', { ruta, fecha: formatDateTime(tr.recibido_en), autor: tr.recibido_por ?? autor }) : ruta;
+    return tr.cancelado_en ? t('subtitulo.cancelado', { ruta, fecha: formatDateTime(tr.cancelado_en) }) : ruta;
+  })();
+
+  const menu = acciones.accionesFila(
+    { id: tr.id, code: tr.code, estado: tr.estado, origen: tr.origen, destino: tr.destino, unidades: tr.estado === 'pending' ? unidades : pendientes, orden_produccion: tr.orden_produccion },
+    { enDetalle: true, productoKardex: enlaceKardex && primerProducto ? { id: primerProducto.product_id, sucursal: tr.origen.id } : null, lote: loteMenu },
+  );
+
+  const botonPrincipal = a.recibir ? (
+    <Button className="h-10 gap-2" onClick={() => acciones.recibir(tr.id)}>
+      <PackageCheck aria-hidden="true" className="size-4" strokeWidth={1.5} />
+      {t('recibir')}
+    </Button>
+  ) : a.despachar ? (
+    <Button className="h-10 gap-2" onClick={() => acciones.despachar(tr.id)}>
+      <Send aria-hidden="true" className="size-4" strokeWidth={1.5} />
+      {t('despachar')}
+    </Button>
+  ) : null;
+
+  const descripcionRenglones =
+    tr.estado === 'pending'
+      ? t('renglones.pendiente', { origen })
+      : tr.estado === 'in_transit'
+        ? t('renglones.enTransito', { origen, destino })
+        : tr.estado === 'received'
+          ? t('renglones.recibido', { origen, destino })
+          : t('renglones.cancelado');
+
+  const lineaSecundaria = (i: RenglonTraslado) => {
+    if (i.seriales.length > 0) {
+      const lista = i.seriales.map((s) => s.serial);
+      return t('seriales', {
+        count: lista.length,
+        n: lista.length,
+        lista: lista.length > 2 ? `${lista[0]} … ${lista[lista.length - 1]}` : lista.join(', '),
+      });
+    }
+    return [i.sku ? tc('sku', { sku: i.sku }) : null, i.variante].filter(Boolean).join(' · ');
   };
 
-  if (loading) {
+  const celdaRecibido = (i: RenglonTraslado) => {
+    if (tr.estado === 'pending' || (tr.estado === 'cancelled' && i.recibido === 0)) return <span className="text-fg-muted">—</span>;
+    if (i.recibido === 0 && i.faltante === 0 && i.devuelto === 0) return <span className="text-fg-muted">—</span>;
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <PageHeaderSkeleton />
-        <DetailSkeleton />
+      <div className="flex flex-col items-end">
+        <span className={cn('tabular-nums', i.faltante > 0 ? 'font-medium text-danger-text' : 'text-fg')}>{cantidad(i.recibido)}</span>
+        {i.faltante > 0 && <span className="text-xs text-danger-text">{t('faltan', { n: cantidad(i.faltante) })}</span>}
+        {i.devuelto > 0 && <span className="text-xs text-fg-secondary">{t('devueltas', { n: cantidad(i.devuelto) })}</span>}
       </div>
     );
-  }
-
-  if (!transferencia) {
-    return (
-      <div className="p-6 text-center">
-        <p className="text-gray-500 dark:text-gray-400">Transferencia no encontrada</p>
-        <Button onClick={() => router.back()} className="mt-4">
-          Volver
-        </Button>
-      </div>
-    );
-  }
-
-  const estado = estadoConfig[transferencia.status] || estadoConfig.pending;
-  const puedeEnviar = transferencia.status === 'pending';
-  const puedeRecibir = transferencia.status === 'in_transit' || transferencia.status === 'partial';
-  const puedeCancelar = transferencia.status === 'pending' || transferencia.status === 'draft';
+  };
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            onClick={() => router.push('/app/inventario/transferencias')}
-            className="dark:text-gray-300 dark:hover:bg-gray-800"
+    <div className="flex flex-col gap-4 pb-24 lg:gap-5 lg:pb-0">
+      <PageHeader
+        titulo={tc('tituloTraslado', { codigo: tr.code })}
+        subtitulo={subtitulo}
+        icono={ArrowLeftRight}
+        variante="detail"
+        volverA={RUTA_TRASLADOS}
+        badge={<BadgeEstadoTraslado estado={tr.estado} conDiferencia={conDiferencia} tamano="md" />}
+        migas={migas}
+        debajo={<BranchBadgeActiva />}
+        acciones={
+          <>
+            {a.imprimir && (
+              <Button variant="outline" className="h-10 gap-2" onClick={() => void guias.imprimir([tr.id], [detalle])}>
+                <Printer aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('imprimirGuia')}
+              </Button>
+            )}
+            {a.editar && (
+              <Button variant="outline" className="h-10 gap-2" onClick={() => router.push(rutaEditarTraslado(tr.id))}>
+                <Pencil aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('editar')}
+              </Button>
+            )}
+            {botonPrincipal}
+            {menu.length > 0 && <RowActionsMenu orientacion="horizontal" tamano="md" titulo={tr.code} acciones={menu} />}
+          </>
+        }
+        movil={{
+          titulo: tr.code,
+          subtitulo: tc('ruta', { origen, destino }),
+          accion:
+            menu.length > 0 || a.imprimir ? (
+              <RowActionsMenu
+                orientacion="horizontal"
+                titulo={tr.code}
+                acciones={[
+                  ...(a.imprimir ? [{ id: 'imprimir', etiqueta: t('imprimirGuia'), icono: Printer, onSelect: () => void guias.imprimir([tr.id], [detalle]) }] : []),
+                  ...(a.editar ? [{ id: 'editar', etiqueta: t('editar'), icono: Pencil, onSelect: () => router.push(rutaEditarTraslado(tr.id)) }] : []),
+                  ...menu,
+                ]}
+              />
+            ) : undefined,
+        }}
+      />
+
+      {tr.atascado && (
+        <p role="alert" className="flex items-start gap-2 rounded-xl border border-line-danger bg-danger-subtle px-4 py-3 text-sm text-danger-text">
+          <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
+          {t('atascado', { fecha: formatDateTime(tr.despachado_en ?? tr.creado_en) })}
+        </p>
+      )}
+
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-5">
+        <div className="flex min-w-0 flex-col gap-4">
+          <p className="flex flex-wrap items-center gap-2 lg:hidden">
+            <BadgeEstadoTraslado estado={tr.estado} conDiferencia={conDiferencia} />
+            <span className="text-[13px] text-fg-secondary">{subtitulo}</span>
+          </p>
+
+          <Tarjeta
+            titulo={t('renglones.titulo', {
+              productos: tc('productos', { count: productos, n: productos }),
+              unidades: tc('unidades', { count: unidades, n: cantidad(unidades) }),
+            })}
+            descripcion={descripcionRenglones}
+            sinRelleno
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
-          </Button>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Transferencia #{transferencia.id}
-              </h1>
-              <Badge className={estado.className}>
-                {estado.icon}
-                <span className="ml-1">{estado.label}</span>
-              </Badge>
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-sm">
+                <caption className="sr-only">{t('renglones.tabla')}</caption>
+                <thead className="bg-subtle text-left text-[13px] text-fg-secondary">
+                  <tr>
+                    <th scope="col" className="px-5 py-3 font-medium">{t('columnas.producto')}</th>
+                    <th scope="col" className="px-3 py-3 font-medium">{t('columnas.lote')}</th>
+                    <th scope="col" className="px-3 py-3 text-right font-medium">{tr.estado === 'pending' ? t('columnas.cantidad') : t('columnas.enviado')}</th>
+                    {tr.estado === 'pending' ? (
+                      <th scope="col" className="px-3 py-3 text-right font-medium">{t('columnas.disponible')}</th>
+                    ) : (
+                      <th scope="col" className="px-3 py-3 text-right font-medium">{t('columnas.recibido')}</th>
+                    )}
+                    {detalle.ver_costos && <th scope="col" className="px-5 py-3 text-right font-medium">{t('columnas.costo')}</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((i) => (
+                    <tr key={i.id} className="border-t border-line align-top">
+                      <td className="px-5 py-3">
+                        <p className="font-medium text-fg">{i.nombre}</p>
+                        <p className="text-xs text-fg-secondary">{lineaSecundaria(i)}</p>
+                        {i.motivo && <p className="text-xs text-danger-text">{t('motivoFaltante', { motivo: i.motivo })}</p>}
+                      </td>
+                      <td className="px-3 py-3 text-fg-secondary">
+                        {i.lote ? (
+                          <span className="flex flex-col">
+                            <span>{i.lote.codigo}</span>
+                            {i.lote.vence && <span className="text-xs">{t('vence', { fecha: formatPlain(i.lote.vence) })}</span>}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-right font-medium tabular-nums text-fg">{cantidad(i.cantidad)}</td>
+                      <td className="px-3 py-3 text-right">
+                        {tr.estado === 'pending' ? (
+                          <span className={cn('tabular-nums', (i.disponible ?? 0) < i.cantidad ? 'font-medium text-danger-text' : 'text-fg-secondary')}>
+                            {cantidad(i.disponible ?? 0)}
+                          </span>
+                        ) : (
+                          celdaRecibido(i)
+                        )}
+                      </td>
+                      {detalle.ver_costos && <td className="px-5 py-3 text-right tabular-nums text-fg">{i.costo !== null ? dinero(i.costo) : '—'}</td>}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Creada el {formatDate(transferencia.created_at)}
-            </p>
-          </div>
+            <ul className="flex flex-col divide-y divide-line md:hidden">
+              {items.map((i) => (
+                <li key={i.id} className="px-4 py-3">
+                  <p className="font-medium text-fg">{i.nombre}</p>
+                  <p className="text-[13px] text-fg-secondary">
+                    {[tc('unidades', { count: i.cantidad, n: cantidad(i.cantidad) }), i.lote?.codigo ?? tc('sinLote')].join(' · ')}
+                  </p>
+                  <div className="mt-1 flex items-center justify-between text-sm">
+                    <span className={cn(i.faltante > 0 ? 'text-danger-text' : 'text-fg')}>
+                      {tr.estado === 'pending'
+                        ? t('disponibleN', { n: cantidad(i.disponible ?? 0) })
+                        : i.pendiente > 0 && tr.estado === 'in_transit'
+                          ? t('porRecibir')
+                          : t('recibidasN', { n: cantidad(i.recibido) })}
+                    </span>
+                    {detalle.ver_costos && i.costo !== null && <span className="tabular-nums text-fg-secondary">{dinero(i.costo)}</span>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Tarjeta>
+
+          {(tr.notas || tr.orden_produccion || tr.motivo_cancelacion) && (
+            <Tarjeta titulo={t('datos.titulo')}>
+              <dl className="flex flex-col gap-2 text-sm">
+                {tr.notas && (
+                  <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
+                    <dt className="w-40 shrink-0 text-fg-secondary">{t('datos.nota')}</dt>
+                    <dd className="text-fg">{tr.notas}</dd>
+                  </div>
+                )}
+                {tr.orden_produccion && (
+                  <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
+                    <dt className="w-40 shrink-0 text-fg-secondary">{t('datos.orden')}</dt>
+                    <dd>
+                      <Link href={rutaOrdenProduccion(tr.orden_produccion.id)} className="rounded text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                        {tr.orden_produccion.numero}
+                      </Link>
+                    </dd>
+                  </div>
+                )}
+                {tr.motivo_cancelacion && (
+                  <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
+                    <dt className="w-40 shrink-0 text-fg-secondary">{t('datos.motivo')}</dt>
+                    <dd className="text-fg">{tr.motivo_cancelacion}</dd>
+                  </div>
+                )}
+              </dl>
+            </Tarjeta>
+          )}
         </div>
 
-        <div className="flex gap-2">
-          {puedeEnviar && (
-            <Button
-              onClick={handleEnviar}
-              disabled={procesando}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Truck className="h-4 w-4 mr-2" />
-              Enviar
-            </Button>
-          )}
-          
-          {puedeRecibir && (
-            <Button
-              onClick={() => setShowRecepcionModal(true)}
-              disabled={procesando}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <PackageCheck className="h-4 w-4 mr-2" />
-              Recibir
-            </Button>
-          )}
-
-          {puedeCancelar && (
-            <Button
-              variant="outline"
-              onClick={handleCancelar}
-              disabled={procesando}
-              className="text-red-600 border-red-300 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              Cancelar
-            </Button>
-          )}
-        </div>
+        <Tarjeta titulo={t('seguimiento.titulo')}>
+          <SeguimientoTraslado traslado={tr} eventos={detalle.eventos} formatoFecha={(v) => (v ? formatDateTime(v) : '')} enlaceKardex={enlaceKardex} />
+          <p className="mt-4 flex items-start gap-2 rounded-lg bg-subtle px-3 py-2 text-[13px] text-fg-secondary">
+            <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+            {tr.legado ? t('seguimiento.legado') : t('seguimiento.ayuda')}
+          </p>
+        </Tarjeta>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Info Principal */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Sucursales */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="text-center flex-1">
-                  <div className="w-12 h-12 mx-auto bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-2">
-                    <MapPin className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Origen</p>
-                  <p className="font-semibold text-gray-900 dark:text-white">
-                    {transferencia.origin_branch?.name}
-                  </p>
-                  {transferencia.origin_branch?.address && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
-                      {transferencia.origin_branch.address}
-                    </p>
-                  )}
-                </div>
-
-                <div className="px-4">
-                  <ArrowRight className="h-8 w-8 text-gray-300 dark:text-gray-600" />
-                </div>
-
-                <div className="text-center flex-1">
-                  <div className="w-12 h-12 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-2">
-                    <MapPin className="h-6 w-6 text-green-600 dark:text-green-400" />
-                  </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Destino</p>
-                  <p className="font-semibold text-gray-900 dark:text-white">
-                    {transferencia.dest_branch?.name}
-                  </p>
-                  {transferencia.dest_branch?.address && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
-                      {transferencia.dest_branch.address}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Items */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="dark:text-white">Items de la Transferencia</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow className="dark:border-gray-700">
-                    <TableHead className="dark:text-gray-300">Producto</TableHead>
-                    <TableHead className="dark:text-gray-300">Lote</TableHead>
-                    <TableHead className="text-center dark:text-gray-300">Enviado</TableHead>
-                    <TableHead className="text-center dark:text-gray-300">Recibido</TableHead>
-                    <TableHead className="text-center dark:text-gray-300">Estado</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transferencia.items?.map((item) => {
-                    const recibidoCompleto = (item.received_qty || 0) >= item.quantity;
-                    const recibidoParcial = (item.received_qty || 0) > 0 && !recibidoCompleto;
-                    
-                    return (
-                      <TableRow key={item.id} className="dark:border-gray-700">
-                        <TableCell className="dark:text-white">
-                          <div>
-                            <p className="font-medium">{item.product?.name}</p>
-                            {item.product?.sku && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                SKU: {item.product.sku}
-                              </p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="dark:text-gray-300">
-                          {item.lot?.lot_code || '-'}
-                        </TableCell>
-                        <TableCell className="text-center dark:text-gray-300">
-                          {item.quantity}
-                        </TableCell>
-                        <TableCell className="text-center dark:text-gray-300">
-                          {item.received_qty || 0}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {recibidoCompleto ? (
-                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                              Completo
-                            </Badge>
-                          ) : recibidoParcial ? (
-                            <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
-                              Parcial
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                              Pendiente
-                            </Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+      {/* Móvil: la acción principal al pie (Figma 589:326053). */}
+      {botonPrincipal && (
+        <div className="fixed inset-x-0 bottom-16 z-20 px-4 md:hidden">
+          <Button className="h-11 w-full gap-2" onClick={() => (a.recibir ? acciones.recibir(tr.id) : acciones.despachar(tr.id))}>
+            {a.recibir ? <PackageCheck aria-hidden="true" className="size-4" strokeWidth={1.5} /> : <Send aria-hidden="true" className="size-4" strokeWidth={1.5} />}
+            {a.recibir ? t('recibirEn', { destino }) : t('despachar')}
+          </Button>
         </div>
+      )}
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="dark:text-white">Información</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Fecha creación</p>
-                  <p className="text-sm dark:text-white">{formatDate(transferencia.created_at)}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <User className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Creado por</p>
-                  <p className="text-sm dark:text-white">
-                    {transferencia.creator?.email || transferencia.created_by || '-'}
-                  </p>
-                </div>
-              </div>
-
-              {transferencia.notes && (
-                <div className="pt-4 border-t dark:border-gray-700">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Notas</p>
-                  <p className="text-sm dark:text-gray-300">{transferencia.notes}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Resumen */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="dark:text-white">Resumen</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500 dark:text-gray-400">Total productos:</span>
-                <span className="dark:text-white">{transferencia.items?.length || 0}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500 dark:text-gray-400">Unidades enviadas:</span>
-                <span className="dark:text-white">
-                  {transferencia.items?.reduce((sum, i) => sum + i.quantity, 0) || 0}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500 dark:text-gray-400">Unidades recibidas:</span>
-                <span className="dark:text-white">
-                  {transferencia.items?.reduce((sum, i) => sum + (i.received_qty || 0), 0) || 0}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Modal de Recepción */}
-      <Dialog open={showRecepcionModal} onOpenChange={setShowRecepcionModal}>
-        <DialogContent className="dark:bg-gray-800 dark:border-gray-700 max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="dark:text-white">Recibir Items</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Ingrese las cantidades recibidas para cada producto
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="max-h-[400px] overflow-y-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="dark:border-gray-700">
-                  <TableHead className="dark:text-gray-300">Producto</TableHead>
-                  <TableHead className="text-center dark:text-gray-300">Enviado</TableHead>
-                  <TableHead className="text-center dark:text-gray-300">Ya recibido</TableHead>
-                  <TableHead className="text-center dark:text-gray-300">Recibir ahora</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transferencia.items?.map((item) => {
-                  const pendiente = item.quantity - (item.received_qty || 0);
-                  if (pendiente <= 0) return null;
-
-                  return (
-                    <TableRow key={item.id} className="dark:border-gray-700">
-                      <TableCell className="dark:text-white">
-                        {item.product?.name}
-                      </TableCell>
-                      <TableCell className="text-center dark:text-gray-300">
-                        {item.quantity}
-                      </TableCell>
-                      <TableCell className="text-center dark:text-gray-300">
-                        {item.received_qty || 0}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Input
-                          type="number"
-                          min={0}
-                          max={pendiente}
-                          value={cantidadesRecibidas[item.id!] || ''}
-                          onChange={(e) => setCantidadesRecibidas(prev => ({
-                            ...prev,
-                            [item.id!]: Math.min(parseInt(e.target.value) || 0, pendiente)
-                          }))}
-                          className="w-20 mx-auto dark:bg-gray-900 dark:border-gray-600 dark:text-white text-center"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">máx: {pendiente}</p>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowRecepcionModal(false)}
-              className="dark:border-gray-600 dark:text-gray-300"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleConfirmarRecepcion}
-              disabled={procesando}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {procesando ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Procesando...
-                </>
-              ) : (
-                <>
-                  <PackageCheck className="h-4 w-4 mr-2" />
-                  Confirmar Recepción
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {acciones.dialogos}
+      {guias.nodo}
     </div>
   );
 }

@@ -28,6 +28,13 @@ const BranchesTab = dynamic(() => import('@/components/organization/BranchesTab'
 const ManageOrganizationsTab = dynamic(() => import('@/components/organization/ManageOrganizationsTab'), {
   loading: () => <OrganizationListSkeleton />,
 });
+// Fase A: la zona de la organizacion tiene que poder fijarse aunque la
+// organizacion no tenga contratado el modulo de calendario. General es
+// `isCore: true`; Configuracion > Calendario no.
+const OrganizationTimezoneCard = dynamic(
+  () => import('@/components/organization/OrganizationTimezoneCard'),
+  { loading: () => <div className="h-40 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800" /> },
+);
 
 const TABS = [
   { id: 'informacion', label: 'Información', icon: Building2 },
@@ -107,10 +114,11 @@ export function GeneralConfigPanel() {
           </TabsList>
         </div>
 
-        <TabsContent value="informacion" className="mt-6">
+        <TabsContent value="informacion" className="mt-6 space-y-6">
           <Suspense fallback={<OrganizationInfoSkeleton />}>
             <OrganizationInfoTab orgData={orgId} />
           </Suspense>
+          <OrganizationTimezoneCard />
         </TabsContent>
 
         <TabsContent value="miembros" className="mt-6">

@@ -96,6 +96,21 @@ jest.mock('@/lib/services/organizationTimezoneService', () => ({
   invalidateTimezoneCache: (id: number) => { invalidated.push(id); },
 }));
 
+// Cierre de fase A: `organizations.timezone` ya no se escribe desde el hook
+// contra PostgREST, sino por PUT /api/organization/timezone, que comprueba el
+// permiso en el servidor (reglas duras 5 y 6). El INVARIANTE que vigila este
+// bloque no cambia —la zona se escribe ANTES que organization_settings, y si
+// la rechazan no se toca nada más ni se invalida la caché—, así que el doble
+// se mueve al servicio nuevo y las aserciones siguen igual.
+jest.mock('@/lib/services/timezoneSettingsService', () => ({
+  guardarZonaOrganizacion: async (timezone: string) => {
+    hookDb.order.push(`organizations.update:${JSON.stringify({ timezone })}`);
+    if (hookDb.tzError) throw new Error(hookDb.tzError.message);
+    invalidated.push(7);
+    return { ok: true as const, scope: 'organization' as const, timezone };
+  },
+}));
+
 import { POST as postTest } from '@/app/api/crm/config/providers/test/route';
 import * as React from 'react';
 import { useCalendarSettings } from '@/components/calendario/configuracion/useCalendarSettings';

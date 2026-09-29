@@ -1047,6 +1047,7 @@ export class PrintJobsService {
 
     return dispatchPrintJobs(rows, printers);
   }
+
   /**
    * Impresoras de la estación de caja de la sucursal (o «todas»): las que
    * reciben las etiquetas de producto. Vacío = no hay estación y el diálogo

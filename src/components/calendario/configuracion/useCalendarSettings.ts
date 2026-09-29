@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { CalendarSettings, DEFAULT_CALENDAR_SETTINGS } from './types';
-import { invalidateTimezoneCache } from '@/lib/services/organizationTimezoneService';
 import { isSupportedTimeZone } from '@/lib/utils/timezone';
+import { guardarZonaOrganizacion } from '@/lib/services/timezoneSettingsService';
 
 interface UseCalendarSettingsProps {
   organizationId: number | null;
@@ -110,12 +110,19 @@ export function useCalendarSettings({
       // lo hace, no debe quedar ya guardada la zona en calendar_settings.
       // Antes el error se tragaba y la UI decía «guardado».
       if (settings.timezone) {
-        const { error: tzError } = await supabase
-          .from('organizations')
-          .update({ timezone: settings.timezone })
-          .eq('id', organizationId);
-        if (tzError) throw new Error(`Zona horaria rechazada: ${tzError.message}`);
-        invalidateTimezoneCache(organizationId);
+        // Cierre de fase A: la escritura ya no se hace aquí contra PostgREST.
+        // `guardarZonaOrganizacion` llama a PUT /api/organization/timezone, que
+        // comprueba el permiso EN EL SERVIDOR por id de rol y usa la
+        // organización de la sesión (reglas duras 5 y 6), e invalida los dos
+        // cachés y emite TIMEZONES_UPDATED_EVENT. Sin ese aviso la pantalla
+        // seguiría formateando con la zona anterior hasta recargar, y las
+        // sucursales que heredan tampoco se enterarían.
+        try {
+          await guardarZonaOrganizacion(settings.timezone);
+        } catch (tzErr) {
+          const detalle = tzErr instanceof Error ? tzErr.message : String(tzErr);
+          throw new Error(`Zona horaria rechazada: ${detalle}`);
+        }
       }
 
       // Verificar si ya existe la configuración

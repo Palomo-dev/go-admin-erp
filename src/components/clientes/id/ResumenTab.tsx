@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { useEtiquetaEstado } from '@/components/kit/useIdiomaKit';
 import { ShoppingBag, Calendar, DollarSign, Home, CalendarClock, Receipt } from 'lucide-react';
@@ -50,6 +50,8 @@ const DIA_MES: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
 
 export default function ResumenTab({ clienteId, organizationId }: ResumenTabProps) {
   const t = useTranslations('clientes.ficha');
+  // Ventas, folios y cartera no traen moneda propia: la base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   const etiquetaEstado = useEtiquetaEstado();
   const { instante, plana } = useFechasFicha();
   const [loading, setLoading] = useState(true);
@@ -283,7 +285,7 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
     },
     {
       title: t('resumen.gastoTotal'),
-      value: formatCurrency(stats.montoTotalGastado),
+      value: formatear(stats.montoTotalGastado),
       icon: <DollarSign className="h-5 w-5" />,
       description: t('resumen.gastoTotalDescripcion')
     },
@@ -305,7 +307,7 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
     },
     {
       title: t('resumen.saldoFolios'),
-      value: formatCurrency(stats.folioSaldoPendiente),
+      value: formatear(stats.folioSaldoPendiente),
       icon: <Receipt className="h-5 w-5" />,
       description: stats.folioItemsPendientes > 0
         ? t('resumen.itemsPendientes', { count: stats.folioItemsPendientes })
@@ -398,7 +400,7 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
                     </div>
                   </div>
                   <div className="flex flex-col items-end flex-shrink-0">
-                    {item.monto > 0 && <span className="text-sm font-medium text-gray-900 dark:text-white">{formatCurrency(item.monto)}</span>}
+                    {item.monto > 0 && <span className="text-sm font-medium text-gray-900 dark:text-white">{formatear(item.monto)}</span>}
                     <span className="text-xs text-gray-400 dark:text-gray-500">{instante(item.fecha, DIA_MES)}</span>
                   </div>
                 </div>

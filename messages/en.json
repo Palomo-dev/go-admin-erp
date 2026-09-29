@@ -2519,12 +2519,12 @@
       "invalidMediaUrlsTooMany": "At most {max} idle images"
     },
     "avisoPropina": {
-      "eleccion_porcentaje": "Customer chose {percent}% ({monto})",
-      "eleccion_ninguna": "Customer chose not to tip",
-      "eleccion_importe": "Customer chose a tip of {monto}",
       "aplicar": "Apply",
       "cambiar": "Change",
       "entendido": "Got it",
+      "eleccion_porcentaje": "Customer chose {percent}% ({monto})",
+      "eleccion_ninguna": "Customer chose not to tip",
+      "eleccion_importe": "Customer chose a tip of {monto}",
       "espera_waiting_texto": "Customer display: waiting for the tip…",
       "espera_waiting_accion": "Skip",
       "espera_informational_texto": "The display shows the suggested tips: enter what the customer tells you",
@@ -3656,25 +3656,6 @@
       "anteriores": "Show previous categories",
       "siguientes": "Show more categories"
     },
-    "avisoSinImpuesto": {
-      "titulo": "{n, plural, one {This product has no tax assigned: it will be {accion, select, cotizar {quoted} cobrar {charged} other {invoiced}} without VAT.} other {# products have no tax assigned: they will be {accion, select, cotizar {quoted} cobrar {charged} other {invoiced}} without VAT.}}",
-      "advertencia": "Warning:",
-      "lineaSinDescripcion": "Line without description",
-      "asignar": "Assign a tax to the product",
-      "otraPestana": "(opens in a new tab)",
-      "tarifaDefecto": "Or set a <enlace>default rate for products without tax</enlace>. You can continue; this is only a warning.",
-      "etiqueta": "No tax assigned"
-    },
-    "consultaDian": {
-      "consultar": "Look up in DIAN",
-      "consultando": "Looking up...",
-      "documentoInvalido": "Enter a valid document number (at least 4 digits)",
-      "sinResultados": "No information was found for this document",
-      "obtenidos": "Data retrieved from {proveedor}",
-      "obtenidosCache": "Data retrieved from {proveedor} (cache)",
-      "errorConexion": "Connection error while querying DIAN/RUES",
-      "habeasData": "I authorize looking up my information in DIAN and RUES for electronic invoicing and tax compliance purposes (Colombian Law 1581 of 2012)."
-    },
     "selectorIcono": {
       "etiqueta": "Icon",
       "seleccionar": "Select icon",
@@ -3698,6 +3679,25 @@
       "alinearDerecha": "Align right",
       "verMas": "Show more",
       "verMenos": "Show less"
+    },
+    "avisoSinImpuesto": {
+      "titulo": "{n, plural, one {This product has no tax assigned: it will be {accion, select, cotizar {quoted} cobrar {charged} other {invoiced}} without VAT.} other {# products have no tax assigned: they will be {accion, select, cotizar {quoted} cobrar {charged} other {invoiced}} without VAT.}}",
+      "advertencia": "Warning:",
+      "lineaSinDescripcion": "Line without description",
+      "asignar": "Assign a tax to the product",
+      "otraPestana": "(opens in a new tab)",
+      "tarifaDefecto": "Or set a <enlace>default rate for products without tax</enlace>. You can continue; this is only a warning.",
+      "etiqueta": "No tax assigned"
+    },
+    "consultaDian": {
+      "consultar": "Look up in DIAN",
+      "consultando": "Looking up...",
+      "documentoInvalido": "Enter a valid document number (at least 4 digits)",
+      "sinResultados": "No information was found for this document",
+      "obtenidos": "Data retrieved from {proveedor}",
+      "obtenidosCache": "Data retrieved from {proveedor} (cache)",
+      "errorConexion": "Connection error while querying DIAN/RUES",
+      "habeasData": "I authorize looking up my information in DIAN and RUES for electronic invoicing and tax compliance purposes (Colombian Law 1581 of 2012)."
     },
     "buscadorProductos": {
       "buscar": "Search products",
@@ -13846,33 +13846,6 @@
     }
   },
   "posVenta": {
-    "cabecera": {
-      "titulo": "Point of sale",
-      "subtituloSinOrganizacion": "Quick checkout / Sale",
-      "abrirCaja": "Open register",
-      "cerrarCaja": "Close register",
-      "cierreBloqueado": "Only the cashier who opened the register or someone allowed to close other cashiers’ registers can close it",
-      "hora": "Time: {hora}",
-      "horaEtiqueta": "Time",
-      "contadores": "Carts at this branch",
-      "carritosEtiqueta": "Carts",
-      "activos": "{n} active",
-      "enEspera": "{n} on hold",
-      "hojaTitulo": "Register and device",
-      "abrirHoja": "Register and device",
-      "estadoCaja": "Register",
-      "pantallaCliente": "Customer display",
-      "verAtajos": "Keyboard shortcuts",
-      "cajaAbiertaToast": "Register opened",
-      "cajaAbiertaSinConexion": "Register opened offline",
-      "cajaCerradaToast": "Register closed",
-      "cajaCerradaSinConexion": "Register closed offline",
-      "montoInicial": "Opening amount: {monto}",
-      "pendienteSincronizar": "pending sync",
-      "diferencia": "Difference: {monto}",
-      "organizacionNoEncontrada": "Organization not found",
-      "configureOrganizacion": "Set up your organization to use the point of sale"
-    },
     "atajos": {
       "titulo": "Keyboard shortcuts",
       "descripcion": "They work while the POS screen has focus. Inside a text field only the F keys, Esc and Alt or Ctrl combinations apply.",
@@ -13922,74 +13895,41 @@
       "cerrarPostVenta": "Close",
       "lineaPeso": "Change the line weight"
     },
-    "catalogo": {
-      "titulo": "Products",
-      "productos": "Products",
-      "vista": "Product view",
-      "buscarPlaceholder": "Search by name, SKU, barcode, variants or modifiers…",
-      "buscarEtiqueta": "Search products",
-      "escanear": "Scan a barcode with the camera",
-      "cantidadRapida": "{n} units of the product you choose will be added",
-      "total": "{n, plural, one {# product} other {# products}}",
-      "cargando": "Loading products",
-      "cargandoMas": "Loading more products…",
-      "reintentarMas": "Retry",
-      "errorTitulo": "Could not load products",
-      "errorDescripcion": "The products could not be loaded",
-      "sinCatalogoTitulo": "No local catalog",
-      "sinCatalogoDescripcion": "This device has not saved the catalog for offline work yet.",
-      "vacioTitulo": "No products",
-      "vacioDescripcion": "There are no products available right now",
-      "vacioBusquedaTitulo": "No products found",
-      "vacioBusquedaDescripcion": "Try adjusting the search or the category",
-      "codigoEscaneado": "Code scanned",
-      "buscandoCodigo": "Looking for the product with code {codigo}",
-      "agotadoTitulo": "Out of stock",
-      "agotadoDescripcion": "{producto} has no stock available.",
-      "sinPrecioTitulo": "Product without a price",
-      "sinPrecioDescripcion": "{producto} has no current price: set one in the catalog.",
-      "codigoNoEncontrado": "Code not found",
-      "codigoNoEncontradoDescripcion": "No active product has the code {codigo}.",
-      "errorEscaneo": "The scanned product could not be looked up",
-      "cierraElCobro": "Close checkout to add products",
-      "cierraElDialogo": "Close the open window to add scanned products",
-      "errorReceta": "The product recipe could not be loaded",
-      "favoritoAgregado": "Added to favorites",
-      "favoritoAgregadoDescripcion": "The product will appear first in the POS.",
-      "favoritoQuitado": "Removed from favorites",
-      "favoritoQuitadoDescripcion": "The product will no longer be prioritized.",
-      "errorFavorito": "The favorite could not be updated.",
-      "receta": {
-        "titulo": "Production recipe",
-        "cerrar": "Close",
-        "cargando": "Loading the recipe",
-        "noDisponible": "N/A",
-        "producto": "Product",
-        "sku": "SKU: {sku}",
-        "rendimiento": "Yield",
-        "estado": "Status",
-        "activa": "Active",
-        "inactiva": "Inactive",
-        "version": "Version",
-        "notas": "Notes",
-        "ingredientes": "Ingredients ({n})",
-        "opcional": "Optional",
-        "sinIngredientes": "This recipe has no ingredients defined.",
-        "sinIngredientesTitulo": "No ingredients"
-      },
-      "codigoManualTitulo": "Type a barcode",
-      "codigoManualEtiqueta": "Barcode",
-      "codigoManualBuscar": "Find and add"
+    "cabecera": {
+      "titulo": "Point of sale",
+      "subtituloSinOrganizacion": "Quick checkout / Sale",
+      "abrirCaja": "Open register",
+      "cerrarCaja": "Close register",
+      "cierreBloqueado": "Only the cashier who opened the register or someone allowed to close other cashiers’ registers can close it",
+      "hora": "Time: {hora}",
+      "horaEtiqueta": "Time",
+      "contadores": "Carts at this branch",
+      "carritosEtiqueta": "Carts",
+      "activos": "{n} active",
+      "enEspera": "{n} on hold",
+      "hojaTitulo": "Register and device",
+      "abrirHoja": "Register and device",
+      "estadoCaja": "Register",
+      "pantallaCliente": "Customer display",
+      "verAtajos": "Keyboard shortcuts",
+      "cajaAbiertaToast": "Register opened",
+      "cajaAbiertaSinConexion": "Register opened offline",
+      "cajaCerradaToast": "Register closed",
+      "cajaCerradaSinConexion": "Register closed offline",
+      "montoInicial": "Opening amount: {monto}",
+      "pendienteSincronizar": "pending sync",
+      "diferencia": "Difference: {monto}",
+      "organizacionNoEncontrada": "Organization not found",
+      "configureOrganizacion": "Set up your organization to use the point of sale"
     },
-    "pagina": {
-      "sinCarritoActivo": "There is no active cart",
-      "errorAgregar": "The product could not be added to the cart",
-      "seleccioneSucursal": "Choose a branch before creating a cart",
-      "errorCrearCarrito": "The cart could not be created",
-      "errorAsignarCliente": "The customer could not be assigned to the cart",
-      "enEspera": "Cart put on hold",
-      "enEsperaConMotivo": "Cart put on hold: {motivo}",
-      "divisor": "Drag to widen the cart · double-click to reset"
+    "barraMovil": {
+      "etiqueta": "Cart and checkout",
+      "total": "Total",
+      "verCarrito": "View cart: {n, plural, one {# unit} other {# units}}, {total}",
+      "cobrar": "Charge",
+      "abrirCaja": "Open register to charge",
+      "hojaCarrito": "Cart",
+      "seguirComprando": "Keep shopping"
     },
     "carrito": {
       "lista": "Cart items",
@@ -14066,6 +14006,75 @@
       "clienteDe": "Customer: {nombre}",
       "dias": "days"
     },
+    "catalogo": {
+      "titulo": "Products",
+      "productos": "Products",
+      "vista": "Product view",
+      "buscarPlaceholder": "Search by name, SKU, barcode, variants or modifiers…",
+      "buscarEtiqueta": "Search products",
+      "escanear": "Scan a barcode with the camera",
+      "cantidadRapida": "{n} units of the product you choose will be added",
+      "total": "{n, plural, one {# product} other {# products}}",
+      "cargando": "Loading products",
+      "cargandoMas": "Loading more products…",
+      "reintentarMas": "Retry",
+      "errorTitulo": "Could not load products",
+      "errorDescripcion": "The products could not be loaded",
+      "sinCatalogoTitulo": "No local catalog",
+      "sinCatalogoDescripcion": "This device has not saved the catalog for offline work yet.",
+      "vacioTitulo": "No products",
+      "vacioDescripcion": "There are no products available right now",
+      "vacioBusquedaTitulo": "No products found",
+      "vacioBusquedaDescripcion": "Try adjusting the search or the category",
+      "codigoEscaneado": "Code scanned",
+      "buscandoCodigo": "Looking for the product with code {codigo}",
+      "agotadoTitulo": "Out of stock",
+      "agotadoDescripcion": "{producto} has no stock available.",
+      "sinPrecioTitulo": "Product without a price",
+      "sinPrecioDescripcion": "{producto} has no current price: set one in the catalog.",
+      "codigoNoEncontrado": "Code not found",
+      "codigoNoEncontradoDescripcion": "No active product has the code {codigo}.",
+      "errorEscaneo": "The scanned product could not be looked up",
+      "cierraElCobro": "Close checkout to add products",
+      "cierraElDialogo": "Close the open window to add scanned products",
+      "errorReceta": "The product recipe could not be loaded",
+      "favoritoAgregado": "Added to favorites",
+      "favoritoAgregadoDescripcion": "The product will appear first in the POS.",
+      "favoritoQuitado": "Removed from favorites",
+      "favoritoQuitadoDescripcion": "The product will no longer be prioritized.",
+      "errorFavorito": "The favorite could not be updated.",
+      "receta": {
+        "titulo": "Production recipe",
+        "cerrar": "Close",
+        "cargando": "Loading the recipe",
+        "noDisponible": "N/A",
+        "producto": "Product",
+        "sku": "SKU: {sku}",
+        "rendimiento": "Yield",
+        "estado": "Status",
+        "activa": "Active",
+        "inactiva": "Inactive",
+        "version": "Version",
+        "notas": "Notes",
+        "ingredientes": "Ingredients ({n})",
+        "opcional": "Optional",
+        "sinIngredientes": "This recipe has no ingredients defined.",
+        "sinIngredientesTitulo": "No ingredients"
+      },
+      "codigoManualTitulo": "Type a barcode",
+      "codigoManualEtiqueta": "Barcode",
+      "codigoManualBuscar": "Find and add"
+    },
+    "pagina": {
+      "sinCarritoActivo": "There is no active cart",
+      "errorAgregar": "The product could not be added to the cart",
+      "seleccioneSucursal": "Choose a branch before creating a cart",
+      "errorCrearCarrito": "The cart could not be created",
+      "errorAsignarCliente": "The customer could not be assigned to the cart",
+      "enEspera": "Cart put on hold",
+      "enEsperaConMotivo": "Cart put on hold: {motivo}",
+      "divisor": "Drag to widen the cart · double-click to reset"
+    },
     "resumen": {
       "titulo": "Summary",
       "impuestosIncluidos": "Taxes included",
@@ -14116,15 +14125,6 @@
       "sinSucursalTitulo": "Choose the branch to sell from",
       "sinSucursalDescripcion": "You are viewing «All branches». Choose a branch in the header selector to open a cart.",
       "elegirSucursal": "Choose branch"
-    },
-    "barraMovil": {
-      "etiqueta": "Cart and checkout",
-      "total": "Total",
-      "verCarrito": "View cart: {n, plural, one {# unit} other {# units}}, {total}",
-      "cobrar": "Charge",
-      "abrirCaja": "Open register to charge",
-      "hojaCarrito": "Cart",
-      "seguirComprando": "Keep shopping"
     },
     "descuento": {
       "titulo": "Discount",
@@ -14462,303 +14462,6 @@
       "verificarPago": "Verify payment"
     }
   },
-  "comisionesPago": {
-    "cuentaLabel": "Where does the money come from?",
-    "opcionRegla": "As set in the accounting rule",
-    "opcionEfectivo": "Cash (open register)",
-    "cuentaAyuda": "The payment entry credits this account. Who paid is recorded.",
-    "mostrando": "Showing {shown} of {total} commissions",
-    "cargarMas": "Load more",
-    "cargando": "Loading…"
-  },
-  "saldosAFavor": {
-    "errorCarga": "Customer credits could not be loaded.",
-    "errorFacturas": "Pending invoices could not be loaded.",
-    "errorClientes": "Customers could not be loaded.",
-    "reintentar": "Retry",
-    "estadoAnulado": "Voided",
-    "nuevo": {
-      "descripcion": "Record a customer advance: it comes in as a payment with its receipt, adds to the cash drawer or bank and stays as customer credit.",
-      "metodo": "Payment method",
-      "metodoPlaceholder": "Select the method",
-      "cuentaBancaria": "Bank account",
-      "cuentaBancariaPlaceholder": "Select the account",
-      "referencia": "Reference",
-      "sinCaja": "There is no open cash register at this branch: open it or use another method.",
-      "creado": "Advance recorded with receipt {recibo}."
-    },
-    "errores": {
-      "no_autenticado": "Your session ended. Sign in again.",
-      "sin_permiso": "You do not have permission for this action.",
-      "sin_acceso_sucursal": "You do not have access to the branch of the credit or the invoice.",
-      "organizacion_no_permitida": "The organization does not match your session.",
-      "datos_invalidos": "Check the data.",
-      "clave_idempotencia_invalida": "The attempt could not be identified. Open the dialog again.",
-      "clave_idempotencia_reutilizada": "This attempt was already used with other data. Open the dialog again.",
-      "monto_invalido": "Enter an amount greater than zero.",
-      "saldo_no_encontrado": "The customer credit was not found.",
-      "saldo_no_disponible": "The customer credit is no longer available.",
-      "saldo_vencido": "The customer credit has expired.",
-      "saldo_usado": "The customer credit was already used on invoices: it cannot be voided.",
-      "saldo_no_anulable": "This credit does not come from an advance: it is not voided, it is refunded.",
-      "monto_excede_saldo_a_favor": "The amount exceeds the available customer credit.",
-      "factura_no_encontrada": "The invoice was not found.",
-      "documento_invalido": "The document is not a sales invoice.",
-      "documento_borrador": "The invoice is a draft: issue it before applying credit.",
-      "documento_anulado": "The invoice is voided.",
-      "cliente_distinto": "The invoice belongs to another customer.",
-      "cliente_no_encontrado": "The customer was not found.",
-      "sucursal_invalida": "Select a valid branch.",
-      "moneda_distinta": "The invoice is in another currency.",
-      "monto_excede_saldo": "The amount exceeds the invoice balance due.",
-      "metodo_invalido": "The payment method is not available.",
-      "referencia_obligatoria": "This method requires a reference.",
-      "cuenta_bancaria_invalida": "The bank account is not valid.",
-      "sin_caja_abierta": "There is no open cash register: open it or use another method.",
-      "pago_en_caja_cerrada": "The money went into a cash register that is already closed: record a cash withdrawal.",
-      "sin_cuenta_de_dinero": "The cash or bank account for the method was not found.",
-      "sin_cuenta_por_cobrar": "The organization has no receivables account configured.",
-      "vencimiento_invalido": "The expiry date cannot be before today.",
-      "motivo_obligatorio": "Enter the reason.",
-      "asiento_no_creado": "It could not be posted. Check the chart of accounts and the accounting period.",
-      "error_desconocido": "It could not be completed. Try again."
-    }
-  },
-  "tesoreria": {
-    "reintentar": "Retry",
-    "errorTitulo": "Error",
-    "errorCarga": {
-      "ingresos": "Income entries could not be loaded.",
-      "egresos": "Expense entries could not be loaded.",
-      "ingreso": "The income entry could not be loaded.",
-      "egreso": "The expense entry could not be loaded.",
-      "transferencias": "Transfers could not be loaded.",
-      "transferencia": "The transfer could not be loaded.",
-      "cuentasBancarias": "Bank accounts could not be loaded.",
-      "cuentaBancaria": "The account data could not be loaded."
-    },
-    "yaAnulado": "That entry was already voided; no second reversal was recorded.",
-    "transferenciaYaAnulada": "The transfer was already voided; balances were not changed again.",
-    "transferenciaRepetida": "The transfer was already recorded; no new one was created.",
-    "errores": {
-      "saldo_insuficiente_para_revertir": "The destination account no longer has enough balance to return the money.",
-      "saldo_insuficiente": "Insufficient balance in the source account.",
-      "moneda_distinta": "Both accounts must use the same currency.",
-      "cuenta_no_encontrada": "The bank account does not exist in this organization.",
-      "cuenta_inactiva": "One of the accounts is inactive.",
-      "cuenta_requerida": "Select the bank account.",
-      "cuentas_iguales": "Source and destination accounts must be different.",
-      "monto_invalido": "The amount must be greater than 0.",
-      "fecha_futura": "The date cannot be later than today.",
-      "sucursal_invalida": "The branch does not belong to this organization.",
-      "sucursal_requerida": "Select the branch.",
-      "transferencia_no_encontrada": "The transfer does not exist in this organization.",
-      "movimiento_no_encontrado": "The entry does not exist in this organization.",
-      "movimiento_conciliado": "The entry is already reconciled: undo the reconciliation before voiding it.",
-      "movimiento_importado": "The entry comes from the bank statement and cannot be voided; reconcile it or record the opposite entry.",
-      "anulacion_de_anulacion": "A reversal cannot be voided: record the entry again.",
-      "sin_caja_abierta_sucursal": "There is no open cash register in the entry's branch.",
-      "caja_cerrada": "The cash register is already closed.",
-      "saldo_bancario_por_movimientos": "The account balance is moved by its entries; it cannot be edited by hand.",
-      "sin_permiso": "You do not have permission for this operation.",
-      "sin_acceso_sucursal": "You do not have access to the account's branch.",
-      "no_autenticado": "Your session expired. Sign in again.",
-      "sin_organizacion": "The active organization was not found.",
-      "desconocido": "The operation could not be completed."
-    },
-    "anular": {
-      "descripcion": "Voiding can't be undone.",
-      "ingreso": {
-        "titulo": "Void this income entry?",
-        "boton": "Void income entry"
-      },
-      "egreso": {
-        "titulo": "Void this expense entry?",
-        "boton": "Void expense entry"
-      },
-      "transferencia": {
-        "titulo": "Void this transfer?",
-        "boton": "Void transfer",
-        "consecuencia": "The balances of both accounts are reversed."
-      }
-    }
-  },
-  "documentosVenta": {
-    "notaCreditoAnular": {
-      "errores": {
-        "no_autenticado": "Your session ended. Please sign in again.",
-        "sin_permiso": "You do not have permission to void credit notes (finance.void).",
-        "nota_no_encontrada": "The credit note does not exist in this organization.",
-        "sin_acceso_sucursal": "You do not have access to this credit note’s branch.",
-        "motivo_obligatorio": "Enter the reason for voiding (at least 5 characters).",
-        "documento_invalido": "The document is not a credit note.",
-        "nota_aceptada_dian": "The tax authority (DIAN) already accepted this credit note: it cannot be voided, it must be corrected with a debit note (not available yet).",
-        "nota_en_envio_dian": "The note is being sent to the DIAN: wait for the response before voiding it.",
-        "saldo_a_favor_aplicado": "The customer credit from this note has already been used. Void its application first.",
-        "pago_en_caja_cerrada": "The refund of this note came from a closed cash register: record it as a cash withdrawal.",
-        "pago_no_anulable": "The refund of this note cannot be voided.",
-        "datos_invalidos": "The data sent is not valid.",
-        "error_desconocido": "The credit note could not be voided. Please try again."
-      }
-    },
-    "cotizaciones": {
-      "errores": {
-        "no_autenticado": "Your session ended. Please sign in again.",
-        "sin_permiso": "You do not have permission for this action on quotations.",
-        "sin_acceso_sucursal": "You do not have access to this quotation’s branch.",
-        "cotizacion_no_encontrada": "The quotation does not exist in this organization.",
-        "sucursal_invalida": "Choose a branch of the organization.",
-        "cliente_invalido": "Choose a customer of the organization.",
-        "vendedor_invalido": "The salesperson does not belong to the organization.",
-        "oportunidad_invalida": "The opportunity does not belong to the organization.",
-        "vigencia_invalida": "The valid-until date cannot be earlier than the issue date.",
-        "cotizacion_sin_lineas": "Add at least one line.",
-        "linea_invalida": "A line has an invalid quantity, price, discount or tax.",
-        "producto_invalido": "A product does not belong to the organization.",
-        "cotizacion_no_editable": "Only draft or sent quotations can be edited.",
-        "transicion_invalida": "That status change is not allowed.",
-        "cotizacion_vencida": "The quotation has expired: edit it to renew its validity or duplicate it.",
-        "cotizacion_no_eliminable": "Only draft quotations can be deleted.",
-        "cotizacion_rechazada": "A rejected quotation cannot be converted into an invoice.",
-        "numero_duplicado": "The number is already in use. Please try again.",
-        "datos_invalidos": "The data sent is not valid.",
-        "cliente_sin_correo": "The customer has no email address.",
-        "correo_no_configurado": "Email sending is not set up for the organization.",
-        "cliente_sin_consentimiento": "The customer does not accept emails.",
-        "correo_invalido": "The destination email is not valid.",
-        "proveedor_correo": "The email provider rejected the message. Please try later.",
-        "error_desconocido": "The action could not be completed. Please try again."
-      },
-      "correo": {
-        "asunto": "Quotation {numero} from {organizacion}",
-        "saludo": "Hello {nombre},",
-        "cuerpo": "{organizacion} sends you quotation {numero} for {total}. You will find it attached.",
-        "despedida": "Kind regards, {organizacion}",
-        "sinAdjunto": "Sent to {destino}, without the PDF attached (it could not be generated)."
-      },
-      "conversion": {
-        "titulo": "Draft invoice",
-        "borrador": "Invoice {numero} was created as a draft, with its sale, taxes and commission. Issue it from Sales invoices.",
-        "yaConvertida": "This quotation already had invoice {numero}: no other invoice was created.",
-        "faltantes": "{n, plural, one {One product does not have enough stock} other {# products do not have enough stock}}: check before issuing."
-      },
-      "eliminar": {
-        "titulo": "Delete quote {numero}?",
-        "descripcion": "The draft quote is deleted and cannot be recovered.",
-        "confirmar": "Delete quote"
-      }
-    }
-  },
-  "notasCredito": {
-    "comun": {
-      "error": "Error",
-      "exito": "Success",
-      "sinCliente": "No customer"
-    },
-    "estados": {
-      "draft": "Draft",
-      "pending": "Pending",
-      "sent": "Sent",
-      "accepted": "Accepted by DIAN",
-      "rejected": "Rejected",
-      "void": "Voided",
-      "paid": "Paid"
-    },
-    "estadosFe": {
-      "pending": "Pending",
-      "processing": "Processing",
-      "sent": "Sent",
-      "accepted": "Accepted",
-      "rejected": "Rejected",
-      "failed": "Failed"
-    },
-    "anular": {
-      "confirmar": "Are you sure you want to void this credit note?",
-      "motivo": "Reason for voiding:",
-      "hecho": "Credit note voided successfully",
-      "error": "Couldn't void it",
-      "titulo": "Void credit note {numero}",
-      "confirmarBoton": "Void credit note"
-    },
-    "listado": {
-      "titulo": "Credit notes",
-      "subtitulo": "Manage issued credit notes",
-      "volver": "Back to finance",
-      "nueva": "New credit note",
-      "exportar": "Export",
-      "archivoExportacion": "credit-notes",
-      "kpis": {
-        "totalEmitido": "Total issued",
-        "esteMes": "This month",
-        "totalNotas": "Total notes",
-        "enBorrador": "In draft"
-      },
-      "buscar": "Search by number or notes…",
-      "filtroEstado": "Status",
-      "filtros": {
-        "todos": "All",
-        "aceptada": "Accepted"
-      },
-      "actualizar": "Refresh",
-      "columnas": {
-        "numero": "Number",
-        "fecha": "Date",
-        "cliente": "Customer",
-        "facturaOrigen": "Source invoice",
-        "total": "Total",
-        "estado": "Status",
-        "acciones": "Actions"
-      },
-      "masAcciones": "More actions for note {numero}",
-      "vacio": "No credit notes recorded",
-      "verDetalle": "View details",
-      "anular": "Void",
-      "errorCarga": "Couldn't load credit notes"
-    },
-    "detalle": {
-      "errorCarga": "Couldn't load the details",
-      "noEncontrada": "Credit note not found",
-      "volverListado": "Back to list",
-      "titulo": "CN {numero}",
-      "emitidaEl": "Issued on {fecha}",
-      "descargarPdf": "Download PDF",
-      "enviarDian": "Send to DIAN",
-      "reintentarDian": "Retry DIAN",
-      "anular": "Void",
-      "facturaOrigen": "Source invoice",
-      "numeroFactura": "Invoice number",
-      "totalFactura": "Invoice total",
-      "verFactura": "View invoice",
-      "items": "Item details",
-      "subtotal": "Subtotal",
-      "impuestosIncluidos": "Taxes (included)",
-      "impuestosAdicionales": "Taxes (additional)",
-      "impuestoTasa": "Tax {tasa}%",
-      "incluido": "(incl.)",
-      "adicional": "(+tax)",
-      "totalNota": "Credit note total",
-      "estadoFe": "E-invoicing status",
-      "estadoDian": "DIAN status",
-      "cufe": "CUFE",
-      "historial": "Event history",
-      "cliente": "Customer",
-      "sinNombre": "No name",
-      "sinCliente": "No customer assigned",
-      "informacion": "Information",
-      "numero": "Number",
-      "fechaEmision": "Issue date",
-      "codigoReferencia": "Reference code",
-      "notas": "Notes",
-      "sinOrganizacion": "Couldn't determine the organization",
-      "reintentoProgramado": "Resubmission scheduled",
-      "errorReintentar": "Couldn't retry",
-      "enviadaDian": "Credit note sent to DIAN",
-      "cufeCorto": "CUFE: {cufe}…",
-      "errorEnviarDian": "Couldn't send to DIAN",
-      "descargaTitulo": "Download",
-      "generandoPdf": "Generating PDF…"
-    }
-  },
   "documentosSoporte": {
     "estados": {
       "draft": "Draft",
@@ -14946,6 +14649,303 @@
       "email": "Email:",
       "direccion": "Address:",
       "municipio": "DIAN municipality:"
+    }
+  },
+  "tesoreria": {
+    "reintentar": "Retry",
+    "errorTitulo": "Error",
+    "errorCarga": {
+      "ingresos": "Income entries could not be loaded.",
+      "egresos": "Expense entries could not be loaded.",
+      "ingreso": "The income entry could not be loaded.",
+      "egreso": "The expense entry could not be loaded.",
+      "transferencias": "Transfers could not be loaded.",
+      "transferencia": "The transfer could not be loaded.",
+      "cuentasBancarias": "Bank accounts could not be loaded.",
+      "cuentaBancaria": "The account data could not be loaded."
+    },
+    "yaAnulado": "That entry was already voided; no second reversal was recorded.",
+    "transferenciaYaAnulada": "The transfer was already voided; balances were not changed again.",
+    "transferenciaRepetida": "The transfer was already recorded; no new one was created.",
+    "errores": {
+      "saldo_insuficiente_para_revertir": "The destination account no longer has enough balance to return the money.",
+      "saldo_insuficiente": "Insufficient balance in the source account.",
+      "moneda_distinta": "Both accounts must use the same currency.",
+      "cuenta_no_encontrada": "The bank account does not exist in this organization.",
+      "cuenta_inactiva": "One of the accounts is inactive.",
+      "cuenta_requerida": "Select the bank account.",
+      "cuentas_iguales": "Source and destination accounts must be different.",
+      "monto_invalido": "The amount must be greater than 0.",
+      "fecha_futura": "The date cannot be later than today.",
+      "sucursal_invalida": "The branch does not belong to this organization.",
+      "sucursal_requerida": "Select the branch.",
+      "transferencia_no_encontrada": "The transfer does not exist in this organization.",
+      "movimiento_no_encontrado": "The entry does not exist in this organization.",
+      "movimiento_conciliado": "The entry is already reconciled: undo the reconciliation before voiding it.",
+      "movimiento_importado": "The entry comes from the bank statement and cannot be voided; reconcile it or record the opposite entry.",
+      "anulacion_de_anulacion": "A reversal cannot be voided: record the entry again.",
+      "sin_caja_abierta_sucursal": "There is no open cash register in the entry's branch.",
+      "caja_cerrada": "The cash register is already closed.",
+      "saldo_bancario_por_movimientos": "The account balance is moved by its entries; it cannot be edited by hand.",
+      "sin_permiso": "You do not have permission for this operation.",
+      "sin_acceso_sucursal": "You do not have access to the account's branch.",
+      "no_autenticado": "Your session expired. Sign in again.",
+      "sin_organizacion": "The active organization was not found.",
+      "desconocido": "The operation could not be completed."
+    },
+    "anular": {
+      "descripcion": "Voiding can't be undone.",
+      "ingreso": {
+        "titulo": "Void this income entry?",
+        "boton": "Void income entry"
+      },
+      "egreso": {
+        "titulo": "Void this expense entry?",
+        "boton": "Void expense entry"
+      },
+      "transferencia": {
+        "titulo": "Void this transfer?",
+        "boton": "Void transfer",
+        "consecuencia": "The balances of both accounts are reversed."
+      }
+    }
+  },
+  "notasCredito": {
+    "comun": {
+      "error": "Error",
+      "exito": "Success",
+      "sinCliente": "No customer"
+    },
+    "estados": {
+      "draft": "Draft",
+      "pending": "Pending",
+      "sent": "Sent",
+      "accepted": "Accepted by DIAN",
+      "rejected": "Rejected",
+      "void": "Voided",
+      "paid": "Paid"
+    },
+    "estadosFe": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "sent": "Sent",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "failed": "Failed"
+    },
+    "anular": {
+      "confirmar": "Are you sure you want to void this credit note?",
+      "motivo": "Reason for voiding:",
+      "hecho": "Credit note voided successfully",
+      "error": "Couldn't void it",
+      "titulo": "Void credit note {numero}",
+      "confirmarBoton": "Void credit note"
+    },
+    "listado": {
+      "titulo": "Credit notes",
+      "subtitulo": "Manage issued credit notes",
+      "volver": "Back to finance",
+      "nueva": "New credit note",
+      "exportar": "Export",
+      "archivoExportacion": "credit-notes",
+      "kpis": {
+        "totalEmitido": "Total issued",
+        "esteMes": "This month",
+        "totalNotas": "Total notes",
+        "enBorrador": "In draft"
+      },
+      "buscar": "Search by number or notes…",
+      "filtroEstado": "Status",
+      "filtros": {
+        "todos": "All",
+        "aceptada": "Accepted"
+      },
+      "actualizar": "Refresh",
+      "columnas": {
+        "numero": "Number",
+        "fecha": "Date",
+        "cliente": "Customer",
+        "facturaOrigen": "Source invoice",
+        "total": "Total",
+        "estado": "Status",
+        "acciones": "Actions"
+      },
+      "masAcciones": "More actions for note {numero}",
+      "vacio": "No credit notes recorded",
+      "verDetalle": "View details",
+      "anular": "Void",
+      "errorCarga": "Couldn't load credit notes"
+    },
+    "detalle": {
+      "errorCarga": "Couldn't load the details",
+      "noEncontrada": "Credit note not found",
+      "volverListado": "Back to list",
+      "titulo": "CN {numero}",
+      "emitidaEl": "Issued on {fecha}",
+      "descargarPdf": "Download PDF",
+      "enviarDian": "Send to DIAN",
+      "reintentarDian": "Retry DIAN",
+      "anular": "Void",
+      "facturaOrigen": "Source invoice",
+      "numeroFactura": "Invoice number",
+      "totalFactura": "Invoice total",
+      "verFactura": "View invoice",
+      "items": "Item details",
+      "subtotal": "Subtotal",
+      "impuestosIncluidos": "Taxes (included)",
+      "impuestosAdicionales": "Taxes (additional)",
+      "impuestoTasa": "Tax {tasa}%",
+      "incluido": "(incl.)",
+      "adicional": "(+tax)",
+      "totalNota": "Credit note total",
+      "estadoFe": "E-invoicing status",
+      "estadoDian": "DIAN status",
+      "cufe": "CUFE",
+      "historial": "Event history",
+      "cliente": "Customer",
+      "sinNombre": "No name",
+      "sinCliente": "No customer assigned",
+      "informacion": "Information",
+      "numero": "Number",
+      "fechaEmision": "Issue date",
+      "codigoReferencia": "Reference code",
+      "notas": "Notes",
+      "sinOrganizacion": "Couldn't determine the organization",
+      "reintentoProgramado": "Resubmission scheduled",
+      "errorReintentar": "Couldn't retry",
+      "enviadaDian": "Credit note sent to DIAN",
+      "cufeCorto": "CUFE: {cufe}…",
+      "errorEnviarDian": "Couldn't send to DIAN",
+      "descargaTitulo": "Download",
+      "generandoPdf": "Generating PDF…"
+    }
+  },
+  "saldosAFavor": {
+    "errorCarga": "Customer credits could not be loaded.",
+    "errorFacturas": "Pending invoices could not be loaded.",
+    "errorClientes": "Customers could not be loaded.",
+    "reintentar": "Retry",
+    "estadoAnulado": "Voided",
+    "nuevo": {
+      "descripcion": "Record a customer advance: it comes in as a payment with its receipt, adds to the cash drawer or bank and stays as customer credit.",
+      "metodo": "Payment method",
+      "metodoPlaceholder": "Select the method",
+      "cuentaBancaria": "Bank account",
+      "cuentaBancariaPlaceholder": "Select the account",
+      "referencia": "Reference",
+      "sinCaja": "There is no open cash register at this branch: open it or use another method.",
+      "creado": "Advance recorded with receipt {recibo}."
+    },
+    "errores": {
+      "no_autenticado": "Your session ended. Sign in again.",
+      "sin_permiso": "You do not have permission for this action.",
+      "sin_acceso_sucursal": "You do not have access to the branch of the credit or the invoice.",
+      "organizacion_no_permitida": "The organization does not match your session.",
+      "datos_invalidos": "Check the data.",
+      "clave_idempotencia_invalida": "The attempt could not be identified. Open the dialog again.",
+      "clave_idempotencia_reutilizada": "This attempt was already used with other data. Open the dialog again.",
+      "monto_invalido": "Enter an amount greater than zero.",
+      "saldo_no_encontrado": "The customer credit was not found.",
+      "saldo_no_disponible": "The customer credit is no longer available.",
+      "saldo_vencido": "The customer credit has expired.",
+      "saldo_usado": "The customer credit was already used on invoices: it cannot be voided.",
+      "saldo_no_anulable": "This credit does not come from an advance: it is not voided, it is refunded.",
+      "monto_excede_saldo_a_favor": "The amount exceeds the available customer credit.",
+      "factura_no_encontrada": "The invoice was not found.",
+      "documento_invalido": "The document is not a sales invoice.",
+      "documento_borrador": "The invoice is a draft: issue it before applying credit.",
+      "documento_anulado": "The invoice is voided.",
+      "cliente_distinto": "The invoice belongs to another customer.",
+      "cliente_no_encontrado": "The customer was not found.",
+      "sucursal_invalida": "Select a valid branch.",
+      "moneda_distinta": "The invoice is in another currency.",
+      "monto_excede_saldo": "The amount exceeds the invoice balance due.",
+      "metodo_invalido": "The payment method is not available.",
+      "referencia_obligatoria": "This method requires a reference.",
+      "cuenta_bancaria_invalida": "The bank account is not valid.",
+      "sin_caja_abierta": "There is no open cash register: open it or use another method.",
+      "pago_en_caja_cerrada": "The money went into a cash register that is already closed: record a cash withdrawal.",
+      "sin_cuenta_de_dinero": "The cash or bank account for the method was not found.",
+      "sin_cuenta_por_cobrar": "The organization has no receivables account configured.",
+      "vencimiento_invalido": "The expiry date cannot be before today.",
+      "motivo_obligatorio": "Enter the reason.",
+      "asiento_no_creado": "It could not be posted. Check the chart of accounts and the accounting period.",
+      "error_desconocido": "It could not be completed. Try again."
+    }
+  },
+  "comisionesPago": {
+    "cuentaLabel": "Where does the money come from?",
+    "opcionRegla": "As set in the accounting rule",
+    "opcionEfectivo": "Cash (open register)",
+    "cuentaAyuda": "The payment entry credits this account. Who paid is recorded.",
+    "mostrando": "Showing {shown} of {total} commissions",
+    "cargarMas": "Load more",
+    "cargando": "Loading…"
+  },
+  "documentosVenta": {
+    "notaCreditoAnular": {
+      "errores": {
+        "no_autenticado": "Your session ended. Please sign in again.",
+        "sin_permiso": "You do not have permission to void credit notes (finance.void).",
+        "nota_no_encontrada": "The credit note does not exist in this organization.",
+        "sin_acceso_sucursal": "You do not have access to this credit note’s branch.",
+        "motivo_obligatorio": "Enter the reason for voiding (at least 5 characters).",
+        "documento_invalido": "The document is not a credit note.",
+        "nota_aceptada_dian": "The tax authority (DIAN) already accepted this credit note: it cannot be voided, it must be corrected with a debit note (not available yet).",
+        "nota_en_envio_dian": "The note is being sent to the DIAN: wait for the response before voiding it.",
+        "saldo_a_favor_aplicado": "The customer credit from this note has already been used. Void its application first.",
+        "pago_en_caja_cerrada": "The refund of this note came from a closed cash register: record it as a cash withdrawal.",
+        "pago_no_anulable": "The refund of this note cannot be voided.",
+        "datos_invalidos": "The data sent is not valid.",
+        "error_desconocido": "The credit note could not be voided. Please try again."
+      }
+    },
+    "cotizaciones": {
+      "errores": {
+        "no_autenticado": "Your session ended. Please sign in again.",
+        "sin_permiso": "You do not have permission for this action on quotations.",
+        "sin_acceso_sucursal": "You do not have access to this quotation’s branch.",
+        "cotizacion_no_encontrada": "The quotation does not exist in this organization.",
+        "sucursal_invalida": "Choose a branch of the organization.",
+        "cliente_invalido": "Choose a customer of the organization.",
+        "vendedor_invalido": "The salesperson does not belong to the organization.",
+        "oportunidad_invalida": "The opportunity does not belong to the organization.",
+        "vigencia_invalida": "The valid-until date cannot be earlier than the issue date.",
+        "cotizacion_sin_lineas": "Add at least one line.",
+        "linea_invalida": "A line has an invalid quantity, price, discount or tax.",
+        "producto_invalido": "A product does not belong to the organization.",
+        "cotizacion_no_editable": "Only draft or sent quotations can be edited.",
+        "transicion_invalida": "That status change is not allowed.",
+        "cotizacion_vencida": "The quotation has expired: edit it to renew its validity or duplicate it.",
+        "cotizacion_no_eliminable": "Only draft quotations can be deleted.",
+        "cotizacion_rechazada": "A rejected quotation cannot be converted into an invoice.",
+        "numero_duplicado": "The number is already in use. Please try again.",
+        "datos_invalidos": "The data sent is not valid.",
+        "cliente_sin_correo": "The customer has no email address.",
+        "correo_no_configurado": "Email sending is not set up for the organization.",
+        "cliente_sin_consentimiento": "The customer does not accept emails.",
+        "correo_invalido": "The destination email is not valid.",
+        "proveedor_correo": "The email provider rejected the message. Please try later.",
+        "error_desconocido": "The action could not be completed. Please try again."
+      },
+      "correo": {
+        "asunto": "Quotation {numero} from {organizacion}",
+        "saludo": "Hello {nombre},",
+        "cuerpo": "{organizacion} sends you quotation {numero} for {total}. You will find it attached.",
+        "despedida": "Kind regards, {organizacion}",
+        "sinAdjunto": "Sent to {destino}, without the PDF attached (it could not be generated)."
+      },
+      "conversion": {
+        "titulo": "Draft invoice",
+        "borrador": "Invoice {numero} was created as a draft, with its sale, taxes and commission. Issue it from Sales invoices.",
+        "yaConvertida": "This quotation already had invoice {numero}: no other invoice was created.",
+        "faltantes": "{n, plural, one {One product does not have enough stock} other {# products do not have enough stock}}: check before issuing."
+      },
+      "eliminar": {
+        "titulo": "Delete quote {numero}?",
+        "descripcion": "The draft quote is deleted and cannot be recovered.",
+        "confirmar": "Delete quote"
+      }
     }
   },
   "impuestosRetenciones": {
@@ -15153,6 +15153,208 @@
     "descargando": "Generating PDF…",
     "errorTitulo": "Error",
     "error": "The document could not be generated"
+  },
+  "inventarioImagenes": {
+    "titulo": "Images",
+    "migaInventario": "Inventory",
+    "cargando": "Loading…",
+    "subtitulo": "{organizacion} · {n} {count, plural, one {image} other {images}}",
+    "subtituloMovil": "{n} {count, plural, one {image} other {images}}",
+    "buscar": "Search by file name or product",
+    "buscarProductos": "Search by product, SKU or file",
+    "errorCarga": "We couldn't load the images",
+    "seleccionar": "Select “{nombre}”",
+    "abrirDetalle": "View details of “{nombre}”",
+    "abrirProducto": "Open the product “{nombre}”",
+    "nImagenes": "{n, plural, one {# image} other {# images}}",
+    "sustantivo": {
+      "singular": "image",
+      "plural": "images"
+    },
+    "sinPermiso": {
+      "titulo": "You don't have access to images",
+      "descripcion": "Ask an administrator of the organization to give you inventory access."
+    },
+    "pestanas": {
+      "etiqueta": "Image source",
+      "biblioteca": "Library",
+      "productos": "From products"
+    },
+    "kpi": {
+      "etiqueta": "Image summary",
+      "imagenes": "Images",
+      "imagenesDetalle": "{biblioteca} in the library · {productos} from products",
+      "sinUsar": "Unused",
+      "sinUsarDetalle": "No product uses them",
+      "sinUsarNinguna": "All of them are in use",
+      "productosSinImagen": "Products without an image",
+      "verEnCatalogo": "See in the catalog",
+      "publicas": "Public",
+      "publicasDetalle": "Visible in the online store"
+    },
+    "insignias": {
+      "publica": "Public",
+      "privada": "Private",
+      "principal": "Main",
+      "galeria": "Gallery"
+    },
+    "uso": {
+      "enProductos": "{n, plural, one {In # product} other {In # products}}",
+      "sinUsar": "Unused",
+      "verProducto": "View product"
+    },
+    "vacio": {
+      "titulo": "Your library is empty",
+      "descripcion": "Upload photos once and use them in several products, the online store and the POS.",
+      "tituloProductos": "No product has its own photos",
+      "descripcionProductos": "Photos you upload from a product's form or detail show up here."
+    },
+    "filtros": {
+      "producto": "Product",
+      "visibilidad": "Visibility",
+      "uso": "Usage",
+      "formato": "Format",
+      "tamano": "Size",
+      "todos": "All",
+      "todas": {
+        "visibilidad": "Public and private",
+        "tamano": "Any size"
+      },
+      "opciones": {
+        "todas": "All",
+        "todos": "All",
+        "en_uso": "In use",
+        "sin_usar": "Unused",
+        "publicas": "Public",
+        "privadas": "Private",
+        "jpg_png": "JPG / PNG",
+        "webp": "WEBP",
+        "pequena": "Under 200 KB",
+        "mediana": "200 KB to 1 MB",
+        "grande": "Over 1 MB"
+      },
+      "nota": "Changes apply instantly.",
+      "verResultados": "Show {n, plural, one {# image} other {# images}}"
+    },
+    "acciones": {
+      "ver": "View details",
+      "verEditar": "View and edit details",
+      "asignar": "Assign to products",
+      "asignarPuntos": "Assign to products…",
+      "hacerPublica": "Make public",
+      "hacerPrivada": "Make private",
+      "copiarEnlace": "Copy link",
+      "descargar": "Download",
+      "eliminar": "Delete",
+      "abrirProducto": "Open the product",
+      "productosSinImagen": "See products without an image",
+      "actualizar": "Refresh",
+      "motivoDescargar": "Images selected on other pages are downloaded from their page"
+    },
+    "detalle": {
+      "titulo": "Image",
+      "descripcion": "Image details and the products that use it",
+      "error": "We couldn't load the image",
+      "tamano": "Size",
+      "subida": "Uploaded",
+      "alt": "Alt text",
+      "sinAlt": "No alt text",
+      "altAyuda": "Read by screen readers and search engines. It is copied to the products that use it.",
+      "altPlaceholder": "Brown leather boot, side view",
+      "visibilidad": "Visibility",
+      "nombre": "Name",
+      "nombreObligatorio": "Enter a name for the image",
+      "publica": "Public",
+      "publicaAyuda": "Visible in the online store",
+      "guardar": "Save changes",
+      "usadaEn": "{n, plural, one {Used in # product} other {Used in # products}}",
+      "sinUsar": "Unused",
+      "sinUsarAyuda": "No product uses it yet. Assign it so it shows in the catalog, the POS and the store.",
+      "principal": "Main",
+      "galeria": "Gallery",
+      "abrir": "Open",
+      "yMas": "and {n, plural, one {# more product} other {# more products}}"
+    },
+    "eliminar": {
+      "tituloUna": "Delete “{nombre}”?",
+      "tituloVarias": "Delete {n, plural, one {# image} other {# images}}?",
+      "principalYGaleria": "It is the main image of {principal, plural, one {# product} other {# products}} and is in the gallery of {galeria, plural, =0 {no other product} one {one more} other {# more}}. Those products will lose this photo; the main one will take the next one in its gallery.",
+      "soloGaleria": "It is in the gallery of {n, plural, one {# product} other {# products}}. Those products will lose this photo.",
+      "variasEnUso": "{n, plural, one {There is # use in products} other {There are # uses in products}}: those products will lose the photo and, where it was the main one, take the next one in their gallery.",
+      "sinUso": "No product uses them. The file is deleted and this can't be undone."
+    },
+    "toast": {
+      "guardada": "Image saved",
+      "errorGuardar": "We couldn't save the image",
+      "publicas": "{n, plural, one {# image is now public} other {# images are now public}}",
+      "privadas": "{n, plural, one {# image is now private} other {# images are now private}}",
+      "enlaceCopiado": "Link copied",
+      "errorCopiar": "We couldn't copy the link",
+      "asignada": "{n, plural, =0 {Not assigned to any new product} one {Assigned to # product} other {Assigned to # products}}",
+      "yaLaTenian": "{n, plural, one {# product already had it} other {# products already had it}}",
+      "errorAsignar": "We couldn't assign the image",
+      "eliminadas": "{n, plural, one {# image deleted} other {# images deleted}}",
+      "errorEliminar": "We couldn't delete",
+      "subidas": "{n, plural, one {# image uploaded to the library} other {# images uploaded to the library}}"
+    },
+    "errores": {
+      "sinPermiso": "You don't have permission for this action",
+      "noEncontrada": "The image no longer exists",
+      "rutaInvalida": "The file path doesn't belong to this organization",
+      "formato": "Unsupported format: use JPG, PNG or WEBP",
+      "tamano": "The image is larger than 5 MB",
+      "nombre": "Enter a name for the image"
+    },
+    "subir": {
+      "boton": "Upload images",
+      "titulo": "Upload images",
+      "descripcion": "JPG, PNG or WEBP · up to 5 MB each · saved in the library of {organizacion}",
+      "arrastra": "Drag your photos here",
+      "suelta": "Drop to upload",
+      "reglas": "Up to {n} images · max. 5 MB · JPG, PNG or WEBP",
+      "subir": "Upload",
+      "tomarFoto": "Take photo",
+      "generarIa": "Generate with AI",
+      "iaEtiqueta": "What image do you need?",
+      "iaPlaceholder": "Brown leather boot on a white background",
+      "iaGenerar": "Generate",
+      "iaCosto": "Uses AI credits from your plan.",
+      "iaError": "We couldn't generate the image. Try again.",
+      "iaSinCreditos": "You have no AI credits left to generate images.",
+      "listo": "Done",
+      "esperaSubida": "Wait for the uploads to finish",
+      "rechazoFormato": "Unsupported format ({ext}): convert it to JPG",
+      "rechazoFormatoCorto": "Unsupported format: use JPG, PNG or WEBP",
+      "rechazoTamano": "Larger than 5 MB: reduce it before uploading",
+      "rechazoCupo": "Up to {n} per batch: upload it afterwards",
+      "errorSubida": "Upload failed. Check your connection.",
+      "errorRegistro": "It couldn't be saved in the library",
+      "quitar": "Remove “{nombre}” from the list",
+      "estados": {
+        "esperando": "waiting",
+        "subiendo": "uploading",
+        "subida": "uploaded",
+        "error": "failed"
+      }
+    },
+    "asignar": {
+      "titulo": "Assign “{nombre}” to products",
+      "descripcion": "Choose the products; you can make it the main image.",
+      "buscar": "Search product",
+      "placeholder": "Search by name, SKU or code",
+      "vacio": "Type to search products",
+      "sinResultados": "No product matches",
+      "errorBuscar": "We couldn't search products",
+      "conVariantes": "with variants",
+      "yaElegido": "Already in the list",
+      "elegidos": "Chosen products",
+      "ninguno": "You haven't chosen any products yet.",
+      "quitar": "Remove “{nombre}”",
+      "principal": "Make it the main image",
+      "principalAyuda": "It will be the cover photo in the catalog, the POS and the store.",
+      "confirmar": "{n, plural, =0 {Assign} one {Assign to # product} other {Assign to # products}}",
+      "eligeUno": "Choose at least one product"
+    }
   },
   "membresias": {
     "modulo": "Memberships",
@@ -16590,106 +16792,6 @@
       }
     }
   },
-  "inventario": {
-    "origenes": {
-      "purchase": "Purchase",
-      "sale": "Sale",
-      "adjustment": "Adjustment",
-      "transfer": "Transfer",
-      "return": "Return",
-      "loss": "Shrinkage",
-      "production": "Production",
-      "initial": "Opening stock",
-      "web_sale": "Web sale",
-      "mesa_sale": "Table sale",
-      "invoice_sale": "Sale (invoice)",
-      "folio_item": "Folio",
-      "room_consumption": "Room consumption",
-      "web_order": "Web reservation",
-      "purchase_order": "Purchase receipt",
-      "purchase_invoice": "Purchase invoice",
-      "invoice_void": "Invoice void",
-      "credit_note": "Credit note",
-      "web_refund": "Web refund",
-      "folio_item_reversal": "Folio reversal",
-      "transfer_out": "Transfer out",
-      "transfer_in": "Transfer in",
-      "purchase_void": "Purchase void",
-      "credit_note_void": "Credit note void",
-      "desconocido": "Other source"
-    },
-    "documentos": {
-      "venta": "Sale",
-      "factura_venta": "Sales invoice",
-      "nota_credito": "Credit note",
-      "devolucion": "Return",
-      "anulacion_venta": "Sale void",
-      "factura_compra": "Purchase invoice",
-      "orden_compra": "Purchase order",
-      "ajuste": "Adjustment",
-      "traslado": "Transfer",
-      "orden_produccion": "Production order",
-      "folio": "Reservation (folio)",
-      "pedido_web": "Web order",
-      "producto": "Product",
-      "otro": "No document",
-      "abrir": "Open {documento}",
-      "sinAcceso": "Document not available"
-    },
-    "vencimiento": {
-      "vigente": "Valid",
-      "por_vencer": "Expiring soon",
-      "vencido": "Expired",
-      "sin_vencimiento": "No expiry",
-      "venceEn": "{dias, plural, one {Expires in # day} other {Expires in # days}}",
-      "venceHoy": "Expires today",
-      "vencioHace": "{dias, plural, one {Expired # day ago} other {Expired # days ago}}"
-    },
-    "lotes": {
-      "titulo": "Choose lot",
-      "ayuda": "The one expiring first is suggested (FEFO). You can pick another.",
-      "opcion": "{codigo} · {cantidad} units",
-      "noVenderVencidos": "Do not sell expired lots",
-      "reparto": "Split: {asignado} of {total} units assigned",
-      "faltante": "{faltante} units left without a lot",
-      "sinLotes": "This product has no lots in stock at this branch.",
-      "cantidadDelLote": "Quantity from lot {codigo}",
-      "usar": "Use these lots",
-      "cancelar": "Cancel",
-      "sugerirFefo": "Split by expiry"
-    },
-    "saldo": {
-      "entrada": "In",
-      "salida": "Out",
-      "saldo": "Balance",
-      "costoPromedio": "Average cost",
-      "saldoTras": "Balance after the movement: {saldo}",
-      "negativo": "Negative balance"
-    },
-    "errores": {
-      "stock_insuficiente": "Not enough stock: available {disponible}, requested {solicitado}.",
-      "cantidad_invalida": "Quantity must be greater than zero.",
-      "direccion_invalida": "Invalid movement.",
-      "origen_requerido": "The movement source is missing.",
-      "lote_invalido": "The lot does not belong to this product.",
-      "serial_repetido": "There are repeated serials.",
-      "seriales_no_cuadran": "The number of serials does not match the quantity.",
-      "serial_no_disponible": "A serial is not available at this branch.",
-      "estado_serial_requerido": "Set the final status of the serials.",
-      "sin_permiso": "You do not have permission for this inventory action.",
-      "SUCURSAL_NO_ES_DE_LA_ORG": "The branch does not belong to the organization.",
-      "PRODUCTO_NO_ES_DE_LA_ORG": "The product does not belong to the organization.",
-      "PEDIDO_NO_ES_DE_LA_ORG": "The order does not belong to the organization.",
-      "ORIGEN_INVALIDO": "This source is not allowed here.",
-      "ORIGEN_SIN_ID": "The source document is missing.",
-      "conversion_faltante": "A unit conversion is missing in the recipe.",
-      "desconocido": "The inventory movement could not be completed."
-    },
-    "permisos": {
-      "sinPermisoTitulo": "You do not have access to inventory",
-      "sinPermisoDescripcion": "Ask an administrator of your organization for the inventory permission you need."
-    }
-  },
   "posMesas": {
     "titulo": "Tables",
     "subtitulo": "{n, plural, one {# table} other {# tables}}",
@@ -16929,206 +17031,104 @@
       "cancelar": "Cancel"
     }
   },
-  "inventarioImagenes": {
-    "titulo": "Images",
-    "migaInventario": "Inventory",
-    "cargando": "Loading…",
-    "subtitulo": "{organizacion} · {n} {count, plural, one {image} other {images}}",
-    "subtituloMovil": "{n} {count, plural, one {image} other {images}}",
-    "buscar": "Search by file name or product",
-    "buscarProductos": "Search by product, SKU or file",
-    "errorCarga": "We couldn't load the images",
-    "seleccionar": "Select “{nombre}”",
-    "abrirDetalle": "View details of “{nombre}”",
-    "abrirProducto": "Open the product “{nombre}”",
-    "nImagenes": "{n, plural, one {# image} other {# images}}",
-    "sustantivo": {
-      "singular": "image",
-      "plural": "images"
+  "inventario": {
+    "origenes": {
+      "purchase": "Purchase",
+      "sale": "Sale",
+      "adjustment": "Adjustment",
+      "transfer": "Transfer",
+      "return": "Return",
+      "loss": "Shrinkage",
+      "production": "Production",
+      "initial": "Opening stock",
+      "web_sale": "Web sale",
+      "mesa_sale": "Table sale",
+      "invoice_sale": "Sale (invoice)",
+      "folio_item": "Folio",
+      "room_consumption": "Room consumption",
+      "web_order": "Web reservation",
+      "purchase_order": "Purchase receipt",
+      "purchase_invoice": "Purchase invoice",
+      "invoice_void": "Invoice void",
+      "credit_note": "Credit note",
+      "web_refund": "Web refund",
+      "folio_item_reversal": "Folio reversal",
+      "transfer_out": "Transfer out",
+      "transfer_in": "Transfer in",
+      "purchase_void": "Purchase void",
+      "credit_note_void": "Credit note void",
+      "desconocido": "Other source"
     },
-    "sinPermiso": {
-      "titulo": "You don't have access to images",
-      "descripcion": "Ask an administrator of the organization to give you inventory access."
-    },
-    "pestanas": {
-      "etiqueta": "Image source",
-      "biblioteca": "Library",
-      "productos": "From products"
-    },
-    "kpi": {
-      "etiqueta": "Image summary",
-      "imagenes": "Images",
-      "imagenesDetalle": "{biblioteca} in the library · {productos} from products",
-      "sinUsar": "Unused",
-      "sinUsarDetalle": "No product uses them",
-      "sinUsarNinguna": "All of them are in use",
-      "productosSinImagen": "Products without an image",
-      "verEnCatalogo": "See in the catalog",
-      "publicas": "Public",
-      "publicasDetalle": "Visible in the online store"
-    },
-    "insignias": {
-      "publica": "Public",
-      "privada": "Private",
-      "principal": "Main",
-      "galeria": "Gallery"
-    },
-    "uso": {
-      "enProductos": "{n, plural, one {In # product} other {In # products}}",
-      "sinUsar": "Unused",
-      "verProducto": "View product"
-    },
-    "vacio": {
-      "titulo": "Your library is empty",
-      "descripcion": "Upload photos once and use them in several products, the online store and the POS.",
-      "tituloProductos": "No product has its own photos",
-      "descripcionProductos": "Photos you upload from a product's form or detail show up here."
-    },
-    "filtros": {
+    "documentos": {
+      "venta": "Sale",
+      "factura_venta": "Sales invoice",
+      "nota_credito": "Credit note",
+      "devolucion": "Return",
+      "anulacion_venta": "Sale void",
+      "factura_compra": "Purchase invoice",
+      "orden_compra": "Purchase order",
+      "ajuste": "Adjustment",
+      "traslado": "Transfer",
+      "orden_produccion": "Production order",
+      "folio": "Reservation (folio)",
+      "pedido_web": "Web order",
       "producto": "Product",
-      "visibilidad": "Visibility",
-      "uso": "Usage",
-      "formato": "Format",
-      "tamano": "Size",
-      "todos": "All",
-      "todas": {
-        "visibilidad": "Public and private",
-        "tamano": "Any size"
-      },
-      "opciones": {
-        "todas": "All",
-        "todos": "All",
-        "en_uso": "In use",
-        "sin_usar": "Unused",
-        "publicas": "Public",
-        "privadas": "Private",
-        "jpg_png": "JPG / PNG",
-        "webp": "WEBP",
-        "pequena": "Under 200 KB",
-        "mediana": "200 KB to 1 MB",
-        "grande": "Over 1 MB"
-      },
-      "nota": "Changes apply instantly.",
-      "verResultados": "Show {n, plural, one {# image} other {# images}}"
+      "otro": "No document",
+      "abrir": "Open {documento}",
+      "sinAcceso": "Document not available"
     },
-    "acciones": {
-      "ver": "View details",
-      "verEditar": "View and edit details",
-      "asignar": "Assign to products",
-      "asignarPuntos": "Assign to products…",
-      "hacerPublica": "Make public",
-      "hacerPrivada": "Make private",
-      "copiarEnlace": "Copy link",
-      "descargar": "Download",
-      "eliminar": "Delete",
-      "abrirProducto": "Open the product",
-      "productosSinImagen": "See products without an image",
-      "actualizar": "Refresh",
-      "motivoDescargar": "Images selected on other pages are downloaded from their page"
+    "vencimiento": {
+      "vigente": "Valid",
+      "por_vencer": "Expiring soon",
+      "vencido": "Expired",
+      "sin_vencimiento": "No expiry",
+      "venceEn": "{dias, plural, one {Expires in # day} other {Expires in # days}}",
+      "venceHoy": "Expires today",
+      "vencioHace": "{dias, plural, one {Expired # day ago} other {Expired # days ago}}"
     },
-    "detalle": {
-      "titulo": "Image",
-      "descripcion": "Image details and the products that use it",
-      "error": "We couldn't load the image",
-      "tamano": "Size",
-      "subida": "Uploaded",
-      "alt": "Alt text",
-      "sinAlt": "No alt text",
-      "altAyuda": "Read by screen readers and search engines. It is copied to the products that use it.",
-      "altPlaceholder": "Brown leather boot, side view",
-      "visibilidad": "Visibility",
-      "nombre": "Name",
-      "nombreObligatorio": "Enter a name for the image",
-      "publica": "Public",
-      "publicaAyuda": "Visible in the online store",
-      "guardar": "Save changes",
-      "usadaEn": "{n, plural, one {Used in # product} other {Used in # products}}",
-      "sinUsar": "Unused",
-      "sinUsarAyuda": "No product uses it yet. Assign it so it shows in the catalog, the POS and the store.",
-      "principal": "Main",
-      "galeria": "Gallery",
-      "abrir": "Open",
-      "yMas": "and {n, plural, one {# more product} other {# more products}}"
+    "lotes": {
+      "titulo": "Choose lot",
+      "ayuda": "The one expiring first is suggested (FEFO). You can pick another.",
+      "opcion": "{codigo} · {cantidad} units",
+      "noVenderVencidos": "Do not sell expired lots",
+      "reparto": "Split: {asignado} of {total} units assigned",
+      "faltante": "{faltante} units left without a lot",
+      "sinLotes": "This product has no lots in stock at this branch.",
+      "cantidadDelLote": "Quantity from lot {codigo}",
+      "usar": "Use these lots",
+      "cancelar": "Cancel",
+      "sugerirFefo": "Split by expiry"
     },
-    "eliminar": {
-      "tituloUna": "Delete “{nombre}”?",
-      "tituloVarias": "Delete {n, plural, one {# image} other {# images}}?",
-      "principalYGaleria": "It is the main image of {principal, plural, one {# product} other {# products}} and is in the gallery of {galeria, plural, =0 {no other product} one {one more} other {# more}}. Those products will lose this photo; the main one will take the next one in its gallery.",
-      "soloGaleria": "It is in the gallery of {n, plural, one {# product} other {# products}}. Those products will lose this photo.",
-      "variasEnUso": "{n, plural, one {There is # use in products} other {There are # uses in products}}: those products will lose the photo and, where it was the main one, take the next one in their gallery.",
-      "sinUso": "No product uses them. The file is deleted and this can't be undone."
-    },
-    "toast": {
-      "guardada": "Image saved",
-      "errorGuardar": "We couldn't save the image",
-      "publicas": "{n, plural, one {# image is now public} other {# images are now public}}",
-      "privadas": "{n, plural, one {# image is now private} other {# images are now private}}",
-      "enlaceCopiado": "Link copied",
-      "errorCopiar": "We couldn't copy the link",
-      "asignada": "{n, plural, =0 {Not assigned to any new product} one {Assigned to # product} other {Assigned to # products}}",
-      "yaLaTenian": "{n, plural, one {# product already had it} other {# products already had it}}",
-      "errorAsignar": "We couldn't assign the image",
-      "eliminadas": "{n, plural, one {# image deleted} other {# images deleted}}",
-      "errorEliminar": "We couldn't delete",
-      "subidas": "{n, plural, one {# image uploaded to the library} other {# images uploaded to the library}}"
+    "saldo": {
+      "entrada": "In",
+      "salida": "Out",
+      "saldo": "Balance",
+      "costoPromedio": "Average cost",
+      "saldoTras": "Balance after the movement: {saldo}",
+      "negativo": "Negative balance"
     },
     "errores": {
-      "sinPermiso": "You don't have permission for this action",
-      "noEncontrada": "The image no longer exists",
-      "rutaInvalida": "The file path doesn't belong to this organization",
-      "formato": "Unsupported format: use JPG, PNG or WEBP",
-      "tamano": "The image is larger than 5 MB",
-      "nombre": "Enter a name for the image"
+      "stock_insuficiente": "Not enough stock: available {disponible}, requested {solicitado}.",
+      "cantidad_invalida": "Quantity must be greater than zero.",
+      "direccion_invalida": "Invalid movement.",
+      "origen_requerido": "The movement source is missing.",
+      "lote_invalido": "The lot does not belong to this product.",
+      "serial_repetido": "There are repeated serials.",
+      "seriales_no_cuadran": "The number of serials does not match the quantity.",
+      "serial_no_disponible": "A serial is not available at this branch.",
+      "estado_serial_requerido": "Set the final status of the serials.",
+      "sin_permiso": "You do not have permission for this inventory action.",
+      "SUCURSAL_NO_ES_DE_LA_ORG": "The branch does not belong to the organization.",
+      "PRODUCTO_NO_ES_DE_LA_ORG": "The product does not belong to the organization.",
+      "PEDIDO_NO_ES_DE_LA_ORG": "The order does not belong to the organization.",
+      "ORIGEN_INVALIDO": "This source is not allowed here.",
+      "ORIGEN_SIN_ID": "The source document is missing.",
+      "conversion_faltante": "A unit conversion is missing in the recipe.",
+      "desconocido": "The inventory movement could not be completed."
     },
-    "subir": {
-      "boton": "Upload images",
-      "titulo": "Upload images",
-      "descripcion": "JPG, PNG or WEBP · up to 5 MB each · saved in the library of {organizacion}",
-      "arrastra": "Drag your photos here",
-      "suelta": "Drop to upload",
-      "reglas": "Up to {n} images · max. 5 MB · JPG, PNG or WEBP",
-      "subir": "Upload",
-      "tomarFoto": "Take photo",
-      "generarIa": "Generate with AI",
-      "iaEtiqueta": "What image do you need?",
-      "iaPlaceholder": "Brown leather boot on a white background",
-      "iaGenerar": "Generate",
-      "iaCosto": "Uses AI credits from your plan.",
-      "iaError": "We couldn't generate the image. Try again.",
-      "iaSinCreditos": "You have no AI credits left to generate images.",
-      "listo": "Done",
-      "esperaSubida": "Wait for the uploads to finish",
-      "rechazoFormato": "Unsupported format ({ext}): convert it to JPG",
-      "rechazoFormatoCorto": "Unsupported format: use JPG, PNG or WEBP",
-      "rechazoTamano": "Larger than 5 MB: reduce it before uploading",
-      "rechazoCupo": "Up to {n} per batch: upload it afterwards",
-      "errorSubida": "Upload failed. Check your connection.",
-      "errorRegistro": "It couldn't be saved in the library",
-      "quitar": "Remove “{nombre}” from the list",
-      "estados": {
-        "esperando": "waiting",
-        "subiendo": "uploading",
-        "subida": "uploaded",
-        "error": "failed"
-      }
-    },
-    "asignar": {
-      "titulo": "Assign “{nombre}” to products",
-      "descripcion": "Choose the products; you can make it the main image.",
-      "buscar": "Search product",
-      "placeholder": "Search by name, SKU or code",
-      "vacio": "Type to search products",
-      "sinResultados": "No product matches",
-      "errorBuscar": "We couldn't search products",
-      "conVariantes": "with variants",
-      "yaElegido": "Already in the list",
-      "elegidos": "Chosen products",
-      "ninguno": "You haven't chosen any products yet.",
-      "quitar": "Remove “{nombre}”",
-      "principal": "Make it the main image",
-      "principalAyuda": "It will be the cover photo in the catalog, the POS and the store.",
-      "confirmar": "{n, plural, =0 {Assign} one {Assign to # product} other {Assign to # products}}",
-      "eligeUno": "Choose at least one product"
+    "permisos": {
+      "sinPermisoTitulo": "You do not have access to inventory",
+      "sinPermisoDescripcion": "Ask an administrator of your organization for the inventory permission you need."
     }
   },
   "inventarioAjustes": {
@@ -20029,6 +20029,301 @@
       "desconocido": "An unexpected error occurred. Please try again."
     }
   },
+  "inventarioVariantes": {
+    "titulo": "Variants",
+    "migaInventario": "Inventory",
+    "cargando": "Loading the catalog…",
+    "subtitulo": "{tipos, plural, one {# type} other {# types}} · {valores, plural, one {# value} other {# values}} · {variantes} variants",
+    "subtituloMovil": "{tipos, plural, one {# type} other {# types}} · {valores, plural, one {# value} other {# values}}",
+    "nuevoTipo": "New type",
+    "nuevoValor": "New value",
+    "buscarTipo": "Search type or value",
+    "buscarValor": "Search value or code",
+    "verResultados": "Show {n, plural, one {# result} other {# results}}",
+    "errorCarga": "We couldn't load the variant catalog",
+    "avisoFuera": "{n, plural, one {# attribute used by your variants is} other {# attributes used by your variants are}} not in the catalog: they aren't offered when creating variants and can't be sorted.",
+    "pestanas": {
+      "tipos": "Types",
+      "valores": "Values"
+    },
+    "vista": {
+      "etiqueta": "Types view",
+      "tabla": "Table",
+      "tarjetas": "Cards"
+    },
+    "estilos": {
+      "texto": "Text",
+      "color": "Color swatch",
+      "imagen": "Image"
+    },
+    "estados": {
+      "activo": "Active",
+      "inactivo": "Inactive",
+      "repetido": "Duplicate",
+      "sinUsar": "Unused"
+    },
+    "meta": {
+      "ninguno": "Not set (inferred from the name)",
+      "color": "Color (color)",
+      "size": "Size (size)",
+      "material": "Material (material)",
+      "pattern": "Pattern (pattern)",
+      "gender": "Gender (gender)",
+      "age_group": "Age (age_group)"
+    },
+    "idiomas": {
+      "en": "English",
+      "fr": "Français",
+      "pt": "Português"
+    },
+    "tipo": {
+      "tituloNuevo": "New variant type",
+      "tituloEditar": "Edit “{nombre}”",
+      "descripcion": "Size, Color, Material… Its values are offered when creating variants.",
+      "nombre": "Name",
+      "ayudaNombre": "Case, accents and spaces don't matter: “size” and “Size” are the same type.",
+      "errorNombre": "Enter the type name.",
+      "errorRepetido": "“{nombre}” already exists. Merge them instead of creating another.",
+      "fusionarCon": "Merge with “{nombre}”",
+      "estilo": "How it shows in the POS and the store",
+      "meta": "In the Facebook catalog it maps to",
+      "ayudaMeta": "If you don't choose, it's inferred from the name (Color, Size, Material…).",
+      "traducciones": "Name in other languages (optional)",
+      "activo": "Active · offered when creating variants",
+      "guardar": "Save changes",
+      "crear": "Create type"
+    },
+    "valor": {
+      "tituloNuevo": "New value",
+      "tituloNuevoDe": "New “{tipo}” value",
+      "tituloEditar": "Edit “{valor}”",
+      "descripcion": "It's added at the end of the order; you can move it later.",
+      "tipo": "Type",
+      "elegirTipo": "Choose a type",
+      "valor": "Value",
+      "ayudaValor": "If it already exists with other casing or accents, we'll tell you so you use that one.",
+      "errorValor": "Enter the value.",
+      "errorRepetido": "“{nombre}” already exists in this type.",
+      "errorHex": "Use #RRGGBB for the color (for example #6B7C3A).",
+      "errorSku": "1 to 8 letters or numbers, no spaces.",
+      "errorSkuRepetido": "Another value of this type already uses that code.",
+      "errorTipo": "Choose the value's type.",
+      "muestra": "Swatch",
+      "hex": "Hex",
+      "muestrasRapidas": "Quick colors",
+      "colorPersonalizado": "Pick another color",
+      "sku": "SKU code",
+      "ayudaSku": "Used when generating the variant SKU: CAM-001-VOL-M. Unique within the type.",
+      "traducciones": "Name in other languages (optional)",
+      "guardarYOtro": "Save and add another",
+      "guardar": "Save changes",
+      "crear": "Create value"
+    },
+    "renombrar": {
+      "titulo": "Rename “{antes}” to “{despues}”?",
+      "descripcionTipo": "It's updated on {n, plural, one {# variant} other {# variants}} in a single operation, with its history. SKUs don't change.",
+      "descripcionValor": "It's updated on {n, plural, one {# variant} other {# variants}} in a single operation, with its history. SKUs don't change.",
+      "confirmar": "Rename"
+    },
+    "toast": {
+      "tipoCreado": "Type “{nombre}” created",
+      "tipoActualizado": "Type updated",
+      "tipoRenombrado": "Type renamed on {n, plural, one {# variant} other {# variants}}",
+      "valorCreado": "“{valor}” added to {tipo}",
+      "valorActualizado": "Value updated",
+      "valorRenombrado": "Value renamed on {n, plural, one {# variant} other {# variants}}",
+      "ordenGuardado": "Order saved: this is how they show in the POS, the store and the form",
+      "completado": "Catalog completed with your variants' attributes",
+      "sugeridos": "Suggested types added",
+      "activados": "{n, plural, one {# activated} other {# activated}}",
+      "desactivados": "{n, plural, one {# deactivated: no longer offered when creating variants} other {# deactivated: no longer offered when creating variants}}",
+      "estilo": "Display changed for {n, plural, one {# type} other {# types}}",
+      "idCopiado": "ID {id} copied",
+      "fusionados": "{n, plural, other {# merged into one}}",
+      "unificado": "Spelling unified on the variants",
+      "eliminados": "{n, plural, one {# deleted} other {# deleted}}"
+    },
+    "errores": {
+      "sinPermiso": "You don't have permission to change the variant catalog.",
+      "nombreRepetido": "A type with that name already exists (ignoring case and accents).",
+      "valorRepetido": "That value already exists in the type.",
+      "skuRepetido": "Another value of the type already uses that SKU code.",
+      "enUso": "Variants use it: deactivate or merge it instead of deleting it.",
+      "noEncontrado": "It no longer exists: someone changed it. Reload the page.",
+      "invalido": "Check the data: a field isn't valid.",
+      "desconocido": "We couldn't save. Try again."
+    },
+    "fusion": {
+      "tituloTipos": "Merge {n, plural, other {# types}}",
+      "tituloValores": "Merge {n, plural, other {# values}}",
+      "descripcionTipos": "Choose which one to keep. Its variants and values move to that type.",
+      "descripcionValores": "Choose which one to keep. The others' variants move to that value.",
+      "conservar": "Keep",
+      "confirmar": "Merge",
+      "motivo": "Choose which one to keep (at least two are needed).",
+      "variantes": "{n, plural, one {# variant} other {# variants}}",
+      "impacto": "{n, plural, =0 {No variant changes; the others are removed from the catalog.} one {# variant moves to “{nombre}”; if one has both, “{nombre}” is kept. Equal values are merged and SKUs don't change.} other {{total} variants move to “{nombre}”; if one has both, “{nombre}” is kept. Equal values are merged and SKUs don't change.}}",
+      "detalleTipo": "{n, plural, one {# value} other {# values}}"
+    },
+    "ordenar": {
+      "tituloTipos": "Sort types",
+      "tituloValores": "Sort “{tipo}” values",
+      "descripcion": "This is how they show in the POS selector, the store and the product form.",
+      "ayudaTeclado": "Drag with ⠿, use the arrows or, with a row focused, Alt + ↑ / ↓.",
+      "natural": "Natural order (2 before 10)",
+      "cancelar": "Cancel",
+      "guardar": "Save order",
+      "anuncio": "“{nombre}” is now in position {posicion} of {total}",
+      "fila": "{nombre}, position {posicion} of {total}",
+      "subir": "Move “{nombre}” up",
+      "bajar": "Move “{nombre}” down"
+    },
+    "acciones": {
+      "editarTipo": "Edit type",
+      "editarValor": "Edit value",
+      "verValores": "View its {n, plural, one {# value} other {# values}}",
+      "ordenarValores": "Sort values",
+      "ordenar": "Sort",
+      "ordenarTipos": "Sort types",
+      "unificar": "Unify spelling as “{nombre}”",
+      "estilo": "Change how it shows",
+      "estiloDetalle": "Text · Color swatch · Image",
+      "fusionarCon": "Merge with another…",
+      "copiarId": "Copy ID",
+      "desactivar": "Deactivate",
+      "desactivarDetalle": "No longer offered when creating variants; {n, plural, one {the # existing one doesn't change} other {the # existing ones don't change}}",
+      "activar": "Activate",
+      "eliminar": "Delete",
+      "motivoEnUso": "Used by {n, plural, one {# variant} other {# variants}} · deactivate or merge it",
+      "subir": "Move up",
+      "bajar": "Move down",
+      "completar": "Add to catalog",
+      "completarDetalle": "{n, plural, =0 {Nothing pending} one {# attribute in use is missing from the catalog} other {# attributes in use are missing from the catalog}}",
+      "sugeridos": "Use suggested types",
+      "sugeridosDetalle": "Size, Color, Material… with their values",
+      "exportar": "Export CSV",
+      "actualizar": "Refresh"
+    },
+    "columnas": {
+      "orden": "Order",
+      "tipo": "Type",
+      "estilo": "Shows as",
+      "estado": "Status",
+      "valores": "Values",
+      "variantes": "Variants",
+      "valor": "Value",
+      "muestra": "Swatch",
+      "traducciones": "Translations"
+    },
+    "filtros": {
+      "estado": "Status",
+      "estilo": "Shows as",
+      "tipo": "Type",
+      "todosLosTipos": "All types",
+      "estados": {
+        "todos": "All",
+        "activos": "Active",
+        "repetidos": "Duplicates",
+        "sinUsar": "Unused",
+        "inactivos": "Inactive"
+      }
+    },
+    "kpi": {
+      "etiquetaTipos": "Types summary",
+      "etiquetaValores": "Values summary",
+      "tiposActivos": "Active types",
+      "tiposActivosDetalle": "{nombres}{mas, plural, =0 {} other { and # more}}",
+      "ninguno": "None yet",
+      "valores": "Values",
+      "valoresDetalle": "In {tipos, plural, one {# type} other {# types}} · {sinOrden, plural, =0 {all sorted} one {# type without a set order} other {# types without a set order}}",
+      "valoresDe": "In “{tipo}”",
+      "valoresEnTipos": "In {n, plural, one {# type} other {# types}}",
+      "repetidos": "Duplicate names",
+      "valoresRepetidos": "Duplicate values",
+      "repetidosDetalle": "{ejemplo} · merge",
+      "repetidosNinguno": "None",
+      "sinUsar": "Unused",
+      "sinUsarDetalleTipos": "No variants · deactivate or delete",
+      "sinUsarDetalleValores": "No variant uses them",
+      "sinUsarNinguno": "All in use",
+      "conMuestra": "With color swatch",
+      "conMuestraDetalle": "Hex per value in color types"
+    },
+    "tipos": {
+      "titulo": "Variant types",
+      "igualA": "same as “{nombre}”",
+      "sinValores": "No values"
+    },
+    "valores": {
+      "titulo": "Variant values",
+      "tituloDe": "“{tipo}” values",
+      "igualA": "Same as “{nombre}” · merge",
+      "codigoSku": "SKU code: {codigo}",
+      "falta": "Missing {idiomas}",
+      "sinMuestra": "No swatch",
+      "avisoColor": "“{tipo}” shows as a color swatch: each value has its hex. It's shown in the POS selector and the store, and goes to the Facebook catalog color field. Without a hex, the name is shown."
+    },
+    "tarjeta": {
+      "meta": "{valores, plural, one {# value} other {# values}} · {variantes, plural, one {# variant} other {# variants}}",
+      "variantes": "{n, plural, one {# variant} other {# variants}}"
+    },
+    "sustantivo": {
+      "tipo": "type",
+      "tipos": "types",
+      "valor": "value",
+      "valores": "values"
+    },
+    "vacio": {
+      "tipos": {
+        "titulo": "No variant types yet",
+        "descripcion": "Create Size, Color or Material, or use the suggested ones from “⋯”. They're also created when saving a product with variants."
+      },
+      "valores": {
+        "titulo": "No values yet",
+        "tituloDe": "“{tipo}” has no values yet",
+        "descripcion": "Add the values offered when creating variants (S, M, L…)."
+      }
+    },
+    "sinPermiso": {
+      "titulo": "You don't have access to the variant catalog",
+      "descripcion": "Ask an administrator for the inventory permission to see it."
+    },
+    "masivo": {
+      "fusionar": "Merge into one",
+      "motivoFusionar": "Select at least two types",
+      "motivoFusionarValores": "Select at least two values of the same type",
+      "estilo": "How it shows",
+      "exportar": "Export",
+      "desactivar": "Deactivate",
+      "activar": "Activate",
+      "eliminarSinUso": "Delete the unused ones",
+      "motivoEliminar": "None of the selected ones is unused"
+    },
+    "unificar": {
+      "titulo": "Unify the spelling as “{nombre}”?",
+      "descripcion": "Variants spelling it {escrituras} ({n, plural, one {# variant} other {# variants}}) change to “{nombre}” in a single operation. SKUs don't change.",
+      "confirmar": "Unify"
+    },
+    "eliminar": {
+      "tituloTipo": "Delete the “{nombre}” type?",
+      "tituloValor": "Delete the “{nombre}” value?",
+      "tituloVarios": "Delete {n, plural, one {# item} other {# items}}?",
+      "descripcionTipos": "Only unused types are deleted, with their values. No variant changes.",
+      "descripcionValores": "Only unused values are deleted. No variant changes."
+    },
+    "csv": {
+      "id": "ID",
+      "orden": "Order",
+      "tipo": "Type",
+      "estilo": "Shows as",
+      "estado": "Status",
+      "valores": "Values",
+      "variantes": "Variants",
+      "valor": "Value",
+      "hex": "Hex",
+      "sku": "SKU code"
+    }
+  },
   "inventarioRecetas": {
     "inventario": "Inventory",
     "sustantivo": {
@@ -20337,301 +20632,6 @@
       "producto_no_encontrado": "The product does not exist or has been deleted.",
       "sin_permiso": "You don't have permission to edit recipes.",
       "desconocido": "An unexpected error occurred. Please try again."
-    }
-  },
-  "inventarioVariantes": {
-    "titulo": "Variants",
-    "migaInventario": "Inventory",
-    "cargando": "Loading the catalog…",
-    "subtitulo": "{tipos, plural, one {# type} other {# types}} · {valores, plural, one {# value} other {# values}} · {variantes} variants",
-    "subtituloMovil": "{tipos, plural, one {# type} other {# types}} · {valores, plural, one {# value} other {# values}}",
-    "nuevoTipo": "New type",
-    "nuevoValor": "New value",
-    "buscarTipo": "Search type or value",
-    "buscarValor": "Search value or code",
-    "verResultados": "Show {n, plural, one {# result} other {# results}}",
-    "errorCarga": "We couldn't load the variant catalog",
-    "avisoFuera": "{n, plural, one {# attribute used by your variants is} other {# attributes used by your variants are}} not in the catalog: they aren't offered when creating variants and can't be sorted.",
-    "pestanas": {
-      "tipos": "Types",
-      "valores": "Values"
-    },
-    "vista": {
-      "etiqueta": "Types view",
-      "tabla": "Table",
-      "tarjetas": "Cards"
-    },
-    "estilos": {
-      "texto": "Text",
-      "color": "Color swatch",
-      "imagen": "Image"
-    },
-    "estados": {
-      "activo": "Active",
-      "inactivo": "Inactive",
-      "repetido": "Duplicate",
-      "sinUsar": "Unused"
-    },
-    "meta": {
-      "ninguno": "Not set (inferred from the name)",
-      "color": "Color (color)",
-      "size": "Size (size)",
-      "material": "Material (material)",
-      "pattern": "Pattern (pattern)",
-      "gender": "Gender (gender)",
-      "age_group": "Age (age_group)"
-    },
-    "idiomas": {
-      "en": "English",
-      "fr": "Français",
-      "pt": "Português"
-    },
-    "tipo": {
-      "tituloNuevo": "New variant type",
-      "tituloEditar": "Edit “{nombre}”",
-      "descripcion": "Size, Color, Material… Its values are offered when creating variants.",
-      "nombre": "Name",
-      "ayudaNombre": "Case, accents and spaces don't matter: “size” and “Size” are the same type.",
-      "errorNombre": "Enter the type name.",
-      "errorRepetido": "“{nombre}” already exists. Merge them instead of creating another.",
-      "fusionarCon": "Merge with “{nombre}”",
-      "estilo": "How it shows in the POS and the store",
-      "meta": "In the Facebook catalog it maps to",
-      "ayudaMeta": "If you don't choose, it's inferred from the name (Color, Size, Material…).",
-      "traducciones": "Name in other languages (optional)",
-      "activo": "Active · offered when creating variants",
-      "guardar": "Save changes",
-      "crear": "Create type"
-    },
-    "valor": {
-      "tituloNuevo": "New value",
-      "tituloNuevoDe": "New “{tipo}” value",
-      "tituloEditar": "Edit “{valor}”",
-      "descripcion": "It's added at the end of the order; you can move it later.",
-      "tipo": "Type",
-      "elegirTipo": "Choose a type",
-      "valor": "Value",
-      "ayudaValor": "If it already exists with other casing or accents, we'll tell you so you use that one.",
-      "errorValor": "Enter the value.",
-      "errorRepetido": "“{nombre}” already exists in this type.",
-      "errorHex": "Use #RRGGBB for the color (for example #6B7C3A).",
-      "errorSku": "1 to 8 letters or numbers, no spaces.",
-      "errorSkuRepetido": "Another value of this type already uses that code.",
-      "errorTipo": "Choose the value's type.",
-      "muestra": "Swatch",
-      "hex": "Hex",
-      "muestrasRapidas": "Quick colors",
-      "colorPersonalizado": "Pick another color",
-      "sku": "SKU code",
-      "ayudaSku": "Used when generating the variant SKU: CAM-001-VOL-M. Unique within the type.",
-      "traducciones": "Name in other languages (optional)",
-      "guardarYOtro": "Save and add another",
-      "guardar": "Save changes",
-      "crear": "Create value"
-    },
-    "renombrar": {
-      "titulo": "Rename “{antes}” to “{despues}”?",
-      "descripcionTipo": "It's updated on {n, plural, one {# variant} other {# variants}} in a single operation, with its history. SKUs don't change.",
-      "descripcionValor": "It's updated on {n, plural, one {# variant} other {# variants}} in a single operation, with its history. SKUs don't change.",
-      "confirmar": "Rename"
-    },
-    "toast": {
-      "tipoCreado": "Type “{nombre}” created",
-      "tipoActualizado": "Type updated",
-      "tipoRenombrado": "Type renamed on {n, plural, one {# variant} other {# variants}}",
-      "valorCreado": "“{valor}” added to {tipo}",
-      "valorActualizado": "Value updated",
-      "valorRenombrado": "Value renamed on {n, plural, one {# variant} other {# variants}}",
-      "ordenGuardado": "Order saved: this is how they show in the POS, the store and the form",
-      "completado": "Catalog completed with your variants' attributes",
-      "sugeridos": "Suggested types added",
-      "activados": "{n, plural, one {# activated} other {# activated}}",
-      "desactivados": "{n, plural, one {# deactivated: no longer offered when creating variants} other {# deactivated: no longer offered when creating variants}}",
-      "estilo": "Display changed for {n, plural, one {# type} other {# types}}",
-      "idCopiado": "ID {id} copied",
-      "fusionados": "{n, plural, other {# merged into one}}",
-      "unificado": "Spelling unified on the variants",
-      "eliminados": "{n, plural, one {# deleted} other {# deleted}}"
-    },
-    "errores": {
-      "sinPermiso": "You don't have permission to change the variant catalog.",
-      "nombreRepetido": "A type with that name already exists (ignoring case and accents).",
-      "valorRepetido": "That value already exists in the type.",
-      "skuRepetido": "Another value of the type already uses that SKU code.",
-      "enUso": "Variants use it: deactivate or merge it instead of deleting it.",
-      "noEncontrado": "It no longer exists: someone changed it. Reload the page.",
-      "invalido": "Check the data: a field isn't valid.",
-      "desconocido": "We couldn't save. Try again."
-    },
-    "fusion": {
-      "tituloTipos": "Merge {n, plural, other {# types}}",
-      "tituloValores": "Merge {n, plural, other {# values}}",
-      "descripcionTipos": "Choose which one to keep. Its variants and values move to that type.",
-      "descripcionValores": "Choose which one to keep. The others' variants move to that value.",
-      "conservar": "Keep",
-      "confirmar": "Merge",
-      "motivo": "Choose which one to keep (at least two are needed).",
-      "variantes": "{n, plural, one {# variant} other {# variants}}",
-      "impacto": "{n, plural, =0 {No variant changes; the others are removed from the catalog.} one {# variant moves to “{nombre}”; if one has both, “{nombre}” is kept. Equal values are merged and SKUs don't change.} other {{total} variants move to “{nombre}”; if one has both, “{nombre}” is kept. Equal values are merged and SKUs don't change.}}",
-      "detalleTipo": "{n, plural, one {# value} other {# values}}"
-    },
-    "ordenar": {
-      "tituloTipos": "Sort types",
-      "tituloValores": "Sort “{tipo}” values",
-      "descripcion": "This is how they show in the POS selector, the store and the product form.",
-      "ayudaTeclado": "Drag with ⠿, use the arrows or, with a row focused, Alt + ↑ / ↓.",
-      "natural": "Natural order (2 before 10)",
-      "cancelar": "Cancel",
-      "guardar": "Save order",
-      "anuncio": "“{nombre}” is now in position {posicion} of {total}",
-      "fila": "{nombre}, position {posicion} of {total}",
-      "subir": "Move “{nombre}” up",
-      "bajar": "Move “{nombre}” down"
-    },
-    "acciones": {
-      "editarTipo": "Edit type",
-      "editarValor": "Edit value",
-      "verValores": "View its {n, plural, one {# value} other {# values}}",
-      "ordenarValores": "Sort values",
-      "ordenar": "Sort",
-      "ordenarTipos": "Sort types",
-      "unificar": "Unify spelling as “{nombre}”",
-      "estilo": "Change how it shows",
-      "estiloDetalle": "Text · Color swatch · Image",
-      "fusionarCon": "Merge with another…",
-      "copiarId": "Copy ID",
-      "desactivar": "Deactivate",
-      "desactivarDetalle": "No longer offered when creating variants; {n, plural, one {the # existing one doesn't change} other {the # existing ones don't change}}",
-      "activar": "Activate",
-      "eliminar": "Delete",
-      "motivoEnUso": "Used by {n, plural, one {# variant} other {# variants}} · deactivate or merge it",
-      "subir": "Move up",
-      "bajar": "Move down",
-      "completar": "Add to catalog",
-      "completarDetalle": "{n, plural, =0 {Nothing pending} one {# attribute in use is missing from the catalog} other {# attributes in use are missing from the catalog}}",
-      "sugeridos": "Use suggested types",
-      "sugeridosDetalle": "Size, Color, Material… with their values",
-      "exportar": "Export CSV",
-      "actualizar": "Refresh"
-    },
-    "columnas": {
-      "orden": "Order",
-      "tipo": "Type",
-      "estilo": "Shows as",
-      "estado": "Status",
-      "valores": "Values",
-      "variantes": "Variants",
-      "valor": "Value",
-      "muestra": "Swatch",
-      "traducciones": "Translations"
-    },
-    "filtros": {
-      "estado": "Status",
-      "estilo": "Shows as",
-      "tipo": "Type",
-      "todosLosTipos": "All types",
-      "estados": {
-        "todos": "All",
-        "activos": "Active",
-        "repetidos": "Duplicates",
-        "sinUsar": "Unused",
-        "inactivos": "Inactive"
-      }
-    },
-    "kpi": {
-      "etiquetaTipos": "Types summary",
-      "etiquetaValores": "Values summary",
-      "tiposActivos": "Active types",
-      "tiposActivosDetalle": "{nombres}{mas, plural, =0 {} other { and # more}}",
-      "ninguno": "None yet",
-      "valores": "Values",
-      "valoresDetalle": "In {tipos, plural, one {# type} other {# types}} · {sinOrden, plural, =0 {all sorted} one {# type without a set order} other {# types without a set order}}",
-      "valoresDe": "In “{tipo}”",
-      "valoresEnTipos": "In {n, plural, one {# type} other {# types}}",
-      "repetidos": "Duplicate names",
-      "valoresRepetidos": "Duplicate values",
-      "repetidosDetalle": "{ejemplo} · merge",
-      "repetidosNinguno": "None",
-      "sinUsar": "Unused",
-      "sinUsarDetalleTipos": "No variants · deactivate or delete",
-      "sinUsarDetalleValores": "No variant uses them",
-      "sinUsarNinguno": "All in use",
-      "conMuestra": "With color swatch",
-      "conMuestraDetalle": "Hex per value in color types"
-    },
-    "tipos": {
-      "titulo": "Variant types",
-      "igualA": "same as “{nombre}”",
-      "sinValores": "No values"
-    },
-    "valores": {
-      "titulo": "Variant values",
-      "tituloDe": "“{tipo}” values",
-      "igualA": "Same as “{nombre}” · merge",
-      "codigoSku": "SKU code: {codigo}",
-      "falta": "Missing {idiomas}",
-      "sinMuestra": "No swatch",
-      "avisoColor": "“{tipo}” shows as a color swatch: each value has its hex. It's shown in the POS selector and the store, and goes to the Facebook catalog color field. Without a hex, the name is shown."
-    },
-    "tarjeta": {
-      "meta": "{valores, plural, one {# value} other {# values}} · {variantes, plural, one {# variant} other {# variants}}",
-      "variantes": "{n, plural, one {# variant} other {# variants}}"
-    },
-    "sustantivo": {
-      "tipo": "type",
-      "tipos": "types",
-      "valor": "value",
-      "valores": "values"
-    },
-    "vacio": {
-      "tipos": {
-        "titulo": "No variant types yet",
-        "descripcion": "Create Size, Color or Material, or use the suggested ones from “⋯”. They're also created when saving a product with variants."
-      },
-      "valores": {
-        "titulo": "No values yet",
-        "tituloDe": "“{tipo}” has no values yet",
-        "descripcion": "Add the values offered when creating variants (S, M, L…)."
-      }
-    },
-    "sinPermiso": {
-      "titulo": "You don't have access to the variant catalog",
-      "descripcion": "Ask an administrator for the inventory permission to see it."
-    },
-    "masivo": {
-      "fusionar": "Merge into one",
-      "motivoFusionar": "Select at least two types",
-      "motivoFusionarValores": "Select at least two values of the same type",
-      "estilo": "How it shows",
-      "exportar": "Export",
-      "desactivar": "Deactivate",
-      "activar": "Activate",
-      "eliminarSinUso": "Delete the unused ones",
-      "motivoEliminar": "None of the selected ones is unused"
-    },
-    "unificar": {
-      "titulo": "Unify the spelling as “{nombre}”?",
-      "descripcion": "Variants spelling it {escrituras} ({n, plural, one {# variant} other {# variants}}) change to “{nombre}” in a single operation. SKUs don't change.",
-      "confirmar": "Unify"
-    },
-    "eliminar": {
-      "tituloTipo": "Delete the “{nombre}” type?",
-      "tituloValor": "Delete the “{nombre}” value?",
-      "tituloVarios": "Delete {n, plural, one {# item} other {# items}}?",
-      "descripcionTipos": "Only unused types are deleted, with their values. No variant changes.",
-      "descripcionValores": "Only unused values are deleted. No variant changes."
-    },
-    "csv": {
-      "id": "ID",
-      "orden": "Order",
-      "tipo": "Type",
-      "estilo": "Shows as",
-      "estado": "Status",
-      "valores": "Values",
-      "variantes": "Variants",
-      "valor": "Value",
-      "hex": "Hex",
-      "sku": "SKU code"
     }
   },
   "subseccion": {

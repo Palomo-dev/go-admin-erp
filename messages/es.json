@@ -2519,12 +2519,12 @@
       "invalidMediaUrlsTooMany": "Como máximo {max} imágenes de reposo"
     },
     "avisoPropina": {
-      "eleccion_porcentaje": "Cliente eligió {percent} % ({monto})",
-      "eleccion_ninguna": "Cliente eligió no dejar propina",
-      "eleccion_importe": "Cliente eligió una propina de {monto}",
       "aplicar": "Aplicar",
       "cambiar": "Cambiar",
       "entendido": "Entendido",
+      "eleccion_porcentaje": "Cliente eligió {percent} % ({monto})",
+      "eleccion_ninguna": "Cliente eligió no dejar propina",
+      "eleccion_importe": "Cliente eligió una propina de {monto}",
       "espera_waiting_texto": "Pantalla del cliente: esperando la propina…",
       "espera_waiting_accion": "Omitir",
       "espera_informational_texto": "La pantalla muestra las propinas sugeridas: registre lo que indique el cliente",
@@ -3656,25 +3656,6 @@
       "anteriores": "Ver categorías anteriores",
       "siguientes": "Ver más categorías"
     },
-    "avisoSinImpuesto": {
-      "titulo": "{n, plural, one {Este producto no tiene impuesto asignado: {accion, select, cotizar {se cotizará} cobrar {se cobrará} other {se facturará}} sin IVA.} other {# productos no tienen impuesto asignado: {accion, select, cotizar {se cotizarán} cobrar {se cobrarán} other {se facturarán}} sin IVA.}}",
-      "advertencia": "Advertencia:",
-      "lineaSinDescripcion": "Línea sin descripción",
-      "asignar": "Asignar impuesto al producto",
-      "otraPestana": "(se abre en otra pestaña)",
-      "tarifaDefecto": "O define una <enlace>tarifa por defecto para productos sin impuesto</enlace>. Puedes continuar; es solo una advertencia.",
-      "etiqueta": "Sin impuesto asignado"
-    },
-    "consultaDian": {
-      "consultar": "Consultar DIAN",
-      "consultando": "Consultando...",
-      "documentoInvalido": "Ingresa un número de documento válido (mínimo 4 dígitos)",
-      "sinResultados": "No se encontró información para este documento",
-      "obtenidos": "Datos obtenidos desde {proveedor}",
-      "obtenidosCache": "Datos obtenidos desde {proveedor} (caché)",
-      "errorConexion": "Error de conexión al consultar DIAN/RUES",
-      "habeasData": "Autorizo la consulta de mi información en DIAN y RUES para fines de facturación electrónica y cumplimiento tributario (Ley 1581 de 2012)."
-    },
     "selectorIcono": {
       "etiqueta": "Icono",
       "seleccionar": "Seleccionar icono",
@@ -3698,6 +3679,25 @@
       "alinearDerecha": "Alinear derecha",
       "verMas": "Ver más",
       "verMenos": "Ver menos"
+    },
+    "avisoSinImpuesto": {
+      "titulo": "{n, plural, one {Este producto no tiene impuesto asignado: {accion, select, cotizar {se cotizará} cobrar {se cobrará} other {se facturará}} sin IVA.} other {# productos no tienen impuesto asignado: {accion, select, cotizar {se cotizarán} cobrar {se cobrarán} other {se facturarán}} sin IVA.}}",
+      "advertencia": "Advertencia:",
+      "lineaSinDescripcion": "Línea sin descripción",
+      "asignar": "Asignar impuesto al producto",
+      "otraPestana": "(se abre en otra pestaña)",
+      "tarifaDefecto": "O define una <enlace>tarifa por defecto para productos sin impuesto</enlace>. Puedes continuar; es solo una advertencia.",
+      "etiqueta": "Sin impuesto asignado"
+    },
+    "consultaDian": {
+      "consultar": "Consultar DIAN",
+      "consultando": "Consultando...",
+      "documentoInvalido": "Ingresa un número de documento válido (mínimo 4 dígitos)",
+      "sinResultados": "No se encontró información para este documento",
+      "obtenidos": "Datos obtenidos desde {proveedor}",
+      "obtenidosCache": "Datos obtenidos desde {proveedor} (caché)",
+      "errorConexion": "Error de conexión al consultar DIAN/RUES",
+      "habeasData": "Autorizo la consulta de mi información en DIAN y RUES para fines de facturación electrónica y cumplimiento tributario (Ley 1581 de 2012)."
     },
     "buscadorProductos": {
       "buscar": "Buscar productos",
@@ -13846,33 +13846,6 @@
     }
   },
   "posVenta": {
-    "cabecera": {
-      "titulo": "Punto de venta",
-      "subtituloSinOrganizacion": "Caja rápida / Venta",
-      "abrirCaja": "Abrir caja",
-      "cerrarCaja": "Cerrar caja",
-      "cierreBloqueado": "Solo el cajero que abrió la caja o alguien con permiso para cerrar cajas ajenas puede cerrarla",
-      "hora": "Hora: {hora}",
-      "horaEtiqueta": "Hora",
-      "contadores": "Carritos de esta sucursal",
-      "carritosEtiqueta": "Carritos",
-      "activos": "{n, plural, one {# activo} other {# activos}}",
-      "enEspera": "{n} en espera",
-      "hojaTitulo": "Caja y dispositivo",
-      "abrirHoja": "Caja y dispositivo",
-      "estadoCaja": "Caja",
-      "pantallaCliente": "Pantalla del cliente",
-      "verAtajos": "Atajos de teclado",
-      "cajaAbiertaToast": "Caja abierta",
-      "cajaAbiertaSinConexion": "Caja abierta sin conexión",
-      "cajaCerradaToast": "Caja cerrada",
-      "cajaCerradaSinConexion": "Caja cerrada sin conexión",
-      "montoInicial": "Monto inicial: {monto}",
-      "pendienteSincronizar": "pendiente de sincronizar",
-      "diferencia": "Diferencia: {monto}",
-      "organizacionNoEncontrada": "Organización no encontrada",
-      "configureOrganizacion": "Configure su organización para usar el punto de venta"
-    },
     "atajos": {
       "titulo": "Atajos de teclado",
       "descripcion": "Funcionan con el foco en la pantalla del POS. Dentro de un campo de texto solo valen las teclas F, Esc y las combinaciones con Alt o Ctrl.",
@@ -13922,74 +13895,41 @@
       "cerrarPostVenta": "Cerrar",
       "lineaPeso": "Cambiar el peso de la línea"
     },
-    "catalogo": {
-      "titulo": "Productos",
-      "productos": "Productos",
-      "vista": "Vista de productos",
-      "buscarPlaceholder": "Buscar por nombre, SKU, código de barras, variantes o modificadores…",
-      "buscarEtiqueta": "Buscar productos",
-      "escanear": "Escanear código de barras con la cámara",
-      "cantidadRapida": "Se agregarán {n} unidades del producto que elijas",
-      "total": "{n, plural, one {# producto} other {# productos}}",
-      "cargando": "Cargando productos",
-      "cargandoMas": "Cargando más productos…",
-      "reintentarMas": "Reintentar",
-      "errorTitulo": "Error al cargar productos",
-      "errorDescripcion": "No se pudieron cargar los productos",
-      "sinCatalogoTitulo": "Sin catálogo local",
-      "sinCatalogoDescripcion": "Este equipo aún no tiene el catálogo guardado para trabajar sin conexión.",
-      "vacioTitulo": "No hay productos",
-      "vacioDescripcion": "No hay productos disponibles en este momento",
-      "vacioBusquedaTitulo": "No se encontraron productos",
-      "vacioBusquedaDescripcion": "Intenta ajustar la búsqueda o la categoría",
-      "codigoEscaneado": "Código escaneado",
-      "buscandoCodigo": "Buscando el producto con el código {codigo}",
-      "agotadoTitulo": "Producto agotado",
-      "agotadoDescripcion": "{producto} no tiene stock disponible.",
-      "sinPrecioTitulo": "Producto sin precio",
-      "sinPrecioDescripcion": "{producto} no tiene un precio vigente: asígnale uno en el catálogo.",
-      "codigoNoEncontrado": "Código no encontrado",
-      "codigoNoEncontradoDescripcion": "Ningún producto activo tiene el código {codigo}.",
-      "errorEscaneo": "No se pudo buscar el producto escaneado",
-      "cierraElCobro": "Cierra el cobro para agregar productos",
-      "cierraElDialogo": "Cierra la ventana abierta para agregar productos escaneados",
-      "errorReceta": "No se pudo cargar la receta del producto",
-      "favoritoAgregado": "Agregado a favoritos",
-      "favoritoAgregadoDescripcion": "El producto aparecerá primero en el POS.",
-      "favoritoQuitado": "Quitado de favoritos",
-      "favoritoQuitadoDescripcion": "El producto ya no se priorizará.",
-      "errorFavorito": "No se pudo actualizar el favorito.",
-      "receta": {
-        "titulo": "Receta de producción",
-        "cerrar": "Cerrar",
-        "cargando": "Cargando la receta",
-        "noDisponible": "N/D",
-        "producto": "Producto",
-        "sku": "SKU: {sku}",
-        "rendimiento": "Rendimiento",
-        "estado": "Estado",
-        "activa": "Activa",
-        "inactiva": "Inactiva",
-        "version": "Versión",
-        "notas": "Notas",
-        "ingredientes": "Ingredientes ({n})",
-        "opcional": "Opcional",
-        "sinIngredientes": "Esta receta no tiene ingredientes definidos.",
-        "sinIngredientesTitulo": "Sin ingredientes"
-      },
-      "codigoManualTitulo": "Escribir código de barras",
-      "codigoManualEtiqueta": "Código de barras",
-      "codigoManualBuscar": "Buscar y agregar"
+    "cabecera": {
+      "titulo": "Punto de venta",
+      "subtituloSinOrganizacion": "Caja rápida / Venta",
+      "abrirCaja": "Abrir caja",
+      "cerrarCaja": "Cerrar caja",
+      "cierreBloqueado": "Solo el cajero que abrió la caja o alguien con permiso para cerrar cajas ajenas puede cerrarla",
+      "hora": "Hora: {hora}",
+      "horaEtiqueta": "Hora",
+      "contadores": "Carritos de esta sucursal",
+      "carritosEtiqueta": "Carritos",
+      "activos": "{n, plural, one {# activo} other {# activos}}",
+      "enEspera": "{n} en espera",
+      "hojaTitulo": "Caja y dispositivo",
+      "abrirHoja": "Caja y dispositivo",
+      "estadoCaja": "Caja",
+      "pantallaCliente": "Pantalla del cliente",
+      "verAtajos": "Atajos de teclado",
+      "cajaAbiertaToast": "Caja abierta",
+      "cajaAbiertaSinConexion": "Caja abierta sin conexión",
+      "cajaCerradaToast": "Caja cerrada",
+      "cajaCerradaSinConexion": "Caja cerrada sin conexión",
+      "montoInicial": "Monto inicial: {monto}",
+      "pendienteSincronizar": "pendiente de sincronizar",
+      "diferencia": "Diferencia: {monto}",
+      "organizacionNoEncontrada": "Organización no encontrada",
+      "configureOrganizacion": "Configure su organización para usar el punto de venta"
     },
-    "pagina": {
-      "sinCarritoActivo": "No hay un carrito activo",
-      "errorAgregar": "No se pudo agregar el producto al carrito",
-      "seleccioneSucursal": "Elige una sucursal antes de crear un carrito",
-      "errorCrearCarrito": "No se pudo crear el carrito",
-      "errorAsignarCliente": "No se pudo asignar el cliente al carrito",
-      "enEspera": "Carrito puesto en espera",
-      "enEsperaConMotivo": "Carrito puesto en espera: {motivo}",
-      "divisor": "Arrastra para ampliar el carrito · doble clic para restablecer"
+    "barraMovil": {
+      "etiqueta": "Carrito y cobro",
+      "total": "Total",
+      "verCarrito": "Ver carrito: {n, plural, one {# unidad} other {# unidades}}, {total}",
+      "cobrar": "Cobrar",
+      "abrirCaja": "Abrir caja para cobrar",
+      "hojaCarrito": "Carrito",
+      "seguirComprando": "Seguir comprando"
     },
     "carrito": {
       "lista": "Productos del carrito",
@@ -14066,6 +14006,75 @@
       "clienteDe": "Cliente: {nombre}",
       "dias": "días"
     },
+    "catalogo": {
+      "titulo": "Productos",
+      "productos": "Productos",
+      "vista": "Vista de productos",
+      "buscarPlaceholder": "Buscar por nombre, SKU, código de barras, variantes o modificadores…",
+      "buscarEtiqueta": "Buscar productos",
+      "escanear": "Escanear código de barras con la cámara",
+      "cantidadRapida": "Se agregarán {n} unidades del producto que elijas",
+      "total": "{n, plural, one {# producto} other {# productos}}",
+      "cargando": "Cargando productos",
+      "cargandoMas": "Cargando más productos…",
+      "reintentarMas": "Reintentar",
+      "errorTitulo": "Error al cargar productos",
+      "errorDescripcion": "No se pudieron cargar los productos",
+      "sinCatalogoTitulo": "Sin catálogo local",
+      "sinCatalogoDescripcion": "Este equipo aún no tiene el catálogo guardado para trabajar sin conexión.",
+      "vacioTitulo": "No hay productos",
+      "vacioDescripcion": "No hay productos disponibles en este momento",
+      "vacioBusquedaTitulo": "No se encontraron productos",
+      "vacioBusquedaDescripcion": "Intenta ajustar la búsqueda o la categoría",
+      "codigoEscaneado": "Código escaneado",
+      "buscandoCodigo": "Buscando el producto con el código {codigo}",
+      "agotadoTitulo": "Producto agotado",
+      "agotadoDescripcion": "{producto} no tiene stock disponible.",
+      "sinPrecioTitulo": "Producto sin precio",
+      "sinPrecioDescripcion": "{producto} no tiene un precio vigente: asígnale uno en el catálogo.",
+      "codigoNoEncontrado": "Código no encontrado",
+      "codigoNoEncontradoDescripcion": "Ningún producto activo tiene el código {codigo}.",
+      "errorEscaneo": "No se pudo buscar el producto escaneado",
+      "cierraElCobro": "Cierra el cobro para agregar productos",
+      "cierraElDialogo": "Cierra la ventana abierta para agregar productos escaneados",
+      "errorReceta": "No se pudo cargar la receta del producto",
+      "favoritoAgregado": "Agregado a favoritos",
+      "favoritoAgregadoDescripcion": "El producto aparecerá primero en el POS.",
+      "favoritoQuitado": "Quitado de favoritos",
+      "favoritoQuitadoDescripcion": "El producto ya no se priorizará.",
+      "errorFavorito": "No se pudo actualizar el favorito.",
+      "receta": {
+        "titulo": "Receta de producción",
+        "cerrar": "Cerrar",
+        "cargando": "Cargando la receta",
+        "noDisponible": "N/D",
+        "producto": "Producto",
+        "sku": "SKU: {sku}",
+        "rendimiento": "Rendimiento",
+        "estado": "Estado",
+        "activa": "Activa",
+        "inactiva": "Inactiva",
+        "version": "Versión",
+        "notas": "Notas",
+        "ingredientes": "Ingredientes ({n})",
+        "opcional": "Opcional",
+        "sinIngredientes": "Esta receta no tiene ingredientes definidos.",
+        "sinIngredientesTitulo": "Sin ingredientes"
+      },
+      "codigoManualTitulo": "Escribir código de barras",
+      "codigoManualEtiqueta": "Código de barras",
+      "codigoManualBuscar": "Buscar y agregar"
+    },
+    "pagina": {
+      "sinCarritoActivo": "No hay un carrito activo",
+      "errorAgregar": "No se pudo agregar el producto al carrito",
+      "seleccioneSucursal": "Elige una sucursal antes de crear un carrito",
+      "errorCrearCarrito": "No se pudo crear el carrito",
+      "errorAsignarCliente": "No se pudo asignar el cliente al carrito",
+      "enEspera": "Carrito puesto en espera",
+      "enEsperaConMotivo": "Carrito puesto en espera: {motivo}",
+      "divisor": "Arrastra para ampliar el carrito · doble clic para restablecer"
+    },
     "resumen": {
       "titulo": "Resumen",
       "impuestosIncluidos": "Impuestos incluidos",
@@ -14116,15 +14125,6 @@
       "sinSucursalTitulo": "Elige la sucursal para vender",
       "sinSucursalDescripcion": "Estás viendo «Todas las sucursales». Elige una sucursal en el selector de la cabecera para abrir un carrito.",
       "elegirSucursal": "Elegir sucursal"
-    },
-    "barraMovil": {
-      "etiqueta": "Carrito y cobro",
-      "total": "Total",
-      "verCarrito": "Ver carrito: {n, plural, one {# unidad} other {# unidades}}, {total}",
-      "cobrar": "Cobrar",
-      "abrirCaja": "Abrir caja para cobrar",
-      "hojaCarrito": "Carrito",
-      "seguirComprando": "Seguir comprando"
     },
     "descuento": {
       "titulo": "Descuento",
@@ -14462,303 +14462,6 @@
       "verificarPago": "Verificar pago"
     }
   },
-  "comisionesPago": {
-    "cuentaLabel": "¿De dónde sale el dinero?",
-    "opcionRegla": "Según la regla contable",
-    "opcionEfectivo": "Efectivo (caja abierta)",
-    "cuentaAyuda": "El asiento del pago acredita esta cuenta. Quién paga queda registrado.",
-    "mostrando": "Mostrando {shown} de {total} comisiones",
-    "cargarMas": "Cargar más",
-    "cargando": "Cargando…"
-  },
-  "saldosAFavor": {
-    "errorCarga": "No se pudieron cargar los saldos a favor.",
-    "errorFacturas": "No se pudieron cargar las facturas pendientes.",
-    "errorClientes": "No se pudieron cargar los clientes.",
-    "reintentar": "Reintentar",
-    "estadoAnulado": "Anulado",
-    "nuevo": {
-      "descripcion": "Registra un anticipo del cliente: entra como un pago con su recibo, suma a la caja o al banco y queda como saldo a favor.",
-      "metodo": "Método de pago",
-      "metodoPlaceholder": "Selecciona el método",
-      "cuentaBancaria": "Cuenta bancaria",
-      "cuentaBancariaPlaceholder": "Selecciona la cuenta",
-      "referencia": "Referencia",
-      "sinCaja": "No hay una caja abierta en esta sucursal: abre la caja o usa otro método.",
-      "creado": "Anticipo registrado con el recibo {recibo}."
-    },
-    "errores": {
-      "no_autenticado": "Tu sesión terminó. Vuelve a iniciar sesión.",
-      "sin_permiso": "No tienes permiso para esta acción.",
-      "sin_acceso_sucursal": "No tienes acceso a la sucursal del saldo o de la factura.",
-      "organizacion_no_permitida": "La organización no coincide con tu sesión.",
-      "datos_invalidos": "Revisa los datos.",
-      "clave_idempotencia_invalida": "No se pudo identificar el intento. Vuelve a abrir el diálogo.",
-      "clave_idempotencia_reutilizada": "Este intento ya se usó con otros datos. Vuelve a abrir el diálogo.",
-      "monto_invalido": "Escribe un monto mayor que cero.",
-      "saldo_no_encontrado": "No se encontró el saldo a favor.",
-      "saldo_no_disponible": "El saldo a favor ya no está disponible.",
-      "saldo_vencido": "El saldo a favor está vencido.",
-      "saldo_usado": "El saldo a favor ya se usó en facturas: no se puede anular.",
-      "saldo_no_anulable": "Este saldo a favor no viene de un anticipo: no se anula, se devuelve en dinero.",
-      "monto_excede_saldo_a_favor": "El monto supera el saldo a favor disponible.",
-      "factura_no_encontrada": "No se encontró la factura.",
-      "documento_invalido": "El documento no es una factura de venta.",
-      "documento_borrador": "La factura está en borrador: emítela antes de aplicarle saldo.",
-      "documento_anulado": "La factura está anulada.",
-      "cliente_distinto": "La factura es de otro cliente.",
-      "cliente_no_encontrado": "No se encontró el cliente.",
-      "sucursal_invalida": "Selecciona una sucursal válida.",
-      "moneda_distinta": "La factura está en otra moneda.",
-      "monto_excede_saldo": "El monto supera el saldo pendiente de la factura.",
-      "metodo_invalido": "El método de pago no está disponible.",
-      "referencia_obligatoria": "Este método exige referencia.",
-      "cuenta_bancaria_invalida": "La cuenta bancaria no es válida.",
-      "sin_caja_abierta": "No hay una caja abierta: abre la caja o usa otro método.",
-      "pago_en_caja_cerrada": "El dinero entró en una caja ya cerrada: registra una salida de caja.",
-      "sin_cuenta_de_dinero": "No se encontró la cuenta de caja o banco del método.",
-      "sin_cuenta_por_cobrar": "La organización no tiene cuenta por cobrar configurada.",
-      "vencimiento_invalido": "El vencimiento no puede ser anterior a hoy.",
-      "motivo_obligatorio": "Escribe el motivo.",
-      "asiento_no_creado": "No se pudo contabilizar. Revisa el plan de cuentas y el periodo contable.",
-      "error_desconocido": "No se pudo completar. Inténtalo de nuevo."
-    }
-  },
-  "tesoreria": {
-    "reintentar": "Reintentar",
-    "errorTitulo": "Error",
-    "errorCarga": {
-      "ingresos": "No se pudieron cargar los ingresos.",
-      "egresos": "No se pudieron cargar los egresos.",
-      "ingreso": "No se pudo cargar el ingreso.",
-      "egreso": "No se pudo cargar el egreso.",
-      "transferencias": "No se pudieron cargar las transferencias.",
-      "transferencia": "No se pudo cargar la transferencia.",
-      "cuentasBancarias": "No se pudieron cargar las cuentas bancarias.",
-      "cuentaBancaria": "No se pudieron cargar los datos de la cuenta."
-    },
-    "yaAnulado": "Ese movimiento ya estaba anulado; no se registró otro reverso.",
-    "transferenciaYaAnulada": "La transferencia ya estaba anulada; los saldos no se tocaron de nuevo.",
-    "transferenciaRepetida": "La transferencia ya estaba registrada; no se creó otra.",
-    "errores": {
-      "saldo_insuficiente_para_revertir": "La cuenta destino ya no tiene saldo suficiente para devolver el dinero.",
-      "saldo_insuficiente": "Saldo insuficiente en la cuenta origen.",
-      "moneda_distinta": "Las dos cuentas deben tener la misma moneda.",
-      "cuenta_no_encontrada": "La cuenta bancaria no existe en esta organización.",
-      "cuenta_inactiva": "Una de las cuentas está inactiva.",
-      "cuenta_requerida": "Seleccione la cuenta bancaria.",
-      "cuentas_iguales": "Las cuentas origen y destino deben ser diferentes.",
-      "monto_invalido": "El monto debe ser mayor a 0.",
-      "fecha_futura": "La fecha no puede ser posterior a hoy.",
-      "sucursal_invalida": "La sucursal no pertenece a esta organización.",
-      "sucursal_requerida": "Seleccione la sucursal.",
-      "transferencia_no_encontrada": "La transferencia no existe en esta organización.",
-      "movimiento_no_encontrado": "El movimiento no existe en esta organización.",
-      "movimiento_conciliado": "El movimiento ya está conciliado: deshaga la conciliación antes de anularlo.",
-      "movimiento_importado": "El movimiento viene del extracto del banco y no se anula; concílielo o registre el movimiento contrario.",
-      "anulacion_de_anulacion": "Una anulación no se anula: registre el movimiento de nuevo.",
-      "sin_caja_abierta_sucursal": "No hay una caja abierta en la sucursal del movimiento.",
-      "caja_cerrada": "La caja ya está cerrada.",
-      "saldo_bancario_por_movimientos": "El saldo de la cuenta lo mueven sus movimientos; no se edita a mano.",
-      "sin_permiso": "No tiene permiso para esta operación.",
-      "sin_acceso_sucursal": "No tiene acceso a la sucursal de la cuenta.",
-      "no_autenticado": "Su sesión expiró. Inicie sesión de nuevo.",
-      "sin_organizacion": "No se encontró la organización activa.",
-      "desconocido": "No se pudo completar la operación."
-    },
-    "anular": {
-      "descripcion": "La anulación no se puede deshacer.",
-      "ingreso": {
-        "titulo": "¿Anular este ingreso?",
-        "boton": "Anular ingreso"
-      },
-      "egreso": {
-        "titulo": "¿Anular este egreso?",
-        "boton": "Anular egreso"
-      },
-      "transferencia": {
-        "titulo": "¿Anular esta transferencia?",
-        "boton": "Anular transferencia",
-        "consecuencia": "Se revierten los saldos de las dos cuentas."
-      }
-    }
-  },
-  "documentosVenta": {
-    "notaCreditoAnular": {
-      "errores": {
-        "no_autenticado": "Tu sesión terminó. Vuelve a iniciar sesión.",
-        "sin_permiso": "No tienes permiso para anular notas crédito (finance.void).",
-        "nota_no_encontrada": "La nota crédito no existe en esta organización.",
-        "sin_acceso_sucursal": "No tienes acceso a la sucursal de esta nota crédito.",
-        "motivo_obligatorio": "Escribe el motivo de la anulación (mínimo 5 caracteres).",
-        "documento_invalido": "El documento no es una nota crédito.",
-        "nota_aceptada_dian": "La DIAN ya aceptó esta nota crédito: no se anula, se corrige con una nota débito (aún no disponible).",
-        "nota_en_envio_dian": "La nota se está enviando a la DIAN: espera la respuesta antes de anularla.",
-        "saldo_a_favor_aplicado": "El saldo a favor de esta nota ya se usó. Anula primero su aplicación.",
-        "pago_en_caja_cerrada": "La devolución de esta nota salió de una caja ya cerrada: regístrala con una salida de caja.",
-        "pago_no_anulable": "La devolución de esta nota no se puede anular.",
-        "datos_invalidos": "Los datos enviados no son válidos.",
-        "error_desconocido": "No se pudo anular la nota crédito. Inténtalo de nuevo."
-      }
-    },
-    "cotizaciones": {
-      "errores": {
-        "no_autenticado": "Tu sesión terminó. Vuelve a iniciar sesión.",
-        "sin_permiso": "No tienes permiso para esta acción sobre cotizaciones.",
-        "sin_acceso_sucursal": "No tienes acceso a la sucursal de esta cotización.",
-        "cotizacion_no_encontrada": "La cotización no existe en esta organización.",
-        "sucursal_invalida": "Elige una sucursal de la organización.",
-        "cliente_invalido": "Elige un cliente de la organización.",
-        "vendedor_invalido": "El vendedor no pertenece a la organización.",
-        "oportunidad_invalida": "La oportunidad no pertenece a la organización.",
-        "vigencia_invalida": "La fecha de vigencia no puede ser anterior a la de emisión.",
-        "cotizacion_sin_lineas": "Agrega al menos una línea.",
-        "linea_invalida": "Hay una línea con cantidad, precio, descuento o impuesto no válidos.",
-        "producto_invalido": "Hay un producto que no es de la organización.",
-        "cotizacion_no_editable": "Solo se editan cotizaciones en borrador o enviadas.",
-        "transicion_invalida": "Ese cambio de estado no está permitido.",
-        "cotizacion_vencida": "La cotización está vencida: edítala para renovar su vigencia o duplícala.",
-        "cotizacion_no_eliminable": "Solo se eliminan cotizaciones en borrador.",
-        "cotizacion_rechazada": "Una cotización rechazada no se convierte en factura.",
-        "numero_duplicado": "El número ya está en uso. Inténtalo de nuevo.",
-        "datos_invalidos": "Los datos enviados no son válidos.",
-        "cliente_sin_correo": "El cliente no tiene correo.",
-        "correo_no_configurado": "La organización no tiene configurado el envío de correos.",
-        "cliente_sin_consentimiento": "El cliente no acepta correos.",
-        "correo_invalido": "El correo de destino no es válido.",
-        "proveedor_correo": "El proveedor de correo rechazó el envío. Inténtalo más tarde.",
-        "error_desconocido": "No se pudo completar la acción. Inténtalo de nuevo."
-      },
-      "correo": {
-        "asunto": "Cotización {numero} de {organizacion}",
-        "saludo": "Hola {nombre}:",
-        "cuerpo": "{organizacion} te envía la cotización {numero} por {total}. La encuentras adjunta.",
-        "despedida": "Quedamos atentos. {organizacion}",
-        "sinAdjunto": "Enviada a {destino}, sin el PDF adjunto (no se pudo generar)."
-      },
-      "conversion": {
-        "titulo": "Factura en borrador",
-        "borrador": "Se creó la factura {numero} en borrador, con su venta, impuestos y comisión. Emítela desde Facturas de venta.",
-        "yaConvertida": "Esta cotización ya tenía la factura {numero}: no se creó otra.",
-        "faltantes": "{n, plural, one {Un producto no tiene existencias suficientes} other {# productos no tienen existencias suficientes}}: revísalo antes de emitir."
-      },
-      "eliminar": {
-        "titulo": "¿Eliminar la cotización {numero}?",
-        "descripcion": "La cotización en borrador se borra y no se puede recuperar.",
-        "confirmar": "Eliminar cotización"
-      }
-    }
-  },
-  "notasCredito": {
-    "comun": {
-      "error": "Error",
-      "exito": "Éxito",
-      "sinCliente": "Sin cliente"
-    },
-    "estados": {
-      "draft": "Borrador",
-      "pending": "Pendiente",
-      "sent": "Enviada",
-      "accepted": "Aceptada DIAN",
-      "rejected": "Rechazada",
-      "void": "Anulada",
-      "paid": "Pagada"
-    },
-    "estadosFe": {
-      "pending": "Pendiente",
-      "processing": "Procesando",
-      "sent": "Enviada",
-      "accepted": "Aceptada",
-      "rejected": "Rechazada",
-      "failed": "Fallida"
-    },
-    "anular": {
-      "confirmar": "¿Seguro que quieres anular esta nota crédito?",
-      "motivo": "Motivo de la anulación:",
-      "hecho": "Nota crédito anulada correctamente",
-      "error": "No se pudo anular",
-      "titulo": "Anular la nota crédito {numero}",
-      "confirmarBoton": "Anular nota crédito"
-    },
-    "listado": {
-      "titulo": "Notas crédito",
-      "subtitulo": "Gestión de las notas crédito emitidas",
-      "volver": "Volver a finanzas",
-      "nueva": "Nueva nota crédito",
-      "exportar": "Exportar",
-      "archivoExportacion": "notas-credito",
-      "kpis": {
-        "totalEmitido": "Total emitido",
-        "esteMes": "Este mes",
-        "totalNotas": "Total de notas",
-        "enBorrador": "En borrador"
-      },
-      "buscar": "Buscar por número o notas…",
-      "filtroEstado": "Estado",
-      "filtros": {
-        "todos": "Todos",
-        "aceptada": "Aceptada"
-      },
-      "actualizar": "Actualizar",
-      "columnas": {
-        "numero": "Número",
-        "fecha": "Fecha",
-        "cliente": "Cliente",
-        "facturaOrigen": "Factura de origen",
-        "total": "Total",
-        "estado": "Estado",
-        "acciones": "Acciones"
-      },
-      "masAcciones": "Más acciones de la nota {numero}",
-      "vacio": "No hay notas crédito registradas",
-      "verDetalle": "Ver detalle",
-      "anular": "Anular",
-      "errorCarga": "No se pudieron cargar las notas crédito"
-    },
-    "detalle": {
-      "errorCarga": "No se pudo cargar el detalle",
-      "noEncontrada": "Nota crédito no encontrada",
-      "volverListado": "Volver al listado",
-      "titulo": "NC {numero}",
-      "emitidaEl": "Emitida el {fecha}",
-      "descargarPdf": "Descargar PDF",
-      "enviarDian": "Enviar a la DIAN",
-      "reintentarDian": "Reintentar DIAN",
-      "anular": "Anular",
-      "facturaOrigen": "Factura de origen",
-      "numeroFactura": "Número de factura",
-      "totalFactura": "Total de la factura",
-      "verFactura": "Ver factura",
-      "items": "Detalle de ítems",
-      "subtotal": "Subtotal",
-      "impuestosIncluidos": "Impuestos (incluidos)",
-      "impuestosAdicionales": "Impuestos (adicionales)",
-      "impuestoTasa": "Impuesto {tasa} %",
-      "incluido": "(incl.)",
-      "adicional": "(+imp.)",
-      "totalNota": "Total nota crédito",
-      "estadoFe": "Estado de la facturación electrónica",
-      "estadoDian": "Estado DIAN",
-      "cufe": "CUFE",
-      "historial": "Historial de eventos",
-      "cliente": "Cliente",
-      "sinNombre": "Sin nombre",
-      "sinCliente": "Sin cliente asignado",
-      "informacion": "Información",
-      "numero": "Número",
-      "fechaEmision": "Fecha de emisión",
-      "codigoReferencia": "Código de referencia",
-      "notas": "Notas",
-      "sinOrganizacion": "No se pudo determinar la organización",
-      "reintentoProgramado": "Reintento de envío programado",
-      "errorReintentar": "No se pudo reintentar",
-      "enviadaDian": "Nota crédito enviada a la DIAN",
-      "cufeCorto": "CUFE: {cufe}…",
-      "errorEnviarDian": "No se pudo enviar a la DIAN",
-      "descargaTitulo": "Descarga",
-      "generandoPdf": "Generando PDF…"
-    }
-  },
   "documentosSoporte": {
     "estados": {
       "draft": "Borrador",
@@ -14946,6 +14649,303 @@
       "email": "Email:",
       "direccion": "Dirección:",
       "municipio": "Municipio DIAN:"
+    }
+  },
+  "tesoreria": {
+    "reintentar": "Reintentar",
+    "errorTitulo": "Error",
+    "errorCarga": {
+      "ingresos": "No se pudieron cargar los ingresos.",
+      "egresos": "No se pudieron cargar los egresos.",
+      "ingreso": "No se pudo cargar el ingreso.",
+      "egreso": "No se pudo cargar el egreso.",
+      "transferencias": "No se pudieron cargar las transferencias.",
+      "transferencia": "No se pudo cargar la transferencia.",
+      "cuentasBancarias": "No se pudieron cargar las cuentas bancarias.",
+      "cuentaBancaria": "No se pudieron cargar los datos de la cuenta."
+    },
+    "yaAnulado": "Ese movimiento ya estaba anulado; no se registró otro reverso.",
+    "transferenciaYaAnulada": "La transferencia ya estaba anulada; los saldos no se tocaron de nuevo.",
+    "transferenciaRepetida": "La transferencia ya estaba registrada; no se creó otra.",
+    "errores": {
+      "saldo_insuficiente_para_revertir": "La cuenta destino ya no tiene saldo suficiente para devolver el dinero.",
+      "saldo_insuficiente": "Saldo insuficiente en la cuenta origen.",
+      "moneda_distinta": "Las dos cuentas deben tener la misma moneda.",
+      "cuenta_no_encontrada": "La cuenta bancaria no existe en esta organización.",
+      "cuenta_inactiva": "Una de las cuentas está inactiva.",
+      "cuenta_requerida": "Seleccione la cuenta bancaria.",
+      "cuentas_iguales": "Las cuentas origen y destino deben ser diferentes.",
+      "monto_invalido": "El monto debe ser mayor a 0.",
+      "fecha_futura": "La fecha no puede ser posterior a hoy.",
+      "sucursal_invalida": "La sucursal no pertenece a esta organización.",
+      "sucursal_requerida": "Seleccione la sucursal.",
+      "transferencia_no_encontrada": "La transferencia no existe en esta organización.",
+      "movimiento_no_encontrado": "El movimiento no existe en esta organización.",
+      "movimiento_conciliado": "El movimiento ya está conciliado: deshaga la conciliación antes de anularlo.",
+      "movimiento_importado": "El movimiento viene del extracto del banco y no se anula; concílielo o registre el movimiento contrario.",
+      "anulacion_de_anulacion": "Una anulación no se anula: registre el movimiento de nuevo.",
+      "sin_caja_abierta_sucursal": "No hay una caja abierta en la sucursal del movimiento.",
+      "caja_cerrada": "La caja ya está cerrada.",
+      "saldo_bancario_por_movimientos": "El saldo de la cuenta lo mueven sus movimientos; no se edita a mano.",
+      "sin_permiso": "No tiene permiso para esta operación.",
+      "sin_acceso_sucursal": "No tiene acceso a la sucursal de la cuenta.",
+      "no_autenticado": "Su sesión expiró. Inicie sesión de nuevo.",
+      "sin_organizacion": "No se encontró la organización activa.",
+      "desconocido": "No se pudo completar la operación."
+    },
+    "anular": {
+      "descripcion": "La anulación no se puede deshacer.",
+      "ingreso": {
+        "titulo": "¿Anular este ingreso?",
+        "boton": "Anular ingreso"
+      },
+      "egreso": {
+        "titulo": "¿Anular este egreso?",
+        "boton": "Anular egreso"
+      },
+      "transferencia": {
+        "titulo": "¿Anular esta transferencia?",
+        "boton": "Anular transferencia",
+        "consecuencia": "Se revierten los saldos de las dos cuentas."
+      }
+    }
+  },
+  "notasCredito": {
+    "comun": {
+      "error": "Error",
+      "exito": "Éxito",
+      "sinCliente": "Sin cliente"
+    },
+    "estados": {
+      "draft": "Borrador",
+      "pending": "Pendiente",
+      "sent": "Enviada",
+      "accepted": "Aceptada DIAN",
+      "rejected": "Rechazada",
+      "void": "Anulada",
+      "paid": "Pagada"
+    },
+    "estadosFe": {
+      "pending": "Pendiente",
+      "processing": "Procesando",
+      "sent": "Enviada",
+      "accepted": "Aceptada",
+      "rejected": "Rechazada",
+      "failed": "Fallida"
+    },
+    "anular": {
+      "confirmar": "¿Seguro que quieres anular esta nota crédito?",
+      "motivo": "Motivo de la anulación:",
+      "hecho": "Nota crédito anulada correctamente",
+      "error": "No se pudo anular",
+      "titulo": "Anular la nota crédito {numero}",
+      "confirmarBoton": "Anular nota crédito"
+    },
+    "listado": {
+      "titulo": "Notas crédito",
+      "subtitulo": "Gestión de las notas crédito emitidas",
+      "volver": "Volver a finanzas",
+      "nueva": "Nueva nota crédito",
+      "exportar": "Exportar",
+      "archivoExportacion": "notas-credito",
+      "kpis": {
+        "totalEmitido": "Total emitido",
+        "esteMes": "Este mes",
+        "totalNotas": "Total de notas",
+        "enBorrador": "En borrador"
+      },
+      "buscar": "Buscar por número o notas…",
+      "filtroEstado": "Estado",
+      "filtros": {
+        "todos": "Todos",
+        "aceptada": "Aceptada"
+      },
+      "actualizar": "Actualizar",
+      "columnas": {
+        "numero": "Número",
+        "fecha": "Fecha",
+        "cliente": "Cliente",
+        "facturaOrigen": "Factura de origen",
+        "total": "Total",
+        "estado": "Estado",
+        "acciones": "Acciones"
+      },
+      "masAcciones": "Más acciones de la nota {numero}",
+      "vacio": "No hay notas crédito registradas",
+      "verDetalle": "Ver detalle",
+      "anular": "Anular",
+      "errorCarga": "No se pudieron cargar las notas crédito"
+    },
+    "detalle": {
+      "errorCarga": "No se pudo cargar el detalle",
+      "noEncontrada": "Nota crédito no encontrada",
+      "volverListado": "Volver al listado",
+      "titulo": "NC {numero}",
+      "emitidaEl": "Emitida el {fecha}",
+      "descargarPdf": "Descargar PDF",
+      "enviarDian": "Enviar a la DIAN",
+      "reintentarDian": "Reintentar DIAN",
+      "anular": "Anular",
+      "facturaOrigen": "Factura de origen",
+      "numeroFactura": "Número de factura",
+      "totalFactura": "Total de la factura",
+      "verFactura": "Ver factura",
+      "items": "Detalle de ítems",
+      "subtotal": "Subtotal",
+      "impuestosIncluidos": "Impuestos (incluidos)",
+      "impuestosAdicionales": "Impuestos (adicionales)",
+      "impuestoTasa": "Impuesto {tasa} %",
+      "incluido": "(incl.)",
+      "adicional": "(+imp.)",
+      "totalNota": "Total nota crédito",
+      "estadoFe": "Estado de la facturación electrónica",
+      "estadoDian": "Estado DIAN",
+      "cufe": "CUFE",
+      "historial": "Historial de eventos",
+      "cliente": "Cliente",
+      "sinNombre": "Sin nombre",
+      "sinCliente": "Sin cliente asignado",
+      "informacion": "Información",
+      "numero": "Número",
+      "fechaEmision": "Fecha de emisión",
+      "codigoReferencia": "Código de referencia",
+      "notas": "Notas",
+      "sinOrganizacion": "No se pudo determinar la organización",
+      "reintentoProgramado": "Reintento de envío programado",
+      "errorReintentar": "No se pudo reintentar",
+      "enviadaDian": "Nota crédito enviada a la DIAN",
+      "cufeCorto": "CUFE: {cufe}…",
+      "errorEnviarDian": "No se pudo enviar a la DIAN",
+      "descargaTitulo": "Descarga",
+      "generandoPdf": "Generando PDF…"
+    }
+  },
+  "saldosAFavor": {
+    "errorCarga": "No se pudieron cargar los saldos a favor.",
+    "errorFacturas": "No se pudieron cargar las facturas pendientes.",
+    "errorClientes": "No se pudieron cargar los clientes.",
+    "reintentar": "Reintentar",
+    "estadoAnulado": "Anulado",
+    "nuevo": {
+      "descripcion": "Registra un anticipo del cliente: entra como un pago con su recibo, suma a la caja o al banco y queda como saldo a favor.",
+      "metodo": "Método de pago",
+      "metodoPlaceholder": "Selecciona el método",
+      "cuentaBancaria": "Cuenta bancaria",
+      "cuentaBancariaPlaceholder": "Selecciona la cuenta",
+      "referencia": "Referencia",
+      "sinCaja": "No hay una caja abierta en esta sucursal: abre la caja o usa otro método.",
+      "creado": "Anticipo registrado con el recibo {recibo}."
+    },
+    "errores": {
+      "no_autenticado": "Tu sesión terminó. Vuelve a iniciar sesión.",
+      "sin_permiso": "No tienes permiso para esta acción.",
+      "sin_acceso_sucursal": "No tienes acceso a la sucursal del saldo o de la factura.",
+      "organizacion_no_permitida": "La organización no coincide con tu sesión.",
+      "datos_invalidos": "Revisa los datos.",
+      "clave_idempotencia_invalida": "No se pudo identificar el intento. Vuelve a abrir el diálogo.",
+      "clave_idempotencia_reutilizada": "Este intento ya se usó con otros datos. Vuelve a abrir el diálogo.",
+      "monto_invalido": "Escribe un monto mayor que cero.",
+      "saldo_no_encontrado": "No se encontró el saldo a favor.",
+      "saldo_no_disponible": "El saldo a favor ya no está disponible.",
+      "saldo_vencido": "El saldo a favor está vencido.",
+      "saldo_usado": "El saldo a favor ya se usó en facturas: no se puede anular.",
+      "saldo_no_anulable": "Este saldo a favor no viene de un anticipo: no se anula, se devuelve en dinero.",
+      "monto_excede_saldo_a_favor": "El monto supera el saldo a favor disponible.",
+      "factura_no_encontrada": "No se encontró la factura.",
+      "documento_invalido": "El documento no es una factura de venta.",
+      "documento_borrador": "La factura está en borrador: emítela antes de aplicarle saldo.",
+      "documento_anulado": "La factura está anulada.",
+      "cliente_distinto": "La factura es de otro cliente.",
+      "cliente_no_encontrado": "No se encontró el cliente.",
+      "sucursal_invalida": "Selecciona una sucursal válida.",
+      "moneda_distinta": "La factura está en otra moneda.",
+      "monto_excede_saldo": "El monto supera el saldo pendiente de la factura.",
+      "metodo_invalido": "El método de pago no está disponible.",
+      "referencia_obligatoria": "Este método exige referencia.",
+      "cuenta_bancaria_invalida": "La cuenta bancaria no es válida.",
+      "sin_caja_abierta": "No hay una caja abierta: abre la caja o usa otro método.",
+      "pago_en_caja_cerrada": "El dinero entró en una caja ya cerrada: registra una salida de caja.",
+      "sin_cuenta_de_dinero": "No se encontró la cuenta de caja o banco del método.",
+      "sin_cuenta_por_cobrar": "La organización no tiene cuenta por cobrar configurada.",
+      "vencimiento_invalido": "El vencimiento no puede ser anterior a hoy.",
+      "motivo_obligatorio": "Escribe el motivo.",
+      "asiento_no_creado": "No se pudo contabilizar. Revisa el plan de cuentas y el periodo contable.",
+      "error_desconocido": "No se pudo completar. Inténtalo de nuevo."
+    }
+  },
+  "comisionesPago": {
+    "cuentaLabel": "¿De dónde sale el dinero?",
+    "opcionRegla": "Según la regla contable",
+    "opcionEfectivo": "Efectivo (caja abierta)",
+    "cuentaAyuda": "El asiento del pago acredita esta cuenta. Quién paga queda registrado.",
+    "mostrando": "Mostrando {shown} de {total} comisiones",
+    "cargarMas": "Cargar más",
+    "cargando": "Cargando…"
+  },
+  "documentosVenta": {
+    "notaCreditoAnular": {
+      "errores": {
+        "no_autenticado": "Tu sesión terminó. Vuelve a iniciar sesión.",
+        "sin_permiso": "No tienes permiso para anular notas crédito (finance.void).",
+        "nota_no_encontrada": "La nota crédito no existe en esta organización.",
+        "sin_acceso_sucursal": "No tienes acceso a la sucursal de esta nota crédito.",
+        "motivo_obligatorio": "Escribe el motivo de la anulación (mínimo 5 caracteres).",
+        "documento_invalido": "El documento no es una nota crédito.",
+        "nota_aceptada_dian": "La DIAN ya aceptó esta nota crédito: no se anula, se corrige con una nota débito (aún no disponible).",
+        "nota_en_envio_dian": "La nota se está enviando a la DIAN: espera la respuesta antes de anularla.",
+        "saldo_a_favor_aplicado": "El saldo a favor de esta nota ya se usó. Anula primero su aplicación.",
+        "pago_en_caja_cerrada": "La devolución de esta nota salió de una caja ya cerrada: regístrala con una salida de caja.",
+        "pago_no_anulable": "La devolución de esta nota no se puede anular.",
+        "datos_invalidos": "Los datos enviados no son válidos.",
+        "error_desconocido": "No se pudo anular la nota crédito. Inténtalo de nuevo."
+      }
+    },
+    "cotizaciones": {
+      "errores": {
+        "no_autenticado": "Tu sesión terminó. Vuelve a iniciar sesión.",
+        "sin_permiso": "No tienes permiso para esta acción sobre cotizaciones.",
+        "sin_acceso_sucursal": "No tienes acceso a la sucursal de esta cotización.",
+        "cotizacion_no_encontrada": "La cotización no existe en esta organización.",
+        "sucursal_invalida": "Elige una sucursal de la organización.",
+        "cliente_invalido": "Elige un cliente de la organización.",
+        "vendedor_invalido": "El vendedor no pertenece a la organización.",
+        "oportunidad_invalida": "La oportunidad no pertenece a la organización.",
+        "vigencia_invalida": "La fecha de vigencia no puede ser anterior a la de emisión.",
+        "cotizacion_sin_lineas": "Agrega al menos una línea.",
+        "linea_invalida": "Hay una línea con cantidad, precio, descuento o impuesto no válidos.",
+        "producto_invalido": "Hay un producto que no es de la organización.",
+        "cotizacion_no_editable": "Solo se editan cotizaciones en borrador o enviadas.",
+        "transicion_invalida": "Ese cambio de estado no está permitido.",
+        "cotizacion_vencida": "La cotización está vencida: edítala para renovar su vigencia o duplícala.",
+        "cotizacion_no_eliminable": "Solo se eliminan cotizaciones en borrador.",
+        "cotizacion_rechazada": "Una cotización rechazada no se convierte en factura.",
+        "numero_duplicado": "El número ya está en uso. Inténtalo de nuevo.",
+        "datos_invalidos": "Los datos enviados no son válidos.",
+        "cliente_sin_correo": "El cliente no tiene correo.",
+        "correo_no_configurado": "La organización no tiene configurado el envío de correos.",
+        "cliente_sin_consentimiento": "El cliente no acepta correos.",
+        "correo_invalido": "El correo de destino no es válido.",
+        "proveedor_correo": "El proveedor de correo rechazó el envío. Inténtalo más tarde.",
+        "error_desconocido": "No se pudo completar la acción. Inténtalo de nuevo."
+      },
+      "correo": {
+        "asunto": "Cotización {numero} de {organizacion}",
+        "saludo": "Hola {nombre}:",
+        "cuerpo": "{organizacion} te envía la cotización {numero} por {total}. La encuentras adjunta.",
+        "despedida": "Quedamos atentos. {organizacion}",
+        "sinAdjunto": "Enviada a {destino}, sin el PDF adjunto (no se pudo generar)."
+      },
+      "conversion": {
+        "titulo": "Factura en borrador",
+        "borrador": "Se creó la factura {numero} en borrador, con su venta, impuestos y comisión. Emítela desde Facturas de venta.",
+        "yaConvertida": "Esta cotización ya tenía la factura {numero}: no se creó otra.",
+        "faltantes": "{n, plural, one {Un producto no tiene existencias suficientes} other {# productos no tienen existencias suficientes}}: revísalo antes de emitir."
+      },
+      "eliminar": {
+        "titulo": "¿Eliminar la cotización {numero}?",
+        "descripcion": "La cotización en borrador se borra y no se puede recuperar.",
+        "confirmar": "Eliminar cotización"
+      }
     }
   },
   "impuestosRetenciones": {
@@ -15153,6 +15153,208 @@
     "descargando": "Generando PDF…",
     "errorTitulo": "Error",
     "error": "No se pudo generar el documento"
+  },
+  "inventarioImagenes": {
+    "titulo": "Imágenes",
+    "migaInventario": "Inventario",
+    "cargando": "Cargando…",
+    "subtitulo": "{organizacion} · {n} {count, plural, one {imagen} other {imágenes}}",
+    "subtituloMovil": "{n} {count, plural, one {imagen} other {imágenes}}",
+    "buscar": "Buscar por nombre de archivo o producto",
+    "buscarProductos": "Buscar por producto, SKU o archivo",
+    "errorCarga": "No pudimos cargar las imágenes",
+    "seleccionar": "Seleccionar «{nombre}»",
+    "abrirDetalle": "Ver detalle de «{nombre}»",
+    "abrirProducto": "Abrir el producto «{nombre}»",
+    "nImagenes": "{n, plural, one {# imagen} other {# imágenes}}",
+    "sustantivo": {
+      "singular": "imagen",
+      "plural": "imágenes"
+    },
+    "sinPermiso": {
+      "titulo": "No tienes acceso a las imágenes",
+      "descripcion": "Pide a un administrador de la organización que te dé acceso al inventario."
+    },
+    "pestanas": {
+      "etiqueta": "Origen de las imágenes",
+      "biblioteca": "Biblioteca",
+      "productos": "De productos"
+    },
+    "kpi": {
+      "etiqueta": "Resumen de imágenes",
+      "imagenes": "Imágenes",
+      "imagenesDetalle": "{biblioteca} en la biblioteca · {productos} de productos",
+      "sinUsar": "Sin usar",
+      "sinUsarDetalle": "Ningún producto las usa",
+      "sinUsarNinguna": "Todas están en uso",
+      "productosSinImagen": "Productos sin imagen",
+      "verEnCatalogo": "Ver en el catálogo",
+      "publicas": "Públicas",
+      "publicasDetalle": "Visibles en la tienda web"
+    },
+    "insignias": {
+      "publica": "Pública",
+      "privada": "Privada",
+      "principal": "Principal",
+      "galeria": "Galería"
+    },
+    "uso": {
+      "enProductos": "{n, plural, one {En # producto} other {En # productos}}",
+      "sinUsar": "Sin usar",
+      "verProducto": "Ver producto"
+    },
+    "vacio": {
+      "titulo": "Tu biblioteca está vacía",
+      "descripcion": "Sube fotos una vez y úsalas en varios productos, en la tienda web y en el POS.",
+      "tituloProductos": "Ningún producto tiene fotos propias",
+      "descripcionProductos": "Las fotos que subas desde el formulario o el detalle de un producto aparecen aquí."
+    },
+    "filtros": {
+      "producto": "Producto",
+      "visibilidad": "Visibilidad",
+      "uso": "Uso",
+      "formato": "Formato",
+      "tamano": "Tamaño",
+      "todos": "Todos",
+      "todas": {
+        "visibilidad": "Públicas y privadas",
+        "tamano": "Cualquier tamaño"
+      },
+      "opciones": {
+        "todas": "Todas",
+        "todos": "Todos",
+        "en_uso": "En uso",
+        "sin_usar": "Sin usar",
+        "publicas": "Públicas",
+        "privadas": "Privadas",
+        "jpg_png": "JPG / PNG",
+        "webp": "WEBP",
+        "pequena": "Menos de 200 KB",
+        "mediana": "De 200 KB a 1 MB",
+        "grande": "Más de 1 MB"
+      },
+      "nota": "Los cambios se aplican al instante.",
+      "verResultados": "Ver {n, plural, one {# imagen} other {# imágenes}}"
+    },
+    "acciones": {
+      "ver": "Ver datos",
+      "verEditar": "Ver y editar datos",
+      "asignar": "Asignar a productos",
+      "asignarPuntos": "Asignar a productos…",
+      "hacerPublica": "Hacer pública",
+      "hacerPrivada": "Hacer privada",
+      "copiarEnlace": "Copiar enlace",
+      "descargar": "Descargar",
+      "eliminar": "Eliminar",
+      "abrirProducto": "Abrir el producto",
+      "productosSinImagen": "Ver productos sin imagen",
+      "actualizar": "Actualizar",
+      "motivoDescargar": "Las elegidas en otras páginas se descargan desde su página"
+    },
+    "detalle": {
+      "titulo": "Imagen",
+      "descripcion": "Datos de la imagen y productos que la usan",
+      "error": "No pudimos cargar la imagen",
+      "tamano": "Tamaño",
+      "subida": "Subida",
+      "alt": "Texto alternativo",
+      "sinAlt": "Sin texto alternativo",
+      "altAyuda": "Lo leen los lectores de pantalla y los buscadores. Se copia a los productos que la usan.",
+      "altPlaceholder": "Botín de cuero café, vista lateral",
+      "visibilidad": "Visibilidad",
+      "nombre": "Nombre",
+      "nombreObligatorio": "Escribe un nombre para la imagen",
+      "publica": "Pública",
+      "publicaAyuda": "Visible en la tienda web",
+      "guardar": "Guardar cambios",
+      "usadaEn": "{n, plural, one {Usada en # producto} other {Usada en # productos}}",
+      "sinUsar": "Sin usar",
+      "sinUsarAyuda": "Ningún producto la usa todavía. Asígnala para que aparezca en el catálogo, el POS y la tienda.",
+      "principal": "Principal",
+      "galeria": "Galería",
+      "abrir": "Abrir",
+      "yMas": "y {n, plural, one {# producto más} other {# productos más}}"
+    },
+    "eliminar": {
+      "tituloUna": "¿Eliminar «{nombre}»?",
+      "tituloVarias": "¿Eliminar {n, plural, one {# imagen} other {# imágenes}}?",
+      "principalYGaleria": "Es la imagen principal de {principal, plural, one {# producto} other {# productos}} y está en la galería de {galeria, plural, =0 {ningún otro} one {otro} other {otros #}}. Esos productos quedarán sin esta foto; el principal tomará la siguiente de su galería.",
+      "soloGaleria": "Está en la galería de {n, plural, one {# producto} other {# productos}}. Esos productos quedarán sin esta foto.",
+      "variasEnUso": "{n, plural, one {Hay # uso en productos} other {Hay # usos en productos}}: esos productos quedarán sin la foto y, donde era la principal, tomarán la siguiente de su galería.",
+      "sinUso": "Ningún producto las usa. El archivo se borra y no se puede deshacer."
+    },
+    "toast": {
+      "guardada": "Imagen guardada",
+      "errorGuardar": "No pudimos guardar la imagen",
+      "publicas": "{n, plural, one {# imagen ahora es pública} other {# imágenes ahora son públicas}}",
+      "privadas": "{n, plural, one {# imagen ahora es privada} other {# imágenes ahora son privadas}}",
+      "enlaceCopiado": "Enlace copiado",
+      "errorCopiar": "No pudimos copiar el enlace",
+      "asignada": "{n, plural, =0 {No se asignó a ningún producto nuevo} one {Asignada a # producto} other {Asignada a # productos}}",
+      "yaLaTenian": "{n, plural, one {# producto ya la tenía} other {# productos ya la tenían}}",
+      "errorAsignar": "No pudimos asignar la imagen",
+      "eliminadas": "{n, plural, one {# imagen eliminada} other {# imágenes eliminadas}}",
+      "errorEliminar": "No pudimos eliminar",
+      "subidas": "{n, plural, one {# imagen subida a la biblioteca} other {# imágenes subidas a la biblioteca}}"
+    },
+    "errores": {
+      "sinPermiso": "No tienes permiso para esta acción",
+      "noEncontrada": "La imagen ya no existe",
+      "rutaInvalida": "La ruta del archivo no es de esta organización",
+      "formato": "Formato no admitido: usa JPG, PNG o WEBP",
+      "tamano": "La imagen supera los 5 MB",
+      "nombre": "Escribe un nombre para la imagen"
+    },
+    "subir": {
+      "boton": "Subir imágenes",
+      "titulo": "Subir imágenes",
+      "descripcion": "JPG, PNG o WEBP · hasta 5 MB cada una · se guardan en la biblioteca de {organizacion}",
+      "arrastra": "Arrastra tus fotos aquí",
+      "suelta": "Suelta para subir",
+      "reglas": "Hasta {n} imágenes · máx. 5 MB · JPG, PNG o WEBP",
+      "subir": "Subir",
+      "tomarFoto": "Tomar foto",
+      "generarIa": "Generar con IA",
+      "iaEtiqueta": "¿Qué imagen necesitas?",
+      "iaPlaceholder": "Botín de cuero café sobre fondo blanco",
+      "iaGenerar": "Generar",
+      "iaCosto": "Usa créditos de IA de tu plan.",
+      "iaError": "No pudimos generar la imagen. Intenta de nuevo.",
+      "iaSinCreditos": "No te quedan créditos de IA para generar imágenes.",
+      "listo": "Listo",
+      "esperaSubida": "Espera a que terminen las subidas",
+      "rechazoFormato": "Formato no admitido ({ext}): conviértela a JPG",
+      "rechazoFormatoCorto": "Formato no admitido: usa JPG, PNG o WEBP",
+      "rechazoTamano": "Pesa más de 5 MB: redúcela antes de subirla",
+      "rechazoCupo": "Máximo {n} por tanda: súbela después",
+      "errorSubida": "No se pudo subir. Revisa tu conexión.",
+      "errorRegistro": "No se pudo guardar en la biblioteca",
+      "quitar": "Quitar «{nombre}» de la lista",
+      "estados": {
+        "esperando": "en espera",
+        "subiendo": "subiendo",
+        "subida": "subida",
+        "error": "con error"
+      }
+    },
+    "asignar": {
+      "titulo": "Asignar «{nombre}» a productos",
+      "descripcion": "Elige los productos; puedes marcarla como principal.",
+      "buscar": "Buscar producto",
+      "placeholder": "Busca por nombre, SKU o código",
+      "vacio": "Escribe para buscar productos",
+      "sinResultados": "Ningún producto coincide",
+      "errorBuscar": "No pudimos buscar productos",
+      "conVariantes": "con variantes",
+      "yaElegido": "Ya está en la lista",
+      "elegidos": "Productos elegidos",
+      "ninguno": "Todavía no elegiste productos.",
+      "quitar": "Quitar «{nombre}»",
+      "principal": "Marcarla como principal",
+      "principalAyuda": "Será la foto de portada en el catálogo, el POS y la tienda.",
+      "confirmar": "{n, plural, =0 {Asignar} one {Asignar a # producto} other {Asignar a # productos}}",
+      "eligeUno": "Elige al menos un producto"
+    }
   },
   "membresias": {
     "modulo": "Membresías",
@@ -16590,106 +16792,6 @@
       }
     }
   },
-  "inventario": {
-    "origenes": {
-      "purchase": "Compra",
-      "sale": "Venta",
-      "adjustment": "Ajuste",
-      "transfer": "Traslado",
-      "return": "Devolución",
-      "loss": "Merma",
-      "production": "Producción",
-      "initial": "Inventario inicial",
-      "web_sale": "Venta web",
-      "mesa_sale": "Venta mesa",
-      "invoice_sale": "Venta (factura)",
-      "folio_item": "Folio",
-      "room_consumption": "Consumo habitación",
-      "web_order": "Reserva web",
-      "purchase_order": "Recepción de compra",
-      "purchase_invoice": "Factura de compra",
-      "invoice_void": "Anulación de factura",
-      "credit_note": "Nota crédito",
-      "web_refund": "Devolución web",
-      "folio_item_reversal": "Reverso de folio",
-      "transfer_out": "Traslado salida",
-      "transfer_in": "Traslado entrada",
-      "purchase_void": "Anulación de compra",
-      "credit_note_void": "Anulación de nota crédito",
-      "desconocido": "Otro origen"
-    },
-    "documentos": {
-      "venta": "Venta",
-      "factura_venta": "Factura de venta",
-      "nota_credito": "Nota crédito",
-      "devolucion": "Devolución",
-      "anulacion_venta": "Anulación de venta",
-      "factura_compra": "Factura de compra",
-      "orden_compra": "Orden de compra",
-      "ajuste": "Ajuste",
-      "traslado": "Traslado",
-      "orden_produccion": "Orden de producción",
-      "folio": "Reserva (folio)",
-      "pedido_web": "Pedido web",
-      "producto": "Producto",
-      "otro": "Sin documento",
-      "abrir": "Abrir {documento}",
-      "sinAcceso": "Documento no disponible"
-    },
-    "vencimiento": {
-      "vigente": "Vigente",
-      "por_vencer": "Por vencer",
-      "vencido": "Vencido",
-      "sin_vencimiento": "Sin vencimiento",
-      "venceEn": "{dias, plural, one {Vence en # día} other {Vence en # días}}",
-      "venceHoy": "Vence hoy",
-      "vencioHace": "{dias, plural, one {Venció hace # día} other {Venció hace # días}}"
-    },
-    "lotes": {
-      "titulo": "Elegir lote",
-      "ayuda": "Se sugiere el que vence antes (FEFO). Puedes elegir otro.",
-      "opcion": "{codigo} · {cantidad} uds",
-      "noVenderVencidos": "No vender lotes vencidos",
-      "reparto": "Reparto: {asignado} de {total} uds asignadas",
-      "faltante": "Faltan {faltante} uds sin lote",
-      "sinLotes": "Este producto no tiene lotes con existencias en esta sucursal.",
-      "cantidadDelLote": "Cantidad del lote {codigo}",
-      "usar": "Usar estos lotes",
-      "cancelar": "Cancelar",
-      "sugerirFefo": "Repartir por vencimiento"
-    },
-    "saldo": {
-      "entrada": "Entrada",
-      "salida": "Salida",
-      "saldo": "Saldo",
-      "costoPromedio": "Costo promedio",
-      "saldoTras": "Saldo tras el movimiento: {saldo}",
-      "negativo": "Saldo negativo"
-    },
-    "errores": {
-      "stock_insuficiente": "No hay existencias suficientes: disponible {disponible}, solicitado {solicitado}.",
-      "cantidad_invalida": "La cantidad debe ser mayor que cero.",
-      "direccion_invalida": "Movimiento no válido.",
-      "origen_requerido": "Falta el origen del movimiento.",
-      "lote_invalido": "El lote no pertenece a este producto.",
-      "serial_repetido": "Hay seriales repetidos.",
-      "seriales_no_cuadran": "La cantidad de seriales no coincide con la cantidad.",
-      "serial_no_disponible": "Algún serial no está disponible en esta sucursal.",
-      "estado_serial_requerido": "Indica el estado final de los seriales.",
-      "sin_permiso": "No tienes permiso para esta acción de inventario.",
-      "SUCURSAL_NO_ES_DE_LA_ORG": "La sucursal no pertenece a la organización.",
-      "PRODUCTO_NO_ES_DE_LA_ORG": "El producto no pertenece a la organización.",
-      "PEDIDO_NO_ES_DE_LA_ORG": "El pedido no pertenece a la organización.",
-      "ORIGEN_INVALIDO": "Este origen no se admite aquí.",
-      "ORIGEN_SIN_ID": "Falta el documento de origen.",
-      "conversion_faltante": "Falta una conversión de unidades en la receta.",
-      "desconocido": "No se pudo completar el movimiento de inventario."
-    },
-    "permisos": {
-      "sinPermisoTitulo": "No tienes acceso al inventario",
-      "sinPermisoDescripcion": "Pide a un administrador de tu organización el permiso de inventario que necesitas."
-    }
-  },
   "posMesas": {
     "titulo": "Mesas",
     "subtitulo": "{n, plural, one {# mesa} other {# mesas}}",
@@ -16929,206 +17031,104 @@
       "cancelar": "Cancelar"
     }
   },
-  "inventarioImagenes": {
-    "titulo": "Imágenes",
-    "migaInventario": "Inventario",
-    "cargando": "Cargando…",
-    "subtitulo": "{organizacion} · {n} {count, plural, one {imagen} other {imágenes}}",
-    "subtituloMovil": "{n} {count, plural, one {imagen} other {imágenes}}",
-    "buscar": "Buscar por nombre de archivo o producto",
-    "buscarProductos": "Buscar por producto, SKU o archivo",
-    "errorCarga": "No pudimos cargar las imágenes",
-    "seleccionar": "Seleccionar «{nombre}»",
-    "abrirDetalle": "Ver detalle de «{nombre}»",
-    "abrirProducto": "Abrir el producto «{nombre}»",
-    "nImagenes": "{n, plural, one {# imagen} other {# imágenes}}",
-    "sustantivo": {
-      "singular": "imagen",
-      "plural": "imágenes"
+  "inventario": {
+    "origenes": {
+      "purchase": "Compra",
+      "sale": "Venta",
+      "adjustment": "Ajuste",
+      "transfer": "Traslado",
+      "return": "Devolución",
+      "loss": "Merma",
+      "production": "Producción",
+      "initial": "Inventario inicial",
+      "web_sale": "Venta web",
+      "mesa_sale": "Venta mesa",
+      "invoice_sale": "Venta (factura)",
+      "folio_item": "Folio",
+      "room_consumption": "Consumo habitación",
+      "web_order": "Reserva web",
+      "purchase_order": "Recepción de compra",
+      "purchase_invoice": "Factura de compra",
+      "invoice_void": "Anulación de factura",
+      "credit_note": "Nota crédito",
+      "web_refund": "Devolución web",
+      "folio_item_reversal": "Reverso de folio",
+      "transfer_out": "Traslado salida",
+      "transfer_in": "Traslado entrada",
+      "purchase_void": "Anulación de compra",
+      "credit_note_void": "Anulación de nota crédito",
+      "desconocido": "Otro origen"
     },
-    "sinPermiso": {
-      "titulo": "No tienes acceso a las imágenes",
-      "descripcion": "Pide a un administrador de la organización que te dé acceso al inventario."
-    },
-    "pestanas": {
-      "etiqueta": "Origen de las imágenes",
-      "biblioteca": "Biblioteca",
-      "productos": "De productos"
-    },
-    "kpi": {
-      "etiqueta": "Resumen de imágenes",
-      "imagenes": "Imágenes",
-      "imagenesDetalle": "{biblioteca} en la biblioteca · {productos} de productos",
-      "sinUsar": "Sin usar",
-      "sinUsarDetalle": "Ningún producto las usa",
-      "sinUsarNinguna": "Todas están en uso",
-      "productosSinImagen": "Productos sin imagen",
-      "verEnCatalogo": "Ver en el catálogo",
-      "publicas": "Públicas",
-      "publicasDetalle": "Visibles en la tienda web"
-    },
-    "insignias": {
-      "publica": "Pública",
-      "privada": "Privada",
-      "principal": "Principal",
-      "galeria": "Galería"
-    },
-    "uso": {
-      "enProductos": "{n, plural, one {En # producto} other {En # productos}}",
-      "sinUsar": "Sin usar",
-      "verProducto": "Ver producto"
-    },
-    "vacio": {
-      "titulo": "Tu biblioteca está vacía",
-      "descripcion": "Sube fotos una vez y úsalas en varios productos, en la tienda web y en el POS.",
-      "tituloProductos": "Ningún producto tiene fotos propias",
-      "descripcionProductos": "Las fotos que subas desde el formulario o el detalle de un producto aparecen aquí."
-    },
-    "filtros": {
+    "documentos": {
+      "venta": "Venta",
+      "factura_venta": "Factura de venta",
+      "nota_credito": "Nota crédito",
+      "devolucion": "Devolución",
+      "anulacion_venta": "Anulación de venta",
+      "factura_compra": "Factura de compra",
+      "orden_compra": "Orden de compra",
+      "ajuste": "Ajuste",
+      "traslado": "Traslado",
+      "orden_produccion": "Orden de producción",
+      "folio": "Reserva (folio)",
+      "pedido_web": "Pedido web",
       "producto": "Producto",
-      "visibilidad": "Visibilidad",
-      "uso": "Uso",
-      "formato": "Formato",
-      "tamano": "Tamaño",
-      "todos": "Todos",
-      "todas": {
-        "visibilidad": "Públicas y privadas",
-        "tamano": "Cualquier tamaño"
-      },
-      "opciones": {
-        "todas": "Todas",
-        "todos": "Todos",
-        "en_uso": "En uso",
-        "sin_usar": "Sin usar",
-        "publicas": "Públicas",
-        "privadas": "Privadas",
-        "jpg_png": "JPG / PNG",
-        "webp": "WEBP",
-        "pequena": "Menos de 200 KB",
-        "mediana": "De 200 KB a 1 MB",
-        "grande": "Más de 1 MB"
-      },
-      "nota": "Los cambios se aplican al instante.",
-      "verResultados": "Ver {n, plural, one {# imagen} other {# imágenes}}"
+      "otro": "Sin documento",
+      "abrir": "Abrir {documento}",
+      "sinAcceso": "Documento no disponible"
     },
-    "acciones": {
-      "ver": "Ver datos",
-      "verEditar": "Ver y editar datos",
-      "asignar": "Asignar a productos",
-      "asignarPuntos": "Asignar a productos…",
-      "hacerPublica": "Hacer pública",
-      "hacerPrivada": "Hacer privada",
-      "copiarEnlace": "Copiar enlace",
-      "descargar": "Descargar",
-      "eliminar": "Eliminar",
-      "abrirProducto": "Abrir el producto",
-      "productosSinImagen": "Ver productos sin imagen",
-      "actualizar": "Actualizar",
-      "motivoDescargar": "Las elegidas en otras páginas se descargan desde su página"
+    "vencimiento": {
+      "vigente": "Vigente",
+      "por_vencer": "Por vencer",
+      "vencido": "Vencido",
+      "sin_vencimiento": "Sin vencimiento",
+      "venceEn": "{dias, plural, one {Vence en # día} other {Vence en # días}}",
+      "venceHoy": "Vence hoy",
+      "vencioHace": "{dias, plural, one {Venció hace # día} other {Venció hace # días}}"
     },
-    "detalle": {
-      "titulo": "Imagen",
-      "descripcion": "Datos de la imagen y productos que la usan",
-      "error": "No pudimos cargar la imagen",
-      "tamano": "Tamaño",
-      "subida": "Subida",
-      "alt": "Texto alternativo",
-      "sinAlt": "Sin texto alternativo",
-      "altAyuda": "Lo leen los lectores de pantalla y los buscadores. Se copia a los productos que la usan.",
-      "altPlaceholder": "Botín de cuero café, vista lateral",
-      "visibilidad": "Visibilidad",
-      "nombre": "Nombre",
-      "nombreObligatorio": "Escribe un nombre para la imagen",
-      "publica": "Pública",
-      "publicaAyuda": "Visible en la tienda web",
-      "guardar": "Guardar cambios",
-      "usadaEn": "{n, plural, one {Usada en # producto} other {Usada en # productos}}",
-      "sinUsar": "Sin usar",
-      "sinUsarAyuda": "Ningún producto la usa todavía. Asígnala para que aparezca en el catálogo, el POS y la tienda.",
-      "principal": "Principal",
-      "galeria": "Galería",
-      "abrir": "Abrir",
-      "yMas": "y {n, plural, one {# producto más} other {# productos más}}"
+    "lotes": {
+      "titulo": "Elegir lote",
+      "ayuda": "Se sugiere el que vence antes (FEFO). Puedes elegir otro.",
+      "opcion": "{codigo} · {cantidad} uds",
+      "noVenderVencidos": "No vender lotes vencidos",
+      "reparto": "Reparto: {asignado} de {total} uds asignadas",
+      "faltante": "Faltan {faltante} uds sin lote",
+      "sinLotes": "Este producto no tiene lotes con existencias en esta sucursal.",
+      "cantidadDelLote": "Cantidad del lote {codigo}",
+      "usar": "Usar estos lotes",
+      "cancelar": "Cancelar",
+      "sugerirFefo": "Repartir por vencimiento"
     },
-    "eliminar": {
-      "tituloUna": "¿Eliminar «{nombre}»?",
-      "tituloVarias": "¿Eliminar {n, plural, one {# imagen} other {# imágenes}}?",
-      "principalYGaleria": "Es la imagen principal de {principal, plural, one {# producto} other {# productos}} y está en la galería de {galeria, plural, =0 {ningún otro} one {otro} other {otros #}}. Esos productos quedarán sin esta foto; el principal tomará la siguiente de su galería.",
-      "soloGaleria": "Está en la galería de {n, plural, one {# producto} other {# productos}}. Esos productos quedarán sin esta foto.",
-      "variasEnUso": "{n, plural, one {Hay # uso en productos} other {Hay # usos en productos}}: esos productos quedarán sin la foto y, donde era la principal, tomarán la siguiente de su galería.",
-      "sinUso": "Ningún producto las usa. El archivo se borra y no se puede deshacer."
-    },
-    "toast": {
-      "guardada": "Imagen guardada",
-      "errorGuardar": "No pudimos guardar la imagen",
-      "publicas": "{n, plural, one {# imagen ahora es pública} other {# imágenes ahora son públicas}}",
-      "privadas": "{n, plural, one {# imagen ahora es privada} other {# imágenes ahora son privadas}}",
-      "enlaceCopiado": "Enlace copiado",
-      "errorCopiar": "No pudimos copiar el enlace",
-      "asignada": "{n, plural, =0 {No se asignó a ningún producto nuevo} one {Asignada a # producto} other {Asignada a # productos}}",
-      "yaLaTenian": "{n, plural, one {# producto ya la tenía} other {# productos ya la tenían}}",
-      "errorAsignar": "No pudimos asignar la imagen",
-      "eliminadas": "{n, plural, one {# imagen eliminada} other {# imágenes eliminadas}}",
-      "errorEliminar": "No pudimos eliminar",
-      "subidas": "{n, plural, one {# imagen subida a la biblioteca} other {# imágenes subidas a la biblioteca}}"
+    "saldo": {
+      "entrada": "Entrada",
+      "salida": "Salida",
+      "saldo": "Saldo",
+      "costoPromedio": "Costo promedio",
+      "saldoTras": "Saldo tras el movimiento: {saldo}",
+      "negativo": "Saldo negativo"
     },
     "errores": {
-      "sinPermiso": "No tienes permiso para esta acción",
-      "noEncontrada": "La imagen ya no existe",
-      "rutaInvalida": "La ruta del archivo no es de esta organización",
-      "formato": "Formato no admitido: usa JPG, PNG o WEBP",
-      "tamano": "La imagen supera los 5 MB",
-      "nombre": "Escribe un nombre para la imagen"
+      "stock_insuficiente": "No hay existencias suficientes: disponible {disponible}, solicitado {solicitado}.",
+      "cantidad_invalida": "La cantidad debe ser mayor que cero.",
+      "direccion_invalida": "Movimiento no válido.",
+      "origen_requerido": "Falta el origen del movimiento.",
+      "lote_invalido": "El lote no pertenece a este producto.",
+      "serial_repetido": "Hay seriales repetidos.",
+      "seriales_no_cuadran": "La cantidad de seriales no coincide con la cantidad.",
+      "serial_no_disponible": "Algún serial no está disponible en esta sucursal.",
+      "estado_serial_requerido": "Indica el estado final de los seriales.",
+      "sin_permiso": "No tienes permiso para esta acción de inventario.",
+      "SUCURSAL_NO_ES_DE_LA_ORG": "La sucursal no pertenece a la organización.",
+      "PRODUCTO_NO_ES_DE_LA_ORG": "El producto no pertenece a la organización.",
+      "PEDIDO_NO_ES_DE_LA_ORG": "El pedido no pertenece a la organización.",
+      "ORIGEN_INVALIDO": "Este origen no se admite aquí.",
+      "ORIGEN_SIN_ID": "Falta el documento de origen.",
+      "conversion_faltante": "Falta una conversión de unidades en la receta.",
+      "desconocido": "No se pudo completar el movimiento de inventario."
     },
-    "subir": {
-      "boton": "Subir imágenes",
-      "titulo": "Subir imágenes",
-      "descripcion": "JPG, PNG o WEBP · hasta 5 MB cada una · se guardan en la biblioteca de {organizacion}",
-      "arrastra": "Arrastra tus fotos aquí",
-      "suelta": "Suelta para subir",
-      "reglas": "Hasta {n} imágenes · máx. 5 MB · JPG, PNG o WEBP",
-      "subir": "Subir",
-      "tomarFoto": "Tomar foto",
-      "generarIa": "Generar con IA",
-      "iaEtiqueta": "¿Qué imagen necesitas?",
-      "iaPlaceholder": "Botín de cuero café sobre fondo blanco",
-      "iaGenerar": "Generar",
-      "iaCosto": "Usa créditos de IA de tu plan.",
-      "iaError": "No pudimos generar la imagen. Intenta de nuevo.",
-      "iaSinCreditos": "No te quedan créditos de IA para generar imágenes.",
-      "listo": "Listo",
-      "esperaSubida": "Espera a que terminen las subidas",
-      "rechazoFormato": "Formato no admitido ({ext}): conviértela a JPG",
-      "rechazoFormatoCorto": "Formato no admitido: usa JPG, PNG o WEBP",
-      "rechazoTamano": "Pesa más de 5 MB: redúcela antes de subirla",
-      "rechazoCupo": "Máximo {n} por tanda: súbela después",
-      "errorSubida": "No se pudo subir. Revisa tu conexión.",
-      "errorRegistro": "No se pudo guardar en la biblioteca",
-      "quitar": "Quitar «{nombre}» de la lista",
-      "estados": {
-        "esperando": "en espera",
-        "subiendo": "subiendo",
-        "subida": "subida",
-        "error": "con error"
-      }
-    },
-    "asignar": {
-      "titulo": "Asignar «{nombre}» a productos",
-      "descripcion": "Elige los productos; puedes marcarla como principal.",
-      "buscar": "Buscar producto",
-      "placeholder": "Busca por nombre, SKU o código",
-      "vacio": "Escribe para buscar productos",
-      "sinResultados": "Ningún producto coincide",
-      "errorBuscar": "No pudimos buscar productos",
-      "conVariantes": "con variantes",
-      "yaElegido": "Ya está en la lista",
-      "elegidos": "Productos elegidos",
-      "ninguno": "Todavía no elegiste productos.",
-      "quitar": "Quitar «{nombre}»",
-      "principal": "Marcarla como principal",
-      "principalAyuda": "Será la foto de portada en el catálogo, el POS y la tienda.",
-      "confirmar": "{n, plural, =0 {Asignar} one {Asignar a # producto} other {Asignar a # productos}}",
-      "eligeUno": "Elige al menos un producto"
+    "permisos": {
+      "sinPermisoTitulo": "No tienes acceso al inventario",
+      "sinPermisoDescripcion": "Pide a un administrador de tu organización el permiso de inventario que necesitas."
     }
   },
   "inventarioAjustes": {
@@ -20029,6 +20029,301 @@
       "desconocido": "Ocurrió un error inesperado. Inténtalo de nuevo."
     }
   },
+  "inventarioVariantes": {
+    "titulo": "Variantes",
+    "migaInventario": "Inventario",
+    "cargando": "Cargando el catálogo…",
+    "subtitulo": "{tipos, plural, one {# tipo} other {# tipos}} · {valores, plural, one {# valor} other {# valores}} · {variantes} variantes",
+    "subtituloMovil": "{tipos, plural, one {# tipo} other {# tipos}} · {valores, plural, one {# valor} other {# valores}}",
+    "nuevoTipo": "Nuevo tipo",
+    "nuevoValor": "Nuevo valor",
+    "buscarTipo": "Buscar tipo o valor",
+    "buscarValor": "Buscar valor o código",
+    "verResultados": "Ver {n, plural, one {# resultado} other {# resultados}}",
+    "errorCarga": "No pudimos cargar el catálogo de variantes",
+    "avisoFuera": "{n, plural, one {# atributo que usan tus variantes no está} other {# atributos que usan tus variantes no están}} en el catálogo: no se ofrecen al crear variantes ni se pueden ordenar.",
+    "pestanas": {
+      "tipos": "Tipos",
+      "valores": "Valores"
+    },
+    "vista": {
+      "etiqueta": "Vista de tipos",
+      "tabla": "Tabla",
+      "tarjetas": "Tarjetas"
+    },
+    "estilos": {
+      "texto": "Texto",
+      "color": "Muestra de color",
+      "imagen": "Imagen"
+    },
+    "estados": {
+      "activo": "Activo",
+      "inactivo": "Inactivo",
+      "repetido": "Repetido",
+      "sinUsar": "Sin usar"
+    },
+    "meta": {
+      "ninguno": "Sin asignar (se deduce del nombre)",
+      "color": "Color (color)",
+      "size": "Talla (size)",
+      "material": "Material (material)",
+      "pattern": "Estampado (pattern)",
+      "gender": "Género (gender)",
+      "age_group": "Edad (age_group)"
+    },
+    "idiomas": {
+      "en": "English",
+      "fr": "Français",
+      "pt": "Português"
+    },
+    "tipo": {
+      "tituloNuevo": "Nuevo tipo de variante",
+      "tituloEditar": "Editar «{nombre}»",
+      "descripcion": "Talla, Color, Material… Sus valores se ofrecen al crear variantes.",
+      "nombre": "Nombre",
+      "ayudaNombre": "No distingue mayúsculas, tildes ni espacios: «talla» y «Talla» son el mismo tipo.",
+      "errorNombre": "Escribe el nombre del tipo.",
+      "errorRepetido": "Ya existe «{nombre}». Fusiónalos en vez de crear otro.",
+      "fusionarCon": "Fusionar con «{nombre}»",
+      "estilo": "Cómo se muestra en el POS y la tienda",
+      "meta": "En el catálogo de Facebook va como",
+      "ayudaMeta": "Si no eliges, se deduce por el nombre (Color, Talla, Material…).",
+      "traducciones": "Nombre en otros idiomas (opcional)",
+      "activo": "Activo · se ofrece al crear variantes",
+      "guardar": "Guardar cambios",
+      "crear": "Crear tipo"
+    },
+    "valor": {
+      "tituloNuevo": "Nuevo valor",
+      "tituloNuevoDe": "Nuevo valor de «{tipo}»",
+      "tituloEditar": "Editar «{valor}»",
+      "descripcion": "Se agrega al final del orden; puedes moverlo después.",
+      "tipo": "Tipo",
+      "elegirTipo": "Elige un tipo",
+      "valor": "Valor",
+      "ayudaValor": "Si ya existe con otras mayúsculas o tildes, te avisamos para que uses ese.",
+      "errorValor": "Escribe el valor.",
+      "errorRepetido": "Ya existe «{nombre}» en este tipo.",
+      "errorHex": "El color va como #RRGGBB (por ejemplo #6B7C3A).",
+      "errorSku": "De 1 a 8 letras o números, sin espacios.",
+      "errorSkuRepetido": "Otro valor del tipo ya usa ese código.",
+      "errorTipo": "Elige el tipo del valor.",
+      "muestra": "Muestra",
+      "hex": "Hex",
+      "muestrasRapidas": "Colores rápidos",
+      "colorPersonalizado": "Elegir otro color",
+      "sku": "Código para el SKU",
+      "ayudaSku": "Se usa al generar el SKU de la variante: CAM-001-VOL-M. Único dentro del tipo.",
+      "traducciones": "Nombre en otros idiomas (opcional)",
+      "guardarYOtro": "Guardar y crear otro",
+      "guardar": "Guardar cambios",
+      "crear": "Crear valor"
+    },
+    "renombrar": {
+      "titulo": "¿Renombrar «{antes}» a «{despues}»?",
+      "descripcionTipo": "Se actualiza en {n, plural, one {# variante} other {# variantes}} en una sola operación, con su historial. Los SKU no cambian.",
+      "descripcionValor": "Se actualiza en {n, plural, one {# variante} other {# variantes}} en una sola operación, con su historial. Los SKU no cambian.",
+      "confirmar": "Renombrar"
+    },
+    "toast": {
+      "tipoCreado": "Tipo «{nombre}» creado",
+      "tipoActualizado": "Tipo actualizado",
+      "tipoRenombrado": "Tipo renombrado en {n, plural, one {# variante} other {# variantes}}",
+      "valorCreado": "«{valor}» agregado a {tipo}",
+      "valorActualizado": "Valor actualizado",
+      "valorRenombrado": "Valor renombrado en {n, plural, one {# variante} other {# variantes}}",
+      "ordenGuardado": "Orden guardado: así salen en el POS, la tienda y el formulario",
+      "completado": "Catálogo completado con los atributos de tus variantes",
+      "sugeridos": "Tipos sugeridos agregados",
+      "activados": "{n, plural, one {# activado} other {# activados}}",
+      "desactivados": "{n, plural, one {# desactivado: ya no se ofrece al crear variantes} other {# desactivados: ya no se ofrecen al crear variantes}}",
+      "estilo": "Cambió cómo se {n, plural, one {muestra # tipo} other {muestran # tipos}}",
+      "idCopiado": "ID {id} copiado",
+      "fusionados": "{n, plural, other {# fusionados en uno}}",
+      "unificado": "Escritura unificada en las variantes",
+      "eliminados": "{n, plural, one {# eliminado} other {# eliminados}}"
+    },
+    "errores": {
+      "sinPermiso": "No tienes permiso para cambiar el catálogo de variantes.",
+      "nombreRepetido": "Ya existe un tipo con ese nombre (sin distinguir mayúsculas ni tildes).",
+      "valorRepetido": "Ese valor ya existe en el tipo.",
+      "skuRepetido": "Otro valor del tipo ya usa ese código para el SKU.",
+      "enUso": "Lo usan variantes: desactívalo o fusiónalo en vez de eliminarlo.",
+      "noEncontrado": "Ya no existe: alguien lo cambió. Recarga la página.",
+      "invalido": "Revisa los datos: hay un campo que no es válido.",
+      "desconocido": "No pudimos guardar. Intenta de nuevo."
+    },
+    "fusion": {
+      "tituloTipos": "Fusionar {n, plural, other {# tipos}}",
+      "tituloValores": "Fusionar {n, plural, other {# valores}}",
+      "descripcionTipos": "Elige cuál se conserva. Sus variantes y valores pasan a ese tipo.",
+      "descripcionValores": "Elige cuál se conserva. Las variantes de los demás pasan a ese valor.",
+      "conservar": "Se conserva",
+      "confirmar": "Fusionar",
+      "motivo": "Elige cuál se conserva (hacen falta al menos dos).",
+      "variantes": "{n, plural, one {# variante} other {# variantes}}",
+      "impacto": "{n, plural, =0 {Ninguna variante cambia; los demás se borran del catálogo.} one {# variante pasa a «{nombre}»; si una tiene los dos, se conserva «{nombre}». Los valores iguales se unen y los SKU no cambian.} other {{total} variantes pasan a «{nombre}»; si una tiene los dos, se conserva «{nombre}». Los valores iguales se unen y los SKU no cambian.}}",
+      "detalleTipo": "{n, plural, one {# valor} other {# valores}}"
+    },
+    "ordenar": {
+      "tituloTipos": "Ordenar tipos",
+      "tituloValores": "Ordenar valores de «{tipo}»",
+      "descripcion": "Así salen en el selector del POS, la tienda y el formulario del producto.",
+      "ayudaTeclado": "Arrastra con ⠿, usa las flechas o, con el foco en una fila, Alt + ↑ / ↓.",
+      "natural": "Orden natural (2 antes que 10)",
+      "cancelar": "Cancelar",
+      "guardar": "Guardar orden",
+      "anuncio": "«{nombre}» ahora en la posición {posicion} de {total}",
+      "fila": "{nombre}, posición {posicion} de {total}",
+      "subir": "Subir «{nombre}»",
+      "bajar": "Bajar «{nombre}»"
+    },
+    "acciones": {
+      "editarTipo": "Editar tipo",
+      "editarValor": "Editar valor",
+      "verValores": "Ver sus {n, plural, one {# valor} other {# valores}}",
+      "ordenarValores": "Ordenar valores",
+      "ordenar": "Ordenar",
+      "ordenarTipos": "Ordenar tipos",
+      "unificar": "Unificar escritura como «{nombre}»",
+      "estilo": "Cambiar cómo se muestra",
+      "estiloDetalle": "Texto · Muestra de color · Imagen",
+      "fusionarCon": "Fusionar con otro…",
+      "copiarId": "Copiar ID",
+      "desactivar": "Desactivar",
+      "desactivarDetalle": "Deja de ofrecerse al crear variantes; {n, plural, one {la # existente no cambia} other {las # existentes no cambian}}",
+      "activar": "Activar",
+      "eliminar": "Eliminar",
+      "motivoEnUso": "En uso por {n, plural, one {# variante} other {# variantes}} · desactívalo o fusiónalo",
+      "subir": "Subir",
+      "bajar": "Bajar",
+      "completar": "Agregar al catálogo",
+      "completarDetalle": "{n, plural, =0 {Nada pendiente} one {# atributo en uso falta en el catálogo} other {# atributos en uso faltan en el catálogo}}",
+      "sugeridos": "Usar los tipos sugeridos",
+      "sugeridosDetalle": "Talla, Color, Material… con sus valores",
+      "exportar": "Exportar CSV",
+      "actualizar": "Actualizar"
+    },
+    "columnas": {
+      "orden": "Orden",
+      "tipo": "Tipo",
+      "estilo": "Se muestra como",
+      "estado": "Estado",
+      "valores": "Valores",
+      "variantes": "Variantes",
+      "valor": "Valor",
+      "muestra": "Muestra",
+      "traducciones": "Traducciones"
+    },
+    "filtros": {
+      "estado": "Estado",
+      "estilo": "Se muestra como",
+      "tipo": "Tipo",
+      "todosLosTipos": "Todos los tipos",
+      "estados": {
+        "todos": "Todos",
+        "activos": "Activos",
+        "repetidos": "Repetidos",
+        "sinUsar": "Sin usar",
+        "inactivos": "Inactivos"
+      }
+    },
+    "kpi": {
+      "etiquetaTipos": "Resumen de tipos",
+      "etiquetaValores": "Resumen de valores",
+      "tiposActivos": "Tipos activos",
+      "tiposActivosDetalle": "{nombres}{mas, plural, =0 {} other { y # más}}",
+      "ninguno": "Ninguno todavía",
+      "valores": "Valores",
+      "valoresDetalle": "En {tipos, plural, one {# tipo} other {# tipos}} · {sinOrden, plural, =0 {todos con orden} one {# tipo sin orden definido} other {# tipos sin orden definido}}",
+      "valoresDe": "En «{tipo}»",
+      "valoresEnTipos": "En {n, plural, one {# tipo} other {# tipos}}",
+      "repetidos": "Nombres repetidos",
+      "valoresRepetidos": "Valores repetidos",
+      "repetidosDetalle": "{ejemplo} · fusionar",
+      "repetidosNinguno": "Ninguno",
+      "sinUsar": "Sin usar",
+      "sinUsarDetalleTipos": "Sin variantes · desactivar o eliminar",
+      "sinUsarDetalleValores": "Ninguna variante los usa",
+      "sinUsarNinguno": "Todos en uso",
+      "conMuestra": "Con muestra de color",
+      "conMuestraDetalle": "Hex por valor en los tipos de color"
+    },
+    "tipos": {
+      "titulo": "Tipos de variante",
+      "igualA": "igual a «{nombre}»",
+      "sinValores": "Sin valores"
+    },
+    "valores": {
+      "titulo": "Valores de variante",
+      "tituloDe": "Valores de «{tipo}»",
+      "igualA": "Igual a «{nombre}» · fusionar",
+      "codigoSku": "Código para SKU: {codigo}",
+      "falta": "Falta {idiomas}",
+      "sinMuestra": "Sin muestra",
+      "avisoColor": "«{tipo}» se muestra como muestra de color: cada valor lleva su hex. Se ve en el selector del POS y en la tienda, y va al campo color del catálogo de Facebook. Sin hex, se muestra el nombre."
+    },
+    "tarjeta": {
+      "meta": "{valores, plural, one {# valor} other {# valores}} · {variantes, plural, one {# variante} other {# variantes}}",
+      "variantes": "{n, plural, one {# variante} other {# variantes}}"
+    },
+    "sustantivo": {
+      "tipo": "tipo",
+      "tipos": "tipos",
+      "valor": "valor",
+      "valores": "valores"
+    },
+    "vacio": {
+      "tipos": {
+        "titulo": "Aún no hay tipos de variante",
+        "descripcion": "Crea Talla, Color o Material, o usa los sugeridos desde «⋯». También se crean solos al guardar un producto con variantes."
+      },
+      "valores": {
+        "titulo": "Aún no hay valores",
+        "tituloDe": "«{tipo}» aún no tiene valores",
+        "descripcion": "Agrega los valores que se ofrecen al crear variantes (S, M, L…)."
+      }
+    },
+    "sinPermiso": {
+      "titulo": "No tienes acceso al catálogo de variantes",
+      "descripcion": "Pide a un administrador el permiso de inventario para verlo."
+    },
+    "masivo": {
+      "fusionar": "Fusionar en uno",
+      "motivoFusionar": "Selecciona al menos dos tipos",
+      "motivoFusionarValores": "Selecciona al menos dos valores del mismo tipo",
+      "estilo": "Cómo se muestra",
+      "exportar": "Exportar",
+      "desactivar": "Desactivar",
+      "activar": "Activar",
+      "eliminarSinUso": "Eliminar los que no se usan",
+      "motivoEliminar": "Ninguno de los seleccionados está sin uso"
+    },
+    "unificar": {
+      "titulo": "¿Unificar la escritura como «{nombre}»?",
+      "descripcion": "Las variantes que lo escriben {escrituras} ({n, plural, one {# variante} other {# variantes}}) pasan a «{nombre}» en una sola operación. Los SKU no cambian.",
+      "confirmar": "Unificar"
+    },
+    "eliminar": {
+      "tituloTipo": "¿Eliminar el tipo «{nombre}»?",
+      "tituloValor": "¿Eliminar el valor «{nombre}»?",
+      "tituloVarios": "¿Eliminar {n, plural, one {# elemento} other {# elementos}}?",
+      "descripcionTipos": "Solo se eliminan tipos sin uso, con sus valores. Ninguna variante cambia.",
+      "descripcionValores": "Solo se eliminan valores sin uso. Ninguna variante cambia."
+    },
+    "csv": {
+      "id": "ID",
+      "orden": "Orden",
+      "tipo": "Tipo",
+      "estilo": "Se muestra como",
+      "estado": "Estado",
+      "valores": "Valores",
+      "variantes": "Variantes",
+      "valor": "Valor",
+      "hex": "Hex",
+      "sku": "Código SKU"
+    }
+  },
   "inventarioRecetas": {
     "inventario": "Inventario",
     "sustantivo": {
@@ -20337,301 +20632,6 @@
       "producto_no_encontrado": "El producto no existe o está eliminado.",
       "sin_permiso": "No tienes permiso para editar recetas.",
       "desconocido": "Ocurrió un error inesperado. Inténtalo de nuevo."
-    }
-  },
-  "inventarioVariantes": {
-    "titulo": "Variantes",
-    "migaInventario": "Inventario",
-    "cargando": "Cargando el catálogo…",
-    "subtitulo": "{tipos, plural, one {# tipo} other {# tipos}} · {valores, plural, one {# valor} other {# valores}} · {variantes} variantes",
-    "subtituloMovil": "{tipos, plural, one {# tipo} other {# tipos}} · {valores, plural, one {# valor} other {# valores}}",
-    "nuevoTipo": "Nuevo tipo",
-    "nuevoValor": "Nuevo valor",
-    "buscarTipo": "Buscar tipo o valor",
-    "buscarValor": "Buscar valor o código",
-    "verResultados": "Ver {n, plural, one {# resultado} other {# resultados}}",
-    "errorCarga": "No pudimos cargar el catálogo de variantes",
-    "avisoFuera": "{n, plural, one {# atributo que usan tus variantes no está} other {# atributos que usan tus variantes no están}} en el catálogo: no se ofrecen al crear variantes ni se pueden ordenar.",
-    "pestanas": {
-      "tipos": "Tipos",
-      "valores": "Valores"
-    },
-    "vista": {
-      "etiqueta": "Vista de tipos",
-      "tabla": "Tabla",
-      "tarjetas": "Tarjetas"
-    },
-    "estilos": {
-      "texto": "Texto",
-      "color": "Muestra de color",
-      "imagen": "Imagen"
-    },
-    "estados": {
-      "activo": "Activo",
-      "inactivo": "Inactivo",
-      "repetido": "Repetido",
-      "sinUsar": "Sin usar"
-    },
-    "meta": {
-      "ninguno": "Sin asignar (se deduce del nombre)",
-      "color": "Color (color)",
-      "size": "Talla (size)",
-      "material": "Material (material)",
-      "pattern": "Estampado (pattern)",
-      "gender": "Género (gender)",
-      "age_group": "Edad (age_group)"
-    },
-    "idiomas": {
-      "en": "English",
-      "fr": "Français",
-      "pt": "Português"
-    },
-    "tipo": {
-      "tituloNuevo": "Nuevo tipo de variante",
-      "tituloEditar": "Editar «{nombre}»",
-      "descripcion": "Talla, Color, Material… Sus valores se ofrecen al crear variantes.",
-      "nombre": "Nombre",
-      "ayudaNombre": "No distingue mayúsculas, tildes ni espacios: «talla» y «Talla» son el mismo tipo.",
-      "errorNombre": "Escribe el nombre del tipo.",
-      "errorRepetido": "Ya existe «{nombre}». Fusiónalos en vez de crear otro.",
-      "fusionarCon": "Fusionar con «{nombre}»",
-      "estilo": "Cómo se muestra en el POS y la tienda",
-      "meta": "En el catálogo de Facebook va como",
-      "ayudaMeta": "Si no eliges, se deduce por el nombre (Color, Talla, Material…).",
-      "traducciones": "Nombre en otros idiomas (opcional)",
-      "activo": "Activo · se ofrece al crear variantes",
-      "guardar": "Guardar cambios",
-      "crear": "Crear tipo"
-    },
-    "valor": {
-      "tituloNuevo": "Nuevo valor",
-      "tituloNuevoDe": "Nuevo valor de «{tipo}»",
-      "tituloEditar": "Editar «{valor}»",
-      "descripcion": "Se agrega al final del orden; puedes moverlo después.",
-      "tipo": "Tipo",
-      "elegirTipo": "Elige un tipo",
-      "valor": "Valor",
-      "ayudaValor": "Si ya existe con otras mayúsculas o tildes, te avisamos para que uses ese.",
-      "errorValor": "Escribe el valor.",
-      "errorRepetido": "Ya existe «{nombre}» en este tipo.",
-      "errorHex": "El color va como #RRGGBB (por ejemplo #6B7C3A).",
-      "errorSku": "De 1 a 8 letras o números, sin espacios.",
-      "errorSkuRepetido": "Otro valor del tipo ya usa ese código.",
-      "errorTipo": "Elige el tipo del valor.",
-      "muestra": "Muestra",
-      "hex": "Hex",
-      "muestrasRapidas": "Colores rápidos",
-      "colorPersonalizado": "Elegir otro color",
-      "sku": "Código para el SKU",
-      "ayudaSku": "Se usa al generar el SKU de la variante: CAM-001-VOL-M. Único dentro del tipo.",
-      "traducciones": "Nombre en otros idiomas (opcional)",
-      "guardarYOtro": "Guardar y crear otro",
-      "guardar": "Guardar cambios",
-      "crear": "Crear valor"
-    },
-    "renombrar": {
-      "titulo": "¿Renombrar «{antes}» a «{despues}»?",
-      "descripcionTipo": "Se actualiza en {n, plural, one {# variante} other {# variantes}} en una sola operación, con su historial. Los SKU no cambian.",
-      "descripcionValor": "Se actualiza en {n, plural, one {# variante} other {# variantes}} en una sola operación, con su historial. Los SKU no cambian.",
-      "confirmar": "Renombrar"
-    },
-    "toast": {
-      "tipoCreado": "Tipo «{nombre}» creado",
-      "tipoActualizado": "Tipo actualizado",
-      "tipoRenombrado": "Tipo renombrado en {n, plural, one {# variante} other {# variantes}}",
-      "valorCreado": "«{valor}» agregado a {tipo}",
-      "valorActualizado": "Valor actualizado",
-      "valorRenombrado": "Valor renombrado en {n, plural, one {# variante} other {# variantes}}",
-      "ordenGuardado": "Orden guardado: así salen en el POS, la tienda y el formulario",
-      "completado": "Catálogo completado con los atributos de tus variantes",
-      "sugeridos": "Tipos sugeridos agregados",
-      "activados": "{n, plural, one {# activado} other {# activados}}",
-      "desactivados": "{n, plural, one {# desactivado: ya no se ofrece al crear variantes} other {# desactivados: ya no se ofrecen al crear variantes}}",
-      "estilo": "Cambió cómo se {n, plural, one {muestra # tipo} other {muestran # tipos}}",
-      "idCopiado": "ID {id} copiado",
-      "fusionados": "{n, plural, other {# fusionados en uno}}",
-      "unificado": "Escritura unificada en las variantes",
-      "eliminados": "{n, plural, one {# eliminado} other {# eliminados}}"
-    },
-    "errores": {
-      "sinPermiso": "No tienes permiso para cambiar el catálogo de variantes.",
-      "nombreRepetido": "Ya existe un tipo con ese nombre (sin distinguir mayúsculas ni tildes).",
-      "valorRepetido": "Ese valor ya existe en el tipo.",
-      "skuRepetido": "Otro valor del tipo ya usa ese código para el SKU.",
-      "enUso": "Lo usan variantes: desactívalo o fusiónalo en vez de eliminarlo.",
-      "noEncontrado": "Ya no existe: alguien lo cambió. Recarga la página.",
-      "invalido": "Revisa los datos: hay un campo que no es válido.",
-      "desconocido": "No pudimos guardar. Intenta de nuevo."
-    },
-    "fusion": {
-      "tituloTipos": "Fusionar {n, plural, other {# tipos}}",
-      "tituloValores": "Fusionar {n, plural, other {# valores}}",
-      "descripcionTipos": "Elige cuál se conserva. Sus variantes y valores pasan a ese tipo.",
-      "descripcionValores": "Elige cuál se conserva. Las variantes de los demás pasan a ese valor.",
-      "conservar": "Se conserva",
-      "confirmar": "Fusionar",
-      "motivo": "Elige cuál se conserva (hacen falta al menos dos).",
-      "variantes": "{n, plural, one {# variante} other {# variantes}}",
-      "impacto": "{n, plural, =0 {Ninguna variante cambia; los demás se borran del catálogo.} one {# variante pasa a «{nombre}»; si una tiene los dos, se conserva «{nombre}». Los valores iguales se unen y los SKU no cambian.} other {{total} variantes pasan a «{nombre}»; si una tiene los dos, se conserva «{nombre}». Los valores iguales se unen y los SKU no cambian.}}",
-      "detalleTipo": "{n, plural, one {# valor} other {# valores}}"
-    },
-    "ordenar": {
-      "tituloTipos": "Ordenar tipos",
-      "tituloValores": "Ordenar valores de «{tipo}»",
-      "descripcion": "Así salen en el selector del POS, la tienda y el formulario del producto.",
-      "ayudaTeclado": "Arrastra con ⠿, usa las flechas o, con el foco en una fila, Alt + ↑ / ↓.",
-      "natural": "Orden natural (2 antes que 10)",
-      "cancelar": "Cancelar",
-      "guardar": "Guardar orden",
-      "anuncio": "«{nombre}» ahora en la posición {posicion} de {total}",
-      "fila": "{nombre}, posición {posicion} de {total}",
-      "subir": "Subir «{nombre}»",
-      "bajar": "Bajar «{nombre}»"
-    },
-    "acciones": {
-      "editarTipo": "Editar tipo",
-      "editarValor": "Editar valor",
-      "verValores": "Ver sus {n, plural, one {# valor} other {# valores}}",
-      "ordenarValores": "Ordenar valores",
-      "ordenar": "Ordenar",
-      "ordenarTipos": "Ordenar tipos",
-      "unificar": "Unificar escritura como «{nombre}»",
-      "estilo": "Cambiar cómo se muestra",
-      "estiloDetalle": "Texto · Muestra de color · Imagen",
-      "fusionarCon": "Fusionar con otro…",
-      "copiarId": "Copiar ID",
-      "desactivar": "Desactivar",
-      "desactivarDetalle": "Deja de ofrecerse al crear variantes; {n, plural, one {la # existente no cambia} other {las # existentes no cambian}}",
-      "activar": "Activar",
-      "eliminar": "Eliminar",
-      "motivoEnUso": "En uso por {n, plural, one {# variante} other {# variantes}} · desactívalo o fusiónalo",
-      "subir": "Subir",
-      "bajar": "Bajar",
-      "completar": "Agregar al catálogo",
-      "completarDetalle": "{n, plural, =0 {Nada pendiente} one {# atributo en uso falta en el catálogo} other {# atributos en uso faltan en el catálogo}}",
-      "sugeridos": "Usar los tipos sugeridos",
-      "sugeridosDetalle": "Talla, Color, Material… con sus valores",
-      "exportar": "Exportar CSV",
-      "actualizar": "Actualizar"
-    },
-    "columnas": {
-      "orden": "Orden",
-      "tipo": "Tipo",
-      "estilo": "Se muestra como",
-      "estado": "Estado",
-      "valores": "Valores",
-      "variantes": "Variantes",
-      "valor": "Valor",
-      "muestra": "Muestra",
-      "traducciones": "Traducciones"
-    },
-    "filtros": {
-      "estado": "Estado",
-      "estilo": "Se muestra como",
-      "tipo": "Tipo",
-      "todosLosTipos": "Todos los tipos",
-      "estados": {
-        "todos": "Todos",
-        "activos": "Activos",
-        "repetidos": "Repetidos",
-        "sinUsar": "Sin usar",
-        "inactivos": "Inactivos"
-      }
-    },
-    "kpi": {
-      "etiquetaTipos": "Resumen de tipos",
-      "etiquetaValores": "Resumen de valores",
-      "tiposActivos": "Tipos activos",
-      "tiposActivosDetalle": "{nombres}{mas, plural, =0 {} other { y # más}}",
-      "ninguno": "Ninguno todavía",
-      "valores": "Valores",
-      "valoresDetalle": "En {tipos, plural, one {# tipo} other {# tipos}} · {sinOrden, plural, =0 {todos con orden} one {# tipo sin orden definido} other {# tipos sin orden definido}}",
-      "valoresDe": "En «{tipo}»",
-      "valoresEnTipos": "En {n, plural, one {# tipo} other {# tipos}}",
-      "repetidos": "Nombres repetidos",
-      "valoresRepetidos": "Valores repetidos",
-      "repetidosDetalle": "{ejemplo} · fusionar",
-      "repetidosNinguno": "Ninguno",
-      "sinUsar": "Sin usar",
-      "sinUsarDetalleTipos": "Sin variantes · desactivar o eliminar",
-      "sinUsarDetalleValores": "Ninguna variante los usa",
-      "sinUsarNinguno": "Todos en uso",
-      "conMuestra": "Con muestra de color",
-      "conMuestraDetalle": "Hex por valor en los tipos de color"
-    },
-    "tipos": {
-      "titulo": "Tipos de variante",
-      "igualA": "igual a «{nombre}»",
-      "sinValores": "Sin valores"
-    },
-    "valores": {
-      "titulo": "Valores de variante",
-      "tituloDe": "Valores de «{tipo}»",
-      "igualA": "Igual a «{nombre}» · fusionar",
-      "codigoSku": "Código para SKU: {codigo}",
-      "falta": "Falta {idiomas}",
-      "sinMuestra": "Sin muestra",
-      "avisoColor": "«{tipo}» se muestra como muestra de color: cada valor lleva su hex. Se ve en el selector del POS y en la tienda, y va al campo color del catálogo de Facebook. Sin hex, se muestra el nombre."
-    },
-    "tarjeta": {
-      "meta": "{valores, plural, one {# valor} other {# valores}} · {variantes, plural, one {# variante} other {# variantes}}",
-      "variantes": "{n, plural, one {# variante} other {# variantes}}"
-    },
-    "sustantivo": {
-      "tipo": "tipo",
-      "tipos": "tipos",
-      "valor": "valor",
-      "valores": "valores"
-    },
-    "vacio": {
-      "tipos": {
-        "titulo": "Aún no hay tipos de variante",
-        "descripcion": "Crea Talla, Color o Material, o usa los sugeridos desde «⋯». También se crean solos al guardar un producto con variantes."
-      },
-      "valores": {
-        "titulo": "Aún no hay valores",
-        "tituloDe": "«{tipo}» aún no tiene valores",
-        "descripcion": "Agrega los valores que se ofrecen al crear variantes (S, M, L…)."
-      }
-    },
-    "sinPermiso": {
-      "titulo": "No tienes acceso al catálogo de variantes",
-      "descripcion": "Pide a un administrador el permiso de inventario para verlo."
-    },
-    "masivo": {
-      "fusionar": "Fusionar en uno",
-      "motivoFusionar": "Selecciona al menos dos tipos",
-      "motivoFusionarValores": "Selecciona al menos dos valores del mismo tipo",
-      "estilo": "Cómo se muestra",
-      "exportar": "Exportar",
-      "desactivar": "Desactivar",
-      "activar": "Activar",
-      "eliminarSinUso": "Eliminar los que no se usan",
-      "motivoEliminar": "Ninguno de los seleccionados está sin uso"
-    },
-    "unificar": {
-      "titulo": "¿Unificar la escritura como «{nombre}»?",
-      "descripcion": "Las variantes que lo escriben {escrituras} ({n, plural, one {# variante} other {# variantes}}) pasan a «{nombre}» en una sola operación. Los SKU no cambian.",
-      "confirmar": "Unificar"
-    },
-    "eliminar": {
-      "tituloTipo": "¿Eliminar el tipo «{nombre}»?",
-      "tituloValor": "¿Eliminar el valor «{nombre}»?",
-      "tituloVarios": "¿Eliminar {n, plural, one {# elemento} other {# elementos}}?",
-      "descripcionTipos": "Solo se eliminan tipos sin uso, con sus valores. Ninguna variante cambia.",
-      "descripcionValores": "Solo se eliminan valores sin uso. Ninguna variante cambia."
-    },
-    "csv": {
-      "id": "ID",
-      "orden": "Orden",
-      "tipo": "Tipo",
-      "estilo": "Se muestra como",
-      "estado": "Estado",
-      "valores": "Valores",
-      "variantes": "Variantes",
-      "valor": "Valor",
-      "hex": "Hex",
-      "sku": "Código SKU"
     }
   },
   "subseccion": {

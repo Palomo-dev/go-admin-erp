@@ -3,6 +3,30 @@ import { Branch, OpeningHours, DayHours } from '@/types/branch';
 import { GeocodingService, type GeocodingError } from './geocodingService';
 import { validateWebIdentityFormat } from '@/lib/utils/webIdentityValidation';
 import { ORG_ADMIN_ROLE_IDS } from '@/lib/utils/orgAdmin';
+import { isSupportedTimeZone } from '@/lib/utils/timezone';
+import {
+  invalidateBranchTimezoneCache,
+  notifyTimezonesUpdated,
+} from '@/lib/services/branchTimezoneService';
+import { guardarZonaSucursal } from '@/lib/services/timezoneSettingsService';
+
+/** Código de Postgres para «la columna no existe» (branches.timezone, fase A1). */
+const UNDEFINED_COLUMN = '42703';
+
+/**
+ * Normaliza y valida la zona propia de una sucursal antes de escribirla.
+ * '' y espacios se guardan como NULL (= hereda de la organización). Solo se
+ * aceptan nombres IANA canónicos, igual que en `organizations.timezone`:
+ * PostgREST acepta cualquier texto y `at time zone` fallaría luego con 22023.
+ */
+function normalizarZonaSucursal(timezone: string | null | undefined): string | null {
+  const valor = typeof timezone === 'string' ? timezone.trim() : '';
+  if (valor.length === 0) return null;
+  if (!isSupportedTimeZone(valor)) {
+    throw new Error(`Zona horaria no reconocida: ${valor}`);
+  }
+  return valor;
+}
 
 // Helper function to normalize opening hours format
 const normalizeOpeningHours = (entrada: unknown): OpeningHours | null => {
@@ -179,7 +203,7 @@ export const branchService = {
       );
 
       // Clean and format the branch data - only include columns that exist in DB
-      const formattedBranch = {
+      const formattedBranch: Record<string, unknown> = {
         organization_id: branch.organization_id,
         name: branch.name,
         address: branch.address || null,
@@ -217,6 +241,12 @@ export const branchService = {
         website_logo_url: branch.website_logo_url || null,
         website_cover_url: branch.website_cover_url || null,
         is_web_published: branch.is_web_published ?? false,
+        // Al CREAR sí viaja en la fila: la sucursal todavía no tiene id, así
+        // que no hay nada a lo que apuntar con PUT /api/organization/timezone,
+        // y separarlo dejaría una ventana con la sucursal ya creada y sin
+        // zona. Al EDITAR va por la ruta (permiso en servidor). El trigger
+        // `trg_validate_branch_timezone` valida la zona en los dos caminos.
+        timezone: normalizarZonaSucursal(branch.timezone),
       };
 
       // Corrección QA R2: validar que publicar requiera branch_type + slug.
@@ -232,16 +262,31 @@ export const branchService = {
         }
       }
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('branches')
         .insert([formattedBranch])
         .select()
         .single();
 
+      // Igual que en updateBranch: sin la columna de la fase A1 todavía,
+      // se crea la sucursal sin zona propia (hereda) en vez de fallar.
+      if (error && error.code === UNDEFINED_COLUMN) {
+        console.warn('[timezone] branches.timezone todavía no existe; se crea sin zona propia.');
+        delete formattedBranch.timezone;
+        ({ data, error } = await supabase
+          .from('branches')
+          .insert([formattedBranch])
+          .select()
+          .single());
+      }
+
       if (error) {
         console.error('Error creating branch:', error, error.details, error.hint);
         throw new Error(`Error al crear sucursal: ${error.message}`);
       }
+
+      invalidateBranchTimezoneCache(branch.organization_id);
+      notifyTimezonesUpdated();
 
       return data;
     } catch (err) {
@@ -310,6 +355,13 @@ export const branchService = {
     // Corrección QA R9: normalizar branch_type '' a null
     if (branch.branch_type !== undefined) formattedBranch.branch_type = branch.branch_type || null;
     if (branch.zone !== undefined) formattedBranch.zone = branch.zone;
+    // Cierre de fase A: la zona NO viaja en este UPDATE. Se escribe aparte,
+    // por PUT /api/organization/timezone, que comprueba el permiso en el
+    // servidor por id de rol y la pertenencia de la sucursal a la organización
+    // de la SESIÓN (reglas duras 5 y 6). Se valida aquí igualmente para fallar
+    // antes de tocar nada si el valor no es una zona IANA canónica.
+    const zonaPedida =
+      branch.timezone !== undefined ? normalizarZonaSucursal(branch.timezone) : undefined;
     if (branch.branch_code !== undefined) formattedBranch.branch_code = branch.branch_code;
     if (branch.is_active !== undefined) formattedBranch.is_active = branch.is_active;
     if (branch.is_web_stock_source !== undefined) formattedBranch.is_web_stock_source = branch.is_web_stock_source;
@@ -380,6 +432,14 @@ export const branchService = {
         : branch.features;
     }
 
+    // Primero la zona (igual que `organizations.timezone` se escribe antes que
+    // `organization_settings`): si el servidor devuelve 403, o el trigger de la
+    // base rechaza la zona con 22023, no debe quedar ya guardado el resto de
+    // la ficha diciendo que todo fue bien.
+    if (zonaPedida !== undefined) {
+      await guardarZonaSucursal(branchId, zonaPedida);
+    }
+
     const { data, error } = await supabase
       .from('branches')
       .update(formattedBranch)
@@ -391,6 +451,10 @@ export const branchService = {
       console.error('Error updating branch:', error);
       throw new Error(error.message);
     }
+
+    // Invalidar el caché de zonas: si no, la UI sigue formateando con la vieja.
+    invalidateBranchTimezoneCache(data?.organization_id ?? organizationId);
+    notifyTimezonesUpdated();
 
     return data;
   },
